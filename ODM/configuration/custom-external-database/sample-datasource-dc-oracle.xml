@@ -1,0 +1,24 @@
+<!-- Sample of Decision Center datasource configuration file for Oracle -->
+<server>
+    <!-- Declare the jar files for Oracle access through JDBC. -->
+    <library id="OracleLib">
+            <fileset dir="/drivers" includes="ojdbc*.jar"/>
+    </library>
+
+    <!-- Declare the database -->
+    <dataSource jndiName="jdbc/ilogDataSource"
+                isolationLevel="TRANSACTION_READ_COMMITTED"
+                statementCacheSize="150">
+            <connectionManager maxPoolSize="25"
+                               minPoolSize="10"
+                               connectionTimout="10s"
+                               agedTimeout="30m"/>
+            <jdbcDriver libraryRef="OracleLib"/>
+            <properties.oracle driverType="thin"
+                               databaseName="xe"
+                               serverName="oracleServerName"
+                               portNumber="1521"
+                               user="system"
+                               password="oracle"/>
+    </dataSource>
+</server>

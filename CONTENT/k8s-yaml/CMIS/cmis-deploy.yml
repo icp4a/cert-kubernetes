@@ -1,0 +1,150 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ecm-cmis-svc
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      port: 9080
+      targetPort: 9080
+    - name: https
+      protocol: TCP
+      port: 9443
+      targetPort: 9443
+  selector:
+    app: cmis-cluster1
+  type: NodePort
+  sessionAffinity: ClientIP
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: ecm-cmis
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: cmis-cluster1
+    spec:
+      imagePullSecrets:
+        - name: admin.registrykey
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - cmis-cluster1
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+      - image: <Repository for Docker Container Image>/default/cmis:latest
+        imagePullPolicy: Always
+        name: ecm-cmis
+        securityContext:
+          runAsUser: 50001
+          allowPrivilegeEscalation: false
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 500m
+          limits:
+            memory: 512Mi
+            cpu: 1
+        ports:
+        - containerPort: 9080
+          name: http
+        - containerPort: 9443
+          name: https
+        env:
+          - name: LICENSE
+            value: "accept"
+          - name: PRODUCT
+            value: "DBAMC"
+          - name: CMIS_VERSION
+            value: "1.1"
+          - name: CE_URL
+            value: "http://cpeurl:30540/wsi/FNCEWS40MTOM"
+          - name: TZ
+            value: "Etc/UTC"
+          - name: JVM_HEAP_XMS
+            value: "512m"
+          - name: JVM_HEAP_XMX
+            value: "1024m"
+          - name: CMC_TIME_TO_LIVE
+            value: "3600000"
+          - name: CRC_TIME_TO_LIVE
+            value: "3600000"
+          - name: USER_CACHE_TIME_TO_LIVE
+            value: "28800000"
+          - name: CHECKOUT_COPYCONTENT
+            value: "True"
+          - name: DEFAULTMAXITEMS
+            value: "25"
+          - name: CVL_CACHE
+            value: "True"
+          - name: SECUREMETADATACACHE
+            value: "False"
+          - name: FILTERHIDDENPROPERTIES
+            value: "True"
+          - name: QUERYTIMELIMIT
+            value: "180"
+          - name: RESUMABLEQUERIESFORREST
+            value: "True"
+          - name: ESCAPEUNSAFESTRINGCHARACTERS
+            value: "False"
+          - name: MAXSOAPSIZE
+            value: "180"
+          - name: PRINTFULLSTACKTRACE
+            value: "False"
+          - name: FOLDERFIRSTSEARCH
+            value: "False"
+          - name: IGNOREROOTDOCUMENTS
+            value: "False"
+          - name: SUPPORTINGTYPEMUTABILITY
+            value: "False"
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: MY_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+        readinessProbe:
+          tcpSocket:
+            port: 9080
+          initialDelaySeconds: 90
+          periodSeconds: 5
+        livenessProbe:
+          tcpSocket:
+            port: 9080
+          initialDelaySeconds: 180
+          periodSeconds: 5
+        volumeMounts:
+          - name: cmiscfgstore-pvc
+            mountPath: "/opt/ibm/wlp/usr/servers/defaultServer/configDropins/overrides"
+            subPath: configDropins/overrides
+          - name: cmislogstore-pvc
+            mountPath: "/opt/ibm/wlp/usr/servers/defaultServer/logs"
+            subPath: logs
+
+      volumes:
+        - name: cmiscfgstore-pvc
+          persistentVolumeClaim:
+            claimName: "cmis-cfgstore"
+        - name: cmislogstore-pvc
+          persistentVolumeClaim:
+            claimName: "cmis-logstore"

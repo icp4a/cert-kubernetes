@@ -1,0 +1,2636 @@
+#
+# Licensed Materials - Property of IBM
+# 6949-68N
+#
+# © Copyright IBM Corp. 2019 All Rights Reserved
+#
+#
+# Database Deployment
+#
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: mongo
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: mongo
+    release: celery$KUBE_NAME_SPACE
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mongo
+        release: celery$KUBE_NAME_SPACE
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - mongo-admin
+              topologyKey: kubernetes.io/hostname
+      volumes:
+      - name: spmongo-pv-storage
+        persistentVolumeClaim:
+         claimName: $DATAPVC
+      - name: log
+        persistentVolumeClaim:
+         claimName: $LOGPVC
+      - name: storage
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+      containers:
+      - name: mongo
+        image: $DOCKER_REG_FOR_SERVICES/mongo:$VERSION
+        resources:
+          limits:
+            memory: $MONGO_LIMITED_MEMORY
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        env:
+        - name: ENTRYPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-mongo"
+              key: MONGOENTRYPASSWORD
+        - name: MONGO_USER
+          valueFrom:
+            secretKeyRef:
+              name: "baca-mongo"
+              key: MONGOUSER
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-mongo"
+              key: MONGOPASSWORD
+        - name: MONGO_INITDB
+          value: "bacauser"
+        - name: LOG_LEVEL
+          value: "$LOG_LEVEL"
+        - name: LOG_PATH
+          value: "/var/log/mongodb"
+        - name: CERTIFICATE_DIR
+          value: "/etc/certs"
+        - name: WIREDTIGERCACHE
+          value: "$MONGO_WIREDTIGER_LIMIT"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        imagePullPolicy: Always
+        livenessProbe:
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command:
+              - bash
+              - -c
+              - source setup_env.sh && echo 'db.runCommand("ping").ok' | mongo 127.0.0.1:27017/$MONGO_INITDB -u $MONGO_USER -p $MONGO_PASSWORD --authenticationDatabase $MONGO_INITDB --ssl --sslPEMKeyFile $PEMFILE --sslCAFile $CERTIFICATE_PATH
+        readinessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command:
+              - bash
+              - -c
+              - source setup_env.sh && echo 'db.runCommand("ping").ok' | mongo 127.0.0.1:27017/$MONGO_INITDB -u $MONGO_USER -p $MONGO_PASSWORD --authenticationDatabase $MONGO_INITDB --ssl --sslPEMKeyFile $PEMFILE --sslCAFile $CERTIFICATE_PATH
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - mountPath: "/data/db"
+          name: spmongo-pv-storage
+          subPath: mongo
+        - name: log
+          mountPath: "/var/log/mongodb"
+          subPath: mongo
+        - name: storage
+          mountPath: "/etc/certs"
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      nodeSelector:
+        mongo$KUBE_NAME_SPACE: baca
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: mongo-admin
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: mongo-admin
+    release: celery$KUBE_NAME_SPACE
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mongo-admin
+        release: celery$KUBE_NAME_SPACE
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - mongo
+              topologyKey: kubernetes.io/hostname
+      volumes:
+      - name: spmongoadmin-pv-storage
+        persistentVolumeClaim:
+         claimName: $DATAPVC
+      - name: log
+        persistentVolumeClaim:
+         claimName: $LOGPVC
+      - name: storage
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+      containers:
+      - name: mongo-admin
+        image: $DOCKER_REG_FOR_SERVICES/mongo:$VERSION
+        resources:
+          limits:
+            memory: $MONGO_ADMIN_LIMITED_MEMORY
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        env:
+        - name: ENTRYPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-mongo-admin"
+              key: MONGOADMINENTRYPASSWORD
+        - name: MONGO_USER
+          valueFrom:
+            secretKeyRef:
+              name: "baca-mongo-admin"
+              key: MONGOADMINUSER
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-mongo-admin"
+              key: MONGOADMINPASSWORD
+        - name: MONGO_INITDB
+          value: "smartpages"
+        - name: MONGO_SECONDDB
+          value: "binaryfiles"
+        - name: LOG_PATH
+          value: "/var/log/mongodb"
+        - name: LOG_LEVEL
+          value: "$LOG_LEVEL"
+        - name: CERTIFICATE_DIR
+          value: "/etc/certs"
+        - name: WIREDTIGERCACHE
+          value: "$MONGO_WIREDTIGER_LIMIT"  
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        imagePullPolicy: Always
+        livenessProbe:
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command:
+              - bash
+              - -c
+              - source setup_env.sh && echo 'db.runCommand("ping").ok' | mongo 127.0.0.1:27017/$MONGO_INITDB -u $MONGO_USER -p $MONGO_PASSWORD --authenticationDatabase $MONGO_INITDB --ssl --sslPEMKeyFile $PEMFILE --sslCAFile $CERTIFICATE_PATH
+        readinessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command:
+              - bash
+              - -c
+              - source setup_env.sh && echo 'db.runCommand("ping").ok' | mongo 127.0.0.1:27017/$MONGO_INITDB -u $MONGO_USER -p $MONGO_PASSWORD --authenticationDatabase $MONGO_INITDB --ssl --sslPEMKeyFile $PEMFILE --sslCAFile $CERTIFICATE_PATH
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - mountPath: "/data/db"
+          name: spmongoadmin-pv-storage
+          subPath: mongoadmin
+        - name: log
+          mountPath: "/var/log/mongodb"
+          subPath: mongoadmin
+        - name: storage
+          mountPath: "/etc/certs"
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      nodeSelector:
+        mongo-admin$KUBE_NAME_SPACE: baca
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: mongo
+    release: celery$KUBE_NAME_SPACE
+spec:
+  ports:
+  - port: 27017
+    targetPort: 27017
+  type: LoadBalancer
+  selector:
+    app: mongo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-admin
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: mongo-admin
+    release: celery$KUBE_NAME_SPACE
+spec:
+  ports:
+  - port: 27017
+    targetPort: 27017
+  type: LoadBalancer
+  selector:
+    app: mongo-admin
+---
+apiVersion: v1
+data:
+  initialize: |-
+    #!/bin/sh
+    set -e ; # Have script exit in the event of a failed command.
+
+    # connectToMinio
+    # Use a check-sleep-check loop to wait for Minio service to be available
+    connectToMinio() {
+      ATTEMPTS=0 ; LIMIT=29 ; # Allow 30 attempts
+      set -e ; # fail if we can't read the keys.
+      ACCESS=$(cat /config/accesskey) ; SECRET=$(cat /config/secretkey) ;
+      set +e ; # The connections to minio are allowed to fail.
+      echo "Connecting to Minio server: http://$MINIO_ENDPOINT:$MINIO_PORT" ;
+      MC_COMMAND="mc config host add myminio http://$MINIO_ENDPOINT:$MINIO_PORT $ACCESS $SECRET" ;
+      $MC_COMMAND ;
+      STATUS=$? ;
+      until [ $STATUS = 0 ]
+      do
+        ATTEMPTS=`expr $ATTEMPTS + 1` ;
+        echo \"Failed attempts: $ATTEMPTS\" ;
+        if [ $ATTEMPTS -gt $LIMIT ]; then
+          exit 1 ;
+        fi ;
+        sleep 2 ; # 1 second intervals between attempts
+        $MC_COMMAND ;
+        STATUS=$? ;
+      done ;
+      set -e ; # reset `e` as active
+      return 0
+    }
+
+    # checkBucketExists ($bucket)
+    # Check if the bucket exists, by using the exit code of `mc ls`
+    checkBucketExists() {
+      BUCKET=$1
+      CMD=$(/usr/bin/mc ls myminio/$BUCKET > /dev/null 2>&1)
+      return $?
+    }
+
+    # createBucket ($bucket, $policy, $purge)
+    # Ensure bucket exists, purging if asked to
+    createBucket() {
+      BUCKET=$1
+      POLICY=$2
+      PURGE=$3
+
+      # Purge the bucket, if set & exists
+      # Since PURGE is user input, check explicitly for `true`
+      if [ $PURGE = true ]; then
+        if checkBucketExists $BUCKET ; then
+          echo "Purging bucket '$BUCKET'."
+          set +e ; # don't exit if this fails
+          /usr/bin/mc rm -r --force myminio/$BUCKET
+          set -e ; # reset `e` as active
+        else
+          echo "Bucket '$BUCKET' does not exist, skipping purge."
+        fi
+      fi
+
+      # Create the bucket if it does not exist
+      if ! checkBucketExists $BUCKET ; then
+        echo "Creating bucket '$BUCKET'"
+        /usr/bin/mc mb myminio/$BUCKET
+      else
+        echo "Bucket '$BUCKET' already exists."
+      fi
+
+      # At this point, the bucket should exist, skip checking for existence
+      # Set policy on the bucket
+      echo "Setting policy of bucket '$BUCKET' to '$POLICY'."
+      /usr/bin/mc policy $POLICY myminio/$BUCKET
+    }
+
+    # Try connecting to Minio instance
+    connectToMinio
+    # Create the bucket
+    createBucket bucket none false
+kind: ConfigMap
+metadata:
+  labels:
+    app: minio
+    release: celery$KUBE_NAME_SPACE
+  name: celery$KUBE_NAME_SPACE-minio
+  namespace: $KUBE_NAME_SPACE
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: minio
+    release: celery$KUBE_NAME_SPACE
+  name: celery$KUBE_NAME_SPACE-minio
+  namespace: $KUBE_NAME_SPACE
+spec:
+  selector:
+    matchLabels:
+      app: minio
+      release: celery$KUBE_NAME_SPACE
+  template:
+    metadata:
+      labels:
+        app: minio
+        release: celery$KUBE_NAME_SPACE
+      name: celery$KUBE_NAME_SPACE-minio
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 51000
+        fsGroup: 51001
+        supplementalGroups:
+          - 51001
+      containers:
+        - name: minio
+          image: $DOCKER_REG_FOR_SERVICES/minio:$VERSION
+          imagePullPolicy: Always
+          resources:
+            limits:
+              memory: $MINIO_LIMITED_MEMORY
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 51000
+          volumeMounts:
+            - name: storage
+              mountPath: "/etc/certs"
+          ports:
+            - name: service
+              containerPort: 9000
+          env:
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: "baca-minio"
+                  key: accesskey
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: "baca-minio"
+                  key: secretkey
+            - name: CERTIFICATE_DIR
+              value: "/etc/certs"
+          livenessProbe:
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 20
+            successThreshold: 1
+            failureThreshold: 5
+            exec:
+              command: ["curl", "-X", "GET", "https://0.0.0.0:9000/minio/health/live","--insecure"]
+          readinessProbe:
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 20
+            successThreshold: 1
+            failureThreshold: 5
+            exec:
+              command: ["curl", "-X", "GET", "https://0.0.0.0:9000/minio/health/ready","--insecure"]
+      nodeSelector:
+        celery$KUBE_NAME_SPACE: baca
+      volumes:
+      - name: minio-user
+        secret:
+          secretName: "baca-minio"
+      - name: storage
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+          items:
+            - key: public.crt
+              path: public.crt
+            - key: private.key
+              path: private.key
+            - key: public.crt
+              path: CAs/public.crt
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: celery$KUBE_NAME_SPACE-minio
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: minio
+    release: celery$KUBE_NAME_SPACE
+spec:
+  type: NodePort
+  ports:
+    - name: service
+      port: 9000
+      targetPort: 9000
+      protocol: TCP
+  selector:
+    app: minio
+    release: celery$KUBE_NAME_SPACE
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: rabbitmq
+    release: celery$KUBE_NAME_SPACE
+  name: celery$KUBE_NAME_SPACE-rabbitmq-config
+  namespace: $KUBE_NAME_SPACE
+data:
+  enabled_plugins: '[rabbitmq_management, rabbitmq_peer_discovery_k8s].'
+  rabbitmq.conf: |-
+    ##username and password
+    default_user=PoC
+    default_pass=CHANGEME
+    ## Clustering
+    cluster_formation.peer_discovery_backend  = rabbit_peer_discovery_k8s
+    cluster_formation.k8s.host = kubernetes.default.svc.cluster.local
+    cluster_formation.node_cleanup.interval = 10
+    cluster_formation.node_cleanup.only_log_warning = true
+    cluster_partition_handling = autoheal
+    ## queue master locator
+    queue_master_locator=min-masters
+    ## enable guest user
+    loopback_users.guest = false
+    #disk_free_limit.absolute = 50MB
+---    
+apiVersion: v1
+kind: Service
+metadata:
+  name: celery$KUBE_NAME_SPACE-rabbitmq
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: rabbitmq
+    release: celery$KUBE_NAME_SPACE
+spec:
+  type: ClusterIP
+  ports:
+  - name: epmd
+    port: 4369
+    targetPort: epmd
+  - name: amqp
+    port: 5671
+    targetPort: amqp
+  - name: dist
+    port: 25672
+    targetPort: dist
+  - name: stats
+    port: 15671
+    targetPort: stats
+  selector:
+    app: rabbitmq
+    release: celery$KUBE_NAME_SPACE
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: celery$KUBE_NAME_SPACE-rabbitmq-headless
+  labels:
+    app: rabbitmq
+    release: celery$KUBE_NAME_SPACE
+spec:
+  clusterIP: None
+  ports:
+  - name: epmd
+    port: 4369
+    targetPort: epmd
+  - name: amqp
+    port: 5671
+    targetPort: amqp
+  - name: dist
+    port: 25672
+    targetPort: dist
+  - name: stats
+    port: 15671
+    targetPort: stats
+  selector:
+    app: rabbitmq
+    release: celery$KUBE_NAME_SPACE
+---
+apiVersion: apps/v1beta2
+kind: StatefulSet
+metadata:
+  labels:
+    app: rabbitmq
+    release: celery$KUBE_NAME_SPACE
+  name: celery$KUBE_NAME_SPACE-rabbitmq
+  namespace: $KUBE_NAME_SPACE
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+      release: celery$KUBE_NAME_SPACE
+  serviceName: celery$KUBE_NAME_SPACE-rabbitmq-headless
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+        release: celery$KUBE_NAME_SPACE
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 51000
+        fsGroup: 51001
+        supplementalGroups:
+          - 51001    
+      containers:
+      - env:
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: K8S_SERVICE_NAME
+          value: celery$KUBE_NAME_SPACE-rabbitmq-headless
+        - name: K8S_ADDRESS_TYPE
+          value: ip
+        - name: RABBITMQ_NODENAME
+          value: rabbit@$(MY_POD_IP)
+        - name: RABBITMQ_ULIMIT_NOFILES
+          value: "65536"
+        - name: RABBITMQ_USE_LONGNAME
+          value: "true"
+        - name: RABBITMQ_ERL_COOKIE
+          valueFrom:
+            secretKeyRef:
+              key: rabbitmq-erlang-cookie
+              name: "baca-rabbitmq"
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: rabbitmq-password
+              name: "baca-rabbitmq"
+        - name: RABBITMQ_USER
+          valueFrom:
+            secretKeyRef:
+              key: rabbitmq-user
+              name: "baca-rabbitmq"
+        - name: RABBITMQ_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: rabbitmq-admin-password
+              name: "baca-rabbitmq"
+        - name: CERTIFICATE_DIR
+          value: "/etc/certs"     
+        image: $DOCKER_REG_FOR_SERVICES/rabbitmq:$VERSION
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: $RABBITMQ_LIMITED_MEMORY
+        name: rabbitmq
+        ports:
+        - containerPort: 4369
+          name: epmd
+        - containerPort: 5671
+          name: amqp
+        - containerPort: 25672
+          name: dist
+        - containerPort: 15671
+          name: stats
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+          - name: config-volume
+            mountPath: /opt/bitnami/rabbitmq/conf
+          - name: data
+            mountPath: /opt/bitnami/rabbitmq/var/lib/rabbitmq/
+          - name: storage
+            mountPath: "/etc/certs"
+        livenessProbe:
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          tcpSocket:
+            port: 5671
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command:
+              - bash
+              - -c
+              - rabbitmqctl list_users | grep $RABBITMQ_USER
+      nodeSelector:
+        celery$KUBE_NAME_SPACE: baca
+      terminationGracePeriodSeconds: 10
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      volumes:
+      - configMap:
+          defaultMode: 420
+          items:
+          - key: rabbitmq.conf
+            path: rabbitmq.conf
+          - key: enabled_plugins
+            path: enabled_plugins
+          name: celery$KUBE_NAME_SPACE-rabbitmq-config
+        name: config-volume
+      - emptyDir: {}
+        name: data
+      - name: storage
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+---
+apiVersion: apps/v1beta2
+kind: StatefulSet
+metadata:
+  labels:
+    app: redis
+    release: celery$KUBE_NAME_SPACE
+  name: celery$KUBE_NAME_SPACE-redis-master
+  namespace: $KUBE_NAME_SPACE
+spec:
+  selector:
+    matchLabels:
+      app: redis
+      release: celery$KUBE_NAME_SPACE
+      role: master
+  serviceName: redis-master
+  template:
+    metadata:
+      labels:
+        app: redis
+        release: celery$KUBE_NAME_SPACE
+        role: master
+    spec:
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 51000
+        fsGroup: 51001
+        supplementalGroups:
+          - 51001      
+      containers:
+      - env:
+        - name: REDIS_REPLICATION_MODE
+          value: master
+        - name: CERTIFICATE_DIR
+          value: "/etc/certs"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: redis-password
+              name: "baca-redis"
+        - name: REDIS_DISABLE_COMMANDS
+          value: FLUSHDB,FLUSHALL
+        image: $DOCKER_REG_FOR_SERVICES/redis:$VERSION
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: $REDIS_LIMITED_MEMORY
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        name: celery$KUBE_NAME_SPACE-redis
+        ports:
+        - containerPort: 6379
+          name: redis
+        livenessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          tcpSocket:
+            port: 6379
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command:
+              - bash
+              - -c
+              - redis-cli -h 127.0.0.1 -p 6380 -a $REDIS_PASSWORD ping
+        volumeMounts:
+        - mountPath: /bitnami/redis/data
+          name: redis-data
+        - name: storage
+          mountPath: "/etc/certs"          
+      nodeSelector:
+        celery$KUBE_NAME_SPACE: baca
+      schedulerName: default-scheduler     
+      serviceAccount: default
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir: {}
+        name: redis-data
+      - name: storage
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+          items:
+            - key: redis.crt
+              path: redis.crt
+            - key: redis.key
+              path: redis.key
+            - key: redis.pem
+              path: redis.pem
+  updateStrategy:
+    type: OnDelete
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: redis
+    release: celery$KUBE_NAME_SPACE
+  name: celery$KUBE_NAME_SPACE-redis-master
+  namespace: $KUBE_NAME_SPACE
+spec:
+  ports:
+  - name: redis
+    protocol: TCP
+    port: 6379
+    targetPort: redis
+  selector:
+    app: redis
+    release: celery$KUBE_NAME_SPACE
+  type: ClusterIP
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: callerapi
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: callerapi
+    release: celery$KUBE_NAME_SPACE
+    component: callerapi
+spec:
+  replicas: $CELERY_REPLICAS
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: callerapi
+        release: celery$KUBE_NAME_SPACE
+        component: callerapi
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 51000
+        fsGroup: 51001
+        supplementalGroups:
+          - 51001
+      volumes:
+      - name: log
+        persistentVolumeClaim:
+          claimName: $LOGPVC
+      - name: secrets
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+      containers:
+      - name: callerapi
+        image: $DOCKER_REG_FOR_SERVICES/callerapi:$VERSION
+        resources:
+          limits:
+            memory: $CALLERAPI_LIMITED_MEMORY
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        imagePullPolicy: Always
+        ports:
+          - containerPort: 8080
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/callerapi
+          subPath: callerapi
+          readOnly: false
+        - name: secrets
+          mountPath: "/etc/certs"
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: LOG_PATH
+          value: /var/log/callerapi
+        - name: LOG_LEVEL
+          value: "$LOG_LEVEL"
+        - name: BROKER_URL
+          value: amqps://celery$KUBE_NAME_SPACE-rabbitmq:5671
+        - name: CERTIFICATE_DIR
+          value: "/etc/certs"
+        - name: SSL_VALIDATE
+          value: "$SSL_VALIDATE"
+        - name: BROKER_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-user
+        - name: BROKER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-password
+        - name: RESULTS_URL
+          value: rediss://celery$KUBE_NAME_SPACE-redis-master:6379
+        - name: RESULTS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-redis"
+              key: redis-password
+        - name: S3_URL
+          value: https://celery$KUBE_NAME_SPACE-minio:9000/mybucket
+        - name: S3_ENDPOINT
+          value: https://celery$KUBE_NAME_SPACE-minio:9000
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: "baca-minio"
+              key: accesskey
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: "baca-minio"
+              key: secretkey
+        livenessProbe:
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          tcpSocket:
+            port: 8080
+        readinessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["curl", "-X", "GET", "https://0.0.0.0:8080","--insecure"]
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      nodeSelector:
+        celery$KUBE_NAME_SPACE: baca
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: spbackend
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: spbackend
+    release: celery$KUBE_NAME_SPACE
+    component: spbackend
+spec:
+  replicas: $NON_CELERY_REPLICAS
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: spbackend
+        release: celery$KUBE_NAME_SPACE
+        component: spbackend
+    spec:
+      volumes:
+      - name: log
+        persistentVolumeClaim:
+          claimName: $LOGPVC
+      - name: storage
+        persistentVolumeClaim:
+          claimName: $CONFIGPVC
+      - name: certs
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+      - name: ingress-secrets
+        secret:
+          secretName: baca-ingress-secret
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 51000
+        fsGroup: 51001
+        supplementalGroups:
+          - 51001
+      containers:
+      - name: spbackend
+        image: $DOCKER_REG_FOR_SERVICES/backend:$VERSION
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: $BACKEND_LIMITED_MEMORY
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        ports:
+          - containerPort: 8080
+        volumeMounts:
+        - name: storage
+          mountPath: /var/storage/backend
+          subPath: backend
+        - name: certs
+          mountPath: "/etc/certs"
+        - name: ingress-secrets
+          mountPath: "/etc/certs/backend"
+        - name: log
+          mountPath: /var/log/backend
+          subPath: backend
+          readOnly: false
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: LOG_PATH
+          value: /var/log/backend
+        - name: LOG_LEVEL
+          value: "$LOG_LEVEL"
+        - name: STORAGE_PATH
+          value: /var/storage/backend
+        - name: BASE_DB
+          value: "$BASE_DB"
+        - name: BASE_DB_SERVER
+          value: "$BASEDB_SERVER"
+        - name: BASE_DB_PORT
+          value: "$BASEDB_PORT"
+        - name: BASE_DB_USER
+          value: "$BASEDB_USER"
+        - name: BASE_DB_PWD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-basedb"
+              key: BASE_DB_PWD
+        - name: RDBENGINE
+          value: "DB2"
+        - name: MONGOENTRYPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-mongo"
+              key: MONGOPASSWORD
+        - name: MONGOUSER
+          valueFrom:
+            secretKeyRef:
+              name: "baca-mongo"
+              key: MONGOUSER
+        - name: MONGOAUTHDB
+          value: "bacauser"
+        - name: MONGOIPADDRESS
+          value: mongo
+        - name: MONGOPORT
+          value: "27017"
+        - name: MONGOADMINENTRYPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-mongo-admin"
+              key: MONGOADMINPASSWORD
+        - name: MONGOADMINUSER
+          valueFrom:
+            secretKeyRef:
+              name: "baca-mongo-admin"
+              key: MONGOADMINUSER
+        - name: MONGOADMINAUTHDB
+          value: "smartpages"
+        - name: MONGOADMINIPADDRESS
+          value: mongo-admin
+        - name: MONGOADMINPORT
+          value: "27017"
+        - name: BACKEND_PROTOCOL
+          value: "https"
+        - name: BACKEND_HOST
+          value: "spbackend"
+        - name: BACKEND_PORT
+          value: "8080"
+        - name: BACKEND_PATH
+          value: ""
+        - name: CALLER_API_PROTOCOL
+          value: "https"
+        - name: CALLER_API_HOST
+          value: callerapi
+        - name: CALLER_API_PORT
+          value: "8080"
+        - name: FULL_CALLER_API_PATH
+          value: /api/v1/actions
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: "$NODE_TLS_REJECT_UNAUTHORIZED"
+        - name: LDAP
+          value: "$USE_LDAP"
+        - name: LDAP_FILTER
+          value: "$LDAP_FILTER"
+        - name: LDAP_DN
+          value: "$LDAP_DN"
+        - name: LDAP_URL
+          value: "$LDAP_URL"
+        - name: USERNAME
+          value: "$USERNAME"
+        - name: LDAP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-ldap"
+              key: LDAP_PASSWORD
+              optional: true
+        - name: LDAP_PORT
+          value: "$LDAP_PORT"
+        - name: LDAP_BASE
+          value: "$LDAP_BASE"
+        - name: LDAP_CRT_NAME
+          value: "$LDAP_CRT_NAME"
+        - name: LDAP_SELF_SIGNED_CRT
+          value: "$LDAP_SELF_SIGNED_CRT"
+        - name: RESULT_HOST
+          value: celery$KUBE_NAME_SPACE-redis-master
+        - name: RESULT_PORT
+          value: "6379"
+        - name: RESULTS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-redis"
+              key: redis-password
+        - name: CERTIFICATE_DIR
+          value: "/etc/certs"
+        - name: INGRESS_CERTIFICATE_DIR
+          value: "/etc/certs/backend"
+        - name: TLS_PREFIX
+          value: "tls" 
+        livenessProbe:
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["curl", "-X", "GET", "https://0.0.0.0:8002", "--insecure"]
+        readinessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["curl", "-X", "GET", "https://0.0.0.0:8002/health", "--insecure"]
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      nodeSelector:
+        celery$KUBE_NAME_SPACE: baca
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: spfrontend
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: spfrontend
+    release: celery$KUBE_NAME_SPACE
+    component: spfrontend
+spec:
+  replicas: $NON_CELERY_REPLICAS
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: spfrontend
+        release: celery$KUBE_NAME_SPACE
+        component: spfrontend
+    spec:
+      volumes:
+      - name: log
+        persistentVolumeClaim:
+          claimName: $LOGPVC
+      - name: ingress-secrets
+        secret:
+          secretName: baca-ingress-secret
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 51000
+        fsGroup: 51001
+        supplementalGroups:
+          - 51001
+      containers:
+      - name: spfrontend
+        image: $DOCKER_REG_FOR_SERVICES/spfrontend:$VERSION
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: $FRONTEND_LIMITED_MEMORY        
+        ports:
+          - containerPort: 3000
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/frontend
+          subPath: frontend
+        - name: ingress-secrets
+          mountPath: "/etc/certs/frontend"
+        env:
+        - name: BACKEND_HOST
+          value: "$BACKEND_HOST"
+        - name: BACKEND_PROTOCOL
+          value: "https"
+        - name: BACKEND_PORT
+          value: "$BACKEND_PORT"
+        - name: BACKEND_PATH
+          value: "$BACKEND_PATH"
+        - name: FRONTEND_HOST
+          value: "$FRONTEND_HOST"
+        - name: FRONTEND_PROTOCOL
+          value: "https"
+        - name: FRONTEND_PATH
+          value: "$FRONTEND_PATH"
+        - name: LDAP
+          value: "$USE_LDAP"
+        - name: SSO
+          value: "$SSO"
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: "$NODE_TLS_REJECT_UNAUTHORIZED"
+        - name: BXDOMAINNAME
+          value: "$BXDOMAINNAME"
+        - name: LOG_PATH
+          value: /var/log/frontend
+        - name: LOG_LEVEL
+          value: "$LOG_LEVEL"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: INGRESS_CERTIFICATE_DIR
+          value: "/etc/certs/frontend"
+        - name: TLS_PREFIX
+          value: "tls"
+        livenessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          tcpSocket:
+            port: 3000
+        readinessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["curl", "-X", "GET", "https://0.0.0.0:3000/health","--insecure"]
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      nodeSelector:
+        celery$KUBE_NAME_SPACE: baca
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: callerapi
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: callerapi
+    release: celery$KUBE_NAME_SPACE
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: callerapi
+  selector:
+    app: callerapi
+    release: celery$KUBE_NAME_SPACE
+    component: callerapi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spbackend
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: spbackend
+    release: celery$KUBE_NAME_SPACE
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8002
+      protocol: TCP
+      name: spbackend
+  selector:
+    app: spbackend
+    release: celery$KUBE_NAME_SPACE
+    component: spbackend
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spfrontend
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: spfrontend
+    release: celery$KUBE_NAME_SPACE
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 3000
+      protocol: TCP
+      name: spfrontend
+  selector:
+    app: spfrontend
+    release: celery$KUBE_NAME_SPACE
+    component: spfrontend
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: postprocessing
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: baca-celery
+    release: celery$KUBE_NAME_SPACE
+    component: consumer
+    worker: postprocessing
+spec:
+  replicas: $CELERY_REPLICAS
+  strategy: 
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: baca-celery
+        release: celery$KUBE_NAME_SPACE
+        component: consumer
+        worker: postprocessing
+    spec:
+      volumes:
+      - name: log
+        persistentVolumeClaim:
+          claimName: $LOGPVC
+      - name: secrets
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 51000
+        fsGroup: 51001
+        supplementalGroups:
+          - 51001
+      containers:
+      - name: postprocessing
+        image: $DOCKER_REG_FOR_SERVICES/postprocessing:$VERSION
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: $POST_PROCESS_LIMITED_MEMORY        
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/postprocessing
+          subPath: postprocessing
+          readOnly: false
+        - name: secrets  
+          mountPath: "/etc/certs"
+        livenessProbe:
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        readinessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: LOG_PATH
+          value: /var/log/postprocessing
+        - name: LOG_LEVEL
+          value: "$LOG_LEVEL"
+        - name: NUM_WORKERS
+          value: "2"
+        - name: BROKER_URL
+          value: amqps://celery$KUBE_NAME_SPACE-rabbitmq:5671
+        - name: BROKER_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-user
+        - name: BROKER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-password
+        - name: RESULTS_URL
+          value: rediss://celery$KUBE_NAME_SPACE-redis-master:6379
+        - name: RESULTS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-redis"
+              key: redis-password
+        - name: S3_URL
+          value: https://celery$KUBE_NAME_SPACE-minio:9000/mybucket
+        - name: S3_ENDPOINT
+          value: https://celery$KUBE_NAME_SPACE-minio:9000
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: "baca-minio"
+              key: accesskey
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+               name: "baca-minio"
+               key: secretkey
+        - name: CERTIFICATE_DIR
+          value: "/etc/certs"
+        - name: SSL_VALIDATE
+          value: "$SSL_VALIDATE"
+        - name: PROCESS_TIMEOUT
+          value: "300"        
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      nodeSelector:
+        celery$KUBE_NAME_SPACE: baca
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: pdfprocess
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: baca-celery
+    release: celery$KUBE_NAME_SPACE
+    component: consumer
+    worker: pdfprocess
+spec:
+  replicas: $CELERY_REPLICAS
+  strategy: 
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: baca-celery
+        release: celery$KUBE_NAME_SPACE
+        component: consumer
+        worker: pdfprocess
+    spec:
+      volumes:
+      - name: log
+        persistentVolumeClaim:
+          claimName: $LOGPVC
+      - name: secrets
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 51000
+        fsGroup: 51001
+        supplementalGroups:
+          - 51001
+      containers:
+      - name: pdfprocess
+        image: $DOCKER_REG_FOR_SERVICES/pdfprocess:$VERSION
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: $PDF_PROCESS_LIMITED_MEMORY
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/pdfprocess
+          subPath: pdfprocess
+          readOnly: false
+        - name: secrets  
+          mountPath: "/etc/certs"
+        livenessProbe:  
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        readinessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: LOG_PATH
+          value: /var/log/pdfprocess
+        - name: LOG_LEVEL
+          value: "$LOG_LEVEL"
+        - name: NUM_WORKERS
+          value: "2"
+        - name: BROKER_URL
+          value: amqps://celery$KUBE_NAME_SPACE-rabbitmq:5671
+        - name: BROKER_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-user
+        - name: BROKER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-password
+        - name: RESULTS_URL
+          value: rediss://celery$KUBE_NAME_SPACE-redis-master:6379
+        - name: RESULTS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-redis"
+              key: redis-password
+        - name: S3_URL
+          value: https://celery$KUBE_NAME_SPACE-minio:9000/mybucket
+        - name: S3_ENDPOINT
+          value: https://celery$KUBE_NAME_SPACE-minio:9000
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: "baca-minio"
+              key: accesskey
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+               name: "baca-minio"
+               key: secretkey
+        - name: CERTIFICATE_DIR
+          value: "/etc/certs"
+        - name: SSL_VALIDATE
+          value: "$SSL_VALIDATE"
+        - name: PROCESS_TIMEOUT
+          value: "300"           
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      nodeSelector:
+        celery$KUBE_NAME_SPACE: baca
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: utf8process
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: baca-celery
+    release: celery$KUBE_NAME_SPACE
+    component: consumer
+    worker: utf8process
+spec:
+  replicas: $CELERY_REPLICAS
+  strategy: 
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: baca-celery
+        release: celery$KUBE_NAME_SPACE
+        component: consumer
+        worker: utf8process
+    spec:
+      volumes:
+      - name: log
+        persistentVolumeClaim:
+          claimName: $LOGPVC
+      - name: secrets
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 51000
+        fsGroup: 51001
+        supplementalGroups:
+          - 51001
+      containers:
+      - name: utf8process
+        image: $DOCKER_REG_FOR_SERVICES/utf8process:$VERSION
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: $UTF8_PROCESS_LIMITED_MEMORY
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/utf8process
+          subPath: utf8process
+          readOnly: false
+        - name: secrets
+          mountPath: "/etc/certs"
+        livenessProbe:  
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        readinessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: LOG_PATH
+          value: /var/log/utf8process
+        - name: LOG_LEVEL
+          value: "$LOG_LEVEL"
+        - name: NUM_WORKERS
+          value: "2"
+        - name: BROKER_URL
+          value: amqps://celery$KUBE_NAME_SPACE-rabbitmq:5671
+        - name: BROKER_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-user
+        - name: BROKER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-password
+        - name: RESULTS_URL
+          value: rediss://celery$KUBE_NAME_SPACE-redis-master:6379
+        - name: RESULTS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-redis"
+              key: redis-password
+        - name: S3_URL
+          value: https://celery$KUBE_NAME_SPACE-minio:9000/mybucket
+        - name: S3_ENDPOINT
+          value: https://celery$KUBE_NAME_SPACE-minio:9000
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: "baca-minio"
+              key: accesskey
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+               name: "baca-minio"
+               key: secretkey
+        - name: CERTIFICATE_DIR
+          value: "/etc/certs"
+        - name: SSL_VALIDATE
+          value: "$SSL_VALIDATE"
+        - name: PROCESS_TIMEOUT
+          value: "300"           
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      nodeSelector:
+        celery$KUBE_NAME_SPACE: baca
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: setup
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: baca-celery
+    release: celery$KUBE_NAME_SPACE
+    component: consumer
+    worker: setup
+spec:
+  replicas: $CELERY_REPLICAS
+  strategy: 
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: baca-celery
+        release: celery$KUBE_NAME_SPACE
+        component: consumer
+        worker: setup
+    spec:
+      volumes:
+      - name: log
+        persistentVolumeClaim:
+          claimName: $LOGPVC
+      - name: secrets
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 51000
+        fsGroup: 51001
+        supplementalGroups:
+          - 51001
+      containers:
+      - name: setup
+        image: $DOCKER_REG_FOR_SERVICES/setup:$VERSION
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: $SETUP_LIMITED_MEMORY
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/setup
+          subPath: setup
+          readOnly: false
+        - name: secrets
+          mountPath: "/etc/certs"
+        livenessProbe:  
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        readinessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: LOG_PATH
+          value: /var/log/setup
+        - name: LOG_LEVEL
+          value: "$LOG_LEVEL"
+        - name: NUM_WORKERS
+          value: "2"
+        - name: BROKER_URL
+          value: amqps://celery$KUBE_NAME_SPACE-rabbitmq:5671
+        - name: BROKER_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-user
+        - name: BROKER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-password
+        - name: RESULTS_URL
+          value: rediss://celery$KUBE_NAME_SPACE-redis-master:6379
+        - name: RESULTS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-redis"
+              key: redis-password
+        - name: S3_URL
+          value: https://celery$KUBE_NAME_SPACE-minio:9000/mybucket
+        - name: S3_ENDPOINT
+          value: https://celery$KUBE_NAME_SPACE-minio:9000
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: "baca-minio"
+              key: accesskey
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+               name: "baca-minio"
+               key: secretkey
+        - name: CERTIFICATE_DIR
+          value: "/etc/certs"
+        - name: SSL_VALIDATE
+          value: "$SSL_VALIDATE"
+        - name: PROCESS_TIMEOUT
+          value: "300" 
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      nodeSelector:
+        celery$KUBE_NAME_SPACE: baca
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: ocr-extraction
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: baca-celery
+    release: celery$KUBE_NAME_SPACE
+    component: consumer
+    worker: ocr-extraction
+spec:
+  replicas: $CELERY_REPLICAS
+  strategy: 
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: baca-celery
+        release: celery$KUBE_NAME_SPACE
+        component: consumer
+        worker: ocr-extraction
+    spec:
+      volumes:
+      - name: log
+        persistentVolumeClaim:
+          claimName: $LOGPVC
+      - name: secrets
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 51000
+        fsGroup: 51001
+        supplementalGroups:
+          - 51001
+      containers:
+      - name: ocr-extraction
+        image: $DOCKER_REG_FOR_SERVICES/ocrextraction:$VERSION
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: $OCR_EXTRACTION_LIMITED_MEMORY
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/ocr-extraction
+          subPath: ocr-extraction
+          readOnly: false
+        - name: secrets  
+          mountPath: "/etc/certs"
+        livenessProbe:  
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        readinessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: LOG_PATH
+          value: /var/log/ocr-extraction
+        - name: LOG_LEVEL
+          value: "$LOG_LEVEL"
+        - name: NUM_WORKERS
+          value: "2"
+        - name: BROKER_URL
+          value: amqps://celery$KUBE_NAME_SPACE-rabbitmq:5671
+        - name: BROKER_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-user
+        - name: BROKER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-password
+        - name: RESULTS_URL
+          value: rediss://celery$KUBE_NAME_SPACE-redis-master:6379
+        - name: RESULTS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-redis"
+              key: redis-password
+        - name: S3_URL
+          value: https://celery$KUBE_NAME_SPACE-minio:9000/mybucket
+        - name: S3_ENDPOINT
+          value: https://celery$KUBE_NAME_SPACE-minio:9000
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: "baca-minio"
+              key: accesskey
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+               name: "baca-minio"
+               key: secretkey
+        - name: CERTIFICATE_DIR
+          value: "/etc/certs"
+        - name: SSL_VALIDATE
+          value: "$SSL_VALIDATE"
+        - name: PROCESS_TIMEOUT
+          value: "300" 
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      nodeSelector:
+        celery$KUBE_NAME_SPACE: baca
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: classifyprocess-classify
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: baca-celery
+    release: celery$KUBE_NAME_SPACE
+    component: consumer
+    worker: classifyprocess-classify
+spec:
+  replicas: $CELERY_REPLICAS
+  strategy: 
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: baca-celery
+        release: celery$KUBE_NAME_SPACE
+        component: consumer
+        worker: classifyprocess-classify
+    spec:
+      volumes:
+      - name: log
+        persistentVolumeClaim:
+          claimName: $LOGPVC
+      - name: secrets
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 51000
+        fsGroup: 51001
+        supplementalGroups:
+          - 51001
+      containers:
+      - name: classifyprocess-classify
+        image: $DOCKER_REG_FOR_SERVICES/classify:$VERSION
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: $CLASSIFY_LIMITED_MEMORY
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/classifyprocess-classify
+          subPath: classifyprocess-classify
+          readOnly: false
+        - name: secrets
+          mountPath: "/etc/certs"
+        livenessProbe:
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        readinessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: LOG_PATH
+          value: /var/log/classifyprocess-classify
+        - name: LOG_LEVEL
+          value: "$LOG_LEVEL"
+        - name: NUM_WORKERS
+          value: "2"
+        - name: BROKER_URL
+          value: amqps://celery$KUBE_NAME_SPACE-rabbitmq:5671
+        - name: BROKER_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-user
+        - name: BROKER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-password
+        - name: RESULTS_URL
+          value: rediss://celery$KUBE_NAME_SPACE-redis-master:6379
+        - name: RESULTS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-redis"
+              key: redis-password
+        - name: S3_URL
+          value: https://celery$KUBE_NAME_SPACE-minio:9000/mybucket
+        - name: S3_ENDPOINT
+          value: https://celery$KUBE_NAME_SPACE-minio:9000
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: "baca-minio"
+              key: accesskey
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+               name: "baca-minio"
+               key: secretkey
+        - name: CERTIFICATE_DIR
+          value: "/etc/certs"
+        - name: SSL_VALIDATE
+          value: "$SSL_VALIDATE"
+        - name: PROCESS_TIMEOUT
+          value: "300" 
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      nodeSelector:
+        celery$KUBE_NAME_SPACE: baca
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: processing-extraction
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: baca-celery
+    release: celery$KUBE_NAME_SPACE
+    component: consumer
+    worker: processing-extraction
+spec:
+  replicas: $CELERY_REPLICAS
+  strategy: 
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: baca-celery
+        release: celery$KUBE_NAME_SPACE
+        component: consumer
+        worker: processing-extraction
+    spec:
+      volumes:
+      - name: log
+        persistentVolumeClaim:
+          claimName: $LOGPVC
+      - name: secrets
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 51000
+        fsGroup: 51001
+        supplementalGroups:
+          - 51001
+      containers:
+      - name: processing-extraction
+        image: $DOCKER_REG_FOR_SERVICES/processingextraction:$VERSION
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: $PROCESSING_EXTRACTION_LIMITED_MEMORY
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/processing-extraction
+          subPath: processing-extraction
+          readOnly: false
+        - name: secrets
+          mountPath: "/etc/certs"
+        livenessProbe:
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        readinessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: LOG_PATH
+          value: /var/log/processing-extraction
+        - name: LOG_LEVEL
+          value: "$LOG_LEVEL"
+        - name: NUM_WORKERS
+          value: "2"
+        - name: BROKER_URL
+          value: amqps://celery$KUBE_NAME_SPACE-rabbitmq:5671
+        - name: BROKER_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-user
+        - name: BROKER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-password
+        - name: RESULTS_URL
+          value: rediss://celery$KUBE_NAME_SPACE-redis-master:6379
+        - name: RESULTS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-redis"
+              key: redis-password
+        - name: S3_URL
+          value: https://celery$KUBE_NAME_SPACE-minio:9000/mybucket
+        - name: S3_ENDPOINT
+          value: https://celery$KUBE_NAME_SPACE-minio:9000
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: "baca-minio"
+              key: accesskey
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+               name: "baca-minio"
+               key: secretkey
+        - name: CERTIFICATE_DIR
+          value: "/etc/certs"
+        - name: SSL_VALIDATE
+          value: "$SSL_VALIDATE"
+        - name: PROCESS_TIMEOUT
+          value: "300" 
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      nodeSelector:
+        celery$KUBE_NAME_SPACE: baca
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: interprocessing
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: baca-celery
+    release: celery$KUBE_NAME_SPACE
+    component: consumer
+    worker: interprocessing
+spec:
+  replicas: $CELERY_REPLICAS
+  strategy: 
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: baca-celery
+        release: celery$KUBE_NAME_SPACE
+        component: consumer
+        worker: interprocessing
+    spec:
+      volumes:
+      - name: log
+        persistentVolumeClaim:
+          claimName: $LOGPVC
+      - name: secrets
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 51000
+        fsGroup: 51001
+        supplementalGroups:
+          - 51001
+      containers:
+      - name: interprocessing
+        image: $DOCKER_REG_FOR_SERVICES/interprocessing:$VERSION
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: $INTER_PROCESSING_LIMITED_MEMORY
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/interprocessing
+          subPath: interprocessing
+          readOnly: false
+        - name: secrets
+          mountPath: "/etc/certs"
+        livenessProbe:
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        readinessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: LOG_PATH
+          value: /var/log/interprocessing
+        - name: LOG_LEVEL
+          value: "$LOG_LEVEL"
+        - name: NUM_WORKERS
+          value: "2"
+        - name: BROKER_URL
+          value: amqps://celery$KUBE_NAME_SPACE-rabbitmq:5671
+        - name: BROKER_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-user
+        - name: BROKER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-password
+        - name: RESULTS_URL
+          value: rediss://celery$KUBE_NAME_SPACE-redis-master:6379
+        - name: RESULTS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-redis"
+              key: redis-password
+        - name: S3_URL
+          value: https://celery$KUBE_NAME_SPACE-minio:9000/mybucket
+        - name: S3_ENDPOINT
+          value: https://celery$KUBE_NAME_SPACE-minio:9000
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: "baca-minio"
+              key: accesskey
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+               name: "baca-minio"
+               key: secretkey
+        - name: CERTIFICATE_DIR
+          value: "/etc/certs"
+        - name: SSL_VALIDATE
+          value: "$SSL_VALIDATE"
+        - name: PROCESS_TIMEOUT
+          value: "300" 
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      nodeSelector:
+        celery$KUBE_NAME_SPACE: baca
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: reanalyze
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: baca-celery
+    release: celery$KUBE_NAME_SPACE
+    component: consumer
+    worker: reanalyze
+spec:
+  replicas: $CELERY_REPLICAS
+  strategy: 
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: baca-celery
+        release: celery$KUBE_NAME_SPACE
+        component: consumer
+        worker: reanalyze
+    spec:
+      volumes:
+      - name: log
+        persistentVolumeClaim:
+          claimName: $LOGPVC
+      - name: secrets
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 51000
+        fsGroup: 51001
+        supplementalGroups:
+          - 51001
+      containers:
+      - name: reanalyze
+        image: $DOCKER_REG_FOR_SERVICES/reanalyze:$VERSION
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: $REANALYZE_LIMITED_MEMORY
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/reanalyze
+          subPath: reanalyze
+          readOnly: false
+        - name: secrets
+          mountPath: "/etc/certs"
+        livenessProbe:
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        readinessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: LOG_PATH
+          value: /var/log/reanalyze
+        - name: LOG_LEVEL
+          value: "$LOG_LEVEL"
+        - name: NUM_WORKERS
+          value: "2"
+        - name: BROKER_URL
+          value: amqps://celery$KUBE_NAME_SPACE-rabbitmq:5671
+        - name: BROKER_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-user
+        - name: BROKER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-password
+        - name: RESULTS_URL
+          value: rediss://celery$KUBE_NAME_SPACE-redis-master:6379
+        - name: RESULTS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-redis"
+              key: redis-password
+        - name: S3_URL
+          value: https://celery$KUBE_NAME_SPACE-minio:9000/mybucket
+        - name: S3_ENDPOINT
+          value: https://celery$KUBE_NAME_SPACE-minio:9000
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: "baca-minio"
+              key: accesskey
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+               name: "baca-minio"
+               key: secretkey
+        - name: CERTIFICATE_DIR
+          value: "/etc/certs"
+        - name: SSL_VALIDATE
+          value: "$SSL_VALIDATE"
+        - name: PROCESS_TIMEOUT
+          value: "300" 
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      nodeSelector:
+        celery$KUBE_NAME_SPACE: baca
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: updatefiledetail
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: baca-celery
+    release: celery$KUBE_NAME_SPACE
+    component: consumer
+    worker: updatefiledetail
+spec:
+  replicas: $CELERY_REPLICAS
+  strategy: 
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: baca-celery
+        release: celery$KUBE_NAME_SPACE
+        component: consumer
+        worker: updatefiledetail
+    spec:
+      volumes:
+      - name: log
+        persistentVolumeClaim:
+          claimName: $LOGPVC
+      - name: secrets
+        secret:
+          secretName: baca-secrets$KUBE_NAME_SPACE
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 51000
+        fsGroup: 51001
+        supplementalGroups:
+          - 51001
+      containers:
+      - name: updatefiledetail
+        image: $DOCKER_REG_FOR_SERVICES/updatefiledetail:$VERSION
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: $UPDATEFILE_LIMITED_MEMORY
+        securityContext:
+          runAsUser: 51000
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/updatefiledetail
+          subPath: updatefiledetail
+          readOnly: false
+        - name: secrets
+          mountPath: "/etc/certs"
+        livenessProbe:
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        readinessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command: ["celery", "inspect", "ping", "-A", "tasks"]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: LOG_PATH
+          value: /var/log/updatefiledetail
+        - name: LOG_LEVEL
+          value: "$LOG_LEVEL"
+        - name: NUM_WORKERS
+          value: "2"
+        - name: BROKER_URL
+          value: amqps://celery$KUBE_NAME_SPACE-rabbitmq:5671
+        - name: BROKER_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-user
+        - name: BROKER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-rabbitmq"
+              key: rabbitmq-password
+        - name: RESULTS_URL
+          value: rediss://celery$KUBE_NAME_SPACE-redis-master:6379
+        - name: RESULTS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "baca-redis"
+              key: redis-password
+        - name: S3_URL
+          value: https://celery$KUBE_NAME_SPACE-minio:9000/mybucket
+        - name: S3_ENDPOINT
+          value: https://celery$KUBE_NAME_SPACE-minio:9000
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: "baca-minio"
+              key: accesskey
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+               name: "baca-minio"
+               key: secretkey
+        - name: CERTIFICATE_DIR
+          value: "/etc/certs"
+        - name: SSL_VALIDATE
+          value: "$SSL_VALIDATE"
+        - name: PROCESS_TIMEOUT
+          value: "300" 
+      imagePullSecrets:
+      - name: $DOCKER_REG_SECRET_NAME
+      nodeSelector:
+        celery$KUBE_NAME_SPACE: baca

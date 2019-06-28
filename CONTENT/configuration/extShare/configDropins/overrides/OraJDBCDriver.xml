@@ -1,0 +1,7 @@
+<server>
+ 	<transaction totalTranLifetimeTimeout="300s" />
+
+	<library id="OracleLib">
+		<fileset dir="${server.config.dir}/configDropins/overrides" includes="ojdbc8.jar"/>
+	</library>	
+</server>

@@ -1,0 +1,10 @@
+<server>
+<cors domain="/contentapi/rest/share/v1"                                                                                                                     
+     allowedOrigins="http://myicn:9080"
+     allowedMethods="GET, DELETE, PUT, POST, OPTIONS"
+     allowedHeaders="Connection,Pragma,Cache-Control,Navigator-Client-Build,ECM-XSRF-Token,Origin,User-Agent,Content-Type,Content-Length,Navigator-Client-Identity,Accept-Control-Request-Method,Accept-Control-Request-Headers,Accept,Referer,Accept-Encoding,Accept-Language,DNT,Host,Content-Length,Cache-control,Cookie"
+     exposeHeaders="Content-Length,Content_Type,Content-Language,X-Powered-By,Date,Allow,Transfer-Encoding,$WSEP,DNT,Access-Control-Allow-Credentials,Access-Control-Allow-Headers,Access-Control-Allow-Max-Age,Access-Control-Allow-Methods,Access-Control-Allow-Origin,Access-Control-Expose-Headers,Connection,Cache-control,Cookie"
+     allowCredentials="true"
+     maxAge="3600" />
+</server>
+

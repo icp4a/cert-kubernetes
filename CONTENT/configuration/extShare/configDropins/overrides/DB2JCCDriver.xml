@@ -1,0 +1,6 @@
+<server>
+<transaction totalTranLifetimeTimeout="300s" />
+<library id="DB2JCC4Lib">
+<fileset dir="${server.config.dir}/configDropins/overrides" includes="db2jcc4.jar db2jcc_license_cu.jar"/>
+</library> 
+</server>

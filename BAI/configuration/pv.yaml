@@ -1,0 +1,103 @@
+## persistent volume & claims definition to be run once in the cluster
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bai-pv
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 20Gi
+  nfs:
+    path: /export/NFS/bai/bai-pv
+    server: <NFS_SERVER_IP>
+  persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    namespace: bai
+    name: bai-pvc
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: bai-pvc
+spec:
+  storageClassName: ""
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bai-ek-data-pv-0
+spec:
+  storageClassName: "bai-ek-data"
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  nfs:
+    path: /export/NFS/bai/ek-data-0
+    server: <NFS_SERVER_IP>
+  persistentVolumeReclaimPolicy: Recycle
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bai-ek-data-pv-1
+spec:
+  storageClassName: "bai-ek-data"
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  nfs:
+    path: /export/NFS/bai/ek-data-1
+    server: <NFS_SERVER_IP>
+  persistentVolumeReclaimPolicy: Recycle
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bai-ek-data-pv-2
+spec:
+  storageClassName: "bai-ek-data"
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  nfs:
+    path: /export/NFS/bai/ek-data-2
+    server: <NFS_SERVER_IP>
+  persistentVolumeReclaimPolicy: Recycle
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bai-ek-snapshots-pv
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 30Gi
+  nfs:
+    path: /export/NFS/bai/ek-snapshots
+    server: <NFS_SERVER_IP>
+  persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    namespace: bai
+    name: bai-ek-snapshots-pvc
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: bai-ek-snapshots-pvc
+spec:
+  storageClassName: ""
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 30Gi

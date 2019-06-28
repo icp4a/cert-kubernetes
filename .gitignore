@@ -1,0 +1,5 @@
+.idea
+.DS_Store
+/BAI/platform/minikube/ibm-bai-dev-3.1.0-*-.tar.gz
+/BAI/platform/minikube/chart*
+/BAI/platform/minikube/images*

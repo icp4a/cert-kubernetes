@@ -1,0 +1,159 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sp-data-pv-$KUBE_NAME_SPACE
+  namespace: $KUBE_NAME_SPACE
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 60Gi
+  nfs:
+    path: /exports/smartpages/$KUBE_NAME_SPACE/data
+    server: $NFS_IP
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: $DATAPVC
+  namespace: $KUBE_NAME_SPACE
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 60Gi
+  volumeName: sp-data-pv-$KUBE_NAME_SPACE
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sp-log-pv-$KUBE_NAME_SPACE
+  namespace: $KUBE_NAME_SPACE
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 35Gi
+  nfs:
+    path: /exports/smartpages/$KUBE_NAME_SPACE/logs
+    server: $NFS_IP
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: $LOGPVC
+  namespace: $KUBE_NAME_SPACE
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 35Gi
+  volumeName: sp-log-pv-$KUBE_NAME_SPACE
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sp-config-pv-$KUBE_NAME_SPACE
+  namespace: $KUBE_NAME_SPACE
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 5Gi
+  nfs:
+    path: /exports/smartpages/$KUBE_NAME_SPACE/config
+    server: $NFS_IP
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: $CONFIGPVC
+  namespace: $KUBE_NAME_SPACE
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+  volumeName: sp-config-pv-$KUBE_NAME_SPACE
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sp-minio-pv-$KUBE_NAME_SPACE-0
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: minio
+    release: celery$KUBE_NAME_SPACE
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  nfs:
+    path: /exports/smartpages/$KUBE_NAME_SPACE/data/minio/vol0
+    server: $NFS_IP
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: minio-sc
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sp-minio-pv-$KUBE_NAME_SPACE-1
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: minio
+    release: celery$KUBE_NAME_SPACE
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  nfs:
+    path: /exports/smartpages/$KUBE_NAME_SPACE/data/minio/vol1
+    server: $NFS_IP
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: minio-sc
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sp-minio-pv-$KUBE_NAME_SPACE-2
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: minio
+    release: celery$KUBE_NAME_SPACE
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  nfs:
+    path: /exports/smartpages/$KUBE_NAME_SPACE/data/minio/vol2
+    server: $NFS_IP
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: minio-sc
+---       
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sp-minio-pv-$KUBE_NAME_SPACE-3
+  namespace: $KUBE_NAME_SPACE
+  labels:
+    app: minio
+    release: celery$KUBE_NAME_SPACE
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  nfs:
+    path: /exports/smartpages/$KUBE_NAME_SPACE/data/minio/vol3
+    server: $NFS_IP
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: minio-sc

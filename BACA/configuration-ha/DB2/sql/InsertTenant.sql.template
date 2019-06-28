@@ -1,0 +1,4 @@
+connect to $base_db_name ;
+set schema $base_db_user ;
+insert into TENANTINFO (tenantid,ontology,tenanttype,rdbmsengine,bacaversion,rdbmsconnection) values ( '$tenant_id', '$tenant_ontology', 0, 'DB2', '1.1',  encrypt('DATABASE=$tenant_db_name;HOSTNAME=$baca_database_server_ip;PORT=$baca_database_port;PROTOCOL=TCPIP;UID=$tenant_db_user;PWD=$tenant_db_pwd;','AES_KEY')) ;
+connect reset ;

@@ -1,0 +1,238 @@
+20,Adjuster,en
+21,Written By,en
+22,Claim #,en
+23,Grand Total,en
+24,Vehicle Out,en
+25,Type of Loss,en
+26,Insured,en
+27,Policy #,en
+28,Fax,en
+29,Workfile ID,en
+30,Phone,en
+31,Days to Repair,en
+32,CUSTOMER PAY,en
+33,Subtotal,en
+34,INSURANCE PAY,en
+35,Condition,en
+36,Job #,en
+37,Production Date,en
+38,State,en
+39,Federal ID,en
+40,Mileage Out,en
+41,RO Number,en
+42,Deductible,en
+43,License,en
+44,VIN,en
+45,Point of Impact,en
+46,Date of Loss:,en
+47,Date Of Loss,en
+48,Inspection Location:,en
+49,Owner:,en
+50,Mileage In,en
+51,Exterior Color,en
+52,Interior Color,en
+53,Page #:,en
+54,Job Description,en
+55,SB Cess on Taxable Value [B],en
+56,SB Cess levied by Vendor [A],en
+57,Service Tax on Taxable Value [B],en
+58,Inv No#,en
+59,Inv Ni #:,en
+60,Inv No #:,en
+61,TAX INVOICE NUMBER,en
+62,Invoice Number,en
+63,Invoice #,en
+64,Invoice Number:,en
+65,Total Cost,en
+66,Total Invoice Value (Rs.),en
+67,INVOICE TOTAL INCLUDING GST,en
+68,Total,en
+69,TOTAL INC GST:,en
+70,Office,en
+71,Address,en
+72,Work Site,en
+73,Brand,en
+74,Website,en
+75,ATTORNEY,en
+76,Email,en
+77,Matter Number,en
+78,Matter Number:,en
+79,Regd. Office,en
+80,Terms,en
+81,Payment Terms,en
+82,Est No,en
+83,Est Ni:,en
+84,Est Date,en
+85,Est Date:,en
+86,Campaign Name,en
+87,Service Tax levied by Vendor [A],en
+88,Agency Commission,en
+89,Beneficiary Name,en
+90,Sub Brand,en
+91,PAN NO:,en
+92,Credit,en
+93,CIN No:,en
+94,Swift Code,en
+95,To:,en
+96,Customer Name,en
+97,Client,en
+98,Tel,en
+99,Telephone,en
+100,BANK Name:,en
+101,Bank,en
+102,Price,en
+103,Qty,en
+104,Description,en
+105,GL Code / Item,en
+106,Sold To,en
+107,ABN,en
+108,Regarding,en
+109,RE:,en
+110,Requesting Manager,en
+111,Inv Date,en
+112,INVOICE DATE,en
+113,Date,en
+114,DUE DATE,en
+115,Account No:,en
+116,Acct No,en
+117,Account,en
+118,BSB,en
+119,Acct Name,en
+120,Account Name,en
+121,Sub Total (Rs.),en
+122,INVOICE TOTAL EXCLUDING GST,en
+123,SUBTOTAL:,en
+124,sales tax,en
+125,GST,en
+126,P.O. Number,en
+127,PO Number,en
+128,Purchase Nbr,en
+129,Order #,en
+130,Order Number,en
+131,Ship To:,en
+132,Branch Office:,en
+133,IFSC Code,en
+134,Centralised Billing and Accounting Office:,en
+135,Service Tax Category:,en
+136,Service Tax Regn No:,en
+137,Branch,en
+138,Branch:,en
+139,Attn,en
+140,Date of Birth,en
+141,Start Date,en
+142,Title,en
+143,Place of Birth,en
+144,Status,en
+145,Employee,en
+146,Full Name,en
+147,Subject,en
+148,Annual Salary,en
+149,Citizenship,en
+150,Expire Date,en
+151,Passport no.,en
+152,Gender,en
+153,Issue Date,en
+154,Smoking Status:,en
+155,Service Dept,en
+156,PCP,en
+157,Progress Notes,en
+158,Appointment Facility,en
+159,Referring,en
+160,med primary,en
+161,prescription,en
+162,primary care provider,en
+163,Ph,en
+164,Horne:,en
+165,Horme:,en
+166,NPI,en
+167,Follow Up,en
+168,llãollow Up,en
+169,Division,en
+170,Claim,en
+171,Name,en
+172,Diabetes,en
+173,Appt. Date/Time,en
+174,DOB,en
+175,Marital status,en
+176,Alcohol intake,en
+177,Hypertension,en
+178,Occupation,en
+179,Kidney Stones,en
+180,CELEBREX:,en
+181,CEI.EBRi=X:,en
+182,CËLEBREX:,en
+183,Employer,en
+184,Vitals,en
+185,ROS,en
+186,Qty:,en
+187,Refills:,en
+188,BMI,en
+189,Wt,en
+190,Encounter Date,en
+191,Provider,en
+192,Insurance,en
+193,Client Name,en
+194,Investigating Agency,en
+195,County,en
+196,PARTY 1:,en
+197,Transaction #,en
+198,TIME OF LOSS:,en
+199,Claim No,en
+200,Driver License,en
+201,Street,en
+202,DIVISION:,en
+203,Division Code,en
+204,ADJUSTER:,en
+205,Report Number,en
+206,Report Type,en
+207,Tag,en
+208,City,en
+209,Start Date of Minimum payment period per service component,en
+210,Zip Code,en
+211,Zi. Code:,en
+212,Service Components,en
+213,existing circuit ids,en
+214,State/Province,en
+215,Country,en
+216,MA Reference No.,en
+217,PS/CSA Reference No.,en
+218,AT&T PS Reference No.:,en
+219,AT&T PA Reference No.:,en
+220,pre-existing Contract no (must be included),en
+221,account number,en
+222,Calculation of early termination charges*,en
+223,Customer,en
+224,Sales Region,en
+225,Pricing Schedule Term,en
+226,Sales Strata,en
+227,Sales / Branch Manager,en
+228,Branch Manager:,en
+229,Existing Service,en
+230,Street Address,en
+231,per Service Component,en
+232,Program Code,en
+233,scvp name,en
+234,Rates following the end of minimum payment,en
+235,Branch Transit No.,en
+236,Branch Transit No.:,en
+237,Rate Stabilization per service component,en
+238,Effective Date of this pricing schedule,en
+1,Capital Balance,en
+2,balance,en
+3,capital,en
+4,amount,en
+5,Fund as of date,en
+6,period end date,en
+7,Issued Date,en
+8,Issued At,en
+9,Master,en
+10,Shipper,en
+11,BL NO:,en
+12,Flag,en
+13,Consignee,en
+14,Consignee:,en
+15,Voyage No,en
+16,Notify Party,en
+17,On board the Tanker,en
+18,Loading Port,en
+19,To be delivered to the port of,en

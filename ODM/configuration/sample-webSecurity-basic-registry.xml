@@ -1,0 +1,52 @@
+<!-- The following webSecurity.xml file defines an ODM super user,
+used to administer both Decision Server and Decision Center,
+and two extra administrative users, rtsAdmin and resAdmin,
+to separate the rtsAdministrator and the resAdministrator roles -->
+<server>
+   <!-- Define the basic registry -->
+   <basicRegistry id="basic" realm="customRealm">
+
+      <!-- ODM super user -->
+      <user name="odmAdmin" password="odmAdmin"/>
+
+      <!-- Users for Decision Center -->
+      <user name="rtsAdmin" password="rtsAdmin"/>
+      <user name="rtsConfig" password="rtsConfig"/>
+      <user name="rtsUser1" password="rtsUser1"/>
+      <user name="rtsUser2" password="rtsUser2"/>
+
+      <!-- Users for Decision Server -->
+      <user name="resAdmin" password="resAdmin"/>
+      <user name="resDeployer" password="resDeployer"/>
+      <user name="resMonitor" password="resMonitor"/>
+      <user name="resExecutor" password="resExecutor" />
+
+      <!-- Groups for Decision Center -->
+      <group name="rtsAdministrators">
+         <member name="odmAdmin"/>
+         <member name="rtsAdmin"/>
+      </group>
+      <group name="rtsConfigManagers">
+         <member name="rtsConfig"/>
+      </group>
+
+      <!-- Groups for Decision Server -->
+      <group name="resAdministrators">
+         <member name="odmAdmin" />
+         <member name="resAdmin" />
+      </group>
+      <group name="resDeployers">
+         <member name="resDeployer" />
+      </group>
+      <group name="resMonitors">
+         <member name="resMonitor" />
+      </group>
+      <group name="resExecutors">
+         <member name="odmAdmin" />
+         <member name="resAdmin" />
+         <member name="resDeployer" />
+         <member name="resMonitor" />
+         <member name="resExecutor" />
+      </group>
+   </basicRegistry>
+</server>

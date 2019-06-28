@@ -1,0 +1,110 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ecm-crs-svc
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      port: 9080
+      targetPort: 9080
+    - name: https
+      protocol: TCP
+      port: 9443
+      targetPort: 9443
+  selector:
+    app: crsserver-cluster1
+  type: NodePort
+  sessionAffinity: ClientIP
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: ecm-crs
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: crsserver-cluster1
+    spec:
+      imagePullSecrets:
+        - name: admin.registrykey
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - crsserver-cluster1
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+      - image: <Repository for Docker Container Image>/default/crs:553
+        imagePullPolicy: Always
+        securityContext:
+          runAsUser: 50001
+          allowPrivilegeEscalation: false
+        name: ecm-crs
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 500m
+          limits:
+            memory: 1024Mi
+            cpu: 1
+        ports:
+        - containerPort: 9080
+          name: http
+        - containerPort: 9443
+          name: https
+        env:
+          - name: LICENSE
+            value: "accept"
+          - name: PRODUCT
+            value: "DBAMC"
+          - name: JVM_HEAP_XMS
+            value: "512m"
+          - name: JVM_HEAP_XMX
+            value: "1024m"
+          - name: TZ
+            value: "Etc/UTC"
+          - name: CPE_URI
+            value: "http://cpeurl:30540/wsi/FNCEWS40MTOM"
+          - name: CPESTATICPORT
+            value: "false"
+          - name: CONTAINERTYPE
+            value: "1"
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: MY_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+        volumeMounts:
+          - name: crscfgstore-pvc
+            mountPath: "/opt/ibm/wlp/usr/servers/defaultServer/configDropins/overrides"
+            subPath: configDropins/overrides
+          - name: crslogstore-pvc
+            mountPath: "/opt/ibm/wlp/usr/servers/defaultServer/logs"
+            subPath: logs
+
+      volumes:
+        - name: crscfgstore-pvc
+          persistentVolumeClaim:
+            claimName: "crs-cfgstore"
+        - name: crslogstore-pvc
+          persistentVolumeClaim:
+            claimName: "crs-logstore"
