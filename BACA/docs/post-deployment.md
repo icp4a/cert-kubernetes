@@ -53,7 +53,7 @@ Run the command below to create appropriate routes for the services.
     ```console
     # oc create route passthrough <backend-route-name> --insecure-policy=Redirect --service=spbackend --hostname=<backend_router_hostname>
     ```
-    > **Sample**: oc create route passthrough spbackend-route --insecure-policy=Redirect --service=spbackend --hostname=www.ca.backendsp  
+    > **Sample**: oc create route passthrough spbackend-route --insecure-policy=Redirect --service=spfrontend --hostname=www.ca.backendsp  
     > **Note**: A route name is limited to 63 characters, and router hostname given a wildcard DNS entry and must be unique.  
    
 3) Add the frontend router hostname and backend router hostname, that were specified at steps 1 & 2 above, to your client hosts file or DNS server, so that external client can reach endpoint by name. Two DNS entries should point to OpenShift's Infra node IP address.  
