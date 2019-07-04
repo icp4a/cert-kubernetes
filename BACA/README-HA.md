@@ -10,22 +10,22 @@ Perform the following tasks to prepare to deploy your Business Automation Conten
 
 - Download the PPA. Refer to the top repository [readme](../README.md) to find instructions on how to push and tag the product container images to your Docker registry.
 
-- Several utility scripts are provided in this git repository to assist in the creation of databases, PVCs, secrets, etc. regardless of whether you are installing via the helm chart or generic yaml method.  Information about the utility can be found in the [Configuration Readme](configuration/README.md).
+- Several utility scripts are provided in this git repository to assist in the creation of databases, PVCs, secrets, etc. When you are installing via the helm chart method. Information about the utility can be found in the [Configuration Readme](configuration/README.md).
 
 - Prepare environment for IBM Business Automation Content Analyzer. See [Preparing to install automation containers on Kubernetes](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/tsk_prepare_bacak8s.html).  These procedures include setting up databases, LDAP, storage, and configuration files that are required for use and operation.
                                                                                                                                     
 NOTE: To deploy Redis HA,  and Mongo HA,  you need to follow the below instructions to download and push the HA docker images to the appropriate docker registries.
 ## Steps to load the High-Availability docker images for Redis and Mongo
-1) Download the BACA's HA docker images, namely `redis:ha`, `mongo:ha`,  to your ICP's bootmaster node.  Please proceed to IBM Fix Central and search for Fix ID "19.0.1-BACA-HA" to download [19.0.1-BACA-HA.tar.gz](https://www-945.ibm.com/support/fixcentral/swg/selectFixes?parent=Enterprise%20Content%20Management&product=ibm/Other+software/Content+Navigator&release=3.0.5&platform=All&function=fixId&fixids=19.0.1-BACA-HA&includeSupersedes=0).  Untar the main gz file first. 
+1) Download the docker images to your ICP's bootmaster node.
 2) Un-tar the image by `tar xvf <docker image names>.tar.tgz`.  For example: `tar xvf redis-ha.tar.tgz`
 3) For OpenShift, be sure to log into docker first by executing:
   - oc login (and enter user name and password)
   - docker login -u $(oc whoami) -p $(oc whoami -t) <repository name>
 3) Load the container into your local repository by `docker load --input <docker name>`.  For example: `docker load --input redis-ha.tar`
-4) You should see the image shows up as `ibmcom/baca/redis:ha` and `ibmcom/baca/mongo:ha`  by issuing `docker images`
-5) Tag the docker images by
-`docker tag ibmcom/baca/redis:ha mycluster.icp:8500/sp/redis:ha`
-`docker tag ibmcom/baca/mongo:ha mycluster.icp:8500/sp/mongo:ha`
+4) You should see the image shows up as `hyc-smartpage-stage-docker-local.artifactory.swg-devops.com/smartpages/redis:ha` by issuing `docker images`
+5) Tag the docker image by
+`docker tag hyc-smartpage-stage-docker-local.artifactory.swg-devops.com/smartpages/redis:ha mycluster.icp:8500/sp/redis:ha`
+
 NOTE: 
 - `mycluster.icp:8500` is the ICP's clustername and port
 - `sp`: the namespace BACA will be deployed on
@@ -33,9 +33,7 @@ NOTE:
 6) Push the docker image to ICP's repository
 - `docker login mycluster.icp:8500`
 - `docker push mycluster.icp:8500/sp/redis:ha`
-- `docker push mycluster.icp:8500/sp/mongo:ha`
-  
-NOTE:  Make sure to use the `ha` tag for redis and mongo when filling out the `values.yaml` for redis and mongo
+   
 
 ## Redis 
 - You can change the `replicas` value in the `values.yaml` under global->redis to the desired value.  The default is 3, which means you must have 3 worker nodes.  
@@ -65,7 +63,7 @@ NOTE:  Make sure to use the `ha` tag for redis and mongo when filling out the `v
 
 ## Deploying
 
-You can deploy your container images with the following methods:
+You can deploy your container images with the following method:
 - [Using Helm charts](helm-charts/README.md)
 
 

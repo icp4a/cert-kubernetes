@@ -1,7 +1,7 @@
 # Deploying with Kubernetes YAML
 
 Use the command line to deploy the IBM Business Automation Content Analyzer images using the parameters in ca-deploy.yml for specific environment and configuration settings. Review the reference topics for these parameters and determine the values for your environment as part of your preparation:
-[CA Kubernetes YAML parameters](./ca_deploy_yaml_parameters.md)
+[CA Kubernates YAML parameters](./ca_deploy_yaml_parameters.md)
 
 ## Deploying component images
 
