@@ -213,7 +213,7 @@ spec:
         - name: CERTIFICATE_DIR
           value: "/etc/certs"
         - name: WIREDTIGERCACHE
-          value: "$MONGO_WIREDTIGER_LIMIT"  
+          value: "$MONGO_ADMIN_WIREDTIGER_LIMIT"  
         - name: POD_NAME
           valueFrom:
             fieldRef:

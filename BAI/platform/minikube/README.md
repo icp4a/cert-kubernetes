@@ -45,7 +45,7 @@ As a consequence, and not limited to the following, machine hibernation or shutd
 - IBM Business Automation Insights Developer Edition:
   - Choose a destination directory where the installation artifacts below will be downloaded.
     - On Windows, this must be on the drive where your ```MINIKUBE_HOME``` environment variable points to. If this is not set, it defaults to the ```C:``` drive (current [restriction of ```minikube```](https://github.com/kubernetes/minikube/issues/1574))
-  - Download the catalog archive (~4Gb, takes some time to download)from the public PPA site: [ibm-bai-developer-edition-19.0.1.zip](http://www.ibm.com/support/docview.wss?uid=ibm10878709) 
+  - Download the catalog archive (~4Gb, takes some time to download)from the public PPA site: [ibm-bai-developer-edition-19.0.1.zip](https://www.ibm.com/account/reg/us-en/signup?formid=urx-35711) 
     - Unzip the file and rename `ibm-bai-developer-edition-19.0.3.tar.gz` to `ibm-bai-dev-3.1.0-dev.tar.gz`.
   - Download the following files:
     - [configuration/easy-install-kafka.yaml](configuration/easy-install-kafka.yaml?raw=true)

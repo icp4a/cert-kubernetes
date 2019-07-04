@@ -33,6 +33,29 @@ do
     read tenant_id
 done
 
+
+if [[ -z "$use_existing_tenant" || $use_existing_tenant -ne 1 ]]; then
+
+    while [[ $tenant_type == '' || $tenant_type != "0" && $tenant_type != "1" && $tenant_type != "2"  ]] # While tenant_type is not valid/set
+    do
+        echo -e "\n\x1B[1;31mEnter the tenanttype\x1B[0m"
+        echo -e "\x1B[1;31mChoose the number equivalent.\x1B[0m"
+        echo -e "\x1B[1;34m0. Enterprise\x1B[0m"
+        echo -e "\x1B[1;34m1. Trial\x1B[0m"
+        echo -e "\x1B[1;34m2. Internal\x1B[0m"
+        read tenant_type
+    done
+
+    if [ $tenant_type == 0 ]; then
+        daily_limit=0
+    elif [ $tenant_type == 1 ]; then
+        daily_limit=100
+    elif [ $tenant_type == 2 ]; then
+        daily_limit=2000
+    fi
+fi
+
+
 echo
 if [[ -z "$use_existing_tenant" || $use_existing_tenant -ne 1 ]]; then
   echo "Enter the name of the new BACA tenant database to create: (eg. t4900)"
@@ -51,13 +74,9 @@ do
   done
 done
 
-default_dbserver='thrown1.fyre.ibm.com'
 if [[ -z "$baca_database_server_ip" ]]; then
-  echo -e "\nEnter the host/IP of the database server.  If no value is entered we will use the following default value: " $default_dbserver
+  echo -e "\nEnter the host/IP of the database server: "
   read baca_database_server_ip
-  if [[ -z "$baca_database_server_ip" ]]; then
-     baca_database_server_ip=$default_dbserver
-  fi
 fi
 
 default_dbport=50000
@@ -81,12 +100,14 @@ do
     if [[ -z "$user_already_defined" || $user_already_defined -ne 1 ]]; then
          while [[ "$create_new_user" != "y" && "$create_new_user" != "Y" && "$create_new_user" != "n" && "$create_new_user" != "N" ]]
          do
-           echo "Do you want this script to create a database user for you (This will create local OS user)? (Please enter y or n)"
+           echo "Do you want this script to create a new database user for you (This will create local OS user)? (Please enter y or n)"
            read create_new_user
          done
 
-         if [[ "$create_new_user" == "n" && "$create_new_user" == "N" ]]; then
+         if [[ "$create_new_user" == "n" || "$create_new_user" == "N" ]]; then
            user_already_defined=1
+         else
+           user_already_defined=0
          fi
     fi
 
@@ -100,7 +121,7 @@ do
       read tenant_db_user
     done
 
-    if [[ -z "$user_already_defined" || $user_already_defined -ne 1 ]]; then
+    if [[ $user_already_defined -ne 1 ]]; then
         getent passwd $tenant_db_user > /dev/null
         if [[ $? -eq 0 ]]; then                
             while [[ "$use_existing_user" != "y" && "$use_existing_user" != "Y" && "$use_existing_user" != "n" && "$use_existing_user" != "N" ]]
@@ -242,6 +263,13 @@ do
    read tenant_user_name
 done
 
+if [[ $use_existing_tenant -eq 1 ]]; then
+  db2 "connect to $base_db_name"
+  db2 "set schema $base_db_user"
+  resp=$(db2 -x "select tenanttype,dailylimit from tenantinfo where tenantid = '$tenant_id'")
+  tenant_type=$(echo  $resp | awk '{print $1}')
+  daily_limit=$(echo  $resp | awk '{print $2}') 
+fi
 
 echo
 if [[ $use_existing_tenant -ne 1 ]]; then
@@ -251,6 +279,8 @@ else
 fi
 echo "-- Please confirm these are the desired settings:"
 echo " - tenant ID: $tenant_id"
+echo " - tenant type: $tenant_type"
+echo " - daily limit: $daily_limit"
 echo " - tenant database name: $tenant_db_name"
 echo " - database server hostname/IP: $baca_database_server_ip"
 echo " - database server port: $baca_database_port"
@@ -328,6 +358,8 @@ sed -i s/\$baca_database_server_ip/"$baca_database_server_ip"/ sql/InsertTenant.
 sed -i s/\$baca_database_port/"$baca_database_port"/ sql/InsertTenant.sql
 sed -i s/\$tenant_db_user/"$tenant_db_user"/ sql/InsertTenant.sql
 sed -i s/\$tenant_db_pwd/"$tenant_db_pwd"/ sql/InsertTenant.sql
+sed -i s/\$tenant_type/"$tenant_type"/ sql/InsertTenant.sql
+sed -i s/\$daily_limit/"$daily_limit"/ sql/InsertTenant.sql
 echo -e "\nRunning script: sql/InsertTenant.sql"
 db2 -stvf sql/InsertTenant.sql
 
