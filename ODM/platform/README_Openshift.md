@@ -10,28 +10,25 @@ As an administrator of the cluster you must be able to interact with your enviro
    ```console
    $ oc login https://<CLUSTERIP>:8443 -u <ADMINISTRATOR>
    ```
+
 2. Create a project where you want to install Operational Decision Manager. 
    ```console
    $ oc new-project odmproject
    $ oc project odmproject
    ```
+
 3. If you use the internal database you must add privileges to the project. 
    ```console
    $ oc adm policy add-scc-to-user privileged -z default
    ```
 
-4. Generate a permanent token and copy it to the clipboard.
+4. Login to the docker registry with the token and check you can run docker.
    ```console
-   $ oc whoami -t 
-   ```
-5. Login to the docker registry with the token and check you can run docker.
-   ```console
-   $ docker login docker-registry.default.svc:5000 -u <ADMINISTRATOR> -p <generated_token>
-   $ docker ps
+   $ docker login $(oc registry info) -u <ADMINISTRATOR> -p $(oc whoami -t)
    ```
    > **Note**: You can connect to a node in the cluster to resolve the docker-registry.default.svc parameter.
-   
-6. Run a kubectl command to make sure you have access to Kubernetes.
+
+5. Run a kubectl command to make sure you have access to Kubernetes.
    ```console
    $ kubectl cluster-info
    ```
