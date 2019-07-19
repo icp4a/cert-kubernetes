@@ -4,13 +4,13 @@ Before you install make sure that you have prepared your environment. For more i
 
 Refer to the top repository [readme](../../README.md#step-2-download-a-product-package-from-ppa-and-load-the-images) to find instructions on how to push and tag the product container images to your Docker registry.
 
-1. If Helm is not installed in your Kubernetes cluster, install [Helm 2.9.1](https:/github.com/helm/helm/releases/tag/v2.9.1).
+1. If Helm is not installed in your Kubernetes cluster, install [Helm 2.11.0](https://github.com/helm/helm/releases/tag/v2.11.0).
 2. When Helm is ready, initialize the local CLI and install Tiller.
 
    ```console
    $ helm init
    ```
-   Tiller is now installed in the Kubernetes cluster with the current-context configuration. By default, Tiller does not have authentication enabled. For more inforamtion about configuring strong TLS authentication, see the [Tiller TLS guide](https://helm.sh/docs/using_helm/#using-ssl-between-helm-and-tiller).
+   Tiller is now installed in the Kubernetes cluster with the current-context configuration. By default, Tiller does not have authentication enabled. For more information about configuring strong TLS authentication, see the [Tiller TLS guide](https://helm.sh/docs/using_helm/#using-ssl-between-helm-and-tiller).
 
 3. Download the `ibm-odm-prod-2.2.0.tgz` Helm chart from the GitHub repository.
    - [ibm-odm-prod-2.2.0.tgz](ibm-odm-prod-2.2.0.tgz) for Operational Decision Manager 8.10.2
