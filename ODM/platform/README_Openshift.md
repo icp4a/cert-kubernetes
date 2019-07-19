@@ -53,6 +53,15 @@ As an administrator of the cluster you must be able to interact with your enviro
 
    > **Note**: The project must have pull request privileges to the registry where the Operational Decision Manager images are   loaded. The project must also have pull request privileges to push the images into another namespace/project. 
 
+3. Check whether the images have been pushed correctly to the registry.
+   ```console
+   oc get is --all-namespaces
+   ```
+   or
+   ```console
+   oc get is -n odmproject
+   ```
+
 ## Step 3: Install a Kubernetes release of Operational Decision Manager
 
 You can do this step without administrator rights.
