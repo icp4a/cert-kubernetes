@@ -4,7 +4,7 @@ Before you install make sure that you have prepared your environment. For more i
 
 Refer to the top repository [readme](../../README.md#step-2-download-a-product-package-from-ppa-and-load-the-images) to find instructions on how to push and tag the product container images to your Docker registry.
 
-1. If Helm is not installed in your Kubernetes cluster, install [Helm 2.9.1](https:/github.com/helm/helm/releases/tag/v2.9.1).
+1. If Helm is not installed in your Kubernetes cluster, install [Helm 2.11.0](https://github.com/helm/helm/releases/tag/v2.11.0). 
 
 2. Download the `ibm-odm-prod-2.2.0.tgz` Helm chart.
    - [ibm-odm-prod-2.2.0.tgz](ibm-odm-prod-2.2.0.tgz) for Operational Decision Manager 8.10.2
