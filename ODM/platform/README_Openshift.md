@@ -82,7 +82,7 @@ You can do this step without administrator rights.
        --set image.repository=docker-registry.default.svc:5000/odmproject/
      ```
 
-     > **Note**: For more information, see [helm-charts/README.md](../helm-charts/README.md). Go here to [initialize Helm and install Tiller](https://helm.sh/docs/using_helm/#initialize-helm-and-install-tiller).
+     > **Note**: For more information, see [helm-charts/README.md](../helm-charts/README.md). 
 
 3. The package is deployed asynchronously in a matter of minutes, and is composed of several services.
 
