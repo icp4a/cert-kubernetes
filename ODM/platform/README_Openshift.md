@@ -154,12 +154,4 @@ Refer to the customizing instructions in [k8s-yaml/README.md](../k8s-yaml/README
      $ helm delete my-odm-prod-release --purge
      ```
 
-     The command removes all the Kubernetes components associated with the chart, except Persistent Volume Claims (PVCs). This is the default behavior of Kubernetes, and ensures that valuable data is not deleted. 
-     
-  * Optional: To delete the data, you can delete the PVC by using the following command:
-
-     ```console
-     $ kubectl delete pvc <release_name>-odm-pvclaim -n <namespace>
-     ```
-
-
+     The command removes all the Kubernetes components associated with the chart, including Persistent Volume Claims (PVCs). 
