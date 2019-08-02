@@ -1,0 +1,110 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: example-pod-ecm-eval
+  labels:
+    app: hello-openshift
+  namespace: ecm-eval
+spec:
+  volumes:
+    - name: ecm-eval-cfg-pvc-0
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-0
+    - name: ecm-eval-cfg-pvc-1
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-1
+    - name: ecm-eval-cfg-pvc-2
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-2
+    - name: ecm-eval-cfg-pvc-3
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-3
+    - name: ecm-eval-cfg-pvc-4
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-4
+    - name: ecm-eval-cfg-pvc-5
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-5
+    - name: ecm-eval-cfg-pvc-6
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-6
+    - name: ecm-eval-cfg-pvc-7
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-7
+    - name: ecm-eval-cfg-pvc-8
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-8
+    - name: ecm-eval-cfg-pvc-9
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-9
+    - name: ecm-eval-cfg-pvc-10
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-10
+    - name: ecm-eval-cfg-pvc-11
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-11
+    - name: ecm-eval-cfg-pvc-12
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-12
+    - name: ecm-eval-cfg-pvc-13
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-13
+    - name: ecm-eval-cfg-pvc-14
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-14
+    - name: ecm-eval-cfg-pvc-15
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-15
+    - name: ecm-eval-cfg-pvc-16
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-16
+    - name: ecm-eval-cfg-pvc-17
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-17
+    - name: ecm-eval-cfg-pvc-18
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-18
+  containers:
+    - name: hello-openshift
+      image: nginx:latest
+      ports:
+        - containerPort: 8080
+      volumeMounts:
+        - name: ecm-eval-cfg-pvc-0
+          mountPath: /cpe/configDropins/overrides
+        - name: ecm-eval-cfg-pvc-1
+          mountPath: /cpe/asa
+        - name: ecm-eval-cfg-pvc-2
+          mountPath: /cpe/textext
+        - name: ecm-eval-cfg-pvc-3
+          mountPath: /cpe/logs
+        - name: ecm-eval-cfg-pvc-4
+          mountPath: /cpe/FileNet
+        - name: ecm-eval-cfg-pvc-5
+          mountPath: /cpe/icmrules
+        - name: ecm-eval-cfg-pvc-6
+          mountPath: /cpe/bootstrap
+        - name: ecm-eval-cfg-pvc-7
+          mountPath: /icn/configDropin/overrides
+        - name: ecm-eval-cfg-pvc-8
+          mountPath: /icn/logs
+        - name: ecm-eval-cfg-pvc-9
+          mountPath: /icn/plugins
+        - name: ecm-eval-cfg-pvc-10
+          mountPath: /icn/viewerlog
+        - name: ecm-eval-cfg-pvc-11
+          mountPath: /icn/viewercache
+        - name: ecm-eval-cfg-pvc-12
+          mountPath: /icn/aspera
+        - name: ecm-eval-cfg-pvc-13
+          mountPath: /css/CSS_Server_data
+        - name: ecm-eval-cfg-pvc-14
+          mountPath: /css/CSS_Server_log
+        - name: ecm-eval-cfg-pvc-15
+          mountPath: /css/CSS_Server_temp
+        - name: ecm-eval-cfg-pvc-16
+          mountPath: /css/CSSIndex_OS1
+        - name: ecm-eval-cfg-pvc-17
+          mountPath: /cmis/configDropins/overrides
+        - name: ecm-eval-cfg-pvc-18
+          mountPath: /cmis/logs/

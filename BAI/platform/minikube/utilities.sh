@@ -58,7 +58,7 @@ LVAR_SPRINT_VERSION="dev"
 LVAR_BAI_IMAGES_SPRINT="ibm-bai-dev-$LVAR_BAI_VERSION-$LVAR_SPRINT_VERSION.tar.gz"
 LVAR_BAI_IMAGES="ibm-bai-dev-$LVAR_BAI_VERSION-dev.tar.gz"
 LVAR_BAI_CHARTS_SPRINT="charts/ibm-business-automation-insights-dev-$LVAR_BAI_VERSION-$LVAR_SPRINT_VERSION.tgz"
-LVAR_BAI_CHARTS="charts/ibm-business-automation-insights-dev-$LVAR_BAI_VERSION-dev.tgz"
+LVAR_BAI_CHARTS="charts/ibm-business-automation-insights-dev-$LVAR_BAI_VERSION.tgz"
 
 expand-BAI-Charts() {
     # moving sprint charts into regular charts

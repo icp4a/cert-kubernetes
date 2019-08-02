@@ -27,7 +27,11 @@ Perform the following tasks to prepare to deploy your Business Automation Naviga
 
 ## Deploying
 
-You can deploy your container images with the following methods:
+On Red Hat OpenShift on IBM Cloud, use the following information to deploy your container images:
+
+- [Deploying on Red Hat OpenShift on IBM Cloud](platform/README_Eval_ROKS.md)
+
+On other certified Kubernetes platforms, you can deploy your container images with the following methods:
 
 - [Using Helm charts](helm-charts/README.md)
 - [Using Kubernetes YAML](k8s-yaml/README.md)

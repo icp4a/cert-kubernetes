@@ -85,6 +85,8 @@ spec:
             value: "ICNDB"
           - name: ICNADMIN
             value: "ceadmin"
+          - name: NAVIGATORMODE
+            value: 3
           - name: MY_POD_NAME
             valueFrom:
               fieldRef:

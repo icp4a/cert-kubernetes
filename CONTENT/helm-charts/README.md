@@ -110,6 +110,8 @@ To deploy the ContentGraphQL Container:
    Replace <image_repository_url> with correct registry URL, for example, docker-registry.default.svc.
    Replace <CPE_Hostname>:<port> with the FileNet Content Engine application host and Port.
    
+## Enabling Ingress for Red Hat OpenShift on IBM Cloud
+If you are deploying the containers on Red Hat OpenShift for IBM Cloud, you must enable Ingress for access to the applications. See the **Enable Ingress to access your applications** in the [Deploying on Red Hat OpenShift on IBM Cloud readme](https://github.com/icp4a/cert-kubernetes/tree/19.0.1/CONTENT/platform/README_Eval_ROKS.md). 
 
 
 ## Upgrading deployments

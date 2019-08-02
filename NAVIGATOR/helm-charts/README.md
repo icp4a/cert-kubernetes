@@ -65,6 +65,9 @@ Replace <image_repository_url> with correct registry url. For example --> docker
 
 > **Reminder**: After you deploy, return to the instructions in the Knowledge Center, [Configuring IBM Business Automation Navigator in a container environment](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_18.0.x/com.ibm.dba.install/k8s_topics/tsk_ecmconfigbank8s.html), to get your Business Automation Navigator environment up and running.
 
+## Enabling Ingress for Red Hat OpenShift on IBM Cloud
+If you are deploying the containers on Red Hat OpenShift for IBM Cloud, you must enable Ingress for access to the applications. See the **Enable Ingress to access your applications** in the [Deploying on Red Hat OpenShift on IBM Cloud readme](https://github.com/icp4a/cert-kubernetes/tree/19.0.1/NAVIGATOR/platform/README_Eval_ROKS.md).
+
 ## Upgrade images
 
 To deploy Business Automation Navigator:

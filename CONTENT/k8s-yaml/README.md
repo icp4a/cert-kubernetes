@@ -61,6 +61,46 @@ If you want to use the Content Services GraphQL API container, follow the instru
     
     ```kubectl get svc | ecm-crs```
 
+## Upgrading deployments
+   > **Tip**: You can discover the necessary resource values for the deployment from corresponding product deployments in IBM Cloud Private Console and Openshift Container Platform.
+   
+Before you run the upgrade commands, you must prepare the environment for upgrades to Content Search Services and Content Management Interoperability Services. If you plan to upgrade those containers, complete the preparation steps in the following topic before you start the upgrade: [Upgrading Content Manager releases](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_19.0.x/com.ibm.dba.upgrading/topics/tsk_cm_upgrade.html)
+
+To upgrade Content Platform Engine:
+
+1. Update the new cpe-deploy.yml file with the new image name and the parameter values for your existing environment.
+
+2. Run the following command to deploy the image:
+
+```
+   kubectl apply -f cpe-deploy.yml
+```   
+3. When the new pod starts, the existing pod terminates automatically. 
+
+
+To upgrade Content Search Services:
+
+1. Update the new css-search-deploy.yml file with the new image name and the parameter values for your existing environment.
+
+2. Run the following command to deploy the image:
+
+```
+   kubectl apply -f css-search-deploy.yml
+```   
+3. When the new pod starts, the existing pod terminates automatically. 
+
+
+To upgrade Content Management Interoperability Services:
+
+1. Update the new cmis-deploy.yml file with the new image name and the parameter values for your existing environment.
+
+2. Run the following command to deploy the image:
+
+```
+   kubectl apply -f cmis-deploy.yml
+```   
+3. When the new pod starts, the existing pod terminates automatically. 
+
 
 ## Uninstalling a Kubernetes release of FileNet Content Manager
 
