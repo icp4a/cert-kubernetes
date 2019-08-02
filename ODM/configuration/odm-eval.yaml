@@ -103,7 +103,7 @@ spec:
           claimName: odm-eval-odm-pvclaim
       containers:
         - name: ibm-odm-dev
-          image: ibmcom/odm:8.10.2-SNAPSHOT_2.2.0-amd64
+          image: ibmcom/odm:8.10.2.0_2.2.0-amd64
           securityContext:
             runAsUser: 1001
             runAsNonRoot: true

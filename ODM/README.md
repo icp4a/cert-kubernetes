@@ -3,7 +3,7 @@
 The following architectures are supported for Operational Decision Manager 8.10.2 on Certified Kubernetes:
 - AMD64 (or x86_64), which is the 64-bit edition for Linux x86.
 
-> **Note**: Rule Designer is installed as an update site from the [Eclipse Marketplace](https://marketplace.eclipse.org/content/ibm-operational-decision-manager-developers-v-8102-rule-designer) into an existing version of Eclipse. 
+> **Note**: Rule Designer is installed as an update site from the [Eclipse Marketplace](https://marketplace.eclipse.org/content/ibm-operational-decision-manager-developers-v-8102-rule-designer) into an existing version of Eclipse.
 
 ## Option 1: Install a release for evaluation purposes on Minikube or OpenShift
 
@@ -11,7 +11,7 @@ The following instructions are to install the Operational Decision Manager for d
 
    * [Installing Operational Decision Manager for developers on MiniKube](platform/README_Eval_Minikube.md)
    * [Installing Operational Decision Manager for developers on Openshift](platform/README_Eval_Openshift.md)
-
+   * [Installing Operational Decision Manager for developers on Red Hat OpenShift on IBM Cloud](platform/README_Eval_ROKS.md)
 ## Option 2: Install a production ready release
 
 The installation of Operational Decision Manager 8.10.2 uses a `ibm-odm-prod` Helm chart, also known as the ODM for production Helm chart. The chart is a package of preconfigured Kubernetes resources that bootstraps an ODM for production deployment on a Kubernetes cluster. You customize the deployment by changing and adding configuration parameters. The default values are appropriate to a production environment, but it is likely that you want to configure at least the security of your kubernetes deployment.
@@ -53,6 +53,7 @@ After you noted the values of the configuration parameters that are needed to cu
 The following instructions are to install the ODM for production Helm chart:
   * [Install Operational Decision Manager on MiniKube](platform/README_Minikube.md)
   * [Install Operational Decision Manager on Openshift](platform/README_Openshift.md)
+  * [Install Operational Decision Manager on IBM Red Hat OpenShift Kubernetes Service](platform/README_Openshift.md)
 
 ### Option 2b: Install a production ready release on other Kubernetes by using Helm and Tiller
 

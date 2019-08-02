@@ -7,7 +7,7 @@ Refer to the top repository [readme](../../README.md#step-2-download-a-product-p
 1. If Helm is not installed in your Kubernetes cluster, install [Helm 2.9.1](https:/github.com/helm/helm/releases/tag/v2.9.1).
 
 2. Download the `ibm-odm-prod-2.2.0.tgz` Helm chart.
-   - [ibm-odm-prod-2.2.0.tgz](ibm-odm-prod-2.2.0.tgz) for Operational Decision Manager 8.10.2
+   - [ibm-odm-prod-2.2.0.tgz](../helm-charts/ibm-odm-prod-2.2.0.tgz) for Operational Decision Manager 8.10.2
 
 3. Create a chart YAML template file with the default configuration parameters by using the following command. The `--name` argument sets the name of the release to install.
 

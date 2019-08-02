@@ -23,6 +23,20 @@ To deploy Business Automation Navigator:
 
 > **Reminder**: After you deploy, return to the instructions in the Knowledge Center, [Configuring IBM Business Automation Navigator in a container environment](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_18.0.x/com.ibm.dba.install/k8s_topics/tsk_ecmconfigbank8s.html), to get your Business Automation Navigator environment up and running.
 
+## Upgrading deployments
+   > **Tip**: You can discover the necessary resource values for the deployment from corresponding product deployments in IBM Cloud Private Console and Openshift Container Platform.
+   
+To upgrade Business Automation Navigator:
+
+1. Update the new `icn-deploy.yml` file with the new image name and the parameter values for your existing environment.
+
+2. Run the following command to deploy the image:
+
+```
+   kubectl apply -f icn-deploy.yml
+```   
+3. When the new pod starts, the existing pod terminates automatically.
+
 ## Uninstalling a Kubernetes release of Business Automation Navigator
 
 To uninstall and delete the Business Automation Navigator release, use the following command:

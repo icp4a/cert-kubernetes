@@ -225,7 +225,7 @@ create table integration
 	password VARCHAR(512) FOR BIT DATA DEFAULT NULL,
 	label VARCHAR(256),
 	status BOOLEAN,
-	model_id VARCHAR(32),
+	model_id VARCHAR(1024),
 	api_key VARCHAR(1024) FOR BIT DATA DEFAULT NULL,
 	flag VARCHAR(64),
 	CONSTRAINT integration_pkey PRIMARY KEY (id)

@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: example-pod-ecm-eval
+  labels:
+    app: hello-openshift
+  namespace: ecm-eval
+spec:
+  volumes:
+    - name: ecm-eval-cfg-pvc-0
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-0
+    - name: ecm-eval-cfg-pvc-1
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-1
+    - name: ecm-eval-cfg-pvc-2
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-2
+    - name: ecm-eval-cfg-pvc-3
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-3
+    - name: ecm-eval-cfg-pvc-4
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-4
+    - name: ecm-eval-cfg-pvc-5
+      persistentVolumeClaim:
+          claimName: ecm-eval-cfg-pvc-5
+  containers:
+    - name: hello-openshift
+      image: nginx:latest
+      ports:
+        - containerPort: 8080
+      volumeMounts:
+        - name: ecm-eval-cfg-pvc-0
+          mountPath: /icn/configDropin/overrides
+        - name: ecm-eval-cfg-pvc-1
+          mountPath: /icn/logs
+        - name: ecm-eval-cfg-pvc-2
+          mountPath: /icn/plugins
+        - name: ecm-eval-cfg-pvc-3
+          mountPath: /icn/viewerlog
+        - name: ecm-eval-cfg-pvc-4
+          mountPath: /icn/viewercache
+        - name: ecm-eval-cfg-pvc-5
+          mountPath: /icn/aspera

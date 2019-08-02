@@ -1,5 +1,5 @@
 #
-# BAI on Minikube (easy install) - BAI values definition (18.0.3)
+# BAI on Minikube (easy install) - BAI values definition
 #
 persistence:
   useDynamicProvisioning: true
