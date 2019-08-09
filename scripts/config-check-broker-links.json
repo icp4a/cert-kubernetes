@@ -1,0 +1,17 @@
+{
+    "ignorePatterns": [
+        {         
+           "pattern": "^http://.*example.com"
+        },
+        {         
+           "pattern": "^http://.*endsp"
+        }
+              
+    ],
+    "replacementPatterns": [
+       
+    ],
+    "httpHeaders": [
+        
+    ]
+}

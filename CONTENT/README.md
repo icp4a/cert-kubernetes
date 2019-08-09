@@ -8,6 +8,8 @@ For more information see [FileNet Content Manager in the Knowledge Center](https
 
 ## Requirements and Prerequisites
 
+To prepare to deploy on Red Hat OpenShift, see the requirements and prerequisites in the [Deploying on Red Hat OpenShift on IBM Cloud](platform/README_Eval_ROKS.md) readme.
+
 Perform the following tasks to prepare to deploy your FileNet Content Manager images on Kubernetes:
 
 - Prepare your Kubernetes environment. See [Preparing to install automation containers on Kubernetes](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/tsk_prepare_env_k8s.html)

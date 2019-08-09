@@ -37,14 +37,14 @@ Before you install any of the containerized products:
 2. Follow the instructions on preparing your environment for the products as explained in the Knowledge Center.
 
    How much preparation you need to do depends on your environment and how familiar you are with your environment.
-   
+
 ##  Step 2: Download a product package from PPA and load the images
 
 [IBM Passport Advantage (PPA)](https://www-01.ibm.com/software/passportadvantage/pao_customer.html) provides a separate archive (.tgz) for each product. To view the list of Passport Advantage eAssembly installation images, refer to the [19.0.1 download document](http://www.ibm.com/support/docview.wss?uid=ibm10878709).
 
 1. Download one or more PPA packages to a server that is connected to your Docker registry.
 2. Download the [`loadimages.sh`](scripts/loadimages.sh) script from GitHub.
-3. Login to the specified Docker registry with the docker login command. 
+3. Login to the specified Docker registry with the docker login command.
    This command depends on the environment that you have.    
    > **Note**: If your platform is OpenShift, do NOT run the .sh script to load the images without preparing your environment beforehand. Select the product that you want to install in Step 3 and use the instructions in the product folders. You can then load the images to the Docker registry with the right privileges.
 4. Run the `loadimages.sh` script to load the images into your Docker registry. Specify the two mandatory parameters in the command line.
@@ -56,7 +56,7 @@ Before you install any of the containerized products:
    -r  Target Docker registry and namespace
    -l  Optional: Target a local registry
    ```
-   
+
    > The following example shows the input values in the command line.
 
    ```
