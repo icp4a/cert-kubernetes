@@ -4,7 +4,7 @@ Before you install make sure that you have prepared your environment. For more i
 
 Refer to the top repository [readme](../../README.md#step-2-download-a-product-package-from-ppa-and-load-the-images) to find instructions on how to push and tag the product container images to your Docker registry.
 
-1. If Helm is not installed in your Kubernetes cluster, install [Helm 2.9.1](https:/github.com/helm/helm/releases/tag/v2.9.1).
+1. If Helm is not installed in your Kubernetes cluster, install [Helm 2.9.1](https://github.com/helm/helm/releases/tag/v2.9.1).
 2. When Helm is ready, initialize the local CLI and install Tiller.
 
    ```console
