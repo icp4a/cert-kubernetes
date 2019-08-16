@@ -83,7 +83,7 @@ The following example uses the storage class name `ibmc-file-retain-bronze`:
 ## Step 3: Deploy the FileNet Content Manager images
 When the container images are in the registry, you can complete environment configuration for each component and then run the chart installation.
 
-1. Create a NGINX pod to mount the persistent volumes. The following sample creates a pod named `example-pod-ecm-eval`:  [NGINX Pod Sample](https://github.ibm.com/dba/cert-kubernetes/blob/19.0.1/CONTENT/platform/nginx_sample.yaml)
+1. Create a NGINX pod to mount the persistent volumes. The following sample creates a pod named `example-pod-ecm-eval`:  [NGINX Pod Sample](nginx_sample.yaml)
 
 2. Copy the necessary database and LDAP configuration XML files that you prepared for your FileNet environment to the mounted volumes, for example, by accessing the NGINX pod that you created:
    ```console
@@ -91,7 +91,7 @@ When the container images are in the registry, you can complete environment conf
    ```
 **Remember:** Make sure the permissions for all the folders set the user and group ownership to 50001:50000.
 
-3. Use the instructions in the [Helm chart readme](https://github.com/icp4a/cert-kubernetes/tree/19.0.1/CONTENT/helm-charts) to confirm your environment configuration and install the Helm charts.
+3. Use the instructions in the [Helm chart readme](../helm-charts) to confirm your environment configuration and install the Helm charts.
 
 ## Step 4: Enable Ingress to access your applications
 1. Create an SSL certificate:
@@ -102,12 +102,12 @@ When the container images are in the registry, you can complete environment conf
    ```console
    $ kubectl create secret tls icp4a  --key $(pwd)/tls.key --cert $(pwd)/tls.crt
    ```
-3. Create an Ingress service for all of the Content components by using the example `ingress_service.yaml` file in the OpenShift console or CLI: [ingress_service.yaml](https://github.ibm.com/dba/cert-kubernetes/blob/19.0.1/CONTENT/platform/ingress_service.yaml)
+3. Create an Ingress service for all of the Content components by using the example `ingress_service.yaml` file in the OpenShift console or CLI: [ingress_service.yaml](ingress_service.yaml)
 4. Apply the Ingress service:
    ``` console
    $ kubectl apply -f ingress_service.yaml
    ```
-5. Create single Ingress endpoint using the [ingress_one.yaml](https://github.ibm.com/dba/cert-kubernetes/blob/19.0.1/CONTENT/platform/ingress_one.yaml)
+5. Create single Ingress endpoint using the [ingress_one.yaml](ingress_one.yaml)
 6. Apply the Ingress:
    ``` console
    $ kubectl apply -f ingess_one.yaml

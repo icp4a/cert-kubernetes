@@ -1,6 +1,6 @@
 # Install with the Helm chart
 
-This directory includes the [IBM Business Automation Insights Helm Chart](./ibm-business-automation-insights-3.1.0.tgz) and explains how to install it.
+This directory includes the [IBM Business Automation Insights Helm Chart](./ibm-business-automation-insights-3.1.1.tgz) and explains how to install it.
 
 ## Initializing Helm and installing Tiller
 
@@ -36,7 +36,7 @@ First follow the [Requirements](../README.md#requirements) and [Before you begin
 To install the IBM Business Automation Helm chart, you need to decide on a release name and use this name when you run the helm command, as follows:
 
 ```sh
-helm install ibm-business-automation-insights-3.1.0.tgz --name <RELEASE_NAME> -n <NAMESPACE> -f values.yaml
+helm install ibm-business-automation-insights-3.1.1.tgz --name <RELEASE_NAME> -n <NAMESPACE> -f values.yaml
 ```
 
 To override the default Business Automation Insights configuration, you must provide a `values.yaml` file with your custom configuration.
@@ -58,7 +58,7 @@ Check the Business Automation Insights [Updating](../README.md#updating) section
 After initial installation, you can update the chart configuration as follows:
 
 ```sh
-helm upgrade <RELEASE_NAME> ibm-business-automation-insights-3.1.0.tgz -n <NAMESPACE> --reuse-values --set a.property=newvalue[,other.property2=newvalue2]
+helm upgrade <RELEASE_NAME> ibm-business-automation-insights-3.1.1.tgz -n <NAMESPACE> --reuse-values --set a.property=newvalue[,other.property2=newvalue2]
 ```
 
 ## Uninstalling the Helm chart
