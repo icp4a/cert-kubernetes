@@ -54,7 +54,7 @@ The following example uses the storage class name `ibmc-file-retain-bronze`:
      storageClassName: ibmc-file-retain-bronze
    ```
 
-## Step 2: Download and push the images to the IBM Cloud Container Registry
+## Step 3: Download and push the images to the IBM Cloud Container Registry
 
 1. Download the [loadimages.sh](scripts/loadimages.sh) script.
 2. Download the desired IBM Passport Advantage eAssembly images from the [IBM Cloud Pak for Automation V19.0.1 Download Document](https://www-01.ibm.com/support/docview.wss?uid=ibm10878709).
@@ -79,7 +79,7 @@ The following example uses the storage class name `ibmc-file-retain-bronze`:
    ```console
    $ ibmcloud cr image-list
    ```
-## Step 3: Deploy the Business Automation Navigator images
+## Step 4: Deploy the Business Automation Navigator images
 
 When the container images are in the registry, you can complete environment configuration for each component and then run the chart installation.
 
@@ -94,7 +94,7 @@ When the container images are in the registry, you can complete environment conf
 3. Use the instructions in the [Helm chart readme](../helm-charts) to confirm your environment configuration and install the Helm charts.
 
 
-# Step 4: Enable Ingress to access your applications
+## Step 5: Enable Ingress to access your applications
 1. Create an SSL certificate:
    ```console
    $ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout $(pwd)/tls.key -out $(pwd)/tls.crt -subj "/CN=dbamc.content
