@@ -37,7 +37,6 @@ The services require CPU and memory resources. The following table lists the min
 ### Optional: Before you install a production ready release with customizations
 
 If you want to customize your Operational Decision Manager installation, go to the [IBM Cloud Pak for Automation 19.0.x](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/tsk_install_odm.html) Knowledge Center and choose which customizations you want to apply.
-   * [Configuring PVUs](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/tsk_config_pvu.html)
    * [Defining the security certificate](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/tsk_replace_security_certificate.html)
    * [Configuring the LDAP and user registry](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/con_config_user_registry.html)
    * [Configuring a custom external database](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/tsk_custom_external_db.html)
