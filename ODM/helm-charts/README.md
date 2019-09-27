@@ -1,25 +1,33 @@
 # Install IBM Operational Decision Manager with the Helm CLI
 
+A [Helm chart](https://helm.sh/) is a Package Manager for Kubernetes to help you manage (install/upgrade/update) your Kubernetes deployment. If you are using Helm on a cluster that you completely control, like Minikube or a cluster on a private network in which sharing is not a concern, the default installation that applies no security configuration is the easiest option.
+
+However, if your cluster is exposed to a larger network or if you share your cluster with others – production clusters fall into this category – you must secure your installation to prevent careless or malicious actors from damaging the cluster or its data. To secure Helm for use in a production environment and other multi-tenant scenarios, see [Securing a Helm installation](https://helm.sh/docs/using_helm/#securing-your-helm-installation).
+
 Before you install make sure that you have prepared your environment. For more information, see [Preparing to install ODM for production](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/tsk_preparing_odmk8s.html) as well as [Customizing ODM for production](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/tsk_install_odm.html).
 
-Refer to the top repository [readme](../../README.md#step-2-download-a-product-package-from-ppa-and-load-the-images) to find instructions on how to push and tag the product container images to your Docker registry.
-
-1. If Helm is not installed in your Kubernetes cluster, install [Helm 2.9.1](https://github.com/helm/helm/releases/tag/v2.9.1).
+1. If Helm is not installed in your Kubernetes cluster, install [Helm 2.11.0](https://github.com/helm/helm/releases/tag/v2.11.0).
 2. When Helm is ready, initialize the local CLI and install Tiller.
 
    ```console
    $ helm init
    ```
-   Tiller is now installed in the Kubernetes cluster with the current-context configuration. By default, Tiller does not have authentication enabled. For more inforamtion about configuring strong TLS authentication, see the [Tiller TLS guide](https://helm.sh/docs/using_helm/#using-ssl-between-helm-and-tiller).
+   Tiller is now installed in the Kubernetes cluster with the current-context configuration.
 
-3. Download the `ibm-odm-prod-2.2.0.tgz` Helm chart from the GitHub repository.
-   - [ibm-odm-prod-2.2.0.tgz](ibm-odm-prod-2.2.0.tgz) for Operational Decision Manager 8.10.2
+   > **Important**:  Helm looks for Tiller in the kube-system namespace unless --tiller-namespace or TILLER_NAMESPACE is set. If your administrator installed Tiller in a namespace other than kube-system, make sure to set TILLER_NAMESPACE before you use the following helm commands, or add --tiller-namespace to each helm command.
+
+   By default, Tiller does not have authentication enabled. For more information about configuring strong TLS authentication, see the [Tiller TLS guide](https://helm.sh/docs/using_helm/#using-ssl-between-helm-and-tiller).
+
+3. Download the `ibm-odm-prod-2.2.1.tgz` Helm chart from the GitHub repository.
+   - [ibm-odm-prod-2.2.1.tgz](ibm-odm-prod-2.2.1.tgz) for Operational Decision Manager 8.10.2
+
+   If you have not done so yet, follow the instructions to download the IBM Operational Decision Manager images and the loadimages.sh file in [Download PPA and load images](../../README.md#step-2-download-a-product-package-from-ppa-and-load-the-images).
 
 4. Install a Kubernetes release with the default configuration and a name of `my-odm-prod-release` by using the following command:
 
    ```console
    $ helm install --name my-odm-prod-release \
-     /path/to/ibm-odm-prod-2.2.0.tgz
+     /path/to/ibm-odm-prod-2.2.1.tgz
    ```
    The package is deployed asynchronously in a matter of minutes, and is composed of several services.
 
@@ -56,7 +64,7 @@ $ helm install --name my-odm-prod-release \
   --set internalDatabase.databaseName=my-db \
   --set internalDatabase.user=my-user \
   --set internalDatabase.password=my-password \
-  /path/to/ibm-odm-prod-2.2.0.tgz
+  /path/to/ibm-odm-prod-2.2.1.tgz
 ```
 
 > **New in 19.0.1**: Use the new `customlibPvc` parameter to customize Decision Center in your release. Use the name of the persistent volume claim (PVC) you set up when you prepared the release as the parameter value. For more information, see [Preparing to install Operational Decision Manager](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/tsk_preparing_odmk8s.html).
@@ -69,7 +77,7 @@ $ helm install --name my-odm-prod-release \
 You can use a custom-made .yaml file to specify the values of the parameters when you install the chart. For example, the following command uses the `myvalues.yaml` file.
 
 ```console
-$ helm install --name my-odm-prod-release -f myvalues.yaml /path/to/ibm-odm-prod-2.2.0.tgz
+$ helm install --name my-odm-prod-release -f myvalues.yaml /path/to/ibm-odm-prod-2.2.1.tgz
 ```
 
 > **Tip**: Refer to the [`sample-values.yaml`](../configuration/sample-values.yaml) file to find the default values used by the `ibm-odm-prod` chart.
@@ -80,7 +88,7 @@ $ helm install --name my-odm-prod-release -f myvalues.yaml /path/to/ibm-odm-prod
 
 2. Run the helm upgrade command on the release that you want to upgrade. The following example command upgrades a release `my-odm-prod-release` with the new Helm chart.
    ```console
-   $ helm upgrade my-odm-prod-release /path/to/ibm-odm-prod-2.2.0.tgz --reuse-values
+   $ helm upgrade my-odm-prod-release /path/to/ibm-odm-prod-2.2.1.tgz --reuse-values
    ```
 
 3. Verify that the version of Decision Center and the Decision Server console is the new version and they are running on the same URL and port as before.

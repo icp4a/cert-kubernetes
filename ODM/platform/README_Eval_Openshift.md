@@ -19,10 +19,10 @@ The OpenShift Container Platform CLI exposes commands for managing your applicat
    ```
 
    > **Note**: As a privileged user, you must grant access to the privileged SCC to *ODMUSER* and the default Service Account for project odmeval.
-     ```console
-     $ oc adm policy add-scc-to-user privileged -z default -n odmeval
-     $ oc adm policy add-scc-to-user privileged --serviceaccount=default -n odmeval
-     ```
+   >  ```console
+   >  $ oc adm policy add-scc-to-user privileged -z default -n odmeval
+   >  $ oc adm policy add-scc-to-user privileged --serviceaccount=default -n odmeval
+   >  ```
 
 2. As *ODMUSER*, run the following command to accept the license and install the release:
 

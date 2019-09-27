@@ -1,0 +1,14 @@
+apiVersion: securityenforcement.admission.cloud.ibm.com/v1beta1
+kind: ImagePolicy
+metadata:
+  name: ums-docker-registry-whitelist
+spec:
+  repositories:
+    - name: some.remote.registry/*
+      policy:
+        va:
+          enabled: true
+    - name: some.other.remote.registry/ums/*
+      policy:
+        va:
+          enabled: true

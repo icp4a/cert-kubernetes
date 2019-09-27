@@ -50,6 +50,8 @@ spec:
         imagePullPolicy: Always
         name: ecm-cpe
         securityContext:
+          # If deployment on OpenShift and image supports arbitrary uid,
+          # remove runAsUser and pods will run with arbitrarily assigned user ID.
           runAsUser: 50001
           allowPrivilegeEscalation: false
         resources:
@@ -57,7 +59,7 @@ spec:
             memory: 512Mi
             cpu: 500m
           limits:
-            memory: 1024Mi
+            memory: 3072Mi
             cpu: 1
         ports:
         - containerPort: 9080
@@ -75,10 +77,12 @@ spec:
             value: "1"
           - name: TZ
             value: "Etc/UTC"
-          - name: JVM_HEAP_XMS
-            value: "512m"
-          - name: JVM_HEAP_XMX
-            value: "1024m"
+          - name: JVM_INITIAL_HEAP_PERCENTAGE
+            value: "18"
+          - name: JVM_MAX_HEAP_PERCENTAGE
+            value: "33"
+          - name: JVM_CUSTOMIZE_OPTIONS
+            value: ""
           - name: GCDJNDINAME
             value: "FNGDDS"
           - name: GCDJNDIXANAME

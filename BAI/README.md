@@ -51,6 +51,59 @@ The Apache Kafka connection must be configured in the Helm Chart values.
 
 For a quick start, try [Confluent Apache Kafka Helm Chart](https://github.com/confluentinc/cp-helm-charts).
 
+To enable secure communications with Confluent Kafka by using the SASL security protocol, you must modify the values.yaml file of this chart.
+
+```yaml
+kafka:
+  username: "kafka"
+  password: "kafka-password"
+  bootstrapServers: "kafka_ip_or_hostname:port"
+  securityProtocol: "SASL_SSL"
+  serverCertificate: "<base64-encoded CA certificate>"
+```
+
+Define the username and password supplied in `kafka.username` and `kafka.password` on the Kafka server side in appropriate JAAS configuration files, such as `kafka_jaas.conf` and `zookeeper_jaas.conf`. 
+
+- `kafka_jaas.conf`
+
+```
+KafkaServer {
+   org.apache.kafka.common.security.plain.PlainLoginModule required
+   username="kafka"
+   password="kafka-password"
+   user_kafka="kafka-password";
+};
+
+Client {
+   org.apache.zookeeper.server.auth.DigestLoginModule required
+   username="admin"
+   password="admin-secret";
+};
+```
+
+- `zookeeper_jaas.conf`
+
+```
+Server {
+   org.apache.zookeeper.server.auth.DigestLoginModule required
+   user_super="admin-secret"
+   user_admin="admin-secret";
+};
+```
+
+To use a JAAS configuration and the SASL protocol, pass the following system properties to the Kafka and Zookeeper JVMs.
+
+```
+-Djava.security.auth.login.config=<absolute path to Kafka JAAS file>
+-Djava.security.auth.login.config=<absolute path to Zookeeper JAAS file>
+-Dzookeeper.authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider 
+-Dzookeeper.requireClientAuthScheme=sasl
+```
+To do so, you can set the `KAFKA_OPTS` environment variable and assign it a string that contains these properties.
+
+To ensure SSL encryption between the Kafka client and the Kafka brokers, the kafka.serverCertificate parameter must contain the base64-encoded CA certificate that is used to sign each certificate of the Kafka brokers. 
+
+
 ## Before you begin
 
 ### Connect to the cluster
@@ -123,7 +176,7 @@ spec:
     name: <FLINK_PVC_NAME>
 ```
 
-> **Note**: The `claimRef` section is optional. However, you must set it in production mode if you want to make sure that your release always uses the same volume and if you do not want to lose your data. If you add the `claimRef` section, you must also set the namespace and the name of the persistent volume claim, as in step 2.
+> **Note**: The `claimRef` section is optional. However, you must set it in a production environment if you want to make sure that your release always uses the same volume and if you do not want to lose your data. If you add the `claimRef` section, you must also set the namespace and the name of the persistent volume claim, as in step 2.
 
 2. *Optional*: Create a persistent volume claim for Apache Flink.
 
@@ -213,12 +266,12 @@ The access rights to the persistent volumes are as follows:
 
 ### Configure the image policy
 
-- If you use the docker registry of the Kubernetes cluster, the default image policy, `default-dockercfg-*`, is applied. Check it out by running the following command: 
+- If you use the Docker registry of the Kubernetes cluster, the default image policy, `default-dockercfg-*`, is applied. Check it out by running the following command: 
 ```sh
 kubectl get secrets -n <NAMESPACE> | grep kubernetes.io/dockercfg
 ```
 
-- If you use a docker registry that is external to the Kubernetes cluster, you must define an image policy to be able to access the docker registry:
+- If you use a Docker registry that is external to the Kubernetes cluster, you must define an image policy to be able to access the Docker registry:
 
 ```sh
 kubectl create secret docker-registry <REGISTRY_NAME> --docker-server=<REGISTRY_URL> --docker-username=<DOCKER_USER> --docker-password=<DOCKER_PWD> --docker-email=<DOCKER_USER_EMAIL> -n <NAMESPACE>
@@ -226,14 +279,15 @@ kubectl create secret docker-registry <REGISTRY_NAME> --docker-server=<REGISTRY_
 
 ## PodSecurityPolicy Requirements
 
-This chart requires a PodSecurityPolicy resource to be bound to the target namespace before installation. To meet this requirement, you might have to scope a specific cluster and namespace.
-The predefined PodSecurityPolicy resource named [`ibm-anyuid-psp`](https://ibm.biz/cpkspec-psp) has been verified for this chart. If your target namespace is bound to it, you can proceed to install the chart.
+Before installation, this chart requires a PodSecurityPolicy resource to be bound to the target namespace.
+The predefined PodSecurityPolicy resource named [`ibm-anyuid-psp`](https://ibm.biz/cpkspec-psp) has been verified for this chart.
 
-However, if you plan to install Elasticsearch and Kibana as part of IBM Business Automation Insights through the ibm-dba-ek sub-chart, it is required that you also set up the proper PodSecurityPolicy, Role, ServiceAccount, and RoleBinding Kubernetes resources to allow the pods running Elasticsearch to run privileged containers. The reason for this requirement is to meet the [production settings stated officially by the Elasticsearch documentation](https://www.elastic.co/guide/en/elasticsearch/reference/6.7/system-config.html). To achieve this, you must set up a Custom PodSecurityPolicy definition:
+You must also set up the proper PodSecurityPolicy, Role, ServiceAccount, and RoleBinding Kubernetes resources to allow
+the pods to run privileged containers. To achieve this, you must set up a custom PodSecurityPolicy definition.
 
-1- Adapt the following YAML content to reference your Kubernetes namespace and Business Automation Insights Helm release name, and save it to a file as `bai-psp.yml`, which sets up the Custom PodSecurityPolicy definition:
+1- Adapt the following YAML content to reference your Kubernetes namespace and Business Automation Insights Helm release name, and save it to a file named `bai-psp.yml`, which sets up the Custom PodSecurityPolicy definition.
 ```yaml
-apiVersion: extensions/v1beta1
+apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
   annotations:
@@ -291,27 +345,8 @@ subjects:
 kubectl create -f bai-psp.yaml -n <NAMESPACE>
 ```
 
-This allows pods running Elasticsearch to execute `sysctl` commands to set:
-- `max_map_count=262144`
-- `vm.swappiness=1`
+This command allows the pods to run the sysctl commands that are needed at initialization.
 
-If you cannot or do not want to allow running privileged containers, you can still install IBM Business Automation Insights but you must configure it to use an external Elasticsearch (in Helm values, set `elasticsearch.install: false`).
-
-_**If you are upgrading from a previous version of IBM Business Automation Insights, undo the previous security policy changes:**_
-   - _If you are upgrading from 18.0.0, roll back the changes that you made through the `kubectl edit clusterrolebinding privileged-psp-users` command when you installed IBM Business Automation Insights 18.0.x. To achieve this, you must call again `kubectl edit clusterrolebinding privileged-psp-users` to edit the `ClusterRoleBinding` and delete the following lines:_
-   
-   ```
-   - apiGroup: rbac.authorization.k8s.io
-     kind: Group
-     name: system:serviceaccounts:<NAMESPACE>
-   ```
-   
-   - _If you are upgrading from IBM Business Automation Insights 18.0.1 or 18.0.2 , remove the ClusterRole and ClusterRoleBinding resources._
-   
-     ```
-     kubectl delete clusterrole <CLUSTER_ROLE>
-     kubectl delete clusterrolebinding <CLUSTERROLE_BINDING>
-     ```
 
 ## Red Hat OpenShift SecurityContextConstraints Requirements
 
@@ -395,7 +430,7 @@ Refer to [Kubernetes instructions](./k8s-yaml/README.md#update-ibm-business-auto
 
 ## Configuration parameters
 
-Learn more about IBM Business Automation Insights and its configuration in the [Knowledge Center](https://www.ibm.com/support/knowledgecenter/SSYHZ8_18.0.x/com.ibm.dba.bai/topics/con_bai_overview.html).
+Learn more about IBM Business Automation Insights and its configuration in the [Knowledge Center](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.bai/topics/con_bai_overview.html).
 
 ### General configuration
 
@@ -425,12 +460,14 @@ A secret that contains the following keys:
 - `kafka-server-cert`: the certificate in PEM format for secure communication with Kafka
 - `kafka-ca-cert`: the CA certificate in PEM format for secure communication with Kafka
 - `flink-security-krb5-keytab`: the Kerberos Keytab
-- `elasticsearch-username`: the username for connection to the non-embedded Elasticsearch
-- `elasticsearch-password`: the password for connection to the non-embedded Elasticsearch
+- `elasticsearch-username`: the username for connection to the external Elasticsearch
+- `elasticsearch-password`: the password for connection to the external Elasticsearch
 - `elasticsearch-server-cert`: the certificate in PEM format for secure communication with Elasticsearch
 
 > **Note**: The secret must hold a value for each of these keys, even if their value is empty (when they are not relevant in your IBM Business Automation Insights configuration).
 When you run `kubectl` to create a secret with empty values, you must turn validation off with the ` --validate=false` argument.
+
+This secret must be created in a production environment for overriding the default credentials.
 
 For example:
 ```
@@ -481,7 +518,7 @@ Parameter                         | Description                     | Default
 `kafka.serverCertificate`         | Apache Kafka server certificate for SSL communications (base64 encoded) |
 `kafka.username`                  | Apache Kafka username |
 `kafka.password`                  | Apache Kafka password |
-`kafka.propertiesConfigMap`       | Name of a ConfigMap already deployed into Kubernetes and that contains Kafka consumer and producer properties |
+`kafka.propertiesConfigMap`       | Name of a ConfigMap already deployed to Kubernetes and that contains Kafka consumer and producer properties. For details, see [Specifying a configuration map for Kafka properties](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_19.0.x/com.ibm.dba.bai/topics/tsk_bai_flink_kub_config_maps_kafka.html). |
 
 ### Elasticsearch settings
 
@@ -629,13 +666,27 @@ Parameter | Description | Default
 `initImage.image.tag`           | Docker image version for initialization containers | `19.0.1`
 
 ### Elasticsearch-Kibana subchart
+
 If `elasticsearch.install` is set to `true`, Elasticsearch and Kibana are deployed as the ibm-dba-ek subchart.
 
-If you use the default setup, you can access Kibana by using the following credentials:
+You can set values for the `ibm-dba-ek` subchart under the `ibm-dba-ek` key. These attributes are relevant only if you use the `ibm-dba-ek` subchart to install Elasticsearch into Kubernetes (see `elasticsearch.install`). You can adjust the values for this subchart if you want to set up your own set of users or to update the deployment topology or persistent storage management.
+
+With the default configuration, which must not be used in a production environment, you can access Kibana by using the following credentials:
+
 - admin:passw0rd
 - demo:demo
 
-You can set value definitions for the `ibm-dba-ek` subchart under the `ibm-dba-ek:` key. These attributes are relevant only if you use the `ibm-dba-ek` subchart to install Elasticsearch into Kubernetes (see `elasticsearch.install`). You can adapt the values for this subchart if you want to set up your own set of users or to update the deployment topology or persistent storage management.
+In a production environment, you must create a secret with the following keys:
+ 
+- `elasticsearch-username`: A Kibana username with administration privileges for connection to an external Elasticsearch
+- `elasticsearch-password`: A Kibana password for connection to an external Elasticsearch
+
+The name you choose for that secret must be specified in the values:
+
+```yaml
+ibm-dba-ek:
+  ekSecret: "<name_of_secret>"
+```
 
 For details, regarding the ibm-dba-ek subchart Helm values:
 - [Elasticsearch parameters](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.ref/topics/ref_bai_es_params.html)

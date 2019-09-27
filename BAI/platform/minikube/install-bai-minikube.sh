@@ -21,7 +21,6 @@ showHelp() {
     echo "Prerequisites"
     echo "These files must be present in the same directory:"
     echo " - configuration/pv.yaml"
-    echo " - configuration/bai-configmap.yaml"
     echo " - configuration/bai-psp.yaml"
     echo " - configuration/easy-install-kafka.yaml"
     echo " - configuration/easy-install.yaml"
@@ -132,7 +131,6 @@ if [ "${EVENT_PROCESSING_TYPE}" != "odm" -a  "${EVENT_PROCESSING_TYPE}" != "icm"
 fi
 
 checkFileExist "./configuration/pv.yaml"
-checkFileExist "./configuration/bai-configmap.yaml"
 checkFileExist "./configuration/bai-psp.yaml"
 checkFileExist "./configuration/easy-install-kafka.yaml"
 checkFileExist "./configuration/easy-install.yaml"
@@ -185,4 +183,4 @@ fi
 
 installNewImages
 
-./install-bai.sh -e "$EVENT_PROCESSING_TYPE" -i "$(minikube ip)" -j "$LVAR_LOCALHOST_IP" -p ./configuration/pv.yaml -c ./configuration/bai-configmap.yaml -s ./configuration/bai-psp.yaml -k ./configuration/easy-install-kafka.yaml -b ./configuration/easy-install.yaml
+./install-bai.sh -e "$EVENT_PROCESSING_TYPE" -i "$(minikube ip)" -j "$LVAR_LOCALHOST_IP" -p ./configuration/pv.yaml -s ./configuration/bai-psp.yaml -k ./configuration/easy-install-kafka.yaml -b ./configuration/easy-install.yaml
