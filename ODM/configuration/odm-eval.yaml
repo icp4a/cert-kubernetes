@@ -6,7 +6,7 @@ metadata:
   name: odm-eval-odm-pvclaim
   labels:
     app: odm-eval-ibm-odm-dev
-    chart: "ibm-odm-dev-2.2.0"
+    chart: "ibm-odm-dev-2.2.1"
     release: "odm-eval"
     heritage: "Tiller"
 spec:
@@ -14,13 +14,13 @@ spec:
   ## default storageClass setup by kube Administrator
   ##
   ## setting storageClassName to nil means use the default storage class
-  storageClassName: 
+  storageClassName:
   accessModes:
     - ReadWriteOnce
-  resources:  
+  resources:
     requests:
       storage: 2Gi
-    
+
 
 ---
 # Source: ibm-odm-dev/templates/service.yaml
@@ -30,7 +30,7 @@ metadata:
   name: odm-eval-ibm-odm-dev
   labels:
     app: ibm-odm-dev
-    chart: ibm-odm-dev-2.2.0
+    chart: ibm-odm-dev-2.2.1
     release: odm-eval
     heritage: Tiller
 spec:
@@ -53,7 +53,7 @@ metadata:
   name: odm-eval-ibm-odm-dev
   labels:
     app: ibm-odm-dev
-    chart: ibm-odm-dev-2.2.0
+    chart: ibm-odm-dev-2.2.1
     release: odm-eval
     heritage: Tiller
 spec:
@@ -67,7 +67,7 @@ spec:
       labels:
         run: ibm-odm-dev
         app: ibm-odm-dev
-        chart: ibm-odm-dev-2.2.0
+        chart: ibm-odm-dev-2.2.1
         release: odm-eval
         heritage: Tiller
       annotations:
@@ -103,7 +103,7 @@ spec:
           claimName: odm-eval-odm-pvclaim
       containers:
         - name: ibm-odm-dev
-          image: ibmcom/odm:8.10.2.0_2.2.0-amd64
+          image: ibmcom/odm:8.10.2.0_2.2.1-amd64
           securityContext:
             runAsUser: 1001
             runAsNonRoot: true
@@ -155,5 +155,3 @@ spec:
             requests:
               cpu: 1
               memory: 1024Mi
-            
-

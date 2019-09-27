@@ -50,6 +50,8 @@ spec:
         imagePullPolicy: Always
         name: ecm-cmis
         securityContext:
+          # If deployment on OpenShift and image supports arbitrary uid,
+          # remove runAsUser and pods will run with arbitrarily assigned user ID.
           runAsUser: 50001
           allowPrivilegeEscalation: false
         resources:
@@ -57,7 +59,7 @@ spec:
             memory: 256Mi
             cpu: 500m
           limits:
-            memory: 512Mi
+            memory: 1536Mi
             cpu: 1
         ports:
         - containerPort: 9080
@@ -75,10 +77,10 @@ spec:
             value: "http://cpeurl:30540/wsi/FNCEWS40MTOM"
           - name: TZ
             value: "Etc/UTC"
-          - name: JVM_HEAP_XMS
-            value: "512m"
-          - name: JVM_HEAP_XMX
-            value: "1024m"
+          - name: JVM_INITIAL_HEAP_PERCENTAGE
+            value: "40"
+          - name: JVM_MAX_HEAP_PERCENTAGE
+            value: "66"
           - name: CMC_TIME_TO_LIVE
             value: "3600000"
           - name: CRC_TIME_TO_LIVE

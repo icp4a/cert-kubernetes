@@ -1,20 +1,21 @@
 # Install IBM Operational Decision Manager with the Kubernetes CLI
 
+If you prefer to use a simpler deployment process that uses a native Kubernetes authorization mechanism (RBAC) instead of Helm and Tiller, use the Helm command line interface (CLI) to generate a Kubernetes manifest. If you choose to use Kubernetes YAML you cannot use certain capabilities of Helm to manage your deployment.
+
 Before you install make sure that you have prepared your environment. For more information, see [Preparing to install ODM for production](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/tsk_preparing_odmk8s.html) as well as [Customizing ODM for production](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/tsk_install_odm.html).
 
-Refer to the top repository [readme](../../README.md#step-2-download-a-product-package-from-ppa-and-load-the-images) to find instructions on how to push and tag the product container images to your Docker registry.
+1. If Helm is not installed in your Kubernetes cluster, install [Helm 2.11.0](https://github.com/helm/helm/releases/tag/v2.11.0).
 
-1. If Helm is not installed in your Kubernetes cluster, install [Helm 2.9.1](https://github.com/helm/helm/releases/tag/v2.9.1).
-
-2. Download the `ibm-odm-prod-2.2.0.tgz` Helm chart.
-   - [ibm-odm-prod-2.2.0.tgz](../helm-charts/ibm-odm-prod-2.2.0.tgz) for Operational Decision Manager 8.10.2
+2. Download the `ibm-odm-prod-2.2.1.tgz` Helm chart.
+   - [ibm-odm-prod-2.2.1.tgz](../helm-charts/ibm-odm-prod-2.2.1.tgz) for Operational Decision Manager 8.10.2
+   If you have not done so yet, follow the instructions to download the IBM Operational Decision Manager images and the loadimages.sh file in [Download PPA and load images](../../README.md#step-2-download-a-product-package-from-ppa-and-load-the-images).
 
 3. Create a chart YAML template file with the default configuration parameters by using the following command. The `--name` argument sets the name of the release to install.
 
    ```console
    $ helm template \
      --name my-odm-prod-release \
-     /path/to/ibm-odm-prod-2.2.0.tgz > generated-k8s-templates.yaml
+     /path/to/ibm-odm-prod-2.2.1.tgz > generated-k8s-templates.yaml
    ```
 
 4. Install `my-odm-prod-release` with the default configuration by using the following command.
@@ -53,7 +54,7 @@ $ helm template --name my-odm-prod-release \
   --set internalDatabase.databaseName=my-db \
   --set internalDatabase.user=my-user \
   --set internalDatabase.password=my-password \
-  /path/to/ibm-odm-prod-2.2.0.tgz
+  /path/to/ibm-odm-prod-2.2.1.tgz
 ```
 
 ### To customize the helm install with a YAML file
@@ -62,7 +63,7 @@ It is also possible to use a custom-made .yaml file to specify the values of the
 For example:
 
 ```console
-$ helm template --name my-odm-prod-release -f myvalues.yaml /path/to/ibm-odm-prod-2.2.0.tgz
+$ helm template --name my-odm-prod-release -f myvalues.yaml /path/to/ibm-odm-prod-2.2.1.tgz
 ```
 
 > **Tip**: Refer to the [`sample-values.yaml`](../configuration/sample-values.yaml) file to find the default values used by the `ibm-odm-prod` chart.
@@ -86,7 +87,7 @@ $ helm template --name my-odm-prod-release -f myvalues.yaml /path/to/ibm-odm-pro
      --name my-odm-prod-release \
      --set key=value \
      -f myvalues.yaml \
-     /path/to/ibm-odm-prod-2.2.0.tgz > generated-k8s-templates-upgrade.yaml
+     /path/to/ibm-odm-prod-2.2.1.tgz > generated-k8s-templates-upgrade.yaml
    ```
 
 4. Apply this new template in Kubernetes.

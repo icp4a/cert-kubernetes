@@ -57,6 +57,9 @@ content:
 bawadv:
   install: false
 
+baiw:
+  install: false
+
 ibm-dba-ek:
   image:
     pullPolicy: Never

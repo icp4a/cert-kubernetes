@@ -1,16 +1,12 @@
 # Install IBM Operational Decision Manager for developers on Red Hat OpenShift on IBM Cloud
 
-IBM Operational Decision Manager for developers can be used on a personal computer to run and evaluate Operational Decision Manager in Red Hat OpenShift.
+## Before you begin: Create a cluster
 
-Refer to [Red Hat OpenShift on IBM Cloud documentation](https://cloud.ibm.com/docs/openshift?topic=openshift-openshift-create-cluster#openshift_create_cluster_console) to create a kubernetes cluster in IBM Cloud.
+Before you run any install command, make sure that you have created the IBM Cloud cluster and prepared your own environment.
 
-## Step 1: Install the Red Hat OpenShift Container Platform command line interface (CLI) and Helm
+For more information, see [Installing containers on Red Hat OpenShift by using CLIs](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/tsk_prepare_env_ROKS.html).
 
-Refer to the [documentation](https://cloud.ibm.com/docs/openshift?topic=openshift-openshift-cli) to install:
-* IBM Cloud CLI (`ibmcloud`)
-* Kubernetes Service plug-in (`oc` alias for OpenShift clusters)
-
-## Step 2: Install an Operational Decision Manager for developers release
+## Step 1: Install an Operational Decision Manager for developers release
 
 > **Tip**: Storage Persistent Volume (PV) is required to install this evaluation. PV represents an underlying storage capacity in the infrastructure. PV must be created with accessMode ReadWriteOnce and storage capacity of 5Gi or more, before you install ODM. You create a PV in the Admin console or with a .yaml file.
 
@@ -35,14 +31,13 @@ Refer to the [documentation](https://cloud.ibm.com/docs/openshift?topic=openshif
    $ oc project odmeval
    ```
 
-
-2. Run the following command to accept the license and install the release:
+3. Run the following command to accept the license and install the release:
 
    ```console
    $ sed 's/view/accept/' ./configuration/odm-eval.yaml | oc create -f -
    ```
 
-## Step 3: Verify that the deployment is running
+## Step 2: Verify that the deployment is running
 
 1. Monitor the pod until it shows a STATUS of *Running* or *Completed*:
 

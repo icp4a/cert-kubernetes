@@ -45,12 +45,11 @@ As a consequence, and not limited to the following, machine hibernation or shutd
 - IBM Business Automation Insights Developer Edition:
   - Choose a destination directory where the installation artifacts below will be downloaded.
     - On Windows, this must be on the drive where your ```MINIKUBE_HOME``` environment variable points to. If this is not set, it defaults to the ```C:``` drive (current [restriction of ```minikube```](https://github.com/kubernetes/minikube/issues/1574))
-  - Download the catalog archive (~4Gb, takes some time to download)from the public PPA site: [ibm-bai-developer-edition-19.0.1.zip](https://www.ibm.com/account/reg/us-en/signup?formid=urx-35711) 
-    - Unzip the file and rename `ibm-bai-developer-edition-19.0.3.tar.gz` to `ibm-bai-dev-3.1.0-dev.tar.gz`.
+  - Download the catalog archive (~4Gb, takes some time to download) from the public PPA site: [ibm-bai-developer-edition-19.0.1.zip](https://www.ibm.com/account/reg/us-en/signup?formid=urx-35711) 
+    - Unzip the file and rename `ibm-bai-developer-edition-19.0.1.tar.gz` to `ibm-bai-dev-3.1.0-dev.tar.gz`.
   - Download the following files:
     - [configuration/easy-install-kafka.yaml](configuration/easy-install-kafka.yaml?raw=true)
     - [configuration/easy-install.yaml](configuration/easy-install.yaml?raw=true)
-    - [configuration/bai-configmap.yaml](configuration/bai-configmap.yaml?raw=true)
     - [configuration/pv.yaml](configuration/pv.yaml?raw=true)
     - [configuration/bai-psp.yaml](configuration/bai-psp.yaml?raw=true)
     - [install-bai-minikube.sh](./install-bai-minikube.sh?raw=true)
@@ -79,7 +78,6 @@ Run the following commands from the destination folder where you downloaded the 
 |____./ibm-bai-dev-3.1.0-dev.tar.gz
 |____./configuration/easy-install.yaml
 |____./configuration/easy-install-kafka.yaml
-|____./configuration/bai-configmap.yaml
 |____./configuration/bai-psp.yaml
 |____./configuration/pv.yaml
 ```
@@ -207,7 +205,6 @@ EVENT_PROCESSING_TYPE=<event-processing-type>
 ```
 cd charts
 tar xvf ibm-business-automation-insights-dev-3.1.0-dev.tgz
-cp ../configuration/bai-configmap.yaml ibm-business-automation-insights-dev/templates
 cd ..
 helm install --wait --name bai-release --namespace bai charts/ibm-business-automation-insights-dev -f configuration/easy-install.yaml --set kafka.bootstrapServers=$(minikube ip):31090 --set ${EVENT_PROCESSING_TYPE}.install=true
 ```
@@ -282,6 +279,6 @@ To configure your event emitter, you need the following information:
     - monitor proper pod recovery using `kubectl --namespace bai get pods -w`
     - Elasticsearch data will be recovered, but the Flink state will be reset, therefore the result of the processing is likely to be lost for the last events.
 
-- Troubleshooting Apache Flink jobs: [Knowledge Center - Troubleshooting Apache Flink jobs](http://engtest01w.fr.eurolabs.ibm.com:9190/support/knowledgecenter/SSYHZ8_18.0.x/com.ibm.dba.bai/topics/con_bai_troubleshoot_jobs.html)
+- Troubleshooting Apache Flink jobs: [Knowledge Center - Troubleshooting Apache Flink jobs](http://engtest01w.fr.eurolabs.ibm.com:9190/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.bai/topics/con_bai_troubleshoot_jobs.html)
 
 ***

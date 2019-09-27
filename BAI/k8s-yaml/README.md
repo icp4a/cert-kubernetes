@@ -22,7 +22,7 @@ To install IBM Business Automation Insights, generate the Kubernetes YAML files 
 
 ```sh
 mkdir yaml-files
-helm template ibm-business-automation-insights-3.0.0.tgz --name <your-release> --output-dir yaml-files -f values.yaml
+helm template ibm-business-automation-insights-3.2.0.tgz --name <your-release> --output-dir yaml-files -f values.yaml
 ```
 
 To override the default configuration, you must provide a `values.yaml` file that contains your custom configuration.
@@ -42,7 +42,7 @@ You must install the emitters into your IBM Digital Business Automation products
 
 You must only install emitters for the products that you enabled during Business Automation Insights installation process. In the provided sample, only the BPMN job is installed, and so only the BPMN emitter must be installed.
 
-Refer to the [Knowledge Center](https://www.ibm.com/support/knowledgecenter/SSYHZ8_18.0.x/com.ibm.dba.bai/topics/con_bai_top_bmpn_events.html) for instructions.
+Refer to the [Knowledge Center](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.bai/topics/con_bai_top_bmpn_events.html) for instructions.
 
 
 ## Updating IBM Business Automation Insights
