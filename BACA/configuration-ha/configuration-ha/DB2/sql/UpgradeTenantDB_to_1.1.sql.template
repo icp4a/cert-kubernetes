@@ -1,0 +1,7 @@
+connect to $tenant_db_name ;
+set schema $tenant_ontology ;
+
+alter table integration alter column model_id set data type varchar(1024);
+reorg table integration;
+
+connect reset ;
