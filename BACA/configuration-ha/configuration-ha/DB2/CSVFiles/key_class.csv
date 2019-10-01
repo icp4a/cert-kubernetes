@@ -1,0 +1,201 @@
+47,ExteriorColor,char,0,0,Exterior Color
+48,InteriorColor,char,0,0,Interior Color
+49,Page Number,number,0,0,
+50,JobDescription,char,0,0,Job Description
+51,SBCess,number,0,0,Swachh Bharat Cess
+52,InvoiceNumber,number,1,0,Invoice Number
+53,Fax,number,0,0,FaxNo
+54,Total,number,1,0,Grand Total
+55,Address,char,0,0,
+56,WorkSite,char,0,0,Work Site
+57,SalesPerson,char,0,0,
+58,Brand,char,0,0,Brand
+59,Website,char,0,0,Website Address
+60,EmailAddress,char,0,0,Email address
+61,MatterNumber,char,0,0,Matter Number
+62,RegdOffice,char,0,0,Regd Office
+63,Terms,char,0,0,Payment Terms
+64,EstNo,number,0,0,Est No
+65,EstDate,number,0,0,Est Date
+66,CampaignName,char,0,0,Campaign Name
+67,ServiceTax,number,0,0,Service Tax
+68,AgencyCommission,number,0,0,Agency Commission
+69,BeneficiaryName,char,0,0,Beneficiary Name
+70,Sub Brand,char,0,0,
+71,PANNo,number,0,0,PAN NO
+72,Credit,char,0,0,Credit
+73,CINNo,number,0,0,CIN No
+74,SwiftCode,number,0,1,Swift Code
+75,CustName,char,0,1,
+76,Telephone,number,0,0,Telephone
+77,BankName,char,0,0,Bank Name
+78,Price,number,0,0,Price
+79,Qty,number,0,0,Quantity
+80,Description,char,0,0,Description
+81,GLCode,number,0,0,GL Code
+82,SoldTo,char,0,0,Sold To
+83,ABN,char,0,0,ABN number
+84,Phone,number,0,0,Phone no
+85,Regarding,char,0,0,Regarding
+86,RequestingManager,char,0,0,Requesting Manager
+87,InvoiceDate,number,0,0,Invoice Date
+88,DueDate,number,0,0,Due Date
+89,AccNo,number,0,0,Account Number
+90,BSB,number,0,0,BSB No
+91,AccName,char,0,0,Account Name
+92,SubTotal,number,0,0,Sub Total before tax
+93,Tax,number,0,0,Tac amounts
+94,PurchaseNo,number,0,0,Purchase number
+95,ShipTo,char,0,0,
+96,BranchOffice,char,0,0,Branch Office
+97,IFSCCode,number,0,0,IFSC Code
+98,CentralisedBillingAndAccOffice,char,0,0,Centralised Billing and Accounting Office
+99,ServiceTaxCategory,char,0,0,Service Tax Category
+100,ServiceTaxRegnNo,number,0,0,Service Tax Regn No
+101,Branch,char,0,0,Branch
+168,StartDate,char,0,0,Start Date of Minimum payment period per service component
+169,ZipCode,number,0,0,Zip Code
+170,ServiceComponents,char,0,0,Service Components
+171,ExistingCircuitIds,number,0,0,existing circuit ids
+172,SignedDate,number,0,0,Signed Date
+173,StateProvince,char,0,0,State Province
+174,Attention,char,0,0,Attention
+175,Country,char,0,0,Country
+176,ReferenceNo,number,0,0,Reference No
+177,PreExistingContractNo,number,0,0,Pre Existing Contract No
+178,AccNo,number,0,0,AccountNumber
+179,PercMonthlyFee,char,0,0,Percentage of Monthly Fee
+180,Customer,char,0,0,Customer
+181,SDAcode,number,0,0,SDA code
+182,ContractIDNo,number,0,0,contract id no
+183,DS1No,number,0,0,ds1 no
+184,PRINo,char,0,0,PRI No
+185,City,char,0,0,City
+186,SalesRegion,char,0,0,Sales Region
+187,Name,char,0,0,Name
+188,Title,char,0,0,Title
+189,PricingTerm,char,0,0,Pricing Schedule Term
+190,SalesStrata,char,0,0,Sales Strata
+191,SalesBranchManager,char,0,0,Sales Branch Manager
+192,EmailAddress,char,0,0,Email Address
+193,TeleFax,number,0,0,Telephone and Fax
+194,StreetAddress,char,0,0,Street Address
+195,MinPayPeriod,char,0,0,Minimum Payment Period
+196,ProgramCode,number,0,0,Program Code
+197,SCVPName,char,0,0,SCVP Name
+198,RatesForMinPayment,char,0,0,Rates following the end of minimum payment
+199,Branch Transit Number,number,0,1,
+200,RateStabilization,char,0,0,Rate Stabilization per service component
+201,EfffectiveDate,char,0,0,Effective Date of this pricing schedule
+46,MileageIn,number,0,0,Mileage In
+102,Attention,char,0,0,Attention
+103,DOB,number,0,0,Date of Birth
+104,StartDate,number,0,0,Start Date
+105,Title,char,0,0,Title
+106,PlaceOfBirth,char,0,0,Place of Birth
+107,Status,char,0,0,Status
+108,Employee,char,0,0,Employee
+109,FullName,char,0,0,Full Name
+110,Subject,char,0,0,Subject
+111,AnnualSalary,number,0,0,Annual Salary
+112,Citizenship,char,0,0,Citizenship
+113,ExpireDate,number,0,0,Expire Date
+114,PassportNo,number,0,0,Passport no
+115,Gender,char,0,0,Gender
+116,IssueDate,number,0,0,Issue Date
+117,Smoking Status,char,0,0,
+118,ServiceDept,char,0,0,Service Department
+119,PCP,char,0,0,PCP
+120,ProgressNotes,char,0,0,Progress Notes
+121,AppointmentFacility,char,0,0,Appointment Facility
+122,Referring,char,0,0,Referring
+123,MedPrimary,char,0,0,med primary
+124,Prescription,char,0,0,prescription
+125,PrimaryCareProvider,char,0,0,primary care provider
+126,Telephone,number,0,0,Telephone
+127,FaxNo,number,0,0,Fax Number
+128,NPI,number,0,0,NPI
+129,FollowUp,char,0,0,Follow Up
+130,Name,char,0,0,Name
+131,Diabetes,char,0,0,
+132,AppointmentDateTime,number,0,0,Appt. Date/Time
+133,DOB,number,0,0,Date of Birth
+134,Marital status,char,0,0,
+135,Alcohol intake,char,0,0,
+136,Hypertension,char,0,0,
+137,Occupation,char,0,0,
+138,Kidney Stones,char,0,0,
+139,Celebrex,char,0,0,
+140,Employer,char,0,0,
+141,Vitals,char,0,0,
+142,ROS,char,0,0,
+143,Quantity,number,0,0,
+144,Refills,number,0,0,
+145,BodyMassIndex,number,0,0,Body Mass Index (BMI)
+146,Weight,number,0,0,
+147,EncounterDate,number,0,0,Encounter Date
+148,Provider,char,0,0,Provider
+149,Insurance,char,0,0,Insurance
+150,Client,char,0,0,Client
+151,InvestigatingAgency,char,0,0,Investigating Agency
+152,County,char,0,0,County
+153,Parties,char,0,0,Parties
+154,TransactionNo,number,0,0,Transaction Number
+155,Date,number,0,0,Date
+156,TimeofLoss,number,0,0,Time of Loss
+157,ClaimNo,number,0,0,Claim Number
+158,State,char,0,0,State
+159,DateOfLoss,number,0,0,Date Of Loss
+160,DriverLicense,number,0,0,Driver License No
+161,Street,char,0,0,Street
+162,Division,char,0,0,Division
+163,Adjuster,char,0,0,Adjuster
+164,ReportNumber,number,0,0,Report Number
+165,ReportType,char,0,0,Report Type
+166,Tag,char,0,0,Tag
+167,City,char,0,0,City
+1,InvestmentName,char,1,0,
+2,InvestorName,char,1,0,
+3,CapBalance,number,1,0,
+4,FundAsOfDate,number,1,0,
+5,IssuedDate,number,0,0,Issued Date
+6,IssuedAt,char,0,0,Issued At
+7,Master,char,0,0,Master/Captain
+8,Shipper,char,0,0,Shipper
+9,BLNo,char,0,0,Bill of Lading number
+10,Flag,char,0,0,Flag
+11,Consignee,char,0,0,Consignee
+12,VoyageNo,number,0,0,Voyage No
+13,NotifyParty,char,0,0,Notify Party
+14,OnboardTanker,char,0,0,OnboardTanker
+15,LoadingPort,char,0,0,Loading Port
+16,DeliveryPort,char,0,0,Delivery Port
+17,Adjuster,char,0,0,Adjuster
+18,WrittenBy,char,0,0,Written By
+19,ClaimNo,number,0,0,Claim No
+20,GrandTotal,number,0,0,Grand Total
+21,VehicleOut,char,0,0,Vehicle Out
+22,TypeOfLoss,char,0,0,Type of Loss
+23,Insured,char,0,0,Insured
+24,PolicyNo,number,0,0,Policy no
+25,Fax,number,0,0,Fax
+26,WorkfileID,number,0,0,Workfile ID
+27,Telephone,number,0,0,Telephone
+28,DaysToRepair,number,0,0,Days to Repair
+29,CUSTOMERPAY,number,0,0,CUSTOMER PAY
+30,Subtotal,number,0,0,Subtotal
+31,INSURANCEPAY,number,0,0,INSURANCE PAY
+32,Condition,char,0,0,Condition
+33,JobNo,number,0,0,Jon no
+34,ProductionDate,number,0,0,Production Date
+35,State,char,0,0,State
+36,FederalID,number,0,0,Federal ID
+37,MileageOut,char,0,0,Mileage Out
+38,RONumber,number,0,0,RO Number
+39,Deductible,number,0,0,Deductible
+40,License,char,0,0,License
+41,VIN,number,0,0,VIN
+42,PointOfImpact,char,0,0,Point of Impact
+43,DateOfLoss,number,0,0,Date of Loss
+44,InspectionLocation,char,0,0,Inspection Location
+45,Owner,char,0,0,Owner

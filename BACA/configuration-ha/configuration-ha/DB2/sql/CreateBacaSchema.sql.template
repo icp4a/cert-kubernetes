@@ -1,0 +1,6 @@
+CONNECT TO $tenant_db_name ;
+
+CREATE SCHEMA $tenant_ontology ;
+
+SET SCHEMA $tenant_ontology ;
+

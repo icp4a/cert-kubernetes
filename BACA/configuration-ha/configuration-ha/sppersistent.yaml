@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sp-data-pv-$KUBE_NAME_SPACE
+  namespace: $KUBE_NAME_SPACE
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 60Gi
+  nfs:
+    path: /exports/smartpages/$KUBE_NAME_SPACE/data
+    server: $NFS_IP
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: $DATAPVC
+  namespace: $KUBE_NAME_SPACE
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 60Gi
+  volumeName: sp-data-pv-$KUBE_NAME_SPACE
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sp-log-pv-$KUBE_NAME_SPACE
+  namespace: $KUBE_NAME_SPACE
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 35Gi
+  nfs:
+    path: /exports/smartpages/$KUBE_NAME_SPACE/logs
+    server: $NFS_IP
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: $LOGPVC
+  namespace: $KUBE_NAME_SPACE
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 35Gi
+  volumeName: sp-log-pv-$KUBE_NAME_SPACE
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sp-config-pv-$KUBE_NAME_SPACE
+  namespace: $KUBE_NAME_SPACE
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 5Gi
+  nfs:
+    path: /exports/smartpages/$KUBE_NAME_SPACE/config
+    server: $NFS_IP
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: $CONFIGPVC
+  namespace: $KUBE_NAME_SPACE
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+  volumeName: sp-config-pv-$KUBE_NAME_SPACE

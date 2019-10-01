@@ -30,7 +30,7 @@ spec:
   - SYS_CHROOT
   - DAC_OVERRIDE
   runAsUser:
-    rule: RunAsAny #TODO: We need to set this value to "MustRunAsNonRoot" but minio is currently running as root
+    rule: MustRunAsNonRoot
   seLinux:
     rule: RunAsAny
   supplementalGroups:

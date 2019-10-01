@@ -55,8 +55,13 @@ fi
 
 
 # Create nfs, and pv/pvc
-getNFSServer
+#getNFSServer
 
+#Check and rename DB2 cert to db2-cert.arm when DB_SSL=y
+if [[ ($DB_SSL == "y" || $DB_SSL == "Y") && ($DB_CRT_NAME != 'db2-cert.arm') ]]; then
+        echo "renaming DB2 Cert name from $DB_CRT_NAME to db2-cert.arm"
+        cp  $DB_CRT_NAME db2-cert.arm
+fi
 
 #Create SSL cert and secret
 createSSLCert
@@ -64,11 +69,11 @@ createSecret
 createMongoSecrets
 createLDAPSecret
 createBaseDbSecret
-createMinioSecret
 createRabbitmaSecret
 createRedisSecret
 if [[ $PVCCHOICE == "1" ]]; then
     echo -e "\x1B[1;32mSetting up PV/PVC storage\x1B[0m"
+    getNFSServer
     ./init_persistent.sh
 fi
 
