@@ -16,7 +16,7 @@ As a consequence, and not limited to the following, machine hibernation or shutd
   - [3. Initialize Helm](#3-initialize-helm)
   - [4. Install Apache Kafka](#4-install-apache-kafka)
   - [5. Install IBM Business Automation Insights Developer Edition](#5-install-ibm-business-automation-insights-developer-edition)
-    - [1. Load images into Minikube docker registry](#1-load-images-into-minikube-docker-registry)
+    - [1. Add IBM Charts repository](#1-add-ibm-charts-repository)
     - [2. Create a security policy and a service account for elasticsearch](#2-create-a-security-policy-and-a-service-account-for-elasticsearch)
     - [3. Choose the type of event processing you want to deploy](#3-choose-the-type-of-event-processing-you-want-to-deploy)
     - [4. Deploy BAI release](#4-deploy-the-bai-release)
@@ -29,7 +29,7 @@ As a consequence, and not limited to the following, machine hibernation or shutd
 ## Prerequisites
 
 - Resources:
-  - Mac OSx Mojave or Windows 7 or Windows 10
+  - MacOS Mojave or Windows 10
   - 2CPUs  + 6Gb RAM free space
   - In addition to the space for Docker, Minikube, and Helm, 15Gb disk space for images and persisted data
   - There are [known networking issues](https://github.com/kubernetes/minikube/issues/1099) when using Minikube while Cisco AnyConnect is running on the same machine. Before running Minikube, make sure that your Cisco AnyConnect VPN is NOT running.
@@ -45,8 +45,6 @@ As a consequence, and not limited to the following, machine hibernation or shutd
 - IBM Business Automation Insights Developer Edition:
   - Choose a destination directory where the installation artifacts below will be downloaded.
     - On Windows, this must be on the drive where your ```MINIKUBE_HOME``` environment variable points to. If this is not set, it defaults to the ```C:``` drive (current [restriction of ```minikube```](https://github.com/kubernetes/minikube/issues/1574))
-  - Download the catalog archive (~4Gb, takes some time to download) from the public PPA site: [ibm-bai-developer-edition-19.0.1.zip](https://www.ibm.com/account/reg/us-en/signup?formid=urx-35711) 
-    - Unzip the file and rename `ibm-bai-developer-edition-19.0.1.tar.gz` to `ibm-bai-dev-3.1.0-dev.tar.gz`.
   - Download the following files:
     - [configuration/easy-install-kafka.yaml](configuration/easy-install-kafka.yaml?raw=true)
     - [configuration/easy-install.yaml](configuration/easy-install.yaml?raw=true)
@@ -60,7 +58,7 @@ As a consequence, and not limited to the following, machine hibernation or shutd
 ## Automated installation ("fast path")
 
   - See [installation prerequisites](#prerequisites)
-  - Choose an \<event-type\> to deal with. The valid values are "odm", "icm", "bpmn", "bawadv", or "content".
+  - Choose an \<event-type\> to deal with. The valid values are "odm", "icm", "bpmn", "bawadv", "content", or "baiw".
   - If your event emitter is not hosted by the local host, you must use the ```-i ``` option to specify the local machine IP address that is reachable by the event emitter.
   - To bypass the check of the Minikube version used, pass the ``` -f ``` option.
   - Make sure that the VirtualBox ```VBoxManage``` command is on the ```PATH```.
@@ -75,7 +73,6 @@ Run the following commands from the destination folder where you downloaded the 
 
 ```
 .
-|____./ibm-bai-dev-3.1.0-dev.tar.gz
 |____./configuration/easy-install.yaml
 |____./configuration/easy-install-kafka.yaml
 |____./configuration/bai-psp.yaml
@@ -108,7 +105,7 @@ helm init --wait
 
 ### 4. Install Apache Kafka
 
-#### Scenario 1: Your event emitter (BPMN, BAW Advanced, Case, ODM, or Content) is running on your local machine.
+#### Scenario 1: Your event emitter (BPMN, BAW Advanced, Case, ODM, Content, or BAIW) is running on your local machine.
 
 If you plan to feed your Business Automation Insights instance with events from a Business Automation Worfklow server or from an Operational Decision Manager server running on your local machine, use the following procedure to install Apache Kafka:
 
@@ -131,7 +128,7 @@ kafka-release-cp-zookeeper-0   2/2       Running   0          108s
 </p>
 </details></div>
 
-#### Scenario 2: Your event emitter (BPMN, BAW Advanced, Case, ODM, or Content) is running on an external machine.
+#### Scenario 2: Your event emitter (BPMN, BAW Advanced, Case, ODM, Content, or BAIW) is running on an external machine.
 
 If you plan to feed your Business Automation Insights instance with events from a Business Automation Worfklow server or from an Operational Decision Manager server running on an external machine (for example, on IBM Cloud), you need to through the following steps:
 
@@ -176,13 +173,11 @@ To update Kafla settings, run the following commands (replacing 2.3.4.5 with the
 ---
 ### 5. Install IBM Business Automation Insights Developer Edition
 
-#### 1. Load images into Minikube docker registry.
+#### 1. Add IBM Charts repository
 
 ```
-tar xvf ibm-bai-dev-3.1.0-dev.tar.gz
-cd images
-for f in *.tar.gz; do cat $f | docker load; done
-cd ..
+helm repo add ibm-charts https://raw.githubusercontent.com/IBM/charts/master/repo/stable
+helm repo update
 ```
 
 #### 2. Create a security policy and a service account for Elasticsearch.
@@ -194,7 +189,7 @@ kubectl create rolebinding bai-rolebinding --role=bai-role --serviceaccount=bai:
 
 #### 3. Choose the type of event processing you want to deploy.
 
-You can choose: `bpmn`, `bawadv`, `icm`, `odm`, or `content`.
+You can choose: `bpmn`, `bawadv`, `icm`, `odm`, `content`, or `baiw`.
 
 ```
 EVENT_PROCESSING_TYPE=<event-processing-type>
@@ -203,10 +198,7 @@ EVENT_PROCESSING_TYPE=<event-processing-type>
 #### 4. Deploy the bai release.
 
 ```
-cd charts
-tar xvf ibm-business-automation-insights-dev-3.1.0-dev.tgz
-cd ..
-helm install --wait --name bai-release --namespace bai charts/ibm-business-automation-insights-dev -f configuration/easy-install.yaml --set kafka.bootstrapServers=$(minikube ip):31090 --set ${EVENT_PROCESSING_TYPE}.install=true
+helm install ibm-charts/ibm-business-automation-insights-dev --version 3.2.0 --wait --name bai-release --namespace bai -f configuration/easy-install.yaml --set kafka.bootstrapServers=$(minikube ip):31090 --set ${EVENT_PROCESSING_TYPE}.install=true
 ```
 
 #### 5. Verify

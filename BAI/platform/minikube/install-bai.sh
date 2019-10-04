@@ -27,7 +27,6 @@ showHelp() {
     echo " - A YAML file that defines the pod security policy"
     echo " - A YAML file for the Kafka installation"
     echo " - A YAML file for the Business Automation Insights installation"
-    echo " - $LVAR_BAI_IMAGES that contains the Business Automation Insights release"
     echo
     echo "--------------------------------------------------------------------------"
     echo "Arguments:"
@@ -37,6 +36,7 @@ showHelp() {
     echo "      - bawadv "
     echo "      - icm  "
     echo "      - odm "
+    echo "      - baiw "
     echo "  -p <YAML file for persistent volumes >  Mandatory. "
     echo "  -s <YAML file for pod security policy >  Mandatory. "
     echo "  -k <YAML file for Kafka installation > Mandatory. "
@@ -147,6 +147,7 @@ kubectl apply -f "$LVAR_PV_YAML" -n bai
 echo "Initializing helm "
 helm init --wait
 helm repo add confluent https://confluentinc.github.io/cp-helm-charts
+helm repo add ibm-charts https://raw.githubusercontent.com/IBM/charts/master/repo/stable
 helm repo update
 
 echo "Creating the Kafka namespace"
@@ -156,8 +157,6 @@ echo "Tiller is $(which tiller)"
 echo "Installing Kafka"
 # due to https://github.com/helm/helm/issues/3173 and others, adding a timeout argument...
 helm install --wait --timeout 999999 --name kafka-release --namespace kafka -f "$LVAR_KAFKA_YAML" --set cp-kafka.customEnv.ADVERTISED_LISTENER_HOST=$(echo $LVAR_EMITTER_IP) confluent/cp-helm-charts
-
-expand-BAI-Charts
 
 if [ ! -z "$LVAR_CONFIG_MAP_YAML" ]; then
     cp "$LVAR_CONFIG_MAP_YAML" charts/ibm-business-automation-insights-dev/templates
@@ -169,4 +168,4 @@ kubectl create -f "$LVAR_PSP_YAML" -n bai
 kubectl create rolebinding bai-rolebinding --role=bai-role --serviceaccount=bai:bai-release-bai-psp-sa -n bai
 
 echo "Installing Business Automation Insights"
-helm install --wait --timeout 999999 --name bai-release --namespace bai charts/ibm-business-automation-insights-dev -f "$LVAR_BAI_YAML" --set kafka.bootstrapServers=$(echo $LVAR_KAFKA_IP):31090 --set ${EVENT_PROCESSING_TYPE}.install=true
+helm install ibm-charts/ibm-business-automation-insights-dev --version 3.2.0 --wait --timeout 999999 --name bai-release --namespace bai -f "$LVAR_BAI_YAML" --set kafka.bootstrapServers=$(echo $LVAR_KAFKA_IP):31090 --set ${EVENT_PROCESSING_TYPE}.install=true

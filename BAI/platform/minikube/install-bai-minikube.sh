@@ -1,7 +1,7 @@
 #!/bin/bash
 
 LVAR_SCRIPT_NAME="$(basename $0)"
-LVAR_BAI_VERSION="3.1.0"
+LVAR_BAI_VERSION="3.2.0"
 LVAR_MINIKUBE_VERSION="1.0.1"
 LVAR_LOCALHOST_IP=""
 LVAR_FORCE_MINIKUBE_VERSION="false"
@@ -25,7 +25,6 @@ showHelp() {
     echo " - configuration/easy-install-kafka.yaml"
     echo " - configuration/easy-install.yaml"
     echo " - install-bai-minikube.sh"
-    echo " - $LVAR_BAI_IMAGES"
     echo
     echo "--------------------------------------------------------------------------"
     echo "Arguments:"
@@ -36,6 +35,7 @@ showHelp() {
     echo "      - icm  "
     echo "      - odm "
     echo "      - content "
+    echo "      - baiw "
     echo "  -i <local machine IP address>"
     echo "      Optional. Needed only if the event emitter is not present on the local machine."
     echo "      Defaults to the value of \"minikube ip\"."
@@ -52,25 +52,6 @@ showHelp() {
     exit 1
 }
 echo
-
-purgeOldImages() {
-    images=$(docker images | grep "bai-" | tr -s " " | cut -d " " -f 3)
-    if [ ! -z "$images" ]; then
-        echo "removing docker images $images"
-        docker rmi -f $images
-    else
-        echo "No Docker images to remove."
-    fi
-}
-
-installNewImages() {
-    echo "Loading Business Automation Insights images"
-    purgeOldImages
-    tar xvf "$LVAR_BAI_IMAGES"
-    cd images
-    for f in *.tar.gz; do cat $f |  docker load ; done
-    cd ..
-}
 
 disableVirtualBoxDHCP() {
     # this is supposed to work on both Win10/GitBash and OSx Mojave platforms.
@@ -90,7 +71,7 @@ disableVirtualBoxDHCP() {
     echo "Disabled DHCP server on VirtualBox network name: "$LVAR_MINIKUBE_NETWORK_NAME""
 }
 
-while getopts :e:d:h:i:f option;
+while getopts  :fhd:e:i:  option;
 do
     case ${option} in
         e)
@@ -125,7 +106,7 @@ if [ -z "${EVENT_PROCESSING_TYPE}" ]; then
     showHelp
 fi
 
-if [ "${EVENT_PROCESSING_TYPE}" != "odm" -a  "${EVENT_PROCESSING_TYPE}" != "icm" -a "${EVENT_PROCESSING_TYPE}" != "bpmn" -a "${EVENT_PROCESSING_TYPE}" != "bawadv" -a "${EVENT_PROCESSING_TYPE}" != "content" ]; then
+if [ "${EVENT_PROCESSING_TYPE}" != "odm" -a  "${EVENT_PROCESSING_TYPE}" != "icm" -a "${EVENT_PROCESSING_TYPE}" != "bpmn" -a "${EVENT_PROCESSING_TYPE}" != "bawadv" -a "${EVENT_PROCESSING_TYPE}" != "content" -a "${EVENT_PROCESSING_TYPE}" != "baiw" ]; then
     echo "ERROR: This event type is invalid and cannot be processed: ${EVENT_PROCESSING_TYPE}"
     showHelp
 fi
@@ -136,7 +117,6 @@ checkFileExist "./configuration/easy-install-kafka.yaml"
 checkFileExist "./configuration/easy-install.yaml"
 checkFileExist "./install-bai-minikube.sh"
 checkFileExist "./install-bai.sh"
-checkFileExist "./$LVAR_BAI_IMAGES"
 
 if [ "$LVAR_FORCE_MINIKUBE_VERSION" == "false" ]; then
     echo "Checking the minikube version."
@@ -180,7 +160,5 @@ else
     echo "Warning: VirtualBox does not exist. The Kafka communication port cannot be opened."
     echo "The event emitter must be hosted locally."
 fi
-
-installNewImages
 
 ./install-bai.sh -e "$EVENT_PROCESSING_TYPE" -i "$(minikube ip)" -j "$LVAR_LOCALHOST_IP" -p ./configuration/pv.yaml -s ./configuration/bai-psp.yaml -k ./configuration/easy-install-kafka.yaml -b ./configuration/easy-install.yaml

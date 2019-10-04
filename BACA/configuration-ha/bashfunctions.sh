@@ -16,19 +16,19 @@ export ICP_account_id="id-"$ICP_clustername"-account"
 function loginToCluster() {
    if [[ $ICP_VERSION == "3.1.0" || $ICP_VERSION == "3.1.2" ]]; then   
       echo
-      #echo "\x1B[1;31m Logging into ICP using: bx pr login -a https://$MasterIp:8443 --skip-ssl-validation -u admin
+      #echo "\x1B[1;31m Logging into ICP using: bx pr login -a https://$MASTERIP:8443 --skip-ssl-validation -u admin
       # -p admin -c id-mycluster-account.  \x1B[0m"
       export ICP_USER_PASSWORD_DECODE=$(echo $ICP_USER_PASSWORD | base64 --decode)
       #ICP 3.10
-     cloudctl login -a https://$MasterIp:8443 --skip-ssl-validation -u $ICP_USER -p $ICP_USER_PASSWORD_DECODE -c $ICP_account_id -n default
+     cloudctl login -a https://$MASTERIP:8443 --skip-ssl-validation -u $ICP_USER -p $ICP_USER_PASSWORD_DECODE -c $ICP_account_id -n default
   fi
   if [[ $OCP_VERSION == "3.11" ]]; then
       echo
       export OCP_USER_PASSWORD_DECODE=$(echo $OCP_USER_PASSWORD | base64 --decode)
-      #echo "\x1B[1;31m Logging into OCP using: oc login https://$MasterIp:8443 --insecure-skip-tls-verify=true -u $OCP_USER
+      #echo "\x1B[1;31m Logging into OCP using: oc login https://$MASTERIP:8443 --insecure-skip-tls-verify=true -u $OCP_USER
       # -p $OCP_USER_PASSWORD_DECODE.  \x1B[0m"
       #OCP 3.11
-      oc login https://$MasterIp:8443 --insecure-skip-tls-verify=true -u $OCP_USER -p $OCP_USER_PASSWORD_DECODE
+      oc login https://$MASTERIP:8443 --insecure-skip-tls-verify=true -u $OCP_USER -p $OCP_USER_PASSWORD_DECODE
   fi
 }
 
@@ -41,7 +41,7 @@ function downloadHelmClient() {
    if [[ $ICP_VERSION == "3.1.0" || $ICP_VERSION == "3.1.2" ]]; then
       echo
       echo "Downloading Helm 2.9.1 from ICp"
-      curl -kLo helm-linux-amd64-v2.9.1.tar.gz https://$MasterIp:8443/api/cli/helm-linux-amd64.tar.gz
+      curl -kLo helm-linux-amd64-v2.9.1.tar.gz https://$MASTERIP:8443/api/cli/helm-linux-amd64.tar.gz
       echo
 	  echo "Moving helm to /usr/local/bin and chmod 755 helm"
       tar -xvf helm-linux-amd64-v2.9.1.tar.gz
@@ -116,8 +116,8 @@ function getWorkerIPs() {
     if [[ $ICP_VERSION == "3.1.0" || $ICP_VERSION == "3.1.2" ]]; then
         export ICP_USER_PASSWORD_DECODE=$(echo $ICP_USER_PASSWORD | base64 --decode)
         echo "About to get all the worker IPs from $ICP_VERSION"
-        echo  "login -a https://$MasterIp:8443 --skip-ssl-validation -u $ICP_USER -p $ICP_USER_PASSWORD_DECODE -c $ICP_account_id"
-        cloudctl login -a https://$MasterIp:8443 --skip-ssl-validation -u $ICP_USER -p $ICP_USER_PASSWORD_DECODE -c $ICP_account_id -n default
+        echo  "login -a https://$MASTERIP:8443 --skip-ssl-validation -u $ICP_USER -p $ICP_USER_PASSWORD_DECODE -c $ICP_account_id"
+        cloudctl login -a https://$MASTERIP:8443 --skip-ssl-validation -u $ICP_USER -p $ICP_USER_PASSWORD_DECODE -c $ICP_account_id -n default
         export WORKER_IPs=$(cloudctl cm workers --json | grep "publicIP" | awk '{print $2}' | cut -d ',' -f1 | tr -d '"')
             if [ -z "$WORKER_IPs" ]; then
                 echo "Cannot find public IP for worker nodes.  Will try to check for Private IP now"
@@ -220,14 +220,13 @@ function getNFSServer() {
         fi
         echo "Creating necessary folder in $NFS_IP..."
         ssh $SSH_USER@$NFS_IP -oStrictHostKeyChecking=no "$SUDO_CMD mkdir -p /exports/smartpages/$KUBE_NAME_SPACE/{logs,data,config}"
-        ssh $SSH_USER@$NFS_IP -oStrictHostKeyChecking=no "$SUDO_CMD mkdir -p /exports/smartpages/$KUBE_NAME_SPACE/logs/{backend,frontend,callerapi,processing-extraction,pdfprocess,setup,interprocessing,classifyprocess-classify,ocr-extraction,postprocessing,reanalyze,updatefiledetail,spfrontend,minio,redis,rabbitmq,mongo,mongoadmin,utf8process}"
+        ssh $SSH_USER@$NFS_IP -oStrictHostKeyChecking=no "$SUDO_CMD mkdir -p /exports/smartpages/$KUBE_NAME_SPACE/logs/{backend,frontend,callerapi,processing-extraction,pdfprocess,setup,interprocessing,classifyprocess-classify,ocr-extraction,postprocessing,reanalyze,updatefiledetail,spfrontend,redis,rabbitmq,mongo,mongoadmin,utf8process}"
         ssh $SSH_USER@$NFS_IP -oStrictHostKeyChecking=no "$SUDO_CMD mkdir -p /exports/smartpages/$KUBE_NAME_SPACE/config/backend"
 
 
 
         echo "Creating data directory on NFS ..."
-        ssh $SSH_USER@$NFS_IP -oStrictHostKeyChecking=no "$SUDO_CMD mkdir -p /exports/smartpages/$KUBE_NAME_SPACE/data/{mongo,mongoadmin,redis,rabbitmq,minio}"
-        ssh $SSH_USER@$NFS_IP -oStrictHostKeyChecking=no "$SUDO_CMD mkdir -p /exports/smartpages/$KUBE_NAME_SPACE/data/minio/{vol0,vol1,vol2,vol3}"
+        ssh $SSH_USER@$NFS_IP -oStrictHostKeyChecking=no "$SUDO_CMD mkdir -p /exports/smartpages/$KUBE_NAME_SPACE/data/{mongo,mongoadmin,redis,rabbitmq}"
 
 
          echo "Setting owner (51000:51001)  for BACA's PVC"
@@ -302,25 +301,30 @@ function getNFSServer() {
 }
 function calMemoryLimitedDist(){
 
-
+        echo -e "\x1B[1;32mChecking to see if bc package is installed\x1B[0m"
+        dpkg -l | awk {'print $2'} |grep ^bc$ > /dev/null
+        if [[ $? != "0" ]]; then
+            echo "Installing bc package for resource calculation"
+            apt install bc -y
+        fi
         echo CALLERAPI_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
+        echo BACKEND_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.04 * 1024" | bc)Mi"
+        echo FRONTEND_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
+        echo POST_PROCESS_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
+        echo PDF_PROCESS_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.06 * 1024" | bc)Mi"
+        echo UTF8_PROCESS_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.06 * 1024" | bc)Mi"
         echo SETUP_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
         echo OCR_EXTRACTION_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.09 * 1024" | bc)Mi"
         echo CLASSIFY_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.06 * 1024" | bc)Mi"
         echo PROCESSING_EXTRACTION_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.09 * 1024" | bc)Mi"
-        echo INTER_PROCESSING_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
-        echo POST_PROCESS_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
-        echo PDF_PROCESS_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.06 * 1024" | bc)Mi"
-        echo UTF8_PROCESS_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.06 * 1024" | bc)Mi"
+ #       echo INTER_PROCESSING_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
         echo REANALYZE_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.045 * 1024" | bc)Mi"
         echo UPDATEFILE_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
-        echo FRONTEND_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
-        echo BACKEND_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.04 * 1024" | bc)Mi"
+        echo RABBITMQ_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.06 * 1024" | bc)Mi"
+#        echo MINIO_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.04 * 1024" | bc)Mi"
+        echo REDIS_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.04 * 1024" | bc)Mi"
         echo MONGO_LIMITED_MEMORY="$(echo "$MONGO_SERVER_MEMORY  * 0.6 * 1024" | bc)Mi"
         echo MONGO_ADMIN_LIMITED_MEMORY="$(echo "$MONGO_ADMIN_SERVER_MEMORY * 0.6 * 1024" | bc)Mi"
-        echo RABBITMQ_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.06 * 1024" | bc)Mi"
-        echo MINIO_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.04 * 1024" | bc)Mi"
-        echo REDIS_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.04 * 1024" | bc)Mi"
         export mongo_memory_value="$(echo "$MONGO_SERVER_MEMORY  * 0.6 " | bc)"
         export mongo_admin_memory_value="$(echo "$MONGO_ADMIN_SERVER_MEMORY  * 0.6 " | bc)"
 
@@ -350,24 +354,24 @@ function calMemoryLimitedDist(){
 
 function calMemoryLimitedShared(){
         echo CALLERAPI_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
+        echo BACKEND_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.04 * 1024" | bc)Mi"
+        echo FRONTEND_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
+        echo POST_PROCESS_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
+        echo PDF_PROCESS_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.06 * 1024" | bc)Mi"
+        echo UTF8_PROCESS_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.06 * 1024" | bc)Mi"
         echo SETUP_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
         echo OCR_EXTRACTION_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.09 * 1024" | bc)Mi"
         echo CLASSIFY_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.06 * 1024" | bc)Mi"
         echo PROCESSING_EXTRACTION_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.09 * 1024" | bc)Mi"
-        echo INTER_PROCESSING_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
-        echo POST_PROCESS_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
-        echo PDF_PROCESS_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.06 * 1024" | bc)Mi"
-        echo UTF8_PROCESS_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.06 * 1024" | bc)Mi"
+#        echo INTER_PROCESSING_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
         echo REANALYZE_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.045 * 1024" | bc)Mi"
         echo UPDATEFILE_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
-        echo FRONTEND_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.03 * 1024" | bc)Mi"
-        echo BACKEND_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.04 * 1024" | bc)Mi"
-        echo MONGO_LIMITED_MEMORY="$(echo "$MONGO_SERVER_MEMORY * 0.1 * 1024" | bc)Mi"
-        echo MONGO_ADMIN_LIMITED_MEMORY="$(echo "$MONGO_ADMIN_SERVER_MEMORY * 0.1 * 1024" | bc)Mi"
         echo RABBITMQ_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.06 * 1024" | bc)Mi"
-        echo MINIO_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.04 * 1024" | bc)Mi"
+#        echo MINIO_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.04 * 1024" | bc)Mi"
         echo REDIS_LIMITED_MEMORY="$(echo "$SERVER_MEMORY * 0.04 * 1024" | bc)Mi"
+        echo MONGO_LIMITED_MEMORY="$(echo "$MONGO_SERVER_MEMORY * 0.1 * 1024" | bc)Mi"
         export mongo_memory_value="$(echo "$MONGO_SERVER_MEMORY  * 0.1" | bc)"
+        echo MONGO_ADMIN_LIMITED_MEMORY="$(echo "$MONGO_ADMIN_SERVER_MEMORY * 0.1 * 1024" | bc)Mi"
         export mongo_admin_memory_value="$(echo "$MONGO_ADMIN_SERVER_MEMORY  * 0.1" | bc)"
 
 #    echo "mongo_memory_value=$mongo_memory_value"

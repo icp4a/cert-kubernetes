@@ -1,7 +1,7 @@
 #!/bin/bash
 
 LVAR_SCRIPT_NAME="$(basename $0)"
-LVAR_BAI_VERSION="3.1.0"
+LVAR_BAI_VERSION="3.2.0"
 LVAR_LOCALHOST_IP=""
 
 set -e
@@ -17,7 +17,6 @@ showHelp() {
     echo "Prerequisites"
     echo "These files must be present in the same directory:"
     echo " - configuration/easy-install-kafka.yaml"
-    echo " - ibm-bai-dev-${LVAR_BAI_VERSION}-dev.tar.gz"
     echo
     echo "--------------------------------------------------------------------------"
     echo "Arguments:"
@@ -61,7 +60,6 @@ if [ -z "${LVAR_LOCALHOST_IP}" ]; then
 fi
 
 checkFileExist "./configuration/easy-install-kafka.yaml"
-checkFileExist "$LVAR_BAI_IMAGES"
 
 echo "Initializing helm "
 helm init --wait

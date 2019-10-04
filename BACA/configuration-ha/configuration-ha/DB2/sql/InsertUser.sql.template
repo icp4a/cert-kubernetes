@@ -1,5 +1,0 @@
-connect to $tenant_db_name ;
-set schema $tenant_ontology ;
-insert into user_detail (email,first_name,last_name,user_name,company,expire) values ('$tenant_email','$tenant_first_name','$tenant_last_name','$tenant_user_name','$tenant_company',10080) ;
-insert into login_detail (user_id,role,status,logged_in) select user_id,'Admin','1',0 from user_detail where email='$tenant_email' ;
-connect reset ;

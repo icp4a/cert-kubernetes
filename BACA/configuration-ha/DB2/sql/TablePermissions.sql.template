@@ -15,5 +15,6 @@ GRANT ALTER ON TABLE $tenant_ontology.SMARTPAGES_OPTIONS TO USER $tenant_db_user
 GRANT ALTER ON TABLE $tenant_ontology.FONTS TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.FONTS_TRANSID TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.DB_BACKUP TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.PATTERN TO USER $tenant_db_user ;
 
 CONNECT RESET;
