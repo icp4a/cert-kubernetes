@@ -93,6 +93,26 @@ $ helm install --name my-odm-prod-release -f myvalues.yaml /path/to/ibm-odm-prod
 
 3. Verify that the version of Decision Center and the Decision Server console is the new version and they are running on the same URL and port as before.
 
+4. If your release uses an internal database, go to the `my-odm-prod-release-dbserver` pod and change the `volumeMounts` definition in the deployment YAML file. The following definition is from a previous version.
+
+   ```console
+   "volumeMounts": [ { 
+   "name": "my-odm-prod-release-ibm-odm-prod-volume", 
+   "mountPath": "/var/lib/postgresql/", 
+   "subPath": "pgdata" } ],
+   ```
+   The definition for chart version 2.2.1 must concatenate the `mountPath` and `SubPath` parameters.
+
+   ```console
+   "volumeMounts": [ { 
+   "name": "my-odm-prod-release-ibm-odm-prod-volume",
+   "mountPath": "/var/lib/postgresql/pgdata" } ],
+   ```
+    
+   > **Caution**: If you do not make this change, historical data from Decision Center and Decision Server is not available in the upgrade.
+  
+   After you make the change, restart the pod.
+
 ## Uninstall a Kubernetes release of Operational Decision Manager
 
 To uninstall and delete a release named `my-odm-prod-release`, use the following command:

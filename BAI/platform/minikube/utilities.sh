@@ -36,7 +36,7 @@ checkValidIPV6() {
     fi
    return $ret
 }
-LVAR_BAI_VERSION="3.1.0"
+LVAR_BAI_VERSION="3.2.0"
 LVAR_SPRINT_VERSION="dev"
 LVAR_BAI_IMAGES_SPRINT="ibm-bai-dev-$LVAR_BAI_VERSION-$LVAR_SPRINT_VERSION.tar.gz"
 LVAR_BAI_IMAGES="ibm-bai-dev-$LVAR_BAI_VERSION-dev.tar.gz"

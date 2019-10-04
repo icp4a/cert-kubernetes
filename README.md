@@ -50,10 +50,10 @@ Before you install any of the containerized software:
 
     3. Create a pull secret by running a `kubectl create secret` command.
        ``` console
-       $ kubectl create secret docker-registry <my_pull_secret> --docker-server=us.icr.io --docker-username=iamapikey --docker-password="<API_KEY_GENERATED>" --docker-email=user@foo.com
+       $ kubectl create secret docker-registry <my_pull_secret> --docker-server=cp.icr.io --docker-username=iamapikey --docker-password="<API_KEY_GENERATED>" --docker-email=user@foo.com
        ```
 
-       > **Note**:The us.icr.io registry domain name is for the region us-south. Use the domain name of the registry that is associated to your cluster location.
+       > **Note**: The `cp.icr.io` value for the **docker-server** parameter is the only registry domain name that contains the images.
 
     4. Take a note of the secret and the server values so that you can set them to the **pullSecrets** and **repository** parameters when you run the installation command for your containers.
 

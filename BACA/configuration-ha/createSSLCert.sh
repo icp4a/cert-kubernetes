@@ -35,7 +35,7 @@ function createSSLCert() {
         openssl x509 -req -days 365 -in $PWD/certificate.csr -CA $PWD/CA.crt -CAkey $PWD/CA.key -set_serial 01 -out $PWD/certificate.crt
         cat $PWD/certificate.key $PWD/certificate.crt > $PWD/mongo.key
         cat $PWD/CA.key $PWD/CA.crt > $PWD/mongo.pem
-        cp $PWD/CA.crt $PWD/mongo.crt
+        cp $PWD/certificate.crt $PWD/mongo.crt
     fi
 
     echo "openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout $PWD/public.crt -out $PWD/public.crt -subj "/CN=127.0.0.1" "
@@ -60,12 +60,12 @@ function createSecret (){
     kubectl -n $KUBE_NAME_SPACE create secret tls baca-ingress-secret --key $PWD/tls.key --cert $PWD/tls.crt \
     --dry-run -o yaml | kubectl apply -f -
 
-#TODO: Place holder for DB2 cert.  Upstream process MUST put cert in the parent dir.
-#    echo "kubectl -n $KUBE_NAME_SPACE create secret tls spdb2secret --key $PWD/rabbitmq.key --cert $PWD/rabbitmq.crt"
-#    kubectl -n $KUBE_NAME_SPACE create secret tls spdb2secret$KUBE_NAME_SPACE --key $PWD/rabbitmq.key --cert $PWD/rabbitmq.crt
-# END OF DB2
-    if [[ $LDAP_URL =~ ^'ldaps' && ! -z $LDAP_CRT_NAME  ]]; then
-        echo "kubectl -n $KUBE_NAME_SPACE create secret generic with LDAP certs "
+#    if [[ $DB_SSL == "y" || $DB_SSL == "Y" ]]; then
+#        echo "kubectl -n sp create secret generic baca-db2-secret --from-file=$PWD/db2-cert.arm"
+#        kubectl -n sp create secret generic baca-db2-secret --from-file=$PWD/db2-cert.arm
+#    fi
+    if [[ ($LDAP_URL =~ ^'ldaps' && ! -z $LDAP_CRT_NAME) && ($DB_SSL == "n")  ]]; then
+        echo "kubectl -n $KUBE_NAME_SPACE create secret generic with LDAP certs AND no DB2 cert "
         kubectl -n $KUBE_NAME_SPACE create secret generic baca-secrets$KUBE_NAME_SPACE \
         --from-file=$PWD/celery.pem --from-file=$PWD/celery.crt --from-file=$PWD/celery.key \
         --from-file=$PWD/mongo.pem --from-file=$PWD/mongo.crt --from-file=$PWD/mongo.key \
@@ -74,8 +74,29 @@ function createSecret (){
         --from-file=$PWD/rabbitmq.pem --from-file=$PWD/rabbitmq.key --from-file=$PWD/rabbitmq.crt \
         --from-file=$PWD/$LDAP_CRT_NAME \
         --dry-run -o yaml | kubectl apply -f -
+    elif [[ ($LDAP_URL =~ ^'ldaps' && ! -z $LDAP_CRT_NAME) && ($DB_SSL == "y"  && ! -z $DB_CRT_NAME) ]]; then
+        echo "kubectl -n $KUBE_NAME_SPACE create secret generic with DB certs AND LDAP certs "
+        kubectl -n $KUBE_NAME_SPACE create secret generic baca-secrets$KUBE_NAME_SPACE \
+        --from-file=$PWD/celery.pem --from-file=$PWD/celery.crt --from-file=$PWD/celery.key \
+        --from-file=$PWD/mongo.pem --from-file=$PWD/mongo.crt --from-file=$PWD/mongo.key \
+        --from-file=$PWD/public.crt --from-file=$PWD/private.key \
+        --from-file=$PWD/redis.pem --from-file=$PWD/redis.key --from-file=$PWD/redis.crt \
+        --from-file=$PWD/rabbitmq.pem --from-file=$PWD/rabbitmq.key --from-file=$PWD/rabbitmq.crt \
+        --from-file=$PWD/$LDAP_CRT_NAME \
+        --from-file=$PWD/$DB_CRT_NAME \
+        --dry-run -o yaml | kubectl apply -f -
+    elif [[ ($DB_SSL == "y"  && ! -z $DB_CRT_NAME) && ($LDAP_URL != ^'ldaps') ]]; then
+        echo "kubectl -n $KUBE_NAME_SPACE create secret generic with DB certs AND NO LDAP certs "
+        kubectl -n $KUBE_NAME_SPACE create secret generic baca-secrets$KUBE_NAME_SPACE \
+        --from-file=$PWD/celery.pem --from-file=$PWD/celery.crt --from-file=$PWD/celery.key \
+        --from-file=$PWD/mongo.pem --from-file=$PWD/mongo.crt --from-file=$PWD/mongo.key \
+        --from-file=$PWD/public.crt --from-file=$PWD/private.key \
+        --from-file=$PWD/redis.pem --from-file=$PWD/redis.key --from-file=$PWD/redis.crt \
+        --from-file=$PWD/rabbitmq.pem --from-file=$PWD/rabbitmq.key --from-file=$PWD/rabbitmq.crt \
+        --from-file=$PWD/$DB_CRT_NAME \
+        --dry-run -o yaml | kubectl apply -f -
     else
-        echo "kubectl -n $KUBE_NAME_SPACE create secret generic "
+        echo "kubectl -n $KUBE_NAME_SPACE create secret generic with no LDAP and DB2 certs"
         kubectl -n $KUBE_NAME_SPACE create secret generic baca-secrets$KUBE_NAME_SPACE \
         --from-file=$PWD/celery.pem --from-file=$PWD/celery.crt --from-file=$PWD/celery.key \
         --from-file=$PWD/mongo.pem --from-file=$PWD/mongo.crt --from-file=$PWD/mongo.key \
@@ -84,9 +105,6 @@ function createSecret (){
         --from-file=$PWD/rabbitmq.pem --from-file=$PWD/rabbitmq.key --from-file=$PWD/rabbitmq.crt \
         --dry-run -o yaml | kubectl apply -f -
     fi
-
-
-
 
 }
 function createMongoSecrets (){
@@ -154,16 +172,6 @@ else
     --from-literal=BASE_DB_PWD="$BASE_DB_PWD" \
     --dry-run -o yaml | kubectl apply -f -
 fi
-}
-function createMinioSecret(){
-echo -e "\x1B[1;32mAbout to create secret for Minio....\x1B[0m"
- export accesskey=$(openssl rand -base64 10 | tr -d "=+/" | cut -c1-29)
- export secretkey=$(openssl rand -base64 10 | tr -d "=+/" | cut -c1-29)
- echo -e "\x1B[1;32mCreating minio secret....\x1B[0m"
-    kubectl -n $KUBE_NAME_SPACE create secret generic baca-minio \
-    --from-literal=accesskey="$accesskey" \
-    --from-literal=secretkey="$secretkey" \
-    --dry-run -o yaml | kubectl apply -f -
 }
 
 function createRabbitmaSecret(){

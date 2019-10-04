@@ -8,20 +8,3 @@ GRANT USE OF TABLESPACE USERSPACE1 TO USER $base_db_user ;
 
 CONNECT RESET;
 
-CONNECT TO $base_db_name ;
-
-SET SCHEMA $base_db_user ;
-
-CREATE TABLE TENANTINFO  
-      (tenantid varchar(128) NOT NULL,  
-      ontology varchar(128) not null,
-      tenanttype smallint not null with default,
-      rdbmsengine varchar(128)  not null, 
-      bacaversion varchar(1024) not null, 
-      rdbmsconnection  varchar(1024) for bit data default null,
-      mongoconnection varchar(1024)  for bit data default null,
-      mongoadminconnection varchar(1024) for bit data default null,
-      CONSTRAINT tenantinfo_pkey PRIMARY KEY (tenantid, ontology) 
-      );
-
-CONNECT RESET;

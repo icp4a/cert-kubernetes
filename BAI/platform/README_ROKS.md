@@ -99,20 +99,69 @@ For more information, see [Installing containers on Red Hat OpenShift by using C
     Replace the <MY_PULL_SECRET> placeholder with the secret that you 
     created in [Before you begin](#before-you-begin-create-a-cluster-and-get-access-to-the-container-images). Then, add the following parameters in the `values.yaml` file.
     
-    ```
-   imageCredentials:
-         imagePullSecret: <MY_PULL_SECRET>
+    ```yaml
+    imageCredentials:
+      imagePullSecret: <MY_PULL_SECRET>
 
-   ibm-dba-ek:
-     image:
-       imagePullSecret: <MY_PULL_SECRET>
+    ibm-dba-ek:
+      image:
+        imagePullSecret: <MY_PULL_SECRET>
     ```
     
-    b. Activate persistence.
+    b. Image repository
+    
+    Add the following parameters in the `values.yaml` file. Replace the <DOCKER_REGISTRY_PATH> placeholder with the IBM Docker registry path.
+    ```yaml
+    setup:
+      image:
+        repository: <DOCKER_REGISTRY_PATH>/bai-setup
+    admin:
+      image:
+        repository: <DOCKER_REGISTRY_PATH>/bai-admin
+    flink:
+      image:
+        repository: <DOCKER_REGISTRY_PATH>/bai-flink
+      zookeeper:
+        image:
+          repository: <DOCKER_REGISTRY_PATH>/bai-flink-zookeeper
+    bpmn:
+      image:
+        repository: <DOCKER_REGISTRY_PATH>/bai-bpmn
+    icm:
+      image:
+        repository: <DOCKER_REGISTRY_PATH>/bai-icm
+    odm:
+      image:
+        repository: <DOCKER_REGISTRY_PATH>/bai-odm
+    content:
+      image:
+        repository: <DOCKER_REGISTRY_PATH>/bai-content
+    bawadv:
+      image:
+        repository: <DOCKER_REGISTRY_PATH>/bai-bawadv
+    ingestion:
+      image:
+        repository: <DOCKER_REGISTRY_PATH>/bai-ingestion 
+    initImage:
+      image:
+        repository: <DOCKER_REGISTRY_PATH>/bai-init
+    ibm-dba-ek:
+      elasticsearch:
+        init:
+          image:
+            repository: <DOCKER_REGISTRY_PATH>/bai-init
+        image:
+          repository: <DOCKER_REGISTRY_PATH>/bai-elasticsearch 
+      kibana:
+        image:
+          repository: <DOCKER_REGISTRY_PATH>/bai-kibana
+    ```
+    
+    c. Activate persistence.
 
     The following example uses dynamic provisioning and the `ibmc-file-retain-gold` storage class. For Elasticsearch volumes, use the fastest possible storage class.
 
-    ```console
+    ```yaml
     persistence:
       useDynamicProvisioning: true
 
@@ -132,44 +181,44 @@ For more information, see [Installing containers on Red Hat OpenShift by using C
             storageClass: "ibmc-file-retain-gold"
     ```
 
-    c. Configure the connection between your Kafka tool and Business Automation Insights.
+    d. Configure the connection between your Kafka tool and Business Automation Insights.
 
     In the `values.yaml` file, configure the connection to Kafka.
 
     For example, for a Kafka without authentication:
 
-    ```console
+    ```yaml
     kafka:
       bootstrapServers: "kafka-hostname:9092"
       securityProtocol: "PLAINTEXT"
       propertiesConfigMap: ""
     ```
 
-    d. Enable init of the Flink storage directory.
+    e. Enable init of the Flink storage directory.
 
     When deploying IBM Business Automation Insights on IBM Cloud, the Flink init container needs to be run as privileged, such that it can
     change the ownership and permissions of its storage directory. For details, see https://cloud.ibm.com/docs/containers?topic=containers-cs_troubleshoot_storage#file_app_failures
     and https://cloud.ibm.com/docs/containers?topic=containers-cs_troubleshoot_storage#cs_storage_nonroot. To enable initialization
     of the Flink storage directory, add `flink.initStorageDirectory: true` in your `values.yaml`.
 
-    ```console
+    ```yaml
     flink:
       initStorageDirectory: true
     ```
 
-    e. Enable event processing.
+    f. Enable event processing.
 
-    For example, to install only ODM event processing, edit your `values.yaml` file as follows.
+    For example, to install only BPMN event processing, edit your `values.yaml` file as follows.
 
-    ```console
+    ```yaml
     bpmn:
-      install: false
+      install: true
 
     icm:
       install: false
 
     odm:
-      install: true
+      install: false
 
     content:
       install: false
@@ -178,13 +227,13 @@ For more information, see [Installing containers on Red Hat OpenShift by using C
       install: false
     ```
     
-    f. Configure event ingestion in HDFS.
+    g. Configure event ingestion in HDFS.
     
     By default, events are ingested in HDFS in a dedicated bucket which must be created beforehand with appropriate permissions. 
     Indicate the path to the HDFS bucket by using the `flink.storageBucketUrl` parameter in your `values.yaml` file. 
     Replace the placeholders <HADOOP_HOST_OR_IP> and <BUCKET_PATH> with the actual values.
     
-    ```console
+    ```yaml
     flink:
       storageBucketUrl: "hdfs://<HADOOP_HOST_OR_IP>/<BUCKET_PATH>"
     
@@ -196,7 +245,7 @@ For more information, see [Installing containers on Red Hat OpenShift by using C
     
     To disable event ingestion, edit your `values.yaml` file as follows.
      
-    ```console
+    ```yaml
     ingestion:
       install: false  
     ```

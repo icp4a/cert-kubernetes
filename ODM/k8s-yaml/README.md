@@ -72,13 +72,13 @@ $ helm template --name my-odm-prod-release -f myvalues.yaml /path/to/ibm-odm-pro
 
 1. [Download the latest PPA file from IBM Passport Advantage and load the new images.](../README.md#step-2-download-a-product-package-from-ppa-and-load-the-images)
 
-3. Delete the odm-test pod
+2. Delete the odm-test pod
 
    ```console
-   $ kubectl delete pod my-prod-release-odm-test
+   $ kubectl delete pod my-odm-prod-release-odm-test
    ```
 
-2. Create a new chart YAML template file.
+3. Create a new chart YAML template file.
 
    > **WARNING**: You must reuse the same `--set key=value` arguments and/or values.yaml file that were specified during the previous installation or the configuration will be reset to its default values.
 
@@ -99,6 +99,26 @@ $ helm template --name my-odm-prod-release -f myvalues.yaml /path/to/ibm-odm-pro
    > **Note**: The Persistent Volume Claim is not recreated. You can ignore the message: `The PersistentVolumeClaim "my-odm-prod-release-pvclaim" is invalid: spec: Forbidden: is immutable after creation except resources.requests for bound claims`
 
 5. Verify that the version of Decision Center and the Decision Server console is the new version and they are running on the same URL and port as before.
+
+6. If your release uses an internal database, go to the `my-odm-prod-release-dbserver` pod and change the `volumeMounts` definition in the deployment YAML file. The following definition is from a previous version.
+
+   ```console
+   "volumeMounts": [ { 
+   "name": "my-odm-prod-release-ibm-odm-prod-volume", 
+   "mountPath": "/var/lib/postgresql/", 
+   "subPath": "pgdata" } ],
+   ```
+   The definition for chart version 2.2.1 must concatenate the `mountPath` and `SubPath` parameters.
+
+   ```console
+   "volumeMounts": [ { 
+   "name": "my-odm-prod-release-ibm-odm-prod-volume",
+   "mountPath": "/var/lib/postgresql/pgdata" } ],
+   ```
+    
+   > **Caution**: If you do not make this change, historical data from Decision Center and Decision Server is not available in the upgrade.
+  
+   After you make the change, restart the pod.
 
 ## Uninstall a Kubernetes release of Operational Decision Manager
 

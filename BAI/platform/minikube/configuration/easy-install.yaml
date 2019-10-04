@@ -4,8 +4,6 @@
 persistence:
   useDynamicProvisioning: true
 
-imagePullPolicy: Never
-
 kafka:
   bootstrapServers: "kafka-release-cp-kafka-headless:9092"
   securityProtocol: "PLAINTEXT"
@@ -61,8 +59,6 @@ baiw:
   install: false
 
 ibm-dba-ek:
-  image:
-    pullPolicy: Never
   elasticsearch:
     probeInitialDelay: 120
     data:

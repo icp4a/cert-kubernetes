@@ -36,7 +36,7 @@ if [[ $ICP_VERSION == "3.1.2" ]]; then
         echo -e "\x1B[1;32mCreating psp and clusterrole for BACA\x1B[0m"
         kubectl -n $KUBE_NAME_SPACE apply -f ./baca-psp.yaml
         echo -e "\x1B[1;32mCreating rolebinding for BACA\x1B[0m"
-        kubectl -n $KUBE_NAME_SPACE create rolebinding baca-clusterrole-rolebinding --clusterrole=baca-anyuid-clusterrole --group=system:serviceaccounts:$KUBE_NAME_SPACE
+        kubectl -n $KUBE_NAME_SPACE create rolebinding baca-clusterrole-rolebinding --clusterrole=baca-clusterrole --group=system:serviceaccounts:$KUBE_NAME_SPACE
 
     fi
 fi
@@ -55,7 +55,7 @@ fi
 
 
 # Create nfs, and pv/pvc
-getNFSServer
+#getNFSServer
 
 
 #Create SSL cert and secret
@@ -64,13 +64,19 @@ createSecret
 createMongoSecrets
 createLDAPSecret
 createBaseDbSecret
-createMinioSecret
 createRabbitmaSecret
 createRedisSecret
 if [[ $PVCCHOICE == "1" ]]; then
     echo -e "\x1B[1;32mSetting up PV/PVC storage\x1B[0m"
+    getNFSServer
     ./init_persistent.sh
 fi
+
+echo -e "\x1B[1;32mCalling pre-setup scripts to setup pvc for Mongo and Mongo-admin\x1B[0m"
+cd mongo && ./pre-setup.sh
+cd ..
+cd mongoadmin && ./pre-setup.sh
+cd ..
 
 
 #Helm client download and initialization

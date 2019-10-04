@@ -4,7 +4,7 @@ metadata:
   annotations:
     kubernetes.io/description: "This policy allows pods to run with
       any UID and GID, but preventing access to the host."
-  name: baca-anyuid-psp
+  name: baca-psp
 spec:
   allowPrivilegeEscalation: false
   fsGroup:
@@ -30,7 +30,7 @@ spec:
   - SYS_CHROOT
   - DAC_OVERRIDE
   runAsUser:
-    rule: RunAsAny #TODO: We need to set this value to "MustRunAsNonRoot" but minio is currently running as root
+    rule: MustRunAsNonRoot
   seLinux:
     rule: RunAsAny
   supplementalGroups:
@@ -53,12 +53,12 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   annotations:
-  name: baca-anyuid-clusterrole
+  name: baca-clusterrole
 rules:
 - apiGroups:
   - extensions
   resourceNames:
-  - baca-anyuid-psp
+  - baca-psp
   resources:
   - podsecuritypolicies
   verbs:
