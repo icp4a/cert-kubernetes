@@ -81,11 +81,11 @@ sleep 120
 echo ----- Deleting all BACA resources from namespace : $KUBE_NAME_SPACE
 set +e
 kubectl delete -n $KUBE_NAME_SPACE --all deploy,svc,pvc,pods --force --grace-period=0
-kubectl delete -n $KUBE_NAME_SPACE  secret baca-ingress-secret baca-secrets$KUBE_NAME_SPACE baca-userportal-ingress-secret baca-mongo baca-mongo-admin baca-ldap baca-basedb baca-minio baca-rabbitmq baca-redis
+kubectl delete -n $KUBE_NAME_SPACE  secret baca-ingress-secret baca-secrets$KUBE_NAME_SPACE baca-userportal-ingress-secret baca-mongo baca-mongo-admin baca-ldap baca-basedb baca-rabbitmq baca-redis
 if [[ $ICP_VERSION == "3.1.2" ]]; then
     kubectl delete -n $KUBE_NAME_SPACE rolebinding baca-clusterrole-rolebinding
-    kubectl delete -n $KUBE_NAME_SPACE clusterrole baca-anyuid-clusterrole
-    kubectl delete -n $KUBE_NAME_SPACE psp baca-anyuid-psp
+    kubectl delete -n $KUBE_NAME_SPACE clusterrole baca-clusterrole
+    kubectl delete -n $KUBE_NAME_SPACE psp baca-psp
 fi
 set -e
 
@@ -95,9 +95,9 @@ set -e
 # only delete PVC for internal/dev env.
 if [[ $PVCCHOICE == "1" ]]; then
     echo ---- Deleting persistent volumes.
-    count=`kubectl -n $KUBE_NAME_SPACE get pv | awk {'print $1'}| grep ^sp-.*${KUBE_NAME_SPACE}$|wc | awk {'print $1'}`
+    count=`kubectl -n $KUBE_NAME_SPACE get pv | awk {'print $1'}| grep ^sp-.*${KUBE_NAME_SPACE}|wc | awk {'print $1'}`
     if [[ $count != "0" ]]; then
-        kubectl -n $KUBE_NAME_SPACE delete pv `kubectl -n $KUBE_NAME_SPACE get pv | awk {'print $1'}| grep ^sp-.*${KUBE_NAME_SPACE}$`
+        kubectl -n $KUBE_NAME_SPACE delete pv `kubectl -n $KUBE_NAME_SPACE get pv | awk {'print $1'}| grep ^sp-.*${KUBE_NAME_SPACE}`
     fi
     echo ---Clean up all pvc subdirectories.  You need to run setup.sh or init_deployment.sh again to have these directories re-created.
 #    ssh root@$NFS_IP rm -rf /exports/smartpages/$KUBE_NAME_SPACE/*

@@ -62,6 +62,8 @@ spec:
         imagePullPolicy: Always
         name: csssearch-cluster
         securityContext:
+          # If deployment on OpenShift and image supports arbitrary uid,
+          # remove runAsUser and pods will run with arbitrarily assigned user ID.
           runAsUser: 50001
           allowPrivilegeEscalation: false
         resources:
@@ -69,7 +71,7 @@ spec:
             memory: 512Mi
             cpu: 500m
           limits:
-            memory: 1024Mi
+            memory: 4096Mi
             cpu: 1
         ports:
         - containerPort: 8191
@@ -91,8 +93,10 @@ spec:
             value: "accept"
           - name: PRODUCT
             value: "DBAMC"
-          - name: JVM_HEAP_XMX
-            value: "4096"
+          - name: JVM_INITIAL_HEAP_PERCENTAGE
+            value: "38"
+          - name: JVM_MAX_HEAP_PERCENTAGE
+            value: "50"
           - name: TZ
             value: "Etc/UTC"
           - name: MY_POD_NAME

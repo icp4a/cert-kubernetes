@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. ScriptFunctions.sh
+. ./ScriptFunctions.sh
 
 INPUT_PROPS_FILENAME="./common_for_DB2.sh"
 
@@ -9,7 +9,7 @@ if [ -f $INPUT_PROPS_FILENAME ]; then
    . $INPUT_PROPS_FILENAME
 fi
 
-default_basedb='CABASEDB'
+default_basedb='BASECA'
 echo -e "\n-- This script will create the BACA Base database."
 
 if [[ -z "$base_db_name" ]]; then
@@ -20,7 +20,7 @@ if [[ -z "$base_db_name" ]]; then
     fi
     while [ ${#base_db_name} -gt 8 ];
         do
-        echo "Please enter a valid value for the tenant database name of max length 8 :"
+        echo "Please enter a valid value for the base database name of max length 8 :"
         read base_db_name;
         echo ${#base_db_name};
     done
@@ -32,25 +32,45 @@ fi
 
 while [[ $base_valid_user -ne 1 ]]
 do
-    echo -e "\nWe need to create a non-admin database user to access BASE database."
-    echo "Enter the name of database user to create: "
-    read base_db_user
-    while [[ $base_db_user == '' ]]
-    do
-        echo "Enter a valid value"
-        read base_db_user
-    done
+    echo -e "\nWe need a non-admin database user that BACA will use to access your BASE database."
 
-    getent passwd $base_db_user > /dev/null
-    if [[ $? -eq 0 ]]; then
-        echo "$base_db_user already exists.  Do you want to use this user (y/n)"
-        read use_existing_user
-        if [ "$use_existing_user" = "y" ] || [ "$use_existing_user" = "Y" ]; then
+    if [[ -z "$base_user_already_defined" || $base_user_already_defined -ne 1 ]]; then
+         while [[ "$create_new_base_user" != "y" && "$create_new_base_user" != "Y" && "$create_new_base_user" != "n" && "$create_new_base_user" != "N" ]]
+         do
+           echo "Do you want this script to create a new database user for you (This will create local OS user)? (Please enter y or n)"
+           read create_new_base_user
+         done
+
+         if [[ "$create_new_base_user" == "n" || "$create_new_base_user" == "N" ]]; then
            base_user_already_defined=1
            base_valid_user=1
+         else
+           base_user_already_defined=0
+         fi
+    fi
+
+    while [[ -z "$base_db_user" ||  $base_db_user == "" ]]
+    do
+      if [[ $base_user_already_defined -ne 1 ]]; then
+        echo "Please enter the name of database user to create: "
+      else
+        echo "Please enter the name of an existing database user:"
+      fi           
+      read base_db_user
+    done
+
+    if [[ $base_user_already_defined -ne 1 ]]; then
+        getent passwd $base_db_user > /dev/null
+        if [[ $? -eq 0 ]]; then
+            echo "$base_db_user already exists.  Do you want to use this existing user (y/n)"
+            read use_existing_user
+            if [ "$use_existing_user" = "y" ] || [ "$use_existing_user" = "Y" ]; then
+              base_base_user_already_defined=1
+              base_valid_user=1
+            fi
+        else
+            base_valid_user=1
         fi
-    else
-        base_valid_user=1
     fi
 done
 
@@ -111,12 +131,20 @@ if [[ $base_user_already_defined -ne 1 ]]; then
     sudo chage -E -1 -M -1 $base_db_user
 fi
 
-cp sql/CreateBaseDB.sql.template sql/CreateBaseDB.sql
-sed -i s/\$base_db_name/"$base_db_name"/ sql/CreateBaseDB.sql
-sed -i s/\$base_db_user/"$base_db_user"/ sql/CreateBaseDB.sql
-# sed -i s/\$db_user_pwd/"$db_user_pwd"/ sql/CreateBaseDB.sql
+# allow using existing DB if the flag "base_db_exists" is true
+if [[ -z "$base_db_exists" ||  $base_db_exists == "false" ]]; then
+   cp sql/CreateBaseDB.sql.template sql/CreateBaseDB.sql
+   sed -i s/\$base_db_name/"$base_db_name"/ sql/CreateBaseDB.sql
+   sed -i s/\$base_db_user/"$base_db_user"/ sql/CreateBaseDB.sql
+   echo
+   echo "Running script: sql/CreateBaseDB.sql"
+   db2 -stvf sql/CreateBaseDB.sql
+fi
+
+cp sql/CreateBaseTable.sql.template sql/CreateBaseTable.sql
+sed -i s/\$base_db_name/"$base_db_name"/ sql/CreateBaseTable.sql
+sed -i s/\$base_db_user/"$base_db_user"/ sql/CreateBaseTable.sql
 
 echo
-echo "Running script: sql/CreateBaseDB.sql"
-db2 -stvf sql/CreateBaseDB.sql
-
+echo "Running script: sql/CreateBaseTable.sql"
+db2 -stvf sql/CreateBaseTable.sql

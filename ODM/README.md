@@ -3,14 +3,15 @@
 The following architectures are supported for Operational Decision Manager 8.10.2 on Certified Kubernetes:
 - AMD64 (or x86_64), which is the 64-bit edition for Linux x86.
 
-> **Note**: Rule Designer is installed as an update site from the [Eclipse Marketplace](https://marketplace.eclipse.org/content/ibm-operational-decision-manager-developers-v-8102-rule-designer) into an existing version of Eclipse. 
+> **Note**: Rule Designer is installed as an update site from the [Eclipse Marketplace](https://marketplace.eclipse.org/content/ibm-operational-decision-manager-developers-v-8102-rule-designer) into an existing version of Eclipse.
 
-## Option 1: Install a release for evaluation purposes on Minikube or OpenShift
+## Option 1: Install a release for evaluation purposes
 
 The following instructions are to install the Operational Decision Manager for developers Helm chart:
 
    * [Installing Operational Decision Manager for developers on MiniKube](platform/README_Eval_Minikube.md)
    * [Installing Operational Decision Manager for developers on Openshift](platform/README_Eval_Openshift.md)
+   * [Installing Operational Decision Manager for developers on Red Hat OpenShift on IBM Cloud](platform/README_Eval_ROKS.md)
 
 ## Option 2: Install a production ready release
 
@@ -34,7 +35,7 @@ The services require CPU and memory resources. The following table lists the min
 | **Total**  | **2000** (2CPU)     | **2048** (2Gb)             |
 | (Optional) Internal DB    | 500           | 512                   |
 
-### Optional: Before you install a production ready release with customizations
+### *Optional:* Before you install a production ready release with customizations
 
 If you want to customize your Operational Decision Manager installation, go to the [IBM Cloud Pak for Automation 19.0.x](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/tsk_install_odm.html) Knowledge Center and choose which customizations you want to apply.
    * [Configuring PVUs](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/tsk_config_pvu.html)
@@ -48,25 +49,15 @@ If you want to customize your Operational Decision Manager installation, go to t
 
 After you noted the values of the configuration parameters that are needed to customize Operational Decision Manager, choose one of the following deployment options to complete the installation.
 
-### Option 2a: Install a production ready release on Minikube or OpenShift
-
 The following instructions are to install the ODM for production Helm chart:
+
   * [Install Operational Decision Manager on MiniKube](platform/README_Minikube.md)
   * [Install Operational Decision Manager on Openshift](platform/README_Openshift.md)
+  * [Install Operational Decision Manager on IBM Cloud OpenShift cluster](platform/README_ROKS.md)
+  * [Install Operational Decision Manager on other Kubernetes by using Helm and Tiller](helm-charts/README.md)
+  * [Install Operational Decision Manager on other Kubernetes by using Kubernetes YAML](k8s-yaml/README.md)
 
-### Option 2b: Install a production ready release on other Kubernetes by using Helm and Tiller
 
-A [Helm chart](https://helm.sh/) is a Package Manager for Kubernetes to help you manage (install/upgrade/update) your Kubernetes deployment. If you are using Helm on a cluster that you completely control, like Minikube or a cluster on a private network in which sharing is not a concern, the default installation that applies no security configuration is the easiest option.
-
-However, if your cluster is exposed to a larger network or if you share your cluster with others – production clusters fall into this category – you must secure your installation to prevent careless or malicious actors from damaging the cluster or its data. To secure Helm for use in a production environment and other multi-tenant scenarios, see [Securing a Helm installation](https://helm.sh/docs/using_helm/#securing-your-helm-installation).
-
-Refer to [helm-charts/README.md](helm-charts/README.md)
-
-### Option 2c: Install a production ready release on other Kubernetes by using Kubernetes YAML
-
-If you prefer to use a simpler deployment process that uses a native Kubernetes authorization mechanism (RBAC) instead of Helm and Tiller, use the Helm command line interface (CLI) to generate a Kubernetes manifest. If you choose to use Kubernetes YAML you cannot use certain capabilities of Helm to manage your deployment.
-
-Refer to [k8s-yaml/README.md](k8s-yaml/README.md)
 
 ## Post-installation steps
 

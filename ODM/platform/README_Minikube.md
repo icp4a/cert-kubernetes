@@ -56,7 +56,7 @@ Before you install make sure that you have prepared your environment. For more i
 ## Step 3: Install a Kubernetes release of Operational Decision Manager
 
 1. Download the `ibm-odm-prod-<version>.tgz` file. The archive contains the `ODM for production (ibm-odm-prod)` Helm chart.
-   - [ibm-odm-prod-2.2.0.tgz](../helm-chartsibm-odm-prod-2.2.0.tgz) for Operational Decision Manager 8.10.2
+   - [ibm-odm-prod-2.2.1.tgz](../helm-charts/ibm-odm-prod-2.2.1.tgz) for Operational Decision Manager 8.10.2
 
 2. Install a release with the default configuration and a name of `my-odm-prod-release` by using the following command:
 

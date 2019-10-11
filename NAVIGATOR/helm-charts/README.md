@@ -1,7 +1,7 @@
 
 # Deploying with Helm charts
 
-> **NOTE**: To deploy Enterprise Content Management products (FNCM , CSS & CMIS) on IBM Cloud Private 3.1.2 you must use Business Automation Configuration Container (BACC).
+> **NOTE**: To deploy on IBM Cloud Private 3.1.2 you must use Business Automation Configuration Container (BACC).
 
 ## Requirements and Prerequisites
 
@@ -30,13 +30,6 @@ The Helm command for deploying the Business Automation Navigator image include a
    kubectl create secret docker-registry admin.registrykey --docker-server=<registry_url> --docker-username=<new_user> --docker-password=$(oc whoami -t) --docker-email=ecmtest@ibm.com -n <new_project>
    ```
 
-- On Openshift, the security context constraint can cause deployment errors. To prevent this, update the namespace to include the constraints for the components that you want to deploy. For example, the following update accommodates Business Automation Navigator (50000,50001):
-
-   ```console
-   oc edit namespace dbamc-project
-   openshift.io/sa.scc.supplemental-groups: 50000
-   openshift.io/sa.scc.uid-range: 50001
-   ```
 
 ## Initializing the command line interface
 Use the following commands to initialize the command line interface:
@@ -55,35 +48,129 @@ Use the following commands to initialize the command line interface:
 Provide the parameter values for your environment and run the command to deploy the image.
   > **Tip**: Copy the sample command to a file, edit the parameter values, and use the updated command for deployment.
   > **Tip**: The values which are include for 'resources' inside helm install / upgrade commands just suggestions only. Each deployment must take into account the demands their particular workload will place on the system. 
+  
+For deployments on Red Hat OpenShift, note the following considerations for whether you want to use the Arbitrary UID capability in your environment:
+
+- If you don't want to use Arbitrary UID capability in your Red Hat OpenShift environment, deploy the images as described in the following sections.
+
+- If you do want to use Arbitrary UID, prepare for deployment by checking and if needed editing your Security Context Constraint:
+  - Set the desired user id range of minimum and maximum values for the project namespace:
+  
+    ```$ oc edit namespace <project> ```
+
+    For the uid-range annotation, verify that a value similar to the following is specified:
+    
+    ```$ openshift.io/sa.scc.uid-range=1000490000/10000 ```
+    
+    This range is similar to the default range for Red Hat OpenShift.
+  
+  - Remove authenticated users from anyuid (if set):
+  
+     ```$ oc adm policy remove-scc-from-group anyuid system:authenticated ```
+
+  - Update the runAsUser value. 
+    Find the entry:
+    
+    ```
+    $ oc get scc <SCC name> -o yaml
+        runAsUser:
+        type: RunAsAny
+    ```
+
+     Update the value:
+    
+    ```
+    $ oc get scc <SCC name> -o yaml
+      runAsUser:
+      type:  MustRunAsRange
+    ```
 
 To deploy Business Automation Navigator:
 
    ```console
-   $ helm install ibm-dba-navigator-3.0.0.tgz --name dbamc-navigator --namespace dbamc --set icnProductionSetting.license=accept,icnProductionSetting.jvmHeapXms=512,icnProductionSetting.jvmHeapXmx=1024,icnProductionSetting.icnDBType=db2,icnProductionSetting.icnJNDIDSName=ECMClientDS,icnProductionSetting.icnSChema=ICNDB,icnProductionSetting.icnTableSpace=ICNDBTS,icnProductionSetting.icnAdmin=ceadmin,icnProductionSetting.navigatorMode=3,dataVolume.existingPVCforICNCfgstore=icn-cfgstore,dataVolume.existingPVCforICNLogstore=icn-logstore,dataVolume.existingPVCforICNPluginstore=icn-pluginstore,dataVolume.existingPVCforICNVWCachestore=icn-vw-cachestore,dataVolume.existingPVCforICNVWLogstore=icn-vw-logstore,dataVolume.existingPVCforICNAsperastore=icn-asperastore,autoscaling.enabled=False,replicaCount=1,imagePullSecrets.name=admin.registrykey,image.repository=<image_repository_url>:5000/dbamc/navigator,image.tag=ga-306-icn
+   $ helm install ibm-dba-navigator-3.2.0.tgz --name dbamc-navigator --namespace dbamc --set icnProductionSetting.license=accept,icnProductionSetting.JVM_INITIAL_HEAP_PERCENTAGE=40,icnProductionSetting.JVM_MAX_HEAP_PERCENTAGE=66,service.externalmetricsPort=9103,icnProductionSetting.icnDBType=db2,icnProductionSetting.icnJNDIDSName=ECMClientDS,icnProductionSetting.icnSChema=ICNDB,icnProductionSetting.icnTableSpace=ICNDBTS,icnProductionSetting.icnAdmin=ceadmin,icnProductionSetting.navigatorMode=0,dataVolume.existingPVCforICNCfgstore=icn-cfgstore,dataVolume.existingPVCforICNLogstore=icn-logstore,dataVolume.existingPVCforICNPluginstore=icn-pluginstore,dataVolume.existingPVCforICNVWCachestore=icn-vw-cachestore,dataVolume.existingPVCforICNVWLogstore=icn-vw-logstore,dataVolume.existingPVCforICNAsperastore=icn-asperastore,autoscaling.enabled=False,replicaCount=1,imagePullSecrets.name=admin.registrykey,image.repository=<image_repository_url>:<port>/dbamc/navigator,image.tag=ga-306-icn
    ```
 Replace <image_repository_url> with correct registry url. For example --> docker-registry.default.svc
 
 > **Reminder**: After you deploy, return to the instructions in the Knowledge Center, [Configuring IBM Business Automation Navigator in a container environment](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_18.0.x/com.ibm.dba.install/k8s_topics/tsk_ecmconfigbank8s.html), to get your Business Automation Navigator environment up and running.
 
-## Upgrade images
+## Upgrading deployments
+   > **Tip**: You can discover the necessary resource values for the deployment from corresponding product deployments in IBM Cloud Private Console and Openshift Container Platform.
+
+### Before you begin
+Before you run the upgrade commands, you must prepare the environment for upgrades by updating permissions on your persistent volumes. Complete the preparation steps in the following topic before you start the upgrade: [Upgrading Business Automation Navigator releases](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_19.0.x/com.ibm.dba.upgrading/topics/tsk_cn_upgrade.html)
+
+You must also [download the PPA archive](../../README.md) before you begin the upgrade process.
+
+### Upgrading on Red Hat OpenShift
+
+For upgrades on Red Hat OpenShift, note the following considerations for whether you want to use the Arbitrary UID capability in your updated environment:
+
+- If you don't want to use Arbitrary UID capability in your Red Hat OpenShift environment, use the instructions in Upgrading on certified Kubernetes platforms.
+
+- If you do want to use Arbitrary UID, use the following steps to prepare for the upgrade:
+
+1. Check and if necessary edit your Security Context Constraint to set desired user id range of minimum and maximum values for the project namespace:
+    - Set the desired user id range of minimum and maximum values for the project namespace:
+  
+    ```$ oc edit namespace <project> ```
+
+    For the uid-range annotation, verify that a value similar to the following is specified:
+    
+    ```$ openshift.io/sa.scc.uid-range=1000490000/10000 ```
+    
+    This range is similar to the default range for Red Hat OpenShift.
+  
+   - Remove authenticated users from anyuid (if set):
+  
+     ```$ oc adm policy remove-scc-from-group anyuid system:authenticated ```
+
+   - Update the runAsUser value. 
+     Find the entry:
+    
+    ```
+    $ oc get scc <SCC name> -o yaml
+        runAsUser:
+        type: RunAsAny
+    ```
+
+     Update the value:
+    
+    ```
+    $ oc get scc <SCC name> -o yaml
+      runAsUser:
+      type:  MustRunAsRange
+    ```
+2. Stop all existing containers.
+
+3. Run the new install (instead of upgrade) command for the container. Update the command provided to include the values for your existing environment.
+
+> **NOTE**: In this context, the install commands update the application. Updates for your existing data happen automatically when the updated applications start. 
 
 To deploy Business Automation Navigator:
 
-   IBM Cloud Private 3.1.2
+   ```console
+   $ helm install ibm-dba-navigator-3.2.0.tgz --name dbamc-navigator --namespace dbamc --set icnProductionSetting.license=accept,icnProductionSetting.JVM_INITIAL_HEAP_PERCENTAGE=40,icnProductionSetting.JVM_MAX_HEAP_PERCENTAGE=66,service.externalmetricsPort=9103,icnProductionSetting.icnDBType=db2,icnProductionSetting.icnJNDIDSName=ECMClientDS,icnProductionSetting.icnSChema=ICNDB,icnProductionSetting.icnTableSpace=ICNDBTS,icnProductionSetting.icnAdmin=ceadmin,icnProductionSetting.navigatorMode=0,dataVolume.existingPVCforICNCfgstore=icn-cfgstore,dataVolume.existingPVCforICNLogstore=icn-logstore,dataVolume.existingPVCforICNPluginstore=icn-pluginstore,dataVolume.existingPVCforICNVWCachestore=icn-vw-cachestore,dataVolume.existingPVCforICNVWLogstore=icn-vw-logstore,dataVolume.existingPVCforICNAsperastore=icn-asperastore,autoscaling.enabled=False,replicaCount=1,imagePullSecrets.name=admin.registrykey,image.repository=<image_repository_url>:<port>/dbamc/navigator,image.tag=ga-306-icn
+   ```
+Replace <image_repository_url> with correct registry url. For example --> docker-registry.default.svc
+
+
+## Upgrading on certified Kubernetes platforms
+
+To deploy Business Automation Navigator:
+
+On Red Hat OpenShift:
    
 ```
-   $ export HELM_HOME=/root/.helm
-   
-   Modify **HELM_HOME** directory to match with your respective directory.
-   
-   $ helm repo add local-charts https://mycluster.icp:8443/helm-repo/charts --ca-file $HELM_HOME/ca.pem --cert-file $HELM_HOME/cert.pem --key-file $HELM_HOME/key.pem
-   
-   $ helm upgrade dbamc-icn local-charts/ibm-dba-navigator --version=3.0.0 --tls --reuse-values --set image.repository=mycluster.icp:8500/apprentice/navigator,image.tag=stable-ubi,resources.requests.cpu=500m,resources.requests.memory=512Mi,imagePullSecrets.name=admin.registrykey,resources.limits.cpu=1,resources.limits.memory=1024Mi,log.format=json
+   $ helm upgrade dbamc-helm-navigator ibm-dba-navigator-3.2.0.tgz --reuse-values --set image.repository=<image_repository_url>:<port>/dbamc/navigator/navigator,image.tag=ga-306-icn-if002,resources.requests.cpu=500m,resources.requests.memory=512Mi,icnProductionSetting.JVM_INITIAL_HEAP_PERCENTAGE=40,icnProductionSetting.JVM_MAX_HEAP_PERCENTAGE=66,imagePullSecrets.name=admin.registrykey,resources.limits.cpu=1,resources.limits.memory=1024Mi,log.format=json,service.externalmetricsPort=9103
 ```
-   Certified Kubernetes platform
+On non-Red Hat OpenShift:
+
 ```
-   $ helm upgrade dbamc-icn /helm-charts/ibm-dba-navigator-3.0.0.tgz  --reuse-values --set image.repository=mycluster.icp:8500/apprentice/navigator,image.tag=stable-ubi,resources.requests.cpu=500m,resources.requests.memory=512Mi,imagePullSecrets.name=admin.registrykey,resources.limits.cpu=1,resources.limits.memory=1024Mi,log.format=json
+   $ helm upgrade dbamc-helm-navigator ibm-dba-navigator-3.2.0.tgz --tls --reuse-values --set image.repository=<image_repository_url>:<port>/dbamc/navigator,image.tag=ga-306-icn-if002,icnProductionSetting.JVM_INITIAL_HEAP_PERCENTAGE=40,icnProductionSetting.JVM_MAX_HEAP_PERCENTAGE=66,service.externalmetricsPort=9103,runAsUser=50001
 ```   
+Replace <image_repository_url> with correct registry url. For example --> docker-registry.default.svc
+
 ## Uninstalling a Kubernetes release of Business Automation Navigator
 
 To uninstall and delete a release named `my-icn-prod-release`, use the following command:

@@ -1,10 +1,8 @@
 #
-# BAI on Minikube (easy install) - BAI values definition (18.0.3)
+# BAI on Minikube (easy install) - BAI values definition
 #
 persistence:
   useDynamicProvisioning: true
-
-imagePullPolicy: Never
 
 kafka:
   bootstrapServers: "kafka-release-cp-kafka-headless:9092"
@@ -57,9 +55,10 @@ content:
 bawadv:
   install: false
 
+baiw:
+  install: false
+
 ibm-dba-ek:
-  image:
-    pullPolicy: Never
   elasticsearch:
     probeInitialDelay: 120
     data:

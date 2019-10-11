@@ -10,28 +10,26 @@ As an administrator of the cluster you must be able to interact with your enviro
    ```console
    $ oc login https://<CLUSTERIP>:8443 -u <ADMINISTRATOR>
    ```
-2. Create a project where you want to install Operational Decision Manager. 
+2. Create a project where you want to install Operational Decision Manager.
    ```console
    $ oc new-project odmproject
    $ oc project odmproject
    ```
-3. If you use the internal database you must add privileges to the project. 
+3. If you use the internal database you must add privileges to the project.
    ```console
    $ oc adm policy add-scc-to-user privileged -z default
    ```
-
-4. Generate a permanent token and copy it to the clipboard.
+4. Check you can run docker.
    ```console
-   $ oc whoami -t 
-   ```
-5. Login to the docker registry with the token and check you can run docker.
-   ```console
-   $ docker login docker-registry.default.svc:5000 -u <ADMINISTRATOR> -p <generated_token>
    $ docker ps
    ```
+5. Login to the docker registry with a token.
+   ```console
+   $ docker login $(oc registry info) -u <ADMINISTRATOR> -p $(oc whoami -t)
+   ```
    > **Note**: You can connect to a node in the cluster to resolve the docker-registry.default.svc parameter.
-   
-6. Run a kubectl command to make sure you have access to Kubernetes.
+
+6. Run a `kubectl` command to make sure you have access to Kubernetes.
    ```console
    $ kubectl cluster-info
    ```
@@ -42,26 +40,35 @@ As an administrator of the cluster you must be able to interact with your enviro
 1. If you have not already done so, follow the instructions to download the IBM Operational Decision Manager images and the loadimages.sh file in [Download PPA and load images](../../README.md#step-2-download-a-product-package-from-ppa-and-load-the-images).
 
    > **Note**: Change the permissions so that you can execute the script.
-      ```console
-      $ chmod +x loadimages.sh
-      ```
+   >   ```console
+   >   $ chmod +x loadimages.sh
+   >   ```
 
 2. Use the loadimages.sh script to push the docker images into your registry.
    ```console
    $ ./loadimages.sh -p <PPA-ARCHIVE>.tgz -r docker-registry.default.svc:5000/odmproject
    ```
 
-   > **Note**: The project must have pull request privileges to the registry where the Operational Decision Manager images are   loaded. The project must also have pull request privileges to push the images into another namespace/project. 
+   > **Note**: The project must have pull request privileges to the registry where the Operational Decision Manager images are   loaded. The project must also have pull request privileges to push the images into another namespace/project.
+
+3. Check whether the images have been pushed correctly to the registry.
+   ```console
+   oc get is --all-namespaces
+   ```
+   or
+   ```console
+   oc get is -n odmproject
+   ```
 
 ## Step 3: Install a Kubernetes release of Operational Decision Manager
 
 You can do this step without administrator rights.
 
-1. Download the [ibm-odm-prod-2.2.0.tgz](../helm-charts/ibm-odm-prod-2.2.0.tgz) file. The archive contains the `ODM for production (ibm-odm-prod)` Helm chart.
+1. Download the [ibm-odm-prod-2.2.1.tgz](../helm-charts/ibm-odm-prod-2.2.1.tgz) file. The archive contains the `ODM for production (ibm-odm-prod)` Helm chart.
 
 2. Install a release with the default configuration and a name of `my-odm-prod-release`. You have 2 options to install Operation Decision Manager on Openshift depending on your security policy.
 
-   * Option 1: Use the helm CLI to generate a template and then the OpenShift CLI to create a release from the YAML file.
+   * Option 1: Use the helm CLI to generate a template, and then the OpenShift CLI to create a release from the YAML file.
 
      ```console
      $ helm template \
@@ -80,22 +87,23 @@ You can do this step without administrator rights.
        --name my-odm-prod-release \
        /path/to/ibm-odm-prod-<version>.tgz \
        --set image.repository=docker-registry.default.svc:5000/odmproject/
+       --tiller-namespace <tiller_namespace>
      ```
 
-     > **Note**: For more information, see [helm-charts/README.md](../helm-charts/README.md). Go here to [initialize Helm and install Tiller](https://helm.sh/docs/using_helm/#initialize-helm-and-install-tiller).
+     > **Note**: For more information, see [helm-charts/README.md](../helm-charts/README.md).
 
 3. The package is deployed asynchronously in a matter of minutes, and is composed of several services.
 
    > **Note**: You can check the status of the pods that you created:
-   ```console
-   $ kubectl get pods
-   NAME                                                READY   STATUS    RESTARTS   AGE
-   my-odm-prod-release-dbserver-***                    1/1     Running   0          44m
-   my-odm-prod-release-odm-decisioncenter-***          1/1     Running   0          44m
-   my-odm-prod-release-odm-decisionrunner-***          1/1     Running   0          44m
-   my-odm-prod-release-odm-decisionserverconsole-***   1/1     Running   0          44m
-   my-odm-prod-release-odm-decisionserverruntime-***   1/1     Running   0          44m
-   ```
+   >  ```console
+   >  $ kubectl get pods
+   >  NAME                                                READY   STATUS    RESTARTS   AGE
+   >  my-odm-prod-release-dbserver-***                    1/1     Running   0          44m
+   >  my-odm-prod-release-odm-decisioncenter-***          1/1     Running   0          44m
+   >  my-odm-prod-release-odm-decisionrunner-***          1/1     Running   0          44m
+   >  my-odm-prod-release-odm-decisionserverconsole-***   1/1     Running   0          44m
+   >  my-odm-prod-release-odm-decisionserverruntime-***   1/1     Running   0          44m
+   >  ```
 
    The release is an instance of the `ibm-odm-prod` chart. All of the components are now running in a Kubernetes cluster.
 
@@ -140,7 +148,7 @@ Refer to the customizing instructions in [k8s-yaml/README.md](../k8s-yaml/README
 
 ## To uninstall the Helm chart
 
-   * Option 1: To uninstall and delete a release named `my-odm-prod-release` from the OpenShift CLI, use the following command:
+   * Option 1: To uninstall and delete a release named `my-odm-prod-release` with the OpenShift CLI, use the following command:
 
      ```console
      $ oc delete -f odm-k8s.yaml
@@ -151,15 +159,7 @@ Refer to the customizing instructions in [k8s-yaml/README.md](../k8s-yaml/README
   * Option 2: To uninstall and delete a release named `my-odm-prod-release` with Helm Tiller, use the following command:
 
      ```console
-     $ helm delete my-odm-prod-release --purge
+     $ helm delete my-odm-prod-release --purge --tiller-namespace <tiller_namespace>
      ```
 
-     The command removes all the Kubernetes components associated with the chart, except Persistent Volume Claims (PVCs). This is the default behavior of Kubernetes, and ensures that valuable data is not deleted. 
-     
-  * Optional: To delete the data, you can delete the PVC by using the following command:
-
-     ```console
-     $ kubectl delete pvc <release_name>-odm-pvclaim -n <namespace>
-     ```
-
-
+     The command removes all the Kubernetes components associated with the chart, including Persistent Volume Claims (PVCs).

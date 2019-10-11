@@ -1,8 +1,8 @@
 ## Create PVs, PVCs, certificates and secrets using init_deployment.sh
 
-To use the init_deployment.sh script to create preqrequisites:
+To use the init_deployments.sh script to create preqrequisites:
 1) Populate the common.sh file with appropriate values based on the instructions in [common.sh values](./common_sh_values.md)
-2) Run the init_deployment.sh script to create objects based on common.sh values
+2) Run the init_deployments.sh script to create objects based on common.sh values
 3) Verify the objects were created by running the following commands:  
     Check pvcs
     ```console

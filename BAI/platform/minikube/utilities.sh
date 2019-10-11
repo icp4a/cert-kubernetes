@@ -36,29 +36,12 @@ checkValidIPV6() {
     fi
    return $ret
 }
-
-check-es-config-versions() {
-    MINIKUBE_CONFIF_MAP="configuration/bai-configmap.yaml"
-    BAI_CONFIG_MAP="charts/ibm-business-automation-insights-dev/templates/bai-configmap.yaml"
-    checkFileExist "$BAI_CONFIG_MAP"
-    checkFileExist "$MINIKUBE_CONFIF_MAP"
-    es_version_BAI=$(cat $BAI_CONFIG_MAP | grep es-config-version | cut -d ":" -f 2 | tr -s " " | xargs)
-    es_version_MINIKUBE=$(cat $MINIKUBE_CONFIF_MAP | grep es-config-version | cut -d ":" -f 2 | tr -s " " | xargs)
-    if [ ! "$es_version_BAI" == "$es_version_MINIKUBE" ]; then
-        echo "Error: The check for the es-config version failed. The value of \"es-config-version\" in $MINIKUBE_CONFIF_MAP should be $es_version_BAI. Exiting..."
-        minikube delete
-        return 1
-    else
-        echo "The check for the es-config version passed."
-    fi
-}
-
-LVAR_BAI_VERSION="3.1.0"
+LVAR_BAI_VERSION="3.2.0"
 LVAR_SPRINT_VERSION="dev"
 LVAR_BAI_IMAGES_SPRINT="ibm-bai-dev-$LVAR_BAI_VERSION-$LVAR_SPRINT_VERSION.tar.gz"
 LVAR_BAI_IMAGES="ibm-bai-dev-$LVAR_BAI_VERSION-dev.tar.gz"
 LVAR_BAI_CHARTS_SPRINT="charts/ibm-business-automation-insights-dev-$LVAR_BAI_VERSION-$LVAR_SPRINT_VERSION.tgz"
-LVAR_BAI_CHARTS="charts/ibm-business-automation-insights-dev-$LVAR_BAI_VERSION-dev.tgz"
+LVAR_BAI_CHARTS="charts/ibm-business-automation-insights-dev-$LVAR_BAI_VERSION.tgz"
 
 expand-BAI-Charts() {
     # moving sprint charts into regular charts
@@ -66,7 +49,6 @@ expand-BAI-Charts() {
         mv "$LVAR_BAI_CHARTS_SPRINT" "$LVAR_BAI_CHARTS"
     fi
     tar xvf "$LVAR_BAI_CHARTS" -C charts/
-    check-es-config-versions
 }
 
 

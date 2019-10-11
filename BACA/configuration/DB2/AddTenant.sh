@@ -88,6 +88,15 @@ if [[ -z "$baca_database_port" ]]; then
    fi
 fi
 
+default_ssl='No'
+if [[ -z "$ssl" ]]; then
+  echo -e "\nWould you like to enable SSL to communicate with DB2 server? If nothing is entered we will use the default value: " $default_ssl
+  read ssl
+  if [[ -z "$ssl" ]]; then
+    ssl=$default_ssl
+  fi
+fi
+
 if [[ $use_existing_tenant -eq 1 ]]; then
   user_already_defined=1
 fi
@@ -177,7 +186,7 @@ if [[ -z "$tenant_ontology" ]]; then
   fi
 fi
 
-default_basedb='CABASEDB'
+default_basedb='BASECA'
 if [[ -z "$base_db_name" ]]; then
   echo -e "\nEnter the name of the Base BACA database with the TENANTINFO Table. If nothing is entered, we will use the following default value : " $default_basedb
   read base_db_name
@@ -271,6 +280,13 @@ if [[ $use_existing_tenant -eq 1 ]]; then
   daily_limit=$(echo  $resp | awk '{print $2}') 
 fi
 
+rdbmsconnection="DATABASE=$tenant_db_name;HOSTNAME=$baca_database_server_ip;PORT=$baca_database_port;PROTOCOL=TCPIP;UID=$tenant_db_user;PWD=$tenant_db_pwd;"
+if [[ "$ssl" == "Yes" || "$ssl" == "y" || "$ssl" == "Y" ]]; then
+    echo
+    rdbmsconnection+="Security=SSL;"
+    echo "--- with SSL rdbstring  : " $rdbmsconnection
+fi
+
 echo
 if [[ $use_existing_tenant -ne 1 ]]; then
   echo "-- Information gathering is completed.  Add tenant is about to begin."
@@ -284,6 +300,7 @@ echo " - daily limit: $daily_limit"
 echo " - tenant database name: $tenant_db_name"
 echo " - database server hostname/IP: $baca_database_server_ip"
 echo " - database server port: $baca_database_port"
+echo " - database enabled for ssl : $ssl"
 if [[ $user_already_defined -ne 1 ]]; then
   echo " - tenant database user will be created by this script"
 else
@@ -316,12 +333,15 @@ fi
 
 # Only create DB for new tenants
 if [[ $use_existing_tenant -ne 1 ]]; then
-    cp sql/CreateDB.sql.template sql/CreateDB.sql
-    sed -i s/\$tenant_db_name/"$tenant_db_name"/ sql/CreateDB.sql
-    sed -i s/\$tenant_db_user/"$tenant_db_user"/ sql/CreateDB.sql
+    # allow using existing DB if the flag "tenant_db_exists" is true
+    if [[ -z "$tenant_db_exists" ||  $tenant_db_exists == "false" ]]; then
+      cp sql/CreateDB.sql.template sql/CreateDB.sql
+      sed -i s/\$tenant_db_name/"$tenant_db_name"/ sql/CreateDB.sql
+      sed -i s/\$tenant_db_user/"$tenant_db_user"/ sql/CreateDB.sql
 
-    echo -e "\nRunning script: sql/CreateDB.sql"
-    db2 -stvf sql/CreateDB.sql
+      echo -e "\nRunning script: sql/CreateDB.sql"
+      db2 -stvf sql/CreateDB.sql
+    fi
 fi
 
 cp sql/CreateBacaSchema.sql.template sql/CreateBacaSchema.sql
@@ -354,12 +374,15 @@ sed -i s/\$base_db_user/"$base_db_user"/ sql/InsertTenant.sql
 sed -i s/\$tenant_id/"$tenant_id"/ sql/InsertTenant.sql
 sed -i s/\$tenant_ontology/"$tenant_ontology"/ sql/InsertTenant.sql
 sed -i s/\$tenant_db_name/"$tenant_db_name"/ sql/InsertTenant.sql
+sed -i s/\$tenant_db_name/"$tenant_db_name"/ sql/InsertTenant.sql
 sed -i s/\$baca_database_server_ip/"$baca_database_server_ip"/ sql/InsertTenant.sql
 sed -i s/\$baca_database_port/"$baca_database_port"/ sql/InsertTenant.sql
+sed -i s/\$tenant_db_user/"$tenant_db_user"/ sql/InsertTenant.sql
 sed -i s/\$tenant_db_user/"$tenant_db_user"/ sql/InsertTenant.sql
 sed -i s/\$tenant_db_pwd/"$tenant_db_pwd"/ sql/InsertTenant.sql
 sed -i s/\$tenant_type/"$tenant_type"/ sql/InsertTenant.sql
 sed -i s/\$daily_limit/"$daily_limit"/ sql/InsertTenant.sql
+sed -i s/\$rdbmsconnection/"$rdbmsconnection"/ sql/InsertTenant.sql
 echo -e "\nRunning script: sql/InsertTenant.sql"
 db2 -stvf sql/InsertTenant.sql
 

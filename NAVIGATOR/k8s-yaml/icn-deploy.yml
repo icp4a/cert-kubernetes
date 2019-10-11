@@ -50,6 +50,8 @@ spec:
         imagePullPolicy: Always
         name: ecm-icn
         securityContext:
+          # If deployment on OpenShift and image supports arbitrary uid,
+          # remove runAsUser and pods will run with arbitrarily assigned user ID.
           runAsUser: 50001
           allowPrivilegeEscalation: false
         resources:
@@ -57,7 +59,7 @@ spec:
             memory: 512Mi
             cpu: 500m
           limits:
-            memory: 1024Mi
+            memory: 1536Mi
             cpu: 1
         ports:
         - containerPort: 9080
@@ -69,12 +71,18 @@ spec:
             value: "accept"
           - name: PRODUCT
             value: "DBAMC"
-          - name: JVM_HEAP_XMS
-            value: "512m"
-          - name: JVM_HEAP_XMX
-            value: "1024m"
+          - name: JVM_INITIAL_HEAP_PERCENTAGE
+            value: "40"
+          - name: JVM_MAX_HEAP_PERCENTAGE
+            value: "66"
           - name: TZ
             value: "Etc/UTC"
+          - name: JVM_INITIAL_HEAP_PERCENTAGE
+            value: "40"
+          - name: JVM_MAX_HEAP_PERCENTAGE
+            value: "66"
+          - name: JVM_CUSTOMIZE_OPTIONS
+            value: ""
           - name: ICNDBTYPE
             value: "db2"
           - name: ICNJNDIDS
@@ -85,6 +93,12 @@ spec:
             value: "ICNDB"
           - name: ICNADMIN
             value: "ceadmin"
+          - name: navigatorMode
+            value: "3"
+          - name: enableAppcues
+            value: "false"
+          - name: allowRemotePluginsViaHttp
+            value: "false"
           - name: MY_POD_NAME
             valueFrom:
               fieldRef:
