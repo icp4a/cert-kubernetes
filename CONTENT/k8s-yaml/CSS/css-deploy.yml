@@ -17,6 +17,27 @@ spec:
   type: ClusterIP
   sessionAffinity: ClientIP
 ---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ecm-css-np
+  namespace: $KUBE_NAME_SPACE
+spec:
+   podSelector: {}
+   policyTypes:
+    - Ingress
+    - Egress
+   ingress:
+   - {}
+   egress:
+   - ports:
+     - port: 53
+       protocol: UDP
+     - port: 53
+       protocol: TCP
+   - to:
+     - namespaceSelector: {}
+---    
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
