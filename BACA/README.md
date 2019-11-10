@@ -16,6 +16,15 @@ For more information, see [IBM Business Automation Content Analyzer: Details](ht
 
 - [Using Kubernetes YAML](k8s-yaml/README.md)
 
+## NOTE: 
+
+- We include a sample network policy yaml file (baca-netpol.yaml) inside the `configuration` and `configuration-ha` folder.  You can review and further modify to fit your need. To apply the network policy:
+```
+export KUBE_NAME_SPACE=<namespace that Content Analyzer will be deployed>
+cat baca-netpol.yaml | sed s/\$KUBE_NAME_SPACE/"$KUBE_NAME_SPACE"/ | kubectl apply -f -
+
+```
+
 
 ## Completing post deployment configuration
 

@@ -37,7 +37,7 @@ As a consequence, and not limited to the following, machine hibernation or shutd
 - Tools that must be installed:
   - **[Docker](https://docs.docker.com/install)**, tested with [Docker Desktop](https://www.docker.com/products/docker-desktop) on MacOS and [Docker Toolbox](https://docs.docker.com/toolbox/overview/) on Windows
   - **[VirtualBox latest](https://www.virtualbox.org/wiki/Downloads)**
-  - **[Minikube](https://kubernetes.io/docs/setup/minikube)**, tested with [v1.0.1](https://github.com/kubernetes/minikube/releases/tag/v1.0.1) (MacOS and Windows)
+  - **[Minikube](https://kubernetes.io/docs/setup/minikube)**, tested with [v1.4.0](https://github.com/kubernetes/minikube/releases/tag/v1.4.0) (MacOS and Windows)
   - **[Helm](https://docs.helm.sh/using_helm/#installing-helm)**, tested with [v2.12.3](https://github.com/helm/helm/releases/tag/v2.12.3) (MacOS) and [v2.13.1](https://github.com/helm/helm/releases/tag/v2.13.1) (Windows)
   - **[kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl)**, tested with latest version
   - **[jq](https://stedolan.github.io/jq/)**, tested with latest version (MacOS and Windows)

@@ -46,16 +46,35 @@ Before you install any of the containerized software:
 
     1. Log in to [MyIBM Container Software Library](https://myibm.ibm.com/products-services/containerlibrary) with the IBMid and password that are associated with the entitled software.
 
-    2. In the **Container software library** tile, click **View library** and then click **Copy key** to copy the entitlement key to the clipboard.
+    2. In the **Container software library** tile, click **View library** and then click **Copy key** to copy the `entitlement_key` to the clipboard.
 
     3. Create a pull secret by running a `kubectl create secret` command.
        ``` console
-       $ kubectl create secret docker-registry <my_pull_secret> --docker-server=cp.icr.io --docker-username=iamapikey --docker-password="<API_KEY_GENERATED>" --docker-email=user@foo.com
+       $ kubectl create secret docker-registry <my_pull_secret> -n <namespace> --docker-server=cp.icr.io \
+         --docker-username=cp --docker-password="<entitlement_key>" --docker-email=user@foo.com
        ```
 
-       > **Note**: The `cp.icr.io` value for the **docker-server** parameter is the only registry domain name that contains the images.
+       > **Note**: The `cp.icr.io` and `cp` values for the **docker-server** and **docker-username** parameters must be used. Take a note of the pull secret and the server values so that you can set them to the **pullSecrets** and **repository** parameters when you run the installation for your containers.
 
-    4. Take a note of the secret and the server values so that you can set them to the **pullSecrets** and **repository** parameters when you run the installation command for your containers.
+    4. Install the Container Registry plug-in.
+       ``` console
+       $ ibmcloud plugin install container-registry -r 'IBM Cloud'
+       ```
+	   
+    5. Log in to your IBM Cloud account.
+       ``` console
+       $ ibmcloud login -a https://cloud.ibm.com
+       ```
+	   
+    6. Set the region as global.
+       ``` console
+       $ ibmcloud cr region-set global
+       ```	
+	   
+    7. List the available images by using the following command.
+       ``` console
+       $ ibmcloud cr image-list --include-ibm | grep -i cp4a
+       ```	
 
   * **Option 2**: Download the packages from PPA and load the images
 
@@ -66,7 +85,7 @@ Before you install any of the containerized software:
     2. Download the [`loadimages.sh`](scripts/loadimages.sh) script from GitHub.
 
     3. Log in to the specified Docker registry with the docker login command.
-   This command depends on the environment that you have.
+       This command depends on the environment that you have.
 
        > **Note**: If your platform is OpenShift, do NOT run the .sh script to load the images without preparing your environment beforehand. Go to [Step 3](README.md#step-3-go-to-the-relevant-folders-and-follow-the-instructions) and use the instructions in the respective folders. You can then load the images to the Docker registry with the right privileges.
 
@@ -98,3 +117,4 @@ You can install software on a certified Kubernetes platform with the Helm comman
 - [Install IBM FileNet Content Manager](CONTENT/README.md)
 - [Install IBM Business Automation Navigator](NAVIGATOR/README.md)
 - [Install IBM Operational Decision Manager](ODM/README.md)
+

@@ -88,7 +88,7 @@ $ helm install --name my-odm-prod-release -f myvalues.yaml /path/to/ibm-odm-prod
 
 2. Run the helm upgrade command on the release that you want to upgrade. The following example command upgrades a release `my-odm-prod-release` with the new Helm chart.
    ```console
-   $ helm upgrade my-odm-prod-release /path/to/ibm-odm-prod-2.2.1.tgz --reuse-values
+   $ helm upgrade my-odm-prod-release /path/to/ibm-odm-prod-2.2.1.tgz --set image.tag=8.10.2.1 --reuse-values
    ```
 
 3. Verify that the version of Decision Center and the Decision Server console is the new version and they are running on the same URL and port as before.

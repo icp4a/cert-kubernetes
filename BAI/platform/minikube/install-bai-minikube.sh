@@ -2,11 +2,13 @@
 
 LVAR_SCRIPT_NAME="$(basename $0)"
 LVAR_BAI_VERSION="3.2.0"
-LVAR_MINIKUBE_VERSION="1.0.1"
+LVAR_MINIKUBE_VERSION="1.4.0"
 LVAR_LOCALHOST_IP=""
 LVAR_FORCE_MINIKUBE_VERSION="false"
 LVAR_VM_DRIVER=""
 LVAR_VBOX_NETWORKS=""
+LVAR_CPUS="2"
+LVAR_MEMORY="6144"
 
 set -e
 
@@ -39,6 +41,10 @@ showHelp() {
     echo "  -i <local machine IP address>"
     echo "      Optional. Needed only if the event emitter is not present on the local machine."
     echo "      Defaults to the value of \"minikube ip\"."
+    echo "  -c"
+    echo "      Optional. Specifies the number of CPU to be used (defaults to 2)."
+    echo "  -m"
+    echo "      Optional. Specifies the amount of memory (megabytes) to be used (defaults to 6144)."
     echo "  -f"
     echo "      Optional. Bypasses the minikube version validation."
     echo
@@ -71,9 +77,17 @@ disableVirtualBoxDHCP() {
     echo "Disabled DHCP server on VirtualBox network name: "$LVAR_MINIKUBE_NETWORK_NAME""
 }
 
-while getopts  :fhd:e:i:  option;
+while getopts  :fhd:e:i:c:m:  option;
 do
     case ${option} in
+        c)
+            LVAR_CPUS=$OPTARG
+            echo "Number of CPUs is set to  ${LVAR_CPUS} units"
+            ;;
+        m)
+            LVAR_MEMORY=$OPTARG
+            echo "Amount of memory is set to  ${LVAR_MEMORY} megabytes"
+            ;;
         e)
             EVENT_PROCESSING_TYPE=$OPTARG
             echo "Event processing is for ${EVENT_PROCESSING_TYPE}"
@@ -136,7 +150,11 @@ echo "Creating the minikube machine"
 if [ ! -z "$LVAR_VM_DRIVER" ]; then
     MINIKUBE_OPTS=" --vm-driver $LVAR_VM_DRIVER"
 fi
-minikube $MINIKUBE_OPTS start --cpus 2 --memory 6144
+
+# Using minikube version 1.4.0 concurrently with a version of Kubernetes higher than 1.15.4 exposes to
+# https://github.com/kubernetes/minikube/issues/5429 related to kubernetes apiVersion update.
+# Also due to previous versions reported to hang with macOS Catalina, minikube v1.4.0 becomes the recommended version.
+minikube $MINIKUBE_OPTS start --cpus ${LVAR_CPUS} --memory ${LVAR_MEMORY} --kubernetes-version=v1.15.4
 
 minikube docker-env --shell bash
 eval $(minikube docker-env --shell bash)
