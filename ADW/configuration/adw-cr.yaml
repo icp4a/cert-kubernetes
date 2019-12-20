@@ -1,0 +1,97 @@
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: adw-cr
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 19.0.3
+spec:
+  adw_configuration:
+    global:
+      imagePullSecret: < IMAGE SECRET >
+      kubernetes:
+        serviceAccountName: "ibm-cp4a-operator"
+
+    adwSecret: < SECRET >
+
+    grantWritePermissionOnMountedVolumes: true
+
+    logLevel:  "error"
+
+    networkPolicy:
+      enabled: true
+
+    restartPolicy: Never
+
+    registry:
+      endpoint: ""
+
+    npmRegistry:
+      persistence:
+        enabled: true
+        useDynamicProvisioning: true
+        storageClassName: "< STORAGE CLASS NAME >"
+
+    mongodb:
+      persistence:
+        enabled: true
+        useDynamicProvisioning: true
+        storageClassName: "< STORAGE CLASS NAME >"
+
+    designer:
+      image:
+        repository: "< REGISTRY >/adw-designer"
+        tag: "19.0.3"
+        pullPolicy: "Always"
+      externalPort: 30708
+      externalUrl: ""
+
+    runtime:
+      image:
+        repository: "< REGISTRY >/adw-runtime"
+        tag: "19.0.3"
+        pullPolicy: "Always"
+      persistence:
+        useDynamicProvisioning: true
+        storageClassName: "< STORAGE CLASS NAME >"
+      service:
+        type: "NodePort"
+      externalPort: 30709
+      runLogLevel: "warn"
+      externalUrl: ""
+
+    management:
+      image:
+        repository: "< REGISTRY >/adw-management"
+        tag: "19.0.3"
+        pullPolicy: "Always"
+      persistence:
+        useDynamicProvisioning: true
+        storageClassName: "< STORAGE CLASS NAME >"
+      externalPort: 30710
+      externalUrl: ""
+
+    setup:
+      image:
+        repository: "< REGISTRY >/adw-setup"
+        tag: "19.0.3"
+        pullPolicy: "Always"
+
+    init:
+      image:
+        repository: "< REGISTRY >/dba/adw-init"
+        tag: "19.0.3"
+        pullPolicy: "Always"
+
+    baiKafka:
+      topic: "BAITOPICFORODM"
+      bootstrapServers: ""
+      securityProtocol: "SASL_SSL"
+
+    baiElasticsearch:
+      url: ""
+
+    oidc:
+      endpoint: ""

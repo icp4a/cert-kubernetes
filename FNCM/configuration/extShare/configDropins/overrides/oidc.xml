@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<server>
+<openidConnectClient id="extshare"
+      scope="openid profile email general"
+      responseType="code"
+      clientId="extshare"
+      clientSecret="password""
+      httpsRequired="true"
+      mapIdentityToRegistryUser="false"
+      validationMethod="introspect"
+      inboundPropagation="supported"
+      issuerIdentifier="https://<YOUR UMS URL>/oidc/endpoint/ums"
+      audiences="cpe,navigator,extshare"
+      authorizationEndpointUrl="https://<YOUR UMS URL>/oidc/endpoint/ums/authorize"
+      tokenEndpointUrl="https://<YOUR UMS URL>/oidc/endpoint/ums/token"
+      signatureAlgorithm="RS256"
+      authnSessionDisabled="false"
+      disableLtpaCookie="true"
+      validationEndpointUrl="https://<YOUR UMS URL>/oidc/endpoint/ums/introspect"
+      jwkEndpointUrl="https://<YOUR UMS URL>/oidc/endpoint/ums/jwk" >
+    </openidConnectClient>
+</server>

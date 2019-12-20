@@ -1,0 +1,141 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2019. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: bai-demo
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 19.0.3
+spec:
+  bai_configuration:
+    imageCredentials:
+      imagePullSecret: <PULL_SECRET>
+
+    persistence:
+      useDynamicProvisioning: true
+
+    flinkPv:
+      storageClassName: "<RWX_STORAGE_CLASS>"
+
+    kafka:
+      bootstrapServers: "kafka.bootstrapserver1.hostname:9092,kafka.bootstrapserver2.hostname:9092,kafka.bootstrapserver3.hostname:9092"
+      securityProtocol: "PLAINTEXT"
+
+    # settings:
+    #   egress: true
+    #   ingressTopic: ibm-bai-ingress
+    #   egressTopic: ibm-bai-egress
+    #   serviceTopic: ibm-bai-service
+
+    setup:
+      image:
+        repository: <DOCKER_REGISTRY>/bai-setup
+        tag: "19.0.3"
+
+    admin:
+      image:
+        repository: <DOCKER_REGISTRY>/bai-admin
+        tag: "19.0.3"
+
+    flink:
+      initStorageDirectory: true
+      image:
+        repository: <DOCKER_REGISTRY>/bai-flink
+        tag: "19.0.3"
+      zookeeper:
+        image:
+          repository: <DOCKER_REGISTRY>/bai-flink-zookeeper
+          tag: "19.0.3"
+
+    ingestion:
+      install: false
+      image:
+        repository: <DOCKER_REGISTRY>/bai-ingestion
+        tag: "19.0.3"
+
+    adw:
+      install: false
+      image:
+        repository: <DOCKER_REGISTRY>/bai-adw
+        tag: "19.0.3"
+    
+    bpmn:
+      install: false
+      image:
+        repository: <DOCKER_REGISTRY>/bai-bpmn
+        tag: "19.0.3"
+
+    bawadv:
+      install: false
+      image:
+        repository: <DOCKER_REGISTRY>/bai-bawadv
+        tag: "19.0.3"
+
+    icm:
+      install: false
+      image:
+        repository: <DOCKER_REGISTRY>/bai-icm
+        tag: "19.0.3"
+
+    odm:
+      install: false
+      image:
+        repository: <DOCKER_REGISTRY>/bai-odm
+        tag: "19.0.3"
+
+    content:
+      install: false
+      image:
+        repository: <DOCKER_REGISTRY>/bai-content
+        tag: "19.0.3"
+
+    initImage:
+      image:
+        repository: <DOCKER_REGISTRY>/bai-init
+        tag: "19.0.3"
+
+    elasticsearch:
+      install: true
+
+    ibm-dba-ek:
+      image:
+        imagePullPolicy: Always
+        imagePullSecret: <PULL_SECRET>
+
+      elasticsearch:
+        image:
+          repository: <DOCKER_REGISTRY>/bai-elasticsearch
+          tag: "19.0.3"
+        init:
+          image:
+            repository: <DOCKER_REGISTRY>/bai-init
+            tag: "19.0.3"
+        data:
+          storage:
+            persistent: true
+            useDynamicProvisioning: true
+            storageClass: "<RWO_STORAGE_CLASS>"
+          snapshotStorage:
+            enabled: true
+            useDynamicProvisioning: true
+            storageClassName: "<RWX_STORAGE_CLASS>"
+
+      kibana:
+        image:
+          repository: <DOCKER_REGISTRY>/bai-kibana
+          tag: "19.0.3"
+        init:
+          image:
+            repository: <DOCKER_REGISTRY>/bai-init
+            tag: "19.0.3"

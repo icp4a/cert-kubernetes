@@ -1,0 +1,68 @@
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: demo-template
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 19.0.3
+spec:
+  #####################################################################
+  ## IBM Business Automation Studio 19.0.3 configuration ##
+  #####################################################################
+  bastudio_configuration:
+    admin_secret_name: bastudio-admin-secret
+    images:
+      bastudio:
+        repository: cp.icr.io/cp/cp4a/bas/bastudio
+        tag: 19.0.3
+    hostname:  <your external BAStudio host name>
+    port: 443
+    database:
+      host: <database host name>
+      # The database provided should be created by the BAStudio SQL script template.
+      name: <database name>
+      port: <database port>
+      # If you want to enable the database ACR, HADR, configure the alternative_host and alternative_port both, otherwise leave them as blank.
+      alternative_host: 
+      alternative_port: 
+      type: db2
+    jms_server:
+      image:
+        repository: cp.icr.io/cp/cp4a/bas/jms
+        tag: 19.0.3
+    #-----------------------------------------------------------------------
+    #  App Engine Playback Server (playback_server) can only be one instance, which differs from the App Engine (The application_engine_configuration is a list, you can deploy multiple instances of AppEngine).
+    #-----------------------------------------------------------------------
+    playback_server:
+      admin_secret_name: playback-server-admin-secret
+      images:
+        db_job:
+          repository: cp.icr.io/cp/cp4a/bas/solution-server-helmjob-db
+          tag: 19.0.3
+        solution_server:
+          repository: cp.icr.io/cp/cp4a/bas/solution-server
+          tag: 19.0.3
+      hostname: <your app engine playback server host name>
+      port: 443
+      database:
+        host: <database host name>
+        # The database provided should be created by the App Engine Playback Server SQL script template.
+        name: <database name>
+        port: <database port>
+        # If you want to enable the database ACR, HADR, configure the alternative_host and alternative_port both, otherwise leave them as blank.
+        alternative_host: 
+        alternative_port: 
+        type: db2
+        
+  ## Resource Registry Configuration
+  ## Important: if you've already configured Resource Registry before, you don't need to change resource_registry_configuration section in your copy of the template custom resource YAML file.
+  resource_registry_configuration:
+    admin_secret_name: resource-registry-admin-secret
+    images:
+      resource_registry:
+        repository: cp.icr.io/cp/cp4a/bas/dba-etcd
+        tag: 19.0.3
+    hostname: <your external resource registry host name>
+    port: 443

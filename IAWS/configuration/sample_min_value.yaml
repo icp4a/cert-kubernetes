@@ -1,0 +1,234 @@
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: demo
+spec:
+  iaws_configuration:
+    - name: instance1
+      wfs:
+        service_type: "Route"
+        hostname: 
+        port: 443
+        replicas: 1
+        workflow_server_secret: ibm-baw-baw-secret
+        tls:
+          tls_secret_name: ibm-baw-tls
+          tls_trust_list:
+        image:
+          repository: cp.icr.io/cp/cp4a/iaws/iaws-ps
+          tag: 19.0.3
+          pullPolicy: IfNotPresent
+        pfs_bpd_database_init_job:
+          repository: cp.icr.io/cp/cp4a/iaws/pfs-bpd-database-init-prod
+          tag: 19.0.3
+          pullPolicy: IfNotPresent
+        upgrade_job:
+          repository: cp.icr.io/cp/cp4a/iaws/iaws-psdb-handling
+          tag: 19.0.3
+          pullPolicy: IfNotPresent
+        ibm_workplace_job:
+          repository:  cp.icr.io/cp/cp4a/iaws/iaws-ibm-workplace
+          tag: 19.0.3
+          pull_policy: IfNotPresent
+        database:
+          ssl: false
+          sslsecretname: ibm-dba-baw-db2-cacert
+          type: "DB2"
+          server_name: 
+          database_name: "BPMDB"
+          port: "50000"
+          secret_name: ibm-baw-wfs-server-db-secret
+          dbcheck:
+            wait_time: 900
+            interval_time: 15
+          hadr:
+            standbydb_host: 
+            standbydb_port: 
+            retryinterval: 
+            maxretries: 
+        content_integration:
+          init_job_image:
+            repository: cp.icr.io/cp/cp4a/iaws/iaws-ps-content-integration
+            tag: 19.0.3
+            pull_policy: IfNotPresent
+          domain_name: "P8Domain"
+          object_store_name: "DOCS"
+          cpe_admin_secret: cpe-admin-secret
+          event_handler_path: "/home/config/docs-config"
+        appengine:
+          hostname: 
+          admin_secret_name: ae-admin-secret-instance1
+        resource_registry:
+          hostname: 
+          port: 443
+          admin_secret_name: rr-admin-secret
+        jms:
+          image:
+            repository: cp.icr.io/cp/cp4a/iaws/baw-jms-server
+            tag: 19.0.3
+            pull_policy: IfNotPresent
+          tls:
+            tls_secret_name: dummy-jms-tls-secret
+          resources:
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+          storage:
+            persistent: true
+            size: "2Gi"
+            use_dynamic_provisioning: false
+            access_modes:
+            - ReadWriteOnce
+            storage_class: "jms-storage-class"
+        resources:
+          limits:
+            cpu: 3
+            memory: 2096Mi
+          requests:
+            cpu: 2
+            memory: 1048Mi
+        probe:
+          ws:
+            liveness_probe:
+              initial_delay_seconds: 240
+            readinessProbe:
+              initial_delay_seconds: 180
+        logs:
+          console_format: "json"
+          console_log_level: "INFO"
+          console_source: "message,trace,accessLog,ffdc,audit"
+          message_format: "basic"
+          trace_format: "ENHANCED"
+          trace_specification: "*=info"
+        custom_xml_secret_name:
+        lombardi_custom_xml_secret_name: wfs-lombardi-custom-xml-secret
+
+  pfs_configuration:
+    pfs:
+      hostname: 
+      port: 443
+      service_type: Route
+      image:
+        repository: cp.icr.io/cp/cp4a/iaws/pfs
+        tag: 19.0.3
+        pull_policy: IfNotPresent
+      liveness_probe:
+        initial_delay_seconds: 60
+      readiness_probe:
+        initial_delay_seconds: 60
+      replicas: 1
+      service_account:
+      anti_affinity: hard
+      admin_secret_name: ibm-pfs-admin-secret
+      config_dropins_overrides_secret: ibm-pfs-config
+      resources_security_secret: ""
+      external_tls_secret:
+      external_tls_ca_secret:
+      tls:
+        tls_secret_name:
+        tls_trust_list:
+      resources:
+        requests:
+          cpu: 500m
+          memory: 512Mi
+        limits:
+          cpu: 2
+          memory: 4Gi
+      saved_searches:
+        index_name: ibmpfssavedsearches
+        index_number_of_shards: 3
+        index_number_of_replicas: 1
+        index_batch_size: 100
+        update_lock_expiration: 5m
+        unique_constraint_expiration: 5m
+      security:
+        sso:
+          domain_name:
+          cookie_name: "ltpatoken2"
+          ltpa:
+            filename: "ltpa.keys"
+            expiration: "120m"
+            monitor_interval: "60s"
+        ssl_protocol: SSL
+      executor:
+        max_threads: "80"
+        core_threads: "40"
+      rest:
+        user_group_check_interval: "300s"
+        system_status_check_interval: "60s"
+        bd_fields_check_interval: "300s"
+      custom_env_variables:
+        names:
+        secret:
+      output:
+        storage:
+          use_dynamic_provisioning: false
+          size: 5Gi
+          storage_class: "pfs-output"
+      logs:
+        storage:
+          use_dynamic_provisioning: false
+          size: 5Gi
+          storage_class: "pfs-logs"
+      dba_resource_registry:
+        image:
+          repository: cp.icr.io/cp/cp4a/aae/dba-etcd
+          tag: latest
+          pull_policy: IfNotPresent
+        lease_ttl: 120
+        pfs_check_interval: 10
+        pfs_connect_timeout: 10
+        pfs_response_timeout: 30
+        pfs_registration_key: /dba/appresources/IBM_PFS/PFS_SYSTEM
+        tls_secret: rr-tls-client-secret
+        resources:
+          limits:
+            memory: ‘512Mi’
+            cpu: ‘500m’
+          requests:
+            memory: ‘512Mi’
+            cpu: ‘200m’
+    elasticsearch:
+      es_image:
+        repository: cp.icr.io/cp/cp4a/iaws/pfs-elasticsearch-prod
+        tag: 19.0.3
+        pull_policy: IfNotPresent
+      pfs_init_image:
+        repository: cp.icr.io/cp/cp4a/iaws/pfs-init-prod
+        tag: 19.0.3
+        pull_policy: IfNotPresent
+      nginx_image:
+        repository: cp.icr.io/cp/cp4a/iaws/pfs-nginx-prod
+        tag: 19.0.3
+        pull_policy: IfNotPresent
+      replicas: 1
+      service_type: NodePort
+      external_port:
+      anti_affinity: hard
+      service_account: ibm-pfs-es-service-account
+      privileged: true
+      probe_initial_delay: 90
+      heap_size: "1024m"
+      resources:
+        limits:
+          memory: "2Gi"
+          cpu: "1000m"
+        requests:
+          memory: "1Gi"
+          cpu: "100m"
+      storage:
+        persistent: true
+        use_dynamic_provisioning: false
+        size: 10Gi
+        storage_class: "pfs-es"
+      snapshot_storage:
+        enabled: false
+        use_dynamic_provisioning: false
+        size: 30Gi
+        storage_class_name: ""
+        existing_claim_name: ""
+      security:
+        users_secret: ""
