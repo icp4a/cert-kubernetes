@@ -1,0 +1,44 @@
+# Sample values for odm installation using custom configuration.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: odm-demo-external-custom-db
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+spec:
+  odm_configuration:
+    image:
+      repository: ""
+      pullPolicy: IfNotPresent
+      tag: 8.10.3
+    decisionCenter:
+      # Configuring Decision Center customization
+      # Following instructions at https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.offerings/topics/tsk_custom_emitters.html
+      customlibPvc:
+
+      # Customizing a Decision Center time zone
+      # Following instructions at https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.managing/op_topics/tsk_set_jvmargs.html
+      jvmOptionsRef: my-odm-dc-jvm-options-configmap
+
+    # Configuring a custom external database
+    # Following instructions at https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.offerings/topics/tsk_custom_external_db.html
+    externalCustomDatabase:
+      datasourceRef: customdatasource-secret
+      driverPvc: customdatasource-pvc
+
+    customization:
+      # Defining the security certificate
+      # Following instructions at https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.offerings/topics/tsk_replace_security_certificate.html
+      securitySecretRef: mysecuritysecret
+
+      # Configuring the ODM event emitter
+      # Following instructions at https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.offerings/topics/tsk_custom_emitters.html
+      baiEmitterSecretRef: mybaieventsecret
+
+      # Configuring the LDAP and user registry
+      # Following instructions at https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.offerings/topics/con_config_user_registry.html
+      authSecretRef: my-auth-secret

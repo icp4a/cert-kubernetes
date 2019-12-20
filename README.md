@@ -1,120 +1,55 @@
-
-# IBM Cloud Pak for Automation 19.0.2 on Certified Kubernetes
+# IBM Cloud Pak for Automation 19.0.3 on Certified Kubernetes
 
 ## Introduction
 
-For information about IBM Cloud Pak for Automation 19.0.x, see [IBM Knowledge Center](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/welcome/kc_welcome_dba_distrib.html).
+The repository includes folders and resources to help you install the Cloud Pak software. The following software can be managed by the Cloud Pak operator.
 
-The installation of IBM Cloud Pak for Automation software uses Helm charts and Tiller or Kubernetes YAML files. The charts are packages of preconfigured Kubernetes resources that bootstrap a deployment on a Kubernetes cluster. You customize the deployment by changing and adding configuration parameters.
 
-The repository includes one folder for each application or service.
+| Folder 	| Component name 	| Version in 19.0.3 |
+| :---	| :---	| ---: |
+| AAE 	| IBM Business Automation Application Engine | 19.0.3 |
+| ACA 	| IBM Business Automation Content Analyzer | 19.0.3 |
+| ADW 	| IBM Automation Digital Worker | 19.0.3 |
+| BAI 	| IBM Business Automation Insights | 19.0.3 |
+| BAN   | IBM Business Automation Navigator | 3.0.7 |
+| BAS 	| IBM Business Automation Studio | 19.0.3 |
+| FNCM 	| IBM FileNet Content Manager | 5.5.4 |
+| IAWS 	| IBM Automation Workstream Services | 19.0.3 |
+| ODM 	| IBM Operational Decision Manager | 8.10.3 |
+| UMS 	| User Management Service | 19.0.3 |
 
-| Folder 	| Product name 	| Version in 19.0.2 |
-|------------	|----------------------------------	|------------- |
-| AAE 	| IBM Business Automation Application Engine | 19.0.2 |
-| BACA 	| IBM Business Automation Content Analyzer | 19.0.2 |
-| BAI 	| IBM Business Automation Insights | 19.0.2 |
-| BAS 	| IBM Business Automation Studio | 19.0.2 |
-| AAE 	| IBM Business Automation Application Engine | 19.0.2 |
-| CONTENT 	| IBM FileNet Content Manager | 5.5.3 |
-| NAVIGATOR 	| IBM Digital Business Navigator | 3.0.6 |
-| ODM 	| IBM Operational Decision Manager | 8.10.2 |
-| UMS 	| User Management Service | 19.0.2 |
+The following table shows dependencies between the components. A mandatory component is indicated in each column with an "M". Optional installation is indicated with an "O". 
 
-Each folder contains subfolders, which contain instructions and resources to install the Helm charts. 
+|  | ACA needs | ADW needs | BAN needs | BAS needs | FNCM needs | IAWS needs | ODM needs |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| AAE 	|  |  |  | M(8,9) |  | M(8) |  |
+| ACA 	| - | O(6) |  |  |  |  |  |
+| BAI 	|  | O(3) |  |  | O(3) |  | O(3) |
+| BAN 	|  |  | - |  | M(7) | M(7) |  |
+| BAS 	|  M(4) | M(2,4) |  | - |  | M(4) | O(2,5) |
+| FNCM 	|  |  |  |  | - | M(CMIS/CPE only) |  |
+| ODM 	|  | O(6) |  |  |  |  | - |
+| UMS 	| M(1) | M(1) | O(1) | M(1) | O(1) | M(1) |  |
 
-Installation is supported only on a Certified Kubernetes platform. There are dozens of Certified Kubernetes offerings and more coming to market each year. Cloud Native Computing Foundation (CNCF) has created a Certified Kubernetes Conformance Program, in which most of the leading vendors and cloud computing providers have Certified Kubernetes offerings. Use the following link to determine whether the vendor and/or platform is certified by CNCF https://landscape.cncf.io/category=platform. For more information about nonqualified platforms, see the [support statement for Certified Kubernetes](http://www.ibm.com/support/docview.wss?uid=ibm10876926).
+The type of integration is indicated with the following numbers:
 
-> **Note**: Use the instructions in the IBM Knowledge Center to help you install the containers on IBM Cloud Private. The support for IBM Cloud Private is deprecated in 19.0.2. For more information, see [Installing products on IBM Cloud Private](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/topics/tsk_install_icp.html).
+| 1. SSO/Authentication | 4. Designer integration in Studio | 7. Runtime view |
+| :--- | :--- | :--- |
+| **2. Registration to  Resource Registry** | **5. Toolkit for App designer**  | **8. App execution** |
+| **3. Event emitter/dashboard** | **6. Skill execution** | **9. Test and deploy** |
+
+## Choose your platform and follow the instructions
+
+Use the following links to go to the platform on which you want to install. On each platform you must configure some manifest files that set up your cluster and the operator. You can then select and add configuration parameters for the software that you want to install in a custom resources (.yaml) file.
+
+- [Managed Red Hat OpenShift on IBM Cloud Public](platform/roks/README.md)
+- [Red Hat OpenShift](platform/ocp/README.md)
+- [Other Certified Kubernetes platforms](platform/k8s/README.md)
+
+Installation is supported only on Certified Kubernetes platforms. Cloud Native Computing Foundation (CNCF) has created a Certified Kubernetes Conformance Program, in which most of the leading vendors and cloud computing providers have Certified Kubernetes offerings. Use the following link to determine whether the vendor and/or platform is certified by CNCF https://landscape.cncf.io/category=platform. For more information about nonqualified platforms, see the [support statement for Certified Kubernetes](http://www.ibm.com/support/docview.wss?uid=ibm10876926).
+
+> **Note**: Support to install on IBM Cloud Private with the Business Automation Configuration Container is removed in 19.0.3. You can use the Certified Kubernetes instructions to install the automation containers on this platform.
 
 ## Legal Notice
 
 Legal notice for users of this repository [legal-notice.md](legal-notice.md).
-
-## Step 1: Prepare your environment
-
-Before you install any of the containerized software:
-
-1. Go to the prerequisites page in the [IBM Cloud Pak for Automation 19.0.x](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/tsk_prepare_env_k8s.html) Knowledge Center.
-2. Follow the instructions on preparing your environment in the Knowledge Center.
-
-   How much preparation you need to do depends on your environment and how familiar you are with your environment.
-
-##  Step 2: Get access to the container images
-
-  * **Option 1**: Create a pull secret for the IBM Cloud Entitled Registry
-
-    1. Log in to [MyIBM Container Software Library](https://myibm.ibm.com/products-services/containerlibrary) with the IBMid and password that are associated with the entitled software.
-
-    2. In the **Container software library** tile, click **View library** and then click **Copy key** to copy the `entitlement_key` to the clipboard.
-
-    3. Create a pull secret by running a `kubectl create secret` command.
-       ``` console
-       $ kubectl create secret docker-registry <my_pull_secret> -n <namespace> --docker-server=cp.icr.io \
-         --docker-username=cp --docker-password="<entitlement_key>" --docker-email=user@foo.com
-       ```
-
-       > **Note**: The `cp.icr.io` and `cp` values for the **docker-server** and **docker-username** parameters must be used. Take a note of the pull secret and the server values so that you can set them to the **pullSecrets** and **repository** parameters when you run the installation for your containers.
-
-    4. Install the Container Registry plug-in.
-       ``` console
-       $ ibmcloud plugin install container-registry -r 'IBM Cloud'
-       ```
-	   
-    5. Log in to your IBM Cloud account.
-       ``` console
-       $ ibmcloud login -a https://cloud.ibm.com
-       ```
-	   
-    6. Set the region as global.
-       ``` console
-       $ ibmcloud cr region-set global
-       ```	
-	   
-    7. List the available images by using the following command.
-       ``` console
-       $ ibmcloud cr image-list --include-ibm | grep -i cp4a
-       ```	
-
-  * **Option 2**: Download the packages from PPA and load the images
-
-    [IBM Passport Advantage (PPA)](https://www-01.ibm.com/software/passportadvantage/pao_customer.html) provides archives (.tgz) for the software. To view the list of Passport Advantage eAssembly installation images, refer to the [19.0.2 download document](http://www.ibm.com/support/docview.wss?uid=ibm10958567).
-
-    1. Download one or more PPA packages to a server that is connected to your Docker registry.
-
-    2. Download the [`loadimages.sh`](scripts/loadimages.sh) script from GitHub.
-
-    3. Log in to the specified Docker registry with the docker login command.
-       This command depends on the environment that you have.
-
-       > **Note**: If your platform is OpenShift, do NOT run the .sh script to load the images without preparing your environment beforehand. Go to [Step 3](README.md#step-3-go-to-the-relevant-folders-and-follow-the-instructions) and use the instructions in the respective folders. You can then load the images to the Docker registry with the right privileges.
-
-    4. Run the `loadimages.sh` script to load the images into your Docker registry. Specify the two mandatory parameters in the command line.
-
-       > **Note**: The *docker-registry* value depends on the platform that you are using.
-
-       ```
-       -p  PPA archive files location or archive filename
-       -r  Target Docker registry and namespace
-       -l  Optional: Target a local registry
-       ```
-
-       > The following example shows the input values in the command line.
-
-       ```
-       # scripts/loadimages.sh -p /Downloads/PPA/ImageArchive.tgz -r <DOCKER-REGISTRY>/demo-project
-       ```
-## Step 3: Go to the relevant folders and follow the instructions
-
-You can install software on a certified Kubernetes platform with the Helm command line interface (CLI) or the kubectl command line interface (CLI). Use the following links to go to the instructions for the software that you want to install.
-> **Note**: UMS must be installed before Business Automation Studio if you want to use the service.
-
-- [Install the User Management Service](UMS/README.md)
-- [Install IBM Business Automation Application Engine](AAE/README.md)
-- [Install IBM Business Automation Content Analyzer](BACA/README.md)
-- [Install IBM Business Automation Insights](BAI/README.md)
-- [Install IBM Business Automation Studio](BAS/README.md)
-- [Install IBM FileNet Content Manager](CONTENT/README.md)
-- [Install IBM Business Automation Navigator](NAVIGATOR/README.md)
-- [Install IBM Operational Decision Manager](ODM/README.md)
-

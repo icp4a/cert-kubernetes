@@ -1,0 +1,4 @@
+connect to $base_db_name ;
+set schema $base_db_user ;
+insert into TENANTINFO (tenantid,ontology,tenanttype,dailylimit,rdbmsengine,bacaversion,rdbmsconnection,dbname,dbuser,tenantdbversion) values ( '$tenant_id', '$tenant_ontology', $tenant_type, $daily_limit, 'DB2', '1.3',  encrypt('$rdbmsconnection','AES_KEY'),'$tenant_db_name','$tenant_db_user','1.3') ;
+connect reset ;

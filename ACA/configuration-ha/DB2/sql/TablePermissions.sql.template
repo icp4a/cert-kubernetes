@@ -1,0 +1,22 @@
+CONNECT TO $tenant_db_name ;
+
+GRANT ALTER ON TABLE $tenant_ontology.DOC_CLASS TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.DOC_ALIAS TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.KEY_CLASS TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.KEY_ALIAS TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.CWORD TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.HEADING TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.HEADING_ALIAS TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.USER_DETAIL TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.INTEGRATION TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.IMPORT_ONTOLOGY TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.API_INTEGRATIONS_OBJECTSSTORE TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.SMARTPAGES_OPTIONS TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.FONTS TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.FONTS_TRANSID TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.DB_BACKUP TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.PATTERN TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.DOCUMENT TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.TRAINING_LOG TO USER $tenant_db_user ;
+
+CONNECT RESET;

@@ -1,0 +1,11 @@
+--base DB changes
+connect to $base_db_name ;
+set schema $base_db_user ;
+
+alter table tenantinfo add column featureflags bigint not null with default 0;
+alter table tenantinfo add column tenantdbversion varchar(255);
+update tenantinfo set bacaversion='1.2';
+update tenantinfo set tenantdbversion='1.2';
+reorg table tenantinfo;
+
+connect reset;

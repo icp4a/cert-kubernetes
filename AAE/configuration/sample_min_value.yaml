@@ -1,0 +1,39 @@
+# Minimal required values for App Engine
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+spec:
+  ## production configuration
+  ## App Engine configuration 
+  application_engine_configuration:
+  ## The application_engine_configuration is a list, you can deploy multiple instances of AppEngine, you can assign different configurations for each instance.
+  ## For each instance, application_engine_configuration.name and application_engine_configuration.name.hostname must be assigned to different values.
+  - name: ae_instance1
+    hostname: <your external app engine host name>
+    port: 443
+    admin_secret_name: ae-secret-credential
+    database:
+      host: <your database host/IP>
+      name: <your database name>
+      port: <your database port>
+      ## If you setup DB2 HADR and want to use it, you need to configure alternative_host and alternative_port, or else, leave is as blank.
+      alternative_host: 
+      alternative_port: 
+    images:
+      db_job:
+        repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
+        tag: 19.0.3
+      solution_server:
+        repository: cp.icr.io/cp/cp4a/aae/solution-server
+        tag: 19.0.3
+    
+  ## Resource Registry Configuration
+  ## Important: if you've already configured Resource Registry before, you don't need to change resource_registry_configuration section in your copy of the template custom resource YAML file.
+  resource_registry_configuration:
+    admin_secret_name: resource-registry-admin-secret
+    hostname: <your external resource registry host name>
+    port: 443
+    images:
+      resource_registry:
+        repository: cp.icr.io/cp/cp4a/aae/dba-etcd
+        tag: 19.0.3
+ 

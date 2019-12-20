@@ -1,0 +1,10 @@
+<server>
+	<!-- https://www.ibm.com/support/knowledgecenter/en/SSEQTP_liberty/com.ibm.websphere.liberty.autogen.nd.doc/ae/rwlp_config_cors.html -->
+	<cors domain="/content-services-graphql"
+        allowedOrigins="https://www.domain1.com:port, http://www.domain1.com:port, https://www.domain2.com:port, http://www.domain2.com:port"
+        allowedMethods="GET, POST, OPTIONS"
+        allowedHeaders="Connection,Pragma,Cache-Control,XSRFtoken,Origin,User-Agent,Content-Type,Content-Length,Accept-Control-Request-Method,Accept-Control-Request-Headers,Accept,Referer,Accept-Encoding,Accept-Language,DNT,Host,Content-Length,Cache-control,Cookie"
+        exposeHeaders="Content-Disposition,Content-Length,Content_Type,Content-Language,X-Powered-By,Date,Allow,Transfer-Encoding,$WSEP,DNT,Access-Control-Allow-Credentials,Access-Control-Allow-Headers,Access-Control-Allow-Max-Age,Access-Control-Allow-Methods,Access-Control-Allow-Origin,Access-Control-Expose-Headers,Connection,Cache-control,Cookie"
+	allowCredentials="true"
+        maxAge="3600" />
+</server>

@@ -1,0 +1,2029 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2019. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: demo-template
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 19.0.3
+spec:
+  ## shared configuration among all tribe
+  shared_configuration:
+    # image_pull_secrets:
+    # - image-pull-secret
+    # images:
+    #   keytool_job_container:
+    #     repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer
+    #     tag: 19.0.3
+    #   dbcompatibility_init_container:
+    #     repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer
+    #     tag: 19.0.3
+    #   keytool_init_container:
+    #     repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer
+    #     tag: 19.0.3
+    #   umsregistration_initjob:
+    #     repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
+    #     tag: 19.0.3
+    #   pull_policy: Always
+    # root_ca_secret: icp4a-root-ca
+    # sc_deployment_platform: OCP
+    # trusted_certificate_list: []
+    # encryption_key_secret: icp4a-shared-encryption-key
+  ldap_configuration:
+    # the candidate value is "IBM Security Directory Server" or "Microsoft Active Directory"
+    # lc_selected_ldap_type: "IBM Security Directory Server"
+    # lc_ldap_server: "<hostname>"
+    # lc_ldap_port: "389"
+    # lc_ldap_base_dn: "dc=hqpsidcdom,dc=com"
+    # lc_ldap_ssl_enabled: false
+    # lc_ldap_ssl_secret_name: ""
+    # lc_ldap_user_name_attribute: "*:cn"
+    # lc_ldap_user_display_name_attr: "cn"
+    # lc_ldap_group_base_dn: "dc=hqpsidcdom,dc=com"
+    # lc_ldap_group_name_attribute: "*:cn"
+    # lc_ldap_group_display_name_attr: "cn"
+    # lc_ldap_group_membership_search_filter: "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))"
+    # lc_ldap_group_member_id_map: "groupofnames:member"
+    # lc_ldap_max_search_results: 4500
+    # ca_ldap_configuration:
+    #   lc_user_filter: "(&(cn={{ '{{' }}username{{ '}}'}})(objectclass=person))"
+    #   lc_ldap_self_signed_crt: "" #true or false when lc_ldap_ssl_enabled: true
+    # ad:
+    #   lc_ad_gc_host: ""
+    #   lc_ad_gc_port: ""
+    #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
+    #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+    # tds:
+    #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
+    #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+  ext_ldap_configuration:
+  #   # the candidate value is "IBM Security Directory Server" or "Microsoft Active Directory"
+  #   lc_selected_ldap_type: "IBM Security Directory Server"
+  #   lc_ldap_server: "<hostname>"
+  #   lc_ldap_port: "389"
+  #   lc_bind_secret: ldap-bind-secret # secret is expected to have ldapUsername and ldapPassword keys
+  #   lc_ldap_base_dn: "O=LOCAL"
+  #   lc_ldap_ssl_enabled: false
+  #   lc_ldap_ssl_secret_name: ""
+  #   lc_ldap_user_name_attribute: "*:cn"
+  #   lc_ldap_user_display_name_attr: "cn"
+  #   lc_ldap_group_base_dn: "O=LOCAL"
+  #   lc_ldap_group_name_attribute: "*:cn"
+  #   lc_ldap_group_display_name_attr: "cn"
+  #   lc_ldap_group_membership_search_filter: "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))"
+  #   lc_ldap_group_member_id_map: "groupofnames:member"
+  #   ad:
+  #     lc_ad_gc_host: ""
+  #     lc_ad_gc_port: ""
+  #     lc_user_filter: "(&(cn=%v)(objectclass=person))"
+  #     lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+  #   tds:
+  #     lc_user_filter: "(&(cn=%v)(objectclass=person))"
+  #     lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+  datasource_configuration:
+    # the candidate value is "db2" or "db2HADR" or "oracle" or "sqlserver"
+    # dc_gcd_datasource:
+    #   dc_database_type: "db2"
+    #   dc_common_gcd_datasource_name: "FNGCDDS"
+    #   dc_common_gcd_xa_datasource_name: "FNGCDDSXA"
+    #   database_servername: "<hostname>"
+    #   database_name: "GCDDB"
+    #   database_port: "50000"
+    #   dc_oracle_gcd_jdbc_url: "jdbc:oracle:thin:@//<hostname>:1521/orcl"
+    #   dc_hadr_standby_servername: "<hostname>"
+    #   dc_hadr_standby_port: "50000"
+    #   dc_hadr_validation_timeout: 15
+    #   dc_hadr_retry_interval_for_client_reroute: 15
+    #   dc_hadr_max_retries_for_client_reroute: 3
+    # dc_os_datasources:
+    # - dc_database_type: "db2"
+    #   dc_common_os_datasource_name: "FNOS1DS"
+    #   dc_common_os_xa_datasource_name: "FNOS1DSXA"
+    #   database_servername: "<hostname>"
+    #   database_name: "OS1DB"
+    #   database_port: "50000"
+    #   dc_oracle_os_jdbc_url: "jdbc:oracle:thin:@//<hostname>:1521/orcl"
+    #   dc_hadr_standby_servername: "<hostname>"
+    #   dc_hadr_standby_port: "50000"
+    #   dc_hadr_validation_timeout: 3
+    #   dc_hadr_retry_interval_for_client_reroute: 3
+    #   dc_hadr_max_retries_for_client_reroute: 3
+    # - dc_database_type: "db2"
+    #   dc_common_os_datasource_name: "FNOS2DS"
+    #   dc_common_os_xa_datasource_name: "FNOS2DSXA"
+    #   database_servername: "<hostname>"
+    #   database_name: "OS2DB"
+    #   database_port: "50000"
+    #   dc_oracle_os_jdbc_url: "jdbc:oracle:thin:@//<hostname>:1521/orcl"
+    #   dc_hadr_standby_servername: "<hostname>"
+    #   dc_hadr_standby_port: "50000"
+    #   dc_hadr_validation_timeout: 3
+    #   dc_hadr_retry_interval_for_client_reroute: 3
+    #   dc_hadr_max_retries_for_client_reroute: 3
+    # dc_icn_datasource:
+    #   dc_database_type: "db2"
+    #   dc_oracle_icn_jdbc_url: "jdbc:oracle:thin:@//<hostname>:1521/orcl"
+    #   dc_common_icn_datasource_name: "ECMClientDS"
+    #   database_servername: "<hostname>"
+    #   database_port: "50000"
+    #   database_name: "ICNDB"
+    #   dc_hadr_standby_servername: "<hostname>"
+    #   dc_hadr_standby_port: "50000"
+    #   dc_hadr_validation_timeout: 3
+    #   dc_hadr_retry_interval_for_client_reroute: 3
+    #   dc_hadr_max_retries_for_client_reroute: 3
+    # dc_odm_datasource:
+    #   dc_database_type: "db2"
+    #   database_servername: "db2forodm"
+    #   dc_common_database_port: "50000"
+    #   dc_common_database_name: "db2db"
+    #   dc_common_database_instance_user: "db2user"  # Will remove it, and use K8S Secret to replace it
+    #   dc_common_database_instance_password: "{base64}UGFzc3cwcmQ0SypT"  # Will remove it, and use K8S Secret to replace it
+    #dc_ums_datasource: # credentials are read from ums_configuration.db_secret_name
+    #  # oauth database config
+    #  dc_ums_oauth_type: db2 # derby (for test), db2, oracle
+    #  dc_ums_oauth_host: <your ums oauth db hostname>
+    #  dc_ums_oauth_port: 50000
+    #  dc_ums_oauth_name: UMSDB
+    #  dc_ums_oauth_ssl: false
+    #  dc_ums_oauth_ssl_secret_name:
+    #  dc_ums_oauth_driverfiles:
+    #  dc_ums_oauth_alternate_hosts:
+    #  dc_ums_oauth_alternate_ports:
+  # dc_ca_datasource:
+  #   dc_database_type: "db2" # This value can be db2 or db2HADR
+  #   database_servername: ""
+  #   database_name: ""
+  #    tenant_databases:
+  #    - tenant1
+  #    database_port: ""
+  ## Monitor setting
+  monitoring_configuration:
+    # mon_metrics_writer_option: "4"
+    # mon_metrics_service_endpoint: "9.9.9.9:2003"
+    # mon_bmx_group: "ibm"
+    # mon_bmx_metrics_scope_id: "1"
+    # mon_bmx_api_key: "testkey"
+    # mon_ecm_metrics_collect_interval: 60
+    # mon_ecm_metrics_flush_interval: 60
+    # mon_enable_plugin_pch: true
+    # mon_enable_plugin_mbean: true
+  ## Logging setting
+  logging_configuration:
+    # mon_log_parse: false
+    # mon_log_shipper_option: "1"
+    # mon_log_service_endpoint: "9.9.9.9:5044"
+    # mon_bmx_logs_logging_token: "testtoken"
+    # mon_bmx_space_id: "1"
+
+  ########################################################################
+  ########      IBM FileNet Content Manager configuration         ########
+  ########################################################################
+  ecm_configuration:
+    # fncm_secret_name: ibm-fncm-secret
+    # fncm_ext_tls_secret_name: "{{ meta.name }}-fncm-ext-tls-secret"
+    # fncm_auth_ca_secret_name: "{{ meta.name }}-fncm-auth-ca-secret"
+    # cpe:
+    #   arch:
+    #     amd64: "3 - Most preferred"
+    #   replica_count: 1
+    #   image:
+    #     repository: cp.icr.io/cp/cp4a/fncm/cpe
+    #     tag: ga-554-p8cpe
+    #     pull_policy: Always
+    #   ## Logging for workloads
+    #   log:
+    #    format: json
+    #   ## resource
+    #   resources:
+    #     requests:
+    #       cpu: 500m
+    #       memory: 512Mi
+    #     limits:
+    #       cpu: 1
+    #       memory: 3072Mi
+    #   ## Horizontal Pod Autoscaler
+    #   auto_scaling:
+    #     enabled: true
+    #     max_replicas: 3
+    #     min_replicas: 1
+    #     target_cpu_utilization_percentage: 80
+    #   ## Route public hostname
+    #   hostname: "<hostname>"
+    #   ## cpe Production setting
+    #   cpe_production_setting:
+    #     time_zone: Etc/UTC
+    #     jvm_initial_heap_percentage: 18
+    #     jvm_max_heap_percentage: 33
+    #      # By default, the containers are configured to support OpenID/OAuth for SSO with User Management Services (UMS).
+    #       # If SSO is not enabled for the deployment (i.e., if UMS is not being deployed), then set the following JVM value:
+    #       #    JVM_CUSTOMIZE_OPTIONS="-DFileNet.WSI.AutoDetectLTPAToken=true"
+    #       # This enables the container to recognize WebSphere Liberty LTPA token where LDAP is used for authentication/authorization.
+    #     jvm_customize_options: "-DFileNet.WSI.AutoDetectLTPAToken=true"
+    #     gcd_jndi_name: FNGCDDS
+    #     gcd_jndixa_name: FNGCDDSXA
+    #     license_model: FNCM.PVUNonProd
+    #     license: accept
+    #   monitor_enabled: false
+    #   logging_enabled: true
+    #   collectd_enable_plugin_write_graphite: false
+    #   ## Specify the names of existing persistent volume claims to be used by your application.
+    #   datavolume:
+    #     existing_pvc_for_cpe_cfgstore: "cpe-cfgstore"
+    #     existing_pvc_for_cpe_logstore: "cpe-logstore"
+    #     existing_pvc_for_cpe_filestore: "cpe-filestore"
+    #     existing_pvc_for_cpe_icmrulestore: "cpe-icmrulesstore"
+    #     existing_pvc_for_cpe_textextstore: "cpe-textextstore"
+    #     existing_pvc_for_cpe_bootstrapstore: "cpe-bootstrapstore"
+    #     existing_pvc_for_cpe_fnlogstore: "cpe-fnlogstore"
+    #   probe:
+    #     readiness:
+    #       initial_delay_seconds: 120
+    #       period_seconds: 5
+    #       timeout_seconds: 10
+    #       failure_threshold: 6
+    #     liveness:
+    #       initial_delay_seconds: 600
+    #       period_seconds: 5
+    #       timeout_seconds: 5
+    #       failure_threshold: 6
+    #   image_pull_secrets:
+    #     name: "admin.registrykey"
+    # css:
+    #   arch:
+    #     amd64: "3 - Most preferred"
+    #   replica_count: 1
+    #   image:
+    #     repository: cp.icr.io/cp/cp4a/fncm/css
+    #     tag: ga-554-p8css
+    #     pull_policy: Always
+    #   ## Logging for workloads
+    #   log:
+    #     format: json
+
+    #   ## resource and autoscaling setting
+    #   resources:
+    #     requests:
+    #       cpu: 500m
+    #       memory: 512Mi
+    #     limits:
+    #       cpu: 1
+    #       memory: 4096Mi
+    #   ## CSS Production setting
+    #   css_production_setting:
+    #     jvm_max_heap_percentage: 50
+    #     license: accept
+    #   monitor_enabled: false
+    #   logging_enabled: true
+    #   collectd_enable_plugin_write_graphite: false
+    #   ## Specify the names of existing persistent volume claims to be used by your application.
+    #   datavolume:
+    #     existing_pvc_for_css_cfgstore: "css-cfgstore"
+    #     existing_pvc_for_css_logstore: "css-logstore"
+    #     existing_pvc_for_css_tmpstore: "css-tempstore"
+    #     existing_pvc_for_index: "css-indexstore"
+    #     existing_pvc_for_css_customstore: "css-customstore"
+    #   probe:
+    #     readiness:
+    #       initial_delay_seconds: 60
+    #       period_seconds: 5
+    #       timeout_seconds: 10
+    #       failure_threshold: 6
+    #     liveness:
+    #       initial_delay_seconds: 180
+    #       period_seconds: 5
+    #       timeout_seconds: 5
+    #       failure_threshold: 6
+    #   image_pull_secrets:
+    #     name: "admin.registrykey"
+    # cmis:
+    #   arch:
+    #     amd64: "3 - Most preferred"
+    #   replica_count: 1
+    #   image:
+    #     repository: cp.icr.io/cp/cp4a/fncm/cmis
+    #     tag: ga-304-cmis-if009
+    #     pull_policy: Always
+    #   ## Logging for workloads
+    #   log:
+    #     format: json
+
+    #   ## resource
+    #   resources:
+    #     # We usually recommend not to specify default resources and to leave this as a conscious
+    #     # choice for the user. This also increases chances charts run on environments with little
+    #     # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    #     # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    #     requests:
+    #       cpu: 500m
+    #       memory: 256Mi
+    #     limits:
+    #       cpu: 1
+    #       memory: 1536Mi
+
+    #   ## Horizontal Pod Autoscaler
+    #   auto_scaling:
+    #     enabled: true
+    #     max_replicas: 3
+    #     min_replicas: 1
+    #     target_cpu_utilization_percentage: 80
+    #   ## Route public hostname
+    #   hostname: "<hostname>"
+    #   ## CMIS Production setting
+    #   cmis_production_setting:
+    #     cpe_url:
+    #     time_zone: Etc/UTC
+    #     jvm_initial_heap_percentage: 40
+    #     jvm_max_heap_percentage: 66
+    #     jvm_customize_options: ""
+    #     checkout_copycontent: true
+    #     default_maxitems: 25
+    #     cvl_cache: true
+    #     secure_metadata_cache: false
+    #     filter_hidden_properties: true
+    #     querytime_limit: 180
+    #     resumable_queries_forrest: true
+    #     escape_unsafe_string_characters: false
+    #     max_soap_size: 180
+    #     print_pull_stacktrace: false
+    #     folder_first_search: false
+    #     ignore_root_documents: false
+    #     supporting_type_mutability: false
+    #     license: accept
+    #   monitor_enabled: false
+    #   logging_enabled: false
+    #   collectd_enable_plugin_write_graphite: false
+    #   ## global persistence settings
+    #   datavolume:
+    #   ## Specify the names of existing persistent volume claims to be used by your application.
+    #     existing_pvc_for_cmis_cfgstore: "cmis-cfgstore"
+    #     existing_pvc_for_cmis_logstore: "cmis-logstore"
+    #   probe:
+    #     readiness:
+    #       initial_delay_seconds: 90
+    #       period_seconds: 5
+    #       timeout_seconds: 10
+    #       failure_threshold: 6
+    #     liveness:
+    #       initial_delay_seconds: 180
+    #       period_seconds: 5
+    #       timeout_seconds: 5
+    #       failure_threshold: 6
+    #   image_pull_secrets:
+    #     name: "admin.registrykey"
+    # graphql:
+    #   arch:
+    #     amd64: "3 - Most preferred"
+    #   replica_count: 1
+    #   image:
+    #     repository: cp.icr.io/cp/cp4a/fncm/graphql
+    #     tag: ga-554-p8cgql
+    #     pull_policy: Always
+    #   ## resource
+    #   resources:
+    #     requests:
+    #       cpu: 500m
+    #       memory: 512Mi
+    #     limits:
+    #       cpu: 1
+    #       memory: 1536Mi
+    #    ## Horizontal Pod Autoscaler
+    #   auto_scaling:
+    #     enabled: true
+    #     max_replicas: 1
+    #     min_replicas: 1
+    #     target_cpu_utilization_percentage: 80
+    #   ## Route public hostname
+    #   hostname: "<hostname>"
+    #   ## GraphQL Production setting
+    #   graphql_production_setting:
+    #     time_zone: Etc/UTC
+    #     jvm_initial_heap_percentage: 40
+    #     jvm_max_heap_percentage: 66
+    #     jvm_customize_options: ""
+    #     license_model: FNCM.PVUNonProd
+    #     license: accept
+    #     enable_graph_iql: false
+    #     cpe_uri: http://<hostname>:9080/wsi/FNCEWS40MTOM
+    #   ## Monitor setting and Logging setting
+    #   monitor_enabled: false
+    #   logging_enabled: true
+    #   collectd_enable_plugin_write_graphite: false
+    #   ## Specify the names of existing persistent volume claims to be used by your application.
+    #   datavolume:
+    #     existing_pvc_for_graphql_cfgstore: "graphql-cfgstore"
+    #     existing_pvc_for_graphql_logstore: "graphql-logstore"
+    #   probe:
+    #     readiness:
+    #       initial_delay_seconds: 120
+    #       period_seconds: 5
+    #       timeout_seconds: 10
+    #       failure_threshold: 6
+    #     liveness:
+    #       initial_delay_seconds: 600
+    #       period_seconds: 5
+    #       timeout_seconds: 5
+    #       failure_threshold: 6
+    #   imagePullSecrets:
+    #     name: "admin.registrykey"
+    # es:
+    #   arch:
+    #     amd64: "3 - Most preferred"
+    #   replica_count: 1
+    #   image:
+    #     repository: cp.icr.io/cp/cp4a/fncm/extshare
+    #     tag: ga-307-es
+    #     pull_policy: Always
+    #   ## resource
+    #   resources:
+    #     requests:
+    #       cpu: 500m
+    #       memory: 512Mi
+    #     limits:
+    #       cpu: 1
+    #       memory: 1536Mi
+    #    ## Horizontal Pod Autoscaler
+    #   auto_scaling:
+    #     enabled: true
+    #     max_replicas: 3
+    #     min_replicas: 1
+    #     target_cpu_utilization_percentage: 80
+    #   ## Route public hostname
+    #   hostname: "<hostname>"
+    #   ## External Share Production setting
+    #   es_production_setting:
+    #     time_zone: Etc/UTC
+    #     jvm_initial_heap_percentage: 40
+    #     jvm_max_heap_percentage: 66
+    #     jvm_customize_options: ""
+    #     license_model: FNCM.PVUNonProd
+    #     license: accept
+    #     es_dbtype: db2
+    #     es_jndi_ds: ECMClientDS
+    #     es_schema: ICNDB
+    #     es_ts: ICNDB
+    #     es_admin: ceadmin
+    #   ## Monitor setting and Logging setting
+    #   monitor_enabled: false
+    #   logging_enabled: true
+    #   collectd_enable_plugin_write_graphite: false
+    #   ## Specify the names of existing persistent volume claims to be used by your application.
+    #   datavolume:
+    #     existing_pvc_for_es_cfgstore: "es-cfgstore"
+    #     existing_pvc_for_es_logstore: "es-logstore"
+    #   probe:
+    #     readiness:
+    #       initial_delay_seconds: 180
+    #       period_seconds: 5
+    #       timeout_seconds: 10
+    #       failure_threshold: 6
+    #     liveness:
+    #       initial_delay_seconds: 600
+    #       period_seconds: 5
+    #       timeout_seconds: 5
+    #       failure_threshold: 6
+    #   imagePullSecrets:
+    #     name: "admin.registrykey"
+    # tm:
+    #   arch:
+    #     amd64: "3 - Most preferred"
+    #   replica_count: 1
+    #   image:
+    #     repository: cp.icr.io/cp/cp4a/fncm/taskmgr
+    #     tag: 3.0.7
+    #     pull_policy: Always
+    #  ## LOGGING FOR WORKLOADS
+    #   log:
+    #     format: JSON
+    #   ## resource
+    #   resources:
+    #     requests:
+    #       cpu: 500m
+    #       memory: 512Mi
+    #     limits:
+    #       cpu: 1
+    #       memory: 1536Mi
+    #    ## Horizontal Pod Autoscaler
+    #   auto_scaling:
+    #     enabled: true
+    #     max_replicas: 3
+    #     min_replicas: 1
+    #     target_cpu_utilization_percentage: 80
+    #   ## External Share Production setting
+    #   tm_production_setting:
+    #     time_zone: Etc/UTC
+    #     jvm_initial_heap_percentage: 40
+    #     jvm_max_heap_percentage: 66
+    #     jvm_customize_options: "-Dcom.ibm.ecm.task.StartUpListener.defaultLogLevel=FINE"
+    #     license: accept
+    #     tm_dbtype: db2
+    #     tm_jndi_ds: ECMClientDS
+    #     tm_schema: ICNDB
+    #     tm_ts: ICNDB
+    #     tm_admin: CEADMIN
+
+    #   ## Monitor setting and Logging setting
+    #   monitor_enabled: false
+    #   logging_enabled: true
+    #   collectd_enable_plugin_write_graphite: false
+    #   ## Specify the names of existing persistent volume claims to be used by your application.
+    #   datavolume:
+    #     existing_pvc_for_tm_cfgstore: "tm-cfgstore"
+    #     existing_pvc_for_tm_logstore: "tm-logstore"
+    #     existing_pvc_for_tm_pluginstore: "tm-pluginstore"
+    #   probe:
+    #     readiness:
+    #       initial_delay_seconds: 120
+    #       period_seconds: 5
+    #       timeout_seconds: 10
+    #       failure_threshold: 6
+    #     liveness:
+    #       initial_delay_seconds: 600
+    #       period_seconds: 5
+    #       timeout_seconds: 5
+    #       failure_threshold: 6
+    #   image_pull_secrets:
+    #     name: "admin.registrykey"
+
+  ########################################################################
+  ########   IBM Business Automation Navigator configuration      ########
+  ########################################################################
+  navigator_configuration:
+    #   ban_secret_name: ibm-ban-secret
+    #   ban_ext_tls_secret_name: "{{ meta.name }}-ban-ext-tls-secret"
+    #   ban_auth_ca_secret_name: "{{ meta.name }}-ban-auth-ca-secret"
+    #   arch:
+    #     amd64: "3 - Most preferred"
+    #   replica_count: 1
+    #   image:
+    #     repository: cp.icr.io/cp/cp4a/ban/navigator-sso
+    #     tag: ga-307-icn
+    #     pull_policy: Always
+    #     arbitrary_uid_enabled: true
+    #   ## Logging for workloads
+    #   log:
+    #     format: json
+    #   ## resource and autoscaling setting
+    #   resources:
+    #     # We usually recommend not to specify default resources and to leave this as a conscious
+    #     # choice for the user. This also increases chances charts run on environments with little
+    #     # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    #     # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    #     requests:
+    #       cpu: 500m
+    #       memory: 512Mi
+    #     limits:
+    #       cpu: 1
+    #       memory: 1536Mi
+
+    #   ## Horizontal Pod Autoscaler
+    #   auto_scaling:
+    #     enabled: true
+    #     max_replicas: 3
+    #     min_replicas: 1
+    #     target_cpu_utilization_percentage: 80
+    #   ## Route public hostname
+    #   hostname: "<hostname>"
+    #   ## ICN Production setting
+    #   icn_production_setting:
+    #     timezone: Etc/UTC
+    #     jvm_initial_heap_percentage: 40
+    #     jvm_max_heap_percentage: 66
+    #      # By default, the containers are configured to support OpenID/OAuth for SSO with User Management Services (UMS).
+    #       # If SSO is not enabled for the deployment (i.e., if UMS is not being deployed), then set the following JVM value:
+    #       #    JVM_CUSTOMIZE_OPTIONS="-DFileNet.WSI.AutoDetectLTPAToken=true"
+    #       # This enables the container to recognize WebSphere Liberty LTPA token where LDAP is used for authentication/authorization.
+    #     jvm_customize_options: "-DFileNet.WSI.AutoDetectLTPAToken=true"
+    #     icn_db_type: db2
+    #     icn_jndids_name: ECMClientDS
+    #     icn_schema: ICNDB
+    #     icn_table_space: ICNDB
+    #     icn_admin: CEADMIN
+    #     license: accept
+    #     enable_appcues: false
+    #     allow_remote_plugins_via_http: false
+    #   monitor_enabled: false
+    #   logging_enabled: false
+    #   collectd_enable_plugin_write_graphite: false
+    #   ## Specify the names of existing persistent volume claims to be used by your application.
+    #   ## Specify an empty string if you don't have existing persistent volume claim.
+    #   datavolume:
+    #     existing_pvc_for_icn_cfgstore: "icn-cfgstore"
+    #     existing_pvc_for_icn_logstore: "icn-logstore"
+    #     existing_pvc_for_icn_pluginstore: "icn-pluginstore"
+    #     existing_pvc_for_icnvw_cachestore: "icn-vw-cachestore"
+    #     existing_pvc_for_icnvw_logstore: "icn-vw-logstore"
+    #     existing_pvc_for_icn_aspera: "icn-asperastore"
+    #   probe:
+    #     readiness:
+    #       initial_delay_seconds: 120
+    #       period_seconds: 5
+    #       timeout_seconds: 10
+    #       failure_threshold: 6
+    #     liveness:
+    #       initial_delay_seconds: 600
+    #       period_seconds: 5
+    #       timeout_seconds: 5
+    #       failure_threshold: 6
+    #   image_pull_secrets:
+    #     name: "admin.registrykey"
+
+  # ########################################################################
+  # ########     IBM FNCM and BAN initialization configuration      ########
+  # ########################################################################
+  initialize_configuration:
+    # ic_domain_creation:
+    #   domain_name: "P8DOMAIN"
+    #   encryption_key: "128"
+    # ic_ldap_creation:
+    #   ic_ldap_admin_user_name:
+    #   - "CEAdmin"
+    #   ic_ldap_admins_groups_name:
+    #   - "P8Administrators"
+    #   ic_ldap_name: "ldap_name"
+    # ic_obj_store_creation:
+    #   object_stores:
+    #   - oc_cpe_obj_store_display_name: "OS01"
+    #     oc_cpe_obj_store_symb_name: "OS01"
+    #     oc_cpe_obj_store_conn:
+    #       name: "objectstore1_connection"
+    #       site_name: "InitialSite"
+    #       dc_os_datasource_name: "FNOS1DS"
+    #       dc_os_xa_datasource_name: "FNOS1DSXA"
+    #     oc_cpe_obj_store_admin_user_groups:
+    #     - "CEAdmin"
+    #     # Array of users
+    #     oc_cpe_obj_store_basic_user_groups:
+    #     oc_cpe_obj_store_addons: true
+    #     oc_cpe_obj_store_addons_list:
+    #     - "{CE460ADD-0000-0000-0000-000000000004}"
+    #     - "{CE460ADD-0000-0000-0000-000000000001}"
+    #     - "{CE460ADD-0000-0000-0000-000000000003}"
+    #     - "{CE460ADD-0000-0000-0000-000000000005}"
+    #     - "{CE511ADD-0000-0000-0000-000000000006}"
+    #     - "{CE460ADD-0000-0000-0000-000000000008}"
+    #     - "{CE460ADD-0000-0000-0000-000000000007}"
+    #     - "{CE460ADD-0000-0000-0000-000000000009}"
+    #     - "{CE460ADD-0000-0000-0000-00000000000A}"
+    #     - "{CE460ADD-0000-0000-0000-00000000000B}"
+    #     - "{CE460ADD-0000-0000-0000-00000000000D}"
+    #     - "{CE511ADD-0000-0000-0000-00000000000F}"
+    #     oc_cpe_obj_store_asa_name: "demo_storage"
+    #     oc_cpe_obj_store_asa_file_systems_storage_device_name: "demo_file_system_storage"
+    #     oc_cpe_obj_store_asa_root_dir_path: "/opt/ibm/asa/os01_storagearea1"
+    #     oc_cpe_obj_store_enable_workflow: true
+    #     oc_cpe_obj_store_workflow_region_name: "design_region_name"
+    #     oc_cpe_obj_store_workflow_region_number: 1
+    #     oc_cpe_obj_store_workflow_data_tbl_space: "VWDATA_TS"
+    #     oc_cpe_obj_store_workflow_index_tbl_space: ""
+    #     oc_cpe_obj_store_workflow_blob_tbl_space: ""
+    #     oc_cpe_obj_store_workflow_admin_group: "P8Administrators"
+    #     oc_cpe_obj_store_workflow_config_group: "P8Administrators"
+    #     oc_cpe_obj_store_workflow_date_time_mask: "mm/dd/yy hh:tt am"
+    #     oc_cpe_obj_store_workflow_locale: "en"
+    #     oc_cpe_obj_store_workflow_pe_conn_point_name: "pe_conn_os1"
+    # ic_css_creation:
+    #   - css_site_name: "Initial Site"
+    #     css_text_search_server_name: "{{ meta.name }}-css-1"
+    #     affinity_group_name: "aff_group"
+    #     css_text_search_server_status: 0
+    #     css_text_search_server_mode: 0
+    #     css_text_search_server_ssl_enable: "true"
+    #     css_text_search_server_credential: "RNUNEWc="
+    #     css_text_search_server_host: "{{ meta.name }}-css-svc-1"
+    #     css_text_search_server_port: 8199
+    # ic_css_index_area:
+    #   - object_store_name: "OS01"
+    #     index_area_name: "os1_index_area"
+    #     affinity_group_name: "aff_group"
+    #     root_dir: "/opt/ibm/indexareas"
+    #     max_indexes: 20
+    #     max_objects_per_index: 10000
+    # ic_enable_cbr:
+    #   - object_store_name: "OS01"
+    #     class_name: "Document"
+    #     indexing_languages: "en"
+    # ic_icn_init_info:
+    #   icn_repos:
+    #   - add_repo_id: "demo_repo1"
+    #     add_repo_ce_wsi_url: "http://{{ meta.name }}-cpe-svc:9080/wsi/FNCEWS40MTOM/"
+    #     add_repo_os_sym_name: "OS01"
+    #     add_repo_os_dis_name: "OS01"
+    #     add_repo_workflow_enable: false
+    #     add_repo_work_conn_pnt: "pe_conn_os1:1"
+    #     add_repo_protocol: "FileNetP8WSI"
+    #  # - add_repo_id: "test_repo2"
+    #  #   add_repo_ce_wsi_url: "http://{{ meta.name }}-cpe-svc:9080/wsi/FNCEWS40MTOM/"
+    #  #   add_repo_os_sym_name: "OS02"
+    #  #   add_repo_os_dis_name: "OS02"
+    #  #   add_repo_workflow_enable: true
+    #  #   add_repo_work_conn_pnt: "pe_conn_os02:1"
+    #  #   add_repo_protocol: "FileNetP8WSI"
+    #   icn_desktop:
+    #   - add_desktop_id: "demo"
+    #     add_desktop_name: "icn_desktop"
+    #     add_desktop_description: "This is ICN desktop"
+    #     add_desktop_is_default: false
+    #     add_desktop_repo_id: "demo_repo1"
+    #     add_desktop_repo_workflow_enable: false
+    #  # - add_desktop_id: "demotest"
+    #  #   add_desktop_name: "icn_desktop_demo"
+    #  #   add_desktop_description: "Just Another desktop"
+    #  #   add_desktop_is_default: false
+    #  #   add_desktop_repo_id: "test_repo2"
+    #  #   add_desktop_repo_workflow_enable: false
+
+  ########################################################################
+  ########     IBM FNCM and BAN verification configuration      ########
+  ########################################################################
+  verify_configuration:
+    # vc_cpe_verification:
+    #   vc_cpe_folder:
+    #   - folder_cpe_obj_store_name: "OS01"
+    #     folder_cpe_folder_path: "/TESTFOLDER"
+    #   vc_cpe_document:
+    #   - doc_cpe_obj_store_name: "OS01"
+    #     doc_cpe_folder_name: "/TESTFOLDER"
+    #     doc_cpe_doc_title: "test_title"
+    #     DOC_CPE_class_name: "Document"
+    #     doc_cpe_doc_content: "This is a simple document test"
+    #     doc_cpe_doc_content_name: "doc_content_name"
+    #   vc_cpe_cbr:
+    #   - cbr_cpe_obj_store_name: "OS01"
+    #     cbr_cpe_class_name: "Document"
+    #     cbr_cpe_search_string: "is a simple"
+    #   vc_cpe_workflow:
+    #   - workflow_cpe_enabled: false
+    #     workflow_cpe_connection_point: "pe_conn_os1"
+    # vc_icn_verification:
+    #   - vc_icn_repository: "demo_repo1"
+    #     vc_icn_desktop_id: "demo"
+
+  ########################################################################
+  ########     IBM Operational Decision Manager Configuration     ########
+  ########################################################################
+
+  # odm_configuration:
+  #   # Allow to activate more trace for ODM in the Operator pod.
+  #   debug: false
+  #   # Allow to specify which version of ODM you want to deploy.
+  #   # Supported version > 19.0.2
+  #   # If omitted the latest version will be used.
+  #   version: 19.0.3
+  #   image:
+  #     # Specify the repository used to retrieve the Docker images if you do not want to use the default one.
+  #     repository: ""
+  #     # Specify the tag for the Docker images.
+  #     # It's a Mandatory tag when you enable odm_configuraton.
+  #     tag: 8.10.3
+  #     # Specify the pull policy for the Docker images. See Kuberntes documentation for more inforations.
+  #     # Possible values : IfNotPresent, Always, Never
+  #     pullPolicy: IfNotPresent
+  #     # Optionally specify an array of imagePullSecrets.
+  #     # Secrets must be manually created in the namespace.
+  #     # ref: https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
+  #     #  - name: admin.registrykey
+  #     pullSecrets:
+  #
+  #   service:
+  #     # Specify whether to enable Transport Layer Security. If true, ODM web apps are accessed through HTTPS. If false, they are accessed through HTTP.
+  #     enableTLS: true
+  #     # Specify the service type.
+  #     type: NodePort
+  #
+  #   ## Decision Server Runtime parameters
+  #   decisionServerRuntime:
+  #     # Specify whether to enable Decision Server Runtime.
+  #     enabled: true
+  #     # Specify the number of Decision Server Runtime pods.
+  #     replicaCount: 1
+  #     # Specify the name of the configMap the wanted logging options. If left empty, default logging options are used.
+  #     loggingRef:
+  #     # Specify the name of the configMap the wanted JVM options. If left empty, default JVM options are used.
+  #     jvmOptionsRef:
+  #     resources:
+  #       requests:
+  #         # Specify the requested CPU.
+  #         cpu: 500m
+  #         # Specify the requested memory.
+  #         memory: 512Mi
+  #       limits:
+  #         # Specify the CPU limit.
+  #         cpu: 2
+  #         # Specify the memory limit.
+  #         memory: 4096Mi
+  #   ## Decision Server Console parameters
+  #   decisionServerConsole:
+  #     # Specify the name of the configMap the wanted logging options. If left empty, default logging options are used.
+  #     loggingRef:
+  #     # Specify the name of the configMap the wanted JVM options. If left empty, default JVM options are used.
+  #     jvmOptionsRef:
+  #     resources:
+  #       requests:
+  #         # Specify the requested CPU.
+  #         cpu: 500m
+  #         # Specify the requested memory.
+  #         memory: 512Mi
+  #       limits:
+  #         # Specify the CPU limit.
+  #         cpu: 2
+  #         # Specify the memory limit.
+  #         memory: 1024Mi
+  #   ## Decision Center parameters
+  #   decisionCenter:
+  #     # Specify whether to enable Decision Center.
+  #     enabled: true
+  #     # Specify the persistence locale for Decision Center.
+  #     # Possible values  "ar_EG" (Arabic - Egypt), "zh_CN" (Chinese - China), "zh_TW" (Chinese - Taiwan)
+  #     # "nl_NL" (Netherlands), "en_GB" (English - United Kingdom), "en_US" (English - United States),
+  #     # "fr_FR" (French - France), "de_DE" (German - Germany), "iw_IL" (Hebrew - Israel), "it_IT" (Italian - Italy),
+  #     # "ja_JP" (Japanese - Japan) , "ko_KR" (Korean - Korea), "pl_PL" (Polish - Poland),
+  #     # "pt_BR" (Portuguese - Brazil), "ru_RU" (Russian - Russia), "es_ES" (Spanish - Spain)
+  #     persistenceLocale: en_US
+  #     # Specify the number of Decision Center pods.
+  #     replicaCount: 1
+  #     # Persistent Volume Claim to access the custom libraries
+  #     customlibPvc:
+  #     # Specify the name of the configMap the wanted logging options. If left empty, default logging options are used.
+  #     loggingRef:
+  #     # Specify the name of the configMap the wanted JVM options. If left empty, default JVM options are used.
+  #     jvmOptionsRef:
+  #     resources:
+  #       requests:
+  #         # Specify the requested CPU.
+  #         cpu: 500m
+  #         # Specify the requested memory.
+  #         memory: 1500Mi
+  #       limits:
+  #         # Specify the CPU limit.
+  #         cpu: 2
+  #         # Specify the memory limit.
+  #         memory: 4096Mi
+  #   ## Decision Runner parameters
+  #   decisionRunner:
+  #     # Specify whether to enable Decision Runner.
+  #     enabled: true
+  #     # Specify the number of Decision Runner pods.
+  #     replicaCount: 1
+  #     # Specify the name of the configMap the wanted logging options. If left empty, default logging options are used.
+  #     loggingRef:
+  #     # Specify the name of the configMap the wanted JVM options. If left empty, default JVM options are used.
+  #     jvmOptionsRef:
+  #     resources:
+  #     requests:
+  #       # Specify the requested CPU.
+  #       cpu: 500m
+  #       # Specify the requested memory.
+  #       memory: 512Mi
+  #     limits:
+  #       # Specify the CPU limit.
+  #       cpu: 2
+  #       # Specify the memory limit.
+  #       memory: 4096Mi
+  #
+  #   ## Database - Option 1: Internal (PostgreSQL)
+  #   ## Fill in the parameters to use an internal PostgresSQL database.
+  #   internalDatabase:
+  #     # Specify the name of the internal database.
+  #     databaseName: odmdb
+  #     # Specify the name of the secret that contains the credentials to connect to the internal database.
+  #     secretCredentials: ""
+  #     persistence:
+  #       # Specify whether to enable persistence for the internal database in a persistent volume.
+  #       enabled: true
+  #       # When this parameter is false, the binding process selects an existing volume. Ensure that an unbound volume exists before you install the chart.
+  #       useDynamicProvisioning: false
+  #       # Specify the storage class name for persistent volume. If this parameter is left empty, the default storage class is used.
+  #       storageClassName: ""
+  #       resources:
+  #         requests:
+  #           # Specify the storage size for persistent volume.
+  #           storage: 5Gi
+  #     securityContext:
+  #       # User to init internal database container
+  #       runAsUser: 0
+  #     resources:
+  #       requests:
+  #         # Specify the requested CPU.
+  #         cpu: 500m
+  #         # Specify the requested memory.
+  #         memory: 512Mi
+  #       limits:
+  #         # Specify the CPU limit.
+  #         cpu: 2
+  #         # Specify the memory limit.
+  #         memory: 4096Mi
+  #
+  #   ## Database - Option 2: External (DB2 or PostgreSQL)
+  #   ## Fill in the parameters to use an external DB2 or PostgreSQL database.
+  #   externalDatabase:
+  #     # Specify the type of the external database. If this parameter is left empty, PostgreSQL is used by default.
+  #     # Possible values : "db2", "postgresql"
+  #     type: ""
+  #     # Specify the name of the server running the external database. If it is not specified, the PostgreSQL internal database is used.
+  #     serverName: ""
+  #     # Specify the name of the external database.
+  #     databaseName: ""
+  #     # Specify the name of the secret that contains the credentials to connect to the external database.
+  #     secretCredentials: ""
+  #     # Specify the port used to connect to the external database.
+  #     port: ""
+  #
+  #   ## Database - Option 3: External (Custom)
+  #   ## Fill in the parameters to use an external database configured by a secret.
+  #   externalCustomDatabase:
+  #     # Specify the name of the secret that contains the datasource configuration to use.
+  #     datasourceRef:
+  #     # Persistent Volume Claim to access the JDBC Database Driver
+  #     driverPvc:
+  #
+  #   readinessProbe:
+  #     # Specify the number of seconds after the container has started before readiness probe is initiated.
+  #     initialDelaySeconds: 5
+  #     # Specify how often (in seconds) to perform the probe.
+  #     periodSeconds: 5
+  #     # Specify how many times Kubernetes will try before giving up when a pod starts and the probe fails. Giving up means marking the pod as Unready.
+  #     failureThreshold: 45
+  #     # Specify the number of seconds after which the readiness probe times out.
+  #     timeoutSeconds: 5
+  #
+  #   livenessProbe:
+  #     # Specify the number of seconds after the container has started before liveness probe is initiated.
+  #     initialDelaySeconds: 300
+  #     # Specify how often (in seconds) to perform the probe.
+  #     periodSeconds: 10
+  #     # Specify how many times Kubernetes will try before giving up when a pod starts and the probe fails. Giving up means restarting the pod.
+  #     failureThreshold: 10
+  #     # Specify the number of seconds after which the liveness probe times out.
+  #     timeoutSeconds: 5
+  #
+  #   customization:
+  #     # Specify the name of the secret that contains the TLS certificate you want to use. If the parameter is left empty, a default certificate is used.
+  #     securitySecretRef:
+  #     # Specify the name of the secret that contains the configuration files required to use the IBM Business Automation Insights emitter.
+  #     baiEmitterSecretRef:
+  #     # Specify the label attached to some nodes. Pods are scheduled to the nodes with this label. If the parameter is empty, pods are scheduled randomly.
+  #     authSecretRef:
+  #
+  #   networkPolicy:
+  #     # Enable creation of NetworkPolicy resources.
+  #     enabled: true
+  #     # For Kubernetes v1.4, v1.5 and v1.6, use 'extensions/v1beta1'
+  #     # For Kubernetes v1.7, use 'networking.k8s.io/v1'
+  #     apiVersion: networking.k8s.io/v1
+
+  ums_configuration:
+    # existing_claim_name:
+    # replica_count: 2
+    # service_type: Route
+    # hostname:  <your external UMS host name>
+    # port: 443
+    # images:
+    #   ums:
+    #     repository: cp.icr.io/cp/cp4a/ums/ums
+    #     tag: 19.0.3
+    # admin_secret_name: ibm-dba-ums-secret
+    # db_secret_name: ibm-dba-ums-db-secret
+    # external_tls_secret_name: ibm-dba-ums-external-tls-secret
+    # external_tls_ca_secret_name: ibm-dba-ums-external-tls-ca-secret
+    # oauth:
+    #   client_manager_group:
+    # resources:
+    #   limits:
+    #     cpu: 500m
+    #     memory: 512Mi
+    #   requests:
+    #     cpu: 200m
+    #     memory: 256Mi
+    #   ## Horizontal Pod Autoscaler
+    # autoscaling:
+    #   enabled: true
+    #   min_replicas: 2
+    #   max_replicas: 5
+    #   target_average_utilization: 98
+    # use_custom_jdbc_drivers: false
+    # use_custom_binaries: false
+    # custom_secret_name:
+    # custom_xml:
+    # logs:
+    #   console_format: json
+    #   console_log_level: INFO
+    #   console_source: message,trace,accessLog,ffdc,audit
+    #   trace_format: ENHANCED
+    #   trace_specification: "*=info"
+  #####################################################################
+  ## IBM App Engine production configuration 19.0.3 configuration ##
+  #####################################################################
+  application_engine_configuration:
+  # ## The application_engine_configuration is a list, you can deploy multiple instances of AppEngine, you can assign different configurations for each instance.
+  # ## For each instance, application_engine_configuration.name and application_engine_configuration.name.hostname must be assigned to different values.
+  # - name: instance1
+  #   hostname: <your external App Engine host name>
+  #   port: 443
+  #   admin_secret_name: <your secret name>
+  #   external_tls_secret_name:
+  #   replica_size: 1
+  #   user_custom_jdbc_drivers: false
+  #   service_type: Route
+  #   autoscaling:
+  #     enabled: false
+  #     max_replicas: 5
+  #     min_replicas: 2
+  #     target_cpu_utilization_percentage: 80
+  #   database:
+  #     host: <your database host/IP>
+  #     name: <your database name>
+  #     port: <your database port>
+  #     ## If you setup DB2 HADR and want to use it, you need to configure alternative_host and alternative_port, or else, leave is as blank.
+  #     alternative_host:
+  #     alternative_port:
+  #     ## Only DB2 is supported
+  #     type: db2
+  #     enable_ssl: false
+  #     db_cert_secret_name:
+  #     current_schema: DBASB
+  #     initial_pool_size: 1
+  #     max_pool_size: 10
+  #     uv_thread_pool_size: 4
+  #     max_lru_cache_size: 1000
+  #     max_lru_cache_age: 600000
+  #     dbcompatibility_max_retries: 30
+  #     dbcompatibility_retry_interval: 10
+  #     custom_jdbc_pvc:
+  #   log_level:
+  #     node: info
+  #     browser: 2
+  #   content_security_policy:
+  #     enable: false
+  #     whitelist:
+  #   env:
+  #     max_size_lru_cache_rr: 1000
+  #     server_env_type: development
+  #     purge_stale_apps_interval: 86400000
+  #     apps_threshold: 100
+  #     stale_threshold: 172800000
+  #   images:
+  #     pull_policy: IfNotPresent
+  #     db_job:
+  #       repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
+  #       tag: 19.0.3
+  #     solution_server:
+  #       repository: cp.icr.io/cp/cp4a/aae/solution-server
+  #       tag: 19.0.3
+  #   max_age:
+  #     auth_cookie: "900000"
+  #     csrf_cookie: "3600000"
+  #     static_asset: "2592000"
+  #     hsts_header: "2592000"
+  #   probe:
+  #     liveness:
+  #       failure_threshold: 5
+  #       initial_delay_seconds: 60
+  #       period_seconds: 10
+  #       success_threshold: 1
+  #       timeout_seconds: 180
+  #     readiness:
+  #       failure_threshold: 5
+  #       initial_delay_seconds: 10
+  #       period_seconds: 10
+  #       success_threshold: 1
+  #       timeout_seconds: 180
+  #   redis:
+  #     host: <your external redis host/ip>
+  #     port: <your external redis port>
+  #     ttl: 1800
+  #   resource_ae:
+  #     limits:
+  #       cpu: 2000m
+  #       memory: 2Gi
+  #     requests:
+  #       cpu: 1000m
+  #       memory: 1Gi
+  #   resource_init:
+  #     limits:
+  #       cpu: 500m
+  #       memory: 256Mi
+  #     requests:
+  #       cpu: 200m
+  #       memory: 128Mi
+  #   session:
+  #     check_period: "3600000"
+  #     duration: "1800000"
+  #     max: "10000"
+  #     resave: "false"
+  #     rolling: "true"
+  #     save_uninitialized: "false"
+  #     use_external_store: "true"
+  #   tls:
+  #     tls_trust_list: []
+  resource_registry_configuration:
+    # admin_secret_name: resource-registry-admin-secret
+    # hostname: <your resource registry host name>
+    # port: <your resource registry host port>
+    # replica_size: 3
+    # images:
+    #   pull_policy: IfNotPresent
+    #   resource_registry:
+    #     repository: cp.icr.io/cp/cp4a/aae/dba-etcd
+    #     tag: 19.0.3
+    # tls:
+    #   tls_secret: rr-tls-client-secret
+    # probe:
+    #   liveness:
+    #     initial_delay_seconds: 60
+    #     period_seconds: 10
+    #     timeout_seconds: 5
+    #     success_threshold: 1
+    #     failure_threshold: 3
+    #   readiness:
+    #     initial_delay_seconds: 10
+    #     period_seconds: 10
+    #     timeout_seconds: 5
+    #     success_threshold: 1
+    #     failure_threshold: 3
+    # resource:
+    #   limits:
+    #     cpu: "500m"
+    #     memory: "512Mi"
+    #   requests:
+    #     cpu: "200m"
+    #     memory: "256Mi"
+    # auto_backup:
+    #   enable: false
+    #   minimal_time_interval: 1800
+    #   pvc_name: rr-autobackup-pvc
+  #####################################################################
+  ## IBM Business Automation Studio 19.0.3 configuration ##
+  #####################################################################
+  bastudio_configuration:
+    # admin_secret_name: bastudio-admin-secret
+    # hostname: <your external BAStudio host name>
+    # port: <your external BAStudio host port>
+    # # If we disable the User Management Service Certificate Common Name Check or not
+    # ums_disable_cn_check: false
+    # # If you don't want to use the customized external TLS certificate, you can leave it empty.
+    # external_tls_secret:
+    # # If you don't want to use the customized Certificate Authority (CA) to sign the external TLS certificate, you can leave it empty.
+    # external_tls_ca_secret:
+    # tls:
+    #   tls_trust_list: []
+    # database:
+    #   host: <database host name>
+    #   # The database provided should be created by the BAStudio SQL script template.
+    #   name: <database name>
+    #   port: <database port>
+    #   # If you want to enable the database ACR, HADR, configure the alternative_host and alternative_port both
+    #   alternative_host:
+    #   alternative_port:
+    #   type: db2
+    #   ssl_enabled: false
+    #   certificate_secret_name: db2-ssl-certificate
+    #   # If you don't want to use the customized JDBC dirvers, you can keep it as default.
+    #   user_custom_jdbc_drivers: false
+    #   # The persistent volume claim for custom JDBC Drivers if using the custom jdbc drivers is enabled
+    #   custom_jdbc_pvc:
+    #   # The custom JDBC Drivers' names if using the custom jdbc drivers is enabled
+    #   jdbc_driver_files: "db2jcc4.jar db2jcc_license_cu.jar"
+    # images:
+    #   pull_policy: IfNotPresent
+    #   bastudio:
+    #     repository: cp.icr.io/cp/cp4a/bas/bastudio
+    #     tag: 19.0.3
+    # # Optional
+    # custom_xml:
+    # # Optional
+    # custom_secret_name:
+    # # Optional
+    # bastudio_custom_xml:
+    # content_security_policy: "default-src 'self' 'unsafe-inline' 'unsafe-eval'; frame-ancestors 'self'; font-src 'self' fonts.gstatic.com; frame-src *; img-src 'self' data:;"
+    # csrf_referrer:
+    #   # The custom whitelist for Cross-Site Request Forgery (CSRF) protection. For example it is needed when you want to integrate BAS with the other editors such as ADW, ACA
+    #   whitelist: ""
+    # logs:
+    #   console_format: json
+    #   console_log_level: INFO
+    #   console_source: message,trace,accessLog,ffdc,audit
+    #   trace_format: ENHANCED
+    #   trace_specification: "*=info"
+    # replica_size: 1
+    # autoscaling:
+    #   enabled: false
+    #   minReplicas: 1
+    #   maxReplicas: 3
+    #   targetAverageUtilization: 95
+    # resources:
+    #   bastudio:
+    #     limits:
+    #       cpu: 4000m
+    #       memory: 3Gi
+    #     requests:
+    #       cpu: 2000m
+    #       memory: 2Gi
+    #   init_process:
+    #     limits:
+    #       cpu: 500m
+    #       memory: 512Mi
+    #     requests:
+    #       cpu: 200m
+    #       memory: 256Mi
+    # liveness_probe:
+    #   initial_delay_seconds: 300
+    #   period_seconds: 10
+    #   timeout_seconds: 5
+    #   failure_threshold: 3
+    #   success_threshold: 1
+    # readiness_probe:
+    #   initial_delay_seconds: 240
+    #   period_seconds: 5
+    #   timeout_seconds: 5
+    #   failure_threshold: 6
+    #   success_threshold: 1
+    # jms_server:
+    #   image:
+    #     repository: cp.icr.io/cp/cp4a/bas/jms
+    #     tag: 19.0.3
+    #     pull_policy: IfNotPresent
+    #   resources:
+    #     limits:
+    #       cpu: "1"
+    #       memory: "1Gi"
+    #     requests:
+    #       cpu: "500m"
+    #       memory: "512Mi"
+    #   storage:
+    #     # If JMS storage persistent should be enabled
+    #     persistent: false
+    #     # If use dynamic provisioning for JMS storage persistent
+    #     use_dynamic_provisioning: false
+    #     storage_class: "gluster-fs"
+    #     access_modes: "ReadWriteOnce"
+    #     selector: {}
+    #     size: "3Gi"
+    # #-----------------------------------------------------------------------
+    # #  App Engine Playback Server can only be one instance
+    # #-----------------------------------------------------------------------
+    # playback_server:
+    #   admin_secret_name: playback-server-admin-secret
+    #   images:
+    #     pull_policy: IfNotPresent
+    #     db_job:
+    #       repository: cp.icr.io/cp/cp4a/bas/solution-server-helmjob-db
+    #       tag: 19.0.3
+    #     solution_server:
+    #       repository: cp.icr.io/cp/cp4a/bas/solution-server
+    #       tag: 19.0.3
+    #   hostname: <your app engine playback server host name>
+    #   port: <your app engine playback server host port>
+    #   # If you don't want to use the customized external TLS certificate, you can leave it empty.
+    #   external_tls_secret:
+    #   # If you don't want to use the customized JDBC dirvers, you can keep it as default.
+    #   user_custom_jdbc_drivers: false
+    #   replica_size: 1
+    #   autoscaling:
+    #     enabled: false
+    #     max_replicas: 5
+    #     min_replicas: 2
+    #     target_cpu_utilization_percentage: 80
+    #   database:
+    #     host: <database host name>
+    #     # The database provided should be created by the App Engine Playback Server SQL script template.
+    #     name: <database name>
+    #     port: <database port>
+    #     # If you want to enable the database ACR, HADR, configure the alternative_host and alternative_port both
+    #     alternative_host:
+    #     alternative_port:
+    #     type: db2
+    #     enable_ssl: false
+    #     db_cert_secret_name: db2-ssl-certificate-secret
+    #     current_schema: DBASB
+    #     initial_pool_size: 1
+    #     max_pool_size: 10
+    #     uv_thread_pool_size: 4
+    #     max_lru_cache_size: 1000
+    #     max_lru_cache_age: 600000
+    #     dbcompatibility_max_retries: 30
+    #     dbcompatibility_retry_interval: 10
+    #     # The persistent volume claim for custom JDBC Drivers if using the custom jdbc drivers is enabled
+    #     custom_jdbc_pvc:
+    #   log_level:
+    #     node: info
+    #     browser: 2
+    #   content_security_policy:
+    #     enable: false
+    #     whitelist:
+    #   env:
+    #     max_size_lru_cache_rr: 1000
+    #     server_env_type: development
+    #     purge_stale_apps_interval: 86400000
+    #     apps_threshold: 100
+    #     stale_threshold: 172800000
+    #   max_age:
+    #     auth_cookie: "900000"
+    #     csrf_cookie: "3600000"
+    #     static_asset: "2592000"
+    #     hsts_header: "2592000"
+    #   probe:
+    #     liveness:
+    #       failure_threshold: 5
+    #       initial_delay_seconds: 60
+    #       period_seconds: 10
+    #       success_threshold: 1
+    #       timeout_seconds: 180
+    #     readiness:
+    #       failure_threshold: 5
+    #       initial_delay_seconds: 10
+    #       period_seconds: 10
+    #       success_threshold: 1
+    #       timeout_seconds: 180
+    #   redis:
+    #     host: localhost
+    #     port: 6379
+    #     ttl: 1800
+    #   resource_ae:
+    #     limits:
+    #       cpu: 2000m
+    #       memory: 2Gi
+    #     requests:
+    #       cpu: 1000m
+    #       memory: 1Gi
+    #   resource_init:
+    #     limits:
+    #       cpu: 500m
+    #       memory: 256Mi
+    #     requests:
+    #       cpu: 200m
+    #       memory: 128Mi
+    #   session:
+    #     check_period: "3600000"
+    #     duration: "1800000"
+    #     max: "10000"
+    #     resave: "false"
+    #     rolling: "true"
+    #     save_uninitialized: "false"
+    #     use_external_store: "false"
+    #   tls:
+    #     tls_trust_list: []
+  iaws_configuration:
+  # - name: instance1
+  #   wfs:
+  #     service_type: "Route"
+  #     hostname: ""
+  #     port: 443
+  #     external_tls_secret: ibm-baw-ext-tls-secret
+  #     external_tls_ca_secret: ibm-baw-ext-tls-ca-secret
+  #     replicas: 1
+  #     workflow_server_secret: ibm-baw-baw-secret
+  #     tls:
+  #       tls_secret_name: ibm-baw-tls
+  #       tls_trust_list:
+  #       - ums-ingress-tls-secret
+  #
+  #     # ----------------------------------------------------------------------------------------
+  #     #  images
+  #     # ----------------------------------------------------------------------------------------
+  #     image:
+  #       repository: cp.icr.io/cp/cp4a/iaws/iaws-ps
+  #       tag: 19.0.3
+  #       pull_policy: IfNotPresent
+  #     pfs_bpd_database_init_job:
+  #       repository: cp.icr.io/cp/cp4a/iaws/pfs-bpd-database-init-prod
+  #       tag: "19.0.3"
+  #       pull_policy: IfNotPresent
+  #     upgrade_job:
+  #       repository: cp.icr.io/cp/cp4a/iaws/iaws-psdb-handling
+  #       tag: "19.0.3"
+  #       pull_policy: IfNotPresent
+  #     ibm_workplace_job:
+  #       repository: cp.icr.io/cp/cp4a/iaws/iaws-ibm-workplace
+  #       tag: "19.0.3"
+  #       pull_policy: IfNotPresent
+  #
+  #     # ----------------------------------------------------------------------------------------
+  #     #  PS DB settings.
+  #     # ----------------------------------------------------------------------------------------
+  #     database:
+  #       ssl: false
+  #       sslsecretname: ibm-dba-baw-db2-cacert
+  #       type: "DB2"
+  #       server_name: ""
+  #       database_name: ""
+  #       port: "50000"
+  #       secret_name: ibm-baw-wfs-server-db-secret
+  #       dbcheck:
+  #         # The maximum waiting time (seconds) to check the database intialization status.
+  #         wait_time: 900
+  #         # The interval time (seconds) to check.
+  #         interval_time: 15
+  #       hadr:
+  #         standbydb_host:
+  #         standbydb_port:
+  #         retryinterval:
+  #         maxretries:
+  #
+  #     # ----------------------------------------------------------------------------------------
+  #     #  Content integration configurations
+  #     # ----------------------------------------------------------------------------------------
+  #     content_integration:
+  #       init_job_image:
+  #         repository: cp.icr.io/cp/cp4a/iaws/iaws-ps-content-integration
+  #         tag: "19.0.3"
+  #         pull_policy: IfNotPresent
+  #       domain_name: ""
+  #       object_store_name: ""
+  #       cpe_admin_secret:
+  #       event_handler_path: "/home/config/docs-config"
+  #       wait_interval: 60000
+  #
+  #     # ----------------------------------------------------------------------------------------
+  #     #  AppEngine configuration
+  #     # ----------------------------------------------------------------------------------------
+  #     appengine:
+  #       hostname:
+  #       admin_secret_name: ae-admin-secret-instance1
+  #
+  #     # ----------------------------------------------------------------------------------------
+  #     #  Resource Registry configuration
+  #     # ----------------------------------------------------------------------------------------
+  #     resource_registry:
+  #       hostname:
+  #       port: 443
+  #       admin_secret_name:
+  #
+  #     # ----------------------------------------------------------------------------------------
+  #     #  JMS configuration
+  #     # ----------------------------------------------------------------------------------------
+  #     jms:
+  #       image:
+  #         repository: cp.icr.io/cp/cp4a/iaws/baw-jms-server
+  #         tag: "19.0.3"
+  #         pull_policy: IfNotPresent
+  #       tls:
+  #         tls_secret_name: dummy-jms-tls-secret
+  #       resources:
+  #         limits:
+  #           memory: "2Gi"
+  #           cpu: "1000m"
+  #         requests:
+  #           memory: "512Mi"
+  #           cpu: "200m"
+  #       storage:
+  #         persistent: true
+  #         size: "2Gi"
+  #         use_dynamic_provisioning: false
+  #         access_modes:
+  #         - ReadWriteOnce
+  #         storage_class: "jms-storage-class"
+  #         # if you do not need selector, please comment or remove below selector section
+  #         selector:
+  #           label: ""
+  #           value: ""
+  #
+  #     # ----------------------------------------------------------------------------------------
+  #     #  Resource limitation
+  #     # ----------------------------------------------------------------------------------------
+  #     resources:
+  #       limits:
+  #         cpu: 3
+  #         memory: 2096Mi
+  #       requests:
+  #         cpu: 2
+  #         memory: 1048Mi
+  #
+  #     # ----------------------------------------------------------------------------------------
+  #     #  Resource limitation for init containers
+  #     # ----------------------------------------------------------------------------------------
+  #     resource_init:
+  #       limits:
+  #         cpu: 500m
+  #         memory: 256Mi
+  #       requests:
+  #         cpu: 200m
+  #         memory: 128Mi
+  #
+  #     # ----------------------------------------------------------------------------------------
+  #     #  liveness and readiness probes
+  #     # ----------------------------------------------------------------------------------------
+  #     probe:
+  #       ws:
+  #         liveness_probe:
+  #           initial_delay_seconds: 240
+  #         readinessProbe:
+  #           initial_delay_seconds: 180
+  #
+  #     # ----------------------------------------------------------------------------------------
+  #     #  trace settings.
+  #     # ----------------------------------------------------------------------------------------
+  #     logs:
+  #       console_format: "json"
+  #       console_log_level: "INFO"
+  #       console_source: "message,trace,accessLog,ffdc,audit"
+  #       message_format: "basic"
+  #       trace_format: "ENHANCED"
+  #       trace_specification: "*=info"
+  #
+  #     # ----------------------------------------------------------------------------------------
+  #     #  custom configuration in Liberty server.xml, put the custom.xml in secret with key "sensitiveCustomConfig"
+  #     #  kubectl create secret generic wfs-custom-xml-secret --from-file=sensitiveCustomConfig=./custom.xml
+  #     # ----------------------------------------------------------------------------------------
+  #     custom_xml_secret_name:
+  #
+  #     # ----------------------------------------------------------------------------------------
+  #     #  custom configuraiton in 100Custom.xml, put the 100Custom.xml in secret with key "sensitiveCustomConfig"
+  #     #  kubectl create secret generic wfs-lombardi-custom-xml-secret --from-file=sensitiveCustomConfig=./100Custom.xml
+  #     # ----------------------------------------------------------------------------------------
+  #     lombardi_custom_xml_secret_name:
+  ########################################################################
+  ########      IBM Process Federation Server configuration       ########
+  ########################################################################
+  pfs_configuration:
+    # pfs:
+    #   hostname: ""
+    #   port: 443
+    #   service_type: Route
+    #
+    #   image:
+    #     repository: cp.icr.io/cp/cp4a/iaws/pfs
+    #     tag: "19.0.3"
+    #     pull_policy: IfNotPresent
+    #
+    #   replicas: 1
+    #   service_account:
+    #   anti_affinity: hard
+    #
+    #   admin_secret_name: ibm-pfs-admin-secret
+    #   config_dropins_overrides_secret: ibm-pfs-config
+    #   resources_security_secret: ""
+    #
+    #   external_tls_secret:
+    #   external_tls_ca_secret:
+    #   tls:
+    #     tls_secret_name:
+    #     tls_trust_list:
+    #     - ums-tls-crt-secret
+    #
+    #   resources:
+    #     requests:
+    #       cpu: 500m
+    #       memory: 512Mi
+    #     limits:
+    #       cpu: 2
+    #       memory: 4Gi
+    #   liveness_probe:
+    #     initial_delay_seconds: 300
+    #   readiness_probe:
+    #     initial_delay_seconds: 240
+    #   saved_searches:
+    #     index_name: ibmpfssavedsearches
+    #     index_number_of_shards: 3
+    #     index_number_of_replicas: 1
+    #     index_batch_size: 100
+    #     update_lock_expiration: 5m
+    #     unique_constraint_expiration: 5m
+    #
+    #   security:
+    #     sso:
+    #       domain_name:
+    #       cookie_name: "ltpatoken2"
+    #       ltpa:
+    #         filename: "ltpa.keys"
+    #         expiration: "120m"
+    #         monitor_interval: "60s"
+    #     ssl_protocol: SSL
+    #
+    #   executor:
+    #     max_threads: "80"
+    #     core_threads: "40"
+    #
+    #   rest:
+    #     user_group_check_interval: "300s"
+    #     system_status_check_interval: "60s"
+    #     bd_fields_check_interval: "300s"
+    #
+    #   custom_env_variables:
+    #     names:
+    #     # - name: MY_CUSTOM_ENVIRONMENT_VARIABLE
+    #     secret:
+    #
+    #   output:
+    #     storage:
+    #       use_dynamic_provisioning: false
+    #       size: 5Gi
+    #       storage_class: "pfs-output"
+    #
+    #   logs:
+    #     console_format: "json"
+    #     console_log_level: "INFO"
+    #     console_source: "message,trace,accessLog,ffdc,audit"
+    #     trace_format: "ENHANCED"
+    #     trace_specification: "*=info"
+    #     storage:
+    #       use_dynamic_provisioning: false
+    #       size: 5Gi
+    #       storage_class: "pfs-logs"
+    #
+    #   dba_resource_registry:
+    #     image:
+    #       repository: cp.icr.io/cp/cp4a/aae/dba-etcd
+    #       tag: 19.0.3
+    #       pull_policy: IfNotPresent
+    #     lease_ttl: 120
+    #     pfs_check_interval: 10
+    #     pfs_connect_timeout: 10
+    #     pfs_response_timeout: 30
+    #     pfs_registration_key: /dba/appresources/IBM_PFS/PFS_SYSTEM
+    #     tls_secret: rr-tls-client-secret
+    #     resources:
+    #       limits:
+    #         memory: '512Mi'
+    #         cpu: '500m'
+    #       requests:
+    #         memory: '512Mi'
+    #         cpu: '200m'
+    #
+    # # ----------------------------------------------------
+    # #  PFS Embedded Elasticsearch configuration
+    # # ----------------------------------------------------
+    # elasticsearch:
+    #   es_image:
+    #     repository: cp.icr.io/cp/cp4a/iaws/pfs-elasticsearch-prod
+    #     tag: "19.0.3"
+    #     pull_policy: IfNotPresent
+    #
+    #   pfs_init_image:
+    #     repository: cp.icr.io/cp/cp4a/iaws/pfs-init-prod
+    #     tag: "19.0.3"
+    #     pull_policy: IfNotPresent
+    #
+    #   nginx_image:
+    #     repository: cp.icr.io/cp/cp4a/iaws/pfs-nginx-prod
+    #     tag: "19.0.3"
+    #     pull_policy: IfNotPresent
+    #
+    #   replicas: 1
+    #   service_type: NodePort
+    #   external_port:
+    #   anti_affinity: hard
+    #   service_account:
+    #   privileged: true
+    #   probe_initial_delay: 90
+    #   heap_size: "1024m"
+    #
+    #   resources:
+    #     limits:
+    #       memory: "2Gi"
+    #       cpu: "1000m"
+    #     requests:
+    #       memory: "1Gi"
+    #       cpu: "100m"
+    #
+    #   storage:
+    #     persistent: true
+    #     use_dynamic_provisioning: false
+    #     size: 10Gi
+    #     storage_class: "pfs-es"
+    #
+    #   snapshot_storage:
+    #     enabled: false
+    #     use_dynamic_provisioning: false
+    #     size: 30Gi
+    #     storage_class_name: ""
+    #     existing_claim_name: ""
+    #
+    #   security:
+    #     users_secret: ""
+  ca_configuration:
+#    global:
+#      arch: "amd64"
+#      service_type: "Route" # required, supported service type for application engine is: Route or NodePort.
+#      frontend_external_hostname: "www.ca.frontendsp" # required, if service_type is Route. Otherwise leave blank
+#      backend_external_hostname: "www.ca.backendsp" # required, if service_type is Route. Otherwise leave blank
+#      image:
+#        repository: ""
+#        tag: "latest"
+#        pull_policy: "IfNotPresent"
+#        pull_secrets: "baca-docker-secret" # Specify secret name for image pull
+#      authentication_type: 1 # 0-Non-ldap, 1-LDAP, 2- User Management Service integration
+#      retries: "90" # The max of retrying for CA deployment verification task until all the pods are in Ready status. A delay of 20 seconds between each attempt.
+#      bas:
+#        bas_enabled: "false"
+#      celery:
+#        process_timeout: 300
+#      configs:
+#        claimname: "sp-config-pvc"
+#      logs:
+#        claimname: "sp-log-pvc"
+#        log_level: "debug"
+#      data:
+#        claimname: "sp-data-pvc"
+#      redis:
+#        resources:
+#          limits:
+#            memory: "640Mi"
+#            cpu: "0.25"
+##        replica_count: 3
+##        quorum: 2
+#      rabbitmq:
+#        resources:
+#          limits:
+#            memory: "640Mi"
+#            cpu: "0.5"
+##        replica_count: 3
+#      mongo:
+#        configdb_claimname: "sp-data-pvc"
+#        shard_claimname: "sp-data-pvc"
+#        mongo_limited_memory: "1600Mi"
+#        wired_tiger_cache: ".3"
+#      mongoadmin:
+#        admin_configdb_claimname: "sp-data-pvc"
+#        admin_shard_claimname: "sp-data-pvc"
+#        mongo_limited_memory: "1600Mi"
+#        wired_tiger_cache: ".3"
+#    caller_api:
+#      replica_count: 2
+#      resources:
+#        limits:
+#          memory: "480Mi"
+#          cpu: "1"
+#    spbackend:
+#      replica_count: 2
+#      resources:
+#        limits:
+#          memory: "640Mi"
+#          cpu: "2"
+#    spfrontend:
+#      replica_count: 2
+#      resources:
+#        limits:
+#          memory: "480Mi"
+#          cpu: "2"
+#      backend_host: ""
+##      frontend_host: ""
+#      sso: "false"
+#    postprocessing:
+#      name: "postprocessing"
+#      process_timeout: 1500
+#      replica_count: 2
+#      max_unavailable_count: 1
+#      resources:
+#        limits:
+#          memory: "480Mi"
+#          cpu: "4"
+#    pdfprocess:
+#      name: "pdfprocess"
+#      process_timeout: 1500
+#      replica_count: 2
+#      max_unavailable_count: 1
+#      resources:
+#        limits:
+#          memory: "960Mi"
+#          cpu: "2"
+#    utfprocess:
+#      name: "utf8process"
+#      process_timeout: 1500
+#      replica_count: 2
+#      max_unavailable_count: 1
+#      resources:
+#        limits:
+#          memory: "960Mi"
+#          cpu: "2"
+#    setup:
+#      name: "setup"
+#      process_timeout: 120
+#      replica_count: 2
+#      max_unavailable_count: 1
+#      resources:
+#        limits:
+#          memory: "480Mi"
+#          cpu: "2"
+#    ocrextraction:
+#      name: "ocr-extraction"
+#      replica_count: 2
+#      max_unavailable_count: 1
+#      resources:
+#        limits:
+#          memory: "1440Mi"
+#          cpu: "4"
+#    classifyprocess:
+#      name: "classifyprocess-classify"
+#      replica_count: 2
+#      max_unavailable_count: 1
+#      resources:
+#        limits:
+#          memory: "960Mi"
+#          cpu: "4"
+#    processingextraction:
+#      name: "processing-extraction"
+#      replica_count: 2
+#      max_unavailable_count: 1
+#      resources:
+#        limits:
+#          memory: "1440Mi"
+#          cpu: "4"
+#    updatefiledetail:
+#      name: "updatefiledetail"
+#      replica_count: 2
+#      max_unavailable_count: 1
+#      resources:
+#        limits:
+#          memory: "480Mi"
+#          cpu: "2"
+  ########################################################################
+  ########      IBM Business Automation Insights configuration    ########
+  ########################################################################
+  bai_configuration:
+#    imageCredentials:
+#      imagePullSecret: "admin.registrykey"
+#    persistence:
+#      useDynamicProvisioning: true
+#    flinkPv:
+#      storageClassName: ""
+#    kafka:
+#      bootstrapServers: "kafka.bootstrapserver1.hostname:9092,kafka.bootstrapserver2.hostname:9092,kafka.bootstrapserver3.hostname:9092"
+#      securityProtocol: "PLAINTEXT"
+#    settings:
+#      egress: false
+#      ingressTopic: icp4adeploy-ibm-bai-ingress
+#      egressTopic: icp4adeploy-ibm-bai-egress
+#      serviceTopic: icp4adeploy-ibm-bai-serviceTopic
+#    setup:
+#      image:
+#        repository: cp.icr.io/cp/cp4a/bai/bai-setup
+#        tag: "19.0.3"
+#    admin:
+#      image:
+#        repository: cp.icr.io/cp/cp4a/bai/bai-admin
+#        tag: "19.0.3"
+#    flink:
+#      initStorageDirectory: true
+#      image:
+#        repository: cp.icr.io/cp/cp4a/bai/bai-flink
+#        tag: "19.0.3"
+#      zookeeper:
+#        image:
+#          repository: cp.icr.io/cp/cp4a/bai/bai-flink-zookeeper
+#          tag: "19.0.3"
+#    ingestion:
+#      install: false
+#      image:
+#        repository: cp.icr.io/cp/cp4a/bai/bai-ingestion
+#        tag: "19.0.3"
+#    adw:
+#      install: false
+#      image:
+#        repository: cp.icr.io/cp/cp4a/bai/bai-adw
+#        tag: "19.0.3"
+#    bpmn:
+#      install: false
+#      image:
+#        repository: cp.icr.io/cp/cp4a/bai/bai-bpmn
+#        tag: "19.0.3"
+#    bawadv:
+#      install: false
+#      image:
+#        repository: cp.icr.io/cp/cp4a/bai/bai-bawadv
+#        tag: "19.0.3"
+#    icm:
+#      install: false
+#      image:
+#        repository: cp.icr.io/cp/cp4a/bai/bai-icm
+#        tag: "19.0.3"
+#    odm:
+#      install: false
+#      image:
+#        repository: cp.icr.io/cp/cp4a/bai/bai-odm
+#        tag: "19.0.3"
+#    content:
+#      install: false
+#      image:
+#        repository: cp.icr.io/cp/cp4a/bai/bai-content
+#        tag: "19.0.3"
+#    initImage:
+#      image:
+#        repository: cp.icr.io/cp/cp4a/bai/bai-init
+#        tag: "19.0.3"
+#    elasticsearch:
+#      install: true
+#    ibm-dba-ek:
+#      image:
+#        imagePullPolicy: Always
+#        imagePullSecret: "admin.registrykey"
+#      elasticsearch:
+#        image:
+#          repository: cp.icr.io/cp/cp4a/bai/bai-elasticsearch
+#          tag: "19.0.3"
+#        init:
+#          image:
+#            repository: cp.icr.io/cp/cp4a/bai/bai-init
+#            tag: "19.0.3"
+#        data:
+#          storage:
+#            persistent: true
+#            useDynamicProvisioning: true
+#            storageClass: ""
+#          snapshotStorage:
+#            enabled: true
+#            useDynamicProvisioning: true
+#            storageClassName: ""
+#      kibana:
+#        image:
+#          repository: cp.icr.io/cp/cp4a/bai/bai-kibana
+#          tag: "19.0.3"
+#        init:
+#          image:
+#            repository: cp.icr.io/cp/cp4a/bai/bai-init
+#            tag: "19.0.3"
+  ########################################################################
+  ########  IBM Business Automation Digital Worker Configuration  ########
+  ########################################################################
+
+  adw_configuration:
+#    global:
+#      imagePullSecret: baiw-reg-cred
+#      kubernetes:
+#        serviceAccountName: ""
+
+#    adwSecret: ""
+
+#    grantWritePermissionOnMountedVolumes: true
+
+#    logLevel:  "error"
+
+#    networkPolicy:
+#      enabled: true
+
+#    registry:
+#      endpoint: ""
+
+#    npmRegistry:
+#      persistence:
+#        enabled: true
+#        useDynamicProvisioning: true
+#        storageClassName: "managed-nfs-storage"
+
+#    mongodb:
+#      replicas: 2
+#      persistence:
+#        enabled: true
+#        useDynamicProvisioning: true
+#        storageClassName: "managed-nfs-storage"
+
+
+#    designer:
+#      image:
+#        repository: "cp.icr.io/cp/cp4a/adw/adw-designer"
+#        pullPolicy: "Always"
+#      externalUrl: ""
+
+#    runtime:
+#      image:
+#        repository: "cp.icr.io/cp/cp4a/adw/adw-runtime"
+#        pullPolicy: "Always"
+#      persistence:
+#        useDynamicProvisioning: true
+#        storageClassName: "managed-nfs-storage"
+#      service:
+#        type: "NodePort"
+#      externalPort: 30711
+#      runLogLevel: "warn"
+#      externalUrl: ""
+
+
+#    management:
+#      image:
+#        repository: "cp.icr.io/cp/cp4a/adw/adw-management"
+#        pullPolicy: "Always"
+#      persistence:
+#        useDynamicProvisioning: true
+#        storageClassName: "managed-nfs-storage"
+
+#    setup:
+#      image:
+#        repository: "cp.icr.io/cp/cp4a/adw/adw-setup"
+#        pullPolicy: "Always"
+
+#    init:
+#      image:
+#        repository: "cp.icr.io/cp/cp4a/adw/adw-init"
+#        pullPolicy: "Always"
+
+#    baiKafka:
+#      topic: "BAITOPICFORODM"
+#      bootstrapServers: ""
+#      securityProtocol: "SASL_SSL"
+
+#    baiElasticsearch:
+#      url: ""
+
+#    oidc:
+#      endpoint: ""

@@ -1,0 +1,63 @@
+apiVersion: extensions/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  annotations:
+    kubernetes.io/description: "This policy allows pods to run with any UID and GID, but preventing access to the host."
+  name: adw-psp
+spec:
+  allowPrivilegeEscalation: true
+  fsGroup:
+    rule: RunAsAny
+  requiredDropCapabilities:
+    - MKNOD
+  allowedCapabilities:
+    - CHOWN
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  volumes:
+    - configMap
+    - emptyDir
+    - projected
+    - secret
+    - downwardAPI
+    - persistentVolumeClaim
+  forbiddenSysctls:
+    - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: adw-role
+  namespace: < NAMESPACE >
+rules:
+  - apiGroups:
+      - extensions
+    resourceNames:
+      - adw-psp
+    resources:
+      - podsecuritypolicies
+    verbs:
+      - use
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: adw-psp-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: adw-rolebinding
+  namespace: < NAMESPACE >
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: adw-role
+subjects:
+  - kind: ServiceAccount
+    name: adw-psp-sa
+    namespace: < NAMESPACE >
