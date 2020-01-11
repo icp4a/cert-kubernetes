@@ -224,7 +224,9 @@ A custom resource (CR) YAML file is a configuration file that describes an ICP4A
 
 1. Make a copy of the template custom resource YAML file [descriptors/ibm_cp4a_cr_template.yaml](../../descriptors/ibm_cp4a_cr_template.yaml?raw=true) and name it appropriately for your deployment (for example descriptors/my_icp4a_cr.yaml).
 
-   > **Important:** Use a single custom resource file to include all of the components that you want to deploy with an operator instance. Each time that you need to make an update or modification you must use this same file to apply the changes to your deployments. When you apply a new custom resource to an operator you must make sure that all previously deployed resources are included if you do not want the operator to delete them.
+   > **Important:** Because the maximum length of labels in Kubernetes is 63 characters, be careful with the lengths of your CR name and instance names. Some components can configure multiple instances, each instance must have a different name. The total length of the CR name and an instance name must not exceed 24 characters, otherwise some component deployments fail.
+   
+   You must use a single custom resource file to include all of the components that you want to deploy with an operator instance. Each time that you need to make an update or modification you must use this same file to apply the changes to your deployments. When you apply a new custom resource to an operator you must make sure that all previously deployed resources are included if you do not want the operator to delete them.
 
 2. Change the default name of your instance in descriptors/my_icp4a_cr.yaml.
 
@@ -233,7 +235,9 @@ A custom resource (CR) YAML file is a configuration file that describes an ICP4A
      name: <MY-INSTANCE>
    ```
 
-3. If you use an internal registry, enter values for the `image_pull_secrets` and `images` parameters in the `shared_configuration` section.
+3. If you plan to install UMS and/or AAE and you use the IBM entitled registry, uncomment the lines for the `image_pull_secrets` and `images` parameters in the `shared_configuration` section. 
+   
+   If you use an internal registry, enter your values for these parameters. 
 
    ```yaml
    shared_configuration:
@@ -241,21 +245,31 @@ A custom resource (CR) YAML file is a configuration file that describes an ICP4A
      - <pull-secret>
      images:
         keytool_job_container:
-          repository: docker-registry.default.svc:5000/<my-project>/dba-keytool-initcontainer
+          repository: <registry_url>:5000/<my-project>/dba-keytool-initcontainer
+          tag: 19.0.3  
+        dbcompatibility_init_container:
+          repository: <registry_url>:5000/<my-project>/dba-dbcompatibility-initcontainer
           tag: 19.0.3
         keytool_init_container:
-          repository: docker-registry.default.svc:5000/<my-project>/dba-keytool-jobcontainer
+          repository: <registry_url>:5000/<my-project>/dba-keytool-jobcontainer
           tag: 19.0.3   
-        pull_policy: IfPresent
+        umsregistration_initjob:
+          repository: <registry_url>:5000/<my-project>/dba-umsregistration-initjob
+          tag: 19.0.3
+        pull_policy: IfNotPresent
     ```
 
    | Parameter                          | Description                                     |
    | -------------------------------    | ---------------------------------------------   |
-   | `keytool_job_container`            | Repository from where to pull the keytool_job_container and the corresponding tag  |
-   | `keytool_init_container`           | Repository from where to pull the keytool_init_container and the corresponding tag |
+   | `keytool_job_container`            | Repository from where to pull the UMS keytool_job_container and the corresponding tag  |
+   | `dbcompatibility_init_container`   | Repository from where to pull the AAE init_container and the corresponding tag  |
+   | `keytool_init_container`           | Repository from where to pull the UMS keytool_init_container and the corresponding tag |
+   | `umsregistration_initjob`          | Repository from where to pull the AAE umsregistration_initjob and the corresponding tag  |
    | `image_pull_secrets`               | Secrets in your target namespace to pull images from the specified repository      |
+   
+   > **Note:** If you do not plan to install UMS or AAE, you can leave these lines commented in your copy of the custom resource template file.
 
-4. Use the following links to configure the software that you want to install.
+4. Use the following links to configure the software that you want to install, and you need to make sure the irrelevant softwares are fully commented or removed including the top level of ***_configuration.
 
    - [Configure IBM Automation Digital Worker](../../ADW/README_config.md)
    - [Configure IBM Automation Workstream Services](../../IAWS/README_config.md)

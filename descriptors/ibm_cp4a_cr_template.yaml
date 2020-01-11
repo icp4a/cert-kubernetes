@@ -35,7 +35,7 @@ spec:
     #   umsregistration_initjob:
     #     repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
     #     tag: 19.0.3
-    #   pull_policy: Always
+    #   pull_policy: IfNotPresent
     # root_ca_secret: icp4a-root-ca
     # sc_deployment_platform: OCP
     # trusted_certificate_list: []
@@ -45,6 +45,7 @@ spec:
     # lc_selected_ldap_type: "IBM Security Directory Server"
     # lc_ldap_server: "<hostname>"
     # lc_ldap_port: "389"
+    # lc_bind_secret: ldap-bind-secret # Secret is expected to have ldapUsername and ldapPassword keys, optional if your LDAP server allows anonymous bind.
     # lc_ldap_base_dn: "dc=hqpsidcdom,dc=com"
     # lc_ldap_ssl_enabled: false
     # lc_ldap_ssl_secret_name: ""
@@ -72,7 +73,7 @@ spec:
   #   lc_selected_ldap_type: "IBM Security Directory Server"
   #   lc_ldap_server: "<hostname>"
   #   lc_ldap_port: "389"
-  #   lc_bind_secret: ldap-bind-secret # secret is expected to have ldapUsername and ldapPassword keys
+  #   lc_bind_secret: ldap-bind-secret # Secret is expected to have ldapUsername and ldapPassword keys, optional if your LDAP server allows anonymous bind.
   #   lc_ldap_base_dn: "O=LOCAL"
   #   lc_ldap_ssl_enabled: false
   #   lc_ldap_ssl_secret_name: ""
@@ -201,7 +202,7 @@ spec:
     #   image:
     #     repository: cp.icr.io/cp/cp4a/fncm/cpe
     #     tag: ga-554-p8cpe
-    #     pull_policy: Always
+    #     pull_policy: IfNotPresent
     #   ## Logging for workloads
     #   log:
     #    format: json
@@ -267,7 +268,7 @@ spec:
     #   image:
     #     repository: cp.icr.io/cp/cp4a/fncm/css
     #     tag: ga-554-p8css
-    #     pull_policy: Always
+    #     pull_policy: IfNotPresent
     #   ## Logging for workloads
     #   log:
     #     format: json
@@ -314,7 +315,7 @@ spec:
     #   image:
     #     repository: cp.icr.io/cp/cp4a/fncm/cmis
     #     tag: ga-304-cmis-if009
-    #     pull_policy: Always
+    #     pull_policy: IfNotPresent
     #   ## Logging for workloads
     #   log:
     #     format: json
@@ -389,7 +390,7 @@ spec:
     #   image:
     #     repository: cp.icr.io/cp/cp4a/fncm/graphql
     #     tag: ga-554-p8cgql
-    #     pull_policy: Always
+    #     pull_policy: IfNotPresent
     #   ## resource
     #   resources:
     #     requests:
@@ -444,7 +445,7 @@ spec:
     #   image:
     #     repository: cp.icr.io/cp/cp4a/fncm/extshare
     #     tag: ga-307-es
-    #     pull_policy: Always
+    #     pull_policy: IfNotPresent
     #   ## resource
     #   resources:
     #     requests:
@@ -502,7 +503,7 @@ spec:
     #   image:
     #     repository: cp.icr.io/cp/cp4a/fncm/taskmgr
     #     tag: 3.0.7
-    #     pull_policy: Always
+    #     pull_policy: IfNotPresent
     #  ## LOGGING FOR WORKLOADS
     #   log:
     #     format: JSON
@@ -569,7 +570,7 @@ spec:
     #   image:
     #     repository: cp.icr.io/cp/cp4a/ban/navigator-sso
     #     tag: ga-307-icn
-    #     pull_policy: Always
+    #     pull_policy: IfNotPresent
     #     arbitrary_uid_enabled: true
     #   ## Logging for workloads
     #   log:
@@ -1032,7 +1033,7 @@ spec:
   #   hostname: <your external App Engine host name>
   #   port: 443
   #   admin_secret_name: <your secret name>
-  #   external_tls_secret_name:
+  #   external_tls_secret:
   #   replica_size: 1
   #   user_custom_jdbc_drivers: false
   #   service_type: Route
@@ -1916,7 +1917,7 @@ spec:
 #      install: true
 #    ibm-dba-ek:
 #      image:
-#        imagePullPolicy: Always
+#        imagePullPolicy: IfNotPresent
 #        imagePullSecret: "admin.registrykey"
 #      elasticsearch:
 #        image:
@@ -1982,13 +1983,13 @@ spec:
 #    designer:
 #      image:
 #        repository: "cp.icr.io/cp/cp4a/adw/adw-designer"
-#        pullPolicy: "Always"
+#        pullPolicy: "IfNotPresent"
 #      externalUrl: ""
 
 #    runtime:
 #      image:
 #        repository: "cp.icr.io/cp/cp4a/adw/adw-runtime"
-#        pullPolicy: "Always"
+#        pullPolicy: "IfNotPresent"
 #      persistence:
 #        useDynamicProvisioning: true
 #        storageClassName: "managed-nfs-storage"
@@ -2002,7 +2003,7 @@ spec:
 #    management:
 #      image:
 #        repository: "cp.icr.io/cp/cp4a/adw/adw-management"
-#        pullPolicy: "Always"
+#        pullPolicy: "IfNotPresent"
 #      persistence:
 #        useDynamicProvisioning: true
 #        storageClassName: "managed-nfs-storage"
@@ -2010,12 +2011,12 @@ spec:
 #    setup:
 #      image:
 #        repository: "cp.icr.io/cp/cp4a/adw/adw-setup"
-#        pullPolicy: "Always"
+#        pullPolicy: "IfNotPresent"
 
 #    init:
 #      image:
 #        repository: "cp.icr.io/cp/cp4a/adw/adw-init"
-#        pullPolicy: "Always"
+#        pullPolicy: "IfNotPresent"
 
 #    baiKafka:
 #      topic: "BAITOPICFORODM"

@@ -120,7 +120,7 @@ datasource_configuration:
 ```
 
 For information about UMS configuration parameters and their default values, see
-(UMS Database Configuration Parameters)(http://engtest01w.fr.eurolabs.ibm.com:9190/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.ref/ref_ums_params_database.html)
+[UMS Database Configuration Parameters](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.ref/k8s_topics/ref_ums_params_database.html)
 
 
 ## <a name="configure-failover"></a> Step 2a (optional): Configure database failover servers
@@ -215,7 +215,7 @@ In section `ums_configuration` adapt the UMS-specific configuration
 ```
 
 For information about UMS configuration parameters and their default values, see 
-(UMS Configuration Parameters)[http://engtest01w.fr.eurolabs.ibm.com:9190/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.ref/k8s_topics/ref_ums_params_ums.html] 
+[UMS Configuration Parameters](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.ref/k8s_topics/ref_ums_params_ums.html) 
 
 
 ## <a name="Step-4a"></a> Step 4a (optional): Configure secure communication with UMS 

@@ -8,7 +8,7 @@ Confirm that you have completed the following tasks to prepare to deploy your Fi
 
 - Prepare your FileNet Content Manager environment. These procedures include setting up databases, LDAP, storage, and configuration files that are required for use and operation. You must complete all of the [preparation steps for FileNet Content Manager](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_prepare_ecmk8s.html) before you are ready to deploy the container images. Collect the values for these environment components; you use them to configure your FileNet Content Manager container deployment.
 
-- Prepare your container environment. See [Preparing to install automation containers on Kubernetes](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/welcome/com.ibm.dba.install/op_topics/tsk_prepare_env_k8s.html)
+- Prepare your container environment. See [Preparing to install automation containers on Kubernetes](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_prepare_env_k8s.html)
 
 - If you want to deploy additional optional containers, prepare the requirements that are specific to those containers. For details see the following information:
   - [Preparing for External Share](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_cm_externalshareop.html)
@@ -44,6 +44,8 @@ The secret you create is the value for the parameter `fncm_secret_name`.
    - You can use a signed root CA. In this case, you create a secret that contains the root CA's key value pair in advance.
 
    The list of the trusted certificate secrets can be a TLS secret or an opaque secret. An opaque secret must contain a tls.crt file for the trusted certificate. The TLS secret has a tls.key file as the private key.
+   
+   Note that if you plan to use the external Content Platform Engine tools, you must use either the Root CA and trusted certificate list or Ingress configuration.
    
 ### Apply the Security Context Contstraints
 
