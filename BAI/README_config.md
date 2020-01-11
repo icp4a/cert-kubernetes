@@ -8,7 +8,7 @@ For more information on the IBM Cloud Pak for Automation, see the [IBM Cloud Pak
 
 ## Before you start
 
-If you have not done so, go to the [IBM Cloud Pak for Automation 19.0.x](http://engtest01w.fr.eurolabs.ibm.com:9190/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_preparing_baik8s.html) Knowledge Center and follow the steps to prepare your environment for Business Automation Insights.
+If you have not done so, go to the [IBM Cloud Pak for Automation 19.0.x](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_preparing_baik8s_prereq.html) Knowledge Center and follow the steps to prepare your environment for Business Automation Insights.
 
 This README will summarize a number of the preparation steps found in the Knowledge Center. For more information at each stage refer to the Knowledge Center links provided.
 

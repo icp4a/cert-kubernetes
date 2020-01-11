@@ -61,19 +61,19 @@ You can access the container images in the IBM Docker registry with your IBMid (
    -l  Optional: Target a local registry
    ```
 
-   The following example shows the input values in the command line on OCP 3.11. On OCP 4.2 the default docker registry is based on the host name, for example "default-route-openshift-image-registry.ibm.com".
+   The following example shows the input values in the command line.
 
    ```
-   # scripts/loadimages.sh -p <PPA-ARCHIVE>.tgz -r <registry_url>/my-project
+   # scripts/loadimages.sh -p <PPA-ARCHIVE>.tgz -r <registry_url>/namespace
    ```
 
-   > **Note**: The project must have pull request privileges to the registry where the images are loaded. The project must also have pull request privileges to push the images into another namespace/project.
+   > **Note**: You must have pull request privileges to the registry where the images are loaded.
 
 6. Check that the images are pushed correctly to the registry.
 7. (Optional) If you want to use an external Docker registry, create a Docker registry secret.
 
    ```bash
-   $ oc create secret docker-registry <secret_name> --docker-server=<registry_url> --docker-username=<your_account> --docker-password=<your_password> --docker-email=<your_email>
+   $ kubectl create secret docker-registry <secret_name> --docker-server=<registry_url> --docker-username=<your_account> --docker-password=<your_password> --docker-email=<your_email>
    ```
 
    Take a note of the secret and the server values so that you can set them to the **pullSecrets** and **repository** parameters when you run the operator for your containers.
@@ -178,7 +178,7 @@ The Cloud Pak operator has a number of descriptors that must be applied.
 
    Use the script [scripts/deployOperator.sh](../../scripts/deployOperator.sh) to deploy these descriptors.
    ```bash
-   $ ./scripts/deployOperator.sh -i <registry_url>/icp4a-operator:19.03 -p '<my_secret_name>'
+   $ ./scripts/deployOperator.sh -i <registry_url>/icp4a-operator:19.0.3 -p '<my_secret_name>'
    ```
 
    Where *registry_url* is the value for your internal docker registry or `cp.icr.io/cp/cp4a` for the IBM Cloud Entitled Registry and *my_secret_name* the secret created to access the registry.
@@ -203,7 +203,9 @@ A custom resource (CR) YAML file is a configuration file that describes an ICP4A
 
 1. Make a copy of the template custom resource YAML file [descriptors/ibm_cp4a_cr_template.yaml](../../descriptors/ibm_cp4a_cr_template.yaml?raw=true) and name it appropriately for your deployment (for example descriptors/my_icp4a_cr.yaml).
 
-   > **Important:** Use a single custom resource file to include all of the components that you want to deploy with an operator instance. Each time that you need to make an update or modification you must use this same file to apply the changes to your deployments. When you apply a new custom resource to an operator you must make sure that all previously deployed resources are included if you do not want the operator to delete them.
+   > **Important:** Because the maximum length of labels in Kubernetes is 63 characters, be careful with the lengths of your CR name and instance names. Some components can configure multiple instances, each instance must have a different name. The total length of the CR name and an instance name must not exceed 24 characters, otherwise some component deployments fail.
+   
+   You must use a single custom resource file to include all of the components that you want to deploy with an operator instance. Each time that you need to make an update or modification you must use this same file to apply the changes to your deployments. When you apply a new custom resource to an operator you must make sure that all previously deployed resources are included if you do not want the operator to delete them.
 
 2. Change the default name of your instance in descriptors/my_icp4a_cr.yaml.
 
@@ -212,7 +214,9 @@ A custom resource (CR) YAML file is a configuration file that describes an ICP4A
      name: <MY-INSTANCE>
    ```
 
-3. If you use an internal registry, enter values for the `image_pull_secrets` and `images` parameters in the `shared_configuration` section.
+3. If you plan to install UMS and/or AAE and you use the IBM entitled registry, uncomment the lines for the `image_pull_secrets` and `images` parameters in the `shared_configuration` section. 
+   
+   If you use an internal registry, enter your values for these parameters. 
 
    ```yaml
    shared_configuration:
@@ -220,19 +224,29 @@ A custom resource (CR) YAML file is a configuration file that describes an ICP4A
      - <pull-secret>
      images:
         keytool_job_container:
-          repository: docker-registry.default.svc:5000/<my-project>/dba-keytool-initcontainer
+          repository: <registry_url>:5000/<namespace>/dba-keytool-initcontainer
+          tag: 19.0.3  
+        dbcompatibility_init_container:
+          repository: <registry_url>:5000/<namespace>/dba-dbcompatibility-initcontainer
           tag: 19.0.3
         keytool_init_container:
-          repository: docker-registry.default.svc:5000/<my-project>/dba-keytool-jobcontainer
+          repository: <registry_url>:5000/<namespace>/dba-keytool-jobcontainer
           tag: 19.0.3   
-        pull_policy: IfPresent
+        umsregistration_initjob:
+          repository: <registry_url>:5000/<namespace>/dba-umsregistration-initjob
+          tag: 19.0.3
+        pull_policy: IfNotPresent
     ```
 
    | Parameter                          | Description                                     |
    | -------------------------------    | ---------------------------------------------   |
-   | `keytool_job_container`            | Repository from where to pull the keytool_job_container and the corresponding tag  |
-   | `keytool_init_container`           | Repository from where to pull the keytool_init_container and the corresponding tag |
+   | `keytool_job_container`            | Repository from where to pull the UMS keytool_job_container and the corresponding tag  |
+   | `dbcompatibility_init_container`   | Repository from where to pull the AAE init_container and the corresponding tag  |
+   | `keytool_init_container`           | Repository from where to pull the UMS keytool_init_container and the corresponding tag |
+   | `umsregistration_initjob`          | Repository from where to pull the AAE umsregistration_initjob and the corresponding tag  |
    | `image_pull_secrets`               | Secrets in your target namespace to pull images from the specified repository      |
+   
+   > **Note:** If you do not plan to install UMS or AAE, you can leave these lines commented in your copy of the custom resource template file.
 
 4. Use the following links to configure the software that you want to install.
 

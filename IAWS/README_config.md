@@ -16,7 +16,7 @@ Learn how to configure IBM Automation Workstream Services.
   - [(Optional) Db2 HADR Configuration](#Optional-Db2-HADR-Configuration)
 - [Step 3: Preparing to configure LDAP](#Step-3-Preparing-to-configure-LDAP)
 - [Step 4: Preparing storage](#Step-4-Preparing-storage)
-  - [Disabling swapping and increasing the limit number of files descriptors](#Disabling-swapping-and-increasing-the-limit-number-of-files-descriptors)
+  - [Disabling swapping and increasing the limit on the number of file descriptors](#Disabling-swapping-and-increasing-the-limit-on-the-number-of-file-descriptors)
   - [Preparing storage for Process Federation Server](#Preparing-storage-for-Process-Federation-Server)
   - [Preparing storage for Java Messaging Service](#Preparing-storage-for-Java-Messaging-Service)
 - [Step 5: Protecting sensitive configuration data](#Step-5-Protecting-sensitive-configuration-data)
@@ -246,7 +246,7 @@ database:
 
 
 ## Step 3: Preparing to configure LDAP
-An LDAP server is required before you install Automation Workstream Services. Save the following content in a file named `ldap-bind-secret.yaml`, Then apply it by running the `oc apply -f ldap-bind-secret.yaml` command:
+An LDAP server is required before you install Automation Workstream Services. Save the following content in a file named `ldap-bind-secret.yaml`. Then apply it by running the `oc apply -f ldap-bind-secret.yaml` command:
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -261,14 +261,14 @@ data:
 **Notes:**
 - Ensure `ldapUsername` corresponds to the **bindDN** property of your LDAP server with **base64** encoded.
 - Ensure `ldapPassword` corresponds to the **bindPassword** property of your LDAP server with **base64** encoded.
-- Specify the hostname of your LDAP server in the `shared_configuration.ldap_configuration.lc_ldap_server` property.
-- Specify the secret name you created above in the `shared_configuration.ldap_configuration.lc_bind_secret` property.
+- Specify the hostname of your LDAP server in the `ldap_configuration.lc_ldap_server` property.
+- Specify the secret name you created above in the `ldap_configuration.lc_bind_secret` property.
 
 
 
 
 ## Step 4: Preparing storage
-### Disabling swapping and increasing the limit number of files descriptors
+### Disabling swapping and increasing the limit on the number of file descriptors
 For node stability and performance, disable memory swapping on all worker nodes. For detailed information, see [Disable swapping for Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/6.8/setup-configuration-memory.html). Also, Elasticsearch uses a lot of file descriptors and running out of file descriptors can lead to data loss. Make sure to increase the limit on the number of open file descriptors for the user running Elasticsearch.
 
 By default, `pfs_configuration.elasticsearch.privileged` is set to `true`. In this scenario privileged containers will do the above configuration.
@@ -283,7 +283,10 @@ sysctl -w vm.max_map_count=262144 && sed -i '/^vm.max_map_count /d' /etc/sysctl.
 The Process Federation Server component requires persistent volumes (PVs), persistent volume claims (PVCs), and related folders to be created before you can deploy. The deployment process uses these volumes and folders during the deployment.
 
 The following example illustrates the procedure using Network File System (NFS). An existing NFS server is required before creating persistent volumes and persistent volume claims.
-- Creating folders for Process Federation Server on an NFS server, For the NFS server, you must grant minimal privileges, In the `/etc/exports` configuration file, add the following line in the end:
+
+- Creating folders for Process Federation Server on an NFS server
+
+For the NFS server, you must grant minimal privileges, In the `/etc/exports` configuration file, add the following line at the end:
 ```
 <pfs_storage_directory_path> *(rw,sync,no_subtree_check)
 ```
@@ -425,10 +428,11 @@ spec:
 ### Preparing storage for Java Messaging Service
 The Java Messaging Service(JMS) component requires you to create a persistent volume and a related folder to be created before you can deploy. 
 
-The following example illustrats the procedure using NFS. An existing NFS server is required before creating PVs.
+The following example illustrates the procedure using NFS. An existing NFS server is required before creating PVs.
 
 - Creating folders for JMS on an NFS server
-For the NFS server, you must grant minimal privileges, In the `/etc/exports` configuration file, add the following line in the end:
+
+For the NFS server, you must grant minimal privileges, In the `/etc/exports` configuration file, add the following line at the end:
 ```
 <jms_storage_directory_path> *(rw,sync,no_subtree_check)
 ```
@@ -577,7 +581,7 @@ Run the following command on the OpenShift master node:
 kubectl create secret generic wfs-lombardi-custom-xml-secret --from-file=sensitiveCustomConfig=./100Custom.xml
 ```
 
-**Note:** To overwrite the Lombardi configuration settings, specify the value of the `iaws_configuration[x].wfs.lombardi_custom_xml_secret_name` property as the to newly created secret name `wfs-lombardi-custom-xml-secret` in the Custom Resource configuration file.
+**Note:** To overwrite the Lombardi configuration settings, specify the value of the `iaws_configuration[x].wfs.lombardi_custom_xml_secret_name` property as the newly created secret name `wfs-lombardi-custom-xml-secret` in the Custom Resource configuration file.
 
 
 
@@ -607,7 +611,7 @@ If you want to customize your Custom Resource YAML file, you can refer to the [c
 ## Step 7: Completing the installation
 Go back to the relevant installation or update page to configure other components and complete the deployment with the operator.
 
-Install pages:
+Installation pages:
    - [OpenShift installation page](../platform/ocp/install.md)
    - [Certified Kubernetes installation page](../platform/k8s/install.md)
 
@@ -624,8 +628,8 @@ Update pages:
 - [Creating object stores manually](https://www.ibm.com/support/knowledgecenter/SSGLW6_5.5.0/com.ibm.p8.install.doc/p8pin034.htm)
 
 **Notes:**
-- The domain name must be same as value of the `iaws_configuration[x].wfs.content_integration.domain_name` property in the Custom Resource configuration file.
-- The database connection related parameters shoule be from one of object store databases in `datasource_configuration.dc_os_datasources` section defined in Custom Resource configuration file which is already persisted as datasource configuration inside CPE container
+- The domain name must be the same as the value of the `iaws_configuration[x].wfs.content_integration.domain_name` property in the Custom Resource configuration file.
+- The database connection-related parameters should be from one of the object store databases in the `datasource_configuration.dc_os_datasources` section defined in the Custom Resource configuration file, which is already persisted as datasource configuration inside the Content Platform Engine container.
 - The Object Store name must be the same as the value of the `iaws_configuration[x].wfs.content_integration.object_store_name` property in the Custom Resource configuration file.
 
 ## Step 9: Verifying Automation Workstream Services
@@ -689,7 +693,7 @@ oc describe pod <POD_NAME> -n <NAMESPACE_NAME>
   
   * Scaling Elasticsearch statefulet
   
-  In the Elasticsearch configuration, the [discovery.zen.minimum_master_nodes property](https://www.elastic.co/guide/en/elasticsearch/reference/6.7/discovery-settings.html#minimum_master_nodes) is automatically set by the operator to the quorum of replicas of the Elasticsearch statefulset. If, during an update, the pfs_configuration.elasticsearch.replicas value is changed and the change leads to a new computed value for the discovery.zen.minimum_master_nodes configuration property, then all currently running Elasticsearch pods will have to be restarted to. During this restart of the pods, there will be a temporary interruption of Elasticsearch and Process Federation Server services.
+  In the Elasticsearch configuration, the [discovery.zen.minimum_master_nodes property](https://www.elastic.co/guide/en/elasticsearch/reference/6.7/discovery-settings.html#minimum_master_nodes) is automatically set by the operator to the quorum of replicas of the Elasticsearch statefulset. If, during an update, the pfs_configuration.elasticsearch.replicas value is changed and the change leads to a new computed value for the discovery.zen.minimum_master_nodes configuration property, then all currently running Elasticsearch pods will have to be restarted. During this restart of the pods, there will be a temporary interruption of Elasticsearch and Process Federation Server services.
   * Elasticsearch High Availability
 
   In the Elasticsearch configuration, the [discovery.zen.minimum_master_nodes property](https://www.elastic.co/guide/en/elasticsearch/reference/6.7/discovery-settings.html#minimum_master_nodes) is automatically set by the operator to the quorum of replicas of the Elasticsearch statefulset. If at some point, some Elasticsearch pods fail and the number of running Elastisearch pods is less than the quorum of replicas of the Elasticsearch statefulset, there will be an interruption of Elasticsearch and Process Federation Server services, until at least the quorum of running Elasticsearch pods is satisfied again.
@@ -712,7 +716,7 @@ oc describe pod <POD_NAME> -n <NAMESPACE_NAME>
 ## Troubleshooting
 - How to check check pod status and related logs for Automation Workstream Services 
 
-There are totally 12 Automation Workstream Services-related pods in total, Run the oc get pod command to see the status of each pod:
+There are 12 Automation Workstream Services-related pods in total, Run the oc get pod command to see the status of each pod:
 ```
 NAME                                                         READY     STATUS      RESTARTS   AGE
 demo-ibm-pfs-0                                               1/1       Running     0          2h
@@ -1063,7 +1067,7 @@ $ cat /logs/application/liberty-message.log
 
 - To customize the Process Federation Server liberty server trace setting
 
-Use the following pecification can be used to enable Process Federation Server container logs in the Custom Resource configuration:
+Use the following specification to enable Process Federation Server container logs in the Custom Resource configuration:
 ```yaml
 pfs_configuration:
    pfs:

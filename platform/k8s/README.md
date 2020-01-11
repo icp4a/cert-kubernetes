@@ -1,6 +1,8 @@
 # IBM Cloud Pak for Automation 19.0.3 on Certified Kubernetes
 
-Any platform that includes Kubernetes 1.11+ is supported by Cloud Pak for Automation 19.0.3.
+Any platform that includes a Certified Kubernetes version 1.11+ is supported by Cloud Pak for Automation 19.0.3. Use the following link to determine whether the vendor and/or platform is certified by Cloud Native Computing Foundation (CNCF)  https://landscape.cncf.io/category=platform.
+
+The instructions provided apply generically for a Certified Kubernetes installation. Details might vary depending on which platform you are using.
 
 Choose which use case you need, and then follow the links below to find the right instructions:
 

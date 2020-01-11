@@ -87,13 +87,20 @@ You can optionally add your own persistent volume (PV) and persistent volume cla
          * If you want to use the full configuration list and customize the values, update the required values in `bastudio_configuration` and `resource_registry_configuration` in your copy of the template custom resource YAML file based on your configuration.
 
 Note: The hostname must be less than 64 characters. Use a wildcard DNS (https://nip.io/) if the hostname is too long. For example, instead of:
-`resource_registry_configuration:
+
+```
+ resource_registry_configuration:
    admin_secret_name: op-bas-rr-admin-secret
-   hostname: hostname: rr-{{ meta.namespace }.I-have-a-very-long-hostname-which-exceeds-64-characters.cloud.com`' 
+   hostname: hostname: rr-{{ meta.namespace }.I-have-a-very-long-hostname-which-exceeds-64-characters.cloud.com
+```
+
 the hostname can use a wildcard:
-`resource_registry_configuration:
+
+```
+ resource_registry_configuration:
    admin_secret_name: op-bas-rr-admin-secret
-   hostname: rr-{{ meta.namespace }.<Public IP of Hostname>.nip.io`' 
+   hostname: rr-{{ meta.namespace }.<Public IP of Hostname>.nip.io
+```   
 
 ### Configuration 
 

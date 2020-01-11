@@ -30,6 +30,9 @@ function showHelp {
 unset ppa_path
 unset target_docker_repo
 local_registry=false
+unset cli_cmd
+unset local_repo_prefix
+unset loaded_msg_prefix
 
 OPTIND=1         # Reset in case getopts has been used previously in the shell.
 
@@ -58,6 +61,25 @@ else
     done
 
 fi
+
+# Check OCI command
+if command -v "podman" >/dev/null 2>&1
+then
+    echo "Use podman command to load images."
+    cli_cmd="podman"
+    local_repo_prefix="localhost/"
+    loaded_msg_prefix="Loaded image(s): localhost/"
+elif command -v "docker" >/dev/null 2>&1
+then
+    echo "Use docker command to load images."
+    cli_cmd="docker"
+    local_repo_prefix=""
+    loaded_msg_prefix="Loaded image: "
+else
+    echo "No available Docker-compatible command line. Exit."
+    exit -1
+fi
+
 
 shift $((OPTIND-1))
 
@@ -110,16 +132,29 @@ do
             then
                 echo "Loading image file: "$img_gz_file
                 # echo "tar -zxf ${ppa_file} ${img_gz_file} -O | docker load -q"
-                load_cmd_output=`tar -zOxf ${ppa_file} ${img_gz_file} | docker load -q`
+                load_cmd_output=`tar -zOxf ${ppa_file} ${img_gz_file} | ${cli_cmd} load -q`
                 echo $load_cmd_output
-                arr_img_load[$_ind]=${load_cmd_output#*Loaded image: }
 
-                docker tag ${arr_img_load[$_ind]} ${target_docker_repo}/${arr_img_load[$_ind]}
+                arr_img_load[$_ind]=${load_cmd_output#*${loaded_msg_prefix}}
+                if [ "${cli_cmd}" = "docker" ]
+                then
+                    echo "${cli_cmd} tag ${local_repo_prefix}${arr_img_load[$_ind]} ${target_docker_repo}/${arr_img_load[$_ind]}"
+                    ${cli_cmd} tag ${local_repo_prefix}${arr_img_load[$_ind]} ${target_docker_repo}/${arr_img_load[$_ind]}
+                fi
+
                 if ! $local_registry
                 then
-                    docker push ${target_docker_repo}/${arr_img_load[$_ind]} | grep -e repository -e digest -e unauthorized
-                    docker rmi -f ${arr_img_load[$_ind]} ${target_docker_repo}/${arr_img_load[$_ind]} | grep -e unauthorized
-                    echo "Pushed image: "${target_docker_repo}/${arr_img_load[$_ind]}
+                    if [ "${cli_cmd}" = "docker" ]
+                    then
+                        ${cli_cmd} push ${target_docker_repo}/${arr_img_load[$_ind]} | grep -e repository -e digest -e unauthorized
+                        ${cli_cmd} rmi -f ${local_repo_prefix}${arr_img_load[$_ind]} ${local_repo_prefix}${target_docker_repo}/${arr_img_load[$_ind]} | grep -e unauthorized
+                        echo "Pushed image: "${target_docker_repo}/${arr_img_load[$_ind]}
+                    elif [ "${cli_cmd}" = "podman" ]
+                    then
+                        ${cli_cmd} push --tls-verify=false ${local_repo_prefix}${arr_img_load[$_ind]} ${target_docker_repo}/${arr_img_load[$_ind]} | grep -e repository -e digest -e unauthorized
+                        ${cli_cmd} rmi -f ${local_repo_prefix}${arr_img_load[$_ind]} | grep -e unauthorized
+                        echo "Pushed image: "${target_docker_repo}/${arr_img_load[$_ind]}
+                    fi
                 fi
                 let _ind++
             fi
