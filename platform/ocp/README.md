@@ -2,6 +2,8 @@
 
 Red Hat OpenShift Cloud Platform 3.11 or 4.2 is the target platform for Cloud Pak for Automation 19.0.3.
 
+The podman (Pod Manager) command in OCP 4.2 can be used to run containers outside of Kubernetes and the OpenShift command line interface. The podman tool acts as a replacement for docker with even more container management features. The two command-line interfaces are so similar that you might want to define `alias docker='podman'`.
+
 Choose which use case you need, and then follow the links below to find the right instructions:
 
 - [Install Cloud Pak for Automation 19.0.3 on Red Hat OpenShift](install.md)

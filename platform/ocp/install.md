@@ -115,16 +115,16 @@ Before you install any of the containerized software:
    apiVersion: v1
    kind: PersistentVolume
    metadata:
-     labels:
-       type: local
+     annotations:
      name: operator-shared-pv
    spec:
+     accessModes:
+     - ReadWriteMany
      capacity:
        storage: 1Gi
-     accessModes:
-       - ReadWriteMany
-     hostPath:
-       path: "/root/operator"
+     nfs:
+       path: /mnt/nfsshare/operator/operatorstore
+       server: 9.XX.XXX.XXX
      persistentVolumeReclaimPolicy: Delete
    ```
 
@@ -145,8 +145,7 @@ Before you install any of the containerized software:
      namespace: my-project
    spec:
      accessModes:
-       - ReadWriteMany
-     storageClassName: ""
+     - ReadWriteMany
      resources:
        requests:
          storage: 1Gi
@@ -167,7 +166,7 @@ Before you install any of the containerized software:
      - Oracle:
         - ojdbc8.jar
 
-    The following structure shows an example remote file system.
+    The following structure shows the directory structure and file names that are required on a remote file system. The user/group permissions must allow the user running the operator to access the directories and files.
 
     ```
     pv-root-dir
@@ -199,10 +198,10 @@ The Cloud Pak operator has a number of descriptors that must be applied.
 
    Use the script [scripts/deployOperator.sh](../../scripts/deployOperator.sh) to deploy these descriptors.
    ```bash
-   $ ./scripts/deployOperator.sh -i <registry_url>/icp4a-operator:19.0.3 -p '<my_secret_name>'
+   $ ./scripts/deployOperator.sh -i <registry_url>/icp4a-operator:19.0.3 -p '<my_secret_name>' -a accept
    ```
 
-   Where *registry_url* is the value for your internal docker registry or `cp.icr.io/cp/cp4a` for the IBM Cloud Entitled Registry and *my_secret_name* the secret created to access the registry.
+   Where *registry_url* is the value for your internal docker registry or `cp.icr.io/cp/cp4a` for the IBM Cloud Entitled Registry and *my_secret_name* the secret created to access the registry, *accept* means you accept this [license](../../LICENSE).
 
    > **Note**: If you plan to use a non-admin user to install the operator, you must add the user to the `ibm-cp4-operator` role. For example:
    ```bash

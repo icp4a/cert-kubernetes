@@ -19,7 +19,7 @@ metadata:
     release: 19.0.3
 spec:
   ## shared configuration among all tribe
-  shared_configuration:
+  #shared_configuration:
     # image_pull_secrets:
     # - image-pull-secret
     # images:
@@ -40,7 +40,7 @@ spec:
     # sc_deployment_platform: OCP
     # trusted_certificate_list: []
     # encryption_key_secret: icp4a-shared-encryption-key
-  ldap_configuration:
+  #ldap_configuration:
     # the candidate value is "IBM Security Directory Server" or "Microsoft Active Directory"
     # lc_selected_ldap_type: "IBM Security Directory Server"
     # lc_ldap_server: "<hostname>"
@@ -68,7 +68,7 @@ spec:
     # tds:
     #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
-  ext_ldap_configuration:
+  #ext_ldap_configuration:
   #   # the candidate value is "IBM Security Directory Server" or "Microsoft Active Directory"
   #   lc_selected_ldap_type: "IBM Security Directory Server"
   #   lc_ldap_server: "<hostname>"
@@ -92,7 +92,7 @@ spec:
   #   tds:
   #     lc_user_filter: "(&(cn=%v)(objectclass=person))"
   #     lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
-  datasource_configuration:
+  #datasource_configuration:
     # the candidate value is "db2" or "db2HADR" or "oracle" or "sqlserver"
     # dc_gcd_datasource:
     #   dc_database_type: "db2"
@@ -170,7 +170,7 @@ spec:
   #    - tenant1
   #    database_port: ""
   ## Monitor setting
-  monitoring_configuration:
+  #monitoring_configuration:
     # mon_metrics_writer_option: "4"
     # mon_metrics_service_endpoint: "9.9.9.9:2003"
     # mon_bmx_group: "ibm"
@@ -181,7 +181,7 @@ spec:
     # mon_enable_plugin_pch: true
     # mon_enable_plugin_mbean: true
   ## Logging setting
-  logging_configuration:
+  #logging_configuration:
     # mon_log_parse: false
     # mon_log_shipper_option: "1"
     # mon_log_service_endpoint: "9.9.9.9:5044"
@@ -191,7 +191,7 @@ spec:
   ########################################################################
   ########      IBM FileNet Content Manager configuration         ########
   ########################################################################
-  ecm_configuration:
+  #ecm_configuration:
     # fncm_secret_name: ibm-fncm-secret
     # fncm_ext_tls_secret_name: "{{ meta.name }}-fncm-ext-tls-secret"
     # fncm_auth_ca_secret_name: "{{ meta.name }}-fncm-auth-ca-secret"
@@ -560,7 +560,7 @@ spec:
   ########################################################################
   ########   IBM Business Automation Navigator configuration      ########
   ########################################################################
-  navigator_configuration:
+  #navigator_configuration:
     #   ban_secret_name: ibm-ban-secret
     #   ban_ext_tls_secret_name: "{{ meta.name }}-ban-ext-tls-secret"
     #   ban_auth_ca_secret_name: "{{ meta.name }}-ban-auth-ca-secret"
@@ -643,7 +643,7 @@ spec:
   # ########################################################################
   # ########     IBM FNCM and BAN initialization configuration      ########
   # ########################################################################
-  initialize_configuration:
+  #initialize_configuration:
     # ic_domain_creation:
     #   domain_name: "P8DOMAIN"
     #   encryption_key: "128"
@@ -748,7 +748,7 @@ spec:
   ########################################################################
   ########     IBM FNCM and BAN verification configuration      ########
   ########################################################################
-  verify_configuration:
+  #verify_configuration:
     # vc_cpe_verification:
     #   vc_cpe_folder:
     #   - folder_cpe_obj_store_name: "OS01"
@@ -984,7 +984,7 @@ spec:
   #     # For Kubernetes v1.7, use 'networking.k8s.io/v1'
   #     apiVersion: networking.k8s.io/v1
 
-  ums_configuration:
+  #ums_configuration:
     # existing_claim_name:
     # replica_count: 2
     # service_type: Route
@@ -1026,7 +1026,7 @@ spec:
   #####################################################################
   ## IBM App Engine production configuration 19.0.3 configuration ##
   #####################################################################
-  application_engine_configuration:
+  #application_engine_configuration:
   # ## The application_engine_configuration is a list, you can deploy multiple instances of AppEngine, you can assign different configurations for each instance.
   # ## For each instance, application_engine_configuration.name and application_engine_configuration.name.hostname must be assigned to different values.
   # - name: instance1
@@ -1128,7 +1128,7 @@ spec:
   #     use_external_store: "true"
   #   tls:
   #     tls_trust_list: []
-  resource_registry_configuration:
+  #resource_registry_configuration:
     # admin_secret_name: resource-registry-admin-secret
     # hostname: <your resource registry host name>
     # port: <your resource registry host port>
@@ -1167,7 +1167,7 @@ spec:
   #####################################################################
   ## IBM Business Automation Studio 19.0.3 configuration ##
   #####################################################################
-  bastudio_configuration:
+  #bastudio_configuration:
     # admin_secret_name: bastudio-admin-secret
     # hostname: <your external BAStudio host name>
     # port: <your external BAStudio host port>
@@ -1375,7 +1375,7 @@ spec:
     #     use_external_store: "false"
     #   tls:
     #     tls_trust_list: []
-  iaws_configuration:
+  #iaws_configuration:
   # - name: instance1
   #   wfs:
   #     service_type: "Route"
@@ -1547,7 +1547,7 @@ spec:
   ########################################################################
   ########      IBM Process Federation Server configuration       ########
   ########################################################################
-  pfs_configuration:
+  #pfs_configuration:
     # pfs:
     #   hostname: ""
     #   port: 443
@@ -1703,7 +1703,7 @@ spec:
     #
     #   security:
     #     users_secret: ""
-  ca_configuration:
+  #ca_configuration:
 #    global:
 #      arch: "amd64"
 #      service_type: "Route" # required, supported service type for application engine is: Route or NodePort.
@@ -1842,7 +1842,7 @@ spec:
   ########################################################################
   ########      IBM Business Automation Insights configuration    ########
   ########################################################################
-  bai_configuration:
+  #bai_configuration:
 #    imageCredentials:
 #      imagePullSecret: "admin.registrykey"
 #    persistence:
@@ -1948,7 +1948,7 @@ spec:
   ########  IBM Business Automation Digital Worker Configuration  ########
   ########################################################################
 
-  adw_configuration:
+  #adw_configuration:
 #    global:
 #      imagePullSecret: baiw-reg-cred
 #      kubernetes:

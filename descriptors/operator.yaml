@@ -124,6 +124,9 @@ spec:
               value: "ibm-cp4a-operator"
             - name: WORKER_FOOSERVICE_CACHE_EXAMPLE_COM
               value: "10"
+             # MUST exist, used to accept dba license, valid value only can be "accept" 
+            - name: dba_license
+              value:
       imagePullSecrets:
       - name: "admin.registrykey"
       volumes:
