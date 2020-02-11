@@ -89,82 +89,81 @@ Before you install any of the containerized software:
 
 ## Step 3: Create a shared PV and add the JDBC drivers
 
-  1. Create a persistent volume (PV) for the operator. This PV is needed for the JDBC drivers. The following example YAML defines a PV, but PVs depend on your cluster configuration.
-     ```yaml
-     apiVersion: v1
-     kind: PersistentVolume
-     metadata:
-       labels:
-         type: local
-       name: operator-shared-pv
-     spec:
-       capacity:
+1. Create a persistent volume (PV) for the operator. This PV is needed for the JDBC drivers. The following example YAML defines a PV, but PVs depend on your cluster configuration. 
+   ```yaml
+   apiVersion: v1
+   kind: PersistentVolume
+   metadata:
+     annotations:
+     name: operator-shared-pv
+   spec:
+     accessModes:
+     - ReadWriteMany
+     capacity:
+       storage: 1Gi
+     nfs:
+       path: /mnt/nfsshare/operator/operatorstore
+       server: 9.XX.XXX.XXX
+     persistentVolumeReclaimPolicy: Delete
+   ```
+
+2. Deploy the PV.
+   ```bash
+   $ oc create -f operator-shared-pv.yaml
+   ```
+
+3. Create a claim for the PV, or check that the PV is bound dynamically, [descriptors/operator-shared-pvc.yaml](../../descriptors/operator-shared-pvc.yaml?raw=true).
+
+   > Replace the storage class if you do not want to create the relevant persistent volume.
+
+   ```yaml
+   apiVersion: v1
+   kind: PersistentVolumeClaim
+   metadata:
+     name: operator-shared-pvc
+     namespace: my-project
+   spec:
+     accessModes:
+     - ReadWriteMany
+     resources:
+       requests:
          storage: 1Gi
-       accessModes:
-         - ReadWriteMany
-       hostPath:
-         path: "/root/operator"
-       persistentVolumeReclaimPolicy: Delete
-     ```
+     volumeName: operator-shared-pv
+   ```
 
-  2. Deploy the PV.
-     ```bash
-     $ kubectl create -f operator-shared-pv.yaml
-     ```
+4. Deploy the PVC.
+   ```bash
+   $ oc create -f descriptors/operator-shared-pvc.yaml
+   ```
 
-  3. Create a claim for the PV, or check that the PV is bound dynamically, [descriptors/operator-shared-pvc.yaml](../../descriptors/operator-shared-pvc.yaml?raw=true).
+5. Copy all of the JDBC drivers that are needed by the components you intend to install to the persistent volume. Depending on your storage configuration you might not need these drivers.
 
-     > Replace the storage class if you do not want to create the relevant persistent volume.
+   > **Note**: File names for JDBC drivers cannot include additional version information.
+     - DB2:
+        - db2jcc4.jar
+        - db2jcc_license_cu.jar
+     - Oracle:
+        - ojdbc8.jar
 
-     ```yaml
-     apiVersion: v1
-     kind: PersistentVolumeClaim
-     metadata:
-       name: operator-shared-pvc
-       namespace: my-project
-     spec:
-       accessModes:
-         - ReadWriteMany
-       storageClassName: ""
-       resources:
-         requests:
-           storage: 1Gi
-       volumeName: operator-shared-pv
-     ```
+    The following structure shows the directory structure and file names that are required on a remote file system. The user/group permissions must allow the user running the operator to access the directories and files.
 
-  4. Deploy the PVC.
-     ```bash
-     $ kubectl create -f descriptors/operator-shared-pvc.yaml
-     ```
+    ```
+    pv-root-dir
 
-  5. Copy all of the JDBC drivers that are needed by the components you intend to install to the persistent volume. Depending on your storage configuration you might not need these drivers.
+       └── jdbc
 
-     > **Note**: File names for JDBC drivers cannot include additional version information.
-       - DB2:
-          - db2jcc4.jar
-          - db2jcc_license_cu.jar
-       - Oracle:
-          - ojdbc8.jar
+          ├── db2
 
-      The following structure shows an example remote file system.
+          │   ├── db2jcc4.jar
 
-      ```
-      pv-root-dir
+          │   └── db2jcc_license_cu.jar
 
-         └── jdbc
+          ├── oracle
 
-            ├── db2
+          │   └── ojdbc8.jar
 
-            │   ├── db2jcc4.jar
-
-            │   └── db2jcc_license_cu.jar
-
-            ├── oracle
-
-            │   └── ojdbc8.jar
-
-      ```
-
+    ```
+    
 ## Step 4: Deploy the operator manifest files to your cluster
 
 The Cloud Pak operator has a number of descriptors that must be applied.
@@ -178,10 +177,10 @@ The Cloud Pak operator has a number of descriptors that must be applied.
 
    Use the script [scripts/deployOperator.sh](../../scripts/deployOperator.sh) to deploy these descriptors.
    ```bash
-   $ ./scripts/deployOperator.sh -i <registry_url>/icp4a-operator:19.0.3 -p '<my_secret_name>'
+   $ ./scripts/deployOperator.sh -i <registry_url>/icp4a-operator:19.0.3 -p '<my_secret_name>' -a accept
    ```
 
-   Where *registry_url* is the value for your internal docker registry or `cp.icr.io/cp/cp4a` for the IBM Cloud Entitled Registry and *my_secret_name* the secret created to access the registry.
+   Where *registry_url* is the value for your internal docker registry or `cp.icr.io/cp/cp4a` for the IBM Cloud Entitled Registry and *my_secret_name* the secret created to access the registry, *accept* means you accept this [license](../../LICENSE).
 
    > **Note**: If you plan to use a non-admin user to install the operator, you must add the user to the `ibm-cp4-operator` role. For example:
    ```bash
