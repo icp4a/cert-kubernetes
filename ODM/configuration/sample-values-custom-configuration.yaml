@@ -10,11 +10,18 @@ metadata:
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
 spec:
+  appVersion: 20.0.1
   odm_configuration:
     image:
       repository: ""
       pullPolicy: IfNotPresent
-      tag: 8.10.3
+      tag: 8.10.3.0_ICP2001
+      pullSecrets: ""
+    decisionServerRuntime:
+      # Configuring the execution unit (XU)
+      # Following instructions at https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.offerings/topics/tsk_configuring_xu.html
+      xuConfigRef: my-odm-xu-configmap
+
     decisionCenter:
       # Configuring Decision Center customization
       # Following instructions at https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.offerings/topics/tsk_custom_emitters.html

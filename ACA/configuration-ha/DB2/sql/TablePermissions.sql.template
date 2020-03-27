@@ -2,6 +2,7 @@ CONNECT TO $tenant_db_name ;
 
 GRANT ALTER ON TABLE $tenant_ontology.DOC_CLASS TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.DOC_ALIAS TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.OBJECT_TYPE TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.KEY_CLASS TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.KEY_ALIAS TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.CWORD TO USER $tenant_db_user ;
@@ -18,5 +19,6 @@ GRANT ALTER ON TABLE $tenant_ontology.DB_BACKUP TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.PATTERN TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.DOCUMENT TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.TRAINING_LOG TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.IMPLEMENTATION TO USER $tenant_db_user ;
 
 CONNECT RESET;

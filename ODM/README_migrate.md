@@ -33,11 +33,11 @@ Kubernetes dynamic provisioning
 
 ## Step 2: Review LDAP settings
 
-Make a note of the Lightweight Directory Access Protocol (LDAP) parameters that are used to connect to the LDAP server to validate users. The Directory service server has a number of mandatory configuration parameters, so save these values somewhere and refer to them when you configure the custom resource YAML file. For more information, see [LDAP configuration parameters](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.ref/k8s_topics/ref_k8s_ldap.html).
+Make a note of the Lightweight Directory Access Protocol (LDAP) parameters that are used to connect to the LDAP server to validate users. The Directory service server has a number of mandatory configuration parameters, so save these values somewhere and refer to them when you configure the custom resource YAML file. For more information, see [LDAP configuration parameters](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.ref/k8s_topics/ref_k8s_ldap.html).
 
 ## Step 3: Review other customizations you applied
 
-If you customized your Operational Decision Manager installation, go to the [IBM Cloud Pak for Automation 19.0.x](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.offerings/topics/con_odm_prod.html) Knowledge Center and remind yourself of the customizations you applied and need to apply again in the new ODM instance.
+If you customized your Operational Decision Manager installation, go to the [IBM Cloud Pak for Automation 20.0.x](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/con_odm_prod.html) Knowledge Center and remind yourself of the customizations you applied and need to apply again in the new ODM instance.
 
 ## Step 4: Go back to the platform readme to migrate other components
 

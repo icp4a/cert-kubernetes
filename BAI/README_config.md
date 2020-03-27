@@ -4,23 +4,23 @@ These instructions cover the basic configuration of IBM Business Automation Insi
 
 In order to use Business Automation Insights with other components in the IBM Cloud Pak for Automation you also need to configure them to emit events.
 
-For more information on the IBM Cloud Pak for Automation, see the [IBM Cloud Pak for Automation Knowledge Center](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_19.0.x/welcome/kc_welcome_dba_distrib.html).
+For more information on the IBM Cloud Pak for Automation, see the [IBM Cloud Pak for Automation Knowledge Center](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_20.0.x/welcome/kc_welcome_dba_distrib.html).
 
 ## Before you start
 
-If you have not done so, go to the [IBM Cloud Pak for Automation 19.0.x](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_preparing_baik8s_prereq.html) Knowledge Center and follow the steps to prepare your environment for Business Automation Insights.
+If you have not done so, go to the [IBM Cloud Pak for Automation 20.0.x](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_preparing_baik8s_prereq.html) Knowledge Center and follow the steps to prepare your environment for Business Automation Insights.
 
 This README will summarize a number of the preparation steps found in the Knowledge Center. For more information at each stage refer to the Knowledge Center links provided.
 
-## Step 1: Make a copy of the sample Custom Resource
+## Step 1: Make a copy of the sample custom resource
 
-The IBM Cloud Pak for Automation operator uses a single Custom Resource to install the required Cloud Pak products. These instructions provide an example ICP4ACluster Custom Resource [`configuration/bai-sample-values.yaml`](configuration/bai-sample-values.yaml). You can use this yaml file to customize your Business Automation Insights install, then copy the `bai_configuration` section of the CR yaml to the single ICP4ACluster CR yaml for all Cloud Pak products.
+The IBM Cloud Pak for Automation operator uses a single custom resource to install the required Cloud Pak products. These instructions provide an example ICP4ACluster custom resource [`configuration/bai-sample-cr.yaml`](configuration/bai-sample-cr.yaml). You can use this yaml file to customize your Business Automation Insights install, then copy the `bai_configuration` section of the CR yaml to the single ICP4ACluster CR yaml for all Cloud Pak products.
 
-To begin customizing a basic installation first clone this repository and then copy the [`configuration/bai-sample-values.yaml`](configuration/bai-sample-values.yaml) configuration file into a working directory.
+To begin customizing a basic installation first clone this repository and then copy the [`configuration/bai-sample-cr.yaml`](configuration/bai-sample-cr.yaml) configuration file into a working directory.
 
-## Step 2: Edit the Custom Resource
+## Step 2: Edit the custom resource
 
-Open the `bai-sample-values.yaml` ICP4ACluster Custom Resource file in a text/code editor.
+Open the `bai-sample-cr.yaml` ICP4ACluster custom resource file in a text/code editor.
 
 There are a number of values you need to customize:
 
@@ -30,23 +30,33 @@ There are a number of values you need to customize:
 
 * Ensure the `tag` value for all configuration matches the Docker tag used for the Docker images in your repository
 
-### Step 2.1: Customize the Apache Kafka Configuration
+### Step 2.1: Install and customize the Apache Kafka Configuration
 
-#### Step 2.1.1: Apache Kafka connection configuration
+This section is part of the prerequisites stressed under the [Before you start](https://github.ibm.com/dba/cert-kubernetes/blob/master/BAI/README_config.md#before-you-start). If you already have a running Kafka, please skip the Step 2.1.1.
 
-To configure Business Automation Insights to interact with your installation of Apache Kafka you need to customize the `bai_configuration.kafka` section of the Custom Resource.
+#### Step 2.1.1: Install Apache Kafka with IBM Event Streams
 
-Below is an example of a simple Kafka configuration:
+To install IBM Event Streams on OpenShift, see https://ibm.github.io/event-streams/installing/installing-openshift/.
+
+#### Step 2.1.2: Apache Kafka connection configuration
+
+To configure Business Automation Insights to interact with your installation of Apache Kafka you need to customize the `bai_configuration.kafka` section of the custom resource.
+
+Below is an example of a Kafka configuration:
 
 ```yaml
+
     kafka:
-      bootstrapServers: "kafka-0.example.com:9092,kafka-1.example.com:9092,kafka-2.example.com:9092"
-      securityProtocol: "PLAINTEXT"
+      bootstrapServers: "<kafka-brokers-list>"
+      securityProtocol: "SASL_SSL"
+      username: "<kafka-broker-username>"
+      password: "<kafka-broker-password>"
+      serverCertificate: "<base64-encoded-kafka-ca-cert>"
 ```
 
-For advanced Apache Kafka configuration, including security options, refer to the [IBM Business Automation Insights Knowledge Center - Apache Kafka parameters](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_19.0.x/com.ibm.dba.ref/k8s_topics/ref_bai_k8s_kafka_params.html).
+For advanced Apache Kafka configuration, including security options, refer to the [IBM Business Automation Insights Knowledge Center - Apache Kafka parameters](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_20.0.x/com.ibm.dba.ref/k8s_topics/ref_bai_k8s_kafka_params.html).
 
-#### Step 2.1.2: Apache Kafka topic configuration
+#### Step 2.1.3: Apache Kafka topic configuration
 
 Business Automation Insights uses a number of Apache Kafka topics. To customize the names of these topics, uncomment and alter the settings below:
 
@@ -58,7 +68,7 @@ Business Automation Insights uses a number of Apache Kafka topics. To customize 
       serviceTopic: ibm-bai-service
 ```
 
-More information about this can be found in the [IBM Business Automation Insights Knowledge Center - Apache Kafka parameters](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_19.0.x/com.ibm.dba.ref/k8s_topics/ref_bai_k8s_kafka_params.html), including an explanation of egress functionality.
+More information about this can be found in the [IBM Business Automation Insights Knowledge Center - Apache Kafka parameters](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_20.0.x/com.ibm.dba.ref/k8s_topics/ref_bai_k8s_kafka_params.html), including an explanation of egress functionality.
 
 ### Step 2.2 Persistent Storage
 When configuring Business Automation Insights you have a number of options regarding persistent storage.
@@ -72,13 +82,15 @@ Below is a summary of the persistent storage used by Business Automation Insight
 | ElasticSearch Data                | data-<CR_NAME>-ibm-dba-ek-data-_replica_   | 10Gi            | No       | ReadWriteOnce | 1 per replica     |
 | ElasticSearchSnapshot Storage     | <CR_NAME>-es-snapshot-storage-pvc          | 30Gi            | No       | ReadWriteMany | 1                 |
 
-The Flink volume is used by multiple pods for normal operation of Business Automation Insights. For more information on the Business Automation Insights persistent volume configuration see [IBM Business Automation Insights Knowledge Center - Apache Flink parameters](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_19.0.x/com.ibm.dba.ref/k8s_topics/ref_bai_k8s_flink_params.html).
+The Flink volume is used by multiple pods for normal operation of Business Automation Insights. For more information on the Business Automation Insights persistent volume configuration see [IBM Business Automation Insights Knowledge Center - Apache Flink parameters](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_20.0.x/com.ibm.dba.ref/k8s_topics/ref_bai_k8s_flink_params.html).
 
-If you are using the embedded ElasticSearch stack you can choose to enable persistence for the ElasticSearch nodes (with a volume for each replica of the master and data nodes), and for snapshot storage. For more information on the embedded ElasticSearch volume configuration see [IBM Business Automation Insights Knowledge Center - Elasticsearch parameters](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_19.0.x/com.ibm.dba.ref/k8s_topics/ref_bai_k8s_es_params.html)
+If you are using the embedded ElasticSearch stack you can choose to enable persistence for the ElasticSearch nodes (with a volume for each replica of the master and data nodes), and for snapshot storage. For more information on the embedded ElasticSearch volume configuration see [IBM Business Automation Insights Knowledge Center - Elasticsearch parameters](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_20.0.x/com.ibm.dba.ref/k8s_topics/ref_bai_k8s_es_params.html)
 
 #### Example configuration using dynamic provisioning
 
-If your cluster has dynamic volume provisioning the example shows a storage configuration (as found in the `bai-sample-values.yaml` file) when persistence is enabled:
+For more information about [Setting up dynamic provisioning](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_preparing_baik8s_dyn_prov.html).
+
+If your cluster has dynamic volume provisioning the example shows a storage configuration (as found in the `bai-sample-cr.yaml` file) when persistence is enabled:
 
 ```yaml
     persistence:
@@ -106,6 +118,8 @@ This configuration creates the four `PersistentVolumeClaim` resources listed wit
 
 #### Example configuration using static provisioning
 
+For more information about [Setting up manual provisioning](https://www.ibm.com/support/knowledgecenter/en/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_preparing_baik8s_manual_prov.html).
+
 If you want to manually create `PersistentVolume` and `PersistentVolumeClaim` resources use the following template for an example configuration:
 
 ```yaml
@@ -132,50 +146,43 @@ If you want to manually create `PersistentVolume` and `PersistentVolumeClaim` re
 
 By default, no event processor setup pods are started when Business Automation Insights is installed. The event processor setup pods are required in order to configure Business Automation Insights to be able to ingest events from other products in the IBM Cloud Pak for Automation.
 
-Each product has an `install` parameter in the `bai_configuration` Custom Resource section, as shown below:
+Each product has an `install` parameter in the `bai_configuration` custom resource section, as shown below:
 
 ```yaml
     ingestion:
       install: false
       image:
         repository: <DOCKER_REGISTRY>/bai-ingestion
-        tag: "19.0.3"
 
     adw:
       install: false
       image:
         repository: <DOCKER_REGISTRY>/bai-adw
-        tag: "19.0.3"
-    
+
     bpmn:
       install: false
       image:
         repository: <DOCKER_REGISTRY>/bai-bpmn
-        tag: "19.0.3"
 
     bawadv:
       install: false
       image:
         repository: <DOCKER_REGISTRY>/bai-bawadv
-        tag: "19.0.3"
 
     icm:
       install: false
       image:
         repository: <DOCKER_REGISTRY>/bai-icm
-        tag: "19.0.3"
 
     odm:
       install: false
       image:
         repository: <DOCKER_REGISTRY>/bai-odm
-        tag: "19.0.3"
 
     content:
       install: false
       image:
         repository: <DOCKER_REGISTRY>/bai-content
-        tag: "19.0.3"
 ```
 
 For each products that you want to process events from change the `install` parameter to `true`. For example to process events from IBM Operation Decision Manager set `spec.bai_configuration.odm.install` to `true`.
@@ -242,7 +249,7 @@ subjects:
   name: <CR_NAME>-bai-psp-sa
 ```
 
-After creating the file, replace all occurrences of `<CR_NAME>` with the name of your ICP4ACluster Custom Resource created in Step 3.
+After creating the file, replace all occurrences of `<CR_NAME>` with the name of your ICP4ACluster custom resource created in Step 3.
 
 ### Step 3.2: Apply the security configuration
 

@@ -3,6 +3,8 @@
 
 # --- For Base BACA DB:
 # update these variables for the BACA Base database
-base_db_name=
-base_db_user=
-
+base_db_name=CABASE3
+base_db_user=baseuser3
+#The SaaS flag is true/false.
+SaaS=true
+confirmation=y

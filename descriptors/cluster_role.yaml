@@ -1,0 +1,50 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2020. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: authorization.openshift.io/v1
+kind: ClusterRole
+metadata:
+  name: ibm-cp4a-operator
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 20.0.1
+rules:
+- apiGroups:
+  - security.openshift.io
+  attributeRestrictions: null
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - get
+  - list
+  - update
+  - create
+  - watch
+  - patch
+- apiGroups:
+  - ""
+  attributeRestrictions: null
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - get
+  - list
+  - update
+  - create
+  - watch
+  - patch
+- apiGroups:
+  - icp4a.ibm.com
+  resources:
+  - '*'
+  verbs:
+  - '*'

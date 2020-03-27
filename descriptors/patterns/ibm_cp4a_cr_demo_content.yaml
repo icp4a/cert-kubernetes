@@ -1,0 +1,83 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2020. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: content
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 20.0.1
+spec:
+  appVersion: 20.0.1
+  ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
+  ## For example, serviceAccount in the spec becomes service_account in ansible.
+  ## It is recommended that you perform some type validation in Ansible on the variables to ensure that
+  ## your application is receiving expected input.
+  ## shared configuration among all tribe
+  shared_configuration:
+    sc_deployment_patterns: content
+    sc_optional_components:
+    sc_deployment_type: demo
+    sc_deployment_platform: OCP
+    sc_deployment_hostname_suffix: "{{ meta.name }}"
+    storage_configuration:
+      sc_dynamic_storage_classname: ""
+    images:
+      db2u_tools:
+        repository: docker.io/ibmcom/db2u.tools
+        tag: 11.5.1.0-CN1
+      db2:
+        repository: docker.io/ibmcom/db2
+        tag: 11.5.1.0-CN1
+      db2_auxiliary:
+        repository: docker.io/ibmcom/db2u.auxiliary.auth
+        tag: 11.5.1.0-CN1
+      db2_init:
+        repository: docker.io/ibmcom/db2u.instdb
+        tag: 11.5.1.0-CN1
+      db2_etcd:
+        repository: quay.io/coreos/etcd
+        tag: v3.3.10
+      openldap:
+        repository: osixia/openldap
+        tag: 1.3.0
+      busybox:
+        repository: docker.io/library/busybox
+        tag: latest
+  ########################################################################
+  ########      IBM FileNet Content Manager configuration         ########
+  ########################################################################
+  ecm_configuration:
+    cpe:
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/cpe
+        tag: ga-554-p8cpe-if001
+    css:
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/css
+        tag: ga-554-p8css-if001
+    graphql:
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/graphql
+        tag: ga-554-p8cgql-if001
+#    cmis:
+#      image:
+#        repository: cp.icr.io/cp/cp4a/fncm/cmis
+#        tag: ga-304-cmis-if010
+  ########################################################################
+  ########   IBM Business Automation Navigator configuration      ########
+  ########################################################################
+  navigator_configuration:
+    image:
+      repository: cp.icr.io/cp/cp4a/ban/navigator
+      tag: ga-307-icn-if002

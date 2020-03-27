@@ -10,7 +10,7 @@ if [ -f $INPUT_PROPS_FILENAME ]; then
    . $INPUT_PROPS_FILENAME
 fi
 
-echo -e "\n-- This script will upgrade tenant DB"
+echo -e "\n-- This script will upgrade tenant DB from v1.3 to v1.4"
 echo
 
 while [[ $tenant_db_name == '' ]]
@@ -44,11 +44,11 @@ echo " - tenant database name: $tenant_db_name"
 echo " - tenant database user name: $tenant_db_user"
 askForConfirmation
 
-echo " -- upgrade from 1.2 to 1.3 ---"
-cp sql/UpgradeTenantDB_1.2_to_1.3.sql.template sql/UpgradeTenantDB_1.2_to_1.3.sql
-sed -i s/\$tenant_db_name/"$tenant_db_name"/ sql/UpgradeTenantDB_1.2_to_1.3.sql
-sed -i s/\$tenant_ontology/"$tenant_ontology"/ sql/UpgradeTenantDB_1.2_to_1.3.sql
-sed -i s/\$tenant_db_user/"$tenant_db_user"/ sql/UpgradeTenantDB_1.2_to_1.3.sql
+echo " -- upgrade from 1.3 to 1.4 ---"
+cp sql/UpgradeTenantDB_1.3_to_1.4.sql.template sql/UpgradeTenantDB_1.3_to_1.4.sql
+sed -i s/\$tenant_db_name/"$tenant_db_name"/ sql/UpgradeTenantDB_1.3_to_1.4.sql
+sed -i s/\$tenant_ontology/"$tenant_ontology"/ sql/UpgradeTenantDB_1.3_to_1.4.sql
+sed -i s/\$tenant_db_user/"$tenant_db_user"/ sql/UpgradeTenantDB_1.3_to_1.4.sql
 echo
-echo "Running upgrade script: sql/UpgradeTenantDB_1.2_to_1.3.sql"
-db2 -stvf sql/UpgradeTenantDB_1.2_to_1.3.sql
+echo "Running upgrade script: sql/UpgradeTenantDB_1.3_to_1.4.sql"
+db2 -stvf sql/UpgradeTenantDB_1.3_to_1.4.sql

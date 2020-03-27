@@ -1,4 +1,4 @@
-# Installing Cloud Pak for Automation 19.0.3 on Red Hat OpenShift
+# Installing Cloud Pak for Automation 20.0.1 on Red Hat OpenShift
 
 - [Step 1: Create a namespace and get access to the container images](install.md#step-1-create-a-namespace-and-get-access-to-the-container-images)
 - [Step 2: Prepare your environment for automation software](install.md#step-2-prepare-your-environment-for-automation-software)
@@ -23,7 +23,7 @@ From your local machine, you can access the container images in the IBM Docker r
    ```
 3. Add privileges to the project.
    ```bash
-   $ oc adm policy add-scc-to-user privileged -z default
+   $ oc adm policy add-scc-to-user privileged -z my-project
    ```
 4. Download or clone the repository on your local machine and change to `cert-kubernetes` directory
    ```bash
@@ -40,7 +40,7 @@ From your local machine, you can access the container images in the IBM Docker r
 
 3. Create a pull secret by running a `kubectl create secret` command.
    ```bash
-   $ kubectl create secret docker-registry <my_secret_name> --docker-server=cp.icr.io --docker-username=cp --docker-password="<API_KEY_GENERATED>" --docker-email=<USER_EMAIL>
+   $ kubectl create secret docker-registry admin.registrykey --docker-server=cp.icr.io --docker-username=cp --docker-password="<API_KEY_GENERATED>" --docker-email=<USER_EMAIL>
    ```
 
    > **Note**: The `cp.icr.io` value for the **docker-server** parameter is the only registry domain name that contains the images.
@@ -49,7 +49,7 @@ From your local machine, you can access the container images in the IBM Docker r
 
 ### Option 2: Download the packages from PPA and load the images
 
-[IBM Passport Advantage (PPA)](https://www-01.ibm.com/software/passportadvantage/pao_customer.html) provides archives (.tgz) for the software. To view the list of Passport Advantage eAssembly installation images, refer to the [19.0.3 download document](https://www.ibm.com/support/pages/ibm-cloud-pak-automation-v1903-download-document).
+[IBM Passport Advantage (PPA)](https://www-01.ibm.com/software/passportadvantage/pao_customer.html) provides archives (.tgz) for the software. To view the list of Passport Advantage eAssembly installation images, refer to the [20.0.1 download document](https://www.ibm.com/support/pages/ibm-cloud-pak-automation-v2001-download-document).
 
 1. Download one or more PPA packages to a server that is connected to your Docker registry.
 2. Check that you can run a docker command.
@@ -78,7 +78,7 @@ From your local machine, you can access the container images in the IBM Docker r
    -l  Optional: Target a local registry
    ```
 
-   The following example shows the input values in the command line on OCP 3.11. On OCP 4.2 the default docker registry is based on the host name, for example "default-route-openshift-image-registry.ibm.com".
+   The following example shows the input values in the command line on OCP 3.11. On OCP 4.2 and 4.3 the default docker registry is based on the host name, for example "default-route-openshift-image-registry.ibm.com".
 
    ```
    # scripts/loadimages.sh -p <PPA-ARCHIVE>.tgz -r docker-registry.default.svc:5000/my-project
@@ -90,10 +90,10 @@ From your local machine, you can access the container images in the IBM Docker r
     ```bash
     $ oc get is
     ```
-7. (Optional) If you want to use an external Docker registry, create a Docker registry secret.
+7. If you want to use an external Docker registry, create a Docker registry secret.
 
    ```bash
-   $ oc create secret docker-registry <secret_name> --docker-server=<registry_url> --docker-username=<your_account> --docker-password=<your_password> --docker-email=<your_email>
+   $ oc create secret docker-registry admin.registrykey --docker-server=<registry_url> --docker-username=<your_account> --docker-password=<your_password> --docker-email=<your_email>
    ```
 
    Take a note of the secret and the server values so that you can set them to the **pullSecrets** and **repository** parameters when you run the operator for your containers.
@@ -103,7 +103,7 @@ From your local machine, you can access the container images in the IBM Docker r
 
 Before you install any of the containerized software:
 
-1. Go to the prerequisites page in the [IBM Cloud Pak for Automation 19.0.x](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_prepare_env_k8s.html) Knowledge Center.
+1. Go to the prerequisites page in the [IBM Cloud Pak for Automation 20.0.x](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_prepare_env_k8s.html) Knowledge Center.
 2. Follow the instructions on preparing your environment for the software components that you want to install.
 
   How much preparation you need to do depends on what you want to install and how familiar you are with your environment.
@@ -115,16 +115,16 @@ Before you install any of the containerized software:
    apiVersion: v1
    kind: PersistentVolume
    metadata:
-     annotations:
+     labels:
+       type: local
      name: operator-shared-pv
    spec:
-     accessModes:
-     - ReadWriteMany
      capacity:
        storage: 1Gi
-     nfs:
-       path: /mnt/nfsshare/operator/operatorstore
-       server: 9.XX.XXX.XXX
+     accessModes:
+       - ReadWriteMany
+     hostPath:
+       path: "/root/operator"
      persistentVolumeReclaimPolicy: Delete
    ```
 
@@ -133,26 +133,39 @@ Before you install any of the containerized software:
    $ oc create -f operator-shared-pv.yaml
    ```
 
-3. Create a claim for the PV, or check that the PV is bound dynamically, [descriptors/operator-shared-pvc.yaml](../../descriptors/operator-shared-pvc.yaml?raw=true).
+3. Create a claim for the PV.
 
-   > Replace the storage class if you do not want to create the relevant persistent volume.
+To create a claim bound to the previously created PV, create the file `<path>/operator-shared-pvc.yaml` anywhere
+on your disk, with the following content:
 
    ```yaml
    apiVersion: v1
    kind: PersistentVolumeClaim
    metadata:
      name: operator-shared-pvc
-     namespace: my-project
+     namespace: <MyProject>
    spec:
      accessModes:
-     - ReadWriteMany
+       - ReadWriteMany
+     storageClassName: ""
      resources:
        requests:
          storage: 1Gi
      volumeName: operator-shared-pv
    ```
 
+> Replace the `<MyProject>` placeholder by the name of your Openshift project.
+
+If you prefer to use dynamic provisioning for this claim, edit [descriptors/operator-shared-pvc.yaml](../../descriptors/operator-shared-pvc.yaml?raw=true)
+and replace the `<StorageClassName>` placeholder by a storage storage class of your choice.
+
 4. Deploy the PVC.
+If you created your own `operator-shared-pvc.yaml`:
+   ```bash
+   $ oc create -f <path>/operator-shared-pvc.yaml
+   ```
+
+Otherwise, if you edited `descriptors/operator-shared-pvc.yaml`:
    ```bash
    $ oc create -f descriptors/operator-shared-pvc.yaml
    ```
@@ -166,7 +179,7 @@ Before you install any of the containerized software:
      - Oracle:
         - ojdbc8.jar
 
-    The following structure shows the directory structure and file names that are required on a remote file system. The user/group permissions must allow the user running the operator to access the directories and files.
+    The following structure shows an example remote file system.
 
     ```
     pv-root-dir
@@ -198,10 +211,10 @@ The Cloud Pak operator has a number of descriptors that must be applied.
 
    Use the script [scripts/deployOperator.sh](../../scripts/deployOperator.sh) to deploy these descriptors.
    ```bash
-   $ ./scripts/deployOperator.sh -i <registry_url>/icp4a-operator:19.0.3 -p '<my_secret_name>' -a accept
+   $ ./scripts/deployOperator.sh -i <registry_url>/icp4a-operator:20.0.1 -p '<my_secret_name>' -a accept
    ```
 
-   Where *registry_url* is the value for your internal docker registry or `cp.icr.io/cp/cp4a` for the IBM Cloud Entitled Registry and *my_secret_name* the secret created to access the registry, *accept* means you accept this [license](../../LICENSE).
+   Where *registry_url* is the value for your internal docker registry or `cp.icr.io/cp/cp4a` for the IBM Cloud Entitled Registry and *my_secret_name* the secret created to access the registry, and *accept* means that you accept the [license](../../LICENSE).
 
    > **Note**: If you plan to use a non-admin user to install the operator, you must add the user to the `ibm-cp4-operator` role. For example:
    ```bash
@@ -245,16 +258,16 @@ A custom resource (CR) YAML file is a configuration file that describes an ICP4A
      images:
         keytool_job_container:
           repository: <registry_url>:5000/<my-project>/dba-keytool-initcontainer
-          tag: 19.0.3  
+          tag: 20.0.1 
         dbcompatibility_init_container:
           repository: <registry_url>:5000/<my-project>/dba-dbcompatibility-initcontainer
-          tag: 19.0.3
+          tag: 20.0.1
         keytool_init_container:
           repository: <registry_url>:5000/<my-project>/dba-keytool-jobcontainer
-          tag: 19.0.3   
+          tag: 20.0.1   
         umsregistration_initjob:
           repository: <registry_url>:5000/<my-project>/dba-umsregistration-initjob
-          tag: 19.0.3
+          tag: 20.0.1
         pull_policy: IfNotPresent
     ```
 
@@ -310,8 +323,8 @@ $ oc status
 ```
 You can now expose the services to your users.
 
-Refer to the [Troubleshooting section](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_trbleshoot_operators.html) to access the operator logs.
+Refer to the [Troubleshooting section](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_trbleshoot_operators.html) to access the operator logs.
 
 ## Step 8: Complete some post-installation steps
 
-Go to [IBM Knowledge Center](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_deploy_postdeployk8s.html) to follow the post-installation steps.
+Go to [IBM Knowledge Center](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_deploy_postdeployk8s.html) to follow the post-installation steps.

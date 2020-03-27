@@ -1,0 +1,81 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2020. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: contentanalyzer
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 20.0.1
+spec:
+  appVersion: 20.0.1
+  ## TIPS: The names of all vaddkriables in the spec field are converted to snake_case by the operator before running ansible
+  ## For example, serviceAccount in the spec becomes service_account in ansible.
+  ## It is recommended that you perform some type validation in Ansible on the variables to ensure that
+  ## your application is receiving expected input.
+  ## shared configuration among all tribe
+  shared_configuration:
+    sc_deployment_patterns: contentanalyzer
+    sc_optional_components: #Values will be populated by a script based on user's input.  Possible values are LDAP,UMS.  When sc_optional_components is blank, ACA will be deployed without LDAP integration.
+    sc_deployment_type: demo
+    sc_deployment_hostname_suffix: "infra-node-name" # BACA already include {{ meta.name }} in playbook, We use this to compose frontend_external_hostname and backend_external_hostname
+    # Possible values OCP,ROKS
+    sc_deployment_platform: OCP
+    root_ca_secret: "{{ meta.name }}-root-ca"
+    storage_configuration:
+      sc_dynamic_storage_classname: "managed-nfs-storage"
+    images:
+      keytool_job_container:
+        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer
+        tag: 20.0.1
+      keytool_init_container:
+        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer
+        tag: 20.0.1
+      db2u_tools:
+        repository: docker.io/ibmcom/db2u.tools
+        tag: 11.5.1.0-CN1
+      db2:
+        repository: docker.io/ibmcom/db2
+        tag: 11.5.1.0-CN1
+      db2_auxiliary:
+        repository: docker.io/ibmcom/db2u.auxiliary.auth
+        tag: 11.5.1.0-CN1
+      db2_init:
+        repository: docker.io/ibmcom/db2u.instdb
+        tag: 11.5.1.0-CN1
+      db2_etcd:
+        repository: quay.io/coreos/etcd
+        tag: v3.3.10
+      openldap:
+        repository: osixia/openldap
+        tag: 1.3.0
+      busybox:
+        repository: docker.io/library/busybox
+        tag: latest
+
+
+  ca_configuration:
+    global:
+      image:
+        repository: "cp.icr.io/cp/cp4a/baca"
+        tag: "20.0.1"
+        pull_policy: "IfNotPresent"
+
+  ########################################################################
+  ########   IBM User and Group Management Service configuration  ########
+  ########################################################################
+#  ums_configuration:
+#    images:
+#      ums:
+#        repository: cp.icr.io/cp/cp4a/ums/ums
+#        tag: 20.0.1

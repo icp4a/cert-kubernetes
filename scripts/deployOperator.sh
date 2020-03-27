@@ -3,7 +3,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2019. All Rights Reserved.
+# (C) Copyright IBM Corp. 2020. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -15,7 +15,7 @@ function show_help {
     echo "Options:"
     echo "  -h  Display help"
     echo "  -i  Operator image name"
-    echo "      For example: cp.icr.io/cp/icp4a-operator:19.03 or registry_url/icp4a-operator:version"
+    echo "      For example: cp.icr.io/cp/icp4a-operator:20.0.1 or registry_url/icp4a-operator:version"
     echo "  -p  Optional: Pull secret to use to connect to the registry"
     echo "  -a  Accept IBM license"
 }
@@ -77,20 +77,20 @@ if [[ $LICENSE_ACCEPTED != "accept" ]]; then
 fi
 
 if [[ $LICENSE_ACCEPTED == "accept" ]]; then
-    sed -i '/dba_license/{n;s/value:/value: accept/}' ./deployoperator.yaml
+    sed -e '/dba_license/{n;s/value:/value: accept/;}' ./deployoperator.yaml > ./deployoperatorsav.yaml ;  mv ./deployoperatorsav.yaml ./deployoperator.yaml
 
     if [ ! -z ${IMAGEREGISTRY} ]; then
     # Change the location of the image
     echo "Using the operator image name: $IMAGEREGISTRY"
-    sed -i "s|image: .*|image: \"$IMAGEREGISTRY\" |g" ./deployoperator.yaml
+    sed -e "s|image: .*|image: \"$IMAGEREGISTRY\" |g" ./deployoperator.yaml > ./deployoperatorsav.yaml ;  mv ./deployoperatorsav.yaml ./deployoperator.yaml
     fi
 
     # Change the pullSecrets if needed
     if [ ! -z ${PULLSECRET} ]; then
         echo "Setting pullSecrets to $PULLSECRET"
-        sed -i "s|admin.registrykey|$PULLSECRET|g" ./deployoperator.yaml
+        sed -e "s|admin.registrykey|$PULLSECRET|g" ./deployoperator.yaml > ./deployoperatorsav.yaml ;  mv ./deployoperatorsav.yaml ./deployoperator.yaml
     else
-        sed -i '/imagePullSecrets:/{N;d;}' ./deployoperator.yaml
+        sed -e '/imagePullSecrets:/{N;d;}' ./deployoperator.yaml > ./deployoperatorsav.yaml ;  mv ./deployoperatorsav.yaml ./deployoperator.yaml
     fi
 
     kubectl apply -f ./descriptors/ibm_cp4a_crd.yaml --validate=false

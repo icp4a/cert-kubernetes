@@ -1,6 +1,6 @@
 # Migrating Cloud Pak for Automation data on Managed Red Hat OpenShift
 
-To migrate your 19.0.x data to 19.0.3, uninstall your current deployment and follow the migration instructions for each component to point to the existing persistent stores.
+To migrate your 19.0.x data to 20.0.1, uninstall your current deployment and follow the migration instructions for each component to point to the existing persistent stores.
 
 ## Step 1: Prepare your environment and take note of your existing storage settings
 

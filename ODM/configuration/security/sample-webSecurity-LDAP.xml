@@ -38,7 +38,7 @@ Useful if you are not allowed to create groups in your LDAP registry-->
 
    <!-- Define the LDAP registry -->
    <ldapRegistry id="ldap" realm="OpenLdapRealm"
-    host="openldap" port="389" ldapType="Custom" ignoreCase="true" recursiveSearch="true"
+    host="openldap" port="636" sslEnabled="true" sslRef="odmDefaultSSLConfig" ldapType="Custom" ignoreCase="true" recursiveSearch="true"
     baseDN="dc=example,dc=org" bindDN="cn=admin,dc=example,dc=org" bindPassword="admin">
       <customFilters
          userFilter="(uid=%v)"

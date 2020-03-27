@@ -1,4 +1,4 @@
-# Uninstalling Cloud Pak for Automation 19.0.3 on Red Hat OpenShift
+# Uninstalling Cloud Pak for Automation 20.0.1 on Red Hat OpenShift
 
 ## Delete your automation instances
 
@@ -6,6 +6,12 @@ You can delete your custom resource (CR) deployments by deleting the CR YAML fil
 
 ```bash
   $ oc delete ICP4ACluster <MY-INSTANCE>
+```
+
+If you want to uninstall IBM Automation Digital Worker and unsubscribe from the IBM Business Automation Studio, you will have to scale up the  IBM Automation Digital Worker unsubscribe ReplicaSet before deleting your automation instances. Despite the pod status, as an unsubscribe success proof, you should look into the pod's log for a `STATUS=success` statement.
+
+```bash
+  $ kubectl scale replicasets <MY-INSTANCE>-adw-registry-unsubscribe --replicas=1
 ```
 
 > **Note**: You can get the names of the ICP4ACluster instances with the following command:

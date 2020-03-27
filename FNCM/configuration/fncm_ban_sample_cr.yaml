@@ -1,0 +1,720 @@
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: demo-template
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 20.0.1
+spec:
+  ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
+  ## For example, serviceAccount in the spec becomes service_account in ansible.
+  ## It is recommended that you perform some type validation in Ansible on the variables to ensure that
+  ## your application is receiving expected input.
+
+  shared_configuration:
+    sc_deployment_type: "production"      ### Possible values are "production" , "non-production"
+    sc_deployment_flatform: OCP
+    root_ca_secret: icp4a-root-ca
+  # trusted_certificate_list: []
+  ldap_configuration:
+    # the candidate value is "IBM Security Directory Server" or "Microsoft Active Directory"
+    lc_selected_ldap_type: "IBM Security Directory Server"
+    lc_ldap_server: "<Need Value>"
+    lc_ldap_port: "389"
+    lc_bind_secret: ldap-bind-secret # This secret is expected to have ldapUsername and ldapPassword keys
+    lc_ldap_base_dn: "<Need Value>"
+    lc_ldap_ssl_enabled: false
+    lc_ldap_ssl_secret_name: ""
+    lc_ldap_user_name_attribute: "*:cn"
+    lc_ldap_user_display_name_attr: "cn"
+    lc_ldap_group_base_dn: "<Need Value>"
+    lc_ldap_group_name_attribute: "*:cn"
+    lc_ldap_group_display_name_attr: "cn"
+    lc_ldap_group_membership_search_filter: "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))"
+    lc_ldap_group_member_id_map: "groupofnames:member"
+    ad:
+      lc_ad_gc_host: ""
+      lc_ad_gc_port: ""
+      lc_user_filter: "(&(cn=%v)(objectclass=person))"
+      lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+    tds:
+      lc_user_filter: "(&(cn=%v)(objectclass=person))"
+      lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+
+## The following external ldap configuration only needed if External share component is being deployed.
+
+  ext_ldap_configuration:
+    # the candidate value is "IBM Security Directory Server" or "Microsoft Active Directory"
+    lc_selected_ldap_type: "IBM Security Directory Server"
+    lc_ldap_server: "<Need Value>"
+    lc_ldap_port: "389"
+    lc_bind_secret: ldap-bind-secret # secret is expected to have ldapUsername and ldapPassword keys
+    lc_ldap_base_dn: "O=LOCAL"
+    lc_ldap_ssl_enabled: false
+    lc_ldap_ssl_secret_name: ""
+    lc_ldap_user_name_attribute: "*:cn"
+    lc_ldap_user_display_name_attr: "cn"
+    lc_ldap_group_base_dn: "O=LOCAL"
+    lc_ldap_group_name_attribute: "*:cn"
+    lc_ldap_group_display_name_attr: "cn"
+    lc_ldap_group_membership_search_filter: "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))"
+    lc_ldap_group_member_id_map: "groupofnames:member"
+    ad:
+      lc_ad_gc_host: ""
+      lc_ad_gc_port: ""
+      lc_user_filter: "(&(cn=%v)(objectclass=person))"
+      lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+    tds:
+      lc_user_filter: "(&(cn=%v)(objectclass=person))"
+      lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+  datasource_configuration:
+    # the candidate value is "db2" or "db2HADR" or "oracle" or "sqlserver"    
+    dc_database_type: "db2"
+    dc_gcd_datasource:
+      dc_database_type: "db2"
+      dc_common_gcd_datasource_name: "FNGCDDS"
+      dc_common_gcd_xa_datasource_name: "FNGCDDSXA"
+      database_servername: "<Need Value>"
+      database_name: "<Need Value>"
+      database_port: "50000"
+## The following Oracle JDBC URL is only Oracle database
+      dc_oracle_gcd_jdbc_url: "jdbc:oracle:thin:@//<Need Value>:1521/orcl"
+## The following DB2 HADR parameters only for DB2 HADR
+      dc_hadr_standby_servername: "<Need DB2 HADR Server>"
+      dc_hadr_standby_port: 50000
+      dc_hadr_validation_timeout: 15
+      dc_hadr_retry_interval_for_client_reroute: 15
+      dc_hadr_max_retries_for_client_reroute: 3
+    dc_os_datasources:
+    - dc_database_type: "db2"
+      dc_common_os_datasource_name: "fnos1ds"
+      dc_common_os_xa_datasource_name: "fnos1dsxa"
+      database_servername: "<Need Value>"
+      database_name: "os1"
+      database_port: "50000"
+## The following Oracle JDBC URL is only Oracle database
+      dc_oracle_os_jdbc_url: "jdbc:oracle:thin:@//<Need Value>:1521/orcl"
+## The following DB2 HADR parameters only for DB2 HADR
+      dc_hadr_standby_servername: "<Need DB2 HADR Server>"
+      dc_hadr_standby_port: 50000
+      dc_hadr_validation_timeout: 3
+      dc_hadr_retry_interval_for_client_reroute: 3
+      dc_hadr_max_retries_for_client_reroute: 3
+    - dc_database_type: "db2"
+      dc_common_os_datasource_name: "fnos2ds"
+      dc_common_os_xa_datasource_name: "fnos2dsxa"
+      database_servername: "<Need Value>"
+      database_name: "os2"
+      database_port: "50000"
+## The following Oracle JDBC URL is only Oracle database
+      dc_oracle_os_jdbc_url: "jdbc:oracle:thin:@//<Need Value>:1521/orcl"
+## The following DB2 HADR parameters only for DB2 HADR
+      dc_hadr_standby_servername: "<Need DB2 HADR Server>"
+      dc_hadr_standby_port: 50000
+      dc_hadr_validation_timeout: 3
+      dc_hadr_retry_interval_for_client_reroute: 3
+      dc_hadr_max_retries_for_client_reroute: 3
+    dc_icn_datasource:
+      dc_database_type: "db2"
+## The following Oracle JDBC URL is only Oracle database
+      dc_oracle_icn_jdbc_url: "jdbc:oracle:thin:@//<Need Value>:1521/orcl"
+      dc_common_icn_datasource_name: "ECMClientDS"
+      database_servername: "<Need Value>"
+      database_port: "50000"
+      database_name: "ICNDB"
+## The following DB2 HADR parameters only for DB2 HADR
+      dc_hadr_standby_servername: "<Need DB2 HADR Server>"
+      dc_hadr_standby_port: 50000
+      dc_hadr_validation_timeout: 3
+      dc_hadr_retry_interval_for_client_reroute: 3
+      dc_hadr_max_retries_for_client_reroute: 3
+
+## The following parameters are only required if you have monitoring and logging server to send metrics and logs
+
+  # # Monitor setting
+  # monitoring_configuration:
+  #   mon_metrics_writer_option: 4
+  #   mon_enable_plugin_pch: false
+  #   mon_enable_plugin_mbean: false
+  #   collectd_plugin_write_graphite_host: localhost
+  #   collectd_plugin_write_graphite_port: 2003
+  #   collectd_interval: 10
+  #   collectd_disable_host_monitoring: false
+  #   collectd_plugin_write_prometheus_port: 9103
+
+  # # Logging setting
+  # logging_configuration:
+  #   mon_log_parse: false
+  #   mon_log_service_endpoint: localhost:5044
+  #   private_logging_enabled: false
+  #   logging_type: default
+  #   mon_log_path: /path_to_extra_log
+
+  ## production configuration for each Tribe
+  ecm_configuration:
+    no_log: false
+    fncm_secret_name: ibm-fncm-secret
+    fncm_auth_ca_secret_name: "{{ meta.name }}-fncm-auth-ca-secret"
+    cpe:
+      arch:
+        amd64: "3 - Most preferred"
+      replica_count: 1
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/cpe
+        tag: ga-554-p8cpe-if001
+        pull_policy: IfNotPresent
+      ## Logging for workloads
+      log:
+       format: json
+      ## resource
+      resources:
+        requests:
+          cpu: 500m
+          memory: 512Mi
+        limits:
+          cpu: 1
+          memory: 3072Mi
+      ## Horizontal Pod Autoscaler
+      auto_scaling:
+        enabled: true
+        max_replicas: 3
+        min_replicas: 1
+        target_cpu_utilization_percentage: 80
+      hostname: "cpe-{{ meta.namespace }}.9.30.213.60.nip.io"
+      cpe_production_setting:
+        time_zone: Etc/UTC
+        jvm_initial_heap_percentage: 18
+        jvm_max_heap_percentage: 33
+        jvm_customize_options: ""
+        gcd_jndi_name: FNGCDDS
+        gcd_jndixa_name: FNGCDDSXA
+        license_model: FNCM.PVUNonProd
+        license: accept
+      monitor_enabled: false
+      logging_enabled: false
+      ## Specify the name of the Existing Claim to be used by your application
+      ## empty string means don't use an existClaim
+      ## Existing Persistence parameters for CPE
+      datavolume:
+        existing_pvc_for_cpe_cfgstore: "cpe-cfgstore"
+        existing_pvc_for_cpe_logstore: "cpe-logstore"
+        existing_pvc_for_cpe_filestore: "cpe-filestore"
+        existing_pvc_for_cpe_icmrulestore: "cpe-icmrulesstore"
+        existing_pvc_for_cpe_textextstore: "cpe-textextstore"
+        existing_pvc_for_cpe_bootstrapstore: "cpe-bootstrapstore"
+        existing_pvc_for_cpe_fnlogstore: "cpe-fnlogstore"
+      probe:
+        readiness:
+          initial_delay_seconds: 150
+          period_seconds: 5
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          initial_delay_seconds: 600
+          period_seconds: 5
+          timeout_seconds: 5
+          failure_threshold: 6
+      image_pull_secrets:
+        name: "admin.registrykey"
+    css:
+      arch:
+        amd64: "3 - Most preferred"
+      replica_count: 1
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/css
+        tag: ga-554-p8css-if001
+        pull_policy: IfNotPresent
+      ## Logging for workloads
+      log:
+        format: json
+      
+      ## resource and autoscaling setting
+      resources:
+        requests:
+          cpu: 500m
+          memory: 512Mi
+        limits:
+          cpu: 1
+          memory: 4096Mi     
+      ## CSS Production setting
+      css_production_setting:
+        jvm_max_heap_percentage: 50
+        license: accept
+      monitor_enabled: false
+      logging_enabled: false
+      ## Specify the name of the Existing Claim to be used by your application
+      ## empty string means don't use an existClaim
+      ## Existing Persistence parameters for CSS
+      datavolume:
+        existing_pvc_for_css_cfgstore: "css-cfgstore"
+        existing_pvc_for_css_logstore: "css-logstore"
+        existing_pvc_for_css_tmpstore: "css-tempstore"
+        existing_pvc_for_index: "css-indexstore"
+        existing_pvc_for_css_customstore: "css-customstore"
+      probe:
+        readiness:
+          initial_delay_seconds: 60
+          period_seconds: 5
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          initial_delay_seconds: 180
+          period_seconds: 5
+          timeout_seconds: 5
+          failure_threshold: 6
+      image_pull_secrets:
+        name: "admin.registrykey" 
+    cmis:
+      arch:
+        amd64: "3 - Most preferred"
+      replica_count: 1
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/cmis
+        tag: ga-304-cmis-if010
+        pull_policy: IfNotPresent
+      ## Logging for workloads
+      log:
+        format: json
+      ## resource
+      resources:
+        # We usually recommend not to specify default resources and to leave this as a conscious
+        # choice for the user. This also increases chances charts run on environments with little
+        # resources, such as Minikube. If you do want to specify resources, uncomment the following
+        # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+        requests:
+          cpu: 500m
+          memory: 256Mi
+        limits:
+          cpu: 1
+          memory: 1536Mi
+
+      ## Horizontal Pod Autoscaler
+      auto_scaling:
+        enabled: true
+        max_replicas: 3
+        min_replicas: 1
+        target_cpu_utilization_percentage: 80
+      hostname: "cmis-{{ meta.namespace }}.9.30.213.60.nip.io"
+      cmis_production_setting:
+        cmis_version: 1.1
+        cpe_url: 
+        time_zone: Etc/UTC
+        jvm_initial_heap_percentage: 40
+        jvm_max_heap_percentage: 66
+        jvm_customize_options: ""
+        checkout_copycontent: true
+        default_maxitems: 25
+        cvl_cache: true
+        secure_metadata_cache: false
+        filter_hidden_properties: true
+        querytime_limit: 180
+        resumable_queries_forrest: true
+        escape_unsafe_string_characters: false
+        max_soap_size: 180
+        print_pull_stacktrace: false
+        folder_first_search: false
+        ignore_root_documents: false
+        supporting_type_mutability: false
+        license: accept
+      monitor_enabled: false
+      logging_enabled: false
+      ## global persistence settings
+      datavolume:
+      ## Specify the name of the Existing Claim to be used by your application
+      ## empty string means don't use an existClaim
+      ## Existing Persistence parameters for CMIS
+        existing_pvc_for_cmis_cfgstore: "cmis-cfgstore"
+        existing_pvc_for_cmis_logstore: "cmis-logstore"
+      probe:
+        readiness:
+          initial_delay_seconds: 90
+          period_seconds: 5
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          initial_delay_seconds: 180
+          period_seconds: 5
+          timeout_seconds: 5
+          failure_threshold: 6
+      # secrect
+      image_pull_secrets:
+        name: "admin.registrykey"
+    graphql:
+      arch:
+        amd64: "3 - Most preferred"
+      replica_count: 1
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/graphql
+        tag: ga-554-p8cgql-if001
+        pull_policy: IfNotPresent
+      ## resource
+      resources:
+        requests:
+          cpu: 500m
+          memory: 512Mi
+        limits:
+          cpu: 1
+          memory: 1536Mi
+       ## Horizontal Pod Autoscaler
+      auto_scaling:
+        enabled: true
+        max_replicas: 1
+        min_replicas: 1
+        target_cpu_utilization_percentage: 80     
+      hostname: "graphql-{{ meta.namespace }}.9.30.213.60.nip.io"
+      ## GraphQL Production setting
+      graphql_production_setting:
+        time_zone: Etc/UTC
+        jvm_initial_heap_percentage: 40
+        jvm_max_heap_percentage: 66
+        jvm_customize_options: ""
+        license_model: FNCM.PVUNonProd
+        license: accept
+        enable_graph_iql: true
+        cpe_uri: http://<hostname>:9080/wsi/FNCEWS40MTOM
+      ## Monitor setting and Logiing setting
+      monitor_enabled: false
+      logging_enabled: false
+      ## Specify the name of the Existing Claim to be used by your application
+      ## empty string means don't use an existClaim
+      ## Existing Persistence parameters for CGQL
+      datavolume:
+        existing_pvc_for_crs_cfgstore: "crs-cfgstore"
+        existing_pvc_for_crs_logstore: "crs-logstore"
+      probe:
+        readiness:
+          initial_delay_seconds: 120
+          period_seconds: 5
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          initial_delay_seconds: 600
+          period_seconds: 5
+          timeout_seconds: 5
+          failure_threshold: 6
+      imagePullSecrets:
+        name: "admin.registrykey" 
+    es:
+      arch:
+        amd64: "3 - Most preferred"
+      replica_count: 1
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/extshare
+        tag: ga-307-es-if002
+        pull_policy: IfNotPresent
+      ## resource
+      resources:
+        requests:
+          cpu: 500m
+          memory: 512Mi
+        limits:
+          cpu: 1
+          memory: 1536Mi
+       ## Horizontal Pod Autoscaler
+      auto_scaling:
+        enabled: true
+        max_replicas: 3
+        min_replicas: 1
+        target_cpu_utilization_percentage: 80
+      hostname: "es-{{ meta.namespace }}.9.30.213.60.nip.io"
+      ## External Share Production setting
+      es_production_setting:
+        time_zone: Etc/UTC
+        jvm_initial_heap_percentage: 40
+        jvm_max_heap_percentage: 66
+        jvm_customize_options: ""
+        license_model: FNCM.PVUNonProd
+        license: accept
+        es_dbtype: db2
+        es_jndi_ds: ECMClientDS
+        es_schema: ICNDB
+        es_ts: ICNDB
+        es_admin: ceadmin
+
+      ## Monitor setting and Logiing setting
+      monitor_enabled: false
+      logging_enabled: false
+      ## Specify the name of the Existing Claim to be used by your application
+      ## empty string means don't use an existClaim
+      ## Existing Persistence parameters for CGQL
+      datavolume:
+        existing_pvc_for_es_cfgstore: "es-cfgstore"
+        existing_pvc_for_es_logstore: "es-logstore"
+      probe:
+        readiness:
+          initial_delay_seconds: 180
+          period_seconds: 5
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          initial_delay_seconds: 600
+          period_seconds: 5
+          timeout_seconds: 5
+          failure_threshold: 6
+      imagePullSecrets:
+        name: "admin.registrykey"
+    tm:
+      arch:
+        amd64: "3 - Most preferred"
+      replica_count: 1
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/taskmgr
+        tag: ga-307-tm-if002
+        pull_policy: IfNotPresent
+     ## LOGGING FOR WORKLOADS
+      log:
+        format: JSON
+      ## resource
+      resources:
+        requests:
+          cpu: 500m
+          memory: 512Mi
+        limits:
+          cpu: 1
+          memory: 1536Mi
+       ## Horizontal Pod Autoscaler
+      auto_scaling:
+        enabled: false
+        max_replicas: 3
+        min_replicas: 1
+        target_cpu_utilization_percentage: 80
+      ## External Share Production setting
+      tm_production_setting:
+        time_zone: Etc/UTC
+        jvm_initial_heap_percentage: 40
+        jvm_max_heap_percentage: 66
+        jvm_customize_options: "-Dcom.ibm.ecm.task.StartUpListener.defaultLogLevel=FINE"
+        license: accept
+        tm_dbtype: db2
+        tm_jndi_ds: ECMClientDS
+        tm_schema: BVTICNDB
+        tm_ts: BVTICNDB
+        tm_admin: CEADMIN
+
+      ## Monitor setting and Logiing setting
+      monitor_enabled: false
+      logging_enabled: false
+      # ## Persistence parameters for /database
+      # datavolume:
+      # ## Persistence parameters for tm
+      datavolume:
+        existing_pvc_for_tm_cfgstore: "tm-cfgstore"
+        existing_pvc_for_tm_logstore: "tm-logstore"
+        existing_pvc_for_tm_pluginstore: "tm-pluginstore"
+      probe:
+        readiness:
+          initial_delay_seconds: 60
+          period_seconds: 5
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          initial_delay_seconds: 600
+          period_seconds: 5
+          timeout_seconds: 5
+          failure_threshold: 6
+      image_pull_secrets:
+        name: "admin.registrykey"
+  ########################################################################
+  ########   IBM Business Automation Navigator configuration      ########
+  ########################################################################
+  navigator_configuration:
+    no_log: false 
+    ban_secret_name: ibm-ban-secret
+    ban_auth_ca_secret_name: "{{ meta.name }}-ban-auth-ca-secret"
+    arch:
+      amd64: "3 - Most preferred" 
+    replica_count: 1
+    image:
+      repository: cp.icr.io/cp/cp4a/ban/navigator
+      tag: ga-307-icn-if002
+      pull_policy: IfNotPresent
+      arbitrary_uid_enabled: true
+    ## Logging for workloads
+    log:
+      format: json
+    ## resource and autoscaling setting
+    resources:
+      # We usually recommend not to specify default resources and to leave this as a conscious
+      # choice for the user. This also increases chances charts run on environments with little
+      # resources, such as Minikube. If you do want to specify resources, uncomment the following
+      # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 1
+        memory: 1536Mi
+    
+    ## Horizontal Pod Autoscaler
+    auto_scaling:
+      enabled: true
+      max_replicas: 3
+      min_replicas: 1
+      target_cpu_utilization_percentage: 80
+    hostname: "navigator-{{ meta.namespace }}.9.30.213.60.nip.io"
+    ## ICN Production setting
+    icn_production_setting:
+      timezone: Etc/UTC
+      jvm_initial_heap_percentage: 40
+      jvm_max_heap_percentage: 66
+      jvm_customize_options: ""
+      icn_db_type: db2
+      icn_jndids_name: ECMClientDS
+      icn_schema: ICNDB
+      icn_table_space: ICNDB
+      icn_admin: CEADMIN
+      navigator_mode: 2
+      license: accept
+      enable_appcues: false
+      allow_remote_plugins_via_http: true
+    monitor_enabled: false
+    logging_enabled: false
+
+    ## Persistence parameters for /database
+    datavolume:
+    ## Persistence parameters for ICN
+      existing_pvc_for_icn_cfgstore: "icn-cfgstore"
+      existing_pvc_for_icn_logstore: "icn-logstore"
+      existing_pvc_for_icn_pluginstore: "icn-pluginstore"
+      existing_pvc_for_icnvw_cachestore: "icn-vw-cachestore"
+      existing_pvc_for_icnvw_logstore: "icn-vw-logstore"
+      existing_pvc_for_icn_aspera: "icn-asperastore"
+    probe:
+      readiness:
+        initial_delay_seconds: 120
+        period_seconds: 5
+        timeout_seconds: 10
+        failure_threshold: 6
+      liveness:
+        initial_delay_seconds: 600
+        period_seconds: 5
+        timeout_seconds: 5
+        failure_threshold: 6
+    image_pull_secrets:
+      name: "admin.registrykey"
+
+  initialize_configuration:
+    ic_domain_creation:
+      domain_name: "P8DOMAIN"
+      encryption_key: "128"
+    ic_ldap_creation:
+      ic_ldap_admin_user_name:
+      - "CEAdmin"
+      ic_ldap_admins_groups_name:
+      - "P8Administrators"
+      ic_ldap_name: "ldap_name"
+    ic_obj_store_creation:
+      object_stores:
+      - oc_cpe_obj_store_display_name: "OS01"
+        oc_cpe_obj_store_symb_name: "OS01"
+        oc_cpe_obj_store_conn:
+          name: "objectstore1_connection"
+          site_name: "InitialSite"
+          dc_os_datasource_name: "FNOS1DS"
+          dc_os_xa_datasource_name: "FNOS1DSXA"
+        oc_cpe_obj_store_admin_user_groups:
+        - "CEAdmin"
+        # Array of users
+        oc_cpe_obj_store_basic_user_groups:
+        oc_cpe_obj_store_addons: true
+        oc_cpe_obj_store_addons_list:
+        - "{CE460ADD-0000-0000-0000-000000000004}"
+        - "{CE460ADD-0000-0000-0000-000000000001}"
+        - "{CE460ADD-0000-0000-0000-000000000003}"
+        - "{CE460ADD-0000-0000-0000-000000000005}"
+        - "{CE511ADD-0000-0000-0000-000000000006}"
+        - "{CE460ADD-0000-0000-0000-000000000008}"
+        - "{CE460ADD-0000-0000-0000-000000000007}"
+        - "{CE460ADD-0000-0000-0000-000000000009}"
+        - "{CE460ADD-0000-0000-0000-00000000000A}"
+        - "{CE460ADD-0000-0000-0000-00000000000B}"
+        - "{CE460ADD-0000-0000-0000-00000000000D}"
+        - "{CE511ADD-0000-0000-0000-00000000000F}"
+        oc_cpe_obj_store_asa_name: "demo_storage"
+        oc_cpe_obj_store_asa_file_systems_storage_device_name: "demo_file_system_storage"
+        oc_cpe_obj_store_asa_root_dir_path: "/opt/ibm/asa/os01_storagearea1"
+        oc_cpe_obj_store_enable_workflow: true
+        oc_cpe_obj_store_workflow_region_name: "design_region_name"
+        oc_cpe_obj_store_workflow_region_number: 1
+        oc_cpe_obj_store_workflow_data_tbl_space: "VWDATA_TS"
+        oc_cpe_obj_store_workflow_index_tbl_space: ""
+        oc_cpe_obj_store_workflow_blob_tbl_space: ""
+        oc_cpe_obj_store_workflow_admin_group: "P8Administrators"
+        oc_cpe_obj_store_workflow_config_group: "P8Administrators"
+        oc_cpe_obj_store_workflow_date_time_mask: "mm/dd/yy hh:tt am"
+        oc_cpe_obj_store_workflow_locale: "en"
+        oc_cpe_obj_store_workflow_pe_conn_point_name: "pe_conn_os1"
+    ic_css_creation:
+      - css_site_name: "Initial Site"
+        css_text_search_server_name: "{{ meta.name }}-css-1"
+        affinity_group_name: "aff_group"
+        css_text_search_server_status: 0
+        css_text_search_server_mode: 0
+        css_text_search_server_ssl_enable: "true"
+        css_text_search_server_credential: "RNUNEWc="
+        css_text_search_server_host: "{{ meta.name }}-css-svc-1"
+        css_text_search_server_port: 8199
+    ic_css_index_area:
+      - object_store_name: "OS01"
+        index_area_name: "os1_index_area"
+        affinity_group_name: "aff_group"
+        root_dir: "/opt/ibm/indexareas"
+        max_indexes: 20
+        max_objects_per_index: 10000
+    ic_enable_cbr:
+      - object_store_name: "OS01"
+        class_name: "Document"
+        indexing_languages: "en"
+    ic_icn_init_info:
+      icn_repos:
+      - add_repo_id: "demo_repo1"
+        add_repo_ce_wsi_url: "http://{{ meta.name }}-cpe-svc:9080/wsi/FNCEWS40MTOM/"
+        add_repo_os_sym_name: "OS01"
+        add_repo_os_dis_name: "OS01"
+        add_repo_workflow_enable: false
+        add_repo_work_conn_pnt: "pe_conn_os1:1"
+        add_repo_protocol: "FileNetP8WSI"
+      # - add_repo_id: "test_repo2"
+      #   add_repo_ce_wsi_url: "http://{{ meta.name }}-cpe-svc:9080/wsi/FNCEWS40MTOM/"
+      #   add_repo_os_sym_name: "OS02"
+      #   add_repo_os_dis_name: "OS02"
+      #   add_repo_workflow_enable: true
+      #   add_repo_work_conn_pnt: "pe_conn_os02:1"
+      #   add_repo_protocol: "FileNetP8WSI"
+      icn_desktop:
+      - add_desktop_id: "demo"
+        add_desktop_name: "icn_desktop"
+        add_desktop_description: "This is ICN desktop"
+        add_desktop_is_default: false
+        add_desktop_repo_id: "demo_repo1"
+        add_desktop_repo_workflow_enable: false
+      # - add_desktop_id: "demotest"
+      #   add_desktop_name: "icn_desktop_demo"
+      #   add_desktop_description: "Just Another desktop"
+      #   add_desktop_is_default: false
+      #   add_desktop_repo_id: "test_repo2"
+      #   add_desktop_repo_workflow_enable: false
+  verify_configuration:
+    vc_cpe_verification:
+      vc_cpe_folder:
+      - folder_cpe_obj_store_name: "OS01"
+        folder_cpe_folder_path: "/TESTFOLDER"
+      vc_cpe_document:
+      - doc_cpe_obj_store_name: "OS01"
+        doc_cpe_folder_name: "/TESTFOLDER"
+        doc_cpe_doc_title: "test_title"
+        DOC_CPE_class_name: "Document"
+        doc_cpe_doc_content: "This is a simple document test"
+        doc_cpe_doc_content_name: "doc_content_name"
+      vc_cpe_cbr:
+      - cbr_cpe_obj_store_name: "OS01"
+        cbr_cpe_class_name: "Document"
+        cbr_cpe_search_string: "is a simple"
+      vc_cpe_workflow:
+      - workflow_cpe_enabled: false
+        workflow_cpe_connection_point: "pe_conn_os1"
+    vc_icn_verification:
+      - vc_icn_repository: "demo_repo1"
+        vc_icn_desktop_id: "demo"

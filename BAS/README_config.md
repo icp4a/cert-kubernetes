@@ -1,4 +1,4 @@
-# Configuring IBM Business Automation Studio 19.0.3 
+# Configuring IBM Business Automation Studio 20.0.1 
 
 These instructions cover the basic installation and configuration of IBM Business Automation Studio.
 
@@ -43,7 +43,7 @@ To support those components, a standard installation generates:
 ## Prerequisites
 
   * [User Management Service](../UMS/README_config.md) 
-  * Resource Registry, which is included in the BAStudio configuration. If you already configured Resource Registry through another component, you need not install it again.
+  * Resource Registry, which is included in the Business Automation Studio configuration. If you already configured Resource Registry through another component, you need not install it again.
   
 ## Resources Required
 
@@ -63,26 +63,27 @@ Follow the OpenShift instructions in [Planning Your Installation 3.11](https://d
  
 Besides the common steps to set up the operator environment, you must do the following steps before you install Business Automation Studio.
 
-* Create the Business Automation Studio and App Engine playback server databases. See [Creating databases](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_basprep_db.html). 
-* Create admin secrets to protect sensitive configuration data. See [Protecting sensitive configuration data](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_basprep_data.html).  
+* Create the Business Automation Studio and App Engine playback server databases. See [Creating databases](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_basprep_db.html). 
+* Create the required secrets. See [Protecting sensitive configuration data](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_basprep_data.html).  
 
 ## Step 2: Configuring Redis for App Engine Playback Server (Optional)
 
-The default replica size of the App Engine playback server is 1. You can have only one App Engine pod because it's a playback server for application development use. If you need the replica size to be more than 1 or you enabled the Horizontal Pod Autoscaler for the playback server, you must configure the App Engine playback server with Remote Dictionary Server (Redis). For instructions, see [Optional: Configuring App Engine playback server with Redis](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_basprep_redis.html). 
+The default replica size of the App Engine playback server is 1. You can have only one App Engine pod because it's a playback server for application development use. If you need the replica size to be more than 1 or you enabled the Horizontal Pod Autoscaler for the playback server, you must configure the App Engine playback server with Remote Dictionary Server (Redis). For instructions, see [Optional: Configuring App Engine playback server with Redis](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_basprep_redis.html). 
 
 ## Step 3: Implementing storage (Optional)
 
-You can optionally add your own persistent volume (PV) and persistent volume claim (PVC) if you want to use your own JDBC driver or you want Resource Registry to be backed up automatically. The minimum supported size is 1 GB. For instructions see [Optional: Implementing storage](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_basprep_storage.html). 
+You can optionally add your own persistent volume (PV) and persistent volume claim (PVC) if you want to use your own JDBC driver or you want Resource Registry to be backed up automatically. The minimum supported size is 1 GB. For instructions see [Optional: Implementing storage](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_basprep_storage.html). 
   
   
 ## Step 4: Configuring the custom resource YAML file for your Business Automation Studio deployment
 
    1. Make sure that you've set the configuration parameters for [User Management Service](../UMS/README_config.md) in your copy of the template custom resource YAML file.
-   2. Edit your copy of the template custom resource YAML file and make the following updates. After completing those updates, if you need to install other components, please go to [Step 5](README_config.md#step-5-Completing-the-installation) and do the configuration for those components, using the same YAML file.
+   2. Edit your copy of the template custom resource YAML file and make the following updates. After completing those updates, if you need to install other components, go to [Step 5](README_config.md#step-5-Completing-the-installation) and do the configuration for those components, using the same YAML file.
    
       a. Uncomment and update the shared_configuration section if you haven't done it already.
 
       b. Update the `bastudio_configuration` and `resource_registry_configuration` sections.
+         * Automatic backup for Resource Registry is recommended. See [Enabling Resource Registry disaster recovery](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.managing/topics/tsk_enabling_disaster_recovery.html) for configuration information.
          * If you just want to install BAStudio with the minimal required values, replace the contents of `bastudio_configuration` and `resource_registry_configuration` in your copy of the template custom resource YAML file with the values from the [sample_min_value.yaml](configuration/sample_min_value.yaml) file.
          * If you want to use the full configuration list and customize the values, update the required values in `bastudio_configuration` and `resource_registry_configuration` in your copy of the template custom resource YAML file based on your configuration.
 
@@ -104,7 +105,7 @@ the hostname can use a wildcard:
 
 ### Configuration 
 
-If you want to customize your custom resource YAML file, refer to the [configuration list](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.ref/k8s_topics/ref_bas_params.html) for each parameter.
+If you want to customize your custom resource YAML file, refer to the [configuration list](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.ref/k8s_topics/ref_bas_params.html) for each parameter.
 
 ## Step 5: Completing the installation
 
@@ -123,7 +124,7 @@ Update pages:
    
 ## Limitations
 
-* After you deploy Business Automation Studio, you can't change the Business Automation Studio or App Engine playback server admin user in the admin secret.
+* After you deploy Business Automation Studio, you can't change the Business Automation Studio or App Engine playback server admin user.
 
 * Because of a node.js server limitation, App Engine playback server image trusts only root CA. If an external service is used and signed with another root CA, you must add the root CA as trusted instead of the service certificate.
 

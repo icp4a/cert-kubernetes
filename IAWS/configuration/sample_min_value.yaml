@@ -3,19 +3,17 @@ kind: ICP4ACluster
 metadata:
   name: demo
 spec:
+  appVersion: 20.0.1
   iaws_configuration:
     - name: instance1
       wfs:
         service_type: "Route"
-        hostname: 
+        hostname:
         port: 443
         replicas: 1
-        workflow_server_secret: ibm-baw-baw-secret
-        tls:
-          tls_secret_name: ibm-baw-tls
-          tls_trust_list:
+        admin_user:
         image:
-          repository: cp.icr.io/cp/cp4a/iaws/iaws-ps
+          repository: cp.icr.io/cp/cp4a/iaws/iaws-server
           tag: 19.0.3
           pullPolicy: IfNotPresent
         pfs_bpd_database_init_job:
@@ -23,7 +21,7 @@ spec:
           tag: 19.0.3
           pullPolicy: IfNotPresent
         upgrade_job:
-          repository: cp.icr.io/cp/cp4a/iaws/iaws-psdb-handling
+          repository: cp.icr.io/cp/cp4a/iaws/iaws-server-dbhandling
           tag: 19.0.3
           pullPolicy: IfNotPresent
         ibm_workplace_job:
@@ -34,7 +32,7 @@ spec:
           ssl: false
           sslsecretname: ibm-dba-baw-db2-cacert
           type: "DB2"
-          server_name: 
+          server_name:
           database_name: "BPMDB"
           port: "50000"
           secret_name: ibm-baw-wfs-server-db-secret
@@ -42,29 +40,25 @@ spec:
             wait_time: 900
             interval_time: 15
           hadr:
-            standbydb_host: 
-            standbydb_port: 
-            retryinterval: 
-            maxretries: 
+            standbydb_host:
+            standbydb_port:
+            retryinterval:
+            maxretries:
         content_integration:
           init_job_image:
             repository: cp.icr.io/cp/cp4a/iaws/iaws-ps-content-integration
             tag: 19.0.3
             pull_policy: IfNotPresent
-          domain_name: "P8Domain"
-          object_store_name: "DOCS"
-          cpe_admin_secret: cpe-admin-secret
-          event_handler_path: "/home/config/docs-config"
         appengine:
-          hostname: 
+          hostname:
           admin_secret_name: ae-admin-secret-instance1
         resource_registry:
-          hostname: 
+          hostname:
           port: 443
           admin_secret_name: rr-admin-secret
         jms:
           image:
-            repository: cp.icr.io/cp/cp4a/iaws/baw-jms-server
+            repository: cp.icr.io/cp/cp4a/iaws/jms
             tag: 19.0.3
             pull_policy: IfNotPresent
           tls:
@@ -104,15 +98,15 @@ spec:
           trace_format: "ENHANCED"
           trace_specification: "*=info"
         custom_xml_secret_name:
-        lombardi_custom_xml_secret_name: wfs-lombardi-custom-xml-secret
+        lombardi_custom_xml_secret_name: 
 
   pfs_configuration:
     pfs:
-      hostname: 
+      hostname:
       port: 443
       service_type: Route
       image:
-        repository: cp.icr.io/cp/cp4a/iaws/pfs
+        repository: cp.icr.io/cp/cp4a/iaws/pfs-prod
         tag: 19.0.3
         pull_policy: IfNotPresent
       liveness_probe:

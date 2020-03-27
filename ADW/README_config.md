@@ -21,11 +21,11 @@ The services require CPU and memory resources. The following table lists the min
 
 | Component                               | CPU Minimum (m) |  Memory Minimum (Mi) |
 | ----------------------------------------| --------------- | -------------------- |
-| Digital Worker Designer                 | 0.1             | 128                  |
-| Digital Worker Tasks Runtime            | 0.1             | 128                  |
-| Digital Worker Management Server        | 0.1             | 512                  |
-| MongoDB                                 | 0.1             | 128                  |
-| NPM registry                            | 0.1             | 128                  |
+| Digital Worker Designer                 | 100             | 128                  |
+| Digital Worker Tasks Runtime            | 100             | 128                  |
+| Digital Worker Management Server        | 100             | 512                  |
+| MongoDB                                 | 100             | 128                  |
+| NPM registry                            | 100             | 128                  |
 
 
 In addition to these 5 services there are 2 Jobs:
@@ -42,23 +42,11 @@ In your `my_icp4a_cr.yaml` file, update the `adw_configuration` section with the
 
 > **Note**: The [configuration](configuration) folder provides sample configuration files that you might find useful. Download the files and edit them for your own customizations.
 
-### Step 2: Configuring Security
+#### Managed OpenShift on IBM Cloud Public
+When installing ADW on Managed OpenShift on IBM Cloud Public, the MongoDB service should use Block Storage. 
+In your custom resource YAML file, the `adw_configuration.mongodb.persistence.storageClassName` parameter should be the name of a storage class that uses the **ibm.io/ibmc-block** provisioner (for instance **ibmc-block-bronze**).
 
-#### Step 2.1: Apply Security Context Constraint
-
-The Digital Worker role requires a SecurityContextConstraint to be bound to the target namespace prior to installation. To meet this requirement there may be cluster scoped as well as namespace scoped pre and post actions that need to occur.
-
-The [`ibm-restricted-scc`](https://ibm.biz/cpkspec-scc) SecurityContextConstraint is required to install the chart.
-
-you must also have a service account that has the [`ibm-restricted-scc`](https://ibm.biz/cpkspec-scc) SecurityContextConstraint to allow running restricted containers:
-```bash
-oc adm policy add-scc-to-user ibm-restricted-scc -z ibm-cp4a-operator
-```
-
-> **Note**: You can define a custom SecurityContextConstraints to finely control the permissions/capabilities needed to deploy this role. An example has been provided.
-
-
-#### Step 2.2: Apply Pod Security Policy
+### Step 2: Applying Pod Security Policy
 
 Digital Worker requires a pod security policy to be bound to the target namespace prior to installation. To meet this requirement there may be cluster scoped as well as namespace scoped pre and post actions that need to occur.
 
@@ -106,14 +94,6 @@ Update pages:
    - [Certified Kubernetes installation page](../platform/k8s/update.md)
 
 
-## Post installation
-
-If you intend to connect Digital Worker to Resource Registry or have provisioned User Management Service using the same cr, re-run the setup job post deployment with the following command:
-
-```bash
-oc get job <SETUP JOB NAME> -o json | jq 'del(.spec.selector)' | jq 'del(.spec.template.metadata.labels)' | kubectl replace --force -f - 
-```
-
 ## Troubleshooting
 ### Management pod not going into a ready state
 If using dynamically provisioned storage, please ensure that the following line is present and set to true in your custom resource file. If not set the managment pod may fail as it needs to be able to write to the volume:
@@ -123,8 +103,4 @@ grantWritePermissionOnMountedVolumes: true
 ```
 ### Digital Worker tile not present in Business Automation Studio
 
-When integrating with resource registry the mangement service must be exposed to resource registry. If you are using SSL the certificate used will require a CN to be set matching the pod name `< DEPLOYMENT NAME >-management`. 
-
-### The Operator is attempting to install Digital Worker despite the configuration not being present in the custom resource
-
-Should the custom resource be removed post deployment the operator on it's next cycle around may attempt to go through the installation task of the operator role. If this issue does occur the adw deployment in the namespace shall be removed as intended and the error can be ignored. 
+When integrating with resource registry, either the management service is exposed, or mangement service should be exposed through a route in order to be reachable from resource registry. If you are using SSL the certificate used will require a CN to be set matching the pod name `< DEPLOYMENT NAME >-management` in the case when the management service is exposed or the route hostname in the case of management exposed through a route. 

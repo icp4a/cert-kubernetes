@@ -8,7 +8,8 @@ tenant_db_name=
 tenant_ontology=
 
 tenant_db_user=
-
+#The SaaS flag is true/false.
+SaaS=true
 # skip confirmation prompts:
 confirmation=y
 

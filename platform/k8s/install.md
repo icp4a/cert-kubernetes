@@ -1,4 +1,4 @@
-# Installing Cloud Pak for Automation 19.0.3 on Certified Kubernetes
+# Installing Cloud Pak for Automation 20.0.1 on Certified Kubernetes
 
 - [Step 1: Get access to the container images](install.md#step-1-get-access-to-the-container-images)
 - [Step 2: Prepare your environment for automation software](install.md#step-2-prepare-your-environment-for-automation-software)
@@ -14,12 +14,23 @@
 You can access the container images in the IBM Docker registry with your IBMid (Option 1), or you can use the downloaded archives from IBM Passport Advantage (PPA) (Option 2).
 
 1. Log in to your Kubernetes cluster.
-2. Download or clone the repository on your local machine and change to `cert-kubernetes` directory
+2. Create a namespace in which you want to install the operator.
+   ```bash
+   $ kubectl create namespace <namespace_name>
+   ```
+3. Change the context to the namespace you created.
+   ```bash
+   $ kubectl config set-context --current --namespace=<namespace_name>
+   ```
+   > **Note**: You need a privileged account to run the policy commands. The <namespace_name> must have pull request privileges to the registry where the images are loaded. The <namespace_name> must also have pull request privileges to push the images into another namespace.
+4. Download or clone the repository on your local machine and go to the `cert-kubernetes` directory.
    ```bash
    $ git clone git@github.com:icp4a/cert-kubernetes.git
    $ cd cert-kubernetes
    ```
    You will find there the scripts and kubernetes descriptors that are necessary to install Cloud Pak for Automation.
+   
+Before you go to Step 2, make sure that your entitled container images are available and accessible by following Option 1 or Option 2.
 
 ### Option 1: Create a pull secret for the IBM Cloud Entitled Registry
 
@@ -29,7 +40,7 @@ You can access the container images in the IBM Docker registry with your IBMid (
 
 3. Create a pull secret by running a `kubectl create secret` command.
    ```bash
-   $ kubectl create secret docker-registry <my_pull_secret> --docker-server=cp.icr.io --docker-username=iamapikey --docker-password="<API_KEY_GENERATED>" --docker-email=user@foo.com
+   $ kubectl create secret docker-registry admin.registrykey --docker-server=cp.icr.io --docker-username=iamapikey --docker-password="<API_KEY_GENERATED>" --docker-email=user@foo.com
    ```
 
    > **Note**: The `cp.icr.io` value for the **docker-server** parameter is the only registry domain name that contains the images.
@@ -38,7 +49,7 @@ You can access the container images in the IBM Docker registry with your IBMid (
 
 ### Option 2: Download the packages from PPA and load the images
 
-[IBM Passport Advantage (PPA)](https://www-01.ibm.com/software/passportadvantage/pao_customer.html) provides archives (.tgz) for the software. To view the list of Passport Advantage eAssembly installation images, refer to the [19.0.3 download document](https://www.ibm.com/support/pages/ibm-cloud-pak-automation-v1903-download-document).
+[IBM Passport Advantage (PPA)](https://www-01.ibm.com/software/passportadvantage/pao_customer.html) provides archives (.tgz) for the software. To view the list of Passport Advantage eAssembly installation images, refer to the [20.0.1 download document](https://www.ibm.com/support/pages/ibm-cloud-pak-automation-v2001-download-document).
 
 1. Download one or more PPA packages to a server that is connected to your Docker registry..
 2. Check that you can run a docker command.
@@ -70,10 +81,10 @@ You can access the container images in the IBM Docker registry with your IBMid (
    > **Note**: You must have pull request privileges to the registry where the images are loaded.
 
 6. Check that the images are pushed correctly to the registry.
-7. (Optional) If you want to use an external Docker registry, create a Docker registry secret.
+7. If you want to use an external Docker registry, create a Docker registry secret.
 
    ```bash
-   $ kubectl create secret docker-registry <secret_name> --docker-server=<registry_url> --docker-username=<your_account> --docker-password=<your_password> --docker-email=<your_email>
+   $ kubectl create secret docker-registry admin.registrykey --docker-server=<registry_url> --docker-username=<your_account> --docker-password=<your_password> --docker-email=<your_email>
    ```
 
    Take a note of the secret and the server values so that you can set them to the **pullSecrets** and **repository** parameters when you run the operator for your containers.
@@ -82,88 +93,89 @@ You can access the container images in the IBM Docker registry with your IBMid (
 
 Before you install any of the containerized software:
 
-1. Go to the prerequisites page in the [IBM Cloud Pak for Automation 19.0.x](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_prepare_env_k8s.html) Knowledge Center.
+1. Go to the prerequisites page in the [IBM Cloud Pak for Automation 20.0.x](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_prepare_env_k8s.html) Knowledge Center.
 2. Follow the instructions on preparing your environment for the software components that you want to install.
 
   How much preparation you need to do depends on what you want to install and how familiar you are with your environment.
 
 ## Step 3: Create a shared PV and add the JDBC drivers
 
-1. Create a persistent volume (PV) for the operator. This PV is needed for the JDBC drivers. The following example YAML defines a PV, but PVs depend on your cluster configuration. 
-   ```yaml
-   apiVersion: v1
-   kind: PersistentVolume
-   metadata:
-     annotations:
-     name: operator-shared-pv
-   spec:
-     accessModes:
-     - ReadWriteMany
-     capacity:
-       storage: 1Gi
-     nfs:
-       path: /mnt/nfsshare/operator/operatorstore
-       server: 9.XX.XXX.XXX
-     persistentVolumeReclaimPolicy: Delete
-   ```
-
-2. Deploy the PV.
-   ```bash
-   $ oc create -f operator-shared-pv.yaml
-   ```
-
-3. Create a claim for the PV, or check that the PV is bound dynamically, [descriptors/operator-shared-pvc.yaml](../../descriptors/operator-shared-pvc.yaml?raw=true).
-
-   > Replace the storage class if you do not want to create the relevant persistent volume.
-
-   ```yaml
-   apiVersion: v1
-   kind: PersistentVolumeClaim
-   metadata:
-     name: operator-shared-pvc
-     namespace: my-project
-   spec:
-     accessModes:
-     - ReadWriteMany
-     resources:
-       requests:
+  1. Create a persistent volume (PV) for the operator. This PV is needed for the JDBC drivers. The following example YAML defines a PV, but PVs depend on your cluster configuration.
+     ```yaml
+     apiVersion: v1
+     kind: PersistentVolume
+     metadata:
+       labels:
+         type: local
+       name: operator-shared-pv
+     spec:
+       capacity:
          storage: 1Gi
-     volumeName: operator-shared-pv
-   ```
+       accessModes:
+         - ReadWriteMany
+       hostPath:
+         path: "/root/operator"
+       persistentVolumeReclaimPolicy: Delete
+     ```
 
-4. Deploy the PVC.
-   ```bash
-   $ oc create -f descriptors/operator-shared-pvc.yaml
-   ```
+  2. Deploy the PV.
+     ```bash
+     $ kubectl create -f operator-shared-pv.yaml
+     ```
 
-5. Copy all of the JDBC drivers that are needed by the components you intend to install to the persistent volume. Depending on your storage configuration you might not need these drivers.
+  3. Create a claim for the PV, or check that the PV is bound dynamically, [descriptors/operator-shared-pvc.yaml](../../descriptors/operator-shared-pvc.yaml?raw=true).
 
-   > **Note**: File names for JDBC drivers cannot include additional version information.
-     - DB2:
-        - db2jcc4.jar
-        - db2jcc_license_cu.jar
-     - Oracle:
-        - ojdbc8.jar
+     > Replace the storage class if you do not want to create the relevant persistent volume.
 
-    The following structure shows the directory structure and file names that are required on a remote file system. The user/group permissions must allow the user running the operator to access the directories and files.
+     ```yaml
+     apiVersion: v1
+     kind: PersistentVolumeClaim
+     metadata:
+       name: operator-shared-pvc
+       namespace: my-project
+     spec:
+       accessModes:
+         - ReadWriteMany
+       storageClassName: ""
+       resources:
+         requests:
+           storage: 1Gi
+       volumeName: operator-shared-pv
+     ```
 
-    ```
-    pv-root-dir
+  4. Deploy the PVC.
+     ```bash
+     $ kubectl create -f descriptors/operator-shared-pvc.yaml
+     ```
 
-       └── jdbc
+  5. Copy all of the JDBC drivers that are needed by the components you intend to install to the persistent volume. Depending on your storage configuration you might not need these drivers.
 
-          ├── db2
+     > **Note**: File names for JDBC drivers cannot include additional version information.
+       - DB2:
+          - db2jcc4.jar
+          - db2jcc_license_cu.jar
+       - Oracle:
+          - ojdbc8.jar
 
-          │   ├── db2jcc4.jar
+      The following structure shows an example remote file system.
 
-          │   └── db2jcc_license_cu.jar
+      ```
+      pv-root-dir
 
-          ├── oracle
+         └── jdbc
 
-          │   └── ojdbc8.jar
+            ├── db2
 
-    ```
-    
+            │   ├── db2jcc4.jar
+
+            │   └── db2jcc_license_cu.jar
+
+            ├── oracle
+
+            │   └── ojdbc8.jar
+
+      ```
+
 ## Step 4: Deploy the operator manifest files to your cluster
 
 The Cloud Pak operator has a number of descriptors that must be applied.
@@ -177,15 +189,10 @@ The Cloud Pak operator has a number of descriptors that must be applied.
 
    Use the script [scripts/deployOperator.sh](../../scripts/deployOperator.sh) to deploy these descriptors.
    ```bash
-   $ ./scripts/deployOperator.sh -i <registry_url>/icp4a-operator:19.0.3 -p '<my_secret_name>' -a accept
+   $ ./scripts/deployOperator.sh -i <registry_url>/icp4a-operator:20.0.1 -p '<my_secret_name>' -a accept
    ```
 
-   Where *registry_url* is the value for your internal docker registry or `cp.icr.io/cp/cp4a` for the IBM Cloud Entitled Registry and *my_secret_name* the secret created to access the registry, *accept* means you accept this [license](../../LICENSE).
-
-   > **Note**: If you plan to use a non-admin user to install the operator, you must add the user to the `ibm-cp4-operator` role. For example:
-   ```bash
-   $ kubectl adm policy add-role-to-user ibm-cp4a-operator <user_name>
-   ```   
+   Where *registry_url* is the value for your internal docker registry or `cp.icr.io/cp/cp4a` for the IBM Cloud Entitled Registry and *my_secret_name* the secret created to access the registry, and *accept* means that you accept the [license](../../LICENSE).
 
 2. Monitor the pod until it shows a STATUS of *Running*:
    ```bash
@@ -224,16 +231,16 @@ A custom resource (CR) YAML file is a configuration file that describes an ICP4A
      images:
         keytool_job_container:
           repository: <registry_url>:5000/<namespace>/dba-keytool-initcontainer
-          tag: 19.0.3  
+          tag: 20.0.1  
         dbcompatibility_init_container:
           repository: <registry_url>:5000/<namespace>/dba-dbcompatibility-initcontainer
-          tag: 19.0.3
+          tag: 20.0.1
         keytool_init_container:
           repository: <registry_url>:5000/<namespace>/dba-keytool-jobcontainer
-          tag: 19.0.3   
+          tag: 20.0.1   
         umsregistration_initjob:
           repository: <registry_url>:5000/<namespace>/dba-umsregistration-initjob
-          tag: 19.0.3
+          tag: 20.0.1
         pull_policy: IfNotPresent
     ```
 
@@ -290,8 +297,8 @@ $ kubectl get services
 ```
 You can now expose the services to your users.
 
-Refer to the [Troubleshooting section](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_trbleshoot_operators.html) to access the operator logs.
+Refer to the [Troubleshooting section](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_trbleshoot_operators.html) to access the operator logs.
 
 ## Step 8: Complete some post-installation steps
 
-Go to [IBM Knowledge Center](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_deploy_postdeployk8s.html) to follow the post-installation steps.
+Go to [IBM Knowledge Center](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_deploy_postdeployk8s.html) to follow the post-installation steps.
