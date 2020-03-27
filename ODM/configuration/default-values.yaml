@@ -10,11 +10,12 @@ metadata:
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
 spec:
+  appVersion: 20.0.1
   odm_configuration:
     image:
       repository: ""
       pullPolicy: IfNotPresent
-      tag: 8.10.3
+      tag: 8.10.3.0_ICP2001
     ## Secrets must be manually created in the namespace.
     ## ref: https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
     ## Ex :  pullSecrets: admin.registrykey
@@ -124,3 +125,46 @@ spec:
       productName: IBM Cloud Pak for Automation
       productID: 5737-I23
       kubeVersion: DBAMC
+
+    # Shared parameters LDAP - customization section required
+#    customization:
+#      securitySecretRef:
+#      authSecretRef: odm-demo-nopv-odm-ldap-secret
+
+    # Shared parameters external Database - section required ONLY for Oracle
+#    externalCustomDatabase:
+#      datasourceRef: odm-demo-nopv-odm-oracle-secret
+#      driverPvc: customdatasource-pvc
+
+   # Shared parameters external Database - Datasource configuration for DB2
+#  datasource_configuration:
+#    dc_odm_datasource:
+#      dc_database_type: "db2"
+#      database_servername: "9.30.222.169"
+#      dc_common_database_port: "50000"
+#      dc_common_database_name: "testdb"
+#      dc_common_database_instance_secret: odm-db-secret
+
+   # Shared parameters LDAP - Example for Microsoft Active Directory
+#  ldap_configuration:
+#    ## the candidate value is "IBM Security Directory Server" or "Microsoft Active Directory"
+#    lc_selected_ldap_type: "Microsoft Active Directory"
+#    lc_ldap_server: "itdctest01w.fr.eurolabs.ibm.com"
+#    lc_ldap_port: "389"
+#    lc_ldap_base_dn: "OU=Administrator_Users,OU=Users,OU=SWG Lab France,DC=jade,DC=test"
+#    lc_bind_secret: odm-ldap-ad-secret # secret is expected to have ldapUsername and ldapPassword keys
+#    lc_ldap_ssl_enabled: false
+#    lc_ldap_ssl_secret_name: ""
+#    lc_ldap_user_name_attribute: "*:sAMAccountName"
+#    lc_ldap_user_display_name_attr: "cn"
+#    lc_ldap_group_base_dn: "OU=Groups,OU=SWG Lab France,DC=jade,DC=test"
+#    lc_ldap_group_name_attribute: "*:cn"
+#    lc_ldap_group_display_name_attr: "cn"
+#    lc_ldap_group_membership_search_filter: “”
+#    lc_ldap_group_member_id_map: "memberOf:member"
+#    ad:
+#      lc_user_filter: "(&(sAMAccountName=%v)(objectClass=user))"
+#      lc_group_filter: "(&(sAMAccountName=%v)(objectClass=group))
+#    tds:
+#      lc_user_filter:
+#      lc_group_filter:

@@ -1,6 +1,7 @@
 CONNECT TO $tenant_db_name ;
 SET SCHEMA $tenant_ontology ;
 
+set integrity for key_class immediate checked ;
 set integrity for key_class_dc immediate checked ;
 set integrity for doc_alias_dc immediate checked ;
 set integrity for key_alias_dc immediate checked ;
@@ -17,5 +18,6 @@ alter table key_alias alter column key_alias_id restart with 239 ;
 alter table cword alter column cword_id restart with 76 ;
 alter table heading alter column heading_id restart with 3 ;
 alter table heading_alias alter column heading_alias_id restart with 3 ;
+alter table object_type alter column object_type_id restart with 6 ;
 
 CONNECT RESET;

@@ -31,19 +31,20 @@ The installation of Operational Decision Manager 8.10.3 can be customized by cha
 
 Make a note of the name and value for the different parameters you want to configure so that it is at hand when you enter it in the custom resource YAML file.
 
-Go to the [IBM Cloud Pak for Automation 19.0.x](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/k8s_topics/tsk_install_odm.html) Knowledge Center and choose which customizations you want to apply.
-   * [Defining the security certificate](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.offerings/topics/tsk_replace_security_certificate.html)
-   * [Configuring the LDAP and user registry](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.offerings/topics/con_config_user_registry.html)
-   * [Configuring a custom external database](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.offerings/topics/tsk_custom_external_db.html)
-   * [Configuring the ODM event emitter](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.offerings/topics/tsk_custom_emitters.html)
-   * [Configuring Decision Center customization](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.offerings/topics/tsk_custom_dc.html)
-   * [Configuring Decision Center time zone](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.managing/op_topics/tsk_set_jvmargs.html)
+Go to the [IBM Cloud Pak for Automation 20.0.x](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/k8s_topics/tsk_install_odm.html) Knowledge Center and choose which customizations you want to apply.
+   * [Defining the security certificate](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/tsk_replace_security_certificate.html)
+   * [Configuring the LDAP and user registry](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/con_config_user_registry.html)
+   * [Configuring a custom external database](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/tsk_custom_external_db.html)
+   * [Configuring the ODM event emitter](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/tsk_custom_emitters.html)
+   * [Configuring Decision Center customization](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/tsk_custom_dc.html)
+   * [Configuring Decision Center time zone](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.managing/op_topics/tsk_set_jvmargs.html)
+   * [Configuring the execution unit (XU)](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/tsk_configuring_xu.html)
 
 > **Note**: The [configuration](configuration) folder provides sample configuration files that you might find useful. Download the files and edit them for your own customizations.
 
 ### Step 2: Configure the custom resource YAML file for your ODM instance
 
-Before you configure, make sure that you have prepared your environment. For more information, see [Preparing to install ODM for production](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_preparing_odmk8s.html).
+Before you configure, make sure that you have prepared your environment. For more information, see [Preparing to install ODM for production](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_preparing_odmk8s.html).
 
 In your `descriptors/my_icp4a_cr.yaml` file, update the `odm_configuration` section with the configuration parameters from *Step 1*. You can refer to the [`default-values.yaml`](configuration/default-values.yaml) file to find the default values for each ODM parameter and customize these values in your file.
 
@@ -64,8 +65,8 @@ Update pages:
 ### Step 4: Manage your Operational Decision Manager deployment
 
 If you customized the default user registry, you must synchronize the registry with the Decision Center database. For more information, see
-[Synchronizing users and groups in Decision Center](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.offerings/topics/tsk_synchronize_users.html).
+[Synchronizing users and groups in Decision Center](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/tsk_synchronize_users.html).
 
 You might need to update an ODM deployment after it is installed. Use the following tasks in IBM Knowledge Center to update a deployment whenever you need, and as many times as you need.
-   * [Customizing JVM arguments](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.managing/op_topics/tsk_set_jvmargs.html)
-   * [Customizing log levels](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.managing/op_topics/tsk_odm_custom_logging.html)
+   * [Customizing JVM arguments](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.managing/op_topics/tsk_set_jvmargs.html)
+   * [Customizing log levels](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.managing/op_topics/tsk_odm_custom_logging.html)

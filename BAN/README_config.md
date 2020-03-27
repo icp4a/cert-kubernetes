@@ -40,17 +40,6 @@ The secret you create is the value for the parameter `ban_secret_name`.
 
    The list of the trusted certificate secrets can be a TLS secret or an opaque secret. An opaque secret must contain a tls.crt file for the trusted certificate. The TLS secret has a tls.key file as the private key.
    
-### Apply the Security Context Contstraints
-
-Apply the required Security Context Constraints (SCC) by applying the [SCC YAML](../descriptors/scc-fncm.yaml) file.
-
-   ```bash
-   $ oc apply -f descriptors/scc-fncm.yaml
-   ```
-
-   > **Note**: `fsGroup` and `supplementalGroups` are `RunAsAny` and  `runAsUser` is `MustRunAsRange`.
-
-
 ## Customize the YAML file for your deployment
 
 All of the configuration values for the components that you want to deploy are included in the [ibm_cp4a_cr_template.yaml](../descriptors/ibm_cp4a_cr_template.yaml) file. Create a copy of this file on the system that you prepared for your container environment, for example `my_ibm_cp4a_cr_template.yaml`. 
@@ -68,6 +57,8 @@ The optional initialize_configuration and verify_configuration section includes 
 
 If you want to exclude any components from your deployment, leave the section for that component and all related parameters commented out in the YAML file. 
 
+For a more focused YAML file that contains the default value for each Business Automation Navigator, see the [fncm_ban_sample_cr.yaml](../FNCM/configuration/fncm_ban_sample_cr.yaml). You can use this shorter sample resource file to compile all the values you need for your Business Automation Navigator environment, then copy the sections into the [ibm_cp4a_cr_template.yaml](../descriptors/ibm_cp4a_cr_template.yaml) file before you deploy.
+
 A description of the configuration parameters is available in [Configuration reference for operators](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.ref/k8s_topics/ref_ban_opparams.html)
 
 Use the information in the following sections to record the configuration settings for the components that you want to deploy.
@@ -81,9 +72,11 @@ Use the information in the following sections to record the configuration settin
 
 Un-comment and update the values for the shared configuration, LDAP, datasource, monitoring, and logging parameters, as applicable.
 
+  > **Reminder**: Set `shared_configuration.sc_deployment_platform` to a blank value if you are deploying on a non-OpenShift certified Kubernetes platform.
+
 Use the secrets that you created in Preparing your security environment for the `root_ca_secret` and `trusted_certificate_list` values.
 
-> **Reminder**: If you plan to use External Share with the 2 LDAP model for configuring external users, update the LDAP values in the `ext_ldap_configuration` section of the YAML file with the information about the directory server that you configured for external users. If you are not using external share, leave this section commented out.
+> **Reminder**: If you plan to use External Share with the 2 LDAP model for configuring external users, update the LDAP values in the `ext_ldap_configuration` section of the YAML file with the information about the directory server that you configured for external users. If you are not using the 2 LDAP model of external share, leave this section commented out.
 
 For more information about the shared parameters, see the following topics:
 
@@ -104,8 +97,6 @@ For more information about the settings, see [Business Automation Navigator para
 ### Initialization settings
 
 Use the `initialize_configuration` section of the custom YAML to provide values for the automatic initialization and setup of Content Platform Engine and Business Automation Navigator. The initialization container creates required configuration of IBM Business Automation Navigator. You also make decisions for your runtime environment.
-
-> **Important**: Do not enable initialization for your operator deployment if you plan to integrate UMS with Content Platform Engine or Business Automation Navigator. In this use case, you must manually create your Content Platform Engine domain, object stores, repositories, and desktops after deployment. If you are integrating UMS with Content Platform Engine and Business Automation Navigator, leave the `initialize_configuration` section commented out.
 
 You can edit the YAML to configure more than one of the available pieces in your automatically initialized environment. For example, if you want to create an additional Business Automation Navigator repository, you copy the stanza for the repository settings, paste it below the original, and add the new values for your additional repository:
 

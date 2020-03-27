@@ -120,6 +120,7 @@ if /I "%c%" EQU "N" goto :DOEXIT
 	echo "Giving permissions on tables"
 	db2 GRANT ALTER ON TABLE DOC_CLASS TO USER %tenant_db_user%
 	db2 GRANT ALTER ON TABLE DOC_ALIAS TO USER %tenant_db_user%
+	db2 GRANT ALTER ON TABLE OBJECT_TYPE TO USER %tenant_db_user%
 	db2 GRANT ALTER ON TABLE KEY_CLASS TO USER %tenant_db_user%
 	db2 GRANT ALTER ON TABLE KEY_ALIAS TO USER %tenant_db_user%
 	db2 GRANT ALTER ON TABLE CWORD TO USER %tenant_db_user%
@@ -136,10 +137,12 @@ if /I "%c%" EQU "N" goto :DOEXIT
 	db2 GRANT ALTER ON TABLE PATTERN TO USER %tenant_db_user%
 	db2 GRANT ALTER ON TABLE DOCUMENT TO USER %tenant_db_user%
 	db2 GRANT ALTER ON TABLE TRAINING_LOG TO USER %tenant_db_user%
+	db2 GRANT ALTER ON TABLE IMPLEMENTATION TO USER %tenant_db_user%
 
 	REM load the tenant Db
 	echo "Loading default data into tables"
 	db2 load from CSVFiles\doc_class.csv of del insert into doc_class
+	db2 load from CSVFiles\object_type.csv of del modified by identityoverride insert into object_type;
 	db2 load from CSVFiles\key_class.csv of del modified by identityoverride insert into key_class
 	db2 load from CSVFiles\doc_alias.csv of del modified by identityoverride insert into doc_alias
 	db2 load from CSVFiles\key_alias.csv of del modified by identityoverride insert into key_alias
@@ -157,6 +160,7 @@ if /I "%c%" EQU "N" goto :DOEXIT
 
     echo --
 	echo "SET INTEGRITY ..."
+	db2 set integrity for key_class immediate checked ;
 	db2 set integrity for key_class_dc immediate checked
 	db2 set integrity for doc_alias_dc immediate checked
 	db2 set integrity for key_alias_dc immediate checked
@@ -175,6 +179,7 @@ if /I "%c%" EQU "N" goto :DOEXIT
 	db2 alter table cword alter column cword_id restart with 76
 	db2 alter table heading alter column heading_id restart with 3
 	db2 alter table heading_alias alter column heading_alias_id restart with 3 
+	db2 alter table object_type alter column object_type_id restart with 6
 
 	db2 connect reset
 
@@ -183,7 +188,7 @@ if /I "%c%" EQU "N" goto :DOEXIT
 	echo "Connecting to base database to insert tenant info"
 	db2 connect to %base_db_name%
 	db2 set schema %base_db_user%
-	db2 insert into TENANTINFO (tenantid,ontology,tenanttype,dailylimit,rdbmsengine,bacaversion,rdbmsconnection,dbname,dbuser,tenantdbversion) values ( '%tenant_id%', '%tenant_ontology%', 0, 0, 'DB2', '1.3',  encrypt('%rdbmsconnection%','AES_KEY'),'%tenant_db_name%','%tenant_db_user%','1.3')
+	db2 insert into TENANTINFO (tenantid,ontology,tenanttype,dailylimit,rdbmsengine,bacaversion,rdbmsconnection,dbname,dbuser,tenantdbversion,featureflags) values ( '%tenant_id%', '%tenant_ontology%', 0, 0, 'DB2', '1.4',  encrypt('%rdbmsconnection%','AES_KEY'),'%tenant_db_name%','%tenant_db_user%','1.4',4)
 	db2 connect reset
 	
 	REM Insert InsertUser

@@ -1,0 +1,13 @@
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  namespace: $KUBE_NAME_SPACE
+  name: aca-netpol
+spec:
+  ingress:
+  - {}
+  podSelector:
+    matchLabels:
+      productID: ibm-dba-aca-prod
+  policyTypes:
+  - Ingress

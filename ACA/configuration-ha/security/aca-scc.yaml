@@ -1,0 +1,76 @@
+# This SCC is the most restrictive, and is meant to be a template
+# Pass the --validate=false flag when applying
+# The ID ranges provided in this template match the PSPs and can be changed
+
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  annotations:
+    kubernetes.io/description: "This policy is the most restrictive,
+      requiring pods to run with a non-root UID, and preventing pods from accessing the host.
+      The UID and GID will be bound by ranges specified at the Namespace level."
+    cloudpak.ibm.com/version: "1.1.0"
+  name: aca-scc
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegedContainer: false
+allowPrivilegeEscalation: false
+allowedCapabilities: null
+allowedFlexVolumes: null
+allowedUnsafeSysctls: null
+defaultAddCapabilities: null
+defaultAllowPrivilegeEscalation: false
+forbiddenSysctls:
+  - "*"
+fsGroup:
+  type: MustRunAs
+  ranges:
+  - max: 1
+    min: 0
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+- ALL
+runAsUser:
+  type: MustRunAsNonRoot
+seccompProfiles:
+- docker/default
+# This can be customized for seLinuxOptions specific to your host machine
+seLinuxContext:
+  type: RunAsAny
+# seLinuxOptions:
+#   level:
+#   user:
+#   role:
+#   type:
+supplementalGroups:
+  type: MustRunAs
+  ranges:
+  - max: 1
+    min: 0
+# This can be customized to host specifics
+volumes:
+- configMap
+- downwardAPI
+- emptyDir
+- persistentVolumeClaim
+- projected
+- secret
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+  name: aca-role
+rules:
+- apiGroups:
+  - extensions
+  resourceNames:
+  - aca-scc
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use

@@ -1,0 +1,48 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2020. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: decisions
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 20.0.1
+spec:
+  appVersion: 20.0.1
+  ## TIPS: The names of all vaddkriables in the spec field are converted to snake_case by the operator before running ansible
+  ## For example, serviceAccount in the spec becomes service_account in ansible.
+  ## It is recommended that you perform some type validation in Ansible on the variables to ensure that
+  ## your application is receiving expected input.
+  ## shared configuration among all tribe
+  shared_configuration:
+    sc_deployment_patterns: decisions
+    sc_optional_components:
+    sc_deployment_type: demo
+    # Possible values OCP,ROKS
+    sc_deployment_platform: OCP
+    storage_configuration:
+      # For ROKS you can use : ibmc-file-gold or ibmc-file-silver value
+      sc_dynamic_storage_classname: ""
+
+  ########################################################################
+  ########      IBM Operational Decision Manager configuration         ########
+  ########################################################################
+  odm_configuration:
+    image:
+      # If you use a private registry please update it.
+      repository: "cp.icr.io/cp/cp4a/odm"
+      # This secrets should be created by the admin script.
+      pullSecrets: "admin.registrykey"
+    # Specify the name of the secret that contains the configuration files required to use the IBM Business Automation Insights emitter.
+    #customization:
+    # baiEmitterSecretRef: baiodmsecrets

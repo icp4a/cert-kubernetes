@@ -1,4 +1,4 @@
-# Updating Cloud Pak for Automation 19.0.3 on Certified Kubernetes
+# Updating Cloud Pak for Automation 20.0.1 on Certified Kubernetes
 
 - [Step 1: Modify the software that is installed](update.md#step-1-modify-the-software-that-is-installed)
 - [Step 2: Apply the updated custom resources](update.md#step-2-apply-the-updated-custom-resources)
@@ -50,4 +50,4 @@ $ kubectl cluster-info
 $ kubectl get services
 ```
 
-Refer to the [Troubleshooting section](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_trbleshoot_operators.html) to access the operator logs.
+Refer to the [Troubleshooting section](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_trbleshoot_operators.html) to access the operator logs.

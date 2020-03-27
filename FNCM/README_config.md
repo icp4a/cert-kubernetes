@@ -8,7 +8,7 @@ Confirm that you have completed the following tasks to prepare to deploy your Fi
 
 - Prepare your FileNet Content Manager environment. These procedures include setting up databases, LDAP, storage, and configuration files that are required for use and operation. You must complete all of the [preparation steps for FileNet Content Manager](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_prepare_ecmk8s.html) before you are ready to deploy the container images. Collect the values for these environment components; you use them to configure your FileNet Content Manager container deployment.
 
-- Prepare your container environment. See [Preparing to install automation containers on Kubernetes](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_prepare_env_k8s.html)
+- Prepare your container environment. See [Preparing to install automation containers on Kubernetes](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/welcome/com.ibm.dba.install/op_topics/tsk_prepare_env_k8s.html)
 
 - If you want to deploy additional optional containers, prepare the requirements that are specific to those containers. For details see the following information:
   - [Preparing for External Share](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_cm_externalshareop.html)
@@ -46,17 +46,6 @@ The secret you create is the value for the parameter `fncm_secret_name`.
    The list of the trusted certificate secrets can be a TLS secret or an opaque secret. An opaque secret must contain a tls.crt file for the trusted certificate. The TLS secret has a tls.key file as the private key.
    
    Note that if you plan to use the external Content Platform Engine tools, you must use either the Root CA and trusted certificate list or Ingress configuration.
-   
-### Apply the Security Context Contstraints
-
-Apply the required Security Context Constraints (SCC) by applying the [SCC YAML](../descriptors/scc-fncm.yaml) file.
-
-   ```bash
-   $ oc apply -f descriptors/scc-fncm.yaml
-   ```
-
-   > **Note**: `fsGroup` and `supplementalGroups` are `RunAsAny` and  `runAsUser` is `MustRunAsRange`.
-
 
 ## Customize the YAML file for your deployment
 
@@ -75,7 +64,9 @@ The optional initialize_configuration and verify_configuration section includes 
 
 If you want to exclude any components from your deployment, leave the section for that component and all related parameters commented out in the YAML file. 
 
-All components require that you deploy the Content Platform Engine container. For that reason, you must complete the values for that section in all deployment use cases.
+All FileNet Content Manager components require that you deploy the Content Platform Engine container. For that reason, you must complete the values for that section in all deployment use cases.
+
+For a more focused YAML file that contains the default value for each FileNet Content Manager parameter, see the [fncm_ban_sample_cr.yaml](/fncm_ban_sample_cr.yaml). You can use this shorter sample resource file to compile all the values you need for your FileNet Content Manager environment, then copy the sections into the [ibm_cp4a_cr_template.yaml](../descriptors/ibm_cp4a_cr_template.yaml) file before you deploy.
 
 A description of the configuration parameters is available in [Configuration reference for operators](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.ref/k8s_topics/ref_cm_paramsop.html)
 
@@ -95,9 +86,12 @@ Use the information in the following sections to record the configuration settin
 
 Un-comment and update the values for the shared configuration, LDAP, datasource, monitoring, and logging parameters, as applicable.
 
+  > **Reminder**: Set `shared_configuration.sc_deployment_platform` to a blank value if you are deploying on a non-OpenShift certified Kubernetes platform.
+
+
 Use the secrets that you created in Preparing your security environment for the `root_ca_secret` and `trusted_certificate_list` values.
 
-> **Reminder**: If you plan to use External Share with the 2 LDAP model for configuring external users, update the LDAP values in the `ext_ldap_configuration` section of the YAML file with the information about the directory server that you configured for external users. If you are not using external share, leave this section commented out.
+> **Reminder**: If you plan to use External Share with the 2 LDAP model for configuring external users, update the LDAP values in the `ext_ldap_configuration` section of the YAML file with the information about the directory server that you configured for external users. If you are not using the 2 LDAP model of external share, leave this section commented out.
 
 For more information about the shared parameters, see the following topics:
 
@@ -109,8 +103,6 @@ For more information about the shared parameters, see the following topics:
 ### Content Platform Engine settings
 
 Use the `cpe` section of the custom YAML to provide values for the configuration of Content Platform Engine. You provide details for configuration settings that you have already created, like the names of your persistent volume claims. You also provide names for pieces of your Content Platform Engine environment, and tuning decisions for your runtime environment.
-
-> **Note**: If you plan to use UMS with Content Platform Engine, do not use the Initialization container. You must manually configure your Content Platform Engine domain and object stores after deployment.
 
 For more information about the settings, see [Content Platform Engine parameters](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.ref/k8s_topics/ref_cm_opcpeparams.html)
 
@@ -160,8 +152,6 @@ For more information about the settings, see [Task Manager parameters](https://w
 ### Initialization settings
 
 Use the `initialize_configuration` section of the custom YAML to provide values for the automatic initialization and setup of Content Platform Engine and IBM Business Automation Navigator. The initialization container creates initial instances of your FileNet Content Manager components, such as the p8 domain, one or more object stores, and configuration of IBM Business Automation Navigator. You also provide names for pieces of your FileNet Content Manager environment, and make decisions for your runtime environment.
-
-> **Important**: Do not enable initialization for your operator deployment if you plan to integrate UMS with Content Platform Engine. In this use case, you must manually create your Content Platform Engine domain and object stores after deployment. If you are integrating UMS and Content Platform Engine, leave the `initialize_configuration` section commented out.
 
 You can edit the YAML to configure more than one of the available pieces in your automatically initialized environment. For example, if you want to create an additional Content Search Services server, you copy the stanza for the server settings, paste it below the original, and add the new values for your additional object store:
 

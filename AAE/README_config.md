@@ -1,4 +1,4 @@
-# Configuring IBM Business Automation Application Engine (App Engine) 19.0.3 
+# Configuring IBM Business Automation Application Engine (App Engine) 20.0.1 
 
 These instructions cover the basic installation and configuration of IBM Business Automation Application Engine (App Engine).
 
@@ -57,16 +57,16 @@ Follow the OpenShift instructions in [Planning Your Installation 3.11](https://d
 
 Besides the common steps to set up the operator environment, you must do the following steps before you install App Engine.
 
-* Create the App Engine database. See [Creating the database](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_aeprep_db.html).
-* Create secrets to protect sensitive configuration data, See [Creating secrets to protect sensitive configuration data](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_aeprep_data.html). 
+* Create the App Engine database. See [Creating the database](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_aeprep_db.html).
+* Create the required secrets. See [Creating secrets to protect sensitive configuration data](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_aeprep_data.html). 
 
 ## Step 2: Configuring Redis for App Engine (Optional)
 
-You can configure App Engine with Remote Dictionary Server (Redis) to provide more reliable service. See [Configuring App Engine with Redis](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_aeprep_redis.html).
+You can configure App Engine with Remote Dictionary Server (Redis) to provide more reliable service. See [Configuring App Engine with Redis](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_aeprep_redis.html).
  
 ## Step 3: Implementing storage (Optional)
 
-You can optionally add your own persistent volume (PV) and persistent volume claim (PVC) if you want to use your own JDBC driver or you want Resource Registry to be backed up automatically. The minimum supported size is 1 GB. For instructions, see [Optional: Implementing storage](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.install/op_topics/tsk_aeprep_storage.html).
+You can optionally add your own persistent volume (PV) and persistent volume claim (PVC) if you want to use your own JDBC driver or you want Resource Registry to be backed up automatically. The minimum supported size is 1 GB. For instructions, see [Optional: Implementing storage](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_aeprep_storage.html).
 
 
 ## Step 4: Configuring the custom resource YAML file for your App Engine deployment
@@ -78,12 +78,14 @@ You can optionally add your own persistent volume (PV) and persistent volume cla
    a. Uncomment and update the `shared_configuration` section if you haven't done it already.
    
    b. Update the `application_engine_configuration` and `resource_registry_configuration` sections.
+     * Automatic backup for Resource Registry is recommended. See [Enabling Resource Registry disaster recovery](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.managing/topics/tsk_enabling_disaster_recovery.html) for configuration information.
+     
      * If you just want to install App Engine with the minimal required values, replace the contents of `application_engine_configuration` and `resource_registry_configuration` in your copy of the template custom resource YAML file with the values from the [sample_min_value.yaml](configuration/sample_min_value.yaml) file.
 
     * If you want to use the full configuration list and customize the values, update the required values in `application_engine_configuration` and `resource_registry_configuration` in your copy of the template custom resource YAML file based on your configuration.
    
 ### Configuration
-If you want to customize your custom resource YAML file, refer to the [configuration list](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.ref/k8s_topics/ref_ae_params.html) for each parameter.
+If you want to customize your custom resource YAML file, refer to the [configuration list](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.ref/k8s_topics/ref_ae_params.html) for each parameter.
 
 ## Step 5: Completing the installation
 
@@ -101,7 +103,7 @@ Update pages:
 
 ## Limitations
 
-* After you deploy the App Engine, you can't change App Engine admin user in the admin secret. 
+* After you deploy the App Engine, you can't change App Engine admin user. 
 
 * Because of a Node.js server limitation, App Engine trusts only root CA. If an external service is used and signed with another root CA, you must add the root CA as trusted instead of the service certificate.
 

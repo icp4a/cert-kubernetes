@@ -6,8 +6,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 19.0.3
+    release: 20.0.1
 spec:
+  appVersion: 20.0.1
   adw_configuration:
     global:
       imagePullSecret: < IMAGE SECRET >
@@ -43,7 +44,7 @@ spec:
     designer:
       image:
         repository: "< REGISTRY >/adw-designer"
-        tag: "19.0.3"
+        tag: "20.0.1"
         pullPolicy: "Always"
       externalPort: 30708
       externalUrl: ""
@@ -51,7 +52,7 @@ spec:
     runtime:
       image:
         repository: "< REGISTRY >/adw-runtime"
-        tag: "19.0.3"
+        tag: "20.0.1"
         pullPolicy: "Always"
       persistence:
         useDynamicProvisioning: true
@@ -65,7 +66,7 @@ spec:
     management:
       image:
         repository: "< REGISTRY >/adw-management"
-        tag: "19.0.3"
+        tag: "20.0.1"
         pullPolicy: "Always"
       persistence:
         useDynamicProvisioning: true
@@ -76,13 +77,13 @@ spec:
     setup:
       image:
         repository: "< REGISTRY >/adw-setup"
-        tag: "19.0.3"
+        tag: "20.0.1"
         pullPolicy: "Always"
 
     init:
       image:
         repository: "< REGISTRY >/dba/adw-init"
-        tag: "19.0.3"
+        tag: "20.0.1"
         pullPolicy: "Always"
 
     baiKafka:
