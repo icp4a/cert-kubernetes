@@ -51,7 +51,7 @@ Install the `oc` client on your local machine or where you plan to install Autom
 
 Download or clone the following GitHub repository on your local machine and go to the `cert-kubernetes` directory.
 ```
-git clone https://github.ibm.com/dba/cert-kubernetes
+git clone https://github.com/icp4a/cert-kubernetes
 $ cd cert-kubernetes
 ```
 
@@ -335,7 +335,7 @@ oc apply -f cert-kubernetes/descriptors/patterns/ibm_cp4a_cr_demo_application.ya
 
    We  assume you already cloned the git repository:
    ```
-   git clone https://github.ibm.com/dba/cert-kubernetes
+   git clone https://github.com/icp4a/cert-kubernetes
    ```
 
 3. Run the install script
@@ -382,7 +382,7 @@ oc apply -f cert-kubernetes/descriptors/patterns/ibm_cp4a_cr_demo_application.ya
 
    We  assume you already cloned the git repository:
    ```
-   git clone https://github.ibm.com/dba/cert-kubernetes
+   git clone https://github.com/icp4a/cert-kubernetes
    ```
 
 3. Run the install script
