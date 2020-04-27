@@ -6,27 +6,28 @@ spec:
   appVersion: 20.0.1
   iaws_configuration:
     - name: instance1
-      wfs:
+      iaws_server:
         service_type: "Route"
+        workstream_server_secret: ibm-iaws-server-secret
         hostname:
         port: 443
         replicas: 1
         admin_user:
         image:
           repository: cp.icr.io/cp/cp4a/iaws/iaws-server
-          tag: 19.0.3
+          tag: 20.0.1
           pullPolicy: IfNotPresent
         pfs_bpd_database_init_job:
           repository: cp.icr.io/cp/cp4a/iaws/pfs-bpd-database-init-prod
-          tag: 19.0.3
+          tag: 20.0.1
           pullPolicy: IfNotPresent
         upgrade_job:
           repository: cp.icr.io/cp/cp4a/iaws/iaws-server-dbhandling
-          tag: 19.0.3
+          tag: 20.0.1
           pullPolicy: IfNotPresent
         ibm_workplace_job:
           repository:  cp.icr.io/cp/cp4a/iaws/iaws-ibm-workplace
-          tag: 19.0.3
+          tag: 20.0.1
           pull_policy: IfNotPresent
         database:
           ssl: false
@@ -47,7 +48,7 @@ spec:
         content_integration:
           init_job_image:
             repository: cp.icr.io/cp/cp4a/iaws/iaws-ps-content-integration
-            tag: 19.0.3
+            tag: 20.0.1
             pull_policy: IfNotPresent
         appengine:
           hostname:
@@ -59,7 +60,7 @@ spec:
         jms:
           image:
             repository: cp.icr.io/cp/cp4a/iaws/jms
-            tag: 19.0.3
+            tag: 20.0.1
             pull_policy: IfNotPresent
           tls:
             tls_secret_name: dummy-jms-tls-secret
@@ -107,7 +108,7 @@ spec:
       service_type: Route
       image:
         repository: cp.icr.io/cp/cp4a/iaws/pfs-prod
-        tag: 19.0.3
+        tag: 20.0.1
         pull_policy: IfNotPresent
       liveness_probe:
         initial_delay_seconds: 60
@@ -170,7 +171,7 @@ spec:
       dba_resource_registry:
         image:
           repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-          tag: latest
+          tag: 20.0.1
           pull_policy: IfNotPresent
         lease_ttl: 120
         pfs_check_interval: 10
@@ -188,15 +189,15 @@ spec:
     elasticsearch:
       es_image:
         repository: cp.icr.io/cp/cp4a/iaws/pfs-elasticsearch-prod
-        tag: 19.0.3
+        tag: 20.0.1
         pull_policy: IfNotPresent
       pfs_init_image:
         repository: cp.icr.io/cp/cp4a/iaws/pfs-init-prod
-        tag: 19.0.3
+        tag: 20.0.1
         pull_policy: IfNotPresent
       nginx_image:
         repository: cp.icr.io/cp/cp4a/iaws/pfs-nginx-prod
-        tag: 19.0.3
+        tag: 20.0.1
         pull_policy: IfNotPresent
       replicas: 1
       service_type: NodePort

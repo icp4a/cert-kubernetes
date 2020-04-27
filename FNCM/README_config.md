@@ -66,7 +66,7 @@ If you want to exclude any components from your deployment, leave the section fo
 
 All FileNet Content Manager components require that you deploy the Content Platform Engine container. For that reason, you must complete the values for that section in all deployment use cases.
 
-For a more focused YAML file that contains the default value for each FileNet Content Manager parameter, see the [fncm_ban_sample_cr.yaml](/fncm_ban_sample_cr.yaml). You can use this shorter sample resource file to compile all the values you need for your FileNet Content Manager environment, then copy the sections into the [ibm_cp4a_cr_template.yaml](../descriptors/ibm_cp4a_cr_template.yaml) file before you deploy.
+For a more focused YAML file that contains the default value for each FileNet Content Manager parameter, see the [fncm_ban_sample_cr.yaml](configuration/fncm_ban_sample_cr.yaml). You can use this shorter sample resource file to compile all the values you need for your FileNet Content Manager environment, then copy the sections into the [ibm_cp4a_cr_template.yaml](../descriptors/ibm_cp4a_cr_template.yaml) file before you deploy.
 
 A description of the configuration parameters is available in [Configuration reference for operators](https://www.ibm.com/support/knowledgecenter/SSYHZ8_19.0.x/com.ibm.dba.ref/k8s_topics/ref_cm_paramsop.html)
 

@@ -19,13 +19,12 @@ Upgrade from Content Analyzer 19.0.2 to 20.0.1 is not supported.
 - Back up your Content Analyzer's base database and tenant database.
 - Copy the `DB2` [folder](https://github.com/icp4a/cert-kubernetes/tree/master/ACA/configuration-ha) to the Db2 server.
 - Run the `UpgradeTenantDB.sh` from your database server as `db2inst1` user.
-- Set the ObjectType feature flag for the tenant by running this SQL in your Content Analyzer's base database. Replace the values of `<ontology>` and `<tenantID>`.
+- Set the ObjectType feature flag and change the schema version flag to 1.4 for the tenant by doing the following for your Content Analyzer's base database. 
+   1. Start the DB2 commandline by running the `db2` command.  
+   2. On the DB2 commandline, connect to your Content Analyzer base database as the base database user.  
+   3. On the DB2 commandline, run the following SQL statements (replace the values of `<ontology>` and `<tenantID>` with the actual values for your instance).
 ```
-set schema <ontology>
-update tenantinfo set FEATUREFLAGS=(4 | (select FEATUREFLAGS from tenantinfo where TENANTID='<tenantId>' and ONTOLOGY='<ontology>')) where TENANTID='<tenantID>' and ONTOLOGY='<ontology>'
-```
-- Change the schema version of tenant to 1.4 by running this SQL in your Content Analyzer's base database. Replace the values of `<ontology>` and `<tenantID>`.
-```
+update tenantinfo set FEATUREFLAGS=(4 | (select FEATUREFLAGS from tenantinfo where TENANTID='<tenantID>' and ONTOLOGY='<ontology>')) where TENANTID='<tenantID>' and ONTOLOGY='<ontology>'
 update tenantinfo set TENANTDBVERSION=1.4 where TENANTID='<tenantID>' and ONTOLOGY='<ontology>'
 ```
 - Fill out the CR yaml file supplied with 20.0.1 using the same values as the previous deployment. Note that you should use the same number of replicas for mongo/mongo-admin as was in 19.0.3 (e.g. 3).

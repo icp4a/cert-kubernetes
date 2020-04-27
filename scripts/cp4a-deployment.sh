@@ -89,7 +89,37 @@ function validate_cli(){
     [[ $? -ne 0 ]] && \
         echo "Unable to locate Openshift CLI, please install it first." && \
         exit 1
+
+    which timeout &>/dev/null
+    [[ $? -ne 0 ]] && \
+        while true; do 
+            printf "\x1B[1m\"timeout\" Command Not Found\n\x1B[0m"
+            printf "\x1B[1mThe \"timeout\" will be installed automatically\n\x1B[0m"
+            printf "\x1B[1mDo you accept (Yes/No, default: No): \x1B[0m" 
+            read -rp "" ans
+            case "$ans" in
+            "y"|"Y"|"yes"|"Yes"|"YES")
+                install_timeout_cli
+                break
+                ;;
+            "n"|"N"|"no"|"No"|"NO")
+                echo -e "You do not accept, exiting...\n"
+                exit 0
+                ;;
+            *)
+                echo -e "\x1B[1;31mYou do not accept, exiting....\n\x1B[0m"
+                exit 0
+                ;;
+            esac
+        done
 }
+
+function install_timeout_cli(){
+    if [[ ${machine} = "Mac" ]]; then
+        echo -n "Installing timeout ......"; brew install coreutils >/dev/null 2>&1; sudo ln -s /usr/local/bin/gtimeout /usr/local/bin/timeout >/dev/null 2>&1; echo "done.";
+    fi
+    printf "\n"
+ }
 
 function prompt_license(){
     clear

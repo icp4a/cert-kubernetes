@@ -29,6 +29,6 @@ Reuse the existing App Engine database. Update the database configuration inform
 
 ## Step 6: Migrate IBM Business Automation Navigator from 19.0.2 to 20.0.1 to verify your apps
 
-Following the IBM Business Automation Navigator migration instructions(We should add a link to the Navigator migration instructions,once navigator migration link is ready), migrate Business Automation Navigator from 19.0.2 to 20.0.1. Then, test your apps.
+Following the [IBM Business Automation Navigator migration instructions](../BAN/README_migrate.md), migrate Business Automation Navigator from 19.0.2 to 20.0.1. Then, test your apps.
 
 
