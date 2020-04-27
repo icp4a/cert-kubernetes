@@ -36,7 +36,7 @@ Before you go to Step 2, make sure that your entitled container images are avail
 
 1. Log in to [MyIBM Container Software Library](https://myibm.ibm.com/products-services/containerlibrary) with the IBMid and password that are associated with the entitled software.
 
-2. In the **Container software library** tile, click **View library** and then click **Copy key** to copy the entitlement key to the clipboard.
+2. In the **Container software library** tile, verify your entitlement on the **View library** page, and then go to **Get entitlement key** to retrieve the key.
 
 3. Create a pull secret by running a `kubectl create secret` command.
    ```bash
@@ -44,6 +44,8 @@ Before you go to Step 2, make sure that your entitled container images are avail
    ```
 
    > **Note**: The `cp.icr.io` value for the **docker-server** parameter is the only registry domain name that contains the images.
+   
+   > **Note**: Use “cp” for the docker-username. The docker-email has to be a valid email address (associated to your IBM ID). Make sure you are copying the Entitlement Key in the docker-password field within double-quotes.
 
 4. Take a note of the secret and the server values so that you can set them to the **pullSecrets** and **repository** parameters when you run the operator for your containers.
 

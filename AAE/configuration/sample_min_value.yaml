@@ -8,7 +8,7 @@ spec:
   application_engine_configuration:
   ## The application_engine_configuration is a list. You can deploy multiple instances of App Engine and assign different configurations for each instance.
   ## For each instance, application_engine_configuration.name and application_engine_configuration.name.hostname must have different values.
-  - name: ae_instance1
+  - name: ae-instance1
     hostname: <your external app engine host name>
     port: 443
     admin_secret_name: ae-secret-credential

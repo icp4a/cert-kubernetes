@@ -68,5 +68,5 @@ If you customized the default user registry, you must synchronize the registry w
 [Synchronizing users and groups in Decision Center](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/tsk_synchronize_users.html).
 
 You might need to update an ODM deployment after it is installed. Use the following tasks in IBM Knowledge Center to update a deployment whenever you need, and as many times as you need.
-   * [Customizing JVM arguments](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.managing/op_topics/tsk_set_jvmargs.html)
-   * [Customizing log levels](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.managing/op_topics/tsk_odm_custom_logging.html)
+   * [Customizing JVM arguments](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/op_topics/tsk_set_jvmargs.html)
+   * [Customizing log levels](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/op_topics/tsk_odm_custom_logging.html)

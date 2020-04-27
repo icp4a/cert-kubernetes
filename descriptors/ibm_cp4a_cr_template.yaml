@@ -1185,7 +1185,7 @@ spec:
   #   tls:
   #     tls_trust_list: []
 
-  resource_registry_configuration:
+  #resource_registry_configuration:
     # admin_secret_name: resource-registry-admin-secret
     # hostname: <your resource registry host name>
     # port: <your resource registry host port>
@@ -1441,7 +1441,7 @@ spec:
     #   tls:
     #     tls_trust_list: []
 
-  iaws_configuration:
+  #iaws_configuration:
   # - name: instance1
   #   iaws_server:
   #     service_type: "Route"
@@ -1788,7 +1788,7 @@ spec:
 #        claimname: "sp-config-pvc"
 #      logs:
 #        claimname: "sp-log-pvc"
-#        log_level: "debug"
+#        log_level: "info"
 #      data:
 #        claimname: "sp-data-pvc"
 #      redis:

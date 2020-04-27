@@ -5,7 +5,7 @@
 - [Step 3: Create a shared PV and add the JDBC drivers](install.md#step-3-create-a-shared-pv-and-add-the-jdbc-drivers)
 - [Step 4: Deploy the operator manifest files to your cluster](install.md#step-4-deploy-the-operator-manifest-files-to-your-cluster)
 - [Step 5: Configure the software that you want to install](install.md#step-5-configure-the-software-that-you-want-to-install)
-- [Step 6: Apply the custom resources](install.md#step-6-apply-the-custom-resources)
+- [Step 6: Apply the custom resource](install.md#step-6-apply-the-custom-resource)
 - [Step 7: Verify that the automation containers are running](install.md#step-7-verify-that-the-automation-containers-are-running)
 - [Step 8: Complete some post-installation steps](install.md#step-8-complete-some-post-installation-steps)
 
@@ -36,7 +36,7 @@ From your local machine, you can access the container images in the IBM Docker r
 
 1. Log in to [MyIBM Container Software Library](https://myibm.ibm.com/products-services/containerlibrary) with the IBMid and password that are associated with the entitled software.
 
-2. In the **Container software library** tile, click **View library** and then click **Copy key** to copy the entitlement key to the clipboard.
+2. In the **Container software library** tile, verify your entitlement on the **View library** page, and then go to **Get entitlement key** to retrieve the key.
 
 3. Create a pull secret by running a `kubectl create secret` command.
    ```bash
@@ -44,6 +44,8 @@ From your local machine, you can access the container images in the IBM Docker r
    ```
 
    > **Note**: The `cp.icr.io` value for the **docker-server** parameter is the only registry domain name that contains the images.
+   
+   > **Note**: Use “cp” for the docker-username. The docker-email has to be a valid email address (associated to your IBM ID). Make sure you are copying the Entitlement Key in the docker-password field within double-quotes.
 
 4. Take a note of the secret and the server values so that you can set them to the **pullSecrets** and **repository** parameters when you run the operator for your containers.
 

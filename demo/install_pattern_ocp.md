@@ -2,6 +2,8 @@
 
 This repository includes folders and resources to help you install the Cloud Pak for Automation software for demonstration purposes on Red Hat OpenShift Cloud Platform (OCP) 3.11.
 
+> **Restriction**: You cannot install the patterns on an IBM Managed RedHat OpenShift 3.11 cluster, also called RedHat OpenShift Kubernetes Service (ROKS).
+
 To install a pattern with the Cloud Pak operator, an OCP administrator user must run a script to set up a cluster and work with a non-administrator user to help them run a deployment script. Each pattern has a single Cloud Pak capability, a list of optional components that can be installed, as well as Db2 and OpenLDAP if they are needed. 
 
 > **Note**: The scripts can only be used on a Linux-based operating system: Red Hat (RHEL), CentOS, and macOS.
