@@ -1447,6 +1447,7 @@ spec:
   #     service_type: "Route"
   #     hostname: ""
   #     port: 443
+  #     workstream_server_secret: ibm-baw-baw-secret
   #     external_tls_secret: ibm-baw-ext-tls-secret
   #     external_tls_ca_secret: ibm-baw-ext-tls-ca-secret
   #     replicas: 1

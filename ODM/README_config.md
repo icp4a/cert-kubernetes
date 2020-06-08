@@ -31,13 +31,13 @@ The installation of Operational Decision Manager 8.10.3 can be customized by cha
 
 Make a note of the name and value for the different parameters you want to configure so that it is at hand when you enter it in the custom resource YAML file.
 
-Go to the [IBM Cloud Pak for Automation 20.0.x](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.install/k8s_topics/tsk_install_odm.html) Knowledge Center and choose which customizations you want to apply.
+Go to the [IBM Cloud Pak for Automation 20.0.x](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/con_odm_prod.html) Knowledge Center and choose which customizations you want to apply.
    * [Defining the security certificate](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/tsk_replace_security_certificate.html)
-   * [Configuring the LDAP and user registry](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/con_config_user_registry.html)
+   * [Configuring user access](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/tsk_config_user_access.html)
    * [Configuring a custom external database](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/tsk_custom_external_db.html)
    * [Configuring the ODM event emitter](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/tsk_custom_emitters.html)
    * [Configuring Decision Center customization](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/tsk_custom_dc.html)
-   * [Configuring Decision Center time zone](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.managing/op_topics/tsk_set_jvmargs.html)
+   * [Configuring Decision Center time zone](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/tsk_set_jvmargs.html)
    * [Configuring the execution unit (XU)](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/tsk_configuring_xu.html)
 
 > **Note**: The [configuration](configuration) folder provides sample configuration files that you might find useful. Download the files and edit them for your own customizations.

@@ -11,11 +11,12 @@
 
 ## Prerequisites
 
-Make sure that you specified the configuration parameter `sc_deployment_platform` in `shared_configuration`.
+Make sure that you specified the mandatory configuration parameters `appVersion: 20.0.1` in `spec` and `sc_deployment_platform` in `shared_configuration`.
 If you deploy on Red Hat OpenShift, specify
 
 ```yaml
 spec:
+ appVersion: 20.0.1
  shared_configuration:
    sc_deployment_platform: OCP
 ```
@@ -24,9 +25,13 @@ otherwise specify
 
 ```yaml
 spec:
+ appVersion: 20.0.1
  shared_configuration:
    sc_deployment_platform: NonOCP
 ```
+
+For information about shared configuration parameters and sample values refer to 
+[Shared configuration parameters](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.ref/k8s_topics/ref_shared_images_params.html).
 
 ## <a name="Step-1"></a> Step 1: Generate the UMS secret
 

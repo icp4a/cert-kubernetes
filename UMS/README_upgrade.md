@@ -84,7 +84,7 @@ stringData:
   tsDBPassword: "!Passw0rd"
 ```
 
-After you have created the secret, update your Custom Resource to configure `ums_configuration.db_secret_name` to point to the secret `ibm-dba-ums-secret`.
+After you have created the secret, update your Custom Resource to configure `ums_configuration.admin_secret_name` to point to the secret `ibm-dba-ums-secret`.
 
 ### New parameters
 The following optional parameters are new in 20.0.1, they support long-lived access tokens. For more information, see Refer to [Using long-lived access tokens](https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/con_ums_sso_app_token.html).

@@ -20,7 +20,7 @@ Follow the instructions in step 1 of [Installing Cloud Pak for Automation 20.0.1
    ```
 3. Upgrade the icp4a-operator on your cluster.
 
-   Use the 20.0.1  [scripts/upgradeOperator.sh](../scripts/upgradeOperator.sh) script to deploy the operator manifest descriptors.
+   Use the 20.0.1  [scripts/upgradeOperator.sh](../../scripts/upgradeOperator.sh) script to deploy the operator manifest descriptors.
    ```bash
    $ ./scripts/upgradeOperator.sh -i <registry_url>/icp4a-operator:20.0.1 -p '<my_secret_name>' -a accept
    ```
