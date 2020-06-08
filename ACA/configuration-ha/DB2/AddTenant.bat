@@ -142,7 +142,7 @@ if /I "%c%" EQU "N" goto :DOEXIT
 	REM load the tenant Db
 	echo "Loading default data into tables"
 	db2 load from CSVFiles\doc_class.csv of del insert into doc_class
-	db2 load from CSVFiles\object_type.csv of del modified by identityoverride insert into object_type;
+	db2 load from CSVFiles\object_type.csv of del modified by identityoverride insert into object_type
 	db2 load from CSVFiles\key_class.csv of del modified by identityoverride insert into key_class
 	db2 load from CSVFiles\doc_alias.csv of del modified by identityoverride insert into doc_alias
 	db2 load from CSVFiles\key_alias.csv of del modified by identityoverride insert into key_alias
@@ -160,7 +160,7 @@ if /I "%c%" EQU "N" goto :DOEXIT
 
     echo --
 	echo "SET INTEGRITY ..."
-	db2 set integrity for key_class immediate checked ;
+	db2 set integrity for key_class immediate checked
 	db2 set integrity for key_class_dc immediate checked
 	db2 set integrity for doc_alias_dc immediate checked
 	db2 set integrity for key_alias_dc immediate checked
