@@ -1,0 +1,72 @@
+
+###############################################################################
+##
+##Licensed Materials - Property of IBM
+##
+##(C) Copyright IBM Corp. 2020. All Rights Reserved.
+##
+##US Government Users Restricted Rights - Use, duplication or
+##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+##
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: icp4adeploy
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 20.0.2
+spec:
+  appVersion: 20.0.2
+  
+  #####################################################################################################################
+  ##  The contents of this template CR file reflect only the specific parameters and configuration 
+  ##  settings applicable to the represented ICP4A capability. 
+  ##   
+  ##  These values/configuration sections are to be used when manually assembling or updating the main 
+  ##  ICP4A CR that is being applied in order to install an ICP4A environment. 
+  ##  
+  ##  If you are in the process of preparing a new install of an ICP4A environment, 
+  ##  you should merge the required values and configuration sections from this file into the   
+  ##  starting point CR template: ibm_cp4a_cr_enterprise_foundation.yaml available in the
+  ##  same location as this template. 
+  ##  
+  ##  If you updating an existing ICP4A environment, you should merge the required values and configuration
+  ##  sections from this template in the main ICP4A CR file already applied in the environment.  
+  ##  
+  ######################################################################################################################
+  shared_configuration:
+
+    ## CP4A patterns or capabilities to be deployed.  This CR represents the "application" pattern (aka Business Automation Manager), which includes the following 
+    ## mandatory components: ban(Business Automation Navigator), ums (User Management Service), app_engine( Application Engine) and optional components: app_designer
+    sc_deployment_patterns: application
+
+    ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
+    ## The optional components are: app_designer
+    sc_optional_components:
+
+  ###########################################################################
+  ## This section contains the app engine component configurations #
+  ###########################################################################
+  application_engine_configuration:
+  ## The application_engine_configuration is a list. You can deploy multiple instances of App Engine and assign different configurations for each instance.
+  ## For each instance, application_engine_configuration.name and application_engine_configuration.name.hostname must have different values.
+  - name: workspace
+    #Adjust this one if you created the secret with name other than the default
+    admin_secret_name: "{{ meta.name }}-workspace-aae-app-engine-admin-secret"
+    #Provide application engine default administrator ID
+    admin_user: "<Required>"
+    database:
+      #Provide the database server hostname for application engine use
+      host: "<Required>"
+      #Provide the database name for application engine use
+      name: "<Required>"
+      #Provide the database server port for application engine use
+      port: "<Required>"
+      ## If you set up DB2 HADR and want to use it, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
+      alternative_host:
+      alternative_port:
+      type: db2
+      

@@ -16,19 +16,37 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.1
+    release: 20.0.2
 spec:
-  appVersion: 20.0.1
+  appVersion: 20.0.2
   ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
   ## For example, serviceAccount in the spec becomes service_account in ansible.
   ## It is recommended that you perform some type validation in Ansible on the variables to ensure that
   ## your application is receiving expected input.
   ## shared configuration among all tribe
   shared_configuration:
+
+    ## FileNet Content Manager (FNCM) license and possible values are: user, non-production, and production.
+    ## This value could be different from the rest of the licenses.
+    sc_deployment_fncm_license: non-production
+
+    ## CP4A patterns or capabilities to be deployed.  This CR represents the "content" pattern (aka FileNet Content Manager), which includes the following 
+    ## mandatory components: cpe, icn (BAN/Navigator), graphql and optional components: cmis, es (External Share).
     sc_deployment_patterns: content
+
+    ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
+    ## The optional components are: cmis, css (Content Search Services), es (External Share).
     sc_optional_components:
+
+    ## The deployment type as selected by the user.  Possible values are: demo, non-production, and production
     sc_deployment_type: demo
-    sc_deployment_platform: OCP
+
+    ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that correponds to a user ID
+    sc_run_as_user: 
+
+    ## This is the deployment platform supported for CP4A and the possible values are: ROKS, OCP, and other (which includes all Certified Kubernetes platforms)
+    sc_deployment_platform: 
+        
     sc_deployment_hostname_suffix: "{{ meta.name }}"
     storage_configuration:
       sc_dynamic_storage_classname: ""
@@ -54,6 +72,9 @@ spec:
       busybox:
         repository: docker.io/library/busybox
         tag: latest
+      phpldapadmin:
+        repository: osixia/phpldapadmin
+        tag: 0.9.0
   ########################################################################
   ########      IBM FileNet Content Manager configuration         ########
   ########################################################################
@@ -61,23 +82,24 @@ spec:
     cpe:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-554-p8cpe-if001
+        tag: ga-555-p8cpe
     css:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: ga-554-p8css-if001
+        tag: ga-555-p8css
     graphql:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: ga-554-p8cgql-if001
-#    cmis:
-#      image:
-#        repository: cp.icr.io/cp/cp4a/fncm/cmis
-#        tag: ga-304-cmis-if010
+        tag: ga-555-p8cgql
+    cmis:
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/cmis
+        tag: ga-305-cmis
   ########################################################################
   ########   IBM Business Automation Navigator configuration      ########
   ########################################################################
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-307-icn-if002
+      tag: ga-308-icn
+      

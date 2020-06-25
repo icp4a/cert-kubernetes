@@ -16,9 +16,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.1
+    release: 20.0.2
 spec:
-  appVersion: 20.0.1
+  appVersion: 20.0.2
   ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
   ## For example, serviceAccount in the spec becomes service_account in ansible.
   ## It is recommended that you perform some type validation in Ansible on the variables to ensure that
@@ -26,6 +26,7 @@ spec:
   ## shared configuration among all tribe
   shared_configuration:
     sc_deployment_patterns: application
+    sc_optional_components: app_designer
     sc_deployment_type: demo
     sc_deployment_platform: OCP
     sc_deployment_hostname_suffix: "{{ meta.name }}"
@@ -37,16 +38,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer
-        tag: 20.0.1
+        tag: 20.0.2
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer
-        tag: 20.0.1
+        tag: 20.0.2
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer
-        tag: 20.0.1
+        tag: 20.0.2
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
-        tag: 20.0.1
+        tag: 20.0.2
       db2u_tools:
         repository: docker.io/ibmcom/db2u.tools
         tag: 11.5.1.0-CN1
@@ -68,13 +69,16 @@ spec:
       busybox:
         repository: docker.io/library/busybox
         tag: latest
+      phpldapadmin:
+        repository: osixia/phpldapadmin
+        tag: 0.9.0
   ########################################################################
   ########   IBM Business Automation Navigator configuration      ########
   ########################################################################
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: ga-307-icn-if002
+      tag: ga-308-icn
   ########################################################################
   ########      IBM Business Automation Studio configuration      ########
   ########################################################################
@@ -82,19 +86,19 @@ spec:
     images:
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: 20.0.1
+        tag: 20.0.2
     jms_server:
       image:
         repository: cp.icr.io/cp/cp4a/bas/jms
-        tag: 20.0.1
+        tag: 20.0.2
     playback_server:
       images:
         db_job:
           repository: cp.icr.io/cp/cp4a/bas/solution-server-helmjob-db
-          tag: 20.0.1
+          tag: 20.0.2
         solution_server:
           repository: cp.icr.io/cp/cp4a/bas/solution-server
-          tag: 20.0.1
+          tag: 20.0.2
   ########################################################################
   ########      IBM Resource Registry configuration               ########
   ########################################################################
@@ -102,14 +106,12 @@ spec:
     images:
       resource_registry:
         repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-        tag: 20.0.1
+        tag: 20.0.2
+        
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########
   ########################################################################
   ums_configuration:
     teamserver:
       admingroup: P8Administrators
-    images:
-      ums:
-        repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.1
+      

@@ -1,0 +1,91 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2019. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: ier
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 20.0.2
+spec:
+  ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
+  ## For example, serviceAccount in the spec becomes service_account in ansible.
+  ## It is recommended that you perform some type validation in Ansible on the variables to ensure that
+  ## your application is receiving expected input.
+
+  ## shared configuration among all tribe
+  shared_configuration:
+    sc_image_repository: cp.icr.io
+    root_ca_secret: icp4a-root-ca
+    sc_optional_components: ier
+    sc_deployment_hostname_suffix: "9.30.182.206.nip.io"
+    storage_configuration:
+      sc_medium_file_storage_classname: "managed-nfs-storage"
+    image_pull_secrets:
+       - admin.registrykey
+ ## FileNet Content Manager (FNCM) license and possible values are: user, non-production, and production.
+    ## This value could be different from the rest of the licenses.
+    sc_deployment_fncm_license: "<Required>"
+    sc_deployment_type: enterprise
+    sc_deployment_platform: OCP
+
+  ########################################################################
+  ########   IBM Enterprise Records configuration      ########
+  ########################################################################
+  ier_configuration:
+      arch:
+        amd64: "3 - Most preferred"
+      replica_count: 1
+      image:
+        repository: cp.icr.io/cp/cp4a/ier/ier
+        tag: 20.0.2
+        pull_policy: IfnotPresent
+     # Logging for workloads
+      log:
+        format: json
+     # resource and autoscaling setting
+      resources:
+        requests:
+          cpu: 500m
+          memory: 512Mi
+        limits:
+          cpu: 1
+          memory: 1536Mi
+
+     # Horizontal Pod Autoscaler
+      auto_scaling:
+        enabled: false
+        max_replicas: 3
+        min_replicas: 1
+        target_cpu_utilization_percentage: 80
+     # IER Production setting
+      ier_production_setting:
+        license: accept
+      collectd_enable_plugin_write_graphite: false
+      run_as_user: 50001
+     # Specify the names of existing persistent volume claims to be used by your application.
+     # Specify an empty string if you don't have existing persistent volume claim.
+      datavolume:
+        existing_pvc_for_ier_instance: "ier-instance"
+
+      probe:
+        readiness:
+          initial_delay_seconds: 120
+          period_seconds: 5
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          initial_delay_seconds: 600
+          period_seconds: 5
+          timeout_seconds: 5
+          failure_threshold: 

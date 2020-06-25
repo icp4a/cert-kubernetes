@@ -16,9 +16,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.1
+    release: 20.0.2
 spec:
-  appVersion: 20.0.1
+  appVersion: 20.0.2
   ## TIPS: The names of all vaddkriables in the spec field are converted to snake_case by the operator before running ansible
   ## For example, serviceAccount in the spec becomes service_account in ansible.
   ## It is recommended that you perform some type validation in Ansible on the variables to ensure that
@@ -30,6 +30,7 @@ spec:
     sc_deployment_type: demo
     # Possible values OCP,ROKS
     sc_deployment_platform: OCP
+    sc_deployment_hostname_suffix: "{{ meta.name }}"
     storage_configuration:
       # For ROKS you can use : ibmc-file-gold or ibmc-file-silver value
       sc_dynamic_storage_classname: ""

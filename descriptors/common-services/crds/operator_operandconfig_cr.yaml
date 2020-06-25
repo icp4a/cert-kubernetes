@@ -1,0 +1,71 @@
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandConfig
+metadata:
+  name: common-service
+spec:
+  services:
+  - name: ibm-metering-operator
+    spec:
+      metering: {}
+      meteringUI: {}
+  - name: ibm-licensing-operator
+    spec:
+      IBMLicensing: {}
+  - name: ibm-mongodb-operator
+    spec:
+      mongoDB: {}
+  - name: ibm-cert-manager-operator
+    spec:
+      certManager: {}
+      issuer: {}
+      certificate: {}
+      clusterIssuer: {}
+  - name: ibm-iam-operator
+    spec:
+      authentication: {}
+      oidcclientwatcher: {}
+      pap: {}
+      policycontroller: {}
+      policydecision: {}
+      secretwatcher: {}
+      securityonboarding: {}
+  - name: ibm-healthcheck-operator
+    spec:
+      healthService: {}
+  - name: ibm-commonui-operator
+    spec:
+      commonWebUI: {}
+      legacyHeader: {}
+  - name: ibm-management-ingress-operator
+    spec:
+      managementIngress: {}
+  - name: ibm-ingress-nginx-operator
+    spec:
+      nginxIngress: {}
+  - name: ibm-auditlogging-operator
+    spec:
+      auditLogging: {}
+  - name: ibm-catalog-ui-operator
+    spec:
+      catalogUI: {}
+  - name: ibm-platform-api-operator
+    spec:
+      platformApi: {}
+  - name: ibm-helm-api-operator
+    spec:
+      helmApi: {}
+  - name: ibm-helm-repo-operator
+    spec:
+      helmRepo: {}
+  - name: ibm-monitoring-exporters-operator
+    spec:
+      exporter: {}
+  - name: ibm-monitoring-prometheusext-operator
+    spec:
+      prometheusExt: {}
+  - name: ibm-monitoring-grafana-operator
+    spec:
+      grafana: {}
+  - name: ibm-elastic-stack-operator
+    spec:
+      elasticStack: {}

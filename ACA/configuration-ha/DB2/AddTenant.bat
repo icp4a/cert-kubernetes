@@ -1,4 +1,13 @@
 @echo off
+REM ************************************************************************************
+REM * @---lm_copyright_start
+REM * 5737-I23, 5900-A30
+REM * Copyright IBM Corp. 2018 - 2020. All Rights Reserved.
+REM * U.S. Government Users Restricted Rights:
+REM * Use, duplication or disclosure restricted by GSA ADP Schedule
+REM * Contract with IBM Corp.
+REM * @---lm_copyright_end
+REM ************************************************************************************
 
 SETLOCAL
 
@@ -123,6 +132,7 @@ if /I "%c%" EQU "N" goto :DOEXIT
 	db2 GRANT ALTER ON TABLE OBJECT_TYPE TO USER %tenant_db_user%
 	db2 GRANT ALTER ON TABLE KEY_CLASS TO USER %tenant_db_user%
 	db2 GRANT ALTER ON TABLE KEY_ALIAS TO USER %tenant_db_user%
+	db2 GRANT ALTER ON TABLE ALIAS TO USER %tenant_db_user%
 	db2 GRANT ALTER ON TABLE CWORD TO USER %tenant_db_user%
 	db2 GRANT ALTER ON TABLE HEADING TO USER %tenant_db_user%
 	db2 GRANT ALTER ON TABLE HEADING_ALIAS TO USER %tenant_db_user%
@@ -133,7 +143,6 @@ if /I "%c%" EQU "N" goto :DOEXIT
 	db2 GRANT ALTER ON TABLE SMARTPAGES_OPTIONS TO USER %tenant_db_user%
 	db2 GRANT ALTER ON TABLE FONTS TO USER %tenant_db_user%
 	db2 GRANT ALTER ON TABLE FONTS_TRANSID TO USER %tenant_db_user%
-	db2 GRANT ALTER ON TABLE DB_BACKUP TO USER %tenant_db_user%
 	db2 GRANT ALTER ON TABLE PATTERN TO USER %tenant_db_user%
 	db2 GRANT ALTER ON TABLE DOCUMENT TO USER %tenant_db_user%
 	db2 GRANT ALTER ON TABLE TRAINING_LOG TO USER %tenant_db_user%
@@ -188,7 +197,7 @@ if /I "%c%" EQU "N" goto :DOEXIT
 	echo "Connecting to base database to insert tenant info"
 	db2 connect to %base_db_name%
 	db2 set schema %base_db_user%
-	db2 insert into TENANTINFO (tenantid,ontology,tenanttype,dailylimit,rdbmsengine,bacaversion,rdbmsconnection,dbname,dbuser,tenantdbversion,featureflags) values ( '%tenant_id%', '%tenant_ontology%', 0, 0, 'DB2', '1.4',  encrypt('%rdbmsconnection%','AES_KEY'),'%tenant_db_name%','%tenant_db_user%','1.4',4)
+	db2 insert into TENANTINFO (tenantid,ontology,tenanttype,dailylimit,rdbmsengine,bacaversion,rdbmsconnection,dbname,dbuser,tenantdbversion,featureflags) values ( '%tenant_id%', '%tenant_ontology%', 0, 0, 'DB2', '1.5',  encrypt('%rdbmsconnection%','AES_KEY'),'%tenant_db_name%','%tenant_db_user%','1.5',4)
 	db2 connect reset
 	
 	REM Insert InsertUser

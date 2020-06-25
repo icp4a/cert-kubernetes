@@ -32,6 +32,7 @@ drop table cword_dc;
 drop table key_alias_kc;
 drop table key_alias_dc;
 drop table key_class_dc;
+drop table alias;
 drop table implementation_kc;
 drop table doc_alias_dc;
 drop table key_alias;
@@ -49,5 +50,7 @@ drop table kvp_model_detail;
 drop table document;
 drop table runtime_page;
 drop table runtime_doc;
+drop table pageparams;
+drop table docparams;
 drop sequence MINOR_VER_SEQ;
 

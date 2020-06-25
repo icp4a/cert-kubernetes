@@ -130,4 +130,55 @@ create table runtime_page
 
   CONSTRAINT runtime_page_pkey PRIMARY KEY (transaction_id, page_id)
 );
+
+create table docparams
+(
+  TRANSACTION_ID        VARCHAR(256) NOT NULL,
+  DOC_PARAMS            BLOB(1M),
+  API                   SMALLINT     NOT NULL DEFAULT 0,
+  COMPLETED             SMALLINT     NOT NULL DEFAULT 0,
+  FAILED                SMALLINT     NOT NULL DEFAULT 0,
+  DOCUMENTACCURACY      INTEGER      NOT NULL DEFAULT 0,
+  COMPLETED_OCR_PAGES   INTEGER      NOT NULL DEFAULT 0,
+  OCR_PAGES_VERIFIED    SMALLINT     NOT NULL DEFAULT 0,
+  PROGRESS              SMALLINT     NOT NULL DEFAULT 0,
+  PARTIAL_COMPLETE_PAGES INTEGER     NOT NULL DEFAULT 0,
+  COMPLETED_PAGES       INTEGER      NOT NULL DEFAULT 0,
+  VERIFIED              SMALLINT     NOT NULL DEFAULT 0,
+  USER_ID               INTEGER      NOT NULL DEFAULT 0,
+  PDF                   SMALLINT     NOT NULL DEFAULT 0,
+  PDF_SUCCESS           SMALLINT     NOT NULL DEFAULT 0,
+  PDF_ERROR_LIST        VARCHAR(1024),
+  PDF_PARAMS            BLOB(1M),
+  UTF8                  SMALLINT     NOT NULL DEFAULT 0,
+  UTF8_SUCCESS          SMALLINT     NOT NULL DEFAULT 0,
+  UTF8_ERROR_LIST       VARCHAR(1024),
+  UTF8_PARAMS           BLOB(1M),
+  TITLE_LIST            VARCHAR(32000),
+  ALIAS_LIST            BLOB(1M),
+  CONSTRAINT docparams_pkey PRIMARY KEY (transaction_id)
+);
+
+create table pageparams
+(
+  TRANSACTION_ID        VARCHAR(256)    NOT NULL,
+  PAGE_ID               INTEGER         NOT NULL,
+  PAGE_UUID             VARCHAR(256),
+  PAGE_PARAMS           BLOB(10M),
+  FLATTENEDJSON         BLOB(10M),
+  GOODLETTERS           INTEGER         NOT NULL DEFAULT 0,
+  ALLLETTERS            INTEGER         NOT NULL DEFAULT 0,
+  COMPLETE              SMALLINT        NOT NULL DEFAULT 0,
+  OCR_CONFIDENCE        VARCHAR(20),
+  LANGUAGES             VARCHAR(256),
+  BAGOFWORDS            BLOB(1M),
+  HEADER_LIST           BLOB(1M),
+  FOUNDKEYLIST          BLOB(1M),
+  DEFINEDKEYLIST        BLOB(1M),
+  CONSTRAINT pageparams_transaction_id_fkey FOREIGN KEY (transaction_id) REFERENCES docparams (transaction_id)
+	ON UPDATE RESTRICT ON DELETE CASCADE,
+
+  CONSTRAINT pageparams_pkey PRIMARY KEY (transaction_id, page_id)
+);
+
 --End replace mongo DB2 tables

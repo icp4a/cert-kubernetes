@@ -1,5 +1,11 @@
 #!/bin/bash
-
+# @---lm_copyright_start
+# 5737-I23, 5900-A30
+# Copyright IBM Corp. 2018 - 2020. All Rights Reserved.
+# U.S. Government Users Restricted Rights:
+# Use, duplication or disclosure restricted by GSA ADP Schedule
+# Contract with IBM Corp.
+#@---lm_copyright_end
 # NOTES:
 # This script will create a DB2 database and initialize the database for a Content Analyzer tenant and load it with default data.
 # If you prefer to create your own database, and only want the script to initialize the existing database, 
@@ -22,22 +28,30 @@ if [[ "$NUMARGS" -gt 0 ]]; then
         use_existing_tenant=$1
 fi
 
-if [[ -z "$use_existing_tenant" || $use_existing_tenant -ne 1 ]]; then
-  if [[ -z "$tenant_db_exists" || $tenant_db_exists != "true" ]]; then
-    echo
-    echo "=================================================="
-    echo
-    echo -e "\nThis script will create a DB2 database and initialize the database for a Content Analyzer tenant and load it with default data."
-    echo
-    echo -e "If you prefer to create your own database, and only want the script to initialize the existing database, please exit this script and run 'InitTenantDB.sh'."
-    echo
-    echo "=================================================="
-    echo    
+if [[ ! -z "$use_existing_tenant" && $use_existing_tenant -eq 1 ]]; then
+    tenant_db_exists="true"
+    user_already_defined=1
+    create_new_user="n"
+fi
+
+
+echo
+echo "=================================================="
+echo
+if [[ -z "$tenant_db_exists" || $tenant_db_exists != "true" ]]; then
+  echo -e "\nThis script will create a DB2 database and initialize the database for a Content Analyzer tenant and load it with default data."
+  echo
+  echo -e "If you prefer to create your own database, and only want the script to initialize the existing database, please exit this script and run 'InitTenantDB.sh'."   
+else
+  if [[ -z "$use_existing_tenant" || $use_existing_tenant -ne 1 ]]; then
+    echo -e "This script will initialize an existing database for a Content Analyzer tenant and load it with default data."
   else
-    echo -e "\n-- This script will initialize an existing database for a Content Analyzer tenant and load it with default data"
-    echo
+    echo -e "This script will add an ontology to an existing Content Analyzer tenant and load it with default data."
   fi
 fi
+echo
+echo "=================================================="
+echo
 
 if [[ -z "$use_existing_tenant" || $use_existing_tenant -ne 1 ]]; then
   echo "Enter the tenant ID for the new tenant: (eg. t4900)"
@@ -77,7 +91,7 @@ echo
 if [[ -z "$tenant_db_exists" || $tenant_db_exists != "true" ]]; then
   echo "Enter the name of the new Content Analyzer Tenant database to create: "
 else
-  echo "Enter the name of an existing DB2 database to be used as the Content Analyzer Tenant database: "
+  echo "Enter the name of an existing DB2 database for the Content Analyzer Tenant database: "
 fi
 while [[ $tenant_db_name == '' ]]
 do

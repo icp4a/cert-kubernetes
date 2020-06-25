@@ -1,0 +1,672 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2020. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: icp4aca
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 20.0.2
+spec:
+  appVersion: 20.0.2
+  shared_configuration:
+    ## Use this parameter to specify the license for the CP4A deployment and
+    ## the possible values are: non-production and production and if not set, the license will
+    ## be defaulted to production.  This value could be different from the other licenses in the CR.
+    sc_deployment_license: "production"
+    ## All CP4A components must use/share the image_pull_secrets to pull images
+    image_pull_secrets: 
+    - admin.registrykey
+    ## All CP4A components must use/share the same docker image repository.  For example, if IBM Entitlement Registry is used, then
+    ## it should be "cp.stg.icr.io".  Otherwise, it will be a local docker registry.
+    sc_image_repository: cp.icr.io
+    ## The deployment type as selected by the user.  Possible values are: demo, enterprise.
+    sc_deployment_type: "enterprise"
+    sc_deployment_context: "CP4A"
+    ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS and other.  This is normally populated by the User script
+    ## based on input from the user.
+    sc_deployment_platform: "OCP"
+    ## CP4A patterns or capabilities to be deployed.  This CR represents the "contentanalyzer" pattern, which includes the following
+    ## mandatory components: ums, rr, icn (BAN/Navigator), bastudio
+    sc_deployment_patterns: contentanalyzer
+    ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
+    ## Content Analyzer does not have optional components to customize.
+    sc_optional_components:
+    root_ca_secret: "{{ meta.name }}-root-ca"
+    ## For OCP, this is used to create route, you should input a valid hostname in the required field.
+    sc_deployment_hostname_suffix: "<Required>"
+    ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
+    ## the external service to the component's truststore.
+    trusted_certificate_list: []
+    ## On OCP 3.x and 4.x, the User script will populate these three (3) parameters based on your input for "enterprise" deployment.
+    ## If you manually deploying without using the User script, then you would provide the different storage classes for the slow, medium
+    ## and fast storage parameters below.  If you only have 1 storage class defined, then you can use that 1 storage class for all 3 parameters.
+    storage_configuration:
+      sc_slow_file_storage_classname: "<Required>"
+      sc_medium_file_storage_classname: "<Required>"
+      sc_fast_file_storage_classname: "<Required>"
+
+    images:
+      keytool_job_container:
+        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer  
+        tag: 20.0.2
+      dbcompatibility_init_container:
+        repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer 
+        tag: 20.0.2
+      keytool_init_container:
+        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer 
+        tag: 20.0.2
+      umsregistration_initjob:
+        repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob 
+        tag: 20.0.2
+      pull_policy: IfNotPresent
+
+  ## The beginning section of LDAP configuration for CP4A
+  ldap_configuration:
+    ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory"
+    lc_selected_ldap_type: "Microsoft Active Directory"
+    ## The name of the LDAP server to connect
+    lc_ldap_server: "<Required>"
+    ## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc.
+    lc_ldap_port: "<Required>"
+    ## The LDAP bind secret for LDAP authentication.  The secret is expected to have ldapUsername and ldapPassword keys.  Refer to Knowledge Center for more info.
+    lc_bind_secret: ldap-bind-secret
+    ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    lc_ldap_base_dn: "<Required>"
+    ## Enable SSL/TLS for LDAP communication. Refer to Knowledge Center for more info.
+    lc_ldap_ssl_enabled: true
+    ## The name of the secret that contains the LDAP SSL/TLS certificate.
+    lc_ldap_ssl_secret_name: "<Required>"
+    ## The LDAP user name attribute.  One possible value is "*:cn" for TDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_user_name_attribute: "<Required>"
+    ## The LDAP user display name attribute. One possible value is "cn" for TDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_user_display_name_attr: "<Required>"
+    ## The LDAP group base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    lc_ldap_group_base_dn: "<Required>"
+    ## The LDAP group name attribute.  One possible value is "*:cn" for TDS and "*:cn" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_group_name_attribute: "*:cn"
+    ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
+    lc_ldap_group_display_name_attr: "cn"
+    ## The LDAP group membership search filter string.  One possible value is "(&(cn=%v)(|(objectclass=groupOfNames)(objectclass=groupOfUniqueNames)(objectclass=groupOfURLs))" for TDS
+    ## and "(&(cn=%v)(objectcategory=group))" for AD.
+    lc_ldap_group_membership_search_filter: "<Required>"
+    ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
+    lc_ldap_group_member_id_map: "<Required>"
+    ## The User script will uncomment the section needed based on user's input from User script.  If you are deploying without the User script,
+    ## uncomment the necessary section (depending if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
+    ad:
+      lc_ad_gc_host: "<Required>"
+      lc_ad_gc_port: "<Required>"
+      lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
+      lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
+      # tds:
+      #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
+      #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+
+  ## The beginning section of database configuration for CP4A
+  datasource_configuration:
+    ## The database configuration for ICN (Navigator) - aka BAN (Business Automation Navigator)
+    dc_icn_datasource:
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the
+      ## GCD and object store configuration above.
+      dc_database_type: "<Required>"
+      ## Provide the ICN datasource name.  The default value is "ECMClientDS".
+      dc_common_icn_datasource_name: "ECMClientDS"
+      database_servername: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521"
+      database_port: "<Required>"
+      ## Provide the name of the database for ICN (Navigator).  For example: "ICNDB"
+      database_name: "<Required>"
+      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      dc_oracle_icn_jdbc_url: "<Required>"
+      ######################################################################################
+      ## If the database type is "Db2HADR", then complete the rest of the parameters below.
+      ## Otherwise, remove or comment out the rest of the parameters below.
+      ######################################################################################
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+    ## The database configuration for UMS (User Management Service)
+    dc_ums_datasource:
+      ## Provide the database type from your infrastructure. The possible values are "db2" or "oracle".  This should be the same as the
+      ## other datasource configuration above. Db2 with HADR is automatically activated if dc_ums_oauth_alternate_hosts and dc_ums_oauth_alternate_ports
+      ## are set.
+      dc_ums_oauth_type: "<Required>"
+      ## Provide the database server name or IP address of the database server.
+      dc_ums_oauth_host: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521".
+      dc_ums_oauth_port: "<Required>"
+      ## Provide the name of the database for UMS.  For example: "UMSDB"
+      dc_ums_oauth_name: "<Required>"
+      dc_ums_oauth_schema: OAuthDBSchema
+      dc_ums_oauth_ssl: true
+      dc_ums_oauth_ssl_secret_name:
+      dc_ums_oauth_driverfiles:
+      dc_ums_oauth_alternate_hosts:
+      dc_ums_oauth_alternate_ports:
+      ## The database database configuration for teamserver
+      ## Provide the database type from your infrastructure. The possible values are "db2" or "oracle".  This should be the same as the
+      ## other datasource configuration above. Db2 with HADR is automatically activated if dc_ums_teamserver_alternate_hosts and dc_ums_teamserver_alternate_ports
+      ## are set.
+      dc_ums_teamserver_type: "<Required>"
+      dc_ums_teamserver_host: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521".
+      dc_ums_teamserver_port: "<Required>"
+      ## Provide the name of the database for UMS teamserver.  For example: "UMSDB"
+      dc_ums_teamserver_name: "<Required>"
+      dc_ums_teamserver_ssl: true
+      dc_ums_teamserver_ssl_secret_name:
+      dc_ums_teamserver_driverfiles:
+      dc_ums_teamserver_alternate_hosts:
+      dc_ums_teamserver_alternate_ports:
+    ## The database configuration for ACA (Content Analyzer)
+    dc_ca_datasource:
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR"
+      dc_database_type: "<Required>"
+      ## Provide  the hostname of the primary DB2 server in this variable and IF your DB2 hostname is not resolvable by DNS THEN  provide the corresponding IP address for the `database_IP` parameter below when `dc_database_type` is `db2HADR`.
+      database_servername: "<Required>"
+      ## Provide the name of the BASE database for ACA.  For example: "BASECA"
+      database_name: "<Required>"
+      ## Provide the names of the TENANT databases for ACA.
+      tenant_databases:
+      - "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000".
+      database_port: "<Required>"
+      ## Enable SSL/TLS for database communication. Refer to Knowledge Center for more info.
+      dc_database_ssl_enabled: false 
+      ######################################################################################
+      ## If the database type is "Db2HADR", then complete the rest of the parameters below.
+      ## Otherwise, remove or comment out the rest of the parameters below.
+      ######################################################################################
+
+      ## Provide the standby database server name and if your standby database server name cannot be resolvable by DNS, then provide the corresponding IP address for the `dc_hadr_standby_ip` parameter below.
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+      ## Provide the primary database server IP address if database_servername cannot be resolved by DNS.
+      database_ip: "<Required>"
+      ## Provide the standby database server IP address if dc_hadr_standby_servername cannot be resolved by DNS.
+      dc_hadr_standby_ip: "<Required>"
+  ############################################################################
+  ########   IBM Business Automation Content Analyzer configuration   ########
+  ############################################################################
+  ca_configuration:
+    global:
+      arch: "amd64"
+      # The database secret name created as part of the pre-req.  Default will be "aca-basedb" if blank.
+      db_secret:
+      image:
+        repository: "default-route-openshift-image-registry.apps.almanac.os.fyre.ibm.com/bacaop1"
+        tag: "20.0.2"
+        pull_policy: "IfNotPresent"
+      # The max of retrying for CA deployment verification task until all the pods are in Ready status. A delay of 20 seconds between each attempt.  Default will be 90 if blank
+      retries: "90"
+      # Timeout for Content Analyzer's ocr_extraction, classifyprocess, processing, updatefiledetail components.  Default will be 300 seconds if blank
+      celery:
+        process_timeout: 300
+      # ACA configuration PVC setting
+      configs:
+        claimname: "sp-config-pvc"
+        #Size of config PVC in GB
+        size:  
+      # ACA log PVC setting
+      logs:
+        claimname: "sp-log-pvc"
+        log_level: "info"
+        #Size of log PVC in GB
+        size: 
+      # ACA data PVC setting
+      data:
+        claimname: "sp-data-pvc"
+        #Size of Data PVC in GB
+        size:
+      # Redis configuration
+      redis:
+        resources:
+          limits:
+            memory: "640Mi"
+            cpu: "0.25"
+        replica_count: 3
+      # RabbitMQ configuration
+      rabbitmq:
+        resources:
+          limits:
+            memory: "640Mi"
+            cpu: "0.5"
+        replica_count: 3
+    # Caller_api configuration
+    caller_api:
+      replica_count: 2
+      resources:
+        limits:
+          memory: "700Mi"
+          cpu: "0.6"
+    # Backend configuration
+    spbackend:
+      # Allow to specify a specific port (nodePort) for backend.  The port number must be between 30000-32767.  A random port will be generated if blank.
+      port:
+      replica_count: 2
+      resources:
+        limits:
+          memory: "640Mi"
+          cpu: "0.6"
+    # Frontend configuration
+    spfrontend:
+      # Allow to specify a specific port (nodePort) for frontend.  The port number must be between 30000-32767.  A random port will be generated if blank.
+      port:
+      replica_count: 2
+      resources:
+        limits:
+          memory: "480Mi"
+          cpu: "0.6"
+      backend_host: ""
+      frontend_host: ""
+    # Postprocessing configuration
+    postprocessing:
+      process_timeout: 1500
+      replica_count: 2
+      max_unavailable_count: 1
+      resources:
+        limits:
+          memory: "480Mi"
+          cpu: "0.6"
+    # Pdfprocess configuration
+    pdfprocess:
+      process_timeout: 1500
+      replica_count: 2
+      max_unavailable_count: 1
+      resources:
+        limits:
+          memory: "960Mi"
+          cpu: "0.6"
+    # utfprocess configuration
+    utfprocess:
+      process_timeout: 1500
+      replica_count: 2
+      max_unavailable_count: 1
+      resources:
+        limits:
+          memory: "960Mi"
+          cpu: "1"
+    # setup configuration
+    setup:
+      process_timeout: 120
+      replica_count: 2
+      max_unavailable_count: 1
+      resources:
+        limits:
+          memory: "480Mi"
+          cpu: "0.6"
+    # ocrextraction configuration
+    ocrextraction:
+      replica_count: 2
+      max_unavailable_count: 1
+      resources:
+        limits:
+          memory: "1440Mi"
+          cpu: "1"
+    # classifyprocess configuration
+    classifyprocess:
+      replica_count: 2
+      max_unavailable_count: 1
+      resources:
+        limits:
+          memory: "960Mi"
+          cpu: "1"
+    # processingextraction configuration
+    processingextraction:
+      replica_count: 2
+      max_unavailable_count: 1
+      resources:
+        limits:
+          memory: "1440Mi"
+          cpu: "1"
+    # updatefiledetail configuration
+    updatefiledetail:
+      replica_count: 2
+      max_unavailable_count: 1
+      resources:
+        limits:
+          memory: "480Mi"
+          cpu: "0.6"
+
+#  ########################################################################
+#  ########   User Management Service configuration                ########
+#  ########################################################################
+#  ums_configuration:
+#    existing_claim_name:
+#    replica_count: 2
+#    service_type: Route
+#    hostname:  <your external UMS host name>
+#    port: 443
+#    images:
+#      ums:
+#        repository: cp.icr.io/cp/cp4a/ums/ums
+#        tag: 20.0.2
+#    admin_secret_name: ibm-dba-ums-secret
+#    ## optional for secure communication with UMS
+#    external_tls_secret_name: ibm-dba-ums-external-tls-secret
+#    ## optional for secure communication with UMS
+#    external_tls_ca_secret_name: ibm-dba-ums-external-tls-ca-secret
+#    ## optional for secure communication with UMS
+#    external_tls_teams_secret_name: ibm-dba-ums-external-tls-teams-secret
+#    ## optional for secure communication with UMS
+#    external_tls_scim_secret_name: ibm-dba-ums-external-tls-scim-secret
+#    ## optional for secure communication with UMS
+#    external_tls_sso_secret_name: ibm-dba-ums-external-tls-sso-secret
+#    oauth:
+#      ## optional: full DN of an LDAP group that is authorized to manage OIDC clients, in addition to primary admin from admin secret
+#      client_manager_group:
+#      ## optional: full DN of an LDAP group that is authorized to manage app_tokens, in addition to primary admin from admin secret
+#      token_manager_group:
+#      ## optional: lifetime of OAuth access_tokens. default is 7200s
+#      access_token_lifetime:
+#      ## optional: lifetime of app-tokens. default is 366d
+#      app_token_lifetime:
+#      ## optional: lifetime of app-passwords. default is 366d
+#      app_password_lifetime:
+#      ## optional: maximimum number of app-tokens or app-passwords per client. default is 100
+#      app_token_or_password_limit:
+#      ## optional: encoding / encryption when sotring client secrets in OAuth database. Default is xor for compatibility. Recommended value is PBKDF2WithHmacSHA512
+#      client_secret_encoding:
+#    resources:
+#      limits:
+#        cpu: 500m
+#        memory: 512Mi
+#      requests:
+#        cpu: 200m
+#        memory: 256Mi
+#    ## Horizontal Pod Autoscaler
+#    autoscaling:
+#      enabled: true
+#      min_replicas: 2
+#      max_replicas: 5
+#      target_average_utilization: 98
+#    use_custom_jdbc_drivers: false
+#    use_custom_binaries: false
+#    custom_secret_name:
+#    custom_xml:
+#    logs:
+#      console_format: json
+#      console_log_level: INFO
+#      console_source: message,trace,accessLog,ffdc,audit
+#      trace_format: ENHANCED
+#      trace_specification: "*=info"
+#
+#  ########################################################################
+#  ########   Resource Registry configuration                      ########
+#  ########################################################################
+#  resource_registry_configuration:
+#    admin_secret_name: resource-registry-admin-secret
+#    hostname: <your resource registry host name>
+#    port: <your resource registry host port>
+#    replica_size: 3
+#    images:
+#      pull_policy: IfNotPresent
+#      resource_registry:
+#        repository: cp.icr.io/cp/cp4a/aae/dba-etcd
+#        tag: 20.0.2
+#    tls:
+#      tls_secret: rr-tls-client-secret
+#    probe:
+#      liveness:
+#        initial_delay_seconds: 60
+#        period_seconds: 10
+#        timeout_seconds: 5
+#        success_threshold: 1
+#        failure_threshold: 3
+#      readiness:
+#        initial_delay_seconds: 10
+#        period_seconds: 10
+#        timeout_seconds: 5
+#        success_threshold: 1
+#        failure_threshold: 3
+#    resource:
+#      limits:
+#        cpu: "500m"
+#        memory: "512Mi"
+#      requests:
+#        cpu: "200m"
+#        memory: "256Mi"
+#    auto_backup:
+#      enable: false
+#      minimal_time_interval: 180
+#      pvc_name: rr-autobackup-pvc
+#      dynamic_provision:
+#        enable: false
+#        access_mode: ReadWriteMany
+#        size: 3Gi
+#        storage_class: nfs
+#
+#  #############################################################################
+#  ##                  IBM Business Automation Studio configuration           ##
+#  #############################################################################
+#  bastudio_configuration:
+#    #Adjust this one if you created the secret with name other than the default
+#    admin_secret_name: "{{ meta.name }}-bas-admin-secret"
+#    #Provide BAStudio default administrator ID
+#    admin_user:  "<Required>"
+#    replica_size: 1
+#    database:
+#      # The database type used. Only DB2, Oracle supported
+#      type: "db2"
+#      #DB2 - Provide the database server hostname for BAStudio use
+#      host: "<Required>"
+#      # DB2 - Provide the database name for BAStudio use
+#      # The database provided should be created by the BAStudio SQL script template.
+#      name: "<Required>"
+#      # DB2 - Provide the database server port for BAStudio use
+#      port: "<Required>"
+#      # DB2 - If you want to enable database automatic client reroute (ACR) for HADR, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
+#      alternative_host:
+#      alternative_port:
+#      # If you enabled SSL for Database please enable this one to set it to true
+#      ssl_enabled: false
+#      # Oracle - If you are using Oracle input the oracle database connection URL here
+#      oracle_url:
+#      cm_max_pool_size: '50'
+#      cm_min_pool_size: '2'
+#      # If you enabled the SSL for database. Please save the TLS certificate used by databased in a secret and put the name here
+#      certificate_secret_name:
+#      # If you are using custom JDBC (for example using Oracle or some special DB2 driver). Please set this one to true
+#      user_custom_jdbc_drivers: false
+#      # The PVC name which bind to the PV which have the custom JDBC driver files stored
+#      custom_jdbc_pvc:
+#      # The custom JDBC file set
+#      jdbc_driver_files: 'db2jcc4.jar db2jcc_license_cisuz.jar db2jcc_license_cu.jar'
+#    autoscaling:
+#      enabled: false
+#      minReplicas: 1
+#      maxReplicas: 3
+#      targetAverageUtilization: 80
+#    external_connection_timeout: 60s
+#    # Custom liberty XML configurations
+#    custom_xml:
+#    # The secret name which contain custom liberty configurations
+#    custom_secret_name:
+#    # The Business Automation Custom XML configurations
+#    bastudio_custom_xml:
+#    max_cached_objects_during_refactoring: 256
+#    logs:
+#      consoleFormat: 'json'
+#      consoleLogLevel: 'INFO'
+#      consoleSource: 'message,trace,accessLog,ffdc,audit'
+#      traceFormat: 'ENHANCED'
+#      traceSpecification: '*=info'
+#    tls:
+#      tlsTrustList: []
+#    liveness_probe:
+#      initialDelaySeconds: 300
+#      periodSeconds: 10
+#      timeoutSeconds: 5
+#      failureThreshold: 3
+#      successThreshold: 1
+#    readiness_probe:
+#      initialDelaySeconds: 240
+#      periodSeconds: 5
+#      timeoutSeconds: 5
+#      failureThreshold: 6
+#      successThreshold: 1
+#    resources:
+#      bastudio:
+#        limits:
+#          cpu: '4'
+#          memory: '3Gi'
+#        requests:
+#          cpu: '2'
+#          memory: '2Gi'
+#      init_process:
+#        limits:
+#          cpu: '500m'
+#          memory: '512Mi'
+#        requests:
+#          cpu: '200m'
+#          memory: '256Mi'
+#    csrf_referrer:
+#      whitelist: ''
+#    #-----------------------------------------------------------------------
+#    #  App Engine Playback Server (playback_server) can be only one instance. This is different from App Engine (where application_engine_configuration is a list and you can deploy multiple instances).
+#    #-----------------------------------------------------------------------
+#    playback_server:
+#      hostname: <your external App Engine host name>
+#      port: 443
+#      admin_secret_name: "<Required>"
+#      admin_user: "<Required>"
+#      external_tls_secret:
+#      external_connection_timeout:
+#      replica_size: 1
+#      ## optional when db2, must required when oracle
+#      user_custom_jdbc_drivers: false
+#      service_type: Route
+#      autoscaling:
+#        enabled: false
+#        max_replicas: 5
+#        min_replicas: 2
+#        target_cpu_utilization_percentage: 80
+#      database:
+#        host: "<Required>"
+#        name: "<Required>"
+#        port: "<Required>"
+#        ## If you setup DB2 HADR and want to use it, you need to configure alternative_host and alternative_port, or else, leave is as blank.
+#        alternative_host:
+#        alternative_port:
+#        ## Only DB2, Oracle is supported
+#        type: db2
+#        ## Required only when type is Oracle, both ssl and non-ssl. The format must be purely oracle descriptor like (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=<your database host/IP>)(PORT=<your database port>))(CONNECT_DATA=(SERVICE_NAME=<your oracle service name>)))
+#        oracle_url_without_wallet_directory:
+#        enable_ssl: false
+#        ## Required only when type is Oracle and enable_ssl is true. The format must be purely oracle descriptor. SSO wallet directory must be specified and fixed to (MY_WALLET_DIRECTORY=/shared/resources/oracle/wallet).
+#        oracle_url_with_wallet_directory:
+#        ## Required only when enable_ssl is true, both db2 and oracle db type
+#        db_cert_secret_name:
+#        ## Required only when type is oracle and enable_ssl is true.
+#        oracle_sso_wallet_secret_name:
+#        ## Optional. If it is empty, the DBASB is default when db2 and the AE_DATABASE_USER set in the admin_secret_name is default when oracle
+#        current_schema: DBASB
+#        initial_pool_size: 1
+#        max_pool_size: 10
+#        uv_thread_pool_size: 4
+#        max_lru_cache_size: 1000
+#        max_lru_cache_age: 600000
+#        dbcompatibility_max_retries: 30
+#        dbcompatibility_retry_interval: 10
+#        ## The persistent volume claim for custom JDBC Drivers if using the custom jdbc drivers is enabled
+#        custom_jdbc_pvc:
+#      log_level:
+#        node: info
+#        browser: 2
+#      content_security_policy:
+#        enable: false
+#        whitelist:
+#      env:
+#        max_size_lru_cache_rr: 1000
+#        server_env_type: development
+#        purge_stale_apps_interval: 86400000
+#        apps_threshold: 100
+#        stale_threshold: 172800000
+#      images:
+#        pull_policy: IfNotPresent
+#        db_job:
+#          repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
+#          tag: 20.0.2
+#        solution_server:
+#          repository: cp.icr.io/cp/cp4a/aae/solution-server
+#          tag: 20.0.2
+#      max_age:
+#        auth_cookie: "900000"
+#        csrf_cookie: "3600000"
+#        static_asset: "2592000"
+#        hsts_header: "2592000"
+#      probe:
+#        liveness:
+#          failure_threshold: 5
+#          initial_delay_seconds: 60
+#          period_seconds: 10
+#          success_threshold: 1
+#          timeout_seconds: 180
+#        readiness:
+#          failure_threshold: 5
+#          initial_delay_seconds: 10
+#          period_seconds: 10
+#          success_threshold: 1
+#          timeout_seconds: 180
+#      redis:
+#        host: <your external redis host/ip>
+#        port: <your external redis port>
+#        ttl: 1800
+#      resource_ae:
+#        limits:
+#          cpu: 2000m
+#          memory: 2Gi
+#        requests:
+#          cpu: 1000m
+#          memory: 1Gi
+#      resource_init:
+#        limits:
+#          cpu: 500m
+#          memory: 256Mi
+#        requests:
+#          cpu: 200m
+#          memory: 128Mi
+#      session:
+#        check_period: "3600000"
+#        duration: "1800000"
+#        max: "10000"
+#        resave: "false"
+#        rolling: "true"
+#        save_uninitialized: "false"
+#        use_external_store: "true"
+#      tls:
+#        tls_trust_list: []
+#      # If you want to make the replicate size more than 1 for this cluster. Then you must enable the shared storage
+#      share_storage:
+#        enabled: false
+#        # If you create the PV manually. Then please provide the PVC name bind here
+#        pvc_name:
+#        auto_provision:
+#          enabled: false
+#          # Required if you enabled the auto provision
+#          storage_class:
+#          size: 20Gi

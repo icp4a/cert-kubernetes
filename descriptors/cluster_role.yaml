@@ -16,35 +16,47 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.1
+    release: 20.0.2
 rules:
 - apiGroups:
   - security.openshift.io
-  attributeRestrictions: null
   resources:
   - securitycontextconstraints
   verbs:
+  - create
   - get
   - list
-  - update
-  - create
-  - watch
   - patch
+  - update
+  - watch
+  - use  
 - apiGroups:
   - ""
-  attributeRestrictions: null
   resources:
   - securitycontextconstraints
+  - namespaces
   verbs:
+  - create
   - get
   - list
-  - update
-  - create
-  - watch
   - patch
+  - update
+  - watch
 - apiGroups:
   - icp4a.ibm.com
   resources:
   - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - extensions
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - '*'
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
   verbs:
   - '*'

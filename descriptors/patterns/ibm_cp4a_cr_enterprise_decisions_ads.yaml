@@ -1,0 +1,67 @@
+###############################################################################
+##
+##Licensed Materials - Property of IBM
+##
+##(C) Copyright IBM Corp. 2020. All Rights Reserved.
+##
+##US Government Users Restricted Rights - Use, duplication or
+##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+##
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: icp4adeploy
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 20.0.2
+spec:
+  appVersion: 20.0.2
+
+  #################################################################################################################
+  ##  The contents of this template CR file reflect only the specific parameters and configuration 
+  ##  settings applicable to the represented ICP4A capability. 
+  ##   
+  ##  These values/configuration sections are to be used when manually assembling or updating the main 
+  ##  ICP4A CR that is being applied in order to install an ICP4A environment. 
+  ##  
+  ##  If you are in the process of preparing a new install of an ICP4A environment, 
+  ##  you should merge the required values and configuration sections from this file into the   
+  ##  starting point CR template: ibm_cp4a_cr_enterprise_foundation.yaml available in the
+  ##  same location as this template. 
+  ##  
+  ##  If you updating an existing ICP4A environment, you should merge the required values and configuration
+  ##  sections from this template in the main ICP4A CR file already applied in the environment.  
+  ##  
+  ######################################################################################################################
+  
+  shared_configuration:
+    
+
+    ## CP4A patterns or capabilities to be deployed. This CR represents the "decisions_ads" pattern that brings ADS Designer and ADS Runtime.
+    sc_deployment_patterns: decisions_ads
+
+    ## The optional components to be installed if listed here.
+    ## This is normally populated by the User script based on input from the user.
+    ## User can also manually specify the optional components to be deployed here.
+    ## ADS has two 'ads_designer' and 'ads_runtime' optional component.
+    ## If ads_designer is set, you also have to set the 'ads_configuration.decision_designer.enabled' flag to true to install it.
+    ## If ads_runtime is set, you also have to set the 'ads_configuration.decision_runtime.enabled' flag to true to install it.
+    sc_optional_components:
+
+ 
+
+  ########################################################################
+  ########   IBM Business Automation Decision Services            ########
+  ########################################################################
+  # You can further customize the ads_configuration section as explained in the knowledge center.
+  # See ibm_cp4a_cr_enterprise_FC_decisions_ads.yaml file in descriptors/patterns for all parameters and their default values.
+  ads_configuration:
+
+    decision_designer:
+      enabled: false
+
+    decision_runtime:
+      enabled: false

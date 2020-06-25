@@ -78,7 +78,10 @@ fi
 
 if [[ $LICENSE_ACCEPTED == "accept" ]]; then
     sed -e '/dba_license/{n;s/value:/value: accept/;}' ./upgradeOperator.yaml > ./upgradeOperatorsav.yaml ;  mv ./upgradeOperatorsav.yaml ./upgradeOperator.yaml
-
+    sed -e '/baw_license/{n;s/value:/value: accept/;}' ./upgradeOperator.yaml > ./upgradeOperatorsav.yaml ;  mv ./upgradeOperatorsav.yaml ./upgradeOperator.yaml
+    sed -e '/fncm_license/{n;s/value:/value: accept/;}' ./upgradeOperator.yaml > ./upgradeOperatorsav.yaml ;  mv ./upgradeOperatorsav.yaml ./upgradeOperator.yaml
+    sed -e '/ier_license/{n;s/value:/value: accept/;}' ./upgradeOperator.yaml > ./upgradeOperatorsav.yaml ;  mv ./upgradeOperatorsav.yaml ./upgradeOperator.yaml
+    
     if [ ! -z ${IMAGEREGISTRY} ]; then
     # Change the location of the image
     echo "Using the operator image name: $IMAGEREGISTRY"

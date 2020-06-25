@@ -1,0 +1,180 @@
+
+###############################################################################
+##
+##Licensed Materials - Property of IBM
+##
+##(C) Copyright IBM Corp. 2020. All Rights Reserved.
+##
+##US Government Users Restricted Rights - Use, duplication or
+##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+##
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: icp4adeploy
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 20.0.2
+spec:
+  appVersion: 20.0.2
+  ##########################################################################
+  ## This section contains the shared configuration for all CP4A components #
+  ##########################################################################
+  shared_configuration:
+    ## CP4A patterns or capabilities to be deployed.  This CR represents the "application" pattern (aka Business Automation Manager), which includes the following 
+    ## mandatory components: ban(Business Automation Navigator), ums (User Management Service), app_engine( Application Engine) and optional components: app_designer
+    sc_deployment_patterns: application
+
+    ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
+    ## The optional components are: app_designer
+    sc_optional_components: 
+
+  #####################################################################
+  ## IBM App Engine production configuration                          #
+  #####################################################################
+  application_engine_configuration:
+  ## The application_engine_configuration is a list, you can deploy multiple instances of AppEngine, you can assign different configurations for each instance.
+  ## For each instance, application_engine_configuration.name and application_engine_configuration.name.hostname must be assigned to different values.
+  - name: workspace
+    images:
+      pull_policy: IfNotPresent
+      solution_server:
+        repository: cp.icr.io/cp/cp4a/aae/solution-server
+        tag: 20.0.2
+      db_job:
+        repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
+        tag: 20.0.2
+    # If you inputed hostname and port here. They will be used always
+    # If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value)
+    # Then you don't need to fill the hostname and port. It will use shared_configuration.sc_deployment_hostname_suffix to generate one
+    # But if you haven't input suffix. And no hostname port assigned. A error will be reported in operator log during deploy
+    # For non pattern mode you must assign a valid hostname and port here
+    hostname: "{{ 'ae-workspace.' + shared_configuration.sc_deployment_hostname_suffix }}"
+    port: 443
+    # Inside the admin secret. There are two must fields
+    # AE_DATABASE_PWD: <Input your database password>
+    # AE_DATABASE_USER: <Input your database user>
+    admin_secret_name: <Required>
+    # The default admin user id for application engine
+    # The user ID should be bootstrap admin ID for IBM Business Automation Navigator. It is case sensitive. 
+    # The same ID should be a User Management Service (UMS) admin user also.
+    admin_user: <Required>
+    external_tls_secret:
+    external_connection_timeout: 90s
+    replica_size: 1
+    ## optional when db2, must required when oracle
+    user_custom_jdbc_drivers: false
+    service_type: Route
+    autoscaling:
+      enabled: false
+      max_replicas: 5
+      min_replicas: 2
+      target_cpu_utilization_percentage: 80
+    database:
+      # AE Database host name or IP when the database is DB2
+      host: <Required>
+      # AE Database name when the database is DB2
+      name: <Required>
+      # AE database port number when the database is DB2
+      port: <Required>
+      ## If you setup DB2 HADR and want to use it, you need to configure alternative_host and alternative_port, or else, leave is as blank.
+      alternative_host:
+      alternative_port:
+      ## Only DB2, Oracle is supported
+      type: db2
+      ## Required only when type is Oracle, both ssl and non-ssl. The format must be purely oracle descriptor like (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=<your database host/IP>)(PORT=<your database port>))(CONNECT_DATA=(SERVICE_NAME=<your oracle service name>)))
+      oracle_url_without_wallet_directory:
+      enable_ssl: false
+      ## Required only when type is Oracle and enable_ssl is true. The format must be purely oracle descriptor. SSO wallet directory must be specified and fixed to (MY_WALLET_DIRECTORY=/shared/resources/oracle/wallet). 
+      oracle_url_with_wallet_directory: 
+      ## Required only when enable_ssl is true, both db2 and oracle db type
+      db_cert_secret_name:
+      ## Required only when type is oracle and enable_ssl is true.
+      oracle_sso_wallet_secret_name: 
+      ## Optional. If it is empty, the DBASB is default when db2 and the AE_DATABASE_USER set in the admin_secret_name is default when oracle
+      current_schema: DBASB
+      initial_pool_size: 1
+      max_pool_size: 10
+      uv_thread_pool_size: 4
+      max_lru_cache_size: 1000
+      max_lru_cache_age: 600000
+      dbcompatibility_max_retries: 30
+      dbcompatibility_retry_interval: 10
+      ## The persistent volume claim for custom JDBC Drivers if using the custom jdbc drivers is enabled
+      custom_jdbc_pvc:
+    log_level:
+      node: info
+      browser: 2
+    content_security_policy:
+      enable: false
+      whitelist:
+    env:
+      max_size_lru_cache_rr: 1000
+      server_env_type: development
+      purge_stale_apps_interval: 86400000
+      apps_threshold: 100
+      stale_threshold: 172800000
+    max_age:
+      auth_cookie: "900000"
+      csrf_cookie: "3600000"
+      static_asset: "2592000"
+      hsts_header: "2592000"
+    probe:
+      liveness:
+        failure_threshold: 5
+        initial_delay_seconds: 60
+        period_seconds: 10
+        success_threshold: 1
+        timeout_seconds: 180
+      readiness:
+        failure_threshold: 5
+        initial_delay_seconds: 10
+        period_seconds: 10
+        success_threshold: 1
+        timeout_seconds: 180
+    # Redis settings <Required> only when you set session.use_external_store to true
+    redis:
+      # Your external redis host/ip
+      host: localhost
+      # Your external redis port
+      port: 6379
+      ttl: 1800
+    resource_ae:
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+      requests:
+        cpu: 300m
+        memory: 512Mi
+    resource_init:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    session:
+      check_period: "3600000"
+      duration: "1800000"
+      max: "10000"
+      resave: "false"
+      rolling: "true"
+      save_uninitialized: "false"
+      # By setting this option to true. The AE will use external Redis as session storage
+      # To support multiple AE pods
+      use_external_store: "false"
+    tls:
+      tls_trust_list: []
+    # If you want to make the replicate size more than 1 for this cluster. Then you must enable the shared storage
+    share_storage:
+      enabled: false
+      # If you create the PV manually. Then please provide the PVC name bind here
+      pvc_name:
+      auto_provision:
+        enabled: false
+        # Required if you enabled the auto provision
+        storage_class: 
+        size: 20Gi

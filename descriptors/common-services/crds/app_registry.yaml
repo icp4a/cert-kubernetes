@@ -1,0 +1,12 @@
+apiVersion: operators.coreos.com/v1
+kind: OperatorSource
+metadata:
+  name: opencloud-operators
+  namespace: openshift-marketplace
+spec:
+  authorizationToken: {}
+  displayName: IBMCS Operators
+  endpoint: https://quay.io/cnr
+  publisher: IBM
+  registryNamespace: opencloudio
+  type: appregistry

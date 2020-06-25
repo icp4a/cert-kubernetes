@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policy>
+	<aliases/>
+
+	<settings>
+		<mode>block</mode>
+		<error-handling>
+			<default-redirect-page>/error.jsp</default-redirect-page>
+			<block-status>500</block-status>
+		</error-handling>
+	</settings>
+
+	<virtual-patches>
+		<!-- Uncomment and update to add return host validation when enableOAuthProxy is set to true in web.xml
+		<virtual-patch id="oauth2-return" path=".*/jaxrs/oauth2/.*"
+			variable="request.parameters.state"
+			pattern="^(localhost|localhost:http)$"
+			message="Detected invalid OAuth2 return host.">
+		</virtual-patch>
+		-->
+	</virtual-patches>
+
+	<outbound-rules>
+		<add-header name="Cache-Control" value="no-cache, no-store" path=".*/|.*\.jsp|.*/jaxrs/.*|.*/api/.*"/>
+		<add-header name="Content-Security-Policy"
+					value="default-src 'self' blob: https:; font-src 'self' data: blob: https:; img-src 'self' data: blob: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; worker-src 'self' blob: https:; style-src 'self' 'unsafe-inline' https:; frame-ancestors 'self'"
+					path="/.*"/>
+		<add-header name="Referrer-Policy" value="same-origin" path="/.*"/>
+		<add-header name="Strict-Transport-Security" value="max-age=7776000; includeSubdomains" path="/.*"/>
+		<add-header name="X-Content-Type-Options" value="nosniff" path="/.*"/>
+		<add-header name="X-Frame-Options" value="sameorigin" path="/.*"/>
+		<add-header name="X-Permitted-Cross-Domain-Policies" value="none" path="/.*"/>
+		<add-header name="X-XSS-Protection" value="1; mode=block" path="/.*"/>
+	</outbound-rules>
+
+	<url-rules>
+		<!-- Deny HTTP methods other than GET, POST, PUT, DELETE, HEAD, and OPTIONS, and only allow POST for logon requests -->
+		<restrict-method deny="^((?!GET|POST|PUT|DELETE|HEAD|OPTIONS).)*$"/>
+		<restrict-method deny="^(GET|PUT|DELETE|HEAD|OPTIONS)$" path=".*/jaxrs(/|/.+/)logon$"/>
+	</url-rules>
+</policy>

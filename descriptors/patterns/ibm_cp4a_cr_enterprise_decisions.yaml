@@ -1,0 +1,90 @@
+
+###############################################################################
+##
+##Licensed Materials - Property of IBM
+##
+##(C) Copyright IBM Corp. 2020. All Rights Reserved.
+##
+##US Government Users Restricted Rights - Use, duplication or
+##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+##
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: icp4adeploy
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 20.0.2
+spec:
+  appVersion: 20.0.2
+
+  #################################################################################################################
+  ##  The contents of this template CR file reflect only the specific parameters and configuration 
+  ##  settings applicable to the represented ICP4A capability. 
+  ##   
+  ##  These values/configuration sections are to be used when manually assembling or updating the main 
+  ##  ICP4A CR that is being applied in order to install an ICP4A environment. 
+  ##  
+  ##  If you are in the process of preparing a new install of an ICP4A environment, 
+  ##  you should merge the required values and configuration sections from this file into the   
+  ##  starting point CR template: ibm_cp4a_cr_enterprise_foundation.yaml available in the
+  ##  same location as this template. 
+  ##  
+  ##  If you updating an existing ICP4A environment, you should merge the required values and configuration
+  ##  sections from this template in the main ICP4A CR file already applied in the environment.  
+  ##  
+  ######################################################################################################################
+
+  shared_configuration:
+
+    ## CP4A patterns or capabilities to be deployed. This CR represents Operational Decsision Manage "decisions" pattern
+    ## that brings Decision Center, Rule Execution Server and Decision Runner, based on the user specification in the 
+    ## sc_optional_components specification
+    sc_deployment_patterns: decisions
+
+    ## The optional components to be installed if listed here.
+    ## This is normally populated by the deploy script based on input from the user.
+    ## User can also manually specify the optional components to be deployed here.
+    ## This pattern has has 3: decisionCenter, decisionRunner, and decisionServerRuntime selectable components, where 
+    ## decisionRuntime represent the Rule Execution Server. 
+    ## If decisionCenter is set, you also have to set the 'odm_configuration.decisionCenter.enabled' flag to true to install it.
+    ## If decisionRunner is set, you also have to set the 'odm_configuration.decisionRunner.enabled' flag to true to install it.
+    ## If decisionServerRuntime is set, you also have to set the 'odm_configuration.decisionRuntime.enabled' flag to true to install it.
+    sc_optional_components:
+
+  ## The beginning section of database configuration for CP4A
+  datasource_configuration:
+    dc_odm_datasource:
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "oracle".
+      dc_database_type: "db2"
+      ## Provide the database server name or IP address of the database server.
+      database_servername: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521"
+      dc_common_database_port: "<Required>"
+      ## Provide the name of the database for ODM.  For example: "ODMDB"
+      dc_common_database_name: "<Required>"
+      ## The name of the secret that contains the credentials to connect to the database.
+      dc_common_database_instance_secret: "<Required>"
+
+
+  ########################################################################
+  ########      IBM Operational Decision Manager configuration    ########
+  ########################################################################
+  odm_configuration:
+    # To enable ODM Runtime.
+    decisionServerRuntime:
+      enabled: true
+    # To enable the Authoring part
+    decisionRunner:
+      enabled: true
+    decisionCenter:
+      enabled: true
+
+
+    # For UMS
+    # customization:
+      ## Customizes user authentication and management by realizing mapping between UMS Roles and LDAP groups.
+    #  authSecretRef: "<Required>"

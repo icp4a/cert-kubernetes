@@ -37,8 +37,8 @@ spec:
     ad:
       lc_ad_gc_host: ""
       lc_ad_gc_port: ""
-      lc_user_filter: "(&(cn=%v)(objectclass=person))"
-      lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+      lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
+      lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
     tds:
       lc_user_filter: "(&(cn=%v)(objectclass=person))"
       lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
@@ -64,8 +64,8 @@ spec:
     ad:
       lc_ad_gc_host: ""
       lc_ad_gc_port: ""
-      lc_user_filter: "(&(cn=%v)(objectclass=person))"
-      lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+      lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
+      lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
     tds:
       lc_user_filter: "(&(cn=%v)(objectclass=person))"
       lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
@@ -161,6 +161,9 @@ spec:
       arch:
         amd64: "3 - Most preferred"
       replica_count: 1
+    # Set UID within value of openshift.io/sa.scc.uid-range in namespace's specs, 
+    # If comment it, will use UID auto assigned by OCP
+    # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cpe
         tag: ga-554-p8cpe-if001
@@ -222,6 +225,9 @@ spec:
       arch:
         amd64: "3 - Most preferred"
       replica_count: 1
+    # Set UID within value of openshift.io/sa.scc.uid-range in namespace's specs, 
+    # If comment it, will use UID auto assigned by OCP
+    # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/css
         tag: ga-554-p8css-if001
@@ -270,6 +276,9 @@ spec:
       arch:
         amd64: "3 - Most preferred"
       replica_count: 1
+    # Set UID within value of openshift.io/sa.scc.uid-range in namespace's specs, 
+    # If comment it, will use UID auto assigned by OCP
+    # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cmis
         tag: ga-304-cmis-if010
@@ -345,6 +354,9 @@ spec:
       arch:
         amd64: "3 - Most preferred"
       replica_count: 1
+    # Set UID within value of openshift.io/sa.scc.uid-range in namespace's specs, 
+    # If comment it, will use UID auto assigned by OCP
+    # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/graphql
         tag: ga-554-p8cgql-if001
@@ -400,6 +412,9 @@ spec:
       arch:
         amd64: "3 - Most preferred"
       replica_count: 1
+    # Set UID within value of openshift.io/sa.scc.uid-range in namespace's specs, 
+    # If comment it, will use UID auto assigned by OCP
+    # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/extshare
         tag: ga-307-es-if002
@@ -459,6 +474,9 @@ spec:
       arch:
         amd64: "3 - Most preferred"
       replica_count: 1
+    # Set UID within value of openshift.io/sa.scc.uid-range in namespace's specs, 
+    # If comment it, will use UID auto assigned by OCP
+    # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
         tag: ga-307-tm-if002
@@ -526,6 +544,9 @@ spec:
     arch:
       amd64: "3 - Most preferred" 
     replica_count: 1
+    # Set UID within value of openshift.io/sa.scc.uid-range in namespace's specs, 
+    # If comment it, will use UID auto assigned by OCP
+    # run_as_user: 1000110001
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
       tag: ga-307-icn-if002
