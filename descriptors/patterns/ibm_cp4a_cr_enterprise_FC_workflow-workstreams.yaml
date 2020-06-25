@@ -1,0 +1,1759 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2020. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: workflow-workstreams
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 20.0.2
+spec:
+  appVersion: 20.0.2
+  ##########################################################################
+  ## This section contains the shared configuration for all CP4A components #
+  ##########################################################################
+  shared_configuration:
+
+    ## Business Automation Workflow (BAW) license and possible values are: user, non-production, and production.
+    ## This value could be different from the other licenses in the CR.
+    sc_deployment_baw_license: "<Required>"
+
+    ## FileNet Content Manager (FNCM) license and possible values are: user, non-production, and production.
+    ## This value could be different from the other licenses in the CR.
+    sc_deployment_fncm_license: "<Required>"
+
+    ## Use this parameter to specify the license for the CP4A deployment and
+    ## the possible values are: non-production and production and if not set, the license will
+    ## be defaulted to production.  This value could be different from the other licenses in the CR.
+    sc_deployment_license: "<Required>"
+
+    ## All CP4A components must use/share the image_pull_secrets to pull images
+    image_pull_secrets:
+    - admin.registrykey
+
+    ## All CP4A components must use/share the same docker image repository.  For example, if IBM Entitled Registry is used, then
+    ## it should be "cp.icr.io".  Otherwise, it will be a local docker registry.
+    sc_image_repository: cp.icr.io
+
+    ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is required
+    sc_run_as_user:
+
+    images:
+      keytool_job_container:
+        repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer  
+        tag: 20.0.2
+      dbcompatibility_init_container:
+        repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer 
+        tag: 20.0.2
+      keytool_init_container:
+        repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer 
+        tag: 20.0.2
+      umsregistration_initjob:
+        repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob 
+        tag: 20.0.2
+
+      ## All CP4A components should use this pull_policy as the default, but it can override by each component
+      pull_policy: IfNotPresent
+
+    ## All CP4A components must use/share the root_ca_secret in order for integration
+    root_ca_secret: icp4a-root-ca
+
+    ## CP4A patterns or capabilities to be deployed.  This CR represents the "workflow-workstreams" pattern, which includes the following
+    ## mandatory components: ban(Business Automation Navigator), ums (User Management Service), rr (Resource registry), app_engine( Application Engine) and optional components: bai
+    sc_deployment_patterns: workflow-workstreams
+
+    ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
+    ## The optional components are: bai
+    sc_optional_components: bai
+
+    ## The deployment type as selected by the user.  Possible values are: demo, enterprise
+    sc_deployment_type: enterprise
+
+    ## The platform to be deployed specified by the user.  Possible values are: OCP and other.  This is normally populated by the User script
+    ## based on input from the user.
+    sc_deployment_platform:
+
+    ## For OCP, this is used to create route, you should input a valid hostname in the required field.
+    sc_deployment_hostname_suffix: "{{ meta.name }}.<Required>"
+
+    ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
+    ## the external service to the component's truststore.
+    trusted_certificate_list: []
+
+    ## Shared encryption key secret name that is used for Workstream Services and Process Federation Server integration.
+    encryption_key_secret: icp4a-shared-encryption-key
+
+    ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
+    ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
+    ## is defined in the CR, then that configuration will take precedence overriding this parameter.
+    sc_content_initialization: false
+    ## Enable/disable the ECM (FNCM) / BAN verification (e.g., creation of test folder, creation of test document,
+    ## execution of CBR search, and creation of Navigator demo repository and desktop).  If the "verify_configuration"
+    ## section is defined in the CR, then that configuration will take precedence overriding this parameter.
+    sc_content_verification: false
+
+    ## On OCP 3.x and 4.x, the User script will populate these three (3) parameters based on your input for "enterprise" deployment.
+    ## If you manually deploying without using the User script, then you would provide the different storage classes for the slow, medium
+    ## and fast storage parameters below.  If you only have 1 storage class defined, then you can use that 1 storage class for all 3 parameters.
+    storage_configuration:
+      sc_slow_file_storage_classname: "<Required>"
+      sc_medium_file_storage_classname: "<Required>"
+      sc_fast_file_storage_classname: "<Required>"
+
+    # Kafka client configuration for IBM Business Automation Insights and other ICP4A products.
+    #
+    # The customization of the following 4 parameters is "<Required>" only if you have
+    # specificed "bai" as part of the sc_optional_components to specify that Business Automation
+    # Insights must be installed.
+    #
+    # Otherwise, if Business Automation Insights is not being installed, there is no need to configure
+    # these parameters and they can be kept empty.
+    ##############################################################################################
+    kafka_configuration:
+      # Comma-separated list of hosts:port for connection to the Kafka cluster.
+      # This field is mandatory for any Kafka configuration.
+      bootstrap_servers: "<Required>"
+      # Value for the Kafka security.protocol property
+      # Valid values: PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL. Default: PLAINTEXT.
+      security_protocol:
+      # Value for the Kafka sasl.mechanism property
+      # Valid values: PLAIN, SCRAM-SHA-512. Default: PLAIN.
+      sasl_mechanism:
+      # If the Kafka server requires authentication or uses SSL communications, the value of this field
+      # must provide the name of a secret that holds the following keys as base64-encoded strings:
+      # kafka-username: Kafka username; leave empty if no authentication
+      # kafka-password: Kafka password; leave empty if no authentication
+      # kafka-server-certificate: server certificate for SSL communications; leave empty if SSL protocol is not used
+      connection_secret_name:
+
+  ## The beginning section of LDAP configuration for CP4A
+  ldap_configuration:
+    ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory"
+    lc_selected_ldap_type: "<Required>"
+
+    ## The name of the LDAP server to connect
+    lc_ldap_server: "<Required>"
+
+    ## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc.
+    lc_ldap_port: "<Required>"
+
+    ## The LDAP bind secret for LDAP authentication.  The secret is expected to have ldapUsername and ldapPassword keys.  Refer to Knowledge Center for more info.
+    lc_bind_secret: ldap-bind-secret
+
+    ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    lc_ldap_base_dn: "<Required>"
+
+    ## Enable SSL/TLS for LDAP communication. Refer to Knowledge Center for more info.
+    lc_ldap_ssl_enabled: true
+
+    ## The name of the secret that contains the LDAP SSL/TLS certificate.
+    lc_ldap_ssl_secret_name: "<Required>"
+
+    ## The LDAP user name attribute.  One possible value is "*:cn" for TDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_user_name_attribute: "<Required>"
+
+    ## The LDAP user display name attribute. One possible value is "cn" for TDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_user_display_name_attr: "<Required>"
+
+    ## The LDAP group base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    lc_ldap_group_base_dn: "<Required>"
+
+    ## The LDAP group name attribute.  One possible value is "*:cn" for TDS and "*:cn" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_group_name_attribute: "*:cn"
+
+    ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
+    lc_ldap_group_display_name_attr: "cn"
+
+    ## The LDAP group membership search filter string.  One possible value is "(&(cn=%v)(|(objectclass=groupOfNames)(objectclass=groupOfUniqueNames)(objectclass=groupOfURLs))" for TDS
+    ## and "(&(cn=%v)(objectcategory=group))" for AD.
+    lc_ldap_group_membership_search_filter: "<Required>"
+
+    ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
+    lc_ldap_group_member_id_map: "<Required>"
+
+    ## The User script will uncomment the section needed based on user's input from User script.  If you are deploying without the User script,
+    ## uncomment the necessary section (depending if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
+    # ad:
+    #   lc_ad_gc_host: "<Required>"
+    #   lc_ad_gc_port: "<Required>"
+    #   lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
+    #   lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
+    # tds:
+    #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
+    #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+
+  ## The beginning section of database configuration for CP4A
+  datasource_configuration:
+    ## The database configuration for the GCD datasource for CPE
+    dc_gcd_datasource:
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".
+      dc_database_type: "<Required>"
+      ## The GCD non-XA datasource name.  The default value is "FNGCDDS".
+      dc_common_gcd_datasource_name: "FNGCDDS"
+      ## The GCD XA datasource name. The default value is "FNGCDDSXA".
+      dc_common_gcd_xa_datasource_name: "FNGCDDSXA"
+      ## Provide the database server name or IP address of the database server.
+      database_servername: "<Required>"
+      ## Provide the name of the database for the GCD for CPE.  For example: "GCDDB"
+      database_name: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521"
+      database_port: "<Required>"
+      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      dc_oracle_gcd_jdbc_url: "<Required>"
+
+      ## If the database type is Db2 HADR, then complete the rest of the parameters below.
+      ## Provide the database server name or IP address of the standby database server.
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+
+    ## The database configuration for the document object store (DOCS) datasource for CPE
+    dc_os_datasources:
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the
+      ## GCD configuration above.
+    - dc_database_type: "<Required>"
+      ## The DOCS non-XA datasource name.  The default value is "FNDSDOCS".
+      dc_common_os_datasource_name: "FNDSDOCS"
+      ## The DOCS XA datasource name.  The default value is "FNDSDOCSXA".
+      dc_common_os_xa_datasource_name: "FNDSDOCSXA"
+      ## Provide the database server name or IP address of the database server.  This should be the same as the
+      ## GCD configuration above.
+      database_servername: "<Required>"
+      ## Provide the name of the database for the object store 1 for CPE.  For example: "OS1DB"
+      database_name: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521"
+      database_port: "<Required>"
+      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      dc_oracle_os_jdbc_url: "<Required>"
+      ######################################################################################
+      ## If the database type is "Db2HADR", then complete the rest of the parameters below.
+      ## Otherwise, remove or comment out the rest of the parameters below.
+      ######################################################################################
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+    ## The database configuration for the target object store (TOS) datasource for CPE
+    - dc_database_type: "<Required>"
+      ## The TOS non-XA datasource name.  The default value is "FNDSTOS".
+      dc_common_os_datasource_name: "FNDSTOS"
+      ## The TOS XA datasource name.  The default value is "FNDSTOSXA".
+      dc_common_os_xa_datasource_name: "FNDSTOSXA"
+      ## Provide the database server name or IP address of the database server.  This should be the same as the
+      ## GCD configuration above.
+      database_servername: "<Required>"
+      ## Provide the name of the database for the object store 1 for CPE.  For example: "OS1DB"
+      database_name: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521"
+      database_port: "<Required>"
+      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      dc_oracle_os_jdbc_url: "<Required>"
+      ######################################################################################
+      ## If the database type is "Db2HADR", then complete the rest of the parameters below.
+      ## Otherwise, remove or comment out the rest of the parameters below.
+      ######################################################################################
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+    ## The database configuration for the design object store (DOS) datasource for CPE
+    - dc_database_type: "<Required>"
+      ## The DOS non-XA datasource name.  The default value is "FNDSDOS".
+      dc_common_os_datasource_name: "FNDSDOS"
+      ## The DOS XA datasource name.  The default value is "FNDSDOSXA".
+      dc_common_os_xa_datasource_name: "FNDSDOSXA"
+      ## Provide the database server name or IP address of the database server.  This should be the same as the
+      ## GCD configuration above.
+      database_servername: "<Required>"
+      ## Provide the name of the database for the object store 1 for CPE.  For example: "OS1DB"
+      database_name: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521"
+      database_port: "<Required>"
+      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      dc_oracle_os_jdbc_url: "<Required>"
+      ######################################################################################
+      ## If the database type is "Db2HADR", then complete the rest of the parameters below.
+      ## Otherwise, remove or comment out the rest of the parameters below.
+      ######################################################################################
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+
+    ## The database configuration for ICN (Navigator) - aka BAN (Business Automation Navigator)
+    dc_icn_datasource:
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the
+      ## GCD and object store configuration above.
+      dc_database_type: "<Required>"
+      ## Provide the ICN datasource name.  The default value is "ECMClientDS".
+      dc_common_icn_datasource_name: "ECMClientDS"
+      database_servername: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521"
+      database_port: "<Required>"
+      ## Provide the name of the database for ICN (Navigator).  For example: "ICNDB"
+      database_name: "<Required>"
+      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      dc_oracle_icn_jdbc_url: "<Required>"
+      ######################################################################################
+      ## If the database type is "Db2HADR", then complete the rest of the parameters below.
+      ## Otherwise, remove or comment out the rest of the parameters below.
+      ######################################################################################
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+
+    ## The database configuration for UMS (User Management Service)
+    dc_ums_datasource:
+      ## Provide the database type from your infrastructure. The possible values are "db2" or "oracle".  This should be the same as the
+      ## other datasource configuration above. Db2 with HADR is automatically activated if dc_ums_oauth_alternate_hosts and dc_ums_oauth_alternate_ports
+      ## are set.
+      dc_ums_oauth_type: "<Required>"
+      ## Provide the database server name or IP address of the database server.
+      dc_ums_oauth_host: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521".
+      dc_ums_oauth_port: "<Required>"
+      ## Provide the name of the database for UMS.  For example: "UMSDB"
+      dc_ums_oauth_name: "<Required>"
+      dc_ums_oauth_schema: OAuthDBSchema
+      dc_ums_oauth_ssl: true
+      dc_ums_oauth_ssl_secret_name: "<Required>"
+      dc_ums_oauth_driverfiles:
+      dc_ums_oauth_alternate_hosts:
+      dc_ums_oauth_alternate_ports:
+
+      ## The database database configuration for teamserver
+      ## Provide the database type from your infrastructure. The possible values are "db2" or "oracle".  This should be the same as the
+      ## other datasource configuration above. Db2 with HADR is automatically activated if dc_ums_teamserver_alternate_hosts and dc_ums_teamserver_alternate_ports
+      ## are set.
+      dc_ums_teamserver_type: "<Required>"
+      dc_ums_teamserver_host: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521".
+      dc_ums_teamserver_port: "<Required>"
+      ## Provide the name of the database for UMS teamserver.  For example: "UMSDB"
+      dc_ums_teamserver_name: "<Required>"
+      dc_ums_teamserver_ssl: true
+      dc_ums_teamserver_ssl_secret_name: "<Required>"
+      dc_ums_teamserver_driverfiles:
+      dc_ums_teamserver_alternate_hosts:
+      dc_ums_teamserver_alternate_ports:
+
+
+  ########################################################################
+  ########   IBM Business Automation Workflow configuration     ########
+  ########################################################################
+  baw_configuration:
+  ## The baw_configuration is a list. You can deploy multiple instances of Workflow server and assign different configurations for each instance.
+  ## For each instance, baw_configuration.name and baw_configuration.name.hostname must have different values.
+  - name: instance1
+    ## If config the Process Portal for a federated environment
+    host_federated_portal: true
+    ## Workflow server service type.
+    service_type: "Route"
+    ## Workflow server hostname
+    hostname: ""
+    ## Workflow server port
+    port: 443
+    ## Workflow server nodeport
+    nodeport: 30026
+    ## Workflow server environment type. The possible value are "Development" or "Test" or "Staging" or "Production"
+    env_type: "Production"
+    ## Workflow server capability
+    capabilities: "workflow,workstreams"
+    ## Workflow server replica count
+    replicas: 1
+    ## Provide Workflow server default administrator ID
+    admin_user: "<Required>"
+    ## The name of Workflow server admin secret
+    admin_secret_name: "baw-admin-secret"
+    ## Specify whether to use the built-in monitoring capability
+    monitor_enabled: false
+
+    # For scenario that customer has implemented their own Portal. E,g https://portal.mycompany.com
+    customized_portal_endpoint: ""
+
+    federated_portal:
+      ## Content security policy additional origins for federate on premise BAW systems. E.g ["https://on-prem-baw1","https://on-prem-baw2"]
+      content_security_policy_additional_origins: []
+    external_connection_timeout: ""
+
+    tls:
+      ## Workflow server TLS secret that contains tls.key and tls.crt.
+      tls_secret_name: ibm-baw-tls
+      ## Workflow server TLS trust list.
+      tls_trust_list:
+    image:
+      ## Workflow image repository URL
+      repository: cp.icr.io/cp/cp4a/baw/workflow-server
+      ## Image tag for Workflow server container
+      tag: 20.0.2
+      ## Pull policy for Workflow container
+      pullPolicy: IfNotPresent
+    pfs_bpd_database_init_job:
+      ## Database initialization image repository URL for Process Federation Server
+      repository: cp.icr.io/cp/cp4a/baw/pfs-bpd-database-init-prod
+      ## Image tag for database initialization for Process Federation Server
+      tag: 20.0.2
+      ## Pull policy for Process Federation Server database initialization image
+      pullPolicy: IfNotPresent
+    upgrade_job:
+      ## Workflow server database handling image repository URL
+      repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
+      ## Image tag for Workflow server database handling
+      tag: 20.0.2
+      ## Pull policy for Workflow server database handling
+      pullPolicy: IfNotPresent
+    bas_auto_import_job:
+      ## BAS toolkit init image repository URL
+      repository: cp.icr.io/cp/cp4a/baw/toolkit-installer
+      ## Image tag for BAS toolkit init image
+      tag: 20.0.2
+      ## Pull policy for BAS toolkit init image
+      pullPolicy: IfNotPresent
+    ibm_workplace_job:
+      ## IBM Workplace deployment job image repository URL
+      repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
+      ## Image tag for IBM Workplace deployment job image
+      tag: 20.0.2
+      ## Pull policy for IBM Workplace deployment job image
+      pull_policy: IfNotPresent
+
+    ## The database configuration for Workflow server
+    database:
+      ## Whether to enable Secure Sockets Layer (SSL) support for the Workflow server database connection
+      ssl: false
+      ## Secret name for storing the database TLS certificate when an SSL connection is enabled
+      sslsecretname: ""
+      ## Workflow server database type
+      type: "DB2"
+      ## Workflow server database server name.
+      server_name: "<Required>"
+      ## Workflow server database name
+      database_name: "<Required>"
+      ## Workflow server database port. For DB2, the default value is "50000"
+      port: "<Required>"
+      ## Workflow server database secret name
+      secret_name: "<Required>"
+      ## Workflow server database connect pool maximum number of physical connections
+      cm_max_pool_size: 200
+      dbcheck:
+        # The maximum waiting time (seconds) to check the database intialization status
+        wait_time: 900
+        # The interval time (seconds) to check.
+        interval_time: 15
+      hadr:
+        ## Database standby host for high availability disaster recovery (HADR)
+        ## To enable database HADR, configure both standby host and port
+        standbydb_host:
+        ## Database standby port for HADR
+        standbydb_port:
+        ## Retry interval for HADR
+        retryinterval:
+        ## Maximum retries for HADR
+        maxretries:
+
+    ## The configurations for content integration
+    content_integration:
+      init_job_image:
+        ## Image name for content integration container.
+        repository: cp.icr.io/cp/cp4a/baw/iaws-ps-content-integration
+        ## Image tag for content integration container
+        tag: 20.0.2
+        ## Pull policy for content integration container.
+        pull_policy: IfNotPresent
+      ## Domain name for content integration
+      domain_name: "<Required>"
+      ## Object Store name for content integration
+      object_store_name: "<Required>"
+      ## Admin secret for content integration
+      cpe_admin_secret: ""
+
+    ## The configuration for case
+    case:
+      init_job_image:
+        ## Image name for CASE init job container.
+        repository: cp.icr.io/cp/cp4a/baw/workflow-server-case-initialization
+        ## Image tag for CASE init job container.
+        tag: 20.0.2
+        ## Pull policy for CASE init job container.
+        pull_policy: IfNotPresent
+
+      ## Domain name for CASE
+      domain_name: "P8DOMAIN"
+      ## Design Object Store name of CASE
+      object_store_name_dos: "DOS"
+      ## Target Object Store name of CASE
+      object_store_name_tos: "TOS"
+      ## Connection point name for Target Object Store
+      connection_point_name_tos: "cpe_conn_tos"
+
+      ## PVC name for CASE network shared directory
+      network_shared_directory_pvc: "<Required>"
+      ## The custom package names if need to install custom package, the value format like "package1.zip, package2,zip"
+      custom_package_names: ""
+      ## The custom extension names if need to install custom extension, the value format like "extension1.zip, extension2,zip"
+      custom_extension_names: ""
+      ## The event emitter settings if you want to enable Case Event Emitter
+      event_emitter:
+        date_sql:
+        logical_unique_id:
+        solution_list:
+
+    ## Workflow center configuration
+    workflow_center:
+      ## The URL of workflow center
+      url: ""
+      # The secret name of workflow center that contains username and password
+      secret_name: ""
+      # The hearbeat interval(seconds) to connect to workflow center
+      heartbeat_interval: 30
+
+    ## Application engine configuration, because application engine is an array,
+    ## when there is only one Application engine deployed along with this CR, below three parameters are not required.
+    ## when there is more then one application engine deployed, below three parameters are required.
+    appengine:
+      ## App Engine hostname
+      hostname: ""
+      ## App Engine port
+      port: "443"
+      ## App Engine admin secret name
+      admin_secret_name: ""
+
+    ## The configuration for Resource Registry if you want to use external Resource Registry
+    resource_registry:
+      ## Resource Registry host name
+      hostname: ""
+      ## Resource Registry port
+      port: 443
+      ## Resource Registry administrative secret
+      admin_secret_name: ""
+
+    ## The configuration for Java Messaging Service(JMS)
+    jms:
+      image:
+        ## Image name for Java Messaging Service container
+        repository: cp.icr.io/cp/cp4a/baw/jms
+        ## Image tag for Java Messaging Service container
+        tag: 20.0.2
+        ## Pull policy for Java Messaging Service container
+        pull_policy: IfNotPresent
+      tls:
+        ## TLS secret name for Java Message Service (JMS)
+        tls_secret_name: ibm-jms-tls-secret
+      resources:
+        limits:
+          ## Memory limit for JMS configuration
+          memory: "2Gi"
+          ## CPU limit for JMS configuration
+          cpu: "1000m"
+        requests:
+          ## Requested amount of memory for JMS configuration
+          memory: "512Mi"
+          ## Requested amount of CPU for JMS configuration
+          cpu: "200m"
+      storage:
+        ## Whether to enable persistent storage for JMS
+        persistent: true
+        ## Size for JMS persistent storage
+        size: "1Gi"
+        ## Whether to enable dynamic provisioning for JMS persistent storage
+        use_dynamic_provisioning: true
+        ## Access modes for JMS persistent storage
+        access_modes:
+        - ReadWriteOnce
+        ## Storage class name for JMS persistent storage
+        storage_class: "{{ shared_configuration.storage_configuration.sc_fast_file_storage_classname }}"
+
+    ## Resource configuration
+    resources:
+      limits:
+        ## CPU limit for Workflow server.
+        cpu: 2
+        ## Memory limit for Workflow server
+        memory: 2096Mi
+      requests:
+        ## Requested amount of CPU for Workflow server
+        cpu: "500m"
+        ## Requested amount of memory for Workflow server.
+        memory: 1048Mi
+
+    ## liveness and readiness probes configuration
+    probe:
+      ws:
+        liveness_probe:
+          ## Number of seconds after the Workflow server container starts before the liveness probe is initiated
+          initial_delay_seconds: 300
+        readinessProbe:
+          ## Number of seconds after the Workflow server container starts before the readiness probe is initiated
+          initial_delay_seconds: 240
+
+    ## log trace configuration
+    logs:
+      ## Format for printing logs on the console
+      console_format: "json"
+      ## Log level for printing logs on the console
+      console_log_level: "INFO"
+      ## Source of the logs for printing on the console
+      console_source: "message,trace,accessLog,ffdc,audit"
+      ## Format for printing message logs on the console
+      message_format: "basic"
+      ## Format for printing trace logs on the console
+      trace_format: "ENHANCED"
+      ## Specification for printing trace logs
+      trace_specification: "*=info"
+
+    ## storage configuration
+    storage:
+      ## Set to true to use dynamic storage provisioner. If set to false, then need set existing_pvc_for_logstore and existing_pvc_for_dumpstore
+      use_dynamic_provisioning: true
+      ## The persistent volume claim for logs
+      existing_pvc_for_logstore: ""
+      ## The minimum size of the persistent volume used mounted as log store
+      size_for_logstore: "10Gi"
+      ## The persistent volume claim for dump files
+      existing_pvc_for_dumpstore: ""
+      ## The minimum size of the persistent volume used mounted as dump store
+      size_for_dumpstore: "10Gi"
+
+    ## JVM options separated with space, for example: -Dtest1=test -Dtest2=test2
+    jvm_customize_options:
+
+    ##  Workflow server custom plain XML snippet
+    ##  liberty_custom_xml: |+
+    ##    <server>
+    ##      <!-- custom propeties here -->
+    ##    </server>
+    liberty_custom_xml:
+
+    ##  Workflow server custom XML secret name that contains custom configuraiton in Liberty server.xml
+    custom_xml_secret_name:
+
+    ##  Workflow server Lombardi custom XML secret name that contains custom configuraiton in 100Custom.xml
+    lombardi_custom_xml_secret_name:
+
+    ##  IBM Business Automation Insights integration configuration
+    business_event:
+      enable: false
+      enable_task_record: true
+      enable_task_api: false
+      subscription:
+      - {'app_name': '*','version': '*','component_type': '*','component_name': '*','element_type': '*','element_name': '*','nature': '*'}
+
+  #####################################################################
+  ## IBM App Engine production configuration                         ##
+  #####################################################################
+  application_engine_configuration:
+  ## The application_engine_configuration is a list, you can deploy multiple instances of AppEngine, you can assign different configurations for each instance.
+  ## For each instance, application_engine_configuration.name and application_engine_configuration.name.hostname must be assigned to different values.
+  - name: instance1
+    # If you inputed hostname and port here. They will be used always
+    # If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value)
+    # Then you don't need to fill the hostname and port. It will use shared_configuration.sc_deployment_hostname_suffix to generate one
+    # But if you haven't input suffix. And no hostname port assigned. A error will be reported in operator log during deploy
+    # For non pattern mode you must assign a valid hostname and port here
+    hostname: <Required>
+    port: 443
+    # Inside the admin secret. There are two must fields
+    # AE_DATABASE_PWD: <Input your database password>
+    # AE_DATABASE_USER: <Input your database user>
+    admin_secret_name: <Required>
+    # The default admin user id for application engine
+    # The user ID should be bootstrap admin ID for IBM Business Automation Navigator. It is case sensitive.
+    # The same ID should be a User Management Service (UMS) admin user also.
+    admin_user: <Required>
+    external_tls_secret:
+    external_connection_timeout: 90s
+    replica_size: 1
+    ## optional when db2, must required when oracle
+    user_custom_jdbc_drivers: false
+    service_type: Route
+    autoscaling:
+      enabled: false
+      max_replicas: 5
+      min_replicas: 2
+      target_cpu_utilization_percentage: 80
+    database:
+      # AE Database host name or IP when the database is DB2
+      host: <Required>
+      # AE Database name when the database is DB2
+      name: <Required>
+      # AE database port number when the database is DB2
+      port: <Required>
+      ## If you setup DB2 HADR and want to use it, you need to configure alternative_host and alternative_port, or else, leave is as blank.
+      alternative_host:
+      alternative_port:
+      ## Only DB2, Oracle is supported
+      type: db2
+      ## Required only when type is Oracle, both ssl and non-ssl. The format must be purely oracle descriptor like (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=<your database host/IP>)(PORT=<your database port>))(CONNECT_DATA=(SERVICE_NAME=<your oracle service name>)))
+      oracle_url_without_wallet_directory:
+      enable_ssl: false
+      ## Required only when type is Oracle and enable_ssl is true. The format must be purely oracle descriptor. SSO wallet directory must be specified and fixed to (MY_WALLET_DIRECTORY=/shared/resources/oracle/wallet).
+      oracle_url_with_wallet_directory:
+      ## Required only when enable_ssl is true, both db2 and oracle db type
+      db_cert_secret_name:
+      ## Required only when type is oracle and enable_ssl is true.
+      oracle_sso_wallet_secret_name:
+      ## Optional. If it is empty, the DBASB is default when db2 and the AE_DATABASE_USER set in the admin_secret_name is default when oracle
+      current_schema: DBASB
+      initial_pool_size: 1
+      max_pool_size: 10
+      uv_thread_pool_size: 4
+      max_lru_cache_size: 1000
+      max_lru_cache_age: 600000
+      dbcompatibility_max_retries: 30
+      dbcompatibility_retry_interval: 10
+      ## The persistent volume claim for custom JDBC Drivers if using the custom jdbc drivers is enabled
+      custom_jdbc_pvc:
+    log_level:
+      node: info
+      browser: 2
+    content_security_policy:
+      enable: false
+      whitelist:
+    env:
+      max_size_lru_cache_rr: 1000
+      server_env_type: development
+      purge_stale_apps_interval: 86400000
+      apps_threshold: 100
+      stale_threshold: 172800000
+    images:
+      pull_policy: IfNotPresent
+      db_job:
+        repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
+        tag: 20.0.2
+      solution_server:
+        repository: cp.icr.io/cp/cp4a/aae/solution-server
+        tag: 20.0.2
+    max_age:
+      auth_cookie: "900000"
+      csrf_cookie: "3600000"
+      static_asset: "2592000"
+      hsts_header: "2592000"
+    probe:
+      liveness:
+        failure_threshold: 5
+        initial_delay_seconds: 60
+        period_seconds: 10
+        success_threshold: 1
+        timeout_seconds: 180
+      readiness:
+        failure_threshold: 5
+        initial_delay_seconds: 10
+        period_seconds: 10
+        success_threshold: 1
+        timeout_seconds: 180
+    # Redis settings <Required> only when you set session.use_external_store to true
+    redis:
+      # Your external redis host/ip
+      host: localhost
+      # Your external redis port
+      port: 6379
+      ttl: 1800
+    resource_ae:
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+      requests:
+        cpu: 300m
+        memory: 512Mi
+    resource_init:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    session:
+      check_period: "3600000"
+      duration: "1800000"
+      max: "10000"
+      resave: "false"
+      rolling: "true"
+      save_uninitialized: "false"
+      # By setting this option to true. The AE will use external Redis as session storage
+      # To support multiple AE pods
+      use_external_store: "false"
+    tls:
+      tls_trust_list: []
+    # If you want to make the replicate size more than 1 for this cluster. Then you must enable the shared storage
+    share_storage:
+      enabled: false
+      # If you create the PV manually. Then please provide the PVC name bind here
+      pvc_name:
+      auto_provision:
+        enabled: false
+        # Required if you enabled the auto provision
+        storage_class:
+        size: 20Gi
+
+  ########################################################################
+  ########   IBM FileNet Content Manager configuration            ########
+  ########################################################################
+  ecm_configuration:
+
+    ## FNCM secret that contains GCD DB user name and password, Object Store DB user name and password,
+    ## LDAP user and password, CPE username and password, keystore password, and LTPA passs, etc.
+    fncm_secret_name: ibm-fncm-secret
+
+    ####################################
+    ## Start of configuration for CPE ##
+    ####################################
+    cpe:
+      ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
+      arch:
+        amd64: "3 - Most preferred"
+
+      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## it is recommended to have 2 or more.
+      replica_count: 1
+
+      ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+      image:
+        ## The default repository is the IBM Entitled Registry.
+        repository: cp.icr.io/cp/cp4a/fncm/cpe
+        tag: ga-555-p8cpe
+
+        ## This will override the image pull policy in the shared_configuration.
+        pull_policy: IfNotPresent
+
+      ## Logging for workloads.  This is the default setting.
+      log:
+        format: json
+
+      ## The initial resources (CPU, memory) requests and limits.  If more resources are needed,
+      ## make the changes here to meet your requirement.
+      resources:
+        requests:
+          cpu: 500m
+          memory: 512Mi
+        limits:
+          cpu: 1
+          memory: 3072Mi
+
+      ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
+      ## this settings to meet your requirement.
+      auto_scaling:
+        enabled: true
+        max_replicas: 3
+        min_replicas: 1
+        ## This is the default cpu percentage before autoscaling occurs.
+        target_cpu_utilization_percentage: 80
+
+      ## Below are the default CPE Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
+      cpe_production_setting:
+        time_zone: Etc/UTC
+
+        ## The initial use of available memory.
+        jvm_initial_heap_percentage: 18
+        ## The maximum percentage of available memory to use.
+        jvm_max_heap_percentage: 33
+
+        ## Use this "jvm_customize_options" parameter to specify JVM arguments using comma separation. For example, if you want to set the following JVM arguments:
+        ##  -Dmy.test.jvm.arg1=123
+        ##  -Dmy.test.jvm.arg2=abc
+        ##  -XX:+SomeJVMSettings
+        ##  -XshowSettings:vm"
+        ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
+        jvm_customize_options:
+
+        ## Default JNDI name for GCD for non-XA data source
+        gcd_jndi_name: FNGCDDS
+        ## Default JNDI name for GCD for XA data source
+        gcd_jndixa_name: FNGCDDSXA
+        license_model: FNCM.PVUNonProd
+        license: accept
+
+      ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
+      monitor_enabled: true
+      ## Enable/disable logging where logs can be sent to Elasticsearch.
+      logging_enabled: true
+
+      ## By default, the plugin for Graphite is enable to emit container metrics.
+      collectd_enable_plugin_write_graphite: true
+
+      ## Persistent Volume Claims for CPE.  If the storage_configuration in the shared_configuration is configured,
+      ## the Operator will create the PVC using the names below.
+      datavolume:
+        existing_pvc_for_cpe_cfgstore: "cpe-cfgstore"
+        existing_pvc_for_cpe_logstore: "cpe-logstore"
+        existing_pvc_for_cpe_filestore: "cpe-filestore"
+        existing_pvc_for_cpe_icmrulestore: "cpe-icmrulesstore"
+        existing_pvc_for_cpe_textextstore: "cpe-textextstore"
+        existing_pvc_for_cpe_bootstrapstore: "cpe-bootstrapstore"
+        existing_pvc_for_cpe_fnlogstore: "cpe-fnlogstore"
+
+      ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
+      probe:
+        readiness:
+          initial_delay_seconds: 120
+          period_seconds: 5
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          initial_delay_seconds: 600
+          period_seconds: 5
+          timeout_seconds: 5
+          failure_threshold: 6
+
+      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
+      image_pull_secrets:
+        name: "admin.registrykey"
+
+    #####################################
+    ## Start of configuration for CMIS ##
+    #####################################
+    cmis:
+      ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
+      arch:
+        amd64: "3 - Most preferred"
+
+      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## it is recommended to have 2 or more.
+      replica_count: 1
+
+      ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+      image:
+        ## The default repository is the IBM Entitled Registry.
+        repository: cp.icr.io/cp/cp4a/fncm/cmis
+        tag: ga-305-cmis
+
+        ## This will override the image pull policy in the shared_configuration.
+        pull_policy: IfNotPresent
+
+      ## Logging for workloads.  This is the default setting.
+      log:
+        format: json
+
+      ## The initial resources (CPU, memory) requests and limits.  If more resources are needed,
+      ## make the changes here to meet your requirement.
+      resources:
+        requests:
+          cpu: 500m
+          memory: 256Mi
+        limits:
+          cpu: 1
+          memory: 1536Mi
+
+      ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
+      ## this settings to meet your requirement.
+      auto_scaling:
+        enabled: true
+        max_replicas: 3
+        min_replicas: 1
+        ## This is the default cpu percentage before autoscaling occurs.
+        target_cpu_utilization_percentage: 80
+
+      ## Below are the default CMIS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
+      cmis_production_setting:
+        ## By default, this parameter is set by the Operator using the CPE service endpoint (e.g., "http://{{ meta.name }}-cpe-svc:9080/wsi/FNCEWS40MTOM")
+        cpe_url:
+
+        time_zone: Etc/UTC
+
+        ## The initial use of available memory.
+        jvm_initial_heap_percentage: 40
+        ## The maximum percentage of available memory to use.
+        jvm_max_heap_percentage: 66
+
+        ## Use this "jvm_customize_options" parameter to specify JVM arguments using comma separation. For example, if you want to set the following JVM arguments:
+        ##  -Dmy.test.jvm.arg1=123
+        ##  -Dmy.test.jvm.arg2=abc
+        ##  -XX:+SomeJVMSettings
+        ##  -XshowSettings:vm"
+        ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
+        jvm_customize_options:
+
+        checkout_copycontent: true
+        default_maxitems: 25
+        cvl_cache: true
+        secure_metadata_cache: false
+        filter_hidden_properties: true
+        querytime_limit: 180
+        resumable_queries_forrest: true
+        escape_unsafe_string_characters: false
+        max_soap_size: 180
+        print_pull_stacktrace: false
+        folder_first_search: false
+        ignore_root_documents: false
+        supporting_type_mutability: false
+        license: accept
+
+      ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
+      monitor_enabled: true
+      ## Enable/disable logging where logs can be sent to Elasticsearch.
+      logging_enabled: true
+
+      ## By default, the plugin for Graphite is enable to emit container metrics.
+      collectd_enable_plugin_write_graphite: true
+
+      ## Persistent Volume Claims for CMIS.  If the storage_configuration in the shared_configuration is configured,
+      ## the Operator will create the PVC using the names below.
+      datavolume:
+        existing_pvc_for_cmis_cfgstore: "cmis-cfgstore"
+        existing_pvc_for_cmis_logstore: "cmis-logstore"
+
+      ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
+      probe:
+        readiness:
+          initial_delay_seconds: 90
+          period_seconds: 5
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          initial_delay_seconds: 180
+          period_seconds: 5
+          timeout_seconds: 5
+          failure_threshold: 6
+      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
+      image_pull_secrets:
+        name: "admin.registrykey"
+
+  ########################################################################
+  ########   IBM Business Automation Navigator configuration      ########
+  ########################################################################
+  navigator_configuration:
+
+    ## Navigator secret that contains user credentials for LDAP and database
+    ban_secret_name: ibm-ban-secret
+
+    ## The architecture of the cluster.  This is the default for Linux and should not be changed.
+    arch:
+      amd64: "3 - Most preferred"
+
+    ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+    ## it is recommended to have 2 or more.
+    replica_count: 1
+
+    ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+    image:
+
+      ## The default repository is the IBM Entitled Registry
+      repository: cp.icr.io/cp/cp4a/ban/navigator-sso
+      tag: ga-308-icn
+
+      ## This will override the image pull policy in the shared_configuration.
+      pull_policy: IfNotPresent
+
+    ## Logging for workloads.  This is the default setting.
+    log:
+      format: json
+
+    ## The initial resources (CPU, memory) requests and limits.  If more resources are needed,
+    ## make the changes here to meet your requirement.
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 1
+        memory: 1536Mi
+
+    ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
+    ## this settings to meet your requirement.
+    auto_scaling:
+      enabled: true
+      max_replicas: 3
+      min_replicas: 1
+      ## This is the default cpu percentage before autoscaling occurs.
+      target_cpu_utilization_percentage: 80
+
+    ## Below are the default ICN Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
+    icn_production_setting:
+      timezone: Etc/UTC
+      jvm_initial_heap_percentage: 40
+      jvm_max_heap_percentage: 66
+      jvm_customize_options:
+      icn_db_type: db2
+      icn_jndids_name: ECMClientDS
+      icn_schema: ICNDB
+      icn_table_space: ICNDB
+      allow_remote_plugins_via_http: false
+
+    ## Default settings for monitoring
+    monitor_enabled: false
+    ## Default settings for logging
+    logging_enabled: false
+
+    ## Persistent Volume Claims for ICN.  If the storage_configuration in the shared_configuration is configured,
+    ## the Operator will create the PVC using the names below.
+    datavolume:
+      existing_pvc_for_icn_cfgstore: "icn-cfgstore"
+      existing_pvc_for_icn_logstore: "icn-logstore"
+      existing_pvc_for_icn_pluginstore: "icn-pluginstore"
+      existing_pvc_for_icnvw_cachestore: "icn-vw-cachestore"
+      existing_pvc_for_icnvw_logstore: "icn-vw-logstore"
+      existing_pvc_for_icn_aspera: "icn-asperastore"
+
+    ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
+    probe:
+      readiness:
+        initial_delay_seconds: 120
+        period_seconds: 5
+        timeout_seconds: 10
+        failure_threshold: 6
+      liveness:
+        initial_delay_seconds: 600
+        period_seconds: 5
+        timeout_seconds: 5
+        failure_threshold: 6
+
+    ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
+    image_pull_secrets:
+      name: "admin.registrykey"
+
+  ########################################################################
+  ########   IBM User and Group Management Service configuration  ########
+  ########################################################################
+  ums_configuration:
+    existing_claim_name:
+    replica_count: 2
+    service_type: Route
+    # your external UMS host name, only required if there is no sc_deployment_hostname_suffix given
+    hostname:
+    port: 443
+    images:
+      ums:
+        repository: cp.icr.io/cp/cp4a/ums/ums
+        tag: 20.0.2
+    admin_secret_name: ibm-dba-ums-secret
+    ## optional for secure communication with UMS
+    external_tls_secret_name:
+    ## optional for secure communication with UMS
+    external_tls_ca_secret_name:
+    ## optional for secure communication with UMS
+    external_tls_teams_secret_name:
+    ## optional for secure communication with UMS
+    external_tls_scim_secret_name:
+    ## optional for secure communication with UMS
+    external_tls_sso_secret_name:
+    oauth:
+      ## optional: full DN of an LDAP group that is authorized to manage OIDC clients, in addition to primary admin from admin secret
+      client_manager_group:
+      ## optional: full DN of an LDAP group that is authorized to manage app_tokens, in addition to primary admin from admin secret
+      token_manager_group:
+      ## optional: lifetime of OAuth access_tokens. default is 7200s
+      access_token_lifetime:
+      ## optional: lifetime of app-tokens. default is 366d
+      app_token_lifetime:
+      ## optional: lifetime of app-passwords. default is 366d
+      app_password_lifetime:
+      ## optional: maximimum number of app-tokens or app-passwords per client. default is 100
+      app_token_or_password_limit:
+      ## optional: encoding / encryption when sotring client secrets in OAuth database. Default is xor for compatibility. Recommended value is PBKDF2WithHmacSHA512
+      client_secret_encoding:
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 200m
+        memory: 256Mi
+    ## Horizontal Pod Autoscaler
+    autoscaling:
+      enabled: true
+      min_replicas: 2
+      max_replicas: 5
+      target_average_utilization: 98
+    use_custom_jdbc_drivers: false
+    use_custom_binaries: false
+    custom_secret_name:
+    custom_xml:
+    logs:
+      console_format: json
+      console_log_level: INFO
+      console_source: message,trace,accessLog,ffdc,audit
+      trace_format: ENHANCED
+      trace_specification: "*=info"
+
+  ########################################################################
+  ########   Resource Registry configuration                      ########
+  ########################################################################
+  resource_registry_configuration:
+    images:
+      pull_policy: IfNotPresent
+      resource_registry:
+        repository: cp.icr.io/cp/cp4a/baw/dba-etcd
+        tag: 20.0.2
+    admin_secret_name: resource-registry-admin-secret
+    replica_size: 3
+    probe:
+      liveness:
+        initial_delay_seconds: 60
+        period_seconds: 10
+        timeout_seconds: 5
+        success_threshold: 1
+        failure_threshold: 3
+      readiness:
+        initial_delay_seconds: 10
+        period_seconds: 10
+        timeout_seconds: 5
+        success_threshold: 1
+        failure_threshold: 3
+    resource:
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+    auto_backup:
+      enable: true
+      minimal_time_interval: 300
+      pvc_name: "{{ meta.name }}-dba-rr-pvc"
+      dynamic_provision:
+        enable: true
+        size: 3Gi
+        storage_class: "{{ shared_configuration.storage_configuration.sc_fast_file_storage_classname }}"
+
+  ########################################################################
+  ########   IBM Process Federation Server configuration          ########
+  ########################################################################
+  pfs_configuration:
+    ## Process Federation Server hostname
+    hostname: ""
+    ## Process Federation Server port
+    port: 443
+    ## How the HTTPS endpoint service should be published. Possible values are ClusterIP, NodePort, Route
+    service_type: Route
+
+    ## If use the external elasticsearch server, provide the following configuration
+    external_elasticsearch:
+      ## The endpoint of external elasticearch, such as: https://<external_es_host>:<external_es_port>
+      endpoint: ""
+      ## The external elasticsearch administrative secret
+      admin_secret_name: ""
+
+    image:
+      ## Process Federation Server image
+      repository: cp.icr.io/cp/cp4a/baw/pfs-prod
+      ## Process Federation Server image tag
+      tag: "20.0.2"
+      ## Process Federation Server image pull policy
+      pull_policy: IfNotPresent
+
+    ## Number of initial Process Federation Server pods
+    replicas: 1
+    ## Service account name for Process Federation Server pod
+    service_account:
+    ## Whether Kubernetes can (soft) or must not (hard) deploy Process Federation Server pods onto the same node. Possible values are "soft" and "hard".
+    anti_affinity: hard
+    
+    ## Whether to enable default security roles  and possible values are: true and false
+    enable_default_security_roles: true
+    ## Name of the secret containing the Process Federation Server administration passwords, such as ltpaPassword, oidcClientPassword, sslKeyPassword
+    admin_secret_name: ibm-pfs-admin-secret
+    ## Name of the secret containing the files that will be mounted in the /config/configDropins/overrides folder
+    config_dropins_overrides_secret: ""
+    ## Name of the secret containing the files that will be mounted in the /config/resources/security folder
+    resources_security_secret: ""
+    ## Name of the custom libraries containing the files that will be mounted in the /config/resources/libs folder
+    custom_libs_pvc: ""
+    ## Whether to enable notification server and possible values are: true and false
+    enable_notification_server: true
+    ## The secret that contains the Transport Layer Security (TLS) key and certificate for external https visits. You can enter the secret name here.
+    ## If you do not want to use the customized external TLS certificate, leave it empty.
+    external_tls_secret:
+    ## Certificate authority (CA) used to sign the external TLS secret. It is stored in the secret with the TLS key and certificate. You can enter the secret name here.
+    ## If you don't want to use the customized CA to sign the external TLS certificate, leave it empty.
+    external_tls_ca_secret:
+
+    ## Specify whether to use the built-in monitoring capability
+    monitor_enabled: false
+
+    tls:
+      ## Existing TLS secret containing tls.key and tls.crt
+      tls_secret_name:
+      ## Existing TLS trust secret list
+      tls_trust_list:
+
+    resources:
+      requests:
+        ## Requested amount of CPU for PFS configuration
+        cpu: 500m
+        ## Requested amount of memory for PFS configuration
+        memory: 512Mi
+      limits:
+        ## CPU limit for PFS configuration
+        cpu: 2
+        ## Memory limit for PFS configuration
+        memory: 4Gi
+
+    liveness_probe:
+      ## Number of seconds after Process Federation Server container starts before the liveness probe is initiated
+      initial_delay_seconds: 300
+    readiness_probe:
+      ## Number of seconds after Process Federation Server container starts before the readiness probe is initiated
+      initial_delay_seconds: 240
+
+    saved_searches:
+      ## Name of the Elasticsearch index used to store saved searches
+      index_name: ibmpfssavedsearches
+      ## Number of shards of the Elasticsearch index used to store saved searches
+      index_number_of_shards: 3
+      ## Number of replicas (pods) of the Elasticsearch index used to store saved searches
+      index_number_of_replicas: 1
+      ## Batch size used when retrieving saved searches
+      index_batch_size: 100
+      ## Amount of time before considering an update lock as expired. Valid values are numbers with a trailing 'm' or 's' for minutes or seconds
+      update_lock_expiration: 5m
+      ## Amount of time before considering a unique constraint as expired. Valid values are numbers with a trailing 'm' or 's' for minutes or seconds
+      unique_constraint_expiration: 5m
+
+    security:
+      sso:
+        ## The ssoDomainNames property of the <webAppSecurity> tag
+        domain_name:
+        ## The ssoCookieName property of the <webAppSecurity> tag
+        cookie_name: "ltpatoken2"
+        ltpa:
+          ## The keysFileName property of the <ltpa> tag
+          filename: "ltpa.keys"
+          ## The expiration property of the <ltpa> tag
+          expiration: "120m"
+          ## The monitorInterval property of the <ltpa> tag
+          monitor_interval: "60s"
+      ## The sslProtocol property of the <ssl> tag used as default SSL config
+      ssl_protocol: SSL
+
+    executor:
+      ## Value of the maxThreads property of the <executor> tag
+      max_threads: "80"
+      ## Value of the coreThreads property of the <executor> tag
+      core_threads: "40"
+
+    rest:
+      ## Value of the userGroupCheckInterval property of the <ibmPfs_restConfig> tag
+      user_group_check_interval: "300s"
+      ## Value of the systemStatusCheckInterval property of the <ibmPfs_restConfig> tag
+      system_status_check_interval: "60s"
+      ## Value of the bdFieldsCheckInterval property of the <ibmPfs_restConfig> tag
+      bd_fields_check_interval: "300s"
+
+    custom_env_variables:
+      ## Names of the custom environment variables defined in the secret referenced in pfs.customEnvVariables.secret
+      names:
+      # - name: MY_CUSTOM_ENVIRONMENT_VARIABLE
+      ## Secret holding custom environment variables
+      secret:
+
+    ## log trace configuration
+    logs:
+      ## Format for printing logs on the console
+      console_format: "json"
+      ## Log level for printing logs on the console
+      console_log_level: "INFO"
+      ## Source of the logs for printing on the console
+      console_source: "message,trace,accessLog,ffdc,audit"
+      ## Format for printing message logs on the console
+      message_format: "basic"
+      ## Format for printing trace logs on the console
+      trace_format: "ENHANCED"
+      ## Specification for printing trace logs
+      trace_specification: "*=info"
+      storage:
+        ## Use Dynamic Provisioning for PFS Logs Data Storage
+        use_dynamic_provisioning: true
+        ## The minimum size of the persistent volume used mounted as PFS Liberty server /logs folder
+        size: 5Gi
+        ## Storage class of the persistent volume used mounted as PFS Liberty server /logs folder
+        storage_class: "{{ shared_configuration.storage_configuration.sc_medium_file_storage_classname }}"
+
+    ## When PFS is deployed in a environment that includes the Resource Registry ,
+    ## the following additional parameters can be used to configure the integration between PFS and the Resource Registry
+    dba_resource_registry:
+      ## Time to live of the lease that creates the PFS entry in the DBA Resource Registry, in seconds.
+      lease_ttl: 120
+      ## The interval at which to check that PFS is running, in seconds.
+      pfs_check_interval: 10
+      ## The number of seconds after which PFS will be considered as not running if no connection can be perfomed
+      pfs_connect_timeout: 10
+      ## The number of seconds after which PFS will be considered as not running if has not yet responded
+      pfs_response_timeout: 30
+      ## The key under which PFS should be registered in the DBA Service Registry when running
+      pfs_registration_key: /dba/appresources/IBM_PFS/PFS_SYSTEM
+      resources:
+        limits:
+          ## Memory limit for PFS and RR integration pod
+          memory: '512Mi'
+          ## CPU limit for PFS and RR integration pod
+          cpu: '500m'
+        requests:
+          ## Requested amount of memory for PFS and RR integration pod
+          memory: '512Mi'
+          ## Requested amount of CPU for PFS and RR integration pod
+          cpu: '200m'
+
+  ########################################################################
+  ########   Embedded Elasticsearch configuration                 ########
+  ########################################################################
+  elasticsearch_configuration:
+    es_image:
+      ## Elasticsearch image
+      repository: cp.icr.io/cp/cp4a/baw/pfs-elasticsearch-prod
+      ## Elasticsearch image tag
+      tag: "20.0.2"
+      ## Elasticsearch image pull policy
+      pull_policy: IfNotPresent
+    es_init_image:
+      ## The image used by the privileged init container to configure Elasticsearch system settings.
+      ## This value is only relevant if elasticsearch_configuration.privileged is set to true
+      repository: cp.icr.io/cp/cp4a/baw/pfs-init-prod
+      ## The image tag for Elasticsearch init container
+      tag: "20.0.2"
+      ## The pull policy for Elasticsearch init container
+      pull_policy: IfNotPresent
+    es_nginx_image:
+      ## The name of the Nginx docker image to be used by Elasticsearch pods
+      repository: cp.icr.io/cp/cp4a/baw/pfs-nginx-prod
+      ## The image tag of the Nginx docker image to be used by Elasticsearch pods
+      tag: "20.0.2"
+      ## The pull policy for the Nginx docker image to be used by Elasticsearch pods
+      pull_policy: IfNotPresent
+
+    ## Number of initial Elasticsearch pods
+    replicas: 1
+    ## How the HTTPS endpoint service should be published. The possible values are ClusterIP and NodePort
+    service_type: ClusterIP
+    ## The port to which the Elasticsearch server HTTPS endpoint will be exposed externally.
+    ## This parameter is relevant only if elasticsearch_configuration.service_type is set to NodePort
+    external_port:
+    ## The elasticsearch admin secret that contains the username, password and .htpasswd.
+    ## If not provided, the defualt admin secret named "{{ meta.name }}-elasticsearch-admin-secret" is used.
+    admin_secret_name:
+    ## Whether Kubernetes "may" (soft) or "must not" (hard) deploy Elasticsearch pods onto the same node
+    ## The possible values are "soft" and "hard"
+    anti_affinity: hard
+    ## Name of a service account to use.
+    ## If elasticsearch_configuration.privileged is set to true, then this service account must allow running privileged containers.
+    ## If not provided, the default service account named "{{ meta.name }}-elasticsearch-service-account" is used.
+    service_account:
+    ## When set to true, a privileged container will be created to execute the appropriate sysctl commands so that the node running the pods matches the elasticsearch requirements.
+    privileged: true
+    ## Initial delay for liveness and readiness probes of Elasticsearch pods
+    probe_initial_delay: 90
+    ## The JVM heap size to allocate to each Elasticsearch pod
+    heap_size: "1024m"
+    ## Specify whether to use the built-in monitoring capability
+    monitor_enabled: false
+
+    resources:
+      limits:
+        ## Memory limit for Elasticsearch configuration
+        memory: "2Gi"
+        ## CPU limit for Elasticsearch configuration
+        cpu: "1000m"
+      requests:
+        ## Requested amount of memory for Elasticsearch configuration
+        memory: "1Gi"
+        ## Requested amount of CPU for Elasticsearch configuration
+        cpu: "100m"
+
+    storage:
+      ## If persistent the elasticsearch data. Set to false for non-production or trial-only deployment.
+      persistent: true
+      ## Set to true to use dynamic storage provisioner
+      use_dynamic_provisioning: true
+      ## The minimum size of the persistent volume
+      size: 10Gi
+      ## Storage class name for Elasticsearch persistent storage
+      storage_class: "{{ shared_configuration.storage_configuration.sc_fast_file_storage_classname }}"
+
+    snapshot_storage:
+      ## If persistent the elasticsearch snapshot storage. Set to true for production deployment.
+      enabled: false
+      ## Set to true to use dynamic storage provisioner
+      use_dynamic_provisioning: true
+      ## The minimum size of the persistent volume
+      size: 30Gi
+      ## Storage class name for Elasticsearch persistent snapshot storage
+      storage_class_name: ""
+      ## By default, a new persistent volume claim is be created. Specify an existing claim here if one is available.
+      existing_claim_name: ""
+
+  ########################################################################
+  ########  IBM FileNet Content Manager initialize configuration  ########
+  ########################################################################
+  initialize_configuration:
+    ic_domain_creation:
+      ## Provide a name for the domain
+      domain_name: "P8DOMAIN"
+      ## The encryption strength
+      encryption_key: "128"
+    ic_ldap_creation:
+      ## Administrator user
+      ic_ldap_admin_user_name:
+      - "<Required>"
+      ## Administrator group
+      ic_ldap_admins_groups_name:
+      - "<Required>"
+      ## Name of the LDAP directory
+      ic_ldap_name: "ldap_name"
+    ic_obj_store_creation:
+      object_stores:
+        ## Configuration for the document object store
+        ## Display name for the document object store to create
+      - oc_cpe_obj_store_display_name: "DOCS"
+        ## Symbolic name for the document object store to create
+        oc_cpe_obj_store_symb_name: "DOCS"
+        oc_cpe_obj_store_conn:
+          ## Object store connection name
+          name: "DOCS_connection" #database connection name
+          ## The name of the site
+          site_name: "InitialSite"
+          ## Add the name of the object store database
+          dc_os_datasource_name: "FNDSDOCS"
+          ## The XA datasource
+          dc_os_xa_datasource_name: "FNDSDOCSXA"
+        ## Admin user group
+        oc_cpe_obj_store_admin_user_groups:
+        - "<Required>"
+        ## An array of users with access to the object store
+        oc_cpe_obj_store_basic_user_groups:
+        ## Specify whether to enable add-ons
+        oc_cpe_obj_store_addons: true
+        ## Add-ons to enable for Content Platform Engine
+        oc_cpe_obj_store_addons_list:
+        - "{CE460ADD-0000-0000-0000-000000000004}"
+        - "{CE460ADD-0000-0000-0000-000000000001}"
+        - "{CE460ADD-0000-0000-0000-000000000003}"
+        - "{CE460ADD-0000-0000-0000-000000000005}"
+        - "{CE511ADD-0000-0000-0000-000000000006}"
+        - "{CE460ADD-0000-0000-0000-000000000008}"
+        - "{CE460ADD-0000-0000-0000-000000000007}"
+        - "{CE460ADD-0000-0000-0000-000000000009}"
+        - "{CE460ADD-0000-0000-0000-00000000000A}"
+        - "{CE460ADD-0000-0000-0000-00000000000B}"
+        - "{CE460ADD-0000-0000-0000-00000000000D}"
+        - "{CE511ADD-0000-0000-0000-00000000000F}"
+        ## Provide a name for the Advance Storage Area
+        oc_cpe_obj_store_asa_name: "demo_storage"
+        ## Provide a name for the file system storage device
+        oc_cpe_obj_store_asa_file_systems_storage_device_name: "demo_file_system_storage"
+        ## The root directory path for the object store storage area
+        oc_cpe_obj_store_asa_root_dir_path: "/opt/ibm/asa/os01_storagearea"
+        ## Specify whether to enable workflow for the object store
+        oc_cpe_obj_store_enable_workflow: false
+        ## Specify a name for the workflow region
+        oc_cpe_obj_store_workflow_region_name: "<Required>"
+        ## Specify the number of the workflow region
+        oc_cpe_obj_store_workflow_region_number: 1
+        ## Specify a table space for the workflow data
+        oc_cpe_obj_store_workflow_data_tbl_space: "VWDATA_TS"
+        ## Optionally specify a table space for the workflow index
+        oc_cpe_obj_store_workflow_index_tbl_space: "VWINDEX_TS"
+        ## Optionally specify a table space for the workflow blob.
+        oc_cpe_obj_store_workflow_blob_tbl_space: "VWBLOB_TS"
+        ## Designate an LDAP group for the workflow admin group.
+        oc_cpe_obj_store_workflow_admin_group: "<Required>"
+        ## Designate an LDAP group for the workflow config group
+        oc_cpe_obj_store_workflow_config_group: "<Required>"
+        ## Default format for date and time
+        oc_cpe_obj_store_workflow_date_time_mask: "mm/dd/yy hh:tt am"
+        ## Locale for the workflow
+        oc_cpe_obj_store_workflow_locale: "en"
+        ## Provide a name for the connection point
+        oc_cpe_obj_store_workflow_pe_conn_point_name: ""
+
+        ## Configuration for the design object store
+        ## Display name for the design object store to create
+      - oc_cpe_obj_store_display_name: "DOS"
+        ## ## Symbolic name for the document object store to create
+        oc_cpe_obj_store_symb_name: "DOS"
+        oc_cpe_obj_store_conn:
+          ## ## Object store connection name
+          name: "DOS_connection" #database connection name
+          ## The name of the site
+          site_name: "InitialSite"
+          ## Add the name of the object store database
+          dc_os_datasource_name: "FNDSDOS"
+          ## The XA datasource
+          dc_os_xa_datasource_name: "FNDSDOSXA"
+        ## Admin user group
+        oc_cpe_obj_store_admin_user_groups:
+        - "<Required>"
+        ## An array of users with access to the object store
+        oc_cpe_obj_store_basic_user_groups:
+        ## Specify whether to enable add-ons
+        oc_cpe_obj_store_addons: true
+        ## Add-ons to enable for Content Platform Engine
+        oc_cpe_obj_store_addons_list:
+        - "{CE460ADD-0000-0000-0000-000000000004}"
+        - "{CE460ADD-0000-0000-0000-000000000001}"
+        - "{CE460ADD-0000-0000-0000-000000000003}"
+        - "{CE460ADD-0000-0000-0000-000000000005}"
+        - "{CE511ADD-0000-0000-0000-000000000006}"
+        - "{CE460ADD-0000-0000-0000-000000000008}"
+        - "{CE460ADD-0000-0000-0000-000000000007}"
+        - "{CE460ADD-0000-0000-0000-000000000009}"
+        - "{CE460ADD-0000-0000-0000-00000000000A}"
+        - "{CE460ADD-0000-0000-0000-00000000000B}"
+        - "{CE460ADD-0000-0000-0000-00000000000D}"
+        - "{CE511ADD-0000-0000-0000-00000000000F}"
+        ## Provide a name for the Advance Storage Area
+        oc_cpe_obj_store_asa_name: "demo_storage"
+        ## Provide a name for the file system storage device
+        oc_cpe_obj_store_asa_file_systems_storage_device_name: "demo_file_system_storage"
+        ## The root directory path for the object store storage area
+        oc_cpe_obj_store_asa_root_dir_path: "/opt/ibm/asa/os02_storagearea"
+        ## Specify whether to enable workflow for the object store
+        oc_cpe_obj_store_enable_workflow: false
+        ## Specify a name for the workflow region
+        oc_cpe_obj_store_workflow_region_name: "<Required>"
+        ## Specify the number of the workflow region
+        oc_cpe_obj_store_workflow_region_number: 2
+        ## Specify a table space for the workflow data
+        oc_cpe_obj_store_workflow_data_tbl_space: "VWDATA_TS"
+        ## Optionally specify a table space for the workflow index
+        oc_cpe_obj_store_workflow_index_tbl_space: "VWINDEX_TS"
+        ## Optionally specify a table space for the workflow blob.
+        oc_cpe_obj_store_workflow_blob_tbl_space: "VWBLOB_TS"
+        ## Designate an LDAP group for the workflow admin group.
+        oc_cpe_obj_store_workflow_admin_group: "<Required>"
+        ## Designate an LDAP group for the workflow config group
+        oc_cpe_obj_store_workflow_config_group: "<Required>"
+        ## Default format for date and time
+        oc_cpe_obj_store_workflow_date_time_mask: "mm/dd/yy hh:tt am"
+        ## Locale for the workflow
+        oc_cpe_obj_store_workflow_locale: "en"
+        ## Provide a name for the connection point
+        oc_cpe_obj_store_workflow_pe_conn_point_name: ""
+
+        ## Configuration for the target object store
+        ## Display name for the target object store to create
+      - oc_cpe_obj_store_display_name: "TOS"
+        ## Symbolic name for the document object store to create
+        oc_cpe_obj_store_symb_name: "TOS"
+        oc_cpe_obj_store_conn:
+          ## Object store connection name
+          name: "TOS_connection" #database connection name
+          ## The name of the site
+          site_name: "InitialSite"
+          ## Add the name of the object store database
+          dc_os_datasource_name: "FNDSTOS"
+          ## The XA datasource
+          dc_os_xa_datasource_name: "FNDSTOSXA"
+        ## Admin user group
+        oc_cpe_obj_store_admin_user_groups:
+        - "<Required>"
+        ## An array of users with access to the object store
+        oc_cpe_obj_store_basic_user_groups:
+        ## Specify whether to enable add-ons
+        oc_cpe_obj_store_addons: true
+        ## Add-ons to enable for Content Platform Engine
+        oc_cpe_obj_store_addons_list:
+        - "{CE460ADD-0000-0000-0000-000000000004}"
+        - "{CE460ADD-0000-0000-0000-000000000001}"
+        - "{CE460ADD-0000-0000-0000-000000000003}"
+        - "{CE460ADD-0000-0000-0000-000000000005}"
+        - "{CE511ADD-0000-0000-0000-000000000006}"
+        - "{CE460ADD-0000-0000-0000-000000000008}"
+        - "{CE460ADD-0000-0000-0000-000000000007}"
+        - "{CE460ADD-0000-0000-0000-000000000009}"
+        - "{CE460ADD-0000-0000-0000-00000000000A}"
+        - "{CE460ADD-0000-0000-0000-00000000000B}"
+        - "{CE460ADD-0000-0000-0000-00000000000D}"
+        - "{CE511ADD-0000-0000-0000-00000000000F}"
+         ## Provide a name for the Advance Storage Area
+        oc_cpe_obj_store_asa_name: "demo_storage"
+        ## Provide a name for the file system storage device
+        oc_cpe_obj_store_asa_file_systems_storage_device_name: "demo_file_system_storage"
+        ## The root directory path for the object store storage area
+        oc_cpe_obj_store_asa_root_dir_path: "/opt/ibm/asa/os03_storagearea"
+        ## Specify whether to enable workflow for the object store
+        oc_cpe_obj_store_enable_workflow: true
+        ## Specify a name for the workflow region
+        oc_cpe_obj_store_workflow_region_name: "<Required>"
+        ## Specify the number of the workflow region
+        oc_cpe_obj_store_workflow_region_number: 3
+        ## Specify a table space for the workflow data
+        oc_cpe_obj_store_workflow_data_tbl_space: "VWDATA_TS"
+        ## Optionally specify a table space for the workflow index
+        oc_cpe_obj_store_workflow_index_tbl_space: "VWINDEX_TS"
+        ## Optionally specify a table space for the workflow blob.
+        oc_cpe_obj_store_workflow_blob_tbl_space: "VWBLOB_TS"
+        ## Designate an LDAP group for the workflow admin group.
+        oc_cpe_obj_store_workflow_admin_group: "<Required>"
+        ## Designate an LDAP group for the workflow config group
+        oc_cpe_obj_store_workflow_config_group: "<Required>"
+        ## Default format for date and time
+        oc_cpe_obj_store_workflow_date_time_mask: "mm/dd/yy hh:tt am"
+        ## Locale for the workflow
+        oc_cpe_obj_store_workflow_locale: "en"
+        ## Provide a name for the connection point
+        oc_cpe_obj_store_workflow_pe_conn_point_name: "cpe_conn_tos"
+
+
+  ########################################################################
+  ########      IBM Business Automation Insights configuration    ########
+  ########################################################################
+  bai_configuration:
+    imageCredentials:
+      registry: cp.icr.io/cp/cp4a
+
+    # Set to true to automatically create the OpenShift routes when sc_deployment_platform is set
+    # to OCP or ROKS.
+    createRoutes: false
+
+    # Set to true to enable the Flink job for sending events to HDFS.
+    ingestion:
+      install: false
+
+    # Set to true to enable the Flink job for Digital Worker.
+    adw:
+      install: false
+
+    # Set to false to disable the Flink job for BAW.
+    bpmn:
+      install: true
+
+    # Set to true to enable the Flink job for BAWAdv.
+    bawadv:
+      install: false
+
+    # Set to false to disable the Flink job for ICM.
+    icm:
+      install: true
+
+    # Set to true to enable the Flink job for ODM.
+    odm:
+      install: false
+
+    # Set to true to enable the Flink job for Content.
+    content:
+      install: false

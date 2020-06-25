@@ -15,10 +15,10 @@ GRANT ALTER ON TABLE $tenant_ontology.API_INTEGRATIONS_OBJECTSSTORE TO USER $ten
 GRANT ALTER ON TABLE $tenant_ontology.SMARTPAGES_OPTIONS TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.FONTS TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.FONTS_TRANSID TO USER $tenant_db_user ;
-GRANT ALTER ON TABLE $tenant_ontology.DB_BACKUP TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.PATTERN TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.DOCUMENT TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.TRAINING_LOG TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.IMPLEMENTATION TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.ALIAS TO USER $tenant_db_user ;
 
 CONNECT RESET;

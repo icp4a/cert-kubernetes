@@ -1,0 +1,280 @@
+###############################################################################
+##
+##Licensed Materials - Property of IBM
+##
+##(C) Copyright IBM Corp. 2020. All Rights Reserved.
+##
+##US Government Users Restricted Rights - Use, duplication or
+##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+##
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: icp4adeploy
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 20.0.2
+spec:
+  appVersion: 20.0.2
+
+  #################################################################################################################
+  ##  The contents of this template CR file reflect only the specific parameters and configuration
+  ##  settings applicable to the represented ICP4A capability.
+  ##
+  ##  These values/configuration sections are to be used when manually assembling or updating the main
+  ##  ICP4A CR that is being applied in order to install and ICP4A environment.
+  ##
+  ##  If you are in the process of preparing a new install of an ICP4A environment, you should merge
+  ##  the required values and configuration sections from this file into the
+  ##  starting point CR template: ibm_cp4a_cr_enterprise[_FC]_foundation.yaml available in the
+  ##  same location as this template.
+  ##
+  ##  If you updating an existing ICP4A environment, you should merge the required values and configuration
+  ##  sections from this templated in the main ICP4A CR file already applied in the environment.
+  ##
+  ######################################################################################################################
+
+
+  ##########################################################################
+  ## This section contains the shared configuration for all CP4A components #
+  ##########################################################################
+  shared_configuration:
+
+    ## CP4A patterns or capabilities to be deployed. This CR represents the "decisions_ads" pattern that brings ADS Designer and ADS Runtime.
+    sc_deployment_patterns: decisions_ads
+
+    ## The optional components to be installed if listed here.
+    ## This is normally populated by the User script based on input from the user.
+    ## User can also manually specify the optional components to be deployed here.
+    ## ADS has two 'ads_designer' and 'ads_runtime' optional components.
+    ## If ads_designer is set, you also have to set the 'ads_configuration.decision_designer.enabled' flag to true to install it.
+    ## If ads_runtime is set, you also have to set the 'ads_configuration.decision_runtime.enabled' flag to true to install it.
+    sc_optional_components:
+
+
+  ########################################################################
+  ########   IBM Business Automation Decision Services            ########
+  ########################################################################
+
+  ads_configuration:
+
+    decision_designer:
+      enabled: false
+      admin_secret_name: ibm-dba-ads-designer-secret
+
+      # Config maps containing certificates to trust
+      git_servers_certs:
+      wml_providers_certs:
+      other_trusted_certs:
+
+      ingress:
+        # If omitted, calculated as designer.ads.{{ sc_deployment_hostname_suffix }}
+        hostname: "<Required>"
+        tls_secret_name: ibm-dba-ads-designer-tls-cert
+
+#        # Optional: you can provide a custom CA for routes.
+#        tls_ca_secret_name:
+#
+#        # Optional: you can add custom annotations to routes or ingresses.
+#
+#        # For routes
+#        custom_annotations:
+#          haproxy.router.openshift.io/timeout: 1m
+#
+#        # For k8s Ingresses on certified kubernetes (CNCF)
+#        custom_annotations:
+#          nginx.ingress.kubernetes.io/proxy-body-size: 8m
+
+    decision_runtime:
+      enabled: false
+      admin_secret_name: ibm-dba-ads-runtime-secret
+      # Authentication mode can be "basic" or "ums".
+      authentication_mode: "basic"
+      archive_repository:
+        # Left part of the url to access your decision archives.
+        # Optional credentials are in decision_runtime.admin_secret_name
+        url_prefix: "<Required>"
+
+      # Only for debugging, default value is true.
+      internal_tls: true
+
+      ingress:
+        # If omitted, calculated as designer.ads.{{ sc_deployment_hostname_suffix }}
+        hostname: "<Required>"
+        tls_secret_name: ibm-dba-ads-runtime-tls-cert
+
+#        # Optional: you can provide a custom CA for routes.
+#        tls_ca_secret_name:
+#
+#        # Optional: you can add custom annotations to routes or ingresses.
+#
+#        # For routes
+#        custom_annotations:
+#          haproxy.router.openshift.io/timeout: 1m
+#
+#        # For k8s Ingresses on certified kubernetes (CNCF)
+#        custom_annotations:
+#          nginx.ingress.kubernetes.io/proxy-body-size: 8m
+
+    rr_integration:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
+        tag: 20.0.2
+
+      resources:
+        requests:
+          cpu: '200m'
+          memory: '256Mi'
+        limits:
+          cpu: '500m'
+          memory: '512Mi'
+
+    mongo:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/mongo
+        tag: 4.2.5
+
+      persistence:
+        use_dynamic_provisioning: true
+        # defaulted to shared_configuration.storage_configuration.sc_fast_file_storage_classname
+        storage_class_name: "<Required>"
+        resources:
+          requests:
+            storage: 3Gi
+
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '256Mi'
+        limits:
+          cpu: '1000m'
+          memory: '1Gi'
+
+    front:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-front
+        tag: 20.0.2
+
+      replica_count: 1
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '512Mi'
+        limits:
+          cpu: '2000m'
+          memory: '2Gi'
+
+    download_service:
+      ums_enabled: true
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-download
+        tag: 20.0.2
+
+      replica_count: 1
+      resources:
+        requests:
+          cpu: '100m'
+          memory: '128Mi'
+        limits:
+          cpu: '100m'
+          memory: '128Mi'
+
+    rest_api:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-restapi
+        tag: 20.0.2
+      replica_count: 2
+
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '2Gi'
+        limits:
+          cpu: '2000m'
+          memory: '512Mi'
+
+    git_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
+        tag: 20.0.2
+      replica_count: 2
+
+      persistence:
+        use_dynamic_provisioning: true
+        # defaulted to shared_configuration.storage_configuration.sc_fast_file_storage_classname
+        storage_class_name: "<Required>"
+        resources:
+          requests:
+            storage: 6Gi
+
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '2Gi'
+        limits:
+          cpu: '2000m'
+          memory: '512Mi'
+
+    parsing_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-parsing
+        tag: 20.0.2
+      replica_count: 2
+
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '2Gi'
+        limits:
+          cpu: '2000m'
+          memory: '512Mi'
+
+    run_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-run
+        tag: 20.0.2
+      replica_count: 2
+
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '2Gi'
+        limits:
+          cpu: '2000m'
+          memory: '512Mi'
+
+    decision_runtime_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-runtime
+        tag: 20.0.2
+      replica_count: 2
+
+      # Whether the decision runtime should include an exception stack trace when an incident occurs.
+      # This should only be used for debugging purposes, as a stack trace may expose sensitive internal data.
+      stack_trace_enabled: false
+
+      tls:
+        # whether TLS is required for decision store or ML providers connections (HTTPS protocol)
+        enabled: true
+        # name of the config map holding the TLS certificates
+        certs_config_map_name:
+        # whether self-signed certificates are allowed
+        allow_self_signed: false
+        verify_hostname: true
+
+      cache:
+        config:
+          expiry: ''
+          resources: |-
+            <heap unit="entries">100</heap>
+
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '2Gi'
+        limits:
+          cpu: '2000m'
+          memory: '512Mi'

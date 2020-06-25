@@ -1,0 +1,21 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2020. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ibm-common-service-operator
+  namespace: common-service
+spec:
+  channel: stable-v1 # dev channel is for development purpose only
+  installPlanApproval: Automatic
+  name: ibm-common-service-operator
+  source: opencloud-operators
+  sourceNamespace: openshift-marketplace

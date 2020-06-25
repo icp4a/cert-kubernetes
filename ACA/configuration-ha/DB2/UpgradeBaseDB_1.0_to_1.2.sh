@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+# @---lm_copyright_start
+# 5737-I23, 5900-A30
+# Copyright IBM Corp. 2018 - 2020. All Rights Reserved.
+# U.S. Government Users Restricted Rights:
+# Use, duplication or disclosure restricted by GSA ADP Schedule
+# Contract with IBM Corp.
+#@---lm_copyright_end
+
 . ./ScriptFunctions.sh
 
 INPUT_PROPS_FILENAME="./common_for_DB2_Upgrade.sh"

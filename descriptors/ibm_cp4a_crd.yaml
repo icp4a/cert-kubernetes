@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.1
+    release: 20.0.2
 spec:
   group: icp4a.ibm.com
   names:
@@ -41,6 +41,20 @@ spec:
           properties:
             appVersion:
               type: string
+            spec:
+              properties:
+                version:
+                  type: string
+              type: object
+            status:
+              description: CloudPakAutomationStatus defines the observed state of Automation
+              properties:
+                cpAutoStatus:
+                  description: It will be as "OK when all objects are created successfully
+                  type: string
+              required:
+              - cpAutoStatus
+              type: object
             license:
               type: string
               pattern: '^accept$'

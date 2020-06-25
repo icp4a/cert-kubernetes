@@ -1,0 +1,8 @@
+--base DB changes
+connect to $base_db_name ;
+set schema $base_db_user ;
+
+update tenantinfo set FEATUREFLAGS=(4 | (select FEATUREFLAGS from tenantinfo where TENANTID='$tenant_id' and ONTOLOGY='$tenant_ontology')) where TENANTID='$tenant_id' and ONTOLOGY='$tenant_ontology' ;
+update tenantinfo set TENANTDBVERSION=1.4 where TENANTID='$tenant_id' and ONTOLOGY='$tenant_ontology' ;
+
+connect reset ;

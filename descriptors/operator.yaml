@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.1
+    release: 20.0.2
 spec:
   replicas: 1
   selector:
@@ -29,11 +29,11 @@ spec:
         app.kubernetes.io/instance: ibm-dba
         app.kubernetes.io/managed-by: ibm-dba
         app.kubernetes.io/name: ibm-dba
-        release: 20.0.1
+        release: 20.0.2
       annotations:
         productID: "5737-I23"
         productName: "IBM Cloud Pak for Automation"
-        productVersion: "20.0.1"
+        productVersion: "20.0.2"
     spec:
       hostNetwork: false
       hostPID: false
@@ -65,13 +65,14 @@ spec:
           - /tmp/ansible-operator/runner
           - stdout
           # Replace this with the built image name
-          image: "cp.icr.io/cp/cp4a/icp4a-operator:20.0.1"
+          image: "cp.icr.io/cp/cp4a/icp4a-operator:20.0.2"
           imagePullPolicy: "IfNotPresent"
           securityContext:
             allowPrivilegeEscalation: false
             privileged: false
             readOnlyRootFilesystem: false
-            runAsNonRoot: true
+            # Uncomment below for OCP 3.11
+            # runAsUser: 1001
             capabilities:
               drop:
               - ALL
@@ -89,7 +90,7 @@ spec:
             name: operator-shared-folder
         - name: operator
           # Replace this with the built image name
-          image: "cp.icr.io/cp/cp4a/icp4a-operator:20.0.1"
+          image: "cp.icr.io/cp/cp4a/icp4a-operator:20.0.2"
           imagePullPolicy: "IfNotPresent"
           livenessProbe:
             exec:
@@ -111,7 +112,8 @@ spec:
             allowPrivilegeEscalation: false
             privileged: false
             readOnlyRootFilesystem: false
-            runAsNonRoot: true
+            # Uncomment below for OCP 3.11
+            # runAsUser: 1001
             capabilities:
               drop:
               - ALL
@@ -130,6 +132,8 @@ spec:
           args:
           - '--zap-time-encoding=iso8601'
           - '--zap-encoder=console'
+          - "--max-workers"
+          - "10"
           env:
             - name: WATCH_NAMESPACE
               valueFrom:
@@ -141,7 +145,7 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "ibm-cp4a-operator"
-            - name: WORKER_FOOSERVICE_CACHE_EXAMPLE_COM
+            - name: WORKER_ICP4ACLUSTER_ICP4A_IBM_COM
               value: "10"
             # MUST exist, used to accept dba license, valid value only can be "accept"
             - name: dba_license

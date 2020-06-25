@@ -1,4 +1,14 @@
 @echo off
+REM ************************************************************************************
+REM * @---lm_copyright_start
+REM * 5737-I23, 5900-A30
+REM * Copyright IBM Corp. 2018 - 2020. All Rights Reserved.
+REM * U.S. Government Users Restricted Rights:
+REM * Use, duplication or disclosure restricted by GSA ADP Schedule
+REM * Contract with IBM Corp.
+REM * @---lm_copyright_end
+REM ************************************************************************************
+
 SETLOCAL
 
 IF NOT DEFINED skip_create_base_db (
@@ -43,7 +53,7 @@ IF "%skip_create_base_db%"=="true" (
 	db2 CONNECT TO %base_db_name%
 	db2 SET SCHEMA %base_db_user%
 	echo "Creating table TENANTINFO...."
-	db2 CREATE TABLE TENANTINFO  (tenantid varchar(128) NOT NULL,ontology varchar(128) not null,tenanttype smallint not null with default,dailylimit smallint not null with default 0,rdbmsengine varchar(128)  not null,dbname varchar(255) not null,dbuser varchar(255) not null,bacaversion varchar(1024) not null,rdbmsconnection  varchar(1024) for bit data default null,mongoconnection varchar(1024)  for bit data default null,mongoadminconnection varchar(1024) for bit data default null,featureflags bigint not null with default 0,tenantdbversion varchar(255),CONSTRAINT tenantinfo_pkey PRIMARY KEY (tenantid, ontology) )
+	db2 CREATE TABLE TENANTINFO  (tenantid varchar(128) NOT NULL,ontology varchar(128) not null,tenanttype smallint not null with default,dailylimit smallint not null with default 0,rdbmsengine varchar(128)  not null,dbname varchar(255) not null,dbuser varchar(255) not null,bacaversion varchar(1024) not null,rdbmsconnection  varchar(1024) for bit data default null,mongoconnection varchar(1024)  for bit data default null,mongoadminconnection varchar(1024) for bit data default null,featureflags bigint not null with default 0,tenantdbversion varchar(255),last_job_run_time BIGINT not null with default 0,dbstatus smallint not null with default 0,CONSTRAINT tenantinfo_pkey PRIMARY KEY (tenantid, ontology) )
 	db2 CONNECT RESET
 	goto END
 :DOEXIT

@@ -1,0 +1,10 @@
+--base DB changes
+connect to $base_db_name ;
+set schema $base_db_user ;
+
+alter table tenantinfo add column last_job_run_time BIGINT not null with default 0;
+alter table tenantinfo add column dbstatus smallint not null with default 0;
+update tenantinfo set bacaversion = 1.5;
+reorg table tenantinfo;
+
+connect reset;

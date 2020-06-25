@@ -21,7 +21,7 @@ create table doc_alias
 	CONSTRAINT doc_alias_doc_alias_name_key UNIQUE (doc_alias_name)
 );
 
--- tables for object type library - (new)object_type, implementation, implementation_kc; (modified) key_class
+-- tables for object type library
 create table object_type
 (
 	object_type_id INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 NO CYCLE),
@@ -33,6 +33,7 @@ create table object_type
 	flags INTEGER,
 	version INTEGER,
 	description VARCHAR(1024),
+	config BLOB (10M) NOT NULL default BLOB('e30='),
 	
 	CONSTRAINT object_type_object_type_id_key UNIQUE (object_type_id),
 	CONSTRAINT object_type_pkey PRIMARY KEY (scope, symbolic_name)
@@ -43,10 +44,12 @@ create table key_class
 	key_class_id INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 NO CYCLE),
 	key_class_name VARCHAR (512) NOT NULL,
 	datatype INTEGER NOT NULL,
-	mandatory BOOLEAN,
+	mandatory INTEGER NOT NULL,
 	sensitive BOOLEAN,
 	comment VARCHAR(1024),
 	config BLOB (10M) NOT NULL default empty_blob(),
+	flags SMALLINT NOT NULL default 0,
+	parent_id INTEGER NOT NULL default 0,
 	
 	CONSTRAINT key_class_pkey PRIMARY KEY (key_class_id),
 
@@ -63,6 +66,25 @@ create table key_alias
 	CONSTRAINT key_alias_pkey PRIMARY KEY (key_alias_id),
 	
 	CONSTRAINT key_alias_key_alias_name_key UNIQUE (key_alias_name)
+);
+
+-- table to store the aliases of attribute instances inside key class
+create table alias
+(
+	key_class_id INTEGER NOT NULL,
+	alias_name VARCHAR (512) NOT NULL,
+	language CHAR(3) NOT NULL,
+	parent_id INTEGER NOT NULL,
+	
+	CONSTRAINT alias_pkey PRIMARY KEY (key_class_id, alias_name),
+
+	CONSTRAINT alias_parent_id_alias_name_key UNIQUE (parent_id, alias_name),
+	
+	CONSTRAINT alias_key_class_id_fkey FOREIGN KEY (key_class_id) REFERENCES key_class (key_class_id)
+	ON UPDATE RESTRICT ON DELETE CASCADE,
+
+	CONSTRAINT alias_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES key_class (key_class_id)
+	ON UPDATE RESTRICT ON DELETE CASCADE
 );
 
 create table cword
@@ -375,23 +397,23 @@ create table fonts_transid
 	CONSTRAINT fonts_transid_transid_key UNIQUE (transid)
 );
 
-create table db_backup
-(
-	id INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 NO CYCLE),
-	date BIGINT NOT NULL,
-	frequency CHAR(15) NOT NULL,
-	type VARCHAR(1024) NOT NULL,
-	start_time BIGINT,
-	end_time BIGINT,
-	complete BOOLEAN DEFAULT 0,
-	failure BOOLEAN DEFAULT 0,
-	obj_cred_id INTEGER NOT NULL,
-
-	CONSTRAINT db_backup_pkey PRIMARY KEY (id)
-	
-	--CONSTRAINT db_backup_obj_cred_id_fkey FOREIGN KEY (obj_cred_id) REFERENCES api_integrations_objectsstore (obj_cred_id)
-	--ON UPDATE RESTRICT ON DELETE CASCADE
-);
+-- create table db_backup
+-- (
+-- 	id INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 NO CYCLE),
+-- 	date BIGINT NOT NULL,
+-- 	frequency CHAR(15) NOT NULL,
+-- 	type VARCHAR(1024) NOT NULL,
+-- 	start_time BIGINT,
+-- 	end_time BIGINT,
+-- 	complete BOOLEAN DEFAULT 0,
+-- 	failure BOOLEAN DEFAULT 0,
+-- 	obj_cred_id INTEGER NOT NULL,
+--
+-- 	CONSTRAINT db_backup_pkey PRIMARY KEY (id)
+--
+-- 	--CONSTRAINT db_backup_obj_cred_id_fkey FOREIGN KEY (obj_cred_id) REFERENCES api_integrations_objectsstore (obj_cred_id)
+-- 	--ON UPDATE RESTRICT ON DELETE CASCADE
+-- );
 
 create table key_spacing
 (
@@ -442,16 +464,16 @@ create table error_log
 	ON UPDATE RESTRICT ON DELETE CASCADE
 );
 
-create table db_restore
-(
-	id INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 NO CYCLE),
-	start_time BIGINT,
-	end_time BIGINT,
-	complete BOOLEAN DEFAULT FALSE,
-	failure BOOLEAN DEFAULT FALSE,
-	
-	CONSTRAINT db_restore_pkey PRIMARY KEY (id)
-);
+-- create table db_restore
+-- (
+-- 	id INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 NO CYCLE),
+-- 	start_time BIGINT,
+-- 	end_time BIGINT,
+-- 	complete BOOLEAN DEFAULT FALSE,
+-- 	failure BOOLEAN DEFAULT FALSE,
+--
+-- 	CONSTRAINT db_restore_pkey PRIMARY KEY (id)
+-- );
 
 --flags -0 user defined and default 1. will  be training set detected
 --rank -relative importance number 0.0 to 1.0
@@ -795,30 +817,79 @@ alter table processed_file add foreign key classifier_id_fkey(classifier_id)  RE
 reorg table processed_file;
 -- END kvp/ml feature changes
 
+--- Indexes -------
+create index ix_audit_api_activity_date ON audit_api_activity(date);
+create index ix_audit_integration_activity_date ON audit_integration_activity(date);
+create index ix_audit_login_activity_date ON audit_login_activity(date);
+create index ix_audit_ontology_date ON audit_ontology(date);
+create index ix_audit_processed_files_date ON audit_processed_files(date);
+create index ix_audit_system_activity_date ON audit_system_activity(date);
+create index ix_audit_user_activity_date ON audit_user_activity(date);
+create index ix_error_log_date ON error_log(date);
+create index ix_processed_file_date on processed_file(date);
+--- End Indexes -------
+
 --replace mongo DB2 tables
 create table runtime_doc
 (
- 	transaction_id VARCHAR(256) NOT NULL ,
-  initial_upload_time bigint,
-  file_name VARCHAR(1024),
-  org_content BLOB(250M) INLINE LENGTH 5120,
-  utf_content BLOB(250M) INLINE LENGTH 5120,
-  pdf_content BLOB(250M) INLINE LENGTH 5120,
-  wds_content BLOB(250M) INLINE LENGTH 5120,
-  params      BLOB(250M) INLINE LENGTH 5120,
-  CONSTRAINT runtime_doc_pkey PRIMARY KEY (transaction_id)
+	TRANSACTION_ID         VARCHAR(256) NOT NULL,
+	INITIAL_START_TIME     BIGINT,
+	FILE_NAME              VARCHAR(1024),
+	ORG_CONTENT            BLOB(250M) INLINE LENGTH 5120,
+	UTF_CONTENT            BLOB(250M),
+	PDF_CONTENT            BLOB(250M),
+	WDS_CONTENT            BLOB(250M),
+	DOC_PARAMS             BLOB(10M),
+	FLAGS                  BIGINT       NOT NULL DEFAULT 0,
+	API                    SMALLINT     NOT NULL DEFAULT 0,
+	COMPLETED              SMALLINT     NOT NULL DEFAULT 0,
+	FAILED                 SMALLINT     NOT NULL DEFAULT 0,
+	DOCUMENTACCURACY       INTEGER      NOT NULL DEFAULT 0,
+	COMPLETED_OCR_PAGES    INTEGER      NOT NULL DEFAULT 0,
+	OCR_PAGES_VERIFIED     SMALLINT     NOT NULL DEFAULT 0,
+	PROGRESS               DECIMAL(5,2),
+	PARTIAL_COMPLETE_PAGES INTEGER      NOT NULL DEFAULT 0,
+	COMPLETED_PAGES        INTEGER      NOT NULL DEFAULT 0,
+	VERIFIED               SMALLINT     NOT NULL DEFAULT 0,
+	USER_ID                INTEGER      NOT NULL DEFAULT 0,
+	PDF                    SMALLINT     NOT NULL DEFAULT 0,
+	PDF_SUCCESS            SMALLINT     NOT NULL DEFAULT 0,
+	PDF_ERROR_LIST         VARCHAR(1024),
+	PDF_PARAMS             BLOB(1M),
+	UTF8                   SMALLINT     NOT NULL DEFAULT 0,
+	UTF8_SUCCESS           SMALLINT     NOT NULL DEFAULT 0,
+	UTF8_ERROR_LIST        VARCHAR(1024),
+	UTF8_PARAMS            BLOB(1M),
+	TITLE_LIST             VARCHAR(32000),
+	ALIAS_LIST             BLOB(1M),
+
+	CONSTRAINT runtime_doc_pkey PRIMARY KEY (TRANSACTION_ID)
 );
+
+create index IX_INITIAL_START_TIME ON runtime_doc(INITIAL_START_TIME);
 
 create table runtime_page
 (
-  transaction_id VARCHAR(256) NOT NULL,
-  page_id        SMALLINT     NOT NULL,
-  jpg_content    BLOB(250M) INLINE LENGTH 5120,
-  params         BLOB(250M) INLINE LENGTH 5120,
+	TRANSACTION_ID VARCHAR(256) NOT NULL,
+	PAGE_ID        SMALLINT     NOT NULL,
+	JPG_CONTENT    BLOB(250M),
+	PAGE_UUID      VARCHAR(256),
+	PAGE_PARAMS    BLOB(10M),
+	FLATTENEDJSON  BLOB(10M),
+	GOODLETTERS    INTEGER      NOT NULL DEFAULT 0,
+	ALLLETTERS     INTEGER      NOT NULL DEFAULT 0,
+	COMPLETE       SMALLINT     NOT NULL DEFAULT 0,
+	OCR_CONFIDENCE VARCHAR(20),
+	LANGUAGES      VARCHAR(256),
+	FLAGS          BIGINT       NOT NULL DEFAULT 0,
+	BAGOFWORDS     BLOB(1M),
+	HEADER_LIST    BLOB(1M),
+	FOUNDKEYLIST   VARCHAR(1024),
+	DEFINEDKEYLIST VARCHAR(1024),
 
-  CONSTRAINT runtime_page_transaction_id_fkey FOREIGN KEY (transaction_id) REFERENCES runtime_doc (transaction_id)
+	CONSTRAINT runtime_page_transaction_id_fkey FOREIGN KEY (TRANSACTION_ID) REFERENCES runtime_doc (TRANSACTION_ID)
 	ON UPDATE RESTRICT ON DELETE CASCADE,
 
-  CONSTRAINT runtime_page_pkey PRIMARY KEY (transaction_id, page_id)
+	CONSTRAINT runtime_page_pkey PRIMARY KEY (TRANSACTION_ID, PAGE_ID)
 );
 --End replace mongo DB2 tables

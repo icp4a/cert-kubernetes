@@ -1,0 +1,22 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2020. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: operators.coreos.com/v1
+kind: OperatorSource
+metadata:
+  name: opencloud-operators
+  namespace: openshift-marketplace
+spec:
+  authorizationToken: {}
+  displayName: IBMCS Operators
+  endpoint: https://quay.io/cnr
+  publisher: IBM
+  registryNamespace: opencloudio
+  type: appregistry

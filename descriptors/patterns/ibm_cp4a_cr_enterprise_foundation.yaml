@@ -1,0 +1,352 @@
+
+###############################################################################
+##
+##Licensed Materials - Property of IBM
+##
+##(C) Copyright IBM Corp. 2020. All Rights Reserved.
+##
+##US Government Users Restricted Rights - Use, duplication or
+##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+##
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: icp4adeploy
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 20.0.2
+spec:
+  ## CP4A application version
+  appVersion: 20.0.2
+
+  #####################################################################################################################
+  ##  This template CR file reflects the ICP4A plaftorm foundation components shared by most of othe ICP4A capabilities,
+  ##  as well as shared configurations for settings and services applicable to the ICP4A installation environment such
+  ##  as LDAP, data sources, images information, storage classes, and other parameters you can find in the
+  ##  shared_configuration section below.
+  ##
+  ##  The label, or "pattern name", for these foundation components is "foundation". You see this label set in the
+  ##  sc_deployment_patterns parameter in the shared_configuration section of this file.
+  ##
+  ##  The ICP4A operator will automatically install the required foundation components, based on the description below, when
+  ##  it detects the "foundation" pattern name amongst the sc_deployment_patters CR parameter of the CR being applied.
+  ##
+  ##  The foundation components that are automatically installed, by default, by the ICP4A operator are:
+  ##    - Business Automation Navigator (BAN)
+  ##    - Resource Registry (RR)
+  ##
+  ##  These other foundation components are installed based on their need, but their related minimal configuration
+  ##  is included in this CR template.  Those additional platform components are:
+  ##
+  ##    - Business Automation Studio (BAS)
+  ##    - User Management Services (UMS)
+  ##    - Business Automation Insights (BAI)
+  ##
+  ##  Note that from the above foundation components, only BAI (with label "bai") will need to be explicitly specified
+  ##  in the sc_optional_components parameter (in the shared_configuration) to inform the operator to install it, as
+  ##  this installation of BAI reflects a user choice since BAI is not a pre-requisite component for any ICP4A capability.
+  ##
+  ##  This template CR contains the minimal configuration required for foundation components, since the ICP4A operator
+  ##  will take care of defaults for a typicall configuration.
+  ##
+  ##  For BAN, RR, UMS and BAI you will not find dedicated configuration sections in this template since
+  ##  default configurations are being used by the operator.
+  ##
+  ##  For BAB, UMS and BAI, you will only find  configuration parameters in the share_configuration section that need
+  ##  to be configured.
+  ##
+  ##  For BAS, you will find a minimal bastudio_configuration setion is in the CR, which will need to be present
+  ##  and configured by you should if you are planning to install any of the following ICP4A capabilities and features:
+  ##     - Automation Content Analyzer (contentanlyzer)
+  ##     - Automation Digital Worker (digitalworker)
+  ##     - the Applications Designer (app_designer) feature with  Business Automation Application (application)
+  ##     - the Decision Designer feature (ads_designer) with Automation Decision Services (decisions_ads)
+  ##
+  ##  Note: In case non of these is to be installed, the bastudio_configuration should be commented out or deleted
+  ##  from the final CR that will be applied.
+  ##
+  ##  How to use this template:
+  ##
+  ##  Make a copy of this CR foundation template as your starting point ICP4A CR yaml you are manually assembling.
+  ##  Then paste into that CR the information and configuration from the respective
+  ##  ibm_cp4a_cr_enterprise_<capability patter name>.yaml CR template files available in the same location.
+  ##
+  ######################################################################################################################
+  shared_configuration:
+
+    ## FileNet Content Manager (FNCM) license and possible values are: user, non-production, and production.
+    ## This value could be different from the other licenses in the CR.
+    sc_deployment_fncm_license: "<Required>"
+
+    ## Business Automation Workflow (BAW) license and possible values are: user, non-production, and production.
+    ## This value could be different from the other licenses in the CR.
+    sc_deployment_baw_license: "<Required>"
+
+    ## Use this parameter to specify the license for the CP4A deployment and
+    ## the possible values are: non-production and production and if not set, the license will
+    ## be defaulted to production.  This value could be different from the other licenses in the CR.
+    sc_deployment_license: "<Required>"
+
+    ## All CP4A components must use/share the image_pull_secrets to pull images
+    image_pull_secrets:
+    - admin.registrykey
+
+    ## All CP4A components must use/share the same docker image repository.  For example, if IBM Entitled Registry is used, then
+    ## it should be "cp.icr.io".  Otherwise, it will be a local docker registry.
+    sc_image_repository: cp.icr.io
+
+    images:
+      keytool_job_container:
+        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer 
+        tag: 20.0.2
+      dbcompatibility_init_container:
+        repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer 
+        tag: 20.0.2
+      keytool_init_container:
+        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer 
+        tag: 20.0.2
+      umsregistration_initjob:
+        repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob 
+        tag: 20.0.2
+
+      ## All CP4A components should use this pull_policy as the default, but it can override by each component
+      pull_policy: IfNotPresent
+
+    ## All CP4A components must use/share the root_ca_secret in order for integration
+    root_ca_secret: icp4a-root-ca
+
+    ## CP4A patterns or capabilities to be deployed.  This CR represents the "application" pattern (aka Business Automation Manager), which includes the following
+    ## mandatory components: ban(Business Automation Navigator), ums (User Management Service), app_engine( Application Engine) and optional components: app_designerollowing
+    ## mandatory components: icn (BAN/Navigator), rr (Resource Registry) and optional components: ums, bas, and bai
+    sc_deployment_patterns: foundation
+
+    ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.  User can
+    ## also manually specify the optional components to be deployed here.  For this foundation CR, the optional components are: ums, bas, and bai
+    sc_optional_components:
+
+    ## The deployment type as selected by the user.  Possible values are: demo, enteprise
+    sc_deployment_type: enterprise
+
+    ## The platform to be deployed specified by the user.  Possible values are: OCP and other.  This is normally populated by the User script
+    ## based on input from the user.
+    sc_deployment_platform:
+
+    ## For OCP, this is used to create route, you should input a valid hostname in the required field.
+    sc_deployment_hostname_suffix: "{{ meta.name }}.<Required>"
+
+    ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
+    ## the external service to the component's truststore.
+    trusted_certificate_list: []
+
+    ## On OCP 3.x and 4.x, the User script will populate these three (3) parameters based on your input for "enterprise" deployment.
+    ## If you manually deploying without using the User script, then you would provide the different storage classes for the slow, medium
+    ## and fast storage parameters below.  If you only have 1 storage class defined, then you can use that 1 storage class for all 3 parameters.
+    storage_configuration:
+      sc_slow_file_storage_classname: "<Required>"
+      sc_medium_file_storage_classname: "<Required>"
+      sc_fast_file_storage_classname: "<Required>"
+
+    ##############################################################################################
+    # Kafka client configuration for IBM Business Automation Insights and other ICP4A products.
+    #
+    # The customization of the following 4 parameters is "<Required>" only if you have
+    # specificed "bai" as part of the sc_optional_components to specify that Business Automation
+    # Insights must be installed.
+    #
+    # Otherwise, if Business Automation Insights is not being installed, there is no need to configure
+    # these parameters and they can be kept empty.
+    ##############################################################################################
+    kafka_configuration:
+      # Comma-separated list of hosts:port for connection to the Kafka cluster.
+      # This field is mandatory for any Kafka configuration.
+      bootstrap_servers: "<Required>"
+      # Value for the Kafka security.protocol property
+      # Valid values: PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL. Default: PLAINTEXT.
+      security_protocol:
+      # Value for the Kafka sasl.mechanism property
+      # Valid values: PLAIN, SCRAM-SHA-512. Default: PLAIN.
+      sasl_mechanism:
+      # If the Kafka server requires authentication or uses SSL communications, the value of this field
+      # must provide the name of a secret that holds the following keys as base64-encoded strings:
+      # kafka-username: Kafka username; leave empty if no authentication
+      # kafka-password: Kafka password; leave empty if no authentication
+      # kafka-server-certificate: server certificate for SSL communications; leave empty if SSL protocol is not used
+      connection_secret_name:
+
+  ## The beginning section of LDAP configuration for CP4A
+  ldap_configuration:
+    ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory"
+    lc_selected_ldap_type: "<Required>"
+
+    ## The name of the LDAP server to connect
+    lc_ldap_server: "<Required>"
+
+    ## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc.
+    lc_ldap_port: "<Required>"
+
+    ## The LDAP bind secret for LDAP authentication.  The secret is expected to have ldapUsername and ldapPassword keys.  Refer to Knowledge Center for more info.
+    lc_bind_secret: ldap-bind-secret
+
+    ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    lc_ldap_base_dn: "<Required>"
+
+    ## Enable SSL/TLS for LDAP communication. Refer to Knowledge Center for more info.
+    lc_ldap_ssl_enabled: true
+
+    ## The name of the secret that contains the LDAP SSL/TLS certificate.
+    lc_ldap_ssl_secret_name: "<Required>"
+
+    ## The LDAP user name attribute.  One possible value is "*:cn" for TDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_user_name_attribute: "<Required>"
+
+    ## The LDAP user display name attribute. One possible value is "cn" for TDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_user_display_name_attr: "<Required>"
+
+    ## The LDAP group base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    lc_ldap_group_base_dn: "<Required>"
+
+    ## The LDAP group name attribute.  One possible value is "*:cn" for TDS and "*:cn" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_group_name_attribute: "*:cn"
+
+    ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
+    lc_ldap_group_display_name_attr: "cn"
+
+    ## The LDAP group membership search filter string.  One possible value is "(&(cn=%v)(|(objectclass=groupOfNames)(objectclass=groupOfUniqueNames)(objectclass=groupOfURLs))" for TDS
+    ## and "(&(cn=%v)(objectcategory=group))" for AD.
+    lc_ldap_group_membership_search_filter: "<Required>"
+
+    ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
+    lc_ldap_group_member_id_map: "<Required>"
+
+    ## The User script will uncomment the section needed based on user's input from User script.  If you are deploying without the User script,
+    ## uncomment the necessary section (depending if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
+    # ad:
+    #   lc_ad_gc_host: "<Required>"
+    #   lc_ad_gc_port: "<Required>"
+    #   lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
+    #   lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
+    # tds:
+    #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
+    #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+
+  ## The beginning section of database configuration for CP4A
+  datasource_configuration:
+    ## The database configuration for ICN (Navigator) - aka BAN (Business Automation Navigator)
+    dc_icn_datasource:
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the
+      ## GCD and object store configuration above.
+      dc_database_type: "<Required>"
+      ## Provide the ICN datasource name.  The default value is "ECMClientDS".
+      dc_common_icn_datasource_name: "ECMClientDS"
+      database_servername: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521"
+      database_port: "<Required>"
+      ## Provide the name of the database for ICN (Navigator).  For example: "ICNDB"
+      database_name: "<Required>"
+      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      dc_oracle_icn_jdbc_url: "<Required>"
+      ######################################################################################
+      ## If the database type is "Db2HADR", then complete the rest of the parameters below.
+      ## Otherwise, remove or comment out the rest of the parameters below.
+      ######################################################################################
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+
+    ## The database configuration for UMS (User Management Service)
+    dc_ums_datasource:
+      ## Provide the database type from your infrastructure. The possible values are "db2" or "oracle".  This should be the same as the
+      ## other datasource configuration above. Db2 with HADR is automatically activated if dc_ums_oauth_alternate_hosts and dc_ums_oauth_alternate_ports
+      ## are set.
+      dc_ums_oauth_type: "<Required>"
+      ## Provide the database server name or IP address of the database server.
+      dc_ums_oauth_host: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521".
+      dc_ums_oauth_port: "<Required>"
+      ## Provide the name of the database for UMS.  For example: "UMSDB"
+      dc_ums_oauth_name: "<Required>"
+      dc_ums_oauth_schema: OAuthDBSchema
+      dc_ums_oauth_ssl: true
+      dc_ums_oauth_ssl_secret_name:
+      dc_ums_oauth_driverfiles:
+      dc_ums_oauth_alternate_hosts:
+      dc_ums_oauth_alternate_ports:
+
+      ## The database database configuration for teamserver
+      ## Provide the database type from your infrastructure. The possible values are "db2" or "oracle".  This should be the same as the
+      ## other datasource configuration above. Db2 with HADR is automatically activated if dc_ums_teamserver_alternate_hosts and dc_ums_teamserver_alternate_ports
+      ## are set.
+      dc_ums_teamserver_type: "<Required>"
+      dc_ums_teamserver_host: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521".
+      dc_ums_teamserver_port: "<Required>"
+      ## Provide the name of the database for UMS teamserver.  For example: "UMSDB"
+      dc_ums_teamserver_name: "<Required>"
+      dc_ums_teamserver_ssl: true
+      dc_ums_teamserver_ssl_secret_name:
+      dc_ums_teamserver_driverfiles:
+      dc_ums_teamserver_alternate_hosts:
+      dc_ums_teamserver_alternate_ports:
+
+  #-----------------------------------------------------------------------
+  # Configuration for IBM Business Automation Application Studio required for some ICP4A capabilities.
+  #-----------------------------------------------------------------------
+  bastudio_configuration:
+    #Adjust this one if you created the secret with name other than the default
+    admin_secret_name: "{{ meta.name }}-bas-admin-secret"
+    #Provide BAStudio default administrator ID
+    admin_user:  "<Required>"
+    database:
+      #Provide the database server hostname for BAStudio use
+      host: "<Required>"
+      #Provide the database name for BAStudio use
+      # The database provided should be created by the BAStudio SQL script template.
+      name: "<Required>"
+      #Provide the database server port for BAStudio use
+      port: "<Required>"
+      # If you want to enable database automatic client reroute (ACR) for HADR, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
+      alternative_host:
+      alternative_port:
+      type: db2
+    #-----------------------------------------------------------------------
+    #  App Engine Playback Server (playback_server) can be only one instance. This is different from App Engine (where application_engine_configuration is a list and you can deploy multiple instances).
+    #-----------------------------------------------------------------------
+    playback_server:
+      #Adjust this one if you created the secret with name other than the default
+      admin_secret_name: playback-server-admin-secret
+      #Provide playback application engine default administrator ID
+      admin_user: "<Required>"
+      database:
+        #Provide the database server hostname for playback application engine use
+        host: "<Required>"
+        #Provide the database name for playback application engine use
+        name: "<Required>"
+        #Provide the database server port for playback application engine use
+        port: "<Required>"
+        ## If you set up DB2 HADR and want to use it, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
+        alternative_host:
+        alternative_port:
+        type: db2
+
+  ########################################################################
+  ########   IBM User and Group Management Service configuration  ########
+  ########################################################################
+  ums_configuration:
+    images:
+      ums:
+        repository: cp.icr.io/cp/cp4a/ums/ums
+        tag: 20.0.2
+
+  ########################################################################
+  ########      IBM Business Automation Insights configuration    ########
+  ########################################################################
+  bai_configuration:
