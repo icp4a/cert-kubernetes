@@ -16,9 +16,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2
+    release: 20.0.2.1
 spec:
-  appVersion: 20.0.2
+  appVersion: 20.0.2.1
   shared_configuration:
     ## Use this parameter to specify the license for the CP4A deployment and
     ## the possible values are: non-production and production and if not set, the license will
@@ -59,16 +59,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer  
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer 
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer 
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob 
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       pull_policy: IfNotPresent
 
   ## The beginning section of LDAP configuration for CP4A
@@ -218,8 +218,8 @@ spec:
       # The database secret name created as part of the pre-req.  Default will be "aca-basedb" if blank.
       db_secret:
       image:
-        repository: "default-route-openshift-image-registry.apps.almanac.os.fyre.ibm.com/bacaop1"
-        tag: "20.0.2"
+        repository: "cp.icr.io/cp/cp4a/baca"
+        tag: "20.0.2-IF001"
         pull_policy: "IfNotPresent"
       # The max of retrying for CA deployment verification task until all the pods are in Ready status. A delay of 20 seconds between each attempt.  Default will be 90 if blank
       retries: "90"
@@ -261,7 +261,7 @@ spec:
       replica_count: 2
       resources:
         limits:
-          memory: "700Mi"
+          memory: "1024Mi"
           cpu: "0.6"
     # Backend configuration
     spbackend:
@@ -364,7 +364,7 @@ spec:
 #    images:
 #      ums:
 #        repository: cp.icr.io/cp/cp4a/ums/ums
-#        tag: 20.0.2
+#        tag: 20.0.2-IF001
 #    admin_secret_name: ibm-dba-ums-secret
 #    ## optional for secure communication with UMS
 #    external_tls_secret_name: ibm-dba-ums-external-tls-secret
@@ -427,7 +427,7 @@ spec:
 #      pull_policy: IfNotPresent
 #      resource_registry:
 #        repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-#        tag: 20.0.2
+#        tag: 20.0.2-IF001
 #    tls:
 #      tls_secret: rr-tls-client-secret
 #    probe:
@@ -610,10 +610,10 @@ spec:
 #        pull_policy: IfNotPresent
 #        db_job:
 #          repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-#          tag: 20.0.2
+#          tag: 20.0.2-IF001
 #        solution_server:
 #          repository: cp.icr.io/cp/cp4a/aae/solution-server
-#          tag: 20.0.2
+#          tag: 20.0.2-IF001
 #      max_age:
 #        auth_cookie: "900000"
 #        csrf_cookie: "3600000"

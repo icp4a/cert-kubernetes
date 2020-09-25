@@ -23,6 +23,7 @@ function show_help {
     echo "      For example: cp.icr.io/cp/icp4a-operator:20.0.1 or registry_url/icp4a-operator:version"
     echo "  -p  Optional: Pull secret to use to connect to the registry"
     echo "  -n  The namespace to deploy Operator"
+    echo "  -t  The deployment type: demo or enterprise"
     echo "  -a  Accept IBM license"
 }
 
@@ -42,6 +43,8 @@ else
         p)  PULLSECRET=$OPTARG
             ;;
         n)  NAMESPACE=$OPTARG
+            ;;
+        t)  DEPLOYMENT_TYPE=$OPTARG
             ;;
         a)  LICENSE_ACCEPTED=$OPTARG
             ;;
@@ -118,8 +121,10 @@ if [[ $LICENSE_ACCEPTED == "accept" ]]; then
     kubectl apply -f ./descriptors/service_account.yaml --validate=false
     kubectl apply -f ./descriptors/role.yaml --validate=false
     kubectl apply -f ./descriptors/role_binding.yaml --validate=false
-    kubectl apply -f ./descriptors/cluster_role.yaml --validate=false
-    kubectl apply -f ./cluster_role_binding.yaml --validate=false
+    if [[ "$DEPLOYMENT_TYPE" == "demo" ]];then
+        kubectl apply -f ${CUR_DIR}/../descriptors/cluster_role.yaml --validate=false
+        kubectl apply -f ${CUR_DIR}/../cluster_role_binding.yaml --validate=false
+    fi
 
 
     # Uncomment runAsUser: 1001 for OCP 3.11

@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.1
+    release: 20.0.2.1
 spec:
   ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
   ## For example, serviceAccount in the spec becomes service_account in ansible.
@@ -70,6 +70,10 @@ spec:
       lc_user_filter: "(&(cn=%v)(objectclass=person))"
       lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
   datasource_configuration:
+    ## The database_precheck parameter is used to enable or disable CPE/Navigator database connection check.
+    ## If set to "true", then CPE/Navigator database connection check will be enabled.
+    ## if set to "false", then CPE/Navigator database connection check will not be enabled.
+   # database_precheck: true
     # the candidate value is "db2" or "db2HADR" or "oracle" or "sqlserver"    
     dc_database_type: "db2"
     dc_gcd_datasource:
@@ -154,7 +158,6 @@ spec:
 
   ## production configuration for each Tribe
   ecm_configuration:
-    no_log: false
     fncm_secret_name: ibm-fncm-secret
     fncm_auth_ca_secret_name: "{{ meta.name }}-fncm-auth-ca-secret"
     cpe:
@@ -538,7 +541,6 @@ spec:
   ########   IBM Business Automation Navigator configuration      ########
   ########################################################################
   navigator_configuration:
-    no_log: false 
     ban_secret_name: ibm-ban-secret
     ban_auth_ca_secret_name: "{{ meta.name }}-ban-auth-ca-secret"
     arch:

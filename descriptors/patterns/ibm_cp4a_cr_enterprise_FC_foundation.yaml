@@ -17,7 +17,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2
+    release: 20.0.2.1
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
@@ -51,16 +51,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer 
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer 
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer 
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob 
-        tag: 20.0.2
+        tag: 20.0.2-IF001
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -292,9 +292,9 @@ spec:
     ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
     ## this settings to meet your requirement.
     auto_scaling:
-      enabled: true
+      enabled: false
       max_replicas: 3
-      min_replicas: 1
+      min_replicas: 2
       ## This is the default cpu percentage before autoscaling occurs.
       target_cpu_utilization_percentage: 80
 
@@ -356,7 +356,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.2
+        tag: 20.0.2-IF001
     admin_secret_name: ibm-dba-ums-secret
     ## optional for secure communication with UMS
     external_tls_secret_name: ibm-dba-ums-external-tls-secret
@@ -422,7 +422,7 @@ spec:
       pull_policy: IfNotPresent
       resource_registry:
         repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-        tag: 20.0.2
+        tag: 20.0.2-IF001
     admin_secret_name: resource-registry-admin-secret
     replica_size: 3
     probe:
@@ -470,7 +470,7 @@ spec:
       pull_policy: IfNotPresent
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: 20.0.2
+        tag: 20.0.2-IF001
     #Adjust this one if you created the secret with name other than the default
     # Inside the admin secret. There are two must fields
     # dbPassword: <Input your database password>
@@ -563,7 +563,7 @@ spec:
         ## Image name for Java Messaging Service container
         repository: cp.icr.io/cp/cp4a/bas/jms
         ## Image tag for Java Messaging Service container
-        tag: 20.0.2
+        tag: 20.0.2-IF001
         ## Pull policy for Java Messaging Service container
         pull_policy: Always
       tls:
@@ -602,10 +602,10 @@ spec:
         pull_policy: IfNotPresent
         db_job:
           repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-          tag: 20.0.2
+          tag: 20.0.2-IF001
         solution_server:
           repository: cp.icr.io/cp/cp4a/aae/solution-server
-          tag: 20.0.2
+          tag: 20.0.2-IF001
       # If you inputed hostname and port here. They will be used always
       # If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value)
       # Then you don't need to fill the hostname and port. It will use shared_configuration.sc_deployment_hostname_suffix to generate one

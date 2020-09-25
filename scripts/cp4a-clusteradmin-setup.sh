@@ -99,7 +99,7 @@ function create_project() {
     fi
     PROJ_NAME=${project_name}
 
-    if  [[ $PLATFORM_VERSION == "3.11" ]]; then
+    if  [[ $PLATFORM_SELECTED == "OCP" ]]; then
         oc adm policy add-scc-to-user privileged -z ibm-cp4a-operator -n ${project_name}
     fi
 
@@ -134,8 +134,10 @@ function prepare_install() {
     echo
     echo -ne "Creating the custom resource definition (CRD) and a service account that has the permissions to manage the resources..."
     oc apply -f ${CRD_FILE} -n ${project_name} --validate=false >> ${LOG_FILE}
-    oc apply -f ${CLUSTER_ROLE_FILE} --validate=false >> ${LOG_FILE}
-    oc apply -f ${CLUSTER_ROLE_BINDING_FILE_TEMP} --validate=false >> ${LOG_FILE}
+    if [[ "$DEPLOYMENT_TYPE" == "demo" ]];then
+        oc apply -f ${CLUSTER_ROLE_FILE} --validate=false >> ${LOG_FILE}
+        oc apply -f ${CLUSTER_ROLE_BINDING_FILE_TEMP} --validate=false >> ${LOG_FILE}
+    fi
     oc apply -f ${SA_FILE} -n ${project_name} --validate=false >> ${LOG_FILE}
     oc apply -f ${ROLE_FILE} -n ${project_name} --validate=false >> ${LOG_FILE}
     oc apply -f ${ROLE_BINDING_FILE} -n ${project_name} --validate=false >> ${LOG_FILE}
@@ -178,7 +180,7 @@ function display_node_name() {
     then
         echo "Below is the host name of the Infrastructure Node for the environment, which is required as an input during the execution of the deployment script for the creation of routes in OCP.  You can also get the host name by running the following command: oc get nodes --selector node-role.kubernetes.io/infra=true -o custom-columns=":metadata.name". Take note of the host name. "
 	oc get nodes --selector node-role.kubernetes.io/infra=true -o custom-columns=":metadata.name"
-    elif  [[ $PLATFORM_VERSION == "4.2" || $PLATFORM_VERSION == "4.3" || $PLATFORM_VERSION == "4.4" ]];
+    elif  [[ $PLATFORM_VERSION == "4.2OrLater" ]];
     then
         echo "Below is the route host name for the environment, which is required as an input during the execution of the deployment script for the creation of routes in OCP. You can also get the host name by running the following command: oc get route console -n openshift-console -o yaml|grep routerCanonicalHostname. Take note of the host name. "
         oc get route console -n openshift-console -o yaml|grep routerCanonicalHostname | head -1 | cut -d ' ' -f 6
@@ -335,21 +337,20 @@ function display_storage_classes_roks() {
 }
 
 function check_platform_version(){
-    res=$(kubectl  get nodes | awk 'NR==2{print $5}')
-    if [[  $res =~ v1.11 ]];
-    then
-        PLATFORM_VERSION="3.11"
-    elif [[  $res =~ v1.14.6 ]];
-    then
-        PLATFORM_VERSION="4.2"
-    elif [[  $res =~ v1.16.2 ]];
-    then
-        PLATFORM_VERSION="4.3"
-    elif [[  $res =~ v1.17.1 ]];
-    then
-        PLATFORM_VERSION="4.4"
+    currentver=$(kubectl  get nodes | awk 'NR==2{print $5}')
+    requiredver="v1.14.1"
+    if [ "$(printf '%s\n' "$requiredver" "$currentver" | sort -V | head -n1)" = "$requiredver" ]; then
+        PLATFORM_VERSION="4.2OrLater"  
     else
-        echo -e "\x1B[1;31mUnable to determine OCP version with node version information: $res . Will NOT install/prepare common service for your deployment\x1B[0m"
+        PLATFORM_VERSION="3.11"
+    fi
+    # OpenShift 4.0-4.2, install Common Services 3.3
+    # OpenShift >= 4.3, install Common Services 3.4
+    cs_install_ver="v1.17.1"
+    if [ "$(printf '%s\n' "$cs_install_ver" "$currentver" | sort -V | head -n1)" = "$cs_install_ver" ]; then
+        CS_VERSION="3.4"  
+    else
+        CS_VERSION="3.3"
     fi
 }
 
@@ -498,7 +499,11 @@ function show_summary(){
     echo -e "\x1B[1m*******************************************************\x1B[0m"
     echo -e "\x1B[1m                    Summary of input                   \x1B[0m"
     echo -e "\x1B[1m*******************************************************\x1B[0m"
-    echo -e "\x1B[1;31m1. Cloud platform to deploy: ${PLATFORM_SELECTED} ${PLATFORM_VERSION}\x1B[0m"
+    if [[ ${PLATFORM_VERSION} == "4.2OrLater" ]]; then
+        echo -e "\x1B[1;31m1. Cloud platform to deploy: ${PLATFORM_SELECTED} 4.X\x1B[0m"
+    else
+        echo -e "\x1B[1;31m1. Cloud platform to deploy: ${PLATFORM_SELECTED} ${PLATFORM_VERSION}\x1B[0m"
+    fi
     echo -e "\x1B[1;31m2. Project to deploy: ${project_name}\x1B[0m"
     echo -e "\x1B[1;31m3. User selected: ${user_name}\x1B[0m"
     if  [[ $PLATFORM_SELECTED == "ROKS" ]];
@@ -509,26 +514,19 @@ function show_summary(){
     echo -e "\x1B[1m*******************************************************\x1B[0m"
 }
 
-
 function check_csoperator_exists()
 {
 
-project="common-service"
-SUB="common-services-operator"
-
-check_project=`oc get project $project --ignore-not-found | wc -l`  >/dev/null 2>&1
-check_operator=$(oc get sub -n common-service --ignore-not-found |grep ibm-common-service-operator) >/dev/null 2>&1
-
-if [[ $check_project == 2 ]] || [[ "$check_operator" == *"$SUB"*  ]]; then
+check_operator=$(oc get csv --all-namespaces |grep "ibm-common-service-operator")
+if [ -n "$check_operator" ]; then
     echo ""
-    echo "Found an Existing Installation of IBM Common-Services...will be skipped..." >> ${LOG_FILE}
-    echo "Found an Existing Installation of IBM Common-Services...will be skipped..."
+    echo "Found an Existing Installation of IBM Common Services.  The current installation of IBM Common Services will be skipped."  >> ${LOG_FILE}
+    echo "Found an Existing Installation of IBM Common Services.  The current installation of IBM Common Services will be skipped." 
+    
     CS_INSTALL="NO"
     exit 1
 fi
-
 }
-
 
 validate_cli
 if [[ $1 == "dev" ]]
@@ -542,7 +540,7 @@ fi
 
 select_platform
 check_platform_version
-#select_deployment_type
+select_deployment_type
 if  [[ $PLATFORM_SELECTED == "OCP" ]];
 then
     check_existing_sc
@@ -564,7 +562,7 @@ fi
 show_summary
 check_csoperator_exists
 
-if [[ $PLATFORM_SELECTED == "OCP" ]] && [[ $PLATFORM_VERSION == "4.3" ]] || [[ $PLATFORM_VERSION == "4.4" ]];
+if [[ $PLATFORM_SELECTED == "OCP" ]] && [[ $PLATFORM_VERSION == "4.2OrLater" ]] && [[ $CS_VERSION == "3.4" ]];
 then 
     
     if [ "$CS_INSTALL" != "YES" ]; then
@@ -580,7 +578,7 @@ fi
 # Deploy CS 3.3 if OCP 4.2 or 3.11 as per requirements.  The components for CS 3.3 in this case will only be Licensing and Metering (also CommonUI as a base requirment)
 #if  [[[ $PLATFORM_SELECTED == "OCP" ]] && [ $PLATFORM_VERSION == "4.2" ]]] || [[[ $PLATFORM_SELECTED == "OCP" ] && [ $PLATFORM_VERSION == "3.11" ]]]
 
-if  [[ $PLATFORM_SELECTED == "OCP" ]] && [[ $PLATFORM_VERSION == "4.2" ]]; 
+if  [[ $PLATFORM_SELECTED == "OCP" ]] && [[ $PLATFORM_VERSION == "4.2OrLater" ]] && [[ $CS_VERSION == "3.3" ]];
 then 
     echo "IBM Common Services with Metering & Licensing Components will be installed"
         if [ "$CS_INSTALL" != "YES" ]; then

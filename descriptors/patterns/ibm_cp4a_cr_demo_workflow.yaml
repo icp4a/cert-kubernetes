@@ -17,9 +17,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2
+    release: 20.0.2.1
 spec:
-  appVersion: 20.0.2
+  appVersion: 20.0.2.1
   ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
   ## For example, serviceAccount in the spec becomes service_account in ansible.
   ## It is recommended that you perform some type validation in Ansible on the variables to ensure that
@@ -52,16 +52,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       db2u_tools:
         repository: docker.io/ibmcom/db2u.tools
         tag: 11.5.1.0-CN1
@@ -77,6 +77,9 @@ spec:
       db2_etcd:
         repository: quay.io/coreos/etcd
         tag: v3.3.10
+      db2_alpine:
+        repository: docker.io/alpine
+        tag: 3.6
       openldap:
         repository: osixia/openldap
         tag: 1.3.0
@@ -93,18 +96,18 @@ spec:
     cpe:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-555-p8cpe
+        tag: ga-555-p8cpe-if002
     cmis:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-305-cmis
+        tag: ga-305-cmis-if001
   ########################################################################
   ########   IBM Business Automation Navigator configuration      ########
   ########################################################################
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: ga-308-icn
+      tag: ga-308-icn-if002
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########
   ########################################################################
@@ -112,7 +115,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.2
+        tag: 20.0.2-IF001
   ########################################################################
   ########      IBM Resource Registry configuration               ########
   ########################################################################
@@ -120,7 +123,7 @@ spec:
     images:
       resource_registry:
         repository: cp.icr.io/cp/cp4a/baw/dba-etcd
-        tag: 20.0.2
+        tag: 20.0.2-IF001
   ########################################################################
   ########   IBM Workstream Server configuration  ########
   ########################################################################
@@ -128,42 +131,42 @@ spec:
   - name: instance1
     image:
       repository: cp.icr.io/cp/cp4a/baw/workflow-server
-      tag: "20.0.2"
+      tag: "20.0.2-IF001"
     pfs_bpd_database_init_job:
       repository: cp.icr.io/cp/cp4a/baw/pfs-bpd-database-init-prod
-      tag: "20.0.2"
+      tag: "20.0.2-IF001"
     upgrade_job:
       repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
-      tag: "20.0.2"
+      tag: "20.0.2-IF001"
     content_integration:
       init_job_image:
         repository: cp.icr.io/cp/cp4a/baw/iaws-ps-content-integration
-        tag: "20.0.2"
+        tag: "20.0.2-IF001"
     case:
       init_job_image:
         repository: cp.icr.io/cp/cp4a/baw/workflow-server-case-initialization
-        tag: "20.0.2"
+        tag: "20.0.2-IF001"
     jms:
       image:
         repository: cp.icr.io/cp/cp4a/baw/jms
-        tag: "20.0.2"
+        tag: "20.0.2-IF001"
   ########################################################################
   ########   IBM Process Federation Server configuration  ########
   ########################################################################
   pfs_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/baw/pfs-prod
-      tag: "20.0.2"
+      tag: "20.0.2-IF001"
   ########################################################################
   ########   Elasticsearch configuration  ########
   ########################################################################
   elasticsearch_configuration:
     es_image:
       repository: cp.icr.io/cp/cp4a/baw/pfs-elasticsearch-prod
-      tag: "20.0.2"
+      tag: "20.0.2-IF001"
     es_init_image:
       repository: cp.icr.io/cp/cp4a/baw/pfs-init-prod
-      tag: "20.0.2"
+      tag: "20.0.2-IF001"
     es_nginx_image:
       repository: cp.icr.io/cp/cp4a/baw/pfs-nginx-prod
-      tag: "20.0.2"
+      tag: "20.0.2-IF001"
