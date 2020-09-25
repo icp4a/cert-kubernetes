@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2
+    release: 20.0.2.1
 spec:
   replicas: 1
   selector:
@@ -29,11 +29,11 @@ spec:
         app.kubernetes.io/instance: ibm-dba
         app.kubernetes.io/managed-by: ibm-dba
         app.kubernetes.io/name: ibm-dba
-        release: 20.0.2
+        release: 20.0.2.1
       annotations:
         productID: "5737-I23"
         productName: "IBM Cloud Pak for Automation"
-        productVersion: "20.0.2"
+        productVersion: "20.0.2.1"
     spec:
       hostNetwork: false
       hostPID: false
@@ -65,7 +65,7 @@ spec:
           - /tmp/ansible-operator/runner
           - stdout
           # Replace this with the built image name
-          image: "cp.icr.io/cp/cp4a/icp4a-operator:20.0.2"
+          image: "cp.icr.io/cp/cp4a/icp4a-operator:20.0.2-IF001"
           imagePullPolicy: "IfNotPresent"
           securityContext:
             allowPrivilegeEscalation: false
@@ -90,7 +90,7 @@ spec:
             name: operator-shared-folder
         - name: operator
           # Replace this with the built image name
-          image: "cp.icr.io/cp/cp4a/icp4a-operator:20.0.2"
+          image: "cp.icr.io/cp/cp4a/icp4a-operator:20.0.2-IF001"
           imagePullPolicy: "IfNotPresent"
           livenessProbe:
             exec:

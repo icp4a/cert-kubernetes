@@ -17,25 +17,25 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2
+    release: 20.0.2.1
 spec:
   ## CP4A application version
-  appVersion: 20.0.2
+  appVersion: 20.0.2.1
   
   shared_configuration:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
-        tag: 20.0.2
+        tag: 20.0.2-IF001
 
     ## FileNet Content Manager (FNCM) license and possible values are: user, non-production, and production.
     ## This value could be different from the other licenses in the CR.
@@ -112,7 +112,7 @@ spec:
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: ga-308-icn
+      tag: ga-308-icn-if002
 
   ########################################################################
   ########      IBM Resource Registry configuration               ########
@@ -121,7 +121,7 @@ spec:
     images:
       resource_registry:
         repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-        tag: 20.0.2
+        tag: 20.0.2-IF001
 
   ########################################################################
   ########      IBM Business Automation Studio configuration      ########
@@ -130,19 +130,19 @@ spec:
     images:
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: 20.0.2
+        tag: 20.0.2-IF001
     jms_server:
       image:
         repository: cp.icr.io/cp/cp4a/bas/jms
-        tag: 20.0.2
+        tag: 20.0.2-IF001
     playback_server:
       images:
         db_job:
           repository: cp.icr.io/cp/cp4a/bas/solution-server-helmjob-db
-          tag: 20.0.2
+          tag: 20.0.2-IF001
         solution_server:
           repository: cp.icr.io/cp/cp4a/bas/solution-server
-          tag: 20.0.2
+          tag: 20.0.2-IF001
 
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########
@@ -151,7 +151,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.2
+        tag: 20.0.2-IF001
 
   ########################################################################
   ########      IBM Business Automation Insights configuration    ########

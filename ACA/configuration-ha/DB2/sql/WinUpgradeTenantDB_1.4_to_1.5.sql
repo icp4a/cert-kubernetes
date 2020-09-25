@@ -67,8 +67,8 @@ create index ix_processed_file_date on processed_file(date);
 -- **************************************************************************************************
 -- delete all db2 storage tables and recreate new two tables
 -- **************************************************************************************************
-drop table pageparams;
-drop table docparams;
+-- drop table pageparams;
+-- drop table docparams;
 drop table runtime_page;
 drop table runtime_doc;
 

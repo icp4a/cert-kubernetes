@@ -33,13 +33,11 @@ function set_global_env_vars() {
 
 set_global_env_vars
 
-# 1Q only supports single pattern, 2Q will search dedicated file to support multiple pattern
-CMD="find $FINAL_CR_FOLDER -maxdepth 1 -name \"*ibm_cp4a_cr_final*\" -print"
+CMD="find $FINAL_CR_FOLDER -maxdepth 1 -name \"ibm_cp4a_cr_final.yaml\" -print"
 if $CMD ; then
   echo -e "\x1B[1mShowing the access information and User credentials\x1B[0m"
 
-  pattern_file=$(find $FINAL_CR_FOLDER -maxdepth 1 -name "*ibm_cp4a_cr_final*" -print)
-  # pattern_name=$(grep -A1 'shared_configuration:' $pattern_file | tail -n1); pattern_name=${pattern_name//*sc_deployment_patterns: /}
+  pattern_file=$(find $FINAL_CR_FOLDER -maxdepth 1 -name "ibm_cp4a_cr_final.yaml" -print)
   pattern_name=$(${YQ_CMD} r $pattern_file spec.shared_configuration.sc_deployment_patterns)
   OIFS=$IFS
   IFS=',' read -r -a PATTERN_ARR <<< "$pattern_name"
@@ -77,21 +75,23 @@ function display_content_routes_credentials() {
     echo "Below are the available routes for FileNet Content Manager:"   
     echo "==========================================================:"
     echo
-    oc get routes
+    oc get routes | grep 'cmis\|cpe\|graphql\|navigator\|ums' --color=never
     echo
     echo
     echo -e "\x1B[1mYou can access ACCE and Navigator via the following URLs:\x1B[0m"
     echo -e "https://$(oc get routes --no-headers | grep cpe-route | awk {'print $2'})/acce"
     echo -e "https://$(oc get routes --no-headers | grep navigator-route | awk {'print $2'})/navigator"
     echo
-    echo "User credentials:"
-    echo "================"
-    echo
-    echo -n "ACCE usename: "; oc get secret ibm-fncm-secret -o jsonpath='{ .data.appLoginUsername}' | base64 -d; echo
-    echo -n "ACCE user password: "; oc get secret ibm-fncm-secret -o jsonpath='{ .data.appLoginPassword}' | base64 -d; echo
-    echo
-    echo -n "Navigator usename: "; oc get secret ibm-ban-secret -o jsonpath='{ .data.appLoginUsername}' | base64 -d; echo
-    echo -n "Navigator user password: "; oc get secret ibm-ban-secret -o jsonpath='{ .data.appLoginPassword}' | base64 -d; echo
+    if [[ $deployment_type == "demo" ]]; then
+      echo "User credentials:"
+      echo "================"
+      echo
+      echo -n "ACCE usename: "; oc get secret ibm-fncm-secret -o jsonpath='{ .data.appLoginUsername}' | base64 -d; echo
+      echo -n "ACCE user password: "; oc get secret ibm-fncm-secret -o jsonpath='{ .data.appLoginPassword}' | base64 -d; echo
+      echo
+      echo -n "Navigator usename: "; oc get secret ibm-ban-secret -o jsonpath='{ .data.appLoginUsername}' | base64 -d; echo
+      echo -n "Navigator user password: "; oc get secret ibm-ban-secret -o jsonpath='{ .data.appLoginPassword}' | base64 -d; echo
+    fi
 }
 
 function display_workflow_workstreams_routes_credentials() {
@@ -107,7 +107,7 @@ function display_workflow_workstreams_routes_credentials() {
     fi
     echo "=================================================================:"
     echo
-    oc get routes
+    oc get routes | grep 'baw\|navigator' --color=never
     echo
     echo
     echo -e "\x1B[1mYou can access Process Federated Server to see federated workflow servers via the following URL:\x1B[0m"
@@ -144,7 +144,7 @@ function display_application_routes_credentials() {
     echo "Below are the available routes for Business Automation Application:"   
     echo "==========================================================:"
     echo
-    oc get routes
+    oc get routes | grep 'bastudio\|navigator' --color=never
     echo
     echo
     echo -e "\x1B[1mYou can access Navigator via the following URLs:\x1B[0m"
@@ -169,7 +169,7 @@ function display_contentanalyzer_routes_credentials() {
     echo "Below are the available routes for Automation Content Analyzer:"   
     echo "==============================================================:"
     echo
-    oc get routes
+    oc get routes | grep 'spbackend\|navigator\|bastudio' --color=never
     echo
     echo
     echo -e "\x1B[1mYou can access Automation Content Analyzer via the following URLs:\x1B[0m"

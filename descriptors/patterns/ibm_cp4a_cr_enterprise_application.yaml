@@ -17,9 +17,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2
+    release: 20.0.2.1
 spec:
-  appVersion: 20.0.2
+  appVersion: 20.0.2.1
   
   #####################################################################################################################
   ##  The contents of this template CR file reflect only the specific parameters and configuration 

@@ -16,9 +16,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2
+    release: 20.0.2.1
 spec:
-  appVersion: 20.0.2
+  appVersion: 20.0.2.1
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
@@ -50,17 +50,17 @@ spec:
 
     images:
       keytool_job_container:
-        repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer  
-        tag: 20.0.2
+        repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer
+        tag: 20.0.2-IF001
       dbcompatibility_init_container:
-        repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer 
-        tag: 20.0.2
+        repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer
+        tag: 20.0.2-IF001
       keytool_init_container:
-        repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer 
-        tag: 20.0.2
+        repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
+        tag: 20.0.2-IF001
       umsregistration_initjob:
-        repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob 
-        tag: 20.0.2
+        repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
+        tag: 20.0.2-IF001
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -194,6 +194,10 @@ spec:
 
   ## The beginning section of database configuration for CP4A
   datasource_configuration:
+    ## The database_precheck parameter is used to enable or disable CPE/Navigator database connection check.
+    ## If set to "true", then CPE/Navigator database connection check will be enabled.
+    ## if set to "false", then CPE/Navigator database connection check will not be enabled.
+   # database_precheck: true
     ## The database configuration for the GCD datasource for CPE
     dc_gcd_datasource:
       ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".
@@ -228,6 +232,17 @@ spec:
       ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the
       ## GCD configuration above.
     - dc_database_type: "<Required>"
+      ## Provide the object store label for the object store.  The default value is "os" or not defined.
+      ## This label must match the OS secret you define in ibm-fncm-secret.
+      ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
+      ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
+      ## If you don't define dc_os_label, then your secret will be defined as:
+      ## --from-literal=osDBUsername="<your os db username>" --from-literal=osDBPassword="<your os db password>".
+      ## If you have multiple object stores, then you need to define multiple datasource sections starting
+      ## at "dc_database_type" element.
+      ## If all the object store databases share the same username and password, then dc_os_label value should be the same
+      ## in all the datasource sections.
+      dc_os_label: "os"
       ## The DOCS non-XA datasource name.  The default value is "FNDSDOCS".
       dc_common_os_datasource_name: "FNDSDOCS"
       ## The DOCS XA datasource name.  The default value is "FNDSDOCSXA".
@@ -422,44 +437,44 @@ spec:
       ## Workflow image repository URL
       repository: cp.icr.io/cp/cp4a/baw/workflow-server
       ## Image tag for Workflow server container
-      tag: 20.0.2
+      tag: 20.0.2-IF001
       ## Pull policy for Workflow container
       pullPolicy: IfNotPresent
     pfs_bpd_database_init_job:
       ## Database initialization image repository URL for Process Federation Server
       repository: cp.icr.io/cp/cp4a/baw/pfs-bpd-database-init-prod
       ## Image tag for database initialization for Process Federation Server
-      tag: 20.0.2
+      tag: 20.0.2-IF001
       ## Pull policy for Process Federation Server database initialization image
       pullPolicy: IfNotPresent
     upgrade_job:
       ## Workflow server database handling image repository URL
       repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
       ## Image tag for Workflow server database handling
-      tag: 20.0.2
+      tag: 20.0.2-IF001
       ## Pull policy for Workflow server database handling
       pullPolicy: IfNotPresent
     bas_auto_import_job:
       ## BAS toolkit init image repository URL
       repository: cp.icr.io/cp/cp4a/baw/toolkit-installer
       ## Image tag for BAS toolkit init image
-      tag: 20.0.2
+      tag: 20.0.2-IF001
       ## Pull policy for BAS toolkit init image
       pullPolicy: IfNotPresent
     ibm_workplace_job:
       ## IBM Workplace deployment job image repository URL
       repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
       ## Image tag for IBM Workplace deployment job image
-      tag: 20.0.2
+      tag: 20.0.2-IF001
       ## Pull policy for IBM Workplace deployment job image
       pull_policy: IfNotPresent
 
     ## The database configuration for Workflow server
     database:
       ## Whether to enable Secure Sockets Layer (SSL) support for the Workflow server database connection
-      ssl: false
+      ssl: true
       ## Secret name for storing the database TLS certificate when an SSL connection is enabled
-      sslsecretname: ""
+      sslsecretname: "<Required>"
       ## Workflow server database type
       type: "DB2"
       ## Workflow server database server name.
@@ -494,7 +509,7 @@ spec:
         ## Image name for content integration container.
         repository: cp.icr.io/cp/cp4a/baw/iaws-ps-content-integration
         ## Image tag for content integration container
-        tag: 20.0.2
+        tag: 20.0.2-IF001
         ## Pull policy for content integration container.
         pull_policy: IfNotPresent
       ## Domain name for content integration
@@ -510,7 +525,7 @@ spec:
         ## Image name for CASE init job container.
         repository: cp.icr.io/cp/cp4a/baw/workflow-server-case-initialization
         ## Image tag for CASE init job container.
-        tag: 20.0.2
+        tag: 20.0.2-IF001
         ## Pull policy for CASE init job container.
         pull_policy: IfNotPresent
 
@@ -570,7 +585,7 @@ spec:
         ## Image name for Java Messaging Service container
         repository: cp.icr.io/cp/cp4a/baw/jms
         ## Image tag for Java Messaging Service container
-        tag: 20.0.2
+        tag: 20.0.2-IF001
         ## Pull policy for Java Messaging Service container
         pull_policy: IfNotPresent
       tls:
@@ -756,10 +771,10 @@ spec:
       pull_policy: IfNotPresent
       db_job:
         repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       solution_server:
         repository: cp.icr.io/cp/cp4a/aae/solution-server
-        tag: 20.0.2
+        tag: 20.0.2-IF001
     max_age:
       auth_cookie: "900000"
       csrf_cookie: "3600000"
@@ -841,13 +856,13 @@ spec:
 
       ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
       ## it is recommended to have 2 or more.
-      replica_count: 1
+      replica_count: 2
 
       ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-555-p8cpe
+        tag: ga-555-p8cpe-if002
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -869,9 +884,9 @@ spec:
       ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
       ## this settings to meet your requirement.
       auto_scaling:
-        enabled: true
+        enabled: false
         max_replicas: 3
-        min_replicas: 1
+        min_replicas: 2
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: 80
 
@@ -945,13 +960,13 @@ spec:
 
       ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
       ## it is recommended to have 2 or more.
-      replica_count: 1
+      replica_count: 2
 
       ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-305-cmis
+        tag: ga-305-cmis-if001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -973,9 +988,9 @@ spec:
       ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
       ## this settings to meet your requirement.
       auto_scaling:
-        enabled: true
+        enabled: false
         max_replicas: 3
-        min_replicas: 1
+        min_replicas: 2
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: 80
 
@@ -1058,14 +1073,14 @@ spec:
 
     ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
     ## it is recommended to have 2 or more.
-    replica_count: 1
+    replica_count: 2
 
     ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
     image:
 
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: ga-308-icn
+      tag: ga-308-icn-if002
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -1087,9 +1102,9 @@ spec:
     ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
     ## this settings to meet your requirement.
     auto_scaling:
-      enabled: true
+      enabled: false
       max_replicas: 3
-      min_replicas: 1
+      min_replicas: 2
       ## This is the default cpu percentage before autoscaling occurs.
       target_cpu_utilization_percentage: 80
 
@@ -1150,7 +1165,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.2
+        tag: 20.0.2-IF001
     admin_secret_name: ibm-dba-ums-secret
     ## optional for secure communication with UMS
     external_tls_secret_name:
@@ -1209,7 +1224,7 @@ spec:
       pull_policy: IfNotPresent
       resource_registry:
         repository: cp.icr.io/cp/cp4a/baw/dba-etcd
-        tag: 20.0.2
+        tag: 20.0.2-IF001
     admin_secret_name: resource-registry-admin-secret
     replica_size: 3
     probe:
@@ -1263,7 +1278,7 @@ spec:
       ## Process Federation Server image
       repository: cp.icr.io/cp/cp4a/baw/pfs-prod
       ## Process Federation Server image tag
-      tag: "20.0.2"
+      tag: "20.0.2-IF001"
       ## Process Federation Server image pull policy
       pull_policy: IfNotPresent
 
@@ -1273,7 +1288,7 @@ spec:
     service_account:
     ## Whether Kubernetes can (soft) or must not (hard) deploy Process Federation Server pods onto the same node. Possible values are "soft" and "hard".
     anti_affinity: hard
-    
+
     ## Whether to enable default security roles  and possible values are: true and false
     enable_default_security_roles: true
     ## Name of the secret containing the Process Federation Server administration passwords, such as ltpaPassword, oidcClientPassword, sslKeyPassword
@@ -1427,7 +1442,7 @@ spec:
       ## Elasticsearch image
       repository: cp.icr.io/cp/cp4a/baw/pfs-elasticsearch-prod
       ## Elasticsearch image tag
-      tag: "20.0.2"
+      tag: "20.0.2-IF001"
       ## Elasticsearch image pull policy
       pull_policy: IfNotPresent
     es_init_image:
@@ -1435,14 +1450,14 @@ spec:
       ## This value is only relevant if elasticsearch_configuration.privileged is set to true
       repository: cp.icr.io/cp/cp4a/baw/pfs-init-prod
       ## The image tag for Elasticsearch init container
-      tag: "20.0.2"
+      tag: "20.0.2-IF001"
       ## The pull policy for Elasticsearch init container
       pull_policy: IfNotPresent
     es_nginx_image:
       ## The name of the Nginx docker image to be used by Elasticsearch pods
       repository: cp.icr.io/cp/cp4a/baw/pfs-nginx-prod
       ## The image tag of the Nginx docker image to be used by Elasticsearch pods
-      tag: "20.0.2"
+      tag: "20.0.2-IF001"
       ## The pull policy for the Nginx docker image to be used by Elasticsearch pods
       pull_policy: IfNotPresent
 

@@ -17,10 +17,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2
+    release: 20.0.2.1
 spec:
   ## CP4A application version
-  appVersion: 20.0.2
+  appVersion: 20.0.2.1
 
   #####################################################################################################################
   ##  This template CR file reflects the ICP4A plaftorm foundation components shared by most of othe ICP4A capabilities,
@@ -101,16 +101,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer 
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer 
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer 
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob 
-        tag: 20.0.2
+        tag: 20.0.2-IF001
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -344,7 +344,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.2
+        tag: 20.0.2-IF001
 
   ########################################################################
   ########      IBM Business Automation Insights configuration    ########

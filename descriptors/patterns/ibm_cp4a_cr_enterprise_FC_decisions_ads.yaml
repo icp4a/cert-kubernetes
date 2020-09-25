@@ -16,9 +16,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2
+    release: 20.0.2.1
 spec:
-  appVersion: 20.0.2
+  appVersion: 20.0.2.1
 
   #################################################################################################################
   ##  The contents of this template CR file reflect only the specific parameters and configuration
@@ -122,7 +122,7 @@ spec:
     rr_integration:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
-        tag: 20.0.2
+        tag: 20.0.2-IF001
 
       resources:
         requests:
@@ -135,7 +135,7 @@ spec:
     mongo:
       image:
         repository: cp.icr.io/cp/cp4a/ads/mongo
-        tag: 4.2.5
+        tag: 4.2.8
 
       persistence:
         use_dynamic_provisioning: true
@@ -156,7 +156,7 @@ spec:
     front:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-front
-        tag: 20.0.2
+        tag: 20.0.2-IF001
 
       replica_count: 1
       resources:
@@ -171,7 +171,7 @@ spec:
       ums_enabled: true
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-download
-        tag: 20.0.2
+        tag: 20.0.2-IF001
 
       replica_count: 1
       resources:
@@ -185,21 +185,21 @@ spec:
     rest_api:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-restapi
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       replica_count: 2
 
       resources:
         requests:
           cpu: '500m'
-          memory: '2Gi'
+          memory: '512Mi'
         limits:
           cpu: '2000m'
-          memory: '512Mi'
+          memory: '2Gi'
 
     git_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       replica_count: 2
 
       persistence:
@@ -213,43 +213,43 @@ spec:
       resources:
         requests:
           cpu: '500m'
-          memory: '2Gi'
+          memory: '512Mi'
         limits:
           cpu: '2000m'
-          memory: '512Mi'
+          memory: '2Gi'
 
     parsing_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-parsing
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       replica_count: 2
 
       resources:
         requests:
           cpu: '500m'
-          memory: '2Gi'
+          memory: '512Mi'
         limits:
           cpu: '2000m'
-          memory: '512Mi'
+          memory: '2Gi'
 
     run_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-run
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       replica_count: 2
 
       resources:
         requests:
           cpu: '500m'
-          memory: '2Gi'
+          memory: '512Mi'
         limits:
           cpu: '2000m'
-          memory: '512Mi'
+          memory: '2Gi'
 
     decision_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: 20.0.2
+        tag: 20.0.2-IF001
       replica_count: 2
 
       # Whether the decision runtime should include an exception stack trace when an incident occurs.
@@ -274,7 +274,7 @@ spec:
       resources:
         requests:
           cpu: '500m'
-          memory: '2Gi'
+          memory: '512Mi'
         limits:
           cpu: '2000m'
-          memory: '512Mi'
+          memory: '2Gi'

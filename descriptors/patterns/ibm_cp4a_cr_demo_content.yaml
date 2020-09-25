@@ -16,9 +16,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2
+    release: 20.0.2.1
 spec:
-  appVersion: 20.0.2
+  appVersion: 20.0.2.1
   ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
   ## For example, serviceAccount in the spec becomes service_account in ansible.
   ## It is recommended that you perform some type validation in Ansible on the variables to ensure that
@@ -41,7 +41,7 @@ spec:
     ## The deployment type as selected by the user.  Possible values are: demo, non-production, and production
     sc_deployment_type: demo
 
-    ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that correponds to a user ID
+    ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that corresponds to a user ID
     sc_run_as_user: 
 
     ## This is the deployment platform supported for CP4A and the possible values are: ROKS, OCP, and other (which includes all Certified Kubernetes platforms)
@@ -66,6 +66,9 @@ spec:
       db2_etcd:
         repository: quay.io/coreos/etcd
         tag: v3.3.10
+      db2_alpine: 
+        repository: docker.io/alpine
+        tag: 3.6
       openldap:
         repository: osixia/openldap
         tag: 1.3.0
@@ -82,24 +85,24 @@ spec:
     cpe:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-555-p8cpe
+        tag: ga-555-p8cpe-if002
     css:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: ga-555-p8css
+        tag: ga-555-p8css-if002
     graphql:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: ga-555-p8cgql
+        tag: ga-555-p8cgql-if002
     cmis:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-305-cmis
+        tag: ga-305-cmis-if001
   ########################################################################
   ########   IBM Business Automation Navigator configuration      ########
   ########################################################################
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-308-icn
+      tag: ga-308-icn-if002
       

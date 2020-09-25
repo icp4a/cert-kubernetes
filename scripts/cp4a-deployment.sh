@@ -11,9 +11,13 @@
 #
 ###############################################################################
 
-CUR_DIR=$(cd $(dirname $0); pwd)
-PARENT_DIR=$(dirname "$PWD")
-
+CUR_DIR=$(pwd)
+if [ -n "$(echo $CUR_DIR | grep scripts)" ]; then
+    PARENT_DIR=$(dirname "$PWD")
+else
+    PARENT_DIR=$CUR_DIR
+    CUR_DIR="${PARENT_DIR}/scripts"
+fi
 # Import common utilities and environment variables
 source ${CUR_DIR}/helper/common.sh
 
@@ -27,9 +31,10 @@ else
 fi
 DOCKER_REG_KEY=""
 REGISTRY_IN_FILE="cp.icr.io"
-OPERATOR_IMAGE=${DOCKER_REG_SERVER}/cp/cp4a/icp4a-operator:20.0.2
+OPERATOR_IMAGE=${DOCKER_REG_SERVER}/cp/cp4a/icp4a-operator:20.0.2-IF001
 
 old_db2="docker.io\/ibmcom"
+old_db2_alpine="docker.io\/alpine"
 old_ldap="osixia"
 old_db2_etcd="quay.io\/coreos"
 old_busybox="docker.io\/library"
@@ -74,7 +79,7 @@ function prompt_license(){
     
     if [[ $retVal_baw -eq 0 ]]; then
         echo -e "\x1B[1;31mIMPORTANT: Review the IBM Business Automation Workflow license information here: \n\x1B[0m"
-        echo -e "\x1B[1;31mhttps://github.com/ibmbpm/BAW-Ctnr/blob/20.0.2/LICENSE\n\x1B[0m"
+        echo -e "\x1B[1;31mhttps://github.com/ibmbpm/BAW-Ctnr/blob/20.0.0.1/LICENSE\n\x1B[0m"
     fi
     if [[ $retVal_baw -eq 1 ]]; then
         echo -e "\x1B[1;31mIMPORTANT: Review the IBM Cloud Pak for Automation license information here: \n\x1B[0m"
@@ -98,7 +103,7 @@ function prompt_license(){
             validate_cli
             break
             ;;
-        "n"|"N"|"no"|"No"|"NO")
+        "n"|"N"|"no"|"No"|"NO"|"")
             echo -e "Exiting...\n"
             exit 0
             ;;
@@ -116,7 +121,7 @@ function validate_docker_podman_cli(){
         [[ $? -ne 0 ]] && \
             echo -e  "\x1B[1;31mUnable to locate docker, please install it firstly.\x1B[0m" && \
             exit 1
-    elif [[ $OCP_VERSION == "4.1" || $OCP_VERSION == "4.2" || $OCP_VERSION == "4.3" || $OCP_VERSION == "4.4" ]]
+    elif  [[ $OCP_VERSION  == "4.2OrLater" ]];
     then
         which podman &>/dev/null
         [[ $? -ne 0 ]] && \
@@ -160,40 +165,49 @@ function select_platform(){
     printf "\n"
     echo -e "\x1B[1mSelect the cloud platform to deploy: \x1B[0m"
     COLUMNS=12
-    options=("Openshift Container Platform (OCP) - Private Cloud" "Other ( Certified Kubernetes Cloud Platform / CNCF)")
-
     if [ -z "$existing_platform_type" ]; then
-        PS3='Enter a valid option [1 to 2]: '
-        select opt in "${options[@]}"
-        do
-            case $opt in
-                "RedHat OpenShift Kubernetes Service (ROKS) - Public Cloud")
-                    PLATFORM_SELECTED="ROKS"
-                    break
-                    ;;
-                "Openshift Container Platform (OCP) - Private Cloud")
-                    PLATFORM_SELECTED="OCP"
-                    break
-                    ;;
-                "Other ( Certified Kubernetes Cloud Platform / CNCF)")
-                    PLATFORM_SELECTED="other"
-                    break
-                    ;;
-                *) echo "invalid option $REPLY";;
-            esac
-        done
-    else
-            options_var=("OCP" "other")
-            for i in ${!options_var[@]}; do 
-                if [[ "${options_var[i]}" == "$existing_platform_type" ]]; then 
-                    printf "%1d) %s \x1B[1m%s\x1B[0m\n" $((i+1)) "${options[i]}"  "(Selected)"
-                else 
-                    printf "%1d) %s\n" $((i+1)) "${options[i]}"
-                fi           
+        if [[ $DEPLOYMENT_TYPE == "demo" ]];then
+            echo -e "\x1B[1mOnly Openshift Container Platform (OCP) - Private Cloud is supported.\x1B[0m"
+            PLATFORM_SELECTED="OCP"
+            read -rsn1 -p"Press any key to continue";echo
+        elif [[ $DEPLOYMENT_TYPE == "enterprise" ]]
+        then
+            options=("Openshift Container Platform (OCP) - Private Cloud" "Other ( Certified Kubernetes Cloud Platform / CNCF)")
+        fi
+        if [[ $DEPLOYMENT_TYPE == "enterprise" ]];then
+            PS3='Enter a valid option [1 to 2]: '
+            select opt in "${options[@]}"
+            do
+                case $opt in
+                    "RedHat OpenShift Kubernetes Service (ROKS) - Public Cloud")
+                        PLATFORM_SELECTED="ROKS"
+                        break
+                        ;;
+                    "Openshift Container Platform (OCP) - Private Cloud")
+                        PLATFORM_SELECTED="OCP"
+                        break
+                        ;;
+                    "Other ( Certified Kubernetes Cloud Platform / CNCF)")
+                        PLATFORM_SELECTED="other"
+                        break
+                        ;;
+                    *) echo "invalid option $REPLY";;
+                esac
             done
-            echo -e "\x1B[1;31mExisting platform type found in CR: \"$existing_platform_type\"\x1B[0m"
-            echo -e "\x1B[1;31mDo not need to select again.\n\x1B[0m"
-            read -rsn1 -p"Press any key to continue ...";echo   
+        fi
+    else
+        options=("Openshift Container Platform (OCP) - Private Cloud" "Other ( Certified Kubernetes Cloud Platform / CNCF)")
+        options_var=("OCP" "other")
+        for i in ${!options_var[@]}; do 
+            if [[ "${options_var[i]}" == "$existing_platform_type" ]]; then 
+                printf "%1d) %s \x1B[1m%s\x1B[0m\n" $((i+1)) "${options[i]}"  "(Selected)"
+            else 
+                printf "%1d) %s\n" $((i+1)) "${options[i]}"
+            fi           
+        done
+        echo -e "\x1B[1;31mExisting platform type found in CR: \"$existing_platform_type\"\x1B[0m"
+        echo -e "\x1B[1;31mDo not need to select again.\n\x1B[0m"
+        read -rsn1 -p"Press any key to continue ...";echo   
     fi
 
     if [[ "$PLATFORM_SELECTED" == "OCP" ]]; then
@@ -206,35 +220,18 @@ function select_platform(){
 
 function check_ocp_version(){
     if [[ ${PLATFORM_SELECTED} == "OCP" ]];then
-        k8s_version=`${CLI_CMD} version | grep v[1-9]\. | tail -n1`
-        while true; do
-            case "$k8s_version" in
-            *v1.17.*)
-                OCP_VERSION="4.4"    
-                break
-                ;;
-            *v1.16.*)
-                OCP_VERSION="4.3"    
-                break
-                ;;
-            *v1.14.*) 
-                OCP_VERSION="4.2"     
-                break
-                ;;
-            *v1.13.*) 
-                OCP_VERSION="4.1"
-                break
-                ;;
-            *v1.11.*) 
-                OCP_VERSION="3.11"
-                break
-                ;;
-            *)
-                printf "Do not get the version of Openshift Container Platform (OCP), existing ..."
-                exit 1
-                ;;               
-            esac
-        done
+        temp_ver=`${CLI_CMD} version | grep v[1-9]\.[1-9][1-9] | tail -n1`
+        if [[ $temp_ver == *"Kubernetes Version"* ]]; then
+            currentver="${temp_ver:20:7}"
+        else
+            currentver="${temp_ver:11:7}"
+        fi
+        requiredver="v1.14.1"
+        if [ "$(printf '%s\n' "$requiredver" "$currentver" | sort -V | head -n1)" = "$requiredver" ]; then
+            OCP_VERSION="4.2OrLater"  
+        else
+            OCP_VERSION="3.11"  
+        fi
     fi
 }
 
@@ -253,7 +250,7 @@ function select_baw_iaws_installation(){
       printf "\n"
       printf "\x1B[1mDo you plan to install Business Automation Workflow and/or Automation Workstream Services?\n\x1B[0m"
     fi
-        printf "Enter a valid option [Yes, No]: "
+        printf "Enter a valid option [Yes, No]: "
         read -rp "" ans
 
         case "$ans" in
@@ -279,6 +276,8 @@ function select_pattern(){
     PATTERNS_SELECTED=""
     choices_pattern=()
     pattern_arr=()
+    pattern_cr_arr=()
+    
     if [[ "${PLATFORM_SELECTED}" == "OCP" && "${DEPLOYMENT_TYPE}" == "enterprise" ]]; 
     then
         options=("FileNet Content Manager" "Automation Content Analyzer" "Operational Decision Manager" "Automation Decision Services" "Business Automation Application" "Automation Digital Worker")
@@ -307,7 +306,7 @@ function select_pattern(){
 
     tips1="\x1B[1;31mTips\x1B[0m:\x1B[1mPress [ENTER] to accept the default (None of the patterns is selected)\x1B[0m"
     tips2="\x1B[1;31mTips\x1B[0m:\x1B[1mPress [ENTER] when you are done\x1B[0m"
-    pattern_tips="\x1B[1mInfo: Business Automation Navigator will be automatically installed in the environment as it is part of the Cloud Pak for Automation foundation platform. \n\nTips:  After you make your first selection you will be able to make additional selections since you can combine multiple selections. \n\n\x1B[0m"
+    pattern_tips="\x1B[1mInfo: Business Automation Navigator will be automatically installed in the environment as it is part of the Cloud Pak for Automation foundation platform. \n\nTips:  After you make your first selection you will be able to make additional selections since you can combine multiple selections. \n\n\x1B[0m"
     indexof() { 
         i=-1
         for ((j=0;j<${#options_cr_val[@]};j++)); 
@@ -428,13 +427,13 @@ function select_optional_component(){
 
         tips1="\x1B[1;31mTips\x1B[0m:\x1B[1m Press [ENTER] to accept the default (None of the components is selected)\x1B[0m"
         tips2="\x1B[1;31mTips\x1B[0m:\x1B[1m Press [ENTER] when you are done\x1B[0m"
-        ads_tips="\x1B[1mTips:\x1B[0m Decision Designer is typically required if you are deploying a development or test environment.\nThis feature will automatically install Business Automation Studio, if not already present. \n\nDecision Runtime is typically recommended if you are deploying a test or production environment. \n\nYou should choose at least one these features to have a minimum environment configuration.\n"
+        ads_tips="\x1B[1mTips:\x1B[0m Decision Designer is typically required if you are deploying a development or test environment.\nThis feature will automatically install Business Automation Studio, if not already present. \n\nDecision Runtime is typically recommended if you are deploying a test or production environment. \n\nYou should choose at least one these features to have a minimum environment configuration.\n"
         if [[ $DEPLOYMENT_TYPE == "demo" ]];then
             decision_tips="\x1B[1mTips:\x1B[0m Decision Center, Rule Execution Server and Decision Runner will be installed by default.\n"
         else
-            decision_tips="\x1B[1mTips:\x1B[0m Decision Center is typically required for development and testing environments. \nRule Execution Server is typically required for testing and production environments and for using Business Automation Insights. \nYou should choose at least one these 2 features to have a minimum environment configuration. \n"
+            decision_tips="\x1B[1mTips:\x1B[0m Decision Center is typically required for development and testing environments. \nRule Execution Server is typically required for testing and production environments and for using Business Automation Insights. \nYou should choose at least one these 2 features to have a minimum environment configuration. \n"
         fi
-        application_tips="\x1B[1mTips:\x1B[0m Application Designer is typically required if you are deploying a development or test environment.\nThis feature will automatically install Business Automation Studio, if not already present. \n\nApplication Engine is automatically installed in the environment.  \n\nMake your selection or press enter to proceed. \n"
+        application_tips="\x1B[1mTips:\x1B[0m Application Designer is typically required if you are deploying a development or test environment.\nThis feature will automatically install Business Automation Studio, if not already present. \n\nApplication Engine is automatically installed in the environment.  \n\nMake your selection or press enter to proceed. \n"
 
         indexof() { 
             i=-1
@@ -790,6 +789,13 @@ function select_optional_component(){
     OPTIONAL_COMPONENT_DELETE_LIST=($(echo "${OPT_COMPONENTS_CR_SELECTED[@]}" "${OPTIONAL_COMPONENT_FULL_ARR[@]}" | tr ' ' '\n' | sort | uniq -u))
     KEEP_COMPOMENTS=($(echo ${FOUNDATION_CR_SELECTED_LOWCASE[@]} ${OPTIONAL_COMPONENT_DELETE_LIST[@]} | tr ' ' '\n' | sort | uniq -d | uniq))
     OPT_COMPONENTS_SELECTED=($(echo "${optional_component_arr[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+
+    # Will an external LDAP be used as part of the configuration?
+    containsElement "es" "${OPT_COMPONENTS_CR_SELECTED[@]}"
+    retVal_ext_ldap=$?
+    if [[ $retVal_ext_ldap -eq 0 ]];then
+        set_external_ldap
+    fi
 }
 
 function get_local_registry_password(){
@@ -853,7 +859,7 @@ function get_entitlement_registry(){
     if [[ $OCP_VERSION == "3.11" ]];then
         local result=$((timeout --preserve-status "$wait_time" docker 2>&1 pull "$image_full_name" &) | grep -v 'Pulling repository' | egrep -o "$search_term")
     
-    elif [[ $OCP_VERSION == "4.1" || $OCP_VERSION == "4.2" || $OCP_VERSION == "4.3" || $OCP_VERSION == "4.4" ]]
+    elif  [[ $OCP_VERSION  == "4.2OrLater" ]];
     then
         local result=$((timeout --preserve-status "$wait_time" podman 2>&1 pull "$image_full_name" &) | grep -v 'Pulling repository' | egrep -o "$search_term")
     
@@ -866,11 +872,11 @@ function get_entitlement_registry(){
     entitlement_key=""
     printf "\n"
     printf "\n"
-    printf "\x1B[1;31mFollow the instructions on how to get your Entitlement Registry key: \n\x1B[0m"
-    printf "\x1B[1;31mhttps://github.com/icp4a/cert-kubernetes/blob/20.0.2/platform/ocp/install.md\n\x1B[0m"
+    printf "\x1B[1;31mFollow the instructions on how to get your Entitlement Key: \n\x1B[0m"
+    printf "\x1B[1;31mhttps://www.ibm.com/support/knowledgecenter/en/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_images_enterp.html\n\x1B[0m"
     printf "\n"
-    printf "\x1B[1mDo you have a Cloud Pak for Automation Entitlement Registry key (Yes/No, default: No): \x1B[0m"
     while true; do
+        printf "\x1B[1mDo you have a Cloud Pak for Automation Entitlement Registry key (Yes/No, default: No): \x1B[0m"
         read -rp "" ans
 
         case "$ans" in
@@ -881,7 +887,7 @@ function get_entitlement_registry(){
 
             while [[ $entitlement_key == '' ]]
             do
-                read -rp "" entitlement_key
+                read -rsp "" entitlement_key
                 if [ -z "$entitlement_key" ]; then
                     echo -e "\x1B[1;31mEnter a valid Entitlement Registry key\x1B[0m"
                 else
@@ -897,6 +903,7 @@ function get_entitlement_registry(){
                     entitlement_verify_passed=""
                     while [[ $entitlement_verify_passed == '' ]]
                     do
+                        printf "\n"
                         printf "\x1B[1mVerifying the Entitlement Registry key...\n\x1B[0m"
                         if [[ $OCP_VERSION == "3.11" || "$machine" == "Mac" || $PLATFORM_SELECTED == "other" ]];then
                             if docker login -u "$DOCKER_REG_USER" -p "$DOCKER_REG_KEY" "$DOCKER_REG_SERVER"; then
@@ -907,7 +914,7 @@ function get_entitlement_registry(){
                                 entitlement_key=''
                                 entitlement_verify_passed="failed" 
                             fi
-                        elif [[ $PLATFORM_SELECTED == "other" || $OCP_VERSION == "4.1" || $OCP_VERSION == "4.2" || $OCP_VERSION == "4.3" || $OCP_VERSION == "4.4" ]]
+                        elif  [[ $OCP_VERSION  == "4.2OrLater" ]];
                         then
                             if podman login -u "$DOCKER_REG_USER" -p "$DOCKER_REG_KEY" "$DOCKER_REG_SERVER" --tls-verify=false; then
                                 printf 'Entitlement Registry key is valid.\n'
@@ -923,15 +930,13 @@ function get_entitlement_registry(){
             done
             break
             ;;
-        "n"|"N"|"no"|"No"|"NO")
+        "n"|"N"|"no"|"No"|"NO"|"")
             use_entitlement="no"
             DOCKER_REG_KEY="None"
             break
             ;;
         *)
-            use_entitlement="no"
-            DOCKER_REG_KEY="None"
-            break
+            echo -e "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -952,7 +957,7 @@ function create_secret_entitlement_registry(){
 function get_local_registry_server(){
     # For internal/external Registry Server
     printf "\n"
-    if [[ "${REGISTRY_TYPE}" == "internal" && ("${OCP_VERSION}" == "4.1" || "${OCP_VERSION}" == "4.2"|| "${OCP_VERSION}" == "4.3" || "${OCP_VERSION}" == "4.4") ]];then
+    if [[ "${REGISTRY_TYPE}" == "internal" && ("${OCP_VERSION}" == "4.2OrLater") ]];then
         #This is required for docker/podman login validation.
         printf "\x1B[1mEnter the public image registry or route (e.g., default-route-openshift-image-registry.apps.<hostname>). \n\x1B[0m"
         printf "\x1B[1mThis is required for docker/podman login validation: \x1B[0m"
@@ -968,7 +973,7 @@ function get_local_registry_server(){
     
     if [[ "${OCP_VERSION}" == "3.11" && "${REGISTRY_TYPE}" == "internal" ]];then
         printf "\x1B[1mEnter the OCP docker registry service name, for example: docker-registry.default.svc:5000/<project-name>: \x1B[0m"
-    elif [[ "${REGISTRY_TYPE}" == "internal" && ("${OCP_VERSION}" == "4.1" || "${OCP_VERSION}" == "4.2"|| "${OCP_VERSION}" == "4.3" || "${OCP_VERSION}" == "4.4") ]]
+    elif [[ "${REGISTRY_TYPE}" == "internal" && ("${OCP_VERSION}" == "4.2OrLater") ]]
     then
         printf "\n"
         printf "\x1B[1mEnter the local image registry (e.g., image-registry.openshift-image-registry.svc:5000/<project>)\n\x1B[0m"
@@ -1024,7 +1029,7 @@ function get_infra_name(){
     printf "\x1B[1mYou can get the host name by running the following command: \n\x1B[0m"
     if [[ $OCP_VERSION == "3.11" ]];then
         printf "\x1B[1;31moc get nodes --selector node-role.kubernetes.io/infra=true -o custom-columns=\":metadata.name\"\n\x1B[0m"
-    elif [[ $OCP_VERSION == "4.1" || $OCP_VERSION == "4.2" || $OCP_VERSION == "4.3" || $OCP_VERSION == "4.4" ]]
+    elif [[ $OCP_VERSION == "4.2OrLater" ]]
     then
         printf "\x1B[1;31moc get route console -n openshift-console -o yaml|grep routerCanonicalHostname\n\x1B[0m"
     fi
@@ -1226,7 +1231,7 @@ function verify_local_registry_password(){
                     local_registry_server=""
                     echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
                 fi
-            elif [[ $OCP_VERSION == "4.1" || $OCP_VERSION == "4.2" || $OCP_VERSION == "4.3" || $OCP_VERSION == "4.4" ]]
+            elif  [[ $OCP_VERSION  == "4.2OrLater" ]]
             then
                 which podman &>/dev/null
                 if [[ $? -eq 0 ]];then
@@ -1364,6 +1369,7 @@ function select_deployment_type(){
 }
 
 function select_ldap_type(){
+    printf "\n"
     COLUMNS=12
     echo -e "\x1B[1mWhat is the LDAP type used for this deployment? \x1B[0m"
     options=("Microsoft Active Directory" "Tivoli Directory Server / Security Directory Server")
@@ -1474,8 +1480,32 @@ function set_ldap_type_ww_pattern(){
     fi
 }
 
+function set_external_ldap(){
+    printf "\n"
+
+    while true; do
+        printf "\x1B[1mWill an external LDAP be used as part of the configuration?: \x1B[0m"
+
+        read -rp "" ans
+        case "$ans" in
+        "y"|"Y"|"yes"|"Yes"|"YES")
+            SET_EXT_LDAP="Yes"
+            break
+            ;;
+        "n"|"N"|"no"|"No"|"NO")
+            SET_EXT_LDAP="No"
+            break
+            ;;
+        *)
+            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            ;;
+        esac
+    done
+
+}
+
 function set_external_share_content_pattern(){
-    if [[ $DEPLOYMENT_TYPE == "enterprise" ]] ;
+    if [[ $DEPLOYMENT_TYPE == "enterprise" && $SET_EXT_LDAP == "Yes" ]] ;
     then
         containsElement "es" "${OPT_COMPONENTS_CR_SELECTED[@]}"
         retVal=$?
@@ -1565,7 +1595,7 @@ function select_aca_tenant(){
     order_number=1
     while (( ${#aca_tenant_arr[@]} < $aca_tenant_number ));
     do
-        printf "\x1B[1mWhat is the name of tenant ${order_number}? \x1B[0m"
+        printf "\x1B[1mWhat is the name of tenant ${order_number}? \x1B[0m"
         read -rp "" aca_tenant_name
         if [ -z "$aca_tenant_number" ]; then 
             echo -e "\x1B[1;31mEnter a valid tenant name\x1B[0m"
@@ -1582,7 +1612,7 @@ function select_baw_iaws(){
     pattern_arr=()
     pattern_cr_arr=()
     printf "\n"
-    echo -e "\x1B[1mTips\x1B[0m: You may only choose one option for the entire installation as these choices are mutually exclusive. "
+    echo -e "\x1B[1mTips\x1B[0m: You may only choose one option for the entire installation as these choices are mutually exclusive. "
     echo -e "\x1B[1mSelect the Cloud Pak for Automation capability to install: \x1B[0m"
     COLUMNS=12
     get_baw_mode
@@ -1646,16 +1676,16 @@ function input_information(){
     if [[ ${INSTALLATION_TYPE} == "existing" ]]; then
         INSTALL_BAW_IAWS="No"
         prepare_pattern_file
+        select_deployment_type
         select_platform
         check_ocp_version
         validate_docker_podman_cli
-        select_deployment_type
     elif [[ ${INSTALLATION_TYPE} == "new" ]]
     then
+        select_deployment_type
         select_platform
         check_ocp_version
         validate_docker_podman_cli
-        select_deployment_type
         prepare_pattern_file
         select_baw_iaws_installation
     fi
@@ -1674,19 +1704,52 @@ function input_information(){
         select_baw_iaws
     fi
     select_optional_component
-    get_entitlement_registry
-    if [ "$use_entitlement" = "no" ]; then
-        verify_local_registry_password
-    fi
+    if [[ "$INSTALLATION_TYPE" == "new" ]]; then 
+        get_entitlement_registry
+        if [[ "$use_entitlement" == "no" ]]; then
+            verify_local_registry_password
+        fi
 
-    if  [[ $PLATFORM_SELECTED == "OCP" ]];
+        if  [[ $PLATFORM_SELECTED == "OCP" ]];
+        then
+            get_infra_name
+        fi
+        get_storage_class_name
+        if [[ "$DEPLOYMENT_TYPE" == "enterprise" ]]; then
+            select_ldap_type
+        fi
+    elif [[ "$INSTALLATION_TYPE" == "existing" ]]
     then
-        get_infra_name
-    fi
-    get_storage_class_name
-    
-    if [[ "$DEPLOYMENT_TYPE" == "enterprise" ]]; then
-        select_ldap_type
+        existing_infra_name=`cat $existing_pattern_cr_name | ${YQ_CMD} r - spec.shared_configuration.sc_deployment_hostname_suffix`
+        chrlen=${#existing_infra_name}
+        INFRA_NAME=${existing_infra_name:21:chrlen}
+        existing_ldap_type=`cat $existing_pattern_cr_name | ${YQ_CMD} r - spec.ldap_configuration.lc_selected_ldap_type`
+        if [[ $existing_ldap_type == "Microsoft Active Directory" ]];then
+            LDAP_TYPE="AD"
+        elif [[ $existing_ldap_type == "IBM Security Directory Server" ]]
+        then
+            LDAP_TYPE="TDS"
+        fi         
+        DOCKER_REG_SERVER=`cat $existing_pattern_cr_name | ${YQ_CMD} r - spec.shared_configuration.sc_image_repository`
+        local_registry_server=`cat $existing_pattern_cr_name | ${YQ_CMD} r - spec.shared_configuration.sc_image_repository`
+        # convert docker-registry.default.svc:5000/project-name
+        # to docker-registry.default.svc:5000\/project-name
+        LOCAL_REGISTRY_SERVER=${local_registry_server}
+        OIFS=$IFS
+        IFS='/' read -r -a docker_reg_url_array <<< "$local_registry_server"
+        delim=""
+        joined=""
+        for item in "${docker_reg_url_array[@]}"; do
+                joined="$joined$delim$item"
+                delim="\/"
+        done
+        IFS=$OIFS
+        CONVERT_LOCAL_REGISTRY_SERVER=${joined}
+        DOCKER_RES_SECRET_NAME=`cat $existing_pattern_cr_name | ${YQ_CMD} r - spec.shared_configuration.image_pull_secrets.[0]`
+        STORAGE_CLASS_NAME=`cat $existing_pattern_cr_name | ${YQ_CMD} r - spec.shared_configuration.storage_configuration.sc_dynamic_storage_classname`
+        SLOW_STORAGE_CLASS_NAME=`cat $existing_pattern_cr_name | ${YQ_CMD} r - spec.shared_configuration.storage_configuration.sc_slow_file_storage_classname`
+        MEDIUM_STORAGE_CLASS_NAME=`cat $existing_pattern_cr_name | ${YQ_CMD} r - spec.shared_configuration.storage_configuration.sc_medium_file_storage_classname`
+        FAST_STORAGE_CLASS_NAME=`cat $existing_pattern_cr_name | ${YQ_CMD} r - spec.shared_configuration.storage_configuration.sc_fast_file_storage_classname`
     fi
 
     containsElement "content" "${PATTERNS_CR_SELECTED[@]}"
@@ -1979,7 +2042,12 @@ function get_existing_pattern_name(){
         read -p "[Default=$FOUNDATION_PATTERN_FILE_BAK]: " existing_pattern_cr_name
         : ${existing_pattern_cr_name:=$FOUNDATION_PATTERN_FILE_BAK}
         if [ -f "$existing_pattern_cr_name" ]; then
-            printf "\n"
+            if [[ "$existing_pattern_cr_name" == "$FOUNDATION_PATTERN_FILE_BAK" ]]; then
+                printf "\n"   
+            else
+                printf "\n"
+                cp -r ${existing_pattern_cr_name} ${FOUNDATION_PATTERN_FILE_BAK}
+            fi
         else 
             echo -e "\x1B[1;31m\"$existing_pattern_cr_name\" file does not exist! \n\x1B[0m"
             existing_pattern_cr_name=""
@@ -2274,6 +2342,7 @@ function apply_pattern_cr(){
         ${SED_COMMAND} "s/$old_fmcn/$CONVERT_LOCAL_REGISTRY_SERVER/g" ${FOUNDATION_PATTERN_FILE_TMP}
         ${SED_COMMAND} "s/$old_ban/$CONVERT_LOCAL_REGISTRY_SERVER/g" ${FOUNDATION_PATTERN_FILE_TMP}
         ${SED_COMMAND} "s/$old_db2/$CONVERT_LOCAL_REGISTRY_SERVER/g" ${FOUNDATION_PATTERN_FILE_TMP}
+        ${SED_COMMAND} "s/$old_db2_alpine/$CONVERT_LOCAL_REGISTRY_SERVER\/alpine/g" ${FOUNDATION_PATTERN_FILE_TMP}
         ${SED_COMMAND} "s/$old_ldap/$CONVERT_LOCAL_REGISTRY_SERVER/g" ${FOUNDATION_PATTERN_FILE_TMP}
         ${SED_COMMAND} "s/$old_db2_etcd/$CONVERT_LOCAL_REGISTRY_SERVER/g" ${FOUNDATION_PATTERN_FILE_TMP}
         ${SED_COMMAND} "s/$old_busybox/$CONVERT_LOCAL_REGISTRY_SERVER/g" ${FOUNDATION_PATTERN_FILE_TMP}
@@ -2429,7 +2498,7 @@ function show_summary(){
         done
     fi
 
-    echo -e "\x1B[1;31m3. Entitlement Registry key:\x1B[0m ${DOCKER_REG_KEY}"
+    echo -e "\x1B[1;31m3. Entitlement Registry key:\x1B[0m" # not show plaintext password
     echo -e "\x1B[1;31m4. Docker registry service name or URL:\x1B[0m ${LOCAL_REGISTRY_SERVER}"
     echo -e "\x1B[1;31m5. Docker registry user name:\x1B[0m ${LOCAL_REGISTRY_USER}"
     # echo -e "\x1B[1;31m5. Docker registry password: ${LOCAL_REGISTRY_PWD}\x1B[0m"
@@ -2589,15 +2658,15 @@ while true; do
         echo -e "\x1B[1mInstalling the Cloud Pak for Automation operator...\x1B[0m"
         printf "\n"
         if [[ "${INSTALLATION_TYPE}"  == "new" ]]; then 
-            if [ "$use_entitlement" = "no" ] ; then
-                create_secret_local_registry
-            else
-                create_secret_entitlement_registry
-            fi
             if [[ $1 == "review" ]]; then
                 echo -e "\x1B[1mReview mode running, just generate final CR, will not deploy operator\x1B[0m"
                 read -rsn1 -p"Press any key to continue";echo
             else
+                if [ "$use_entitlement" = "no" ] ; then
+                    create_secret_local_registry
+                else
+                    create_secret_entitlement_registry
+                fi
                 allocate_operator_pvc
                 apply_cp4a_operator
                 copy_jdbc_driver

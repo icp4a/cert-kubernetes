@@ -117,21 +117,12 @@ function echo_impl() {
 # check OCP version
 ############################
 function check_platform_version(){
-    res=$(kubectl  get nodes | awk 'NR==2{print $5}')
-    if [[  $res =~ v1.11 ]];
-    then
-        PLATFORM_VERSION="3.11"
-    elif [[  $res =~ v1.14.6 ]];
-    then
-        PLATFORM_VERSION="4.2"
-    elif [[  $res =~ v1.16.2 ]];
-    then
-        PLATFORM_VERSION="4.3"
-    elif [[  $res =~ v1.17.1 ]];
-    then
-        PLATFORM_VERSION="4.4"        
+    currentver=$(kubectl  get nodes | awk 'NR==2{print $5}')
+    requiredver="v1.14.1"
+    if [ "$(printf '%s\n' "$requiredver" "$currentver" | sort -V | head -n1)" = "$requiredver" ]; then
+        PLATFORM_VERSION="4.2OrLater"  
     else
-        echo -e "\x1B[1;31mUnable to determine OCP version with node version information: $res .\x1B[0m"
+        PLATFORM_VERSION="3.11"
     fi
 }
 

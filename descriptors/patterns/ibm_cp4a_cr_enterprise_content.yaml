@@ -17,12 +17,12 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2
+    release: 20.0.2.1
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 20.0.2
+  appVersion: 20.0.2.1
   shared_configuration:
 
     ## FileNet Content Manager (FNCM) license and possible values are: user, non-production, and production.
@@ -51,7 +51,7 @@ spec:
     ## The deployment type as selected by the user.  Possible values are: demo, enterprise.
     sc_deployment_type: enterprise
 
-    ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that correponds to a user ID.
+    ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that corresponds to a user ID.
     sc_run_as_user:     
 
     ## The platform to be deployed specified by the user.  Possible values are: OCP and other.  This is normally populated by the User script 
@@ -178,6 +178,10 @@ spec:
 
   ## The beginning section of database configuration for CP4A
   datasource_configuration:
+    ## The database_precheck parameter is used to enable or disable CPE/Navigator database connection check.
+    ## If set to "true", then CPE/Navigator database connection check will be enabled.
+    ## if set to "false", then CPE/Navigator database connection check will not be enabled.
+   # database_precheck: true
     ## The database configuration for the GCD datasource for CPE
     dc_gcd_datasource:
       ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".
@@ -194,7 +198,6 @@ spec:
       database_port: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_gcd_jdbc_url: "<Required>"
-    
       ## If the database type is Db2 HADR, then complete the rest of the parameters below.
       ## Provide the database server name or IP address of the standby database server.
       dc_hadr_standby_servername: "<Required>"
@@ -206,12 +209,22 @@ spec:
       dc_hadr_retry_interval_for_client_reroute: 15
       ## Provide the max # of retries.  If not preference, keep the default value.
       dc_hadr_max_retries_for_client_reroute: 3
-    
     ## The database configuration for the object store 1 (OS1) datasource for CPE
     dc_os_datasources:
       ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the 
       ## GCD configuration above.
     - dc_database_type: "<Required>"
+      ## Provide the object store label for the object store.  The default value is "os" or not defined.
+      ## This label must match the OS secret you define in ibm-fncm-secret.  
+      ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
+      ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
+      ## If you don't define dc_os_label, then your secret will be defined as:
+      ## --from-literal=osDBUsername="<your os db username>" --from-literal=osDBPassword="<your os db password>".
+      ## If you have multiple object stores, then you need to define multiple datasource sections starting 
+      ## at "dc_database_type" element.
+      ## If all the object store databases share the same username and password, then dc_os_label value should be the same
+      ## in all the datasource sections.
+      dc_os_label: "os"
       ## The OS1 non-XA datasource name.  The default value is "FNOS1DS".
       dc_common_os_datasource_name: "FNOS1DS"
       ## The OS1 XA datasource name.  The default value is "FNOS1DSXA".

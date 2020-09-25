@@ -103,7 +103,8 @@ fi
                "etcd:v3.3.10"
                "openldap:1.3.0"
                "busybox:latest"
-               "phpldapadmin:0.9.0")
+               "phpldapadmin:0.9.0"
+               "alpine:3.6")
 function getimagerepo(){
     if [[ $image == ${prereqimages[0]} ]]; then
         image_repo="docker.io/ibmcom/"
@@ -121,6 +122,8 @@ function getimagerepo(){
         image_repo="docker.io/library/"
     elif [[ $image == ${prereqimages[7]} ]]; then
         image_repo="osixia/"
+    elif [[ $image == ${prereqimages[8]} ]]; then
+         image_repo="docker.io/" 
     fi
 }
 

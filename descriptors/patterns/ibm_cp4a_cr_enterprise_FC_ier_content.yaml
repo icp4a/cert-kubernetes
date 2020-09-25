@@ -16,19 +16,19 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2
+    release: 20.0.2.1
 spec:
   ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
   ## For example, serviceAccount in the spec becomes service_account in ansible.
   ## It is recommended that you perform some type validation in Ansible on the variables to ensure that
   ## your application is receiving expected input.
-
+  appVersion: 20.0.2.1
   ## shared configuration among all tribe
   shared_configuration:
     sc_image_repository: cp.icr.io
     root_ca_secret: icp4a-root-ca
     sc_optional_components: ier
-    sc_deployment_hostname_suffix: "9.30.182.206.nip.io"
+    sc_deployment_hostname_suffix: "{{ meta.name }}.<Required>"
     storage_configuration:
       sc_medium_file_storage_classname: "managed-nfs-storage"
     image_pull_secrets:
@@ -48,8 +48,8 @@ spec:
       replica_count: 1
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: 20.0.2
-        pull_policy: IfnotPresent
+        tag: ga-5214-ier-if002
+        pull_policy: IfNotPresent
      # Logging for workloads
       log:
         format: json
@@ -72,7 +72,7 @@ spec:
       ier_production_setting:
         license: accept
       collectd_enable_plugin_write_graphite: false
-      run_as_user: 50001
+      run_as_user: 
      # Specify the names of existing persistent volume claims to be used by your application.
      # Specify an empty string if you don't have existing persistent volume claim.
       datavolume:
