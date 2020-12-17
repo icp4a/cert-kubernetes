@@ -16,9 +16,13 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2.1
+    release: 20.0.3
 spec:
-  appVersion: 20.0.2.1
+  appVersion: 20.0.3
+
+  ## MUST exist, used to accept ibm license, valid value only can be "accept" 
+  ibm_license: ""
+
   ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
   ## For example, serviceAccount in the spec becomes service_account in ansible.
   ## It is recommended that you perform some type validation in Ansible on the variables to ensure that
@@ -35,7 +39,7 @@ spec:
     sc_deployment_patterns: content
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
-    ## The optional components are: cmis, css (Content Search Services), es (External Share).
+    ## The optional components are: cmis, css (Content Search Services), es (External Share), ier (Enterprise Records) and iccsap (Content Collector for SAP).
     sc_optional_components:
 
     ## The deployment type as selected by the user.  Possible values are: demo, non-production, and production
@@ -50,34 +54,6 @@ spec:
     sc_deployment_hostname_suffix: "{{ meta.name }}"
     storage_configuration:
       sc_dynamic_storage_classname: ""
-    images:
-      db2u_tools:
-        repository: docker.io/ibmcom/db2u.tools
-        tag: 11.5.1.0-CN1
-      db2:
-        repository: docker.io/ibmcom/db2
-        tag: 11.5.1.0-CN1
-      db2_auxiliary:
-        repository: docker.io/ibmcom/db2u.auxiliary.auth
-        tag: 11.5.1.0-CN1
-      db2_init:
-        repository: docker.io/ibmcom/db2u.instdb
-        tag: 11.5.1.0-CN1
-      db2_etcd:
-        repository: quay.io/coreos/etcd
-        tag: v3.3.10
-      db2_alpine: 
-        repository: docker.io/alpine
-        tag: 3.6
-      openldap:
-        repository: osixia/openldap
-        tag: 1.3.0
-      busybox:
-        repository: docker.io/library/busybox
-        tag: latest
-      phpldapadmin:
-        repository: osixia/phpldapadmin
-        tag: 0.9.0
   ########################################################################
   ########      IBM FileNet Content Manager configuration         ########
   ########################################################################
@@ -85,24 +61,39 @@ spec:
     cpe:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-555-p8cpe-if002
+        tag: ga-556-p8cpe
     css:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: ga-555-p8css-if002
+        tag: ga-556-p8css
     graphql:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: ga-555-p8cgql-if002
+        tag: ga-556-p8cgql
     cmis:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-305-cmis-if001
+        tag: ga-305-cmis-if002
   ########################################################################
   ########   IBM Business Automation Navigator configuration      ########
   ########################################################################
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-308-icn-if002
-      
+      tag: ga-309-icn
+     
+  ########################################################################
+  ########   IBM Enterprise Records configuration      ########
+  ########################################################################     
+  ier_configuration:
+    image:
+      repository: cp.icr.io/cp/cp4a/ier/ier
+      tag: ga-521-ier-fp005
+
+ ########################################################################
+ ########             IBM Content Collector for SAP              ########
+ ########################################################################
+  iccsap_configuration:
+    image:
+      repository: cp.icr.io/cp/cp4a/iccsap/iccsap
+      tag: ga-4004-iccsap

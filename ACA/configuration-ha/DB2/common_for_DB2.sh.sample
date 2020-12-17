@@ -50,8 +50,3 @@ confirmation=y
 
 #DB2 ssl Yes/No
 ssl=No
-
-
-# if insert tenant is the only part needed, specify "y" (skips populating tenant DB and inserting user)
-# this is useful for fixing tenant connection string
-insert_tenant_only=y

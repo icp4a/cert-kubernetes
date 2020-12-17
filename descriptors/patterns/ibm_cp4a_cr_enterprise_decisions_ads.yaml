@@ -16,9 +16,12 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2.1
+    release: 20.0.3
 spec:
-  appVersion: 20.0.2.1
+  appVersion: 20.0.3
+
+  ## MUST exist, used to accept ibm license, valid value only can be "accept" 
+  ibm_license: ""
 
   #################################################################################################################
   ##  The contents of this template CR file reflect only the specific parameters and configuration 
@@ -46,12 +49,14 @@ spec:
     ## The optional components to be installed if listed here.
     ## This is normally populated by the User script based on input from the user.
     ## User can also manually specify the optional components to be deployed here.
-    ## ADS has two 'ads_designer' and 'ads_runtime' optional component.
+    ## ADS has two 'ads_designer' and 'ads_runtime' optional component. If 'ads_runtime' is here, it is possible to also add 'bai'.
     ## If ads_designer is set, you also have to set the 'ads_configuration.decision_designer.enabled' flag to true to install it.
     ## If ads_runtime is set, you also have to set the 'ads_configuration.decision_runtime.enabled' flag to true to install it.
     sc_optional_components:
 
- 
+    ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
+    sc_ingress_enable: false
+
 
   ########################################################################
   ########   IBM Business Automation Decision Services            ########
@@ -65,3 +70,10 @@ spec:
 
     decision_runtime:
       enabled: false
+
+    mongo:
+      #      # Optional: defaulted to false. (true in demo mode)
+      #      # Embedded mongoDB is not recommended in production. It is not enabled by default.
+      #      use_embedded: false
+      # If you provide an external mongo db, fill the mongo connection string in the admin secret.
+      admin_secret_name: ibm-dba-ads-mongo-secret

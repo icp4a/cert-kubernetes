@@ -10,12 +10,9 @@
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
 #
 ###############################################################################
-CUR_DIR=$(pwd)
-if [ -n "$(echo $CUR_DIR | grep scripts)" ]; then
-    PARENT_DIR=$(dirname "$PWD")
-else
-    PARENT_DIR=$CUR_DIR
-fi
+CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
+
 TEMP_FOLDER=${CUR_DIR}/.tmp
 LOG_FILE=${CUR_DIR}/CS_prepare_install33.log
 

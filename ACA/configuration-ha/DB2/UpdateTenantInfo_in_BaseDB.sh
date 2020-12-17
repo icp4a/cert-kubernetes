@@ -59,11 +59,11 @@ echo " - Tenant ID: $tenant_id"
 echo " - Tenant ontology: $tenant_ontology"
 askForConfirmation
 
-cp sql/UpdateTenantInfo_in_BaseDB_1.4_to_1.5.sql.template sql/UpdateTenantInfo_in_BaseDB_1.4_to_1.5.sql
-sed -i s/\$base_db_name/"$base_db_name"/g sql/UpdateTenantInfo_in_BaseDB_1.4_to_1.5.sql
-sed -i s/\$base_db_user/"$base_db_user"/g sql/UpdateTenantInfo_in_BaseDB_1.4_to_1.5.sql
-sed -i s/\$tenant_id/"$tenant_id"/g sql/UpdateTenantInfo_in_BaseDB_1.4_to_1.5.sql
-sed -i s/\$tenant_ontology/"$tenant_ontology"/g sql/UpdateTenantInfo_in_BaseDB_1.4_to_1.5.sql
+cp sql/UpdateTenantInfo_in_BaseDB_1.5_to_1.6.sql.template sql/UpdateTenantInfo_in_BaseDB_1.5_to_1.6.sql
+sed -i s/\$base_db_name/"$base_db_name"/g sql/UpdateTenantInfo_in_BaseDB_1.5_to_1.6.sql
+sed -i s/\$base_db_user/"$base_db_user"/g sql/UpdateTenantInfo_in_BaseDB_1.5_to_1.6.sql
+sed -i s/\$tenant_id/"$tenant_id"/g sql/UpdateTenantInfo_in_BaseDB_1.5_to_1.6.sql
+sed -i s/\$tenant_ontology/"$tenant_ontology"/g sql/UpdateTenantInfo_in_BaseDB_1.5_to_1.6.sql
 echo
-echo "Running upgrade script: sql/UpdateTenantInfo_in_BaseDB_1.4_to_1.5.sql"
-db2 -stvf sql/UpdateTenantInfo_in_BaseDB_1.4_to_1.5.sql
+echo "Running upgrade script: sql/UpdateTenantInfo_in_BaseDB_1.5_to_1.6.sql"
+db2 -stvf sql/UpdateTenantInfo_in_BaseDB_1.5_to_1.6.sql

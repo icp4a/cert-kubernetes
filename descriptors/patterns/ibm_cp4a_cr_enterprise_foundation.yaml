@@ -17,10 +17,13 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2.1
+    release: 20.0.3
 spec:
   ## CP4A application version
-  appVersion: 20.0.2.1
+  appVersion: 20.0.3
+
+  ## MUST exist, used to accept ibm license, valid value only can be "accept"
+  ibm_license: ""
 
   #####################################################################################################################
   ##  This template CR file reflects the ICP4A plaftorm foundation components shared by most of othe ICP4A capabilities,
@@ -58,7 +61,7 @@ spec:
   ##  For BAB, UMS and BAI, you will only find  configuration parameters in the share_configuration section that need
   ##  to be configured.
   ##
-  ##  For BAS, you will find a minimal bastudio_configuration setion is in the CR, which will need to be present
+  ##  For BAS, you will find a minimal bastudio_configuration section is in the CR, which will need to be present
   ##  and configured by you should if you are planning to install any of the following ICP4A capabilities and features:
   ##     - Automation Content Analyzer (contentanlyzer)
   ##     - Automation Digital Worker (digitalworker)
@@ -98,23 +101,6 @@ spec:
     ## it should be "cp.icr.io".  Otherwise, it will be a local docker registry.
     sc_image_repository: cp.icr.io
 
-    images:
-      keytool_job_container:
-        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer 
-        tag: 20.0.2-IF001
-      dbcompatibility_init_container:
-        repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer 
-        tag: 20.0.2-IF001
-      keytool_init_container:
-        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer 
-        tag: 20.0.2-IF001
-      umsregistration_initjob:
-        repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob 
-        tag: 20.0.2-IF001
-
-      ## All CP4A components should use this pull_policy as the default, but it can override by each component
-      pull_policy: IfNotPresent
-
     ## All CP4A components must use/share the root_ca_secret in order for integration
     root_ca_secret: icp4a-root-ca
 
@@ -124,7 +110,7 @@ spec:
     sc_deployment_patterns: foundation
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.  User can
-    ## also manually specify the optional components to be deployed here.  For this foundation CR, the optional components are: ums, bas, and bai
+    ## also manually specify the optional components to be deployed here.  For this foundation CR, the optional components are: ums, bas and bai
     sc_optional_components:
 
     ## The deployment type as selected by the user.  Possible values are: demo, enteprise
@@ -135,7 +121,13 @@ spec:
     sc_deployment_platform:
 
     ## For OCP, this is used to create route, you should input a valid hostname in the required field.
-    sc_deployment_hostname_suffix: "{{ meta.name }}.<Required>"
+    sc_deployment_hostname_suffix: "{{ meta.namespace }}.<Required>"
+
+    ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
+    sc_ingress_enable: false
+
+    ## For ROKS Ingress, provide TLS secret name for Ingress controller.
+    sc_ingress_tls_secret_name: <Required>
 
     ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
     ## the external service to the component's truststore.
@@ -160,17 +152,26 @@ spec:
     # these parameters and they can be kept empty.
     ##############################################################################################
     kafka_configuration:
-      # Comma-separated list of hosts:port for connection to the Kafka cluster.
-      # This field is mandatory for any Kafka configuration.
+      # A comma-separated list of hosts:port for connection to the Kafka cluster.
+      # This parameter is mandatory for any Kafka configuration.
       bootstrap_servers: "<Required>"
-      # Value for the Kafka security.protocol property
-      # Valid values: PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL. Default: PLAINTEXT.
+      # The URL of the Kafka schema registry.
+      # If the Business Automation Insights processor for custom events is configured, the value of this
+      # parameter must provide the URL of the schema registry. Otherwise, it can be left empty.
+      schema_registry_url:
+      # The type of the Kafka schema registry.
+      # Valid value: APICURIO. If not set, defaults to APICURIO. If set to any other value, the processing of
+      # events using Avro schema in Business Automation Insights is not possible and the BAI Management
+      # service is not deployed.
+      schema_registry_type:
+      # The value for the Kafka security.protocol property.
+      # Valid values: PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL. Default: SASL_SSL.
       security_protocol:
-      # Value for the Kafka sasl.mechanism property
+      # The value for the Kafka sasl.mechanism property.
       # Valid values: PLAIN, SCRAM-SHA-512. Default: PLAIN.
       sasl_mechanism:
-      # If the Kafka server requires authentication or uses SSL communications, the value of this field
-      # must provide the name of a secret that holds the following keys as base64-encoded strings:
+      # If the Kafka server requires authentication or uses SSL communications, the value of this parameter
+      # must provide the name of a Kubernetes secret that holds the following keys as base64-encoded strings:
       # kafka-username: Kafka username; leave empty if no authentication
       # kafka-password: Kafka password; leave empty if no authentication
       # kafka-server-certificate: server certificate for SSL communications; leave empty if SSL protocol is not used
@@ -214,7 +215,7 @@ spec:
     ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
     lc_ldap_group_display_name_attr: "cn"
 
-    ## The LDAP group membership search filter string.  One possible value is "(&(cn=%v)(|(objectclass=groupOfNames)(objectclass=groupOfUniqueNames)(objectclass=groupOfURLs))" for TDS
+    ## The LDAP group membership search filter string.  One possible value is "(&(cn=%v)(|(objectclass=groupOfNames)(objectclass=groupOfUniqueNames)(objectclass=groupOfURLs)))" for TDS
     ## and "(&(cn=%v)(objectcategory=group))" for AD.
     lc_ldap_group_membership_search_filter: "<Required>"
 
@@ -234,6 +235,12 @@ spec:
 
   ## The beginning section of database configuration for CP4A
   datasource_configuration:
+    ## The dc_ssl_enabled parameter is used to support database connection over SSL for DB2/Oracle .
+    dc_ssl_enabled: true
+    ## The database_precheck parameter is used to enable or disable CPE/Navigator database connection check.
+    ## If set to "true", then CPE/Navigator database connection check will be enabled.
+    ## if set to "false", then CPE/Navigator database connection check will not be enabled.
+   # database_precheck: true
     ## The database configuration for ICN (Navigator) - aka BAN (Business Automation Navigator)
     dc_icn_datasource:
       ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the
@@ -246,6 +253,8 @@ spec:
       database_port: "<Required>"
       ## Provide the name of the database for ICN (Navigator).  For example: "ICNDB"
       database_name: "<Required>"
+      ## The name of the secret that contains the DB2 SSL certificate.
+      database_ssl_secret_name: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_icn_jdbc_url: "<Required>"
       ######################################################################################
@@ -264,68 +273,157 @@ spec:
 
     ## The database configuration for UMS (User Management Service)
     dc_ums_datasource:
-      ## Provide the database type from your infrastructure. The possible values are "db2" or "oracle".  This should be the same as the
-      ## other datasource configuration above. Db2 with HADR is automatically activated if dc_ums_oauth_alternate_hosts and dc_ums_oauth_alternate_ports
-      ## are set.
+      ## Provide the datasource configuration for oauth
+      ## Possible dc_ums_oauth_type values are "derby" for test only and "db2", "oracle", "sqlserver" and "postgresql" for production.
+      ## This configuration should be the same as the other datasource configuration in the dc_ums_datasource section.
+      ## db2 with HADR is automatically activated if dc_ums_oauth_alternate_hosts and dc_ums_oauth_alternate_ports are set.
+      ## For Oracle RAC, specify the host name of the SCAN listener as the value of the dc_ums_oauth_host parameter
       dc_ums_oauth_type: "<Required>"
       ## Provide the database server name or IP address of the database server.
       dc_ums_oauth_host: "<Required>"
-      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521".
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521". For MSSQL, the default is "1433"- For PostgreSQL, the default is "5432".
       dc_ums_oauth_port: "<Required>"
       ## Provide the name of the database for UMS.  For example: "UMSDB"
       dc_ums_oauth_name: "<Required>"
       dc_ums_oauth_schema: OAuthDBSchema
       dc_ums_oauth_ssl: true
-      dc_ums_oauth_ssl_secret_name:
+      dc_ums_oauth_ssl_secret_name: "<Required>"
+      ## For "oracle", "sqlserver" and "postgresql" provide the names of the driver files
       dc_ums_oauth_driverfiles:
+      ## For db2 HADR only
       dc_ums_oauth_alternate_hosts:
       dc_ums_oauth_alternate_ports:
 
-      ## The database database configuration for teamserver
-      ## Provide the database type from your infrastructure. The possible values are "db2" or "oracle".  This should be the same as the
-      ## other datasource configuration above. Db2 with HADR is automatically activated if dc_ums_teamserver_alternate_hosts and dc_ums_teamserver_alternate_ports
-      ## are set.
+      ## Provide the datasource configuration for the teamserver
+      ## Possible dc_ums_teamserver_type values are "derby" for test only and "db2", "oracle", "sqlserver" and "postgresql" for production.
+      ## This configuration should be the same as the other datasource configuration in the dc_ums_datasource section.
+      ## db2 with HADR is automatically activated if dc_ums_teamserver_alternate_hosts and dc_ums_teamserver_alternate_ports are set.
+      ## For Oracle RAC, specify the host name of the SCAN listener as the value of the dc_ums_teamserver_host parameter
       dc_ums_teamserver_type: "<Required>"
       dc_ums_teamserver_host: "<Required>"
-      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521".
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521". For MS SQL, the default is "1433"- For PostgreSQL, the default is "5432".
       dc_ums_teamserver_port: "<Required>"
       ## Provide the name of the database for UMS teamserver.  For example: "UMSDB"
       dc_ums_teamserver_name: "<Required>"
       dc_ums_teamserver_ssl: true
-      dc_ums_teamserver_ssl_secret_name:
+      dc_ums_teamserver_ssl_secret_name: "<Required>"
+      ## For "oracle", "sqlserver" and "postgresql" provide the names of the driver files
       dc_ums_teamserver_driverfiles:
+      ## For db2 HADR only
       dc_ums_teamserver_alternate_hosts:
       dc_ums_teamserver_alternate_ports:
+      
 
-  #-----------------------------------------------------------------------
-  # Configuration for IBM Business Automation Application Studio required for some ICP4A capabilities.
-  #-----------------------------------------------------------------------
+  #############################################################################
+  ## This section contains the BAStudio component configurations              #
+  ##  it's the optional component: app_designer, ads_designer, bas,           #
+  ##                               workflow-authoring                         #
+  #############################################################################
   bastudio_configuration:
     #Adjust this one if you created the secret with name other than the default
     admin_secret_name: "{{ meta.name }}-bas-admin-secret"
+    #-----------------------------------------------------------------------
+    # bastudio admin Secret template will be
+    #-----------------------------------------------------------------------
+    # apiVersion: v1
+    # stringData:
+    #   dbPassword: "<Your database password>"
+    #   dbUsername: "<Your database username>"
+    # kind: Secret
+    # metadata:
+    #   name: icp4adeploy-bas-admin-secret
+    # type: Opaque
+    #-----------------------------------------------------------------------
     #Provide BAStudio default administrator ID
     admin_user:  "<Required>"
     database:
-      #Provide the database server hostname for BAStudio use
+      #-----------------------------------------------------------------------
+      # Configuration required for configure DB2 for BA Studio server
+      # If you are not going to use DB2. Please comment out this section
+      #-----------------------------------------------------------------------
+      # Provide the database server hostname for BAStudio use
       host: "<Required>"
-      #Provide the database name for BAStudio use
+      # Provide the database name for BAStudio use
       # The database provided should be created by the BAStudio SQL script template.
       name: "<Required>"
-      #Provide the database server port for BAStudio use
+      # Provide the database server port for BAStudio use
       port: "<Required>"
+      # If you are using custom JDBC (for example using some special DB2 driver). Please set this one to true
+      use_custom_jdbc_drivers: false
       # If you want to enable database automatic client reroute (ACR) for HADR, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
       alternative_host:
       alternative_port:
       type: db2
+      #-----------------------------------------------------------------------
+      # Configuration required for configure Oracle for BA Studio server
+      # If you are going to use Oracle. Please uncomment this section
+      #-----------------------------------------------------------------------
+      # type: oracle
+      # ## Oracle - If you are using Oracle input the oracle database connection URL here
+      # oracle_url: <Required>
+      # ## Required when using Oracle
+      # use_custom_jdbc_drivers: true
+      # ## The persistent volume claim for custom JDBC Drivers if using the custom jdbc drivers is enabled
+      # custom_jdbc_pvc: <Required>
+      # ## Input your Oracle JDBC jar files here. Like: ojdbc8.jar
+      # jdbc_driver_files: <Required>
+      #-----------------------------------------------------------------------
+      # Configuration required for configure PostgreSQL for BA Studio server
+      # If you are going to use PostgreSQL. Please uncomment this section
+      #-----------------------------------------------------------------------
+      # type: postgresql
+      # ## Provide the database server hostname for BAStudio use
+      # host: "<Required>"
+      # ## Provide the database name for BAStudio use
+      # ## The database provided should be created by the BAStudio SQL script template.
+      # name: "<Required>"
+      # ## Provide the database server port for BAStudio use
+      # port: "<Required>"
+      # ## Required when using PostgreSQL
+      # use_custom_jdbc_drivers: true
+      # ## The persistent volume claim for custom JDBC Drivers if using the custom jdbc drivers is enabled
+      # custom_jdbc_pvc: <Required>
+      # ## Input your PostgreSQL JDBC jar files here. Like: postgresql-42.2.16.jar
+      # jdbc_driver_files: <Required>
+      # ## If you want to enable PostgreSQL Connection Fail-over, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
+      # alternative_host:
+      # alternative_port:
+      #-----------------------------------------------------------------------
+      # SSL connection for database is enabled by default. Please input the secret name including cert
+      #-----------------------------------------------------------------------
+      ssl_enabled: true
+      certificate_secret_name: <Required>
     #-----------------------------------------------------------------------
     #  App Engine Playback Server (playback_server) can be only one instance. This is different from App Engine (where application_engine_configuration is a list and you can deploy multiple instances).
+    #  You should use different database, admin_secret_name, hostname for playback server and the application engine servers
     #-----------------------------------------------------------------------
     playback_server:
       #Adjust this one if you created the secret with name other than the default
       admin_secret_name: playback-server-admin-secret
+      #-----------------------------------------------------------------------
+      # The playback server admin Secret template will be
+      #-----------------------------------------------------------------------
+      # apiVersion: v1
+      # stringData:
+      #   AE_DATABASE_PWD: "<Your database password>"
+      #   AE_DATABASE_USER: "<Your database username>"
+      #   REDIS_PASSWORD: "<Your Redis server password>"
+      # kind: Secret
+      # metadata:
+      #   name: playback-server-admin-secret
+      # type: Opaque
+      #-----------------------------------------------------------------------
       #Provide playback application engine default administrator ID
+      # The user ID should be bootstrap admin ID for IBM Business Automation Navigator. It is case sensitive.
+      # The same ID should be a User Management Service (UMS) admin user also.
       admin_user: "<Required>"
+      ## optional when the database type is Db2, must required when the database type is Oracle, PostgreSQL.
+      use_custom_jdbc_drivers: false
       database:
+        #-----------------------------------------------------------------------
+        # Configuration required for configure DB2 for BA Studio playback server
+        # If you are going to use Oracle. Please comment out this section
+        #-----------------------------------------------------------------------
         #Provide the database server hostname for playback application engine use
         host: "<Required>"
         #Provide the database name for playback application engine use
@@ -336,17 +434,245 @@ spec:
         alternative_host:
         alternative_port:
         type: db2
-
+        #-----------------------------------------------------------------------
+        # Configuration required for configure Oracle for BA Studio playback server
+        # If you are going to use Oracle. Please uncomment this section
+        #-----------------------------------------------------------------------
+        # type: oracle
+        # ## Required only when type is Oracle, both ssl and non-ssl. The format must be purely oracle descriptor like (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=<your database host/IP>)(PORT=<your database port>))(CONNECT_DATA=(SERVICE_NAME=<your oracle service name>)))
+        # oracle_url_without_wallet_directory: <Required>
+        # ## Required only when type is Oracle and enable_ssl is true. The format must be purely oracle descriptor. SSO wallet directory must be specified and fixed to (MY_WALLET_DIRECTORY=/shared/resources/oracle/wallet).
+        # oracle_url_with_wallet_directory:
+        # ## Required only when type is oracle and enable_ssl is true.
+        # oracle_sso_wallet_secret_name:
+        # ## The persistent volume claim for custom JDBC Drivers if using the custom jdbc drivers is enabled
+        # custom_jdbc_pvc: <Required>
+        #-----------------------------------------------------------------------
+        # Configuration required for configure PostgreSQL for BA Studio playback server
+        # If you are going to use PostgreSQL. Please uncomment this section
+        #-----------------------------------------------------------------------
+        # type: PostgreSQL
+        # ## The persistent volume claim for custom JDBC Drivers if using the custom jdbc drivers is enabled
+        # custom_jdbc_pvc: <Required>
+        # #Provide the database server hostname for playback application engine use
+        # host: "<Required>"
+        # #Provide the database name for playback application engine use
+        # name: "<Required>"
+        # #Provide the database server port for playback application engine use
+        # port: "<Required>"
+        # ## If you want to enable PostgreSQL Connection Fail-over, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
+        # alternative_host:
+        # alternative_port:
+        #-----------------------------------------------------------------------
+        # SSL connection for database is enabled by default. Please input the secret name including cert
+        #-----------------------------------------------------------------------
+        enable_ssl: true
+        db_cert_secret_name: <Required>
+      #-----------------------------------------------------------------------
+      # If you want better HA experience. 
+      # - Set the session.use_external_store to true
+      # - Fill in your redis server information
+      #-----------------------------------------------------------------------
+      session:
+        use_external_store: false
+      redis:
+        # Your external redis host/ip
+        host:
+        # Your external redis port
+        port: '6379'
+        # If your redis enabled TLS connection set this to true
+        # You should add redis server CA certificate in tls_trust_list or trusted_certificate_list
+        tls_enabled: false
+        
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########
   ########################################################################
   ums_configuration:
-    images:
-      ums:
-        repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.2-IF001
 
   ########################################################################
   ########      IBM Business Automation Insights configuration    ########
   ########################################################################
   bai_configuration:
+    flink:
+      # The number of Apache Zookeeper replicas
+      # Zookeeper requires a strict majority of its servers to be up.
+      # For High Availability, use an odd number of replicas larger or equal
+      # to 3.
+      zookeeper:
+        replicas: 3
+    ibm-dba-ek:
+      elasticsearch:
+        client:
+          # The number of Elasticsearch client replicas. For High Availability,
+          # use at least 2 replicas.
+          replicas: 2
+        data:
+          # The number of Elasticsearch data replicas. For High Availability,
+          # use at least 2 replicas.
+          replicas: 2
+        master:
+          # The number of Elasticsearch master replicas.
+          # Elasticsearch requires a strict majority of its masters to be up.
+          # For High Availability, use an odd number of replicas larger
+          # or equal to 3.
+          replicas: 3
+    admin:
+      # The number of Admin service replicas. For High Availability,
+      # use at least 2 replicas.
+      replicas: 2
+    management:
+      # The number of Management service replicas. For High Availability,
+      # use at least 2 replicas.
+      replicas: 2
+    # The Flink job for processing BPMN events.
+    # Enabled automatically if BAI is selected as an optional component of
+    # workflow or workflow-workstreams patterns.
+    bpmn:
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+    # The Flink job for processing BAW Advanced events.
+    # Disabled by default. Can be enabled by setting `bawadv.install` to true.
+    bawadv:
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+    # The Flink job for processing ICM events.
+    # Enabled automatically if BAI is selected as an optional component of
+    # workflow or workflow-workstreams patterns.
+    icm:
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+    # The Flink job for processing ODM events.
+    # Enabled automatically if BAI is selected as an optional component of
+    # decisions pattern.
+    odm:
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+    # The Flink job for processing Content events.
+    # Enabled automatically if BAI is selected as an optional component of
+    # content pattern.
+    content:
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+    # The Flink job for processing events from custom sources and events based on Avro schema.
+    # Its configuration is automatic for events emitted by ADS and BA ML Workforce Insights.
+    # For custom events, its configuration must be filled in the Custom Resource as documented in
+    # the Knowledge Center.
+    eventForwarder:
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+    # The Flink job for ingesting events into HDFS (Hadoop Distributed File System).
+    # Disabled by default. Can be enabled by setting `ingestion.install` to true and
+    # by completing the prerequisite configuration for HFDS as documented in the KnowledgeCenter.
+    ingestion:
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+
+  #############################################################################
+  ######## IBM Business Automation Application server  configurations  ########
+  ##  This section contains the configurations for                           ##
+  ##  * App Engine Server                                                    ##
+  ##  it's the optional component and will be installed when                 ##
+  ##  patterns include: application, workflow, workstreams,                  ##
+  ##                    workflow-workstreams or document_processing          ##
+  #############################################################################
+  application_engine_configuration:
+  ## The application_engine_configuration is a list. You can deploy multiple instances of App Engine and assign different configurations for each instance.
+  ## For each instance, application_engine_configuration.name, database, admin_secret_name and hostname must be assigned to different values.
+  ## You should use different database, admin_secret_name, hostname for playback server and the application engine servers
+  - name: workspace
+    #Adjust this one if you created the secret with name other than the default
+    admin_secret_name: "{{ meta.name }}-workspace-aae-app-engine-admin-secret"
+    #-----------------------------------------------------------------------
+    # The app engine admin Secret template will be
+    #-----------------------------------------------------------------------
+    # apiVersion: v1
+    # stringData:
+    #   AE_DATABASE_PWD: "<Your database password>"
+    #   AE_DATABASE_USER: "<Your database username>"
+    #   REDIS_PASSWORD: "<Your Redis server password>"
+    # kind: Secret
+    # metadata:
+    #   name: icp4adeploy-workspace-aae-app-engine-admin-secret
+    # type: Opaque
+    #-----------------------------------------------------------------------
+    #Provide application engine default administrator ID
+    # The user ID should be bootstrap admin ID for IBM Business Automation Navigator. It is case sensitive.
+    # The same ID should be a User Management Service (UMS) admin user also.
+    admin_user: "<Required>"
+    ## optional when the database type is Db2, must required when the database type is Oracle, PostgreSQL.
+    use_custom_jdbc_drivers: false
+    database:
+      #-----------------------------------------------------------------------
+      # Configuration required for configure DB2 for App engine server
+      # If you are going to use Oracle. Please comment out this section
+      #-----------------------------------------------------------------------
+      #Provide the database server hostname for runtime application engine use
+      host: "<Required>"
+      #Provide the database name for runtime application engine use
+      #Please pay attention that if you are install authoring environment also.
+      #The database used by playback server and this one should be different
+      name: "<Required>"
+      #Provide the database server port for runtime application engine use
+      port: "<Required>"
+      ## If you set up DB2 HADR and want to use it, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
+      alternative_host:
+      alternative_port:
+      type: db2
+      #-----------------------------------------------------------------------
+      # Configuration required for configure Oracle for App engine server
+      # If you are going to use Oracle. Please uncomment this section
+      #-----------------------------------------------------------------------
+      # type: oracle
+      # ## Required only when type is Oracle, both ssl and non-ssl. The format must be purely oracle descriptor like (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=<your database host/IP>)(PORT=<your database port>))(CONNECT_DATA=(SERVICE_NAME=<your oracle service name>)))
+      # oracle_url_without_wallet_directory: <Required>
+      # ## Required only when type is Oracle and enable_ssl is true. The format must be purely oracle descriptor. SSO wallet directory must be specified and fixed to (MY_WALLET_DIRECTORY=/shared/resources/oracle/wallet).
+      # oracle_url_with_wallet_directory:
+      # ## Required only when type is oracle and enable_ssl is true.
+      # oracle_sso_wallet_secret_name:
+      # ## The persistent volume claim for custom JDBC Drivers if using the custom jdbc drivers is enabled
+      # custom_jdbc_pvc: <Required>
+      #-----------------------------------------------------------------------
+      # Configuration required for configure PostgreSQL for App engine server
+      # If you are going to use PostgreSQL. Please uncomment this section
+      #-----------------------------------------------------------------------
+      # type: PostgreSQL
+      # ## The persistent volume claim for custom JDBC Drivers if using the custom jdbc drivers is enabled
+      # custom_jdbc_pvc: <Required>
+      # #Provide the database server hostname for runtime application engine use
+      # host: "<Required>"
+      # #Provide the database name for runtime application engine use
+      # #Please pay attention that if you are install authoring environment also.
+      # #The database used by playback server and this one should be different
+      # name: "<Required>"
+      # #Provide the database server port for runtime application engine use
+      # port: "<Required>"
+      # ## If you want to enable PostgreSQL Connection Fail-over, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
+      # alternative_host:
+      # alternative_port:
+      #-----------------------------------------------------------------------
+      # SSL connection for database is enabled by default. Please input the secret name including cert
+      #-----------------------------------------------------------------------
+      enable_ssl: true
+      db_cert_secret_name: <Required>
+    #-----------------------------------------------------------------------
+    # If you want better HA experience. 
+    # - Set the session.use_external_store to true
+    # - Fill in your redis server information
+    #-----------------------------------------------------------------------
+    session:
+      use_external_store: false
+    redis:
+      # Your external redis host/ip
+      host:
+      # Your external redis port
+      port: '6379'
+      # If your redis enabled TLS connection set this to true
+      # You should add redis server CA certificate in tls_trust_list or trusted_certificate_list
+      tls_enabled: false

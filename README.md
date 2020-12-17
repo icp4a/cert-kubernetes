@@ -1,4 +1,4 @@
-# IBM Cloud Pak for Automation 20.0.2 on Certified Kubernetes
+# IBM Cloud Pak for Automation 20.0.3 on Certified Kubernetes
 
 This repository includes folders and resources to help you install the IBM Cloud Pak for Automation capabilities. Installation of the capabilities is done with the Cloud Pak operator. 
 

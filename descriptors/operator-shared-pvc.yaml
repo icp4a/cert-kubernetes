@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2.1
+    release: 20.0.3
 spec:
   accessModes:
     - ReadWriteMany
@@ -24,4 +24,20 @@ spec:
   resources:
     requests:
       storage: 1Gi
-
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cp4a-shared-log-pvc
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 20.0.3
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: <Fast_StorageClassName>
+  resources:
+    requests:
+      storage: 100Gi

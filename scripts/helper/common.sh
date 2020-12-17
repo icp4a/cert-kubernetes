@@ -25,10 +25,12 @@ function set_global_env_vars() {
         SED_COMMAND='sed -i ""'
         SED_COMMAND_FORMAT='sed -i "" s/^M//g'
         YQ_CMD=${CUR_DIR}/helper/yq/yq_darwin_amd64
+        COPY_CMD=/bin/cp
     else
         SED_COMMAND='sed -i'
         SED_COMMAND_FORMAT='sed -i s/\r//g'
         YQ_CMD=${CUR_DIR}/helper/yq/yq_linux_amd64
+        COPY_CMD=/usr/bin/cp
     fi
 }
 
@@ -37,11 +39,6 @@ function set_global_env_vars() {
 ############################
 
 function validate_cli(){
-    which oc &>/dev/null
-    [[ $? -ne 0 ]] && \
-        echo "Unable to locate Openshift CLI, please install it first." && \
-        exit 1
-
     which ${YQ_CMD} &>/dev/null
     [[ $? -ne 0 ]] && \
         while true; do
@@ -118,12 +115,62 @@ function echo_impl() {
 ############################
 function check_platform_version(){
     currentver=$(kubectl  get nodes | awk 'NR==2{print $5}')
-    requiredver="v1.14.1"
+    requiredver="v1.17.1"
     if [ "$(printf '%s\n' "$requiredver" "$currentver" | sort -V | head -n1)" = "$requiredver" ]; then
-        PLATFORM_VERSION="4.2OrLater"  
+        PLATFORM_VERSION="4.4OrLater"  
     else
-        PLATFORM_VERSION="3.11"
+        # PLATFORM_VERSION="3.11"
+        PLATFORM_VERSION="4.4OrLater"
+        echo -e "\x1B[1;31mIMPORTANT: Only support OCp4.4 or Later, exit...(deadline 2020.11.02)\n\x1B[0m"
+        read -rsn1 -p"Press any key to continue";echo
+        # exit 0
     fi
 }
 
 set_global_env_vars
+
+
+function allocate_operator_pvc(){
+    # For dynamic storage classname
+    printf "\n"
+    echo -e "\x1B[1mApplying the persistent volumes for the Cloud Pak operator by using the storage classname: ${STORAGE_CLASS_NAME}...\x1B[0m"
+
+    printf "\n"
+    if [[ $DEPLOYMENT_TYPE == "demo" && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "other") ]] ;
+    then
+        sed "s/<StorageClassName>/$STORAGE_CLASS_NAME/g" ${OPERATOR_PVC_FILE_BAK} > ${OPERATOR_PVC_FILE_TMP1}
+        sed "s/<Fast_StorageClassName>/$STORAGE_CLASS_NAME/g" ${OPERATOR_PVC_FILE_TMP1}  > ${OPERATOR_PVC_FILE_TMP} # &> /dev/null
+
+    elif [[ ($DEPLOYMENT_TYPE == "enterprise" && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "other")) || $PLATFORM_SELECTED == "ROKS" ]];
+    then
+        sed "s/<StorageClassName>/$SLOW_STORAGE_CLASS_NAME/g" ${OPERATOR_PVC_FILE_BAK} > ${OPERATOR_PVC_FILE_TMP1} # &> /dev/null
+        sed "s/<Fast_StorageClassName>/$FAST_STORAGE_CLASS_NAME/g" ${OPERATOR_PVC_FILE_TMP1} > ${OPERATOR_PVC_FILE_TMP} # &> /dev/null
+    fi
+
+    ${COPY_CMD} -rf ${OPERATOR_PVC_FILE_TMP} ${OPERATOR_PVC_FILE_BAK}
+    # Create Operator Persistent Volume.
+    CREATE_PVC_CMD="${CLI_CMD} apply -f ${OPERATOR_PVC_FILE_TMP}"
+    if $CREATE_PVC_CMD ; then
+        echo -e "\x1B[1mDone\x1B[0m"
+    else
+        echo -e "\x1B[1;31mFailed\x1B[0m"
+    fi
+   # Check Operator Persistent Volume status every 5 seconds (max 10 minutes) until allocate.
+    ATTEMPTS=0
+    TIMEOUT=60
+    printf "\n"
+    echo -e "\x1B[1mWaiting for the persistent volumes to be ready...\x1B[0m"
+    until ${CLI_CMD} get pvc | grep cp4a-shared-log-pvc | grep -q -m 1 "Bound" || [ $ATTEMPTS -eq $TIMEOUT ]; do
+        ATTEMPTS=$((ATTEMPTS + 1))
+        echo -e "......"
+        sleep 10
+        if [ $ATTEMPTS -eq $TIMEOUT ] ; then
+            echo -e "\x1B[1;31mFailed to allocate the persistent volumes!\x1B[0m"
+            echo -e "\x1B[1;31mRun the following command to check the claim '${CLI_CMD} describe pvc operator-shared-pvc'\x1B[0m"
+            exit 1
+        fi
+    done
+    if [ $ATTEMPTS -lt $TIMEOUT ] ; then
+            echo -e "\x1B[1mDone\x1B[0m"
+    fi
+}

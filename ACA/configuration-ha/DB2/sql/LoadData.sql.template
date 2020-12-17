@@ -2,20 +2,6 @@ CONNECT TO $tenant_db_name ;
 SET SCHEMA $tenant_ontology ;
 
 load from ./CSVFiles/doc_class.csv of del insert into doc_class ;
-load from ./CSVFiles/object_type.csv of del modified by identityoverride insert into object_type;
-load from ./CSVFiles/key_class.csv of del modified by identityoverride insert into key_class ;
-load from ./CSVFiles/doc_alias.csv of del modified by identityoverride insert into doc_alias ;
-load from ./CSVFiles/key_alias.csv of del modified by identityoverride insert into key_alias ;
-load from ./CSVFiles/cword.csv of del modified by identityoverride insert into cword ;
-load from ./CSVFiles/heading.csv of del modified by identityoverride insert into heading ;
-load from ./CSVFiles/heading_alias.csv of del modified by identityoverride insert into heading_alias ;
-load from ./CSVFiles/key_class_dc.csv of del modified by identityoverride insert into key_class_dc ;
-load from ./CSVFiles/doc_alias_dc.csv of del modified by identityoverride insert into doc_alias_dc ;
-load from ./CSVFiles/key_alias_dc.csv of del modified by identityoverride insert into key_alias_dc ;
-load from ./CSVFiles/key_alias_kc.csv of del modified by identityoverride insert into key_alias_kc ;
-load from ./CSVFiles/heading_dc.csv of del modified by identityoverride insert into heading_dc ;
-load from ./CSVFiles/heading_alias_dc.csv of del modified by identityoverride insert into heading_alias_dc ;
-load from ./CSVFiles/heading_alias_h.csv of del modified by identityoverride insert into heading_alias_h ;
-load from ./CSVFiles/cword_dc.csv of del modified by identityoverride insert into cword_dc ;
+load from ./CSVFiles/object_type.csv of del insert into object_type ;
 
 CONNECT RESET;

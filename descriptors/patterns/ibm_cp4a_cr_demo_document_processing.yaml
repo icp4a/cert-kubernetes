@@ -1,0 +1,153 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2020. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: icp4adeploy
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 20.0.3
+spec:
+  appVersion: 20.0.3
+
+  ## MUST exist, used to accept ibm license, valid value only can be "accept" 
+  ibm_license: ""
+
+  ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
+  ## For example, serviceAccount in the spec becomes service_account in ansible.
+  ## It is recommended that you perform some type validation in Ansible on the variables to ensure that
+  ## your application is receiving expected input.
+  ## shared configuration among all tribe
+  shared_configuration:
+
+    ## FileNet Content Manager (FNCM) license and possible values are: user, non-production, and production.
+    ## This value could be different from the rest of the licenses.
+    sc_deployment_fncm_license: non-production
+
+    ## CP4A patterns or capabilities to be deployed.  This CR represents the "Demo" deployment for the "document_processing" pattern (aka IBM Autoation Document Processing).
+    ## The "Demo" deployment will deploy a Development env for the "document_processing" pattern, which consist fo the following components:
+    ##     - cds, cdra, cpds, viewone, Common Git Gateway (git-service and mongodb), cpe, navigator-sso, graphql; 
+    ##     - backend, redis, rabbitmq;
+    ##     - extraction (callerapi, pdfprocess, utf8process, ocr-extraction);
+    ##     - processing (postprocessing, setup, classifyprocess-classify, processing-extraction, updatefiledetail);
+    ##     - natural_language_extractor; deep learning (???);
+    ##     - ums;
+    ##     - bastudio, jms, solution-server-helmjob-db, solution-server, dba-etcd;
+    sc_deployment_patterns: document_processing
+
+    ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
+    ## The optional components are: 
+    ##   - document_processing_designer (indicates the deployment is a development environment)
+    ##   - document_processing_runtime (indicates the deployment is a runtime environment)
+    ##   - cmis, css, and es
+    sc_optional_components: document_processing_designer
+
+    ## The deployment type as selected by the user.  Possible values are: demo or enterprise
+    sc_deployment_type: demo
+
+    ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that corresponds to a user ID
+    sc_run_as_user: 
+
+    ## This is the deployment platform supported for CP4A and the possible values are: ROKS, OCP, and other (which includes all Certified Kubernetes platforms)
+    sc_deployment_platform: 
+        
+    sc_deployment_hostname_suffix: "{{ meta.name }}"
+    storage_configuration:
+      sc_dynamic_storage_classname: ""
+    images:
+      gitea:
+        repository: cp.icr.io/cp/cp4a/demo/gitea
+        tag: 1.12.3
+
+
+  ########################################################################
+  ########      IBM FileNet Content Manager configuration         ########
+  ########################################################################
+  ecm_configuration:
+    cpe:
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/cpe
+        tag: ga-556-p8cpe
+    css:
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/css
+        tag: ga-556-p8css
+    graphql:
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/graphql
+        tag: ga-556-p8cgql
+    cmis:
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/cmis
+        tag: ga-305-cmis-if002
+    es:
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/extshare
+        tag: ga-309-es
+    ########################################################################
+    ###########   IBM Automation Document Processing configuration  ########
+    ########################################################################
+    document_processing:
+      cds:
+        image:
+          repository: cp.icr.io/cp/cp4a/iadp/cds
+          tag: 20.0.3
+      cdra:
+        image:
+          repository: cp.icr.io/cp/cp4a/iadp/cdra
+          tag: 20.0.3          
+      cpds:
+        image:
+          repository: cp.icr.io/cp/cp4a/iadp/cpds
+          tag: 20.0.3
+      viewone:
+        image:
+          repository: cp.icr.io/cp/cp4a/iadp/viewone
+          tag: 20.0.3          
+      gitgateway:
+        image:
+          repository: cp.icr.io/cp/cp4a/iadp/gitgateway
+          tag: 20.0.3                     
+      mongo:
+        image:
+          repository: cp.icr.io/cp/cp4a/iadp/mongo
+          tag: 4.2.10
+
+  ########################################################################
+  ########   IBM Business Automation Navigator configuration      ########
+  ########################################################################
+  navigator_configuration:
+    image:
+      repository: cp.icr.io/cp/cp4a/ban/navigator
+      tag: ga-309-icn
+
+  ########################################################################
+  ########   IBM User and Group Management Service configuration  ########
+  ########################################################################
+  ums_configuration:
+    images:
+      ums:
+        repository: cp.icr.io/cp/cp4a/ums/ums
+        tag: 20.0.3
+    teamserver:
+      admingroup: "cn=ADPEnvironmentOwners,dc=example,dc=org"
+
+  ############################################################################
+  ########   IBM Business Automation Content Analyzer configuration   ########
+  ############################################################################
+  ca_configuration:
+    # Deep Learning configuration
+    deeplearning:
+      gpu_enabled:  # true or false.  Set it to true if you have a GPU enabled worker nodes
+      nodelabel_key: # The unique node label key/value on the GPU node. For example: ibm-cloud.kubernetes.io/gpu-enabled:true.  Set this value when `gpu_enabled` is set to true
+      nodelabel_value:  # The node label value on the GPU node.  For example: "true". Set this value when `gpu_enabled` is set to true

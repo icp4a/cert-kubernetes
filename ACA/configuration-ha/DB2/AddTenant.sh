@@ -14,7 +14,6 @@
 . ./ScriptFunctions.sh
 
 INPUT_PROPS_FILENAME="./common_for_DB2.sh"
-
 if [ -f $INPUT_PROPS_FILENAME ]; then
    echo "Found a $INPUT_PROPS_FILENAME.  Reading in variables from that script."
    . $INPUT_PROPS_FILENAME
@@ -39,31 +38,40 @@ echo
 echo "=================================================="
 echo
 if [[ -z "$tenant_db_exists" || $tenant_db_exists != "true" ]]; then
-  echo -e "\nThis script will create a DB2 database and initialize the database for a Content Analyzer tenant and load it with default data."
-  echo
-  echo -e "If you prefer to create your own database, and only want the script to initialize the existing database, please exit this script and run 'InitTenantDB.sh'."   
+  if [[ -z "$skip_setup_schema" ||  $skip_setup_schema != "true" ]]; then
+    echo -e "\nThis script will create a DB2 database and create the tables for a Content Analyzer Project database."
+    echo
+    echo -e "If you want the script to create the tables in an existing database, please exit this script and run 'InitTenantDB.sh'." 
+  else
+    echo -e "\nThis script will create a DB2 database."
+    echo
+    echo -e "If you want the script to create tables for a Content Analyzer Project database in an existing database, please exit this script and run 'InitTenantDB.sh'." 
+  fi
 else
   if [[ -z "$use_existing_tenant" || $use_existing_tenant -ne 1 ]]; then
-    echo -e "This script will initialize an existing database for a Content Analyzer tenant and load it with default data."
+    if [[ -z "$skip_setup_schema" ||  $skip_setup_schema != "true" ]]; then
+      echo -e "This script will create tables in an existing database for a Content Analyzer Project."
+    fi
   else
-    echo -e "This script will add an ontology to an existing Content Analyzer tenant and load it with default data."
+    echo -e "This script will add an ontology to an existing Content Analyzer tenant and initialize tables."
   fi
 fi
 echo
 echo "=================================================="
 echo
 
-if [[ -z "$use_existing_tenant" || $use_existing_tenant -ne 1 ]]; then
-  echo "Enter the tenant ID for the new tenant: (eg. t4900)"
-else
-  echo "Enter the tenant ID for the existing tenant: (eg. t4900)"
+if [[ -z "$skip_insert_tenant" ||  $skip_insert_tenant != "true" ]]; then
+  if [[ -z "$use_existing_tenant" || $use_existing_tenant -ne 1 ]]; then
+    echo "Enter the tenant ID for the new tenant: (eg. t4900)"
+  else
+    echo "Enter the tenant ID for the existing tenant: (eg. t4900)"
+  fi
+  while [[ -z "$tenant_id" || $tenant_id == '' ]]
+  do
+      echo "Please enter a valid value for the tenant ID:"
+      read tenant_id
+  done
 fi
-while [[ -z "$tenant_id" || $tenant_id == '' ]]
-do
-    echo "Please enter a valid value for the tenant ID:"
-    read tenant_id
-done
-
 
 if [[ -z "$use_existing_tenant" || $use_existing_tenant -ne 1 ]]; then
 
@@ -89,54 +97,42 @@ fi
 
 echo
 if [[ -z "$tenant_db_exists" || $tenant_db_exists != "true" ]]; then
-  echo "Enter the name of the new Content Analyzer Tenant database to create: "
+  echo "Enter the name of the new Content Analyzer Project database to create: "
 else
-  echo "Enter the name of an existing DB2 database for the Content Analyzer Tenant database: "
+  echo "Enter the name of an existing DB2 database for the Content Analyzer Project database: "
 fi
 while [[ $tenant_db_name == '' ]]
 do
-  echo "Please enter a valid value for the tenant database name of max length 8 :"
+  echo "Please enter a valid value for the Project database name of max length 8 :"
   read tenant_db_name
   while [ ${#tenant_db_name} -gt 8 ];
   do
-    echo "Please enter a valid value for the tenant database name of max length 8 :"
+    echo "Please enter a valid value for the Project database name of max length 8 :"
     read tenant_db_name;
     echo ${#tenant_db_name};
   done
 done
 
-default_dsn_name=$tenant_db_name
-if [[ -z "$tenant_dsn_name" ]]; then
-  echo -e "\nEnter the data source name. This will generally be same name as the "
-  echo -e "database name unless you specifiy a different value in the 'db2dsdriver.cfg'. "
-  echo -e "If nothing is entered, we will use the following default value : " $default_dsn_name
-  read tenant_dsn_name
+if [[ -z "$skip_insert_tenant" ||  $skip_insert_tenant != "true" ]]; then
+  default_dsn_name=$tenant_db_name
   if [[ -z "$tenant_dsn_name" ]]; then
-     tenant_dsn_name=$default_dsn_name
+    echo -e "\nEnter the data source name. This will generally be same name as the "
+    echo -e "database name unless you specifiy a different value in the 'db2dsdriver.cfg'. "
+    echo -e "If nothing is entered, we will use the following default value : " $default_dsn_name
+    read tenant_dsn_name
+    if [[ -z "$tenant_dsn_name" ]]; then
+      tenant_dsn_name=$default_dsn_name
+    fi
   fi
-fi
 
-# if [[ -z "$baca_database_server_ip" ]]; then
-#   echo -e "\nEnter the host/IP of the database server: "
-#   read baca_database_server_ip
-# fi
-
-# default_dbport=50000
-# if [[ -z "$baca_database_port" ]]; then
-#    echo -e "\nEnter the port of the database server. If nothing is entered we will use the following default value: " $default_dbport
-#    read baca_database_port
-#    if [[ -z "$baca_database_port" ]]; then
-#       baca_database_port=$default_dbport
-#    fi
-# fi
-
-default_ssl='No'
-if [[ -z "$ssl" ]]; then
-  echo -e "\nWould you like to enable SSL to communicate with DB2 server?  (Please note that additional setup steps are required in order to use SSL with DB2.)"
-  echo -e "Please enter 'Yes' or 'No'. If nothing is entered we will use the default value of '" $default_ssl "'"
-  read ssl
+  default_ssl='No'
   if [[ -z "$ssl" ]]; then
-    ssl=$default_ssl
+    echo -e "\nWould you like to enable SSL to communicate with DB2 server?  (Please note that additional setup steps are required in order to use SSL with DB2.)"
+    echo -e "Please enter 'Yes' or 'No'. If nothing is entered we will use the default value of '" $default_ssl "'"
+    read ssl
+    if [[ -z "$ssl" ]]; then
+      ssl=$default_ssl
+    fi
   fi
 fi
 
@@ -153,6 +149,7 @@ do
          while [[ "$create_new_user" != "y" && "$create_new_user" != "Y" && "$create_new_user" != "n" && "$create_new_user" != "N" ]]
          do
            echo "Do you want this script to create a new database user for you (This will create local OS user)? (Please enter y or n)"
+           echo "Note: The user running this script must have root or sudo privileges in order to create the user."
            read create_new_user
          done
 
@@ -229,13 +226,16 @@ if [[ -z "$tenant_ontology" ]]; then
   fi
 fi
 
-default_basedb='BASECA'
-if [[ -z "$base_db_name" ]]; then
-  echo -e "\n-- Content Analyzer Base database info: --"
-  echo -e "\nEnter the name of the Base Content Analyzer Base database. If nothing is entered, we will use the following default value : " $default_basedb
-  read base_db_name
+
+if [[ -z "$skip_insert_tenant" ||  $skip_insert_tenant != "true" ]]; then
+  default_basedb='BASECA'
   if [[ -z "$base_db_name" ]]; then
-     base_db_name=$default_basedb
+    echo -e "\n-- Content Analyzer Base database info: --"
+    echo -e "\nEnter the name of the Base Content Analyzer Base database. If nothing is entered, we will use the following default value : " $default_basedb
+    read base_db_name
+    if [[ -z "$base_db_name" ]]; then
+      base_db_name=$default_basedb
+    fi
   fi
 fi
 
@@ -248,73 +248,12 @@ if [[ -z "$base_db_user" ]]; then
   fi
 fi
 
-# FOR NOW, there is no need to collect credentials for Base DB, as we are currently assuming that we are running script as DB2 admin (eg. db2inst1) on the DB2 server. 
-# If we decide to run from a remote machine, then UNCOMMENT the following to collect the DB2 admin credentials
-
-# pwdconfirmed=0
-# while [[ $pwdconfirmed -ne 1 ]] # While pwd is not yet received and confirmed (i.e. entered teh same time twice)
-# do
-#     echo "Enter the password for the Content Analyzer base database user: "
-#     read -s base_tenant_db_pwd
-#     while [[ $base_tenant_db_pwd == '' ]] # While pwd is empty...
-#     do
-#         echo "Enter a valid value"
-#         read -r base_tenant_db_pwd
-#     done
-
-#     echo "Please confirm the password by entering it again:"
-#     read -s base_tenant_db_pwd2
-#     while [[ $base_tenant_db_pwd2 == '' ]]  # While pwd is empty...
-#     do
-#         echo "Enter a valid value"
-#         read -r base_tenant_db_pwd2
-#     done
-
-#     if [[ "$base_tenant_db_pwd" == "$base_tenant_db_pwd2" ]]; then
-#         pwdconfirmed=1
-#     else
-#         echo "The passwords do not match.  Please enter the password again."
-#         unset base_tenant_db_pwd
-#         unset base_tenant_db_pwd2
-#     fi
-# done
-
-echo
-echo "Now we will gather information about the initial Content Analyzer login user"
-
-while [[ $tenant_company == '' ]] 
-do
-  echo -e "\nPlease enter the company name for the initial Content Analyzer user:"
-  read tenant_company
-done
-
-
-while [[ $tenant_first_name == '' ]] 
-do
-  echo -e "\nPlease enter the first name for the initial Content Analyzer user:"
-  read tenant_first_name
-done
-
-
-while [[ $tenant_last_name == '' ]] 
-do
-   echo -e "\nPlease enter the last name for the initial Content Analyzer user:"
-   read tenant_last_name
-done
-
-
-while [[ $tenant_email == '' || ! $tenant_email =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$ ]]
-do
-   echo -e "\nPlease enter a valid email address for the initial Content Analyzer user:"
-   read tenant_email
-done
-
-
-while [[ $tenant_user_name == '' ]] 
-do
-   echo -e "\nPlease enter the login name for the initial Content Analyzer user. (IMPORTANT: if you are using LDAP, the login name must the same as your LDAP username.)"
-   read tenant_user_name
-done
+# Hard code CA user for Aria
+tenant_company=IBM
+tenant_first_name=ACA
+tenant_last_name=Admin
+tenant_email=acaadmin@ibm.com
+tenant_user_name=acaadmin
 
 if [[ $use_existing_tenant -eq 1 ]]; then
   db2 "connect to $base_db_name"
@@ -332,36 +271,31 @@ if [[ "$ssl" == "Yes" || "$ssl" == "yes" || "$ssl" == "YES" || "$ssl" == "y" || 
 fi
 
 echo
-if [[ $use_existing_tenant -ne 1 ]]; then
-  echo "-- Information gathering is completed.  Add tenant is about to begin."
-else
-  echo "-- Information gathering is completed.  Add ontology is about to begin."
-fi
+echo "-- Information gathering is completed.  The script is about to begin."
 echo "-- Please confirm these are the desired settings:"
-echo " - tenant ID: $tenant_id"
-echo " - tenant type: $tenant_type"
-echo " - daily limit: $daily_limit"
-echo " - tenant database name: $tenant_db_name"
-# echo " - database server hostname/IP: $baca_database_server_ip"
-# echo " - database server port: $baca_database_port"
-echo " - database enabled for ssl : $ssl"
-if [[ $user_already_defined -ne 1 ]]; then
-  echo " - tenant database user will be created by this script"
-else
-  echo " - tenant database user already exists and will not be created by this script"
+if [[ -z "$skip_insert_tenant" ||  $skip_insert_tenant != "true" ]]; then
+  echo " - Tenant ID: $tenant_id"
+# echo " - tenant type: $tenant_type"
+# echo " - daily limit: $daily_limit"
 fi
-echo " - tenant database user: $tenant_db_user"
-echo " - ontology name: $tenant_ontology"
-echo " - base database: $base_db_name"
-echo " - base database user: $base_db_user"
-echo " - tenant company name: $tenant_company"
-echo " - tenant first name: $tenant_first_name"
-echo " - tenant last name: $tenant_last_name"
-echo " - tenant email address: $tenant_email"
-echo " - tenant login name: $tenant_user_name"
+echo " - Project database name: $tenant_db_name"
+echo " - Database enabled for ssl : $ssl"
+if [[ $user_already_defined -ne 1 ]]; then
+  echo " - Project database user will be created by this script"
+else
+  echo " - Project database user already exists and will not be created by this script"
+fi
+echo " - Project database user: $tenant_db_user"
+echo " - Ontology name: $tenant_ontology"
+
+if [[ -z "$skip_insert_tenant" ||  $skip_insert_tenant != "true" ]]; then
+  echo " - Base database: $base_db_name"
+  echo " - Base database user: $base_db_user"
+fi
+
 askForConfirmation
 
-
+# --- Create user ---
 if [[ $user_already_defined -ne 1 ]]; then
    encrypted_pwd=$(perl -e 'print crypt($ARGV[0], "pwsalt")' $tenant_db_pwd)
    sudo useradd -m -p $encrypted_pwd $tenant_db_user
@@ -408,10 +342,13 @@ if [[ $use_existing_tenant -ne 1 ]]; then
     if [[ -z "$tenant_db_exists" ||  $tenant_db_exists != "true" ]]; then
       cp sql/CreateDB.sql.template sql/CreateDB.sql
       sed -i s/\$tenant_db_name/"$tenant_db_name"/ sql/CreateDB.sql
+      sed -i s/\${tenant_db_name}/"$tenant_db_name"/ sql/CreateDB.sql
+      # repeat in order to get any lines that had the string twice on same line
+      sed -i s/\${tenant_db_name}/"$tenant_db_name"/ sql/CreateDB.sql
       sed -i s/\$tenant_db_user/"$tenant_db_user"/ sql/CreateDB.sql
 
       echo -e "\nRunning script: sql/CreateDB.sql"
-      db2 -stvf sql/CreateDB.sql
+      db2 -tvf sql/CreateDB.sql
     fi
 fi
 
@@ -420,7 +357,7 @@ if [[ -z "$skip_setup_schema" ||  $skip_setup_schema != "true" ]]; then
   sed -i s/\$tenant_db_name/"$tenant_db_name"/ sql/CreateBacaSchema.sql
   sed -i s/\$tenant_ontology/"$tenant_ontology"/ sql/CreateBacaSchema.sql
   echo -e "\nRunning script: sql/CreateBacaSchema.sql"
-  db2 -stvf sql/CreateBacaSchema.sql
+  db2 -tvf sql/CreateBacaSchema.sql
 
   echo -e "\nRunning script: sql/CreateBacaTables.sql"
   db2 -tf sql/CreateBacaTables.sql
@@ -432,7 +369,7 @@ if [[ -z "$skip_setup_schema" ||  $skip_setup_schema != "true" ]]; then
   sed -i s/\$tenant_db_user/"$tenant_db_user"/ sql/TablePermissions.sql
   sed -i s/\$tenant_ontology/"$tenant_ontology"/ sql/TablePermissions.sql
   echo -e "\nRunning script: sql/TablePermissions.sql"
-  db2 -stvf sql/TablePermissions.sql
+  db2 -tvf sql/TablePermissions.sql
 fi
 
 if [[ -z "$skip_load_data" ||  $skip_load_data != "true" ]]; then
@@ -440,7 +377,7 @@ if [[ -z "$skip_load_data" ||  $skip_load_data != "true" ]]; then
   sed -i s/\$tenant_db_name/"$tenant_db_name"/ sql/LoadData.sql
   sed -i s/\$tenant_ontology/"$tenant_ontology"/ sql/LoadData.sql
   echo -e "\nRunning script: sql/LoadData.sql"
-  db2 -stvf sql/LoadData.sql
+  db2 -tvf sql/LoadData.sql
 fi
 
 
@@ -451,25 +388,38 @@ if [[ -z "$skip_insert_tenant" ||  $skip_insert_tenant != "true" ]]; then
   sed -i s/\$tenant_id/"$tenant_id"/ sql/InsertTenant.sql
   sed -i s/\$tenant_ontology/"$tenant_ontology"/ sql/InsertTenant.sql
   sed -i s/\$tenant_db_name/"$tenant_db_name"/ sql/InsertTenant.sql
-  # sed -i s/\$baca_database_server_ip/"$baca_database_server_ip"/ sql/InsertTenant.sql
-  # sed -i s/\$baca_database_port/"$baca_database_port"/ sql/InsertTenant.sql
   sed -i s/\$tenant_db_user/"$tenant_db_user"/ sql/InsertTenant.sql
   sed -i s/\$tenant_db_pwd/"$tenant_db_pwd"/ sql/InsertTenant.sql
   sed -i s/\$tenant_type/"$tenant_type"/ sql/InsertTenant.sql
   sed -i s/\$daily_limit/"$daily_limit"/ sql/InsertTenant.sql
   sed -i s/\$rdbmsconnection/"$rdbmsconnection"/ sql/InsertTenant.sql
   echo -e "\nRunning script: sql/InsertTenant.sql"
-  db2 -stf sql/InsertTenant.sql
+  db2 -tvf sql/InsertTenant.sql
 fi
 
 
-if [[ -z "$skip_set_integrity" ||  $skip_set_integrity != "true" ]]; then
-  cp sql/SetIntegrity.sql.template sql/SetIntegrity.sql
-  sed -i s/\$tenant_db_name/"$tenant_db_name"/ sql/SetIntegrity.sql
-  sed -i s/\$tenant_ontology/"$tenant_ontology"/ sql/SetIntegrity.sql
-  echo -e "\nRunning script: sql/SetIntegrity.sql"
-  db2 -stvf sql/SetIntegrity.sql
+# workaround for error that occurs on HADR databases: "SQL0290N  Table space access is not allowed.  SQLSTATE=55039"
+# do a deactivate/backup/activate on DB after the load is done, before doing insert user
+if [[ -z "$skip_tmp_backup" ||  $skip_tmp_backup != "true" ]]; then
+  currentTS=$(date "+%Y%m%d%H%M%S")
+  echo "Making a temporary backup dir at /tmp/backup_${tenant_db_name}_${currentTS}"
+  mkdir /tmp/backup_${tenant_db_name}_${currentTS}
+  db2 -v "connect reset"
+  db2 -v "deactivate db ${tenant_db_name}"
+  echo "Making a temporary backup of DB (necessary after doing a load on DB)..."
+  db2 -v "backup db ${tenant_db_name} to /tmp/backup_${tenant_db_name}_${currentTS} compress"
+  db2 -v "activate db ${tenant_db_name}"
+  echo "Removing temporary backup dir /tmp/backup_${tenant_db_name}_${currentTS}"
+  rm -r /tmp/backup_${tenant_db_name}_${currentTS}
 fi
+
+#if [[ -z "$skip_set_integrity" ||  $skip_set_integrity != "true" ]]; then
+#  cp sql/SetIntegrity.sql.template sql/SetIntegrity.sql
+#  sed -i s/\$tenant_db_name/"$tenant_db_name"/ sql/SetIntegrity.sql
+#  sed -i s/\$tenant_ontology/"$tenant_ontology"/ sql/SetIntegrity.sql
+#  echo -e "\nRunning script: sql/SetIntegrity.sql"
+#  db2 -stvf sql/SetIntegrity.sql
+#fi
 
 
 if [[ -z "$skip_insert_user" ||  $skip_insert_user != "true" ]]; then
@@ -483,9 +433,9 @@ if [[ -z "$skip_insert_user" ||  $skip_insert_user != "true" ]]; then
   sed -i s/\$tenant_company/"$tenant_company"/ sql/InsertUser.sql
   sed -i s/\$tenant_email/"$tenant_email"/ sql/InsertUser.sql
   echo -e "\nRunning script: sql/InsertUser.sql"
-  db2 -stvf sql/InsertUser.sql
+  db2 -tvf sql/InsertUser.sql
 fi
 
-echo -e "\n-- Add completed succesfully.  Tenant ID: $tenant_id , Ontology: $tenant_ontology \n"
+echo -e "\n-- Script completed.\n"
 
-echo "-- URL (replace frontend with your frontend host): https://frontend/?tid=$tenant_id&ont=$tenant_ontology"
+# echo "-- URL (replace frontend with your frontend host): https://frontend/?tid=$tenant_id&ont=$tenant_ontology"
