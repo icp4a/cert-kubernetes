@@ -12,12 +12,9 @@
 ##IBM Common Service Operator and ODLM operator get deployed in the “common-service” 
 #the individual operators get deployed in the “ibm-common-services” namespace
 ###############################################################################
-CUR_DIR=$(pwd)
-if [ -n "$(echo $CUR_DIR | grep scripts)" ]; then
-    PARENT_DIR=$(dirname "$PWD")
-else
-    PARENT_DIR=$CUR_DIR
-fi
+CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
+
 TEMP_FOLDER=${CUR_DIR}/.tmp
 LOG_FILE=${CUR_DIR}/cs_prepare_install34.log
 

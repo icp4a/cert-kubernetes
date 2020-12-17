@@ -16,10 +16,13 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2.1
+    release: 20.0.3
 spec:
-  appVersion: 20.0.2.1
+  appVersion: 20.0.3
 
+  ## MUST exist, used to accept ibm license, valid value only can be "accept" 
+  ibm_license: ""
+  
   shared_configuration:
     ## Use this parameter to specify the license for the CP4A deployment and
     ## the possible values are: non-production and production and if not set, the license will
@@ -29,64 +32,28 @@ spec:
     ## CP4A patterns or capabilities to be deployed.  The base pattern is "foundation pattern", which includes BAN (Navigator) and RR.
     sc_deployment_patterns: decisions_ads
 
-    ## The optional component for 'decisions_ads' are 'ads_designer' and 'ads_runtime'.
+    ## The optional component for 'decisions_ads' are 'ads_designer' and 'ads_runtime'. If 'ads_runtime' is here, it is possible to also add 'bai'.
     # In demo mode, both are always installed and set in 'sc_optional_components' list by the user installation script.
     sc_optional_components:
 
     ## This is the deployment type and the possible values are: demo, non-production, and production.
     sc_deployment_type: demo
 
-    ## This is the deployment platform supported for CP4A and the possible values are: OCP, and other (which includes all Certified Kubernetes platforms)
+    ## This is the version of the OCP/ROKS platform and the possible values are: 4.4, 4.5 and 4.6.  This is usually set by the User script and it is
+    ## used by the Operator to determine the version to perform the pre-requisites in order to deploy Db2.
     sc_deployment_platform:
 
     sc_deployment_hostname_suffix: "{{ meta.name }}"
 
     storage_configuration:
-      ## For OCP 3.11 or 4.x, the storage class will be provided by the user
+      ## For 4.4 or Later, the storage class will be provided by the user
       ## during the execution of the User script (cp4a-deployment.sh)
       sc_dynamic_storage_classname:
 
     images:
-      keytool_job_container:
-        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer
-        tag: 20.0.2-IF001
-      dbcompatibility_init_container:
-        repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer
-        tag: 20.0.2-IF001
-      keytool_init_container:
-        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer
-        tag: 20.0.2-IF001
-      umsregistration_initjob:
-        repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
-        tag: 20.0.2-IF001
-      db2u_tools:
-        repository: docker.io/ibmcom/db2u.tools
-        tag: 11.5.1.0-CN1
-      db2:
-        repository: docker.io/ibmcom/db2
-        tag: 11.5.1.0-CN1
-      db2_auxiliary:
-        repository: docker.io/ibmcom/db2u.auxiliary.auth
-        tag: 11.5.1.0-CN1
-      db2_init:
-        repository: docker.io/ibmcom/db2u.instdb
-        tag: 11.5.1.0-CN1
-      db2_etcd:
-        repository: quay.io/coreos/etcd
-        tag: v3.3.10
-      db2_alpine: 
-        repository: docker.io/alpine
-        tag: 3.6
-      openldap:
-        repository: osixia/openldap
-        tag: 1.3.0
-      busybox:
-        repository: docker.io/library/busybox
-        tag: latest
-      phpldapadmin:
-        repository: osixia/phpldapadmin
-        tag: 0.9.0
-
+      gitea:
+        repository: cp.icr.io/cp/cp4a/demo/gitea
+        tag: 1.12.3
 
   ########################################################################
   ########   IBM Business Automation Navigator configuration      ########
@@ -94,7 +61,7 @@ spec:
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: ga-308-icn-if002
+      tag: ga-309-icn
 
   ########################################################################
   ########      IBM Resource Registry configuration               ########
@@ -103,7 +70,7 @@ spec:
     images:
       resource_registry:
         repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-        tag: 20.0.2-IF001
+        tag: 20.0.3
 
   ########################################################################
   ########      IBM Business Automation Studio configuration      ########
@@ -112,19 +79,19 @@ spec:
     images:
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: 20.0.2-IF001
+        tag: 20.0.3
     jms_server:
       image:
         repository: cp.icr.io/cp/cp4a/bas/jms
-        tag: 20.0.2-IF001
+        tag: 20.0.3
     playback_server:
       images:
         db_job:
           repository: cp.icr.io/cp/cp4a/bas/solution-server-helmjob-db
-          tag: 20.0.2-IF001
+          tag: 20.0.3
         solution_server:
           repository: cp.icr.io/cp/cp4a/bas/solution-server
-          tag: 20.0.2-IF001
+          tag: 20.0.3
 
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########
@@ -133,7 +100,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.2-IF001
+        tag: 20.0.3
 
 
   ########################################################################
@@ -150,41 +117,56 @@ spec:
     rr_integration:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
-        tag: 20.0.2-IF001
+        tag: 20.0.3
 
     front:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-front
-        tag: 20.0.2-IF001
+        tag: 20.0.3
 
     download_service:
       ums_enabled: true
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-download
-        tag: 20.0.2-IF001
+        tag: 20.0.3
 
     rest_api:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-restapi
-        tag: 20.0.2-IF001
+        tag: 20.0.3
+
+    credentials_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-credentials
+        tag: 20.0.3
 
     git_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
-        tag: 20.0.2-IF001
+        tag: 20.0.3
 
     parsing_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-parsing
-        tag: 20.0.2-IF001
+        tag: 20.0.3
 
     run_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-run
-        tag: 20.0.2-IF001
+        tag: 20.0.3
+
+    embedded_build_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-build
+        tag: 20.0.3
+
+    embedded_runtime_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-runtime
+        tag: 20.0.3
 
     decision_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: 20.0.2-IF001
+        tag: 20.0.3
 

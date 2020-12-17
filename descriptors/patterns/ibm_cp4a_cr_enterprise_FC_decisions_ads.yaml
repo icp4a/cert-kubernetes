@@ -16,9 +16,12 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2.1
+    release: 20.0.3
 spec:
-  appVersion: 20.0.2.1
+  appVersion: 20.0.3
+
+  ## MUST exist, used to accept ibm license, valid value only can be "accept" 
+  ibm_license: ""
 
   #################################################################################################################
   ##  The contents of this template CR file reflect only the specific parameters and configuration
@@ -49,7 +52,7 @@ spec:
     ## The optional components to be installed if listed here.
     ## This is normally populated by the User script based on input from the user.
     ## User can also manually specify the optional components to be deployed here.
-    ## ADS has two 'ads_designer' and 'ads_runtime' optional components.
+    ## ADS has two 'ads_designer' and 'ads_runtime' optional components. If 'ads_runtime' is here, it is possible to also add 'bai'.
     ## If ads_designer is set, you also have to set the 'ads_configuration.decision_designer.enabled' flag to true to install it.
     ## If ads_runtime is set, you also have to set the 'ads_configuration.decision_runtime.enabled' flag to true to install it.
     sc_optional_components:
@@ -70,23 +73,53 @@ spec:
       wml_providers_certs:
       other_trusted_certs:
 
+#      # Optional: you can add custom annotations to routes or ingresses.
+#
+#      # For routes
+#      route_ingress_annotations:
+#        - haproxy.router.openshift.io/timeout: 1m
+#
+#      # For k8s Ingresses on certified kubernetes (CNCF)
+#      route_ingress_annotations:
+#        nginx.ingress.kubernetes.io/proxy-body-size: 8m
+
       ingress:
-        # If omitted, calculated as designer.ads.{{ sc_deployment_hostname_suffix }}
-        hostname: "<Required>"
+        # Optional: If omitted, calculated as designer-ads-{{ sc_deployment_hostname_suffix }} for ROKS or designer.ads.{{ sc_deployment_hostname_suffix }} otherwise.
+        # hostname:
         tls_secret_name: ibm-dba-ads-designer-tls-cert
 
 #        # Optional: you can provide a custom CA for routes.
 #        tls_ca_secret_name:
-#
+
+      embedded_build_and_run:
+        # Embedded build and run can be disabled
+        enabled: true
+        # Embedded Runtime configuration
+        runtime:
 #        # Optional: you can add custom annotations to routes or ingresses.
-#
-#        # For routes
-#        custom_annotations:
-#          haproxy.router.openshift.io/timeout: 1m
-#
-#        # For k8s Ingresses on certified kubernetes (CNCF)
-#        custom_annotations:
-#          nginx.ingress.kubernetes.io/proxy-body-size: 8m
+          route_ingress_annotations:
+            # For routes
+            - haproxy.router.openshift.io/balance: roundrobin
+#            - haproxy.router.openshift.io/timeout: 1m
+#          # For k8s Ingresses on certified kubernetes (CNCF)
+#            - nginx.ingress.kubernetes.io/proxy-body-size: 8m
+
+          ingress:
+            # Optional: If omitted, calculated as embedded-runtime-ads-{{ sc_deployment_hostname_suffix }} for ROKS, embedded-runtime.ads.{{ sc_deployment_hostname_suffix }} otherwise.
+            # hostname:
+            tls_secret_name: ibm-dba-ads-designer-embedded-runtime-tls-cert
+#           # Optional: you can provide a custom CA for routes.
+#            tls_ca_secret_name:
+
+        decision_archive_repo:
+          persistence:
+            use_dynamic_provisioning: true
+#           # defaulted to shared_configuration.storage_configuration.sc_dynamic_storage_classname
+#           # or shared_configuration.storage_configuration.sc_fast_file_storage_classname if use_dynamic_provisioning is false or shared_configuration.storage_configuration.sc_dynamic_storage_classname is not defined
+#            storage_class_name:
+            resources:
+              requests:
+                storage: "50Gi"
 
     decision_runtime:
       enabled: false
@@ -101,28 +134,38 @@ spec:
       # Only for debugging, default value is true.
       internal_tls: true
 
+      # Optional: you can add custom annotations to routes or ingresses.
+      route_ingress_annotations:
+#       # For routes
+        - haproxy.router.openshift.io/balance: roundrobin
+#        - haproxy.router.openshift.io/timeout: 1m
+#      # For k8s Ingresses on certified kubernetes (CNCF)
+#        - nginx.ingress.kubernetes.io/proxy-body-size: 8m
+
+
       ingress:
-        # If omitted, calculated as designer.ads.{{ sc_deployment_hostname_suffix }}
-        hostname: "<Required>"
+        # Optional: If omitted, calculated as runtime-ads-{{ sc_deployment_hostname_suffix }} for ROKS or runtime.ads.{{ sc_deployment_hostname_suffix }} otherwise.
+        # hostname:
         tls_secret_name: ibm-dba-ads-runtime-tls-cert
 
 #        # Optional: you can provide a custom CA for routes.
 #        tls_ca_secret_name:
-#
-#        # Optional: you can add custom annotations to routes or ingresses.
-#
-#        # For routes
-#        custom_annotations:
-#          haproxy.router.openshift.io/timeout: 1m
-#
-#        # For k8s Ingresses on certified kubernetes (CNCF)
-#        custom_annotations:
-#          nginx.ingress.kubernetes.io/proxy-body-size: 8m
+
+      # Event emitter, needs BAI.
+      event_emitter:
+        enabled: true  # default true, optional. Will be ignored if BAI is not installed.
+#        kafka_topic:  # default "ads-decision-execution-common-data", optional.
+#        kafka_properties_config_map_name: # default null, see KC for content. Optional.
+#        elasticsearch_index:  # default "ads-decision-execution-common-data", optional. See KC for elasticsearch indexes names criteria.
+#        allow_missing_events : # default true, optional.
+#        queue_capacity:  # default 50000, optional.
+#        dequeur_threads: # default null,  as startup time, optional.
+
 
     rr_integration:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
-        tag: 20.0.2-IF001
+        tag: 20.0.3
 
       resources:
         requests:
@@ -133,14 +176,20 @@ spec:
           memory: '512Mi'
 
     mongo:
+#      # Optional: defaulted to false. (true in demo mode)
+#      # Embedded mongoDB is not recommended in production. It is not enabled by default.
+#      use_embedded: false
+      # If you provide an external mongo db, fill the mongo connection string in the admin secret.
+      admin_secret_name: ibm-dba-ads-mongo-secret
       image:
         repository: cp.icr.io/cp/cp4a/ads/mongo
-        tag: 4.2.8
+        tag: 4.2.10
 
       persistence:
         use_dynamic_provisioning: true
-        # defaulted to shared_configuration.storage_configuration.sc_fast_file_storage_classname
-        storage_class_name: "<Required>"
+#       # Optional: defaulted to shared_configuration.storage_configuration.sc_dynamic_storage_classname
+#       # or shared_configuration.storage_configuration.sc_fast_file_storage_classname if use_dynamic_provisioning is false or shared_configuration.storage_configuration.sc_dynamic_storage_classname is not defined
+#        storage_class_name:
         resources:
           requests:
             storage: 3Gi
@@ -156,7 +205,7 @@ spec:
     front:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-front
-        tag: 20.0.2-IF001
+        tag: 20.0.3
 
       replica_count: 1
       resources:
@@ -168,24 +217,37 @@ spec:
           memory: '2Gi'
 
     download_service:
-      ums_enabled: true
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-download
-        tag: 20.0.2-IF001
+        tag: 20.0.3
 
-      replica_count: 1
+      replica_count: 2
       resources:
         requests:
           cpu: '100m'
-          memory: '128Mi'
+          memory: '200Mi'
         limits:
-          cpu: '100m'
-          memory: '128Mi'
+          cpu: '500m'
+          memory: '200Mi'
 
     rest_api:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-restapi
-        tag: 20.0.2-IF001
+        tag: 20.0.3
+      replica_count: 2
+
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '512Mi'
+        limits:
+          cpu: '2000m'
+          memory: '2Gi'
+
+    credentials_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-credentials
+        tag: 20.0.3
       replica_count: 2
 
       resources:
@@ -199,13 +261,14 @@ spec:
     git_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
-        tag: 20.0.2-IF001
+        tag: 20.0.3
       replica_count: 2
 
       persistence:
         use_dynamic_provisioning: true
-        # defaulted to shared_configuration.storage_configuration.sc_fast_file_storage_classname
-        storage_class_name: "<Required>"
+#       # Optional: defaulted to shared_configuration.storage_configuration.sc_dynamic_storage_classname
+#       # or shared_configuration.storage_configuration.sc_fast_file_storage_classname if use_dynamic_provisioning is false or shared_configuration.storage_configuration.sc_dynamic_storage_classname is not defined
+#        storage_class_name:
         resources:
           requests:
             storage: 6Gi
@@ -221,7 +284,7 @@ spec:
     parsing_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-parsing
-        tag: 20.0.2-IF001
+        tag: 20.0.3
       replica_count: 2
 
       resources:
@@ -235,8 +298,64 @@ spec:
     run_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-run
-        tag: 20.0.2-IF001
+        tag: 20.0.3
       replica_count: 2
+
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '512Mi'
+        limits:
+          cpu: '2000m'
+          memory: '2Gi'
+
+    embedded_build_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-build
+        tag: 20.0.3
+      replica_count: 2
+
+      persistence:
+        use_dynamic_provisioning: true
+#       # defaulted to shared_configuration.storage_configuration.sc_dynamic_storage_classname
+#       # or shared_configuration.storage_configuration.sc_fast_file_storage_classname if use_dynamic_provisioning is false or shared_configuration.storage_configuration.sc_dynamic_storage_classname is not defined
+#        storage_class_name:
+        resources:
+          requests:
+            storage: '6Gi'
+
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '512Mi'
+        limits:
+          cpu: '2000m'
+          memory: '2Gi'
+
+    embedded_runtime_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-runtime
+        tag: 20.0.3
+      replica_count: 2
+
+      # Whether the decision runtime should include an exception stack trace when an incident occurs.
+      # This should only be used for debugging purposes, as a stack trace may expose sensitive internal data.
+      stack_trace_enabled: false
+
+      tls:
+        # whether TLS is required for decision store or ML providers connections (HTTPS protocol)
+        enabled: true
+        # name of the config map holding the TLS certificates
+        certs_config_map_name:
+        # whether self-signed certificates are allowed
+        allow_self_signed: false
+        verify_hostname: true
+
+      cache:
+        config:
+          expiry: ''
+          resources: |-
+            <heap unit="entries">100</heap>
 
       resources:
         requests:
@@ -249,7 +368,7 @@ spec:
     decision_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: 20.0.2-IF001
+        tag: 20.0.3
       replica_count: 2
 
       # Whether the decision runtime should include an exception stack trace when an incident occurs.

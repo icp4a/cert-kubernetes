@@ -20,7 +20,7 @@ if /I "%c%" EQU "N" goto :DOEXIT
 	echo "Connecting to db and schema"
 	db2 connect to %tenant_db_name%
 	db2 set schema %tenant_ontology%
-	db2 -stvf sql\WinUpgradeTenantDB_1.4_to_1.5.sql
+	db2 -stvf sql\WinUpgradeTenantDB_1.5_to_1.6.sql
 	goto END
 :DOEXIT
 	echo "Exited on user input"

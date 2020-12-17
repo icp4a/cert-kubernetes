@@ -35,7 +35,7 @@ function set_registry_portforward() {
   echo "Start registry port forward process"
   local registry_port=$(oc get svc $registry_svc -n $registry_namespace -o jsonpath='{.spec.ports[0].port}')
   local port_fwd_obj=$(oc get pods -n $registry_namespace | awk '/^docker-registry-/ {print $1}' | head -n1)
-  oc port-forward "$port_fwd_obj" -n "$registry_namespace" "$LO:qCAL_PORT:$registry_port" > .registry-pf.log 2>&1 &
+  oc port-forward "$port_fwd_obj" -n "$registry_namespace" "$LOCAL_PORT:$registry_port" > .registry-pf.log 2>&1 &
   wait_for_url_timed "http://localhost:5000"
   sleep 5
 }

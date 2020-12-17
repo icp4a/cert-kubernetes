@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2.1
+    release: 20.0.3
 spec:
   replicas: 1
   selector:
@@ -29,11 +29,16 @@ spec:
         app.kubernetes.io/instance: ibm-dba
         app.kubernetes.io/managed-by: ibm-dba
         app.kubernetes.io/name: ibm-dba
-        release: 20.0.2.1
+        release: 20.0.3
       annotations:
         productID: "5737-I23"
         productName: "IBM Cloud Pak for Automation"
-        productVersion: "20.0.2.1"
+        productVersion: "20.0.3"
+        productChargedContainers: ""
+        productMetric: "VIRTUAL_PROCESSOR_CORE"
+        cloudpakId: "94a9c8c358bb43ba8fbdea62e7e166a5"
+        cloudpakName: "IBM Cloud Pak For Automation"
+        cloudpakVersion: "20.0.3"
     spec:
       hostNetwork: false
       hostPID: false
@@ -59,60 +64,15 @@ spec:
                 values:
                 - "amd64"
       containers:
-        - name: ansible
-          command:
-          - /usr/local/bin/ao-logs
-          - /tmp/ansible-operator/runner
-          - stdout
-          # Replace this with the built image name
-          image: "cp.icr.io/cp/cp4a/icp4a-operator:20.0.2-IF001"
-          imagePullPolicy: "IfNotPresent"
-          securityContext:
-            allowPrivilegeEscalation: false
-            privileged: false
-            readOnlyRootFilesystem: false
-            # Uncomment below for OCP 3.11
-            # runAsUser: 1001
-            capabilities:
-              drop:
-              - ALL
-          resources:
-            limits:
-              cpu: '1'
-              memory: 1Gi
-            requests:
-              cpu: 500m
-              memory: 256Mi
-          volumeMounts:
-          - mountPath: /tmp/ansible-operator/runner
-            name: runner
-          - mountPath: /opt/ansible/share
-            name: operator-shared-folder
         - name: operator
           # Replace this with the built image name
-          image: "cp.icr.io/cp/cp4a/icp4a-operator:20.0.2-IF001"
+          image: "cp.icr.io/cp/cp4a/icp4a-operator:20.0.3"
           imagePullPolicy: "IfNotPresent"
-          livenessProbe:
-            exec:
-              command:
-              - /bin/bash
-              - -ec
-              - |
-                OLD_COUNT=$(cat /tmp/old) || true
-                NEW_COUNT=$(find /tmp/ansible-operator/runner/icp4a.ibm.com/v1/ICP4ACluster | grep json -c) || true
-                if [ $NEW_COUNT -eq 0 ]; then exit 0; fi
-                echo $NEW_COUNT > /tmp/old
-                if [ $NEW_COUNT -eq $OLD_COUNT ]; then exit 1;else exit 0; fi
-            initialDelaySeconds: 100
-            periodSeconds: 120
-            timeoutSeconds: 10
-            successThreshold: 1
-            failureThreshold: 5
           securityContext:
             allowPrivilegeEscalation: false
             privileged: false
             readOnlyRootFilesystem: false
-            # Uncomment below for OCP 3.11
+            # Uncomment below for OCP 3.11 (Dropped in 4Q release)
             # runAsUser: 1001
             capabilities:
               drop:
@@ -125,10 +85,12 @@ spec:
               cpu: 500m
               memory: 256Mi
           volumeMounts:
-          - mountPath: /tmp/ansible-operator/runner
-            name: runner
+          - mountPath: /logs
+            name: logs-backup
           - mountPath: /opt/ansible/share
             name: operator-shared-folder
+          - mountPath: /tmp/ansible-operator/runner
+            name: runner
           args:
           - '--zap-time-encoding=iso8601'
           - '--zap-encoder=console'
@@ -147,14 +109,19 @@ spec:
               value: "ibm-cp4a-operator"
             - name: WORKER_ICP4ACLUSTER_ICP4A_IBM_COM
               value: "10"
+            - name: ANSIBLE_GATHERING
+              value: explicit
             # MUST exist, used to accept dba license, valid value only can be "accept"
             - name: dba_license
-              value:
+              value: "accept"
       imagePullSecrets:
       - name: "admin.registrykey"
       volumes:
-        - name: runner
-          emptyDir: {}
+        - name: logs-backup
+          persistentVolumeClaim:
+            claimName: "cp4a-shared-log-pvc"
         - name: "operator-shared-folder"
           persistentVolumeClaim:
             claimName: "operator-shared-pvc"
+        - name: runner
+          emptyDir: {}

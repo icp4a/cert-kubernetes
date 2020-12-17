@@ -17,9 +17,12 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2.1
+    release: 20.0.3
 spec:
 
+  ## MUST exist, used to accept ibm license, valid value only can be "accept" 
+  ibm_license: ""
+  
   #################################################################################################################
   ##  The contents of this template CR file reflect only the specific parameters and configuration 
   ##  settings applicable to the represented ICP4A capability. 
@@ -47,18 +50,24 @@ spec:
     ## The optional components to be installed if listed here.
     ## This is normally populated by the deploy script based on input from the user.
     ## User can also manually specify the optional components to be deployed here.
-    ## This pattern has has 3: decisionCenter, decisionRunner, and decisionServerRuntime components, where 
-    ## decisionRuntim represent the Rule Execution Server. 
+    ## This pattern has has 5: decisionCenter (Business Console), decisionRunner (Testing and Simulation runtime), decisionServerRuntime (Rule Execution Server), bai (Business Automation Insight), ums (User Management Service) optionals components.
     ## If decisionCenter is set, you also have to set the 'odm_configuration.decisionCenter.enabled' flag to true to install it.
     ## If decisionRunner is set, you also have to set the 'odm_configuration.decisionRunner.enabled' flag to true to install it.
     ## If decisionServerRuntime is set, you also have to set the 'odm_configuration.decisionRuntime.enabled' flag to true to install it.
     sc_optional_components:
 
+    ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
+    sc_ingress_enable: false
+
+    ## For ROKS Ingress, provide TLS secret name for Ingress controller.
+    sc_ingress_tls_secret_name: <Required>
+
   ## The beginning section of database configuration for CP4A
   datasource_configuration:
     dc_odm_datasource:
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "oracle".
-      dc_database_type: "db2"
+      ## Provide the database type from your infrastructure. 
+      ## The possible values are "db2" / "postgres" / "sqlserver".
+      dc_database_type: "<Required>"
       ## Provide the database server name or IP address of the database server.
       database_servername: "<Required>"
       ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521"
@@ -67,7 +76,10 @@ spec:
       dc_common_database_name: "<Required>"
       ## The name of the secret that contains the credentials to connect to the database.
       dc_common_database_instance_secret: "<Required>"
-
+      ## Set to true when the database is using SSL
+      dc_common_ssl_enabled: true
+      ## If SSL is used to secure the database connection, specify the name of the SSL secret.
+      dc_ssl_secret_name: "<Required>"
 
   ########################################################################
   ########     IBM Operational Decision Manager Configuration     ########
@@ -78,13 +90,13 @@ spec:
     # Allow to specify which version of ODM you want to deploy.
     # Supported version > 19.0.2
     # If omitted the latest version will be used.
-    version: 20.0.2.1
+    version: 20.0.3
     image:
       # Specify the repository used to retrieve the Docker images if you do not want to use the default one.
       repository: "cp.icr.io/cp/cp4a/odm"
       # Specify the tag for the Docker images.
       # It's a Mandatory tag when you enable odm_configuration.
-      tag: 8.10.4.0-IF002
+      tag: 8.10.5.0
       # Specify the pull policy for the Docker images. See Kuberntes documentation for more inforations.
       # Possible values : IfNotPresent, Always, Never
       pullPolicy: IfNotPresent
@@ -94,17 +106,18 @@ spec:
       pullSecrets:
 
     service:
-      # Specify whether to enable Transport Layer Security. If true, ODM web apps are accessed through HTTPS. If false, they are accessed through HTTP.
-      enableTLS: true
       # Specify the service type.
       type: NodePort
-
+    # Specify the Ingress annotations.
+    route_ingress_annotations:
     ## Decision Server Runtime parameters
     decisionServerRuntime:
       # Specify whether to enable Decision Server Runtime.
       enabled: true
+      # Specify to override the tag or digest for the decision server docker image.
+      tagOrDigest:
       # Specify the number of Decision Server Runtime pods.
-      replicaCount: 1
+      replicaCount: 2
       # Specify the name of the configMap the wanted logging options. If left empty, default logging options are used.
       loggingRef:
       # Specify the name of the configMap the wanted JVM options. If left empty, default JVM options are used.
@@ -123,8 +136,11 @@ spec:
           # Specify the memory limit.
           memory: 4096Mi
 
+
     ## Decision Server Console parameters
     decisionServerConsole:
+      # Specify to override the tag or digest for the decision server console docker image.
+      tagOrDigest:
       # Specify the name of the configMap the wanted logging options. If left empty, default logging options are used.
       loggingRef:
       # Specify the name of the configMap the wanted JVM options. If left empty, default JVM options are used.
@@ -145,6 +161,8 @@ spec:
     decisionCenter:
       # Specify whether to enable Decision Center.
       enabled: true
+      # Specify to override the tag or digest for the decision center docker image.
+      tagOrDigest:
       # Specify the persistence locale for Decision Center.
       # Possible values  "ar_EG" (Arabic - Egypt), "zh_CN" (Chinese - China), "zh_TW" (Chinese - Taiwan)
       # "nl_NL" (Netherlands), "en_GB" (English - United Kingdom), "en_US" (English - United States),
@@ -153,7 +171,7 @@ spec:
       # "pt_BR" (Portuguese - Brazil), "ru_RU" (Russian - Russia), "es_ES" (Spanish - Spain)
       persistenceLocale: en_US
       # Specify the number of Decision Center pods.
-      replicaCount: 1
+      replicaCount: 2
       # Persistent Volume Claim to access the custom libraries
       customlibPvc:
       # Specify the name of the configMap the wanted logging options. If left empty, default logging options are used.
@@ -176,8 +194,10 @@ spec:
     decisionRunner:
       # Specify whether to enable Decision Runner.
       enabled: true
+      # Specify to override the tag or digest for the decision runner docker image.
+      tagOrDigest:
       # Specify the number of Decision Runner pods.
-      replicaCount: 1
+      replicaCount: 2
       # Specify the name of the configMap the wanted logging options. If left empty, default logging options are used.
       loggingRef:
       # Specify the name of the configMap the wanted JVM options. If left empty, default JVM options are used.
@@ -208,17 +228,17 @@ spec:
       # Specify how often (in seconds) to perform the probe.
       periodSeconds: 5
       # Specify how many times Kubernetes will try before giving up when a pod starts and the probe fails. Giving up means marking the pod as Unready.
-      failureThreshold: 45
+      failureThreshold: 90
       # Specify the number of seconds after which the readiness probe times out.
       timeoutSeconds: 5
 
     livenessProbe:
       # Specify the number of seconds after the container has started before liveness probe is initiated.
-      initialDelaySeconds: 300
+      initialDelaySeconds: 400
       # Specify how often (in seconds) to perform the probe.
       periodSeconds: 10
       # Specify how many times Kubernetes will try before giving up when a pod starts and the probe fails. Giving up means restarting the pod.
-      failureThreshold: 10
+      failureThreshold: 50
       # Specify the number of seconds after which the liveness probe times out.
       timeoutSeconds: 5
 
@@ -233,6 +253,16 @@ spec:
     oidc:
       # Specify whether to enable OpenId Authentication.
       enabled: false
+      # Specify The OIDC Server URL 
+      serverUrl:
+      # Specify the name of the secret that contains the admin username and password to connect to the OpenId Server.
+      adminRef:
+      # Specify the name of the configMap providing OIDC Redirect Uris
+      redirectUrisRef:
+      # Specify the name of the secret that contains the client id and password to register to the OpenId Server.
+      clientRef:
+      # Specify the OIDC Provider name.
+      provider:
       # Specify the OIDC Allowed Domains
       allowedDomains:
 

@@ -16,11 +16,12 @@ esac
 
 
 function showHelp {
-    echo -e "\nUsage: loadPrereqImages.sh -r docker_registry [-l]\n"
+    echo -e "\nUsage: loadPrereqImages.sh -r docker_registry [-t] [-l]\n"
     echo "Options:"
     echo "  -h  Display help"
     echo "  -r  Target Docker registry and namespace"
     echo "      For example: mycorp-docker-local.mycorp.com/image-space"
+    echo "  -t  Optional: Download OSS images from IBM Staging Entitled Registry"
     echo "  -l  Optional: Target a local registry"
 }
 
@@ -30,7 +31,7 @@ local_registry=false
 unset cli_cmd
 unset local_repo_prefix
 unset loaded_msg_prefix
-
+DOCKER_REG_SERVER="cp.icr.io"
 OPTIND=1         # Reset in case getopts has been used previously in the shell.
 
 if [[ $1 == "" ]]
@@ -38,7 +39,7 @@ then
     showHelp
     exit -1
 else
-    while getopts ":hlp:r:" opt; do
+    while getopts ":hltr:" opt; do
         case "$opt" in
         h|\?)
             showHelp
@@ -48,6 +49,8 @@ else
             ;;
         l)  local_registry=true
             ;;
+        t)  DOCKER_REG_SERVER="cp.stg.icr.io"
+            ;;
         :)  echo "Invalid option: -$OPTARG requires an argument"
             showHelp
             exit -1
@@ -56,7 +59,6 @@ else
     done
 
 fi
-
 # Check OCI command
 if command -v "podman" >/dev/null 2>&1
 then
@@ -74,12 +76,11 @@ else
     echo "No available Docker-compatible command line. Exit."
     exit -1
 fi
-
+echo "Pulling OSS images from '$DOCKER_REG_SERVER'"
 
 shift $((OPTIND-1))
 
-
-echo "target_docker_repo: $target_docker_repo"
+echo "Target_docker_repo: $target_docker_repo"
 if [ -z "$target_docker_repo" ]
 then
     echo "Need to input target Docker registry and namespace value."
@@ -87,51 +88,84 @@ then
     exit -1
 fi
 
-# declare -A prereqimages=(["db2u.tools:11.5.1.0-CN1"]="docker.io/ibmcom/"
-#                    ["db2:11.5.1.0-CN1"]="docker.io/ibmcom/"
-#                    ["db2u.auxiliary.auth:11.5.1.0-CN1"]="docker.io/ibmcom/"
-#                    ["db2u.instdb:11.5.1.0-CN1"]="docker.io/ibmcom/"
-#                    ["etcd:v3.3.10"]="quay.io/coreos/"
-#                    ["openldap:1.3.0"]="osixia/"
-#                    ["busybox:latest"]="docker.io/library/"
-#                    ["phpldapadmin:0.9.0"]="osixia/"
-#                     )
+function loginEntitlementRepo() {
+    printf "\n"
+    printf "\x1B[1mThe script will pull 'openldap, busybox, phpldapadmin, alpine, gitea' images from Entitled Registry.\n \x1B[0m"
+    printf "\x1B[1mNote: If you are using the Staging Entiled Registry, then use IAMAPIKey in the format 'iamapikey:xxxxx' where 'xxxxx' is the IAMAPIKey.\n \x1B[0m"
+    printf "\n"
+    printf "\x1B[1mEnter your Entitlement Registry key (or IAMAPIKey): \x1B[0m"
+    while [[ $entitlement_key == '' ]]
+    do
+        read -rsp "" entitlement_key
+        if [ -z "$entitlement_key" ]; then
+            printf "\n"
+            echo -e "\x1B[1;31mEnter a valid Entitlement Registry key\x1B[0m"
+        else
+            if  [[ $entitlement_key == iamapikey:* ]] ;
+            then
+                DOCKER_REG_USER="iamapikey"
+                DOCKER_REG_KEY="${entitlement_key#*:}"
+            else
+                DOCKER_REG_USER="cp"
+                DOCKER_REG_KEY=$entitlement_key
+
+            fi
+            entitlement_verify_passed=""
+            while [[ $entitlement_verify_passed == '' ]]
+            do
+                printf "\n"
+                printf "\x1B[1mVerifying the Entitlement Registry key...\n\x1B[0m"
+                if [ "${cli_cmd}" = "docker" ]; then
+                    if docker login -u "$DOCKER_REG_USER" -p "$DOCKER_REG_KEY" "$DOCKER_REG_SERVER"; then
+                        entitlement_verify_passed="passed"       
+                    fi
+                elif  [ "${cli_cmd}" = "podman" ];then
+                    if podman login -u "$DOCKER_REG_USER" -p "$DOCKER_REG_KEY" "$DOCKER_REG_SERVER" --tls-verify=false; then
+                        entitlement_verify_passed="passed"
+                    fi
+                fi
+                
+                if [[ $entitlement_verify_passed == '' ]]; then
+                    printf "\x1B[1;31mThe Entitlement Registry key failed.\n\x1B[0m"
+                    printf "\x1B[1mEnter a valid Entitlement Registry key.\n\x1B[0m"
+                    entitlement_key=''
+                    entitlement_verify_passed="failed"
+                else
+                    printf "Entitlement Registry key is valid.\n"
+                fi                        
+            done
+        fi
+    done
+
+}
+
  prereqimages=("db2u.tools:11.5.1.0-CN1"
                "db2:11.5.1.0-CN1"
                "db2u.auxiliary.auth:11.5.1.0-CN1"
                "db2u.instdb:11.5.1.0-CN1"
                "etcd:v3.3.10"
                "openldap:1.3.0"
-               "busybox:latest"
+               "busybox:1.32"
                "phpldapadmin:0.9.0"
-               "alpine:3.6")
+               "alpine:3.6"
+               "gitea:1.12.3")
+
 function getimagerepo(){
-    if [[ $image == ${prereqimages[0]} ]]; then
+    if [[ $image == db2* ]]; then
         image_repo="docker.io/ibmcom/"
-    elif [[ $image == ${prereqimages[1]} ]]; then
-        image_repo="docker.io/ibmcom/"
-    elif [[ $image == ${prereqimages[2]} ]]; then
-        image_repo="docker.io/ibmcom/"
-    elif [[ $image == ${prereqimages[3]} ]]; then
-        image_repo="docker.io/ibmcom/"
-    elif [[ $image == ${prereqimages[4]} ]]; then
+    elif [[ $image == etcd* ]]; then
         image_repo="quay.io/coreos/"
-    elif [[ $image == ${prereqimages[5]} ]]; then
-        image_repo="osixia/"
-    elif [[ $image == ${prereqimages[6]} ]]; then
-        image_repo="docker.io/library/"
-    elif [[ $image == ${prereqimages[7]} ]]; then
-        image_repo="osixia/"
-    elif [[ $image == ${prereqimages[8]} ]]; then
-         image_repo="docker.io/" 
+    else
+        image_repo="$DOCKER_REG_SERVER/cp/cp4a/demo/"
     fi
 }
+
+loginEntitlementRepo
 
 for image in "${prereqimages[@]}"
 do
   getimagerepo
   origin_image=${image_repo}${image}
-
   echo -e "\x1B[1mPull image: ${origin_image}.\n\x1B[0m"   
   ${cli_cmd} pull ${origin_image}
 
@@ -174,3 +208,4 @@ for img_load in ${prereqimages[@]}
 do
     echo "     -  ${target_docker_repo}/${img_load}"
 done
+

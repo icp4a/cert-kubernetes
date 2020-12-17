@@ -1,4 +1,3 @@
-
 ###############################################################################
 ##
 ##Licensed Materials - Property of IBM
@@ -17,8 +16,13 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2.1
+    release: 20.0.3
 spec:
+
+  ## MUST exist, used to accept ibm license, valid value only can be "accept"
+  ibm_license: ""
+
+  appVersion: 20.0.3
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
@@ -50,17 +54,17 @@ spec:
 
     images:
       keytool_job_container:
-        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer 
-        tag: 20.0.2-IF001
+        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer
+        tag: 20.0.3
       dbcompatibility_init_container:
-        repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer 
-        tag: 20.0.2-IF001
+        repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer
+        tag: 20.0.3
       keytool_init_container:
-        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer 
-        tag: 20.0.2-IF001
+        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer
+        tag: 20.0.3
       umsregistration_initjob:
-        repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob 
-        tag: 20.0.2-IF001
+        repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
+        tag: 20.0.3
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -68,12 +72,12 @@ spec:
     ## All CP4A components must use/share the root_ca_secret in order for integration
     root_ca_secret: icp4a-root-ca
 
-    ## CP4A patterns or capabilities to be deployed.  This CR represents the "foundation" pattern (aka FileNet Content Manager), which includes the following
+    ## CP4A patterns or capabilities to be deployed.  This CR represents the "foundation" pattern, which includes the following
     ## mandatory components: icn (BAN/Navigator), rr (Resource Registry) and optional components: ums, bas, and bai
     sc_deployment_patterns: foundation
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.  User can
-    ## also manually specify the optional components to be deployed here.  For this foundation CR, the optional components are: ums, bas, and bai
+    ## also manually specify the optional components to be deployed here.  For this foundation CR, the optional components are: ums, bas and bai
     sc_optional_components:
 
     ## The deployment type as selected by the user.  Possible values are: demo, enteprise
@@ -84,14 +88,21 @@ spec:
     sc_deployment_platform:
 
     ## For OCP, this is used to create route, you should input a valid hostname in the required field.
-    sc_deployment_hostname_suffix: "{{ meta.name }}.<Required>"
+    sc_deployment_hostname_suffix: "{{ meta.namespace }}.<Required>"
+
+    ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
+    sc_ingress_enable: false
+
+    ## For ROKS Ingress, provide TLS secret name for Ingress controller.
+    sc_ingress_tls_secret_name: <Required>
 
     ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
     ## the external service to the component's truststore.
     trusted_certificate_list: []
 
-    ## Shared encryption key secret name that is used for Workstream Services and Process Federation Server integration.
-    encryption_key_secret: icp4a-shared-encryption-key
+    ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
+    ## This secret is also used by Workflow and BAStudio to store AES encryption key.
+    encryption_key_secret: "<Required>"
 
     ## On OCP 3.x and 4.x, the User script will populate these three (3) parameters based on your input for "enterprise" deployment.
     ## If you manually deploying without using the User script, then you would provide the different storage classes for the slow, medium
@@ -112,17 +123,26 @@ spec:
     # these parameters and they can be kept empty.
     ##############################################################################################
     kafka_configuration:
-      # Comma-separated list of hosts:port for connection to the Kafka cluster.
-      # This field is mandatory for any Kafka configuration.
+      # A comma-separated list of hosts:port for connection to the Kafka cluster.
+      # This parameter is mandatory for any Kafka configuration.
       bootstrap_servers: "<Required>"
-      # Value for the Kafka security.protocol property
-      # Valid values: PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL. Default: PLAINTEXT.
+      # The URL of the Kafka schema registry.
+      # If the Business Automation Insights processor for custom events is configured, the value of this
+      # parameter must provide the URL of the schema registry. Otherwise, it can be left empty.
+      schema_registry_url:
+      # The type of the Kafka schema registry.
+      # Valid value: APICURIO. If not set, defaults to APICURIO. If set to any other value, the processing of
+      # events using Avro schema in Business Automation Insights is not possible and the BAI Management
+      # service is not deployed.
+      schema_registry_type:
+      # The value for the Kafka security.protocol property.
+      # Valid values: PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL. Default: SASL_SSL.
       security_protocol:
-      # Value for the Kafka sasl.mechanism property
+      # The value for the Kafka sasl.mechanism property.
       # Valid values: PLAIN, SCRAM-SHA-512. Default: PLAIN.
       sasl_mechanism:
-      # If the Kafka server requires authentication or uses SSL communications, the value of this field
-      # must provide the name of a secret that holds the following keys as base64-encoded strings:
+      # If the Kafka server requires authentication or uses SSL communications, the value of this parameter
+      # must provide the name of a Kubernetes secret that holds the following keys as base64-encoded strings:
       # kafka-username: Kafka username; leave empty if no authentication
       # kafka-password: Kafka password; leave empty if no authentication
       # kafka-server-certificate: server certificate for SSL communications; leave empty if SSL protocol is not used
@@ -166,7 +186,7 @@ spec:
     ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
     lc_ldap_group_display_name_attr: "cn"
 
-    ## The LDAP group membership search filter string.  One possible value is "(&(cn=%v)(|(objectclass=groupOfNames)(objectclass=groupOfUniqueNames)(objectclass=groupOfURLs))" for TDS
+    ## The LDAP group membership search filter string.  One possible value is "(&(cn=%v)(|(objectclass=groupOfNames)(objectclass=groupOfUniqueNames)(objectclass=groupOfURLs)))" for TDS
     ## and "(&(cn=%v)(objectcategory=group))" for AD.
     lc_ldap_group_membership_search_filter: "<Required>"
 
@@ -186,6 +206,12 @@ spec:
 
   ## The beginning section of database configuration for CP4A
   datasource_configuration:
+    ## The dc_ssl_enabled parameter is used to support database connection over SSL for DB2/Oracle.
+    dc_ssl_enabled: true
+    ## The database_precheck parameter is used to enable or disable CPE/Navigator database connection check.
+    ## If set to "true", then CPE/Navigator database connection check will be enabled.
+    ## if set to "false", then CPE/Navigator database connection check will not be enabled.
+   # database_precheck: true
     ## The database configuration for ICN (Navigator) - aka BAN (Business Automation Navigator)
     dc_icn_datasource:
       ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the
@@ -198,6 +224,8 @@ spec:
       database_port: "<Required>"
       ## Provide the name of the database for ICN (Navigator).  For example: "ICNDB"
       database_name: "<Required>"
+      ## The name of the secret that contains the DB2 SSL certificate.
+      database_ssl_secret_name: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_icn_jdbc_url: "<Required>"
       ######################################################################################
@@ -216,38 +244,46 @@ spec:
 
     ## The database configuration for UMS (User Management Service)
     dc_ums_datasource:
-      ## Provide the database type from your infrastructure. The possible values are "db2" or "oracle".  This should be the same as the
-      ## other datasource configuration above. Db2 with HADR is automatically activated if dc_ums_oauth_alternate_hosts and dc_ums_oauth_alternate_ports
-      ## are set.
+      ## Provide the datasource configuration for oauth
+      ## Possible dc_ums_oauth_type values are "derby" for test only and "db2", "oracle", "sqlserver" and "postgresql" for production.
+      ## This configuration should be the same as the other datasource configuration in the dc_ums_datasource section.
+      ## db2 with HADR is automatically activated if dc_ums_oauth_alternate_hosts and dc_ums_oauth_alternate_ports are set.
+      ## For Oracle RAC, specify the host name of the SCAN listener as the value of the dc_ums_oauth_host parameter
       dc_ums_oauth_type: "<Required>"
       ## Provide the database server name or IP address of the database server.
       dc_ums_oauth_host: "<Required>"
-      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521".
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521". For MSSQL, the default is "1433"- For PostgreSQL, the default is "5432".
       dc_ums_oauth_port: "<Required>"
       ## Provide the name of the database for UMS.  For example: "UMSDB"
       dc_ums_oauth_name: "<Required>"
       dc_ums_oauth_schema: OAuthDBSchema
       dc_ums_oauth_ssl: true
-      dc_ums_oauth_ssl_secret_name:
+      dc_ums_oauth_ssl_secret_name: "<Required>"
+      ## For "oracle", "sqlserver" and "postgresql" provide the names of the driver files
       dc_ums_oauth_driverfiles:
+      ## For db2 HADR only
       dc_ums_oauth_alternate_hosts:
       dc_ums_oauth_alternate_ports:
 
-      ## The database database configuration for teamserver
-      ## Provide the database type from your infrastructure. The possible values are "db2" or "oracle".  This should be the same as the
-      ## other datasource configuration above. Db2 with HADR is automatically activated if dc_ums_teamserver_alternate_hosts and dc_ums_teamserver_alternate_ports
-      ## are set.
+      ## Provide the datasource configuration for the teamserver
+      ## Possible dc_ums_teamserver_type values are "derby" for test only and "db2", "oracle", "sqlserver" and "postgresql" for production.
+      ## This configuration should be the same as the other datasource configuration in the dc_ums_datasource section.
+      ## db2 with HADR is automatically activated if dc_ums_teamserver_alternate_hosts and dc_ums_teamserver_alternate_ports are set.
+      ## For Oracle RAC, specify the host name of the SCAN listener as the value of the dc_ums_teamserver_host parameter
       dc_ums_teamserver_type: "<Required>"
       dc_ums_teamserver_host: "<Required>"
-      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521".
+      ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521". For MS SQL, the default is "1433"- For PostgreSQL, the default is "5432".
       dc_ums_teamserver_port: "<Required>"
       ## Provide the name of the database for UMS teamserver.  For example: "UMSDB"
       dc_ums_teamserver_name: "<Required>"
       dc_ums_teamserver_ssl: true
-      dc_ums_teamserver_ssl_secret_name:
+      dc_ums_teamserver_ssl_secret_name: "<Required>"
+      ## For "oracle", "sqlserver" and "postgresql" provide the names of the driver files
       dc_ums_teamserver_driverfiles:
+      ## For db2 HADR only
       dc_ums_teamserver_alternate_hosts:
       dc_ums_teamserver_alternate_ports:
+
 
   ########################################################################
   ########   IBM Business Automation Navigator configuration      ########
@@ -261,16 +297,16 @@ spec:
     arch:
       amd64: "3 - Most preferred"
 
-    ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+    ## The number of replicas or pods to be deployed.  The default is 2 replica and for high availability in a production env,
     ## it is recommended to have 2 or more.
-    replica_count: 1
+    replica_count: 2
 
     ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
     image:
 
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: ga-308-icn
+      tag: ga-309-icn
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -304,7 +340,6 @@ spec:
       jvm_initial_heap_percentage: 40
       jvm_max_heap_percentage: 66
       jvm_customize_options:
-      icn_db_type: db2
       icn_jndids_name: ECMClientDS
       icn_schema: ICNDB
       icn_table_space: ICNDB
@@ -348,27 +383,72 @@ spec:
   ########################################################################
   ums_configuration:
     existing_claim_name:
-    replica_count: 2
+    dedicated_pods: true
     service_type: Route
+    routes_ingress_annotations:
     # your external UMS host name, only required if there is no sc_deployment_hostname_suffix given
     hostname:
     port: 443
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.2-IF001
+        tag: 20.0.3
     admin_secret_name: ibm-dba-ums-secret
     ## optional for secure communication with UMS
-    external_tls_secret_name: ibm-dba-ums-external-tls-secret
+    external_tls_secret_name:
     ## optional for secure communication with UMS
-    external_tls_ca_secret_name: ibm-dba-ums-external-tls-ca-secret
+    external_tls_ca_secret_name:
     ## optional for secure communication with UMS
-    external_tls_teams_secret_name: ibm-dba-ums-external-tls-teams-secret
+    external_tls_teams_secret_name:
     ## optional for secure communication with UMS
-    external_tls_scim_secret_name: ibm-dba-ums-external-tls-scim-secret
+    external_tls_scim_secret_name:
     ## optional for secure communication with UMS
-    external_tls_sso_secret_name: ibm-dba-ums-external-tls-sso-secret
+    external_tls_sso_secret_name:
+
+    use_custom_jdbc_drivers: false
+    use_custom_binaries: false
+    custom_secret_name:
+
     oauth:
+      ## optional: full DN of an LDAP group that is authorized to manage OIDC clients, in addition to primary admin from admin secret
+      client_manager_group:
+      ## optional: full DN of an LDAP group that is authorized to manage app_tokens, in addition to primary admin from admin secret
+      token_manager_group:
+      ## optional: lifetime of OAuth access_tokens. default is 7200s
+      access_token_lifetime:
+      ## optional: lifetime of app-tokens. default is 366d
+      app_token_lifetime:
+      ## optional: lifetime of app-passwords. default is 366d
+      app_password_lifetime:
+      ## optional: maximum number of app-tokens or app-passwords per client. default is 100
+      app_token_or_password_limit:
+      ## optional: encoding / encryption when storing client secrets in OAuth database. Default is xor for compatibility. Recommended value is PBKDF2WithHmacSHA512
+      client_secret_encoding:
+
+    #### If dedicated_pods is set to false, the UMS capabilities sso, scim and teamserver
+    #### run in the same pods and share this configuration
+    replica_count: 2
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 200m
+        memory: 256Mi
+    autoscaling:
+      enabled: true
+      min_replicas: 2
+      max_replicas: 5
+      target_average_utilization: 98
+    custom_xml:
+    logs:
+      traceSpecification: "*=info"
+
+    #### If dedicated_pods is set to true, the UMS capabilities sso, scim and teamserver
+    #### run in dedicated pods and are configured separately
+
+    # Configuration for sso pods
+    sso:
       ## optional: full DN of an LDAP group that is authorized to manage OIDC clients, in addition to primary admin from admin secret
       client_manager_group:
       ## optional: full DN of an LDAP group that is authorized to manage app_tokens, in addition to primary admin from admin secret
@@ -383,29 +463,61 @@ spec:
       app_token_or_password_limit:
       ## optional: encoding / encryption when sotring client secrets in OAuth database. Default is xor for compatibility. Recommended value is PBKDF2WithHmacSHA512
       client_secret_encoding:
-    resources:
-      limits:
-        cpu: 500m
-        memory: 512Mi
-      requests:
-        cpu: 200m
-        memory: 256Mi
-    ## Horizontal Pod Autoscaler
-    autoscaling:
-      enabled: true
-      min_replicas: 2
-      max_replicas: 5
-      target_average_utilization: 98
-    use_custom_jdbc_drivers: false
-    use_custom_binaries: false
-    custom_secret_name:
-    custom_xml:
-    logs:
-      console_format: json
-      console_log_level: INFO
-      console_source: message,trace,accessLog,ffdc,audit
-      trace_format: ENHANCED
-      trace_specification: "*=info"
+      replica_count: 2
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 200m
+          memory: 256Mi
+      autoscaling:
+        enabled: true
+        minReplicas: 2
+        maxReplicas: 5
+        targetAverageUtilization: 98
+      custom_xml:
+      logs:
+        traceSpecification: "*=info"
+
+    # configuration for scim pods
+    scim:
+      replica_count: 2
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 200m
+          memory: 256Mi
+      autoscaling:
+        enabled: true
+        minReplicas: 2
+        maxReplicas: 5
+        targetAverageUtilization: 98
+      custom_xml:
+      logs:
+        traceSpecification: "*=info"
+
+    # configuration for teamserver pods
+    teamserver:
+      replica_count: 2
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 200m
+          memory: 256Mi
+      autoscaling:
+        enabled: true
+        minReplicas: 2
+        maxReplicas: 5
+        targetAverageUtilization: 98
+      custom_xml:
+      logs:
+        traceSpecification: "*=info"
+
 
   ##################################################################
   ########   Resource Registry configuration                ########
@@ -422,7 +534,7 @@ spec:
       pull_policy: IfNotPresent
       resource_registry:
         repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-        tag: 20.0.2-IF001
+        tag: 20.0.3
     admin_secret_name: resource-registry-admin-secret
     replica_size: 3
     probe:
@@ -456,7 +568,8 @@ spec:
 
   #############################################################################
   ## This section contains the BAStudio component configurations              #
-  ##  it's the optinal component: app_designer, ads_designer, bas              #
+  ##  it's the optional component: app_designer, ads_designer, bas,           #
+  ##                               workflow-authoring                         #
   #############################################################################
   bastudio_configuration:
     # If you inputed hostname and port here. They will be used always
@@ -470,38 +583,47 @@ spec:
       pull_policy: IfNotPresent
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: 20.0.2-IF001
+        tag: 20.0.3
     #Adjust this one if you created the secret with name other than the default
-    # Inside the admin secret. There are two must fields
-    # dbPassword: <Input your database password>
-    # dbUsername: <Input your database user>
     admin_secret_name: "{{ meta.name }}-bas-admin-secret"
+    #-----------------------------------------------------------------------
+    # bastudio admin Secret template will be
+    #-----------------------------------------------------------------------
+    # apiVersion: v1
+    # stringData:
+    #   dbPassword: "<Your database password>"
+    #   dbUsername: "<Your database username>"
+    # kind: Secret
+    # metadata:
+    #   name: icp4adeploy-bas-admin-secret
+    # type: Opaque
+    #----------------------------------------
     #Provide BAStudio default administrator ID
     admin_user:  "<Required>"
-    replica_size: 1
+    replica_size: 2
     database:
-      # The database type used. Only DB2, Oracle supported
+      # The database type used. Only DB2, Oracle, PostgreSQL supported
       type: "db2"
-      #DB2 - Provide the database server hostname for BAStudio use
+      # DB2, PostgreSQL - Provide the database server hostname for BAStudio use
       host: "<Required>"
-      # DB2 - Provide the database name for BAStudio use
+      # DB2, PostgreSQL - Provide the database name for BAStudio use
       # The database provided should be created by the BAStudio SQL script template.
       name: "<Required>"
-      # DB2 - Provide the database server port for BAStudio use
+      # DB2, PostgreSQL - Provide the database server port for BAStudio use
       port: "<Required>"
-      # DB2 - If you want to enable database automatic client reroute (ACR) for HADR, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
+      # If you want to enable DB2 database automatic client reroute (ACR) for HADR or PostgreSQL Connection Fail-over, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
       alternative_host:
       alternative_port:
-      # If you enabled SSL for Database please enable this one to set it to true
-      ssl_enabled: false
+      # Enabled SSL for Database is true by default
+      ssl_enabled: true
       # Oracle - If you are using Oracle input the oracle database connection URL here
       oracle_url:
       cm_max_pool_size: '50'
       cm_min_pool_size: '2'
-      # If you enabled the SSL for database. Please save the TLS certificate used by databased in a secret and put the name here
-      certificate_secret_name:
+      # Enabled the SSL for database is true by default. Please save the TLS certificate used by database in a secret and put the name here
+      certificate_secret_name: <Required>
       # If you are using custom JDBC (for example using Oracle or some special DB2 driver). Please set this one to true
-      user_custom_jdbc_drivers: false
+      use_custom_jdbc_drivers: false
       # The PVC name which bind to the PV which have the custom JDBC driver files stored
       custom_jdbc_pvc:
       # The custom JDBC file set
@@ -522,24 +644,27 @@ spec:
     use_walkme: true
     max_cached_objects_during_refactoring: 256
     logs:
+      # You can find all possible options for this section on liberty document
+      # https://www.ibm.com/support/knowledgecenter/SSEQTP_liberty/com.ibm.websphere.liberty.autogen.base.doc/ae/rwlp_config_logging.html
       consoleFormat: 'json'
       consoleLogLevel: 'INFO'
       consoleSource: 'message,trace,accessLog,ffdc,audit'
       traceFormat: 'ENHANCED'
       traceSpecification: '*=info'
+      messageFormat: 'SIMPLE'
     tls:
       tlsTrustList: []
     liveness_probe:
       initialDelaySeconds: 300
-      periodSeconds: 10
+      periodSeconds: 30
       timeoutSeconds: 5
       failureThreshold: 3
       successThreshold: 1
     readiness_probe:
       initialDelaySeconds: 240
-      periodSeconds: 5
+      periodSeconds: 10
       timeoutSeconds: 5
-      failureThreshold: 6
+      failureThreshold: 5
       successThreshold: 1
     resources:
       bastudio:
@@ -558,14 +683,31 @@ spec:
           memory: '128Mi'
     csrf_referrer:
       whitelist: ''
+    storage:
+      # Main switch for the data persistence of BAStudio
+      enabled: "true"
+      # PVC name used to store the BAStudio server log
+      existing_pvc_for_logstore: "cp4a-shared-log-pvc"
+      # Size of the PV to store the BAStudio server log. Used when creating the PVC
+      size_for_logstore: "10Gi"
+      # PVC name used to store the BAStudio server dump files
+      existing_pvc_for_dumpstore: "{{ meta.name }}-bastudio-dump-pvc"
+      # Size of the PV to store the BAStudio server dump files. Used when creating the PVC
+      size_for_dumpstore: "10Gi"
+      # PVC name used to store the BAStudio server index files
+      existing_pvc_for_index: "{{ meta.name }}-bastudio-index-pvc"
+      # Size of the PV to store the BAStudio server index files. Used when creating the PVC
+      size_for_index: "10Gi"
+      # storage class name used for the PVC when not availble
+      storage_class: "{{ shared_configuration.storage_configuration.sc_fast_file_storage_classname }}"
     jms_server:
       image:
         ## Image name for Java Messaging Service container
         repository: cp.icr.io/cp/cp4a/bas/jms
         ## Image tag for Java Messaging Service container
-        tag: 20.0.2-IF001
+        tag: 20.0.3
         ## Pull policy for Java Messaging Service container
-        pull_policy: Always
+        pull_policy: IfNotPresent
       tls:
         ## TLS secret name for Java Message Service (JMS)
         tls_secret_name: "{{ meta.name }}-bastudio-jms-tls"
@@ -596,16 +738,17 @@ spec:
     #  App Engine Playback Server (playback_server) can be only one instance.
     #  This is different from App Engine
     #  (where application_engine_configuration is a list and you can deploy multiple instances).
+    #  You should use different database, admin_secret, hostname for playback server and the application engine servers
     #-----------------------------------------------------------------------
     playback_server:
       images:
         pull_policy: IfNotPresent
         db_job:
           repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-          tag: 20.0.2-IF001
+          tag: 20.0.3
         solution_server:
           repository: cp.icr.io/cp/cp4a/aae/solution-server
-          tag: 20.0.2-IF001
+          tag: 20.0.3
       # If you inputed hostname and port here. They will be used always
       # If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value)
       # Then you don't need to fill the hostname and port. It will use shared_configuration.sc_deployment_hostname_suffix to generate one
@@ -614,46 +757,59 @@ spec:
       hostname: "{{ 'ae-pbk.' + shared_configuration.sc_deployment_hostname_suffix }}"
       port: 443
       # Inside the admin secret. There are two must fields
-      # AE_DATABASE_PWD: <Input your database password>
-      # AE_DATABASE_USER: <Input your database user>
-      admin_secret_name: <Required>
+      admin_secret_name: "playback-server-admin-secret"
+      #-----------------------------------------------------------------------
+      # The playback server admin Secret template will be
+      #-----------------------------------------------------------------------
+      # apiVersion: v1
+      # stringData:
+      #   AE_DATABASE_PWD: "<Your database password>"
+      #   AE_DATABASE_USER: "<Your database username>"
+      #   REDIS_PASSWORD: "<Your Redis server password>"
+      # kind: Secret
+      # metadata:
+      #   name: playback-server-admin-secret
+      # type: Opaque
+      #-----------------------------------------------------------------------
       # The default admin user id for application engine
       # The user ID should be bootstrap admin ID for IBM Business Automation Navigator. It is case sensitive.
-      # The same ID should be a User Management Service (UMS) admin user also.
+      # The same ID should be a User Management Service (UMS) Team Server administrator also.
       admin_user: <Required>
       external_tls_secret:
       external_connection_timeout: 90s
-      replica_size: 1
-      ## optional when db2, must required when oracle
-      user_custom_jdbc_drivers: false
+      replica_size: 2
+      ## optional when the database type is Db2, must required when the database type is Oracle, PostgreSQL.
+      use_custom_jdbc_drivers: false
       service_type: Route
       autoscaling:
         enabled: false
         max_replicas: 5
         min_replicas: 2
         target_cpu_utilization_percentage: 80
+      server_identifier: ""
       database:
-        # AE Database host name or IP when the database is DB2
+        # AE Database host name or IP when the database type is Db2, PostgreSQL.
         host: <Required>
-        # AE Database name when the database is DB2
+        # AE Database name when the database type is Db2, PostgreSQL.
         name: <Required>
-        # AE database port number when the database is DB2
+        # AE database port number when the database type is Db2, PostgreSQL.
         port: <Required>
-        ## If you setup DB2 HADR and want to use it, you need to configure alternative_host and alternative_port, or else, leave is as blank.
+        ## If you setup Db2 HADR or PostgreSQL Connection Fail-over and want to use it, you need to configure alternative_host and alternative_port, or else, leave is as blank.
+        ## If more than one server name is specified, delimit the server names with commas (,). The number of values that is specified for alternative_host must match the number of values that is specified for alternative_port.
         alternative_host:
         alternative_port:
-        ## Only DB2, Oracle is supported
+        ## Only Db2, Oracle, PostgreSQL are supported.
         type: db2
-        ## Required only when type is Oracle, both ssl and non-ssl. The format must be purely oracle descriptor like (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=<your database host/IP>)(PORT=<your database port>))(CONNECT_DATA=(SERVICE_NAME=<your oracle service name>)))
+        ## Required only when the database type is Oracle, both ssl and non-ssl. The format must be purely Oracle descriptor like (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=<your database host/IP>)(PORT=<your database port>))(CONNECT_DATA=(SERVICE_NAME=<your Oracle service name>))).
         oracle_url_without_wallet_directory:
-        enable_ssl: false
+        enable_ssl: true
         ## Required only when type is Oracle and enable_ssl is true. The format must be purely oracle descriptor. SSO wallet directory must be specified and fixed to (MY_WALLET_DIRECTORY=/shared/resources/oracle/wallet).
         oracle_url_with_wallet_directory:
-        ## Required only when enable_ssl is true, both db2 and oracle db type
-        db_cert_secret_name:
+        ## Required only when enable_ssl is true, when the database type is Db2, Oracle or PostgreSQL
+        db_cert_secret_name: <Required>
         ## Required only when type is oracle and enable_ssl is true.
         oracle_sso_wallet_secret_name:
-        ## Optional. If it is empty, the DBASB is default when db2 and the AE_DATABASE_USER set in the admin_secret_name is default when oracle
+        ## Optional. If it is empty, the DBASB is default when the database type is Db2 or PostgreSQL; the AE_DATABASE_USER set in the admin_secret_name is default when the database type is Oracle.
         current_schema: DBASB
         initial_pool_size: 1
         max_pool_size: 10
@@ -662,7 +818,7 @@ spec:
         max_lru_cache_age: 600000
         dbcompatibility_max_retries: 30
         dbcompatibility_retry_interval: 10
-        ## The persistent volume claim for custom JDBC Drivers if using the custom jdbc drivers is enabled
+        ## The persistent volume claim for custom JDBC Drivers if using the custom JDBC drivers is enabled(use_custom_jdbc_drivers is true).
         custom_jdbc_pvc:
       log_level:
         node: info
@@ -670,12 +826,19 @@ spec:
       content_security_policy:
         enable: false
         whitelist:
+        frame_ancestor:
       env:
         max_size_lru_cache_rr: 1000
         server_env_type: development
         purge_stale_apps_interval: 86400000
+        # Number of preview-only automation application must be more to trigger purge,
         apps_threshold: 100
+        # Age of preview-only automation application since publish to be stale in milliseconds
         stale_threshold: 172800000
+        # Number of preview-only automation services must be more to trigger purge,
+        service_threshold: 100
+        # Age of preview-only automation service since publish to be stale in milliseconds
+        service_stale_threshold: 172800000
       max_age:
         auth_cookie: "900000"
         csrf_cookie: "3600000"
@@ -694,13 +857,20 @@ spec:
           period_seconds: 10
           success_threshold: 1
           timeout_seconds: 180
-      # Redis settings <Required> only when you set session.use_external_store to true
+      #-----------------------------------------------------------------------
+      # If you want better HA experience.
+      # - Set the session.use_external_store to true
+      # - Fill in your redis server information
+      #-----------------------------------------------------------------------
       redis:
         # Your external redis host/ip
-        host: localhost
+        host:
         # Your external redis port
-        port: 6379
+        port: '6379'
         ttl: 1800
+        # If your redis enabled TLS connection set this to true
+        # You should add redis server CA certificate in tls_trust_list or trusted_certificate_list
+        tls_enabled: false
       resource_ae:
         limits:
           cpu: 2000m
@@ -722,18 +892,21 @@ spec:
         resave: "false"
         rolling: "true"
         save_uninitialized: "false"
-        # By setting this option to true. The AE will use external Redis as session storage
-        # To support multiple AE pods
+        #-----------------------------------------------------------------------
+        # If you want better HA experience.
+        # - Set the session.use_external_store to true
+        # - Fill in your redis server information
+        #-----------------------------------------------------------------------
         use_external_store: "false"
       tls:
         tls_trust_list: []
       # If you want to make the replicate size more than 1 for this cluster. Then you must enable the shared storage
       share_storage:
-        enabled: false
+        enabled: true
         # If you create the PV manually. Then please provide the PVC name bind here
         pvc_name:
         auto_provision:
-          enabled: false
+          enabled: true
           # Required if you enabled the auto provision
           storage_class:
           size: 20Gi
@@ -742,37 +915,779 @@ spec:
   ########      IBM Business Automation Insights configuration    ########
   ########################################################################
   bai_configuration:
+    persistence:
+      # Set this parameter to false to disable dynamic provisioning as the persitence mode for BAI's components.
+      useDynamicProvisioning: true
+    baiSecret: ""
+    # If you want to use a specific docker registry for the BAI images. Then you need to fill following parameters under imageCredentials.
     imageCredentials:
       registry: cp.icr.io/cp/cp4a
-
-    # Set to true to automatically create the OpenShift routes when sc_deployment_platform is set
+      createImagePullSecret: false
+    imagePullPolicy: "IfNotPresent"
+    # An array of image pull secret names for BAI Docker images.
+    # If not set, the BAI pods use the pull secrets from shared_parameters.image_pull_secrets.
+    imagePullSecrets:
+    - ""
+    sc_deployment_license: "production"
+    # This section allow to enhance the configuration of Kafka clients provided in the shared_configuration.kafka_configuration section.
+    # Those parameters are not mandatory.
+    kafka:
+      # The name of the sasl Kerberos service
+      saslKerberosServiceName: ""
+      # Indicates whether event consumption starts at the "earliest" offset or at the "latest" offset.
+      # Setting it to "latest" means that events sent before BAI is running are not processed.
+      # If you want to process events sent before BAI is running set this parameter to "earliest".
+      autoOffsetReset: "latest"
+      # You can provide the name of a ConfigMap that is already deployed to Kubernetes
+      # and contains Kafka Consumer and producer properties.
+      propertiesConfigMap: ""
+      # The number of seconds before the socket communication with the Kafka server times out.
+      socketTimeoutMs: 10000
+    settings:
+      # Set it to true to enable Apache Kafka data egress.
+      egress: true
+      # Provide configuration of Apache Kafka topics.
+      # If not set, topics with default names as below are created.
+      ingressTopic: "{{ meta.name }}-ibm-bai-ingress"
+      egressTopic: "{{ meta.name }}-ibm-bai-egress"
+      serviceTopic: "{{ meta.name }}-ibm-bai-service"
+    # Set to false to not automatically create the OpenShift routes when sc_deployment_platform is set
     # to OCP or ROKS.
-    createRoutes: false
-
-    # Set to true to enable the Flink job for sending events to HDFS.
+    createRoutes: true
+    setup:
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-setup
+        tag: 20.0.3
+      # The back-off limit property specifies the number of retries before the setup job is considered failed.
+      backoffLimit: 6
+      resources:
+        requests:
+          # The minimum memory required, including JVM heap and file system cache, to start the setup pod.
+          memory: "50Mi"
+          # The minimum amount of CPU required to start the setup pod.
+          cpu: "200m"
+        limits:
+          # The maximum memory, including JVM heap and file system cache, to allocate to the setup pod.
+          memory: "120Mi"
+      # The runAsUser value for the security context of the setup pod.
+      # This is usually a numeric value that corresponds to a user ID.
+      # If not set, the value of shared_configuration.sc_run_as_user is used as a default value.
+      runAsUser: "{{ shared_configuration.sc_run_as_user }}"
+    # The BAI Administration service. Provides business data anonymization services for HDFS storage.
+    admin:
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-admin
+        tag: 20.0.3
+      # Supported values are ClusterIP and NodePort.
+      serviceType: NodePort
+      # Set this parameter only if serviceType property is set to NodePort.
+      externalPort:
+      # If the global createRoutes parameter and local admin.createRoute
+      # parameter are set to true in the custom resource, you can use
+      # this hostname parameter to customize the hostname to the administration
+      # service route.
+      hostname: "admin.bai.{{ shared_configuration.sc_deployment_hostname_suffix }}"
+      # The number of Admin service replicas. For High Availability,
+      # use at least 2 replicas.
+      replicas: 2
+      # The username to the administration service API.
+      username: admin
+      # The password to the administration service API. It is recommended to use a randomly-generated password.
+      password: passw0rd
+      # The runAsUser value for the security context of the admin pod.
+      # This is usually a numeric value that corresponds to a user ID.
+      # If not set, the value of shared_configuration.sc_run_as_user is used as a default value.
+      runAsUser: "{{ shared_configuration.sc_run_as_user }}"
+      # Set this parameter to false if you do not want to create
+      # the OpenShift route automatically for the administration service.
+      createRoute: true
+      # Optional: Enables SSL with an existing certificate for automatic creation of OpenShift routes. 
+      # If you don't want to provide an external TLS certificate, leave this empty, the operator will generate one for you.
+      externalTlsSecretName: "{{ meta.name }}-bai-admin-external-tls-secret"
+      # Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes. 
+      # If you do not want to provide a CA to sign the external TLS certificate, leave this parameter empty.
+      externalTlsCaSecretName: 
+    management:
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-management
+        tag: 20.0.3
+      # If the global createRoutes parameter and local management.createRoute
+      # parameter are set to true in the custom resource, you can use
+      # this hostname parameter to customize the hostname to the management
+      # service route.
+      hostname: "management.bai.{{ shared_configuration.sc_deployment_hostname_suffix }}"
+      # Set this parameter to false if you do not want to create
+      # the OpenShift route automatically for the management service.
+      createRoute: true
+      # The number of Management service replicas. For High Availability,
+      # use at least 2 replicas.
+      replicas: 2
+      # Optional: Enables SSL with an existing certificate for automatic creation of OpenShift routes. 
+      # If you don't want to provide an external TLS certificate, leave this empty, the operator will generate one for you.
+      externalTlsSecretName: "{{ meta.name }}-bai-management-external-tls-secret"
+      # Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes. 
+      # If you do not want to provide a CA to sign the external TLS certificate, leave this parameter empty.
+      externalTlsCaSecretName: ""
+    flinkPv:
+      # The capacity of the persistent volume. Default: "20Gi"
+      capacity: "20Gi"
+      # If not set, shared_configuration.sc_dynamic_storage_classname is used as a default value.
+      storageClassName: "{{ shared_configuration.storage_configuration.sc_medium_file_storage_classname }}"
+      # Provide the name of an existing claim if one is available. By default, a new persitent volume claim is created.
+      existingClaimName: ""
+    flink:
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-flink
+        tag: 20.0.3
+      taskManager:
+        image:
+          repository: cp.icr.io/cp/cp4a/bai/bai-flink-taskmanager
+          tag: 20.0.3
+      # The total memory allocation for Apache Flink task managers (in megabytes).
+      taskManagerMemory: 1536
+      # The interval between checkpoints of an Apache Flink jobs (in milliseconds).
+      jobCheckpointingInterval: 5000
+      # The name of a ConfigMap object that is already deployed to Kubernetes and contains RocksDB properties.
+      rocksDbPropertiesConfigMap: ""
+      # The batch size for bucketing sink storage (in bytes).
+      batchSize: 268435456
+      # How frequently the job checks for inactive buckets (in milliseconds)
+      checkInterval: 300000
+      # The minimum amount of time adter which a bucket that does not receive
+      # new data is considered incative (in milliseconds).
+      bucketThreshold: 900000
+      # Indicates whether the Flink storage directory needs to be initialized.
+      # The HDFS URL for long-term storage
+      # Example:
+      # storageBucketUrl: "hdfs://<node_name>:/bucket_path"
+      storageBucketUrl: ""
+      # The default value is true when shared_configuration.sc_deployment_platform parameter is ROKS, false otherwise.
+      initStorageDirectory: false
+      zookeeper:
+        image:
+          repository: cp.icr.io/cp/cp4a/bai/bai-flink-zookeeper
+          tag: 20.0.3
+        # The number of Apache Zookeeper replicas
+        replicas: 3
+      # You can provide the name of a ConfigMap object that is already deployed to Kubernetes
+      # edited to customize the log4j configuration to log Apache Flink jobs.
+      log4jConfigMap: ""
+      # You can provide the name of a ConfigMap object that is already deployed to Kubernetes
+      # edited with core-site.xml and hdfs-site.xml HDFS configuration files.
+      hadoopConfigMap: ""
+    # The Flink job for ingesting events into HDFS (Hadoop Distributed File System).
+    # Disabled by default. Can be enabled by setting `ingestion.install` to true and
+    # by completing the prerequisite configuration for HFDS as documented in the KnowledgeCenter.
     ingestion:
+      # Set to true to enable the Flink job for sending events to HDFS.
       install: false
-
-    # Set to true to enable the Flink job for Digital Worker.
-    adw:
-      install: false
-
-    # Set to true to enable the Flink job for BAW.
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-ingestion
+        tag: 20.0.3
+      # The path to the savepoint or checkpoint from which a job will recover.
+      # You can use this path to restart the job from a previous state in case of failure.
+      # To use the default workflow of the job, leave this option empty.
+      recoveryPath: ""
+      # The number of parallel instances (task slots) to use for running the processing job.
+      parallelism: 2
+    # The Flink job for processing BPMN events.
+    # Enabled automatically if BAI is selected as an optional component of
+    # workflow or workflow-workstreams patterns.
     bpmn:
+      # Set to true to enable the Flink job for BAW.
       install: false
-
-    # Set to true to enable the Flink job for BAWAdv.
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-bpmn
+        tag: 20.0.3
+      # The path to the savepoint or checkpoint from which a job will recover.
+      # You can use this path to restart the job from a previous state in case of failure.
+      # To use the default workflow of the job, leave this option empty.
+      recoveryPath: ""
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+      # The delay in milliseconds before clearing the Flink states used for summary transformation.
+      # This value cannot be set to 0 nor be greater than 30 minutes.
+      # Otherwise, the default value applies instead.
+      endAggregationDelay: 10000
+      # Set this parameter to true if you want time series
+      # to be written to Elasticsearch indexes.
+      forceElasticsearchTimeseries: false
+    # The Flink job for processing BAW Advanced events.
+    # Disabled by default. Can be enabled by setting `bawadv.install
     bawadv:
+      # Set to true to enable the Flink job for BAWAdv.
       install: false
-
-    # Set to true to enable the Flink job for ICM.
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-bawadv
+        tag: 20.0.3
+      # The path to the savepoint or checkpoint from which a job will recover.
+      # You can use this path to restart the job from a previous state in case of failure.
+      # To use the default workflow of the job, leave this option empty.
+      recoveryPath: ""
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+    # The Flink job for processing ICM events.
+    # Enabled automatically if BAI is selected as an optional component of
+    # workflow or workflow-workstreams patterns.
     icm:
+      # Set to true to enable the Flink job for ICM.
       install: false
-
-    # Set to true to enable the Flink job for ODM.
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-icm
+        tag: 20.0.3
+      # The path to the savepoint or checkpoint from which a job will recover.
+      # You can use this path to restart the job from a previous state in case of failure.
+      # To use the default workflow of the job, leave this option empty.
+      recoveryPath: ""
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+    # The Flink job for processing ODM events.
+    # Enabled automatically if BAI is selected as an optional component of
+    # decisions pattern.
     odm:
+      # Set to true to enable the Flink job for ODM.
       install: false
-
-    # Set to true to enable the Flink job for Content.
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-odm
+        tag: 20.0.3
+      # The path to the savepoint or checkpoint from which a job will recover.
+      # You can use this path to restart the job from a previous state in case of failure.
+      # To use the default workflow of the job, leave this option empty.
+      recoveryPath: ""
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+    # The Flink job for processing Content events.
+    # Enabled automatically if BAI is selected as an optional component of
+    # content pattern.
     content:
+      # Set to true to enable the Flink job for Content.
       install: false
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-content
+        tag: 20.0.3
+      # The path to the savepoint or checkpoint from which a job will recover.
+      # You can use this path to restart the job from a previous state in case of failure.
+      # To use the default workflow of the job, leave this option empty.
+      recoveryPath: ""
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+    # The Flink job for processing events from custom sources and events based on Avro schema.
+    # Its configuration is automatic for events emitted by ADS and BA ML Workforce Insights.
+    # For custom events, its configuration must be filled in the Custom Resource as documented in
+    # the Knowledge Center.
+    eventForwarder:
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-event-forwarder
+        tag: 20.0.3
+      recoveryPath: ""
+      # The number of parallel instances (task managers) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+      # The list of routing configurations of custom events.
+      # The value of this parameter must contain at least one configuration,
+      # which is composed of a mandatory Kafka topic name along with
+      # an Elasticsearch index or an HDFS bucket, or both.
+      configurations:
+          # The name of a Kafka topic (source).
+        - kafkaTopic: ""
+          # The name of an Elasticsearch index (target)
+          elasticsearchIndex: ""
+          # The name of an HDFS bucket (target)
+          hdfsBucket: ""
+    kerberos:
+      # Set this parameter to true to enable Kerberos authentication to the Kafka server.
+      enabledForKafka: false
+      # Set this parameter to true to enable Kerberos authentication for HDFS.
+      enabledForHdfs: false
+      # Set the default name of the Kerberos realm.
+      realm: ""
+      # Set the host of the distribution center for Kerberos keys.
+      kdc: ""
+      # Set the Kerberos principal to authenticate with.
+      principal: ""
+      # Set the kerberos base64-encoded keytab
+      keytab: ""
+    # Configuration of initialization containers.
+    initImage:
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-init
+        tag: 20.0.3
+    ibm-dba-ek:
+      # The name of a secret that is already deployed to Kubernetes and contains the following keys:
+      # elasticsearch-username: the username used by Kibana pods to authenticate against Elasticsearch
+      # elasticsearch-password: the password used by Kibana pods to authenticate against Elasticsearch
+      # When the ekSecret parameter is defined, it overrides the kibana.username and kibana.password values.
+      ekSecret: ""
+      security:
+        # The number of retires before the OpenDistro security job is considered failed.
+        backoffLimit: 10
+        # A Boolean value to state whether to create the security configuration job.
+        initOpenDistroConfig: true
+        # The name of a secret that is already deployed to Kubernetes and contains the configuration files 
+        # for the Open Distro for Elasticsearch security plugin. All keys from this secret are copied as files
+        # to the plugins/opendistro_security/securityconfig directory. Set this parameter only if the 
+        # security.initOpenDistroConfig parameter is set to true.
+        openDistroConfigSecret: ""
+      elasticsearch:
+        # Set to false to not install Elasticsearch and Kibana.
+        install: true
+        image:
+          repository: cp.icr.io/cp/cp4a/bai/bai-elasticsearch
+          tag: 20.0.3
+        init:
+          image:
+            repository: cp.icr.io/cp/cp4a/bai/bai-init
+            tag: 20.0.3
+        # The value of the initialDelaySeconds property of liveness and readiness probes
+        # of Elasticsearch containers (in seconds).
+        probeInitialDelay: 90
+        # The URL of your own Elasticsearch and Kibana installation
+        externalKibanaUrl: ""
+        # Client node configuration for Elasticsearch.
+        client:
+          # The number of Elasticsearch client replicas. For High Availability,
+          # use at least 2 replicas.
+          replicas: 2
+          # The heap size to allocate to the Elasticsearch client.
+          heapSize: "1024m"
+          resources:
+            limits:
+              # The maximum memory, including JVM heap size and file system cache,
+              # to allocate to each Elasticsearch client pod.
+              memory: "2Gi"
+              # The maximum amount of CPU to allocate to each Elasticsearch client pod.
+              cpu: "1000m"
+            requests:
+              # The minimum memory, including JVM heap size and file system cache,
+              # to allocate to each Elasticsearch client pod.
+              memory: "500Mi"
+              # The minimum amount of CPU required to start an Elasticsearch client pod.
+              cpu: "100m"
+          # Supported values are ClusterIP and NodePort.
+          serviceType: NodePort
+          # Set this parameter only if serviceType property is set to NodePort.
+          externalPort:
+          # If you want Kubernetes to deploy client pods onto the same node use "Soft".
+          # Otherwise use "Hard".
+          antiAffinity: "Soft"
+
+          # External ElasticSearch Parameters
+          # Provide values for the following ibm_dba_ek parameters only 
+          # if you choose to work with an external installation of Elasticsearch and Kibana.
+          # The URL to Elasticsearch.
+          url: ""
+          # The URL of your own Elasticsearch and Kibana installation
+          externalKibanaUrl: ""
+          # The username to log in to Elasticsearch.
+          username: ""
+          # The password to log in to Elasticsearch.
+          password: ""
+          # The Elasticsearch server base64-encoded certificate used for SSL communications.
+          serverCertificate: ""
+        # Master node configuration for Elasticsearch.
+        master:
+          # The number of Elasticsearch master replicas. Elasticsearch requires
+          # a strict majority of its masters to be up.
+          # For High Availability, use an odd number of replicas larger
+          # or equal to 3.
+          replicas: 3
+          # The heap size to allocate to the Elasticsearch master pod.
+          heapSize: "1024m"
+          resources:
+            limits:
+              # The maximum memory, including JVM heap size and file system cache,
+              # to allocate to each Elasticsearch master pod.
+              memory: "2Gi"
+              # The maximum amount of CPU to allocate to each Elasticsearch master pod.
+              cpu: "1000m"
+            requests:
+              # The minium memory, including JVM heap size and file system cache,
+              # to allocate to each Elasticsearch master pod.
+              memory: "500Mi"
+              # The minimum amount of CPU to allocate to each Elasticsearch client pod.
+              cpu: "100m"
+          # If you want Kubernetes to deploy master pods onto the same node use "Soft".
+          # Otherwise use "Hard".
+          antiAffinity: "Soft"
+        data:
+          # The number of Elasticsearch data replicas. For High Availability,
+          # use at least 2 replicas.
+          replicas: 2
+          # The heap size to allocate to the Elasticsearch data pod.
+          heapSize: "1024m"
+          resources:
+            limits:
+              # The maximum memory, including JVM heap size and file system cache,
+              # to allocate to each Elasticsearch data pod.
+              memory: "2Gi"
+              cpu: "1000m"
+            requests:
+              # The minimum memory, including JVM heap size and file system cache,
+              # to allocate to each Elasticsearch data pod.
+              memory: "500Mi"
+              cpu: "100m"
+          # If you want Kubernetes to deploy data pods onto the same node use "Soft".
+          # Otherwise use "Hard".
+          antiAffinity: "Soft"
+          storage:
+            persistent: true
+            # Set this parameter to false to disable Elasticsearch data persistent storage.
+            useDynamicProvisioning: true
+            # The minimum size of the persistent volume that is required for each data and master pods.
+            # Default: "10Gi"
+            size: "10Gi"
+            # If not set, shared_configuration.sc_dynamic_storage_classname is used as a default value.
+            # Elasticsearch requires fast storage. Therefore, ensure that your Kubernetes nodes
+            # have very fast access to the storage volumes that are assigned to Elasticsearch pods.
+            # If you are using IBM RedHat Openshift Kubernetes Service, use the gold storage class for this purpose.
+            storageClass: "{{ shared_configuration.storage_configuration.sc_fast_file_storage_classname }}"
+          snapshotStorage:
+            enabled: false
+            # Set this parameter to false to disable GlusterFS or other dynamic storage provider.
+            useDynamicProvisioning: true
+            # The minimum size of the persistent volume to store snapshots of Elasticsearch data.
+            # Default: "30Gi"
+            size: "30Gi"
+            # If not set, shared_configuration.sc_dynamic_storage_classname is used as a default value.
+            # Elasticsearch requires fast storage. Therefore, ensure that your Kubernetes nodes
+            # have very fast access to the storage volumes that are assigned to Elasticsearch pods.
+            # If you are using IBM RedHat Openshift Kubernetes Service, use the gold storage class for this purpose.
+            storageClassName: "{{ shared_configuration.storage_configuration.sc_fast_file_storage_classname }}"
+            # Provide the name of an existing claim if one is available. By default, a new persitent volume claim is created.
+            existingClaimName: ""
+      kibana:
+        image:
+          repository: cp.icr.io/cp/cp4a/bai/bai-kibana
+          tag: 20.0.3
+        # The name of the user that is internally used by Kibana to authenticate againt Elasticsearch.
+        # This parameter must represent a username that is accepted by the Open Distro security plug-in.
+        username: admin
+        # The password of the user that is internally used by Kibana to authenticate agains Elasticsearch.
+        # This parameter must represent a password that is accepted by the Open Distro security plug-in.
+        password: passw0rd
+        # Supported values are ClusterIP and NodePort.
+        serviceType: NodePort
+        # Set this parameter only if serviceType property is set to NodePort.
+        externalPort:
+        # If the global createRoutes parameter and local
+        # ibm-dba-ek.kibana.createRoute parameter are set to true in the
+        # custom resource, you can use the hostname parameter to customize
+        # the Kibana route hostname.
+        hostname: "kibana.bai.{{ shared_configuration.sc_deployment_hostname_suffix }}"
+        resources:
+            limits:
+              # The maximum memory, including JVM heap and file system cache, to allocate to each Kibana pod.
+              memory: "2Gi"
+              # The maximum amount of CPU to allocate to each Kibana pod.
+              cpu: "1000m"
+            requests:
+              # The minimum memory required, including JVM heap and file system cache, to start a Kibana pod.
+              memory: "500Mi"
+              # The minimum amount of CPU required to start a Kibana pod.
+              cpu: "100m"
+        # The path where you want to access the Kibana user interface. The value must not end with a slash.
+        serverBasePath: ""
+        # The Certificate Authority (CA) certificate for Kibana. As a user with administrator rights,
+        # use this parameter to override the embedded self-signed certificate with your own CA certificate
+        # to avoid SSL handshake errors.
+        serverCertificate: ""
+        # The Certificate Authority (CA) key for Kibana.
+        # As a user with administrator rights, use this parameter to override the embedded self-signed certificate
+        # with your own CA certificate to avoid SSL handshake errors.
+        serverCertificateKey: ""
+        # The value for the initialDelaySeconds property of liveness and readiness
+        # probes of Kibana containers (in seconds).
+        probeInitialDelay: 60
+        # Enables or disables usage of multiple tenants.
+        multitenancy: false
+        # Set this parameter to false if you do not want to create
+        # the OpenShift route automatically for the Kibana service.
+        createRoute: true
+        # Optional: Enables SSL with an existing certificate for automatic creation of OpenShift routes. 
+        # If you don't want to provide an external TLS certificate, leave this empty, the operator will generate one for you.
+        externalTlsSecretName: "{{ meta.name }}-bai-kibana-external-tls-secret"
+        # Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes. 
+        # If you do not want to provide a CA to sign the external TLS certificate, leave this parameter empty.
+        externalTlsCaSecretName: ""
+    businessPerformanceCenter:
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-monitoring-app
+        tag: 20.0.3
+      # Set to false to disable Business Performance Center.
+      install: true
+      # The name of a secret that is already deployed to Kubernetes,
+      # which contains configuration information for the Business Performance Center.
+      # If you leave this field empty and an UMS instance is installed by the Cloud Pak,
+      # the configuration information is automatically generated and stored in a default secret.
+      configSecretName: ""
+      # The port to which the Business Performance Center service API is exposed.
+      externalPort: 9443
+      initKeytool:
+        image:
+          repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer
+          tag: 20.0.3
+      initUMS:
+        image:
+          repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
+          tag: 20.0.3
+      oidc:
+        # The internal communication with single-sign-on (SSO) service.
+        # If UMS installation can be reach internally, set this parameter to the UMS SSO service name
+        # Otherwise, set it to the SSO external route hostname.
+        # If you leave this field empty it will use the default value of the UMS instance installed by the Cloud Pak.
+        host: ""
+        # The external communication with the UMS single-sign-on (SSO) service.
+        # Set this parameter to the SSO external route hostname.
+        # If you leave this field empty it will use the default value of the UMS instance installed by the Cloud Pak.
+        externalHost: ""
+        # The host used to retrieve the UMS issuer. Set this parameter to the UMS default route.
+        # If you leave this field empty it will use the default value of the UMS instance installed by the Cloud Pak.
+        issuerHost: ""
+        port: 443
+      # Represents the external communication to the UMS team server service. Set this parameter to the team server external route hostname.
+      # If you leave this field empty it will use the default value of the UMS instance installed by the Cloud Pak.
+      teamserverHost: ""
+      # The external communication to the UMS SCIM service. Set this parameter to the SCIM external route hostname.
+      # If you leave this field empty it will use the default value of the UMS instance installed by the Cloud Pak.
+      scimHost: ""
+      # The UUID identifier, which is taken from UMS, of the team that you nominate to be the administration team
+      # for Business Performance Center.
+      adminTeam: ""
+      # Set to true if you want to grant all users access to all data.
+      allUsersAccess: false
+      # If the bai_configuration.createRoutes parameter is not set to true in the custom resource,
+      # use the redirectURIs parameter to specify the route to access Business Performance Center.
+      # The URL must end with a forward slash (/).
+      redirectURIs: ""
+      # The URL to which users are redirected when they log out of Business Performance Center.
+      # This URL can be the same as the redirectURIs URL.
+      # In this case, users still see the same Business Performance Center window but needs to log in
+      # again before they can resume working with Business Performance Center.
+      logoutRedirectURIs: ""
+      # For the security context of the Business Performance Center pod,
+      # this parameter is usually a numeric value that corresponds to a user ID.
+      # If not set, the value of shared_configuration.sc_run_as_user is used as a default value.
+      runAsUser: "{{ shared_configuration.sc_run_as_user }}"
+      # If the bai_configuration.createRoutes parameter is set to true in the custom resource,
+      # use the hostname parameter to customize the Business Performance Center route hostname.
+      # If not set, the value of shared_configuration.sc_deployment_hostname_suffix is used for the Business Performance Center
+      # service's hostname.
+      hostname: "business-performance-center.bai.{{ shared_configuration.sc_deployment_hostname_suffix }}"
+      resources:
+        limits:
+          # The maximum memory, including JVM heap size and file system cache, to allocate to the Business Performance Center pod.
+          # Adjust this parameter value for better resource allocation and better performance.
+          memory: "2Gi"
+          # The maximum amount of CPU to allocate to the Business Performance Center pod.
+          # Adjust this parameter value for better resource allocation and better performance.
+          cpu: "2000m"
+      # Set this parameter to false if you do not want
+      # the Business Performance Center plug-in to be automatically installed into Navigator.
+      autoPlugin: true
+      # Set this parameter to false if you do not want to create
+      # the OpenShift route automatically for the Business Performance Center service.
+      createRoute: true
+      # Optional: Enables SSL with an existing certificate for automatic creation of OpenShift routes. 
+      # If you don't want to provide an external TLS certificate, leave this empty, the operator will generate one for you.
+      externalTlsSecretName: "{{ meta.name }}-bai-bperf-external-tls-secret"
+      # Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes. 
+      # If you do not want to provide a CA to sign the external TLS certificate, leave this parameter empty.
+      externalTlsCaSecretName: ""
+  #############################################################################
+  ######## IBM Business Automation Application server  configurations  ########
+  ##  This section contains the configurations for                           ##
+  ##  * App Engine Server                                                    ##
+  ##  it's the optional component and will be installed when                 ##
+  ##  patterns include: application, workflow, workstreams,                  ##
+  ##                    workflow-workstreams or document_processing          ##
+  #############################################################################
+  application_engine_configuration:
+  ## The application_engine_configuration is a list, you can deploy multiple instances of AppEngine, you can assign different configurations for each instance.
+  ## For each instance, application_engine_configuration.name, database, admin_secret_name and hostname must be assigned to different values.
+  ## You should use different database, admin_secret_name, hostname for playback server and the application engine servers
+  - name: workspace
+    images:
+      pull_policy: IfNotPresent
+      solution_server:
+        repository: cp.icr.io/cp/cp4a/aae/solution-server
+        tag: 20.0.3
+      db_job:
+        repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
+        tag: 20.0.3
+    # If you inputed hostname and port here. They will be used always
+    # If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value)
+    # Then you don't need to fill the hostname and port. It will use shared_configuration.sc_deployment_hostname_suffix to generate one
+    # But if you haven't input suffix. And no hostname port assigned. A error will be reported in operator log during deploy
+    # For non pattern mode you must assign a valid hostname and port here
+    hostname: "{{ 'ae-workspace.' + shared_configuration.sc_deployment_hostname_suffix }}"
+    port: 443
+    # Inside the admin secret. There are two must fields
+    admin_secret_name: "{{ meta.name }}-workspace-aae-app-engine-admin-secret"
+    #-----------------------------------------------------------------------
+    # The app engine admin Secret template will be
+    #-----------------------------------------------------------------------
+    # apiVersion: v1
+    # stringData:
+    #   AE_DATABASE_PWD: "<Your database password>"
+    #   AE_DATABASE_USER: "<Your database username>"
+    #   REDIS_PASSWORD: "<Your Redis server password>"
+    # kind: Secret
+    # metadata:
+    #   name: icp4adeploy-workspace-aae-app-engine-admin-secret
+    # type: Opaque
+    #-----------------------------------------------------------------------
+    # The default admin user id for application engine
+    # The user ID should be bootstrap admin ID for IBM Business Automation Navigator. It is case sensitive.
+    # The same ID should be a User Management Service (UMS) admin user also.
+    admin_user: <Required>
+    external_tls_secret:
+    external_connection_timeout: 90s
+    replica_size: 2
+    # data_persistence is for Business Automation Application Data Persistence(ae_data_persistence).
+    # If you are using pattern mode, the shared_configuration.sc_deployment_patterns contains value and sc_optional_components contains ae_data_persistence, then you do not need input any value to data_persistence.enable, it is enabled by default.
+    # If you are using non-pattern mode, you can set data_persistence.enable to true to enable it.
+    # Notes: ae_data_persistence is not supported in demo pattern mode and when AE is as playback server
+    data_persistence:
+        enable:
+        ## If ae_data_persistence is enabled. Then you must input one CPE object store name. If you keep the default object store configuration. Then the default name filled should be AEOS.
+        object_store_name: "AEOS"
+    ## optional when the database type is Db2, must required when the database type is Oracle, PostgreSQL.
+    use_custom_jdbc_drivers: false
+    service_type: Route
+    autoscaling:
+      enabled: false
+      max_replicas: 5
+      min_replicas: 2
+      target_cpu_utilization_percentage: 80
+    server_identifier: ""
+    database:
+      # AE Database host name or IP when the database type is Db2, PostgreSQL.
+      host: <Required>
+      # AE Database name when the database type is Db2, PostgreSQL.
+      #Provide the database name for runtime application engine use
+      #Please pay attention that if you selected authoring environment also.
+      #The database used by playback server and this one should be different
+      name: <Required>
+      # AE database port number when the database type is Db2, PostgreSQL.
+      port: <Required>
+      ## If you setup Db2 HADR or PostgreSQL Connection Fail-over and want to use it, you need to configure alternative_host and alternative_port, or else, leave is as blank.
+      ## If more than one server name is specified, delimit the server names with commas (,). The number of values that is specified for alternative_host must match the number of values that is specified for alternative_port.
+      alternative_host:
+      alternative_port:
+      ## Only Db2, Oracle, PostgreSQL are supported.
+      type: db2
+      ## Required only when the database type is Oracle, both ssl and non-ssl. The format must be purely Oracle descriptor like (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=<your database host/IP>)(PORT=<your database port>))(CONNECT_DATA=(SERVICE_NAME=<your Oracle service name>))).
+      oracle_url_without_wallet_directory:
+      enable_ssl: true
+      ## Required only when type is Oracle and enable_ssl is true. The format must be purely oracle descriptor. SSO wallet directory must be specified and fixed to (MY_WALLET_DIRECTORY=/shared/resources/oracle/wallet).
+      oracle_url_with_wallet_directory:
+      ## Required only when enable_ssl is true, when the database type is Db2, Oracle or PostgreSQL
+      db_cert_secret_name: <Required>
+      ## Required only when type is oracle and enable_ssl is true.
+      oracle_sso_wallet_secret_name:
+      ## Optional. If it is empty, the DBASB is default when the database type is Db2 or PostgreSQL; the AE_DATABASE_USER set in the admin_secret_name is default when the database type is Oracle.
+      current_schema: DBASB
+      initial_pool_size: 1
+      max_pool_size: 10
+      uv_thread_pool_size: 4
+      max_lru_cache_size: 1000
+      max_lru_cache_age: 600000
+      dbcompatibility_max_retries: 30
+      dbcompatibility_retry_interval: 10
+      ## The persistent volume claim for custom JDBC Drivers if using the custom JDBC drivers is enabled(use_custom_jdbc_drivers is true).
+      custom_jdbc_pvc:
+    log_level:
+      node: info
+      browser: 2
+    content_security_policy:
+      enable: false
+      whitelist:
+      frame_ancestor:
+    env:
+      max_size_lru_cache_rr: 1000
+      server_env_type: development
+      purge_stale_apps_interval: 86400000
+      # Number of preview-only automation application must be more to trigger purge,
+      apps_threshold: 100
+      # Age of preview-only automation application since publish to be stale in milliseconds
+      stale_threshold: 172800000
+      # Number of preview-only automation services must be more to trigger purge,
+      service_threshold: 100
+      # Age of preview-only automation service since publish to be stale in milliseconds
+      service_stale_threshold: 172800000
+    max_age:
+      auth_cookie: "900000"
+      csrf_cookie: "3600000"
+      static_asset: "2592000"
+      hsts_header: "2592000"
+    probe:
+      liveness:
+        failure_threshold: 5
+        initial_delay_seconds: 60
+        period_seconds: 10
+        success_threshold: 1
+        timeout_seconds: 180
+      readiness:
+        failure_threshold: 5
+        initial_delay_seconds: 10
+        period_seconds: 10
+        success_threshold: 1
+        timeout_seconds: 180
+    #-----------------------------------------------------------------------
+    # If you want better HA experience.
+    # - Set the session.use_external_store to true
+    # - Fill in your redis server information
+    #-----------------------------------------------------------------------
+    redis:
+      # Your external redis host/ip
+      host:
+      # Your external redis port
+      port: '6379'
+      ttl: 1800
+      # If your redis enabled TLS connection set this to true
+      # You should add redis server CA certificate in tls_trust_list or trusted_certificate_list
+      tls_enabled: false
+    resource_ae:
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+      requests:
+        cpu: 300m
+        memory: 512Mi
+    resource_init:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    session:
+      check_period: "3600000"
+      duration: "1800000"
+      max: "10000"
+      resave: "false"
+      rolling: "true"
+      save_uninitialized: "false"
+      #-----------------------------------------------------------------------
+      # If you want better HA experience.
+      # - Set the session.use_external_store to true
+      # - Fill in your redis server information
+      #-----------------------------------------------------------------------
+      use_external_store: "false"
+    tls:
+      tls_trust_list: []
+    # If you want to make the replicate size more than 1 for this cluster. Then you must enable the shared storage
+    share_storage:
+      enabled: true
+      # If you create the PV manually. Then please provide the PVC name bind here
+      pvc_name:
+      auto_provision:
+        enabled: true
+        # Required if you enabled the auto provision
+        storage_class:
+        size: 20Gi

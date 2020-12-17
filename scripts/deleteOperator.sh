@@ -9,11 +9,13 @@
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
 #
 ###############################################################################
-kubectl delete -f descriptors/operator.yaml
-kubectl delete -f descriptors/role_binding.yaml
-kubectl delete -f descriptors/role.yaml
-kubectl delete -f descriptors/service_account.yaml
+# CUR_DIR set to full path to scripts folder
+CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-kubectl patch crd/icp4aclusters.icp4a.ibm.com -p '{"metadata":{"finalizers":[]}}' --type=merge
-kubectl delete crd icp4aclusters.icp4a.ibm.com
+kubectl delete -f ${CUR_DIR}/../descriptors/operator.yaml
+kubectl delete -f ${CUR_DIR}/../descriptors/role_binding.yaml
+kubectl delete -f ${CUR_DIR}/../descriptors/role.yaml
+kubectl delete -f ${CUR_DIR}/../descriptors/service_account.yaml
+
+
 echo "All descriptors have been successfully deleted."

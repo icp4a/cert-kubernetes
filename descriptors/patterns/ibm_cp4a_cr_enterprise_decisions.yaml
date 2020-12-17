@@ -17,9 +17,12 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2.1
+    release: 20.0.3
 spec:
-  appVersion: 20.0.2.1
+  appVersion: 20.0.3
+
+  ## MUST exist, used to accept ibm license, valid value only can be "accept" 
+  ibm_license: ""
 
   #################################################################################################################
   ##  The contents of this template CR file reflect only the specific parameters and configuration 
@@ -48,8 +51,7 @@ spec:
     ## The optional components to be installed if listed here.
     ## This is normally populated by the deploy script based on input from the user.
     ## User can also manually specify the optional components to be deployed here.
-    ## This pattern has has 3: decisionCenter, decisionRunner, and decisionServerRuntime selectable components, where 
-    ## decisionRuntime represent the Rule Execution Server. 
+    ## This pattern has has 5: decisionCenter (Business Console), decisionRunner (Testing and Simulation runtime), decisionServerRuntime (Rule Execution Server), bai (Business Automation Insight), ums (User Management Service) optionals components.
     ## If decisionCenter is set, you also have to set the 'odm_configuration.decisionCenter.enabled' flag to true to install it.
     ## If decisionRunner is set, you also have to set the 'odm_configuration.decisionRunner.enabled' flag to true to install it.
     ## If decisionServerRuntime is set, you also have to set the 'odm_configuration.decisionRuntime.enabled' flag to true to install it.
@@ -58,8 +60,9 @@ spec:
   ## The beginning section of database configuration for CP4A
   datasource_configuration:
     dc_odm_datasource:
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "oracle".
-      dc_database_type: "db2"
+      ## Provide the database type from your infrastructure. 
+      ## The possible values are "db2" / "postgres" / "sqlserver".
+      dc_database_type: "<Required>"
       ## Provide the database server name or IP address of the database server.
       database_servername: "<Required>"
       ## Provide the database server port.  For Db2, the default is "50000".  For Oracle, the default is "1521"
@@ -68,7 +71,10 @@ spec:
       dc_common_database_name: "<Required>"
       ## The name of the secret that contains the credentials to connect to the database.
       dc_common_database_instance_secret: "<Required>"
-
+      ## Set to true when the database is using SSL
+      dc_common_ssl_enabled: true
+      ## If SSL is used to secure the database connection, specify the name of the SSL secret.
+      dc_ssl_secret_name: "<Required>"
 
   ########################################################################
   ########      IBM Operational Decision Manager configuration    ########
@@ -77,13 +83,16 @@ spec:
     # To enable ODM Runtime.
     decisionServerRuntime:
       enabled: true
+      replicaCount: 2
     # To enable the Authoring part
     decisionRunner:
       enabled: true
+      replicaCount: 2
     decisionCenter:
       enabled: true
-
-
+      replicaCount: 2
+    image:
+      tag: 8.10.5.0
     # For UMS
     # customization:
       ## Customizes user authentication and management by realizing mapping between UMS Roles and LDAP groups.

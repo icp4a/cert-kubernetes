@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.2.1
+    release: 20.0.3
 spec:
   ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
   ## For example, serviceAccount in the spec becomes service_account in ansible.
@@ -70,12 +70,12 @@ spec:
       lc_user_filter: "(&(cn=%v)(objectclass=person))"
       lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
   datasource_configuration:
+    ## The dc_ssl_enabled parameter is used to support database connection over SSL for DB2/Oracle.
+   # dc_ssl_enabled: true
     ## The database_precheck parameter is used to enable or disable CPE/Navigator database connection check.
     ## If set to "true", then CPE/Navigator database connection check will be enabled.
     ## if set to "false", then CPE/Navigator database connection check will not be enabled.
    # database_precheck: true
-    # the candidate value is "db2" or "db2HADR" or "oracle" or "sqlserver"    
-    dc_database_type: "db2"
     dc_gcd_datasource:
       dc_database_type: "db2"
       dc_common_gcd_datasource_name: "FNGCDDS"
@@ -83,6 +83,8 @@ spec:
       database_servername: "<Need Value>"
       database_name: "<Need Value>"
       database_port: "50000"
+      ## The name of the secret that contains the DB2 SSL certificate.
+      database_ssl_secret_name: ""
 ## The following Oracle JDBC URL is only Oracle database
       dc_oracle_gcd_jdbc_url: "jdbc:oracle:thin:@//<Need Value>:1521/orcl"
 ## The following DB2 HADR parameters only for DB2 HADR
@@ -98,6 +100,8 @@ spec:
       database_servername: "<Need Value>"
       database_name: "os1"
       database_port: "50000"
+      ## The name of the secret that contains the DB2 SSL certificate.
+      database_ssl_secret_name: ""
 ## The following Oracle JDBC URL is only Oracle database
       dc_oracle_os_jdbc_url: "jdbc:oracle:thin:@//<Need Value>:1521/orcl"
 ## The following DB2 HADR parameters only for DB2 HADR
@@ -112,6 +116,8 @@ spec:
       database_servername: "<Need Value>"
       database_name: "os2"
       database_port: "50000"
+      ## The name of the secret that contains the DB2 SSL certificate.
+      database_ssl_secret_name: ""
 ## The following Oracle JDBC URL is only Oracle database
       dc_oracle_os_jdbc_url: "jdbc:oracle:thin:@//<Need Value>:1521/orcl"
 ## The following DB2 HADR parameters only for DB2 HADR
@@ -128,6 +134,8 @@ spec:
       database_servername: "<Need Value>"
       database_port: "50000"
       database_name: "ICNDB"
+      ## The name of the secret that contains the DB2 SSL certificate.
+      database_ssl_secret_name: ""
 ## The following DB2 HADR parameters only for DB2 HADR
       dc_hadr_standby_servername: "<Need DB2 HADR Server>"
       dc_hadr_standby_port: 50000
@@ -163,13 +171,13 @@ spec:
     cpe:
       arch:
         amd64: "3 - Most preferred"
-      replica_count: 1
+      replica_count: 2
     # Set UID within value of openshift.io/sa.scc.uid-range in namespace's specs, 
     # If comment it, will use UID auto assigned by OCP
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-554-p8cpe-if001
+        tag: ga-556-p8cpe
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -227,13 +235,13 @@ spec:
     css:
       arch:
         amd64: "3 - Most preferred"
-      replica_count: 1
+      replica_count: 2
     # Set UID within value of openshift.io/sa.scc.uid-range in namespace's specs, 
     # If comment it, will use UID auto assigned by OCP
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: ga-554-p8css-if001
+        tag: ga-556-p8css
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -278,13 +286,13 @@ spec:
     cmis:
       arch:
         amd64: "3 - Most preferred"
-      replica_count: 1
+      replica_count: 2
     # Set UID within value of openshift.io/sa.scc.uid-range in namespace's specs, 
     # If comment it, will use UID auto assigned by OCP
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-304-cmis-if010
+        tag: ga-305-cmis-if002
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -362,7 +370,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: ga-554-p8cgql-if001
+        tag: ga-556-p8cgql
         pull_policy: IfNotPresent
       ## resource
       resources:
@@ -420,7 +428,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: ga-307-es-if002
+        tag: ga-309-es
         pull_policy: IfNotPresent
       ## resource
       resources:
@@ -482,7 +490,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: ga-307-tm-if002
+        tag: ga-309-tm
         pull_policy: IfNotPresent
      ## LOGGING FOR WORKLOADS
       log:
@@ -551,7 +559,7 @@ spec:
     # run_as_user: 1000110001
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-307-icn-if002
+      tag: ga-309-icn
       pull_policy: IfNotPresent
       arbitrary_uid_enabled: true
     ## Logging for workloads
@@ -583,7 +591,6 @@ spec:
       jvm_initial_heap_percentage: 40
       jvm_max_heap_percentage: 66
       jvm_customize_options: ""
-      icn_db_type: db2
       icn_jndids_name: ECMClientDS
       icn_schema: ICNDB
       icn_table_space: ICNDB

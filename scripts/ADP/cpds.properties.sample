@@ -1,0 +1,114 @@
+# Configuration file to define all env vars for DEPLOY 
+# Format: Define Key=Value  pairs, separated by '=' 
+# Restriction: that means you cannot use '=' in ANY Value
+# Key: is the same name as param passed in. 
+#
+#
+# To find URL links use https://github.ibm.com/dba/cert-kubernetes/blob/master/scripts/cp4a-post-deployment.sh
+#
+#------------------------------------------------------------------------------
+# UMS SSO information for the Test/Staging/Prod (runtime) environment
+# Note: If you are running the script from a Development or Demo environment,
+#       enter the development UMS SSO information here.
+# Input:
+#     runtimeUmsUrl - The UMS-SSO URL associated with the Test/Staging/Prod Environment.
+#     runtimeUmsClientId - The value for this entry is the UMS-SSO Client Id located on the runtime (Test/Staging/Prod) environment.
+#	  runtimeUmsClientSecret - The value for this entry is the UMS-SSO Client Id 
+#                                and UMS-SSO Client Secret for the Content Project Deployment Service
+#                                located on the runtime (Test/Staging/Prod) environment.  
+#	  runtimeUser=A user who is a member of the DocProcessingManagers UMS Team on the Test/Staging/Prod (runtime) Environment.  Note: For deployment the user must be a member 
+#                  of the DocProcessingManagers or DocProcessingAnalysis UMS Team for a development environment.
+#     runtimePwd=The password for the runtime user
+#
+# examples:
+#         runtimeUmsUrl=https://ums-sso.adp.ibm.com
+#         runtimeUmsClientId=OcPtsBMyLOjYVPqChXTd
+#         runtimeUmsClientSecret=EXwj3D0tp4HaugA2sQT2
+#         runtimeUser=Admin
+#         runtimePwd=password
+#
+
+runtimeUmsUrl=<UMS-SSO URL Test/Staging/Prod Environment>
+runtimeUmsClientId=<Client Id>
+runtimeUmsClientSecret=<Client Secret>
+runtimeUser=<User Name  Test/Staging/Prod Environment>
+runtimePwd=<Password>
+
+
+#------------------------------------------------------------------------------
+# UMS SSO information for the Development Environment 
+# The information required is for the environment where the Document Processing Designer repository 
+# for the project and version/snapshot to be deployed.
+# Note: This entry is required for Development/Demo/Test/Stating/Prod environments 
+#        ONLY if using the project deployment script, cpds_deployProj.sh
+#          
+#
+# Input:
+#     devUmsUrl - The UMS-SSO URL associated with the Development Environment.
+#     devUmsClientId -The value for this entry is the UMS-SSO Client Id 
+#                                for the Content Project Deployment Service located on the Development Environment. 
+#     devUmsClientSecret - The value for this entry is the UMS-SSO Client Secret for the Content Project Deployment Service
+#                                located on the Development Environment.  
+#	  devUser=The user from the Deployment Environment.  Note: For deployment the user must be a member 
+#                  of the DocProcessingManagers or DocProcessingAnalysis UMS Team
+#     devPwd=The password for the runtime user
+#
+# examples:
+#         devUrl=https://ums-sso.development.adp.ibm.com
+#         devUmsClientId=DfPtsBMyLOjYVPqChIKL
+#         devUmsClientSecret=Dwvj3D0tp4HaugA2s22a
+#         devUser=DevAdmin
+#         devPwd=password
+#
+
+devUmsUrl=https:<UMS-SSO URL Test/Staging/Prod Environment>
+devUmsClientId=<Client Id>
+devUmsClientSecret=<Client Secret>
+devUser=<User Name Test/Staging/Prod Environment>
+devPwd=<Password>
+
+
+#------------------------------------------------------------------------------
+# Content Project Deployment Service Information for the Test/Staging/Prod environment
+#
+#
+# Input:
+#	runtimeCpdsUrl - The URL of the Content Project Deployment Service in the Test/Staging/Prod environment
+#                    NOTE: If the script is being run for the Development or Demo Environment, enter the 
+#                          Content Project Deployment Service URL for the environment where the Project will be deployed into. 
+#                    
+# examples:
+#   runtimeCpdsUrl=https://cpds.adps.ibm.com:443
+#
+
+runtimeCpdsUrl=<Content Project Deployment URL>
+#------------------------------------------------------------------------------
+# Project and Version Information for the Document Processing Designer Project
+#
+# Input:
+#    projectName - The Document Processing Designer project name
+#    snapshotVersion - The Document Processing Designer project version used for deployment
+#
+# examples:
+#   projectName=PRJ123
+#   snapshotVersion=v2-2020-10-13-1825 
+#
+
+projectName=<Project Name>
+snapshotVersion=<version>
+
+
+#------------------------------------------------------------------------------
+# Object Store Name for the Test/Staging/Prod Content Processing Engine Object Store Used for the Aria
+# NOTE: If script used for Development or Demo environment, the default Object Store Name is DEVOS1
+#
+# 
+# Input:
+#    runtimeObjectStore - The symbolic name of the Object Store for the Content Process Engine used for deployment.
+#
+# examples:
+#   runtimeObjectStore=OS1
+#
+
+runtimeObjectStore=<Object Store SymbolicName>
+

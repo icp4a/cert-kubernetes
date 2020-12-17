@@ -10,13 +10,9 @@
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
 #
 ###############################################################################
+CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 
-CUR_DIR=$(pwd)
-if [ -n "$(echo $CUR_DIR | grep scripts)" ]; then
-    PARENT_DIR=$(dirname "$PWD")
-else
-    PARENT_DIR=$CUR_DIR
-fi
 TEMP_FOLDER=${CUR_DIR}/.tmp
 INSTALL_BAI=""
 CRD_FILE=${PARENT_DIR}/descriptors/ibm_cp4a_crd.yaml
@@ -26,11 +22,9 @@ CLUSTER_ROLE_BINDING_FILE=${PARENT_DIR}/descriptors/cluster_role_binding.yaml
 CLUSTER_ROLE_BINDING_FILE_TEMP=${TEMP_FOLDER}/.cluster_role_binding.yaml
 ROLE_FILE=${PARENT_DIR}/descriptors/role.yaml
 ROLE_BINDING_FILE=${PARENT_DIR}/descriptors/role_binding.yaml
-OPERATOR_FILE=${PARENT_DIR}/descriptors/operator.yaml
 BRONZE_STORAGE_CLASS=${PARENT_DIR}/descriptors/cp4a-bronze-storage-class.yaml
 SILVER_STORAGE_CLASS=${PARENT_DIR}/descriptors/cp4a-silver-storage-class.yaml
 GOLD_STORAGE_CLASS=${PARENT_DIR}/descriptors/cp4a-gold-storage-class.yaml
-LICENSE_FILE=${CUR_DIR}/LICENSES/LICENSE
 LOG_FILE=${CUR_DIR}/prepare_install.log
 PLATFORM_SELECTED=""
 PLATFORM_VERSION=""
@@ -48,10 +42,18 @@ function validate_cli(){
     clear
     echo -e "\x1B[1mThis script prepares the environment for the deployment of some Cloud Pak for Automation capabilities \x1B[0m"
     echo
-    which oc &>/dev/null
+    if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]]; then
+        which oc &>/dev/null
+        [[ $? -ne 0 ]] && \
+            echo "Unable to locate an OpenShift CLI. You must install it to run this script." && \
+            exit 1
+    fi
+    if  [[ $PLATFORM_SELECTED == "other" ]]; then
+    which kubectl &>/dev/null
     [[ $? -ne 0 ]] && \
-        echo "Unable to locate an OpenShift CLI. You must install it to run this script." && \
+        echo "Unable to locate Kubernetes CLI, please install it first." && \
         exit 1
+    fi
 }
 
 function collect_input() {
@@ -79,8 +81,6 @@ function collect_input() {
     select_user
 }
 
-
-
 function create_project() {
 
     isProjExists=`oc get project $project_name --ignore-not-found | wc -l`  >/dev/null 2>&1
@@ -98,11 +98,6 @@ function create_project() {
         echo -e "\x1B[1mProject \"${project_name}\" already exists! Continue...\x1B[0m"
     fi
     PROJ_NAME=${project_name}
-
-    if  [[ $PLATFORM_SELECTED == "OCP" ]]; then
-        oc adm policy add-scc-to-user privileged -z ibm-cp4a-operator -n ${project_name}
-    fi
-
 }
 
 function check_user_exist() {
@@ -140,6 +135,19 @@ function prepare_install() {
     fi
     oc apply -f ${SA_FILE} -n ${project_name} --validate=false >> ${LOG_FILE}
     oc apply -f ${ROLE_FILE} -n ${project_name} --validate=false >> ${LOG_FILE}
+    
+    echo -n "Creating ibm-cp4a-operator role ..."
+    while true ; do
+        result=$(oc get role | grep ibm-cp4a-operator)
+        if [[ "$result" == "" ]] ; then
+            sleep 5
+            echo -n "..."
+        else
+            echo " Done!"
+            break    
+        fi
+    done   
+
     oc apply -f ${ROLE_BINDING_FILE} -n ${project_name} --validate=false >> ${LOG_FILE}
     echo "Done"
 
@@ -148,8 +156,16 @@ function prepare_install() {
     oc project ${project_name} >> ${LOG_FILE}
     oc adm policy add-role-to-user edit ${user_name} >> ${LOG_FILE}
     oc adm policy add-role-to-user registry-editor ${user_name} >> ${LOG_FILE}
+    oc adm policy add-role-to-user ibm-cp4a-operator ${user_name} >/dev/null 2>&1
     oc adm policy add-role-to-user ibm-cp4a-operator ${user_name} >> ${LOG_FILE}
-    oc adm policy add-cluster-role-to-user ibm-cp4a-operator ${user_name} >> ${LOG_FILE}
+    if [[ "$DEPLOYMENT_TYPE" == "demo" ]];then
+        oc adm policy add-cluster-role-to-user ibm-cp4a-operator ${user_name} >> ${LOG_FILE}
+    fi
+    echo "Done"
+
+    echo
+    echo -ne Label the default namespace to allow network policies to open traffic to the ingress controller using a namespaceSelector...
+    oc label --overwrite namespace default 'network.openshift.io/policy-group=ingress'
     echo "Done"
 }
 
@@ -180,7 +196,7 @@ function display_node_name() {
     then
         echo "Below is the host name of the Infrastructure Node for the environment, which is required as an input during the execution of the deployment script for the creation of routes in OCP.  You can also get the host name by running the following command: oc get nodes --selector node-role.kubernetes.io/infra=true -o custom-columns=":metadata.name". Take note of the host name. "
 	oc get nodes --selector node-role.kubernetes.io/infra=true -o custom-columns=":metadata.name"
-    elif  [[ $PLATFORM_VERSION == "4.2OrLater" ]];
+    elif  [[ $PLATFORM_VERSION == "4.4OrLater" ]];
     then
         echo "Below is the route host name for the environment, which is required as an input during the execution of the deployment script for the creation of routes in OCP. You can also get the host name by running the following command: oc get route console -n openshift-console -o yaml|grep routerCanonicalHostname. Take note of the host name. "
         oc get route console -n openshift-console -o yaml|grep routerCanonicalHostname | head -1 | cut -d ' ' -f 6
@@ -203,8 +219,8 @@ function clean_up(){
 function select_platform(){
     COLUMNS=12
     echo -e "\x1B[1mSelect the cloud platform to deploy: \x1B[0m"
-    options=("Openshift Container Platform (OCP) - Private Cloud" "Other ( Certified Kubernetes Cloud Platform / CNCF)")
-    PS3='Enter a valid option [1 to 2]: '
+    options=("RedHat OpenShift Kubernetes Service (ROKS) - Public Cloud" "Openshift Container Platform (OCP) - Private Cloud" "Other ( Certified Kubernetes Cloud Platform / CNCF)")
+    PS3='Enter a valid option [1 to 3]: '
     select opt in "${options[@]}"
     do
         case $opt in
@@ -229,15 +245,15 @@ function select_platform(){
 function select_deployment_type(){
     COLUMNS=12
     echo -e "\x1B[1mWhat type of deployment is being performed?\x1B[0m"
-    if  [[ $PLATFORM_SELECTED == "ROKS" ]];
+    if  [[ $PLATFORM_SELECTED == "other" ]];
     then
-        options=("Demo")
+        options=("Enterprise")
         PS3='Enter a valid option [1 to 1]: '
         select opt in "${options[@]}"
         do
             case $opt in
-                "Demo")
-                    DEPLOYMENT_TYPE="demo"
+                "Enterprise")
+                    DEPLOYMENT_TYPE="enterprise"
                     break
                     ;;
                 *) echo "invalid option $REPLY";;
@@ -310,9 +326,22 @@ function check_storage_class() {
     fi
     if [[ $PLATFORM_SELECTED == "ROKS" ]];
     then
+        # echo ""
+        # echo "Applying no_root_squash for demo DB2 deployment on ROKS using CLI"
+        # oc get no -l node-role.kubernetes.io/worker --no-headers -o name | xargs -I {} --  oc debug {} -- chroot /host sh -c 'grep "^Domain = slnfsv4.coms" /etc/idmapd.conf || ( sed -i "s/.*Domain =.*/Domain = slnfsv4.com/g" /etc/idmapd.conf; nfsidmap -c; rpc.idmapd )' >> ${LOG_FILE}
+
        create_storage_classes_roks
     fi
 
+}
+
+function apply_no_root_squash() {
+ if [[ $PLATFORM_SELECTED == "ROKS" ]] && [[ "$DEPLOYMENT_TYPE" == "demo" ]]; 
+ then
+        echo ""
+        echo "Applying no_root_squash for demo DB2 deployment on ROKS using CLI"
+        oc get no -l node-role.kubernetes.io/worker --no-headers -o name | xargs -I {} --  oc debug {} -- chroot /host sh -c 'grep "^Domain = slnfsv4.coms" /etc/idmapd.conf || ( sed -i "s/.*Domain =.*/Domain = slnfsv4.com/g" /etc/idmapd.conf; nfsidmap -c; rpc.idmapd )' >> ${LOG_FILE}
+fi
 }
 
 function create_storage_classes_roks() {
@@ -322,9 +351,7 @@ function create_storage_classes_roks() {
     oc apply -f ${SILVER_STORAGE_CLASS} --validate=false >> ${LOG_FILE}
     oc apply -f ${GOLD_STORAGE_CLASS} --validate=false >> ${LOG_FILE}
     echo -e "\x1B[1mDone \x1B[0m"
-    #echo
-    #echo -e "\x1B[1mTake note of the storage classes that you can use for deployment  \x1B[0m"
-    #oc get storageclass
+    
 }
 
 function display_storage_classes_roks() {
@@ -338,11 +365,15 @@ function display_storage_classes_roks() {
 
 function check_platform_version(){
     currentver=$(kubectl  get nodes | awk 'NR==2{print $5}')
-    requiredver="v1.14.1"
+    requiredver="v1.17.1"
     if [ "$(printf '%s\n' "$requiredver" "$currentver" | sort -V | head -n1)" = "$requiredver" ]; then
-        PLATFORM_VERSION="4.2OrLater"  
+        PLATFORM_VERSION="4.4OrLater"  
     else
-        PLATFORM_VERSION="3.11"
+        # PLATFORM_VERSION="3.11"
+        PLATFORM_VERSION="4.4OrLater"
+        echo -e "\x1B[1;31mIMPORTANT: Only support OCp4.4 or Later, exit...(deadline 2020.11.02)\n\x1B[0m"
+        read -rsn1 -p"Press any key to continue";echo
+        # exit 0
     fi
     # OpenShift 4.0-4.2, install Common Services 3.3
     # OpenShift >= 4.3, install Common Services 3.4
@@ -377,7 +408,7 @@ function install_common_service_34(){
      ## TODO: start to install common service
     echo -e "\x1B[1mThe installation of Common Services has started.\x1B[0m"
     #sh ./deploy_CS3.4.sh
-    nohup ./deploy_CS3.4.sh  &
+    nohup ${PARENT_DIR}/scripts/deploy_CS3.4.sh  &
     echo -e "Done"
 }
 
@@ -385,7 +416,7 @@ function install_common_service_33(){
     
         func_operand_request_cr_nonbai_33
     echo -e "\x1B[1mThe installation of Common Services Release 3.3 for OCP 4.2+ has started.\x1B[0m"
-    sh ./deploy_CS3.3.sh 
+    sh ${PARENT_DIR}/scripts/deploy_CS3.3.sh 
   
     echo -e "Done"
 }
@@ -436,6 +467,12 @@ spec:
     operands:
         - name: ibm-licensing-operator
         - name: ibm-metering-operator
+        - name: ibm-commonui-operator
+        - name: ibm-management-ingress-operator
+        - name: ibm-iam-operator
+        - name: ibm-platform-api-operator
+
+
 ENDF
 }
 
@@ -499,7 +536,7 @@ function show_summary(){
     echo -e "\x1B[1m*******************************************************\x1B[0m"
     echo -e "\x1B[1m                    Summary of input                   \x1B[0m"
     echo -e "\x1B[1m*******************************************************\x1B[0m"
-    if [[ ${PLATFORM_VERSION} == "4.2OrLater" ]]; then
+    if [[ ${PLATFORM_VERSION} == "4.4OrLater" ]]; then
         echo -e "\x1B[1;31m1. Cloud platform to deploy: ${PLATFORM_SELECTED} 4.X\x1B[0m"
     else
         echo -e "\x1B[1;31m1. Cloud platform to deploy: ${PLATFORM_SELECTED} ${PLATFORM_VERSION}\x1B[0m"
@@ -517,6 +554,9 @@ function show_summary(){
 function check_csoperator_exists()
 {
 
+project="common-service"
+
+check_project=`oc get project $project --ignore-not-found | wc -l`  >/dev/null 2>&1
 check_operator=$(oc get csv --all-namespaces |grep "ibm-common-service-operator")
 if [ -n "$check_operator" ]; then
     echo ""
@@ -526,9 +566,11 @@ if [ -n "$check_operator" ]; then
     CS_INSTALL="NO"
     exit 1
 fi
+
 }
 
-validate_cli
+
+
 if [[ $1 == "dev" ]]
 then
     CS_INSTALL="YES"
@@ -539,22 +581,24 @@ else
 fi
 
 select_platform
+validate_cli
 check_platform_version
 select_deployment_type
-if  [[ $PLATFORM_SELECTED == "OCP" ]];
+if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]];
 then
     check_existing_sc
 fi
 collect_input
 #create_project
-bind_scc
+# bind_scc
 prepare_install
 #create_scc
 check_storage_class
+apply_no_root_squash
 
 
 
-if  [[ $PLATFORM_SELECTED == "OCP" ]];
+if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]];
 then
     display_node_name
 fi
@@ -562,14 +606,14 @@ fi
 show_summary
 check_csoperator_exists
 
-if [[ $PLATFORM_SELECTED == "OCP" ]] && [[ $PLATFORM_VERSION == "4.2OrLater" ]] && [[ $CS_VERSION == "3.4" ]];
+if [[ $PLATFORM_SELECTED == "OCP" ||  $PLATFORM_SELECTED == "ROKS" ]] && [[ $PLATFORM_VERSION == "4.4OrLater" ]] && [[ $CS_VERSION == "3.4" ]];
 then 
     
     if [ "$CS_INSTALL" != "YES" ]; then
         display_installationprompt
         echo ""
        
-            nohup ./deploy_CS3.4.sh  >> ${LOG_FILE} 2>&1 &
+            nohup ${PARENT_DIR}/scripts/deploy_CS3.4.sh  >> ${LOG_FILE} 2>&1 &
     else
     echo "Review mode: IBM Common Services will be skipped.." 
     fi
@@ -578,11 +622,11 @@ fi
 # Deploy CS 3.3 if OCP 4.2 or 3.11 as per requirements.  The components for CS 3.3 in this case will only be Licensing and Metering (also CommonUI as a base requirment)
 #if  [[[ $PLATFORM_SELECTED == "OCP" ]] && [ $PLATFORM_VERSION == "4.2" ]]] || [[[ $PLATFORM_SELECTED == "OCP" ] && [ $PLATFORM_VERSION == "3.11" ]]]
 
-if  [[ $PLATFORM_SELECTED == "OCP" ]] && [[ $PLATFORM_VERSION == "4.2OrLater" ]] && [[ $CS_VERSION == "3.3" ]];
+if  [[ $PLATFORM_SELECTED == "OCP" ||  $PLATFORM_SELECTED == "ROKS" ]] && [[ $PLATFORM_VERSION == "4.4OrLater" ]] && [[ $CS_VERSION == "3.3" ]];
 then 
     echo "IBM Common Services with Metering & Licensing Components will be installed"
         if [ "$CS_INSTALL" != "YES" ]; then
-        nohup ./deploy_CS3.3.sh >> ${LOG_FILE} 2>&1 &
+        nohup ${PARENT_DIR}/scripts/deploy_CS3.3.sh >> ${LOG_FILE} 2>&1 &
         else
        echo "Review mode: IBM Common Services will be skipped.." 
         echo ""

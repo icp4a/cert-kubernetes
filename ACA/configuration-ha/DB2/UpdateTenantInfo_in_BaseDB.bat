@@ -32,8 +32,7 @@ if /I "%c%" EQU "N" goto :DOEXIT
 	echo "Connecting to db and schema"
 	db2 CONNECT TO %base_db_name%
 	db2 SET SCHEMA %base_db_user%
-	db2 update tenantinfo set TENANTDBVERSION=1.5 where TENANTID='%tenant_id%' and ONTOLOGY='%tenant_ontology%'
-	db2 update tenantinfo set FEATUREFLAGS=BITOR(2, (select FEATUREFLAGS from tenantinfo where TENANTID='%tenant_id%' and ONTOLOGY='%tenant_ontology%')) where TENANTID='%tenant_id%' and ONTOLOGY='%tenant_ontology%'
+	db2 update tenantinfo set TENANTDBVERSION=1.6 where TENANTID='%tenant_id%' and ONTOLOGY='%tenant_ontology%'
 	db2 connect reset
 	goto END
 
