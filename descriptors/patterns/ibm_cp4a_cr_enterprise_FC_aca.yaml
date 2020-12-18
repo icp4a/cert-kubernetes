@@ -25,7 +25,7 @@ spec:
     ## be defaulted to production.  This value could be different from the other licenses in the CR.
     sc_deployment_license: "production"
     ## All CP4A components must use/share the image_pull_secrets to pull images
-    image_pull_secrets: 
+    image_pull_secrets:
     - admin.registrykey
     ## All CP4A components must use/share the same docker image repository.  For example, if IBM Entitlement Registry is used, then
     ## it should be "cp.stg.icr.io".  Otherwise, it will be a local docker registry.
@@ -58,17 +58,17 @@ spec:
 
     images:
       keytool_job_container:
-        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer  
-        tag: 20.0.2-IF001
+        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer
+        tag: 20.0.2-IF002
       dbcompatibility_init_container:
-        repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer 
-        tag: 20.0.2-IF001
+        repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer
+        tag: 20.0.2-IF002
       keytool_init_container:
-        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer 
-        tag: 20.0.2-IF001
+        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer
+        tag: 20.0.2-IF002
       umsregistration_initjob:
-        repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob 
-        tag: 20.0.2-IF001
+        repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
+        tag: 20.0.2-IF002
       pull_policy: IfNotPresent
 
   ## The beginning section of LDAP configuration for CP4A
@@ -189,7 +189,7 @@ spec:
       ## Provide the database server port.  For Db2, the default is "50000".
       database_port: "<Required>"
       ## Enable SSL/TLS for database communication. Refer to Knowledge Center for more info.
-      dc_database_ssl_enabled: false 
+      dc_database_ssl_enabled: false
       ######################################################################################
       ## If the database type is "Db2HADR", then complete the rest of the parameters below.
       ## Otherwise, remove or comment out the rest of the parameters below.
@@ -230,13 +230,13 @@ spec:
       configs:
         claimname: "sp-config-pvc"
         #Size of config PVC in GB
-        size:  
+        size:
       # ACA log PVC setting
       logs:
         claimname: "sp-log-pvc"
         log_level: "info"
         #Size of log PVC in GB
-        size: 
+        size:
       # ACA data PVC setting
       data:
         claimname: "sp-data-pvc"
@@ -364,7 +364,7 @@ spec:
 #    images:
 #      ums:
 #        repository: cp.icr.io/cp/cp4a/ums/ums
-#        tag: 20.0.2-IF001
+#        tag: 20.0.2-IF002
 #    admin_secret_name: ibm-dba-ums-secret
 #    ## optional for secure communication with UMS
 #    external_tls_secret_name: ibm-dba-ums-external-tls-secret
@@ -427,7 +427,7 @@ spec:
 #      pull_policy: IfNotPresent
 #      resource_registry:
 #        repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-#        tag: 20.0.2-IF001
+#        tag: 20.0.2-IF002
 #    tls:
 #      tls_secret: rr-tls-client-secret
 #    probe:
@@ -610,10 +610,10 @@ spec:
 #        pull_policy: IfNotPresent
 #        db_job:
 #          repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-#          tag: 20.0.2-IF001
+#          tag: 20.0.2-IF002
 #        solution_server:
 #          repository: cp.icr.io/cp/cp4a/aae/solution-server
-#          tag: 20.0.2-IF001
+#          tag: 20.0.2-IF002
 #      max_age:
 #        auth_cookie: "900000"
 #        csrf_cookie: "3600000"

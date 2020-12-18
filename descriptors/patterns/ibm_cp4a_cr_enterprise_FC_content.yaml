@@ -35,49 +35,49 @@ spec:
     sc_deployment_license: "<Required>"
 
     ## All CP4A components must use/share the image_pull_secrets to pull images.
-    image_pull_secrets: 
+    image_pull_secrets:
     - admin.registrykey
 
-    ## All CP4A components must use/share the same docker image repository.  For example, if IBM Entitled Registry is used, then 
+    ## All CP4A components must use/share the same docker image repository.  For example, if IBM Entitled Registry is used, then
     ## it should be "cp.icr.io".  Otherwise, it will be a local docker registry.
     sc_image_repository: cp.icr.io
 
     ## All CP4A components must use/share the root_ca_secret in order for integration.
     root_ca_secret: icp4a-root-ca
 
-    ## CP4A patterns or capabilities to be deployed.  This CR represents the "content" pattern (aka FileNet Content Manager), which includes the following 
+    ## CP4A patterns or capabilities to be deployed.  This CR represents the "content" pattern (aka FileNet Content Manager), which includes the following
     ## mandatory components: cpe, icn (BAN/Navigator), graphql and optional components: cmis, es (External Share).
     sc_deployment_patterns: content
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
     ## The optional components are: cmis, css (Content Search Services), es (External Share).
-    sc_optional_components: 
+    sc_optional_components:
 
     ## The deployment type as selected by the user.  Possible values are: demo, enterprise.
     sc_deployment_type: enterprise
 
     ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that corresponds to a user ID.
-    sc_run_as_user:     
+    sc_run_as_user:
 
-    ## The platform to be deployed specified by the user.  Possible values are: OCP and other.  This is normally populated by the User script 
+    ## The platform to be deployed specified by the user.  Possible values are: OCP and other.  This is normally populated by the User script
     ## based on input from the user.
-    sc_deployment_platform: 
+    sc_deployment_platform:
 
     ## For OCP, this is used to create route, you should input a valid hostname in the required field.
     sc_deployment_hostname_suffix: "{{ meta.name }}.<Required>"
 
-    ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of 
+    ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
     ## the external service to the component's truststore.
     trusted_certificate_list: []
 
     ## Shared encryption key secret name that is used for Workstream Services and Process Federation Server integration.
     encryption_key_secret: icp4a-shared-encryption-key
 
-    ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores, 
-    ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section 
+    ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
+    ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
     ## is defined in the CR (below), then that configuration will take precedence overriding this parameter.
     sc_content_initialization: false
-    ## Enable/disable the ECM (FNCM) / BAN verification (e.g., creation of test folder, creation of test document, 
+    ## Enable/disable the ECM (FNCM) / BAN verification (e.g., creation of test folder, creation of test document,
     ## execution of CBR search, and creation of Navigator demo repository and desktop).  If the "verify_configuration"
     ## section is defined in the CR (below), then that configuration will take precedence overriding this parameter.
     sc_content_verification: false
@@ -102,14 +102,14 @@ spec:
     lc_ldap_port: "<Required>"
 
     ## The LDAP bind secret for LDAP authentication.  The secret is expected to have ldapUsername and ldapPassword keys.  Refer to Knowledge Center for more info.
-    lc_bind_secret: ldap-bind-secret 
+    lc_bind_secret: ldap-bind-secret
 
     ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
     lc_ldap_base_dn: "<Required>"
 
     ## Enable SSL/TLS for LDAP communication. Refer to Knowledge Center for more info.
     lc_ldap_ssl_enabled: true
-    
+
     ## The name of the secret that contains the LDAP SSL/TLS certificate.
     lc_ldap_ssl_secret_name: "<Required>"
 
@@ -134,7 +134,7 @@ spec:
 
     ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
     lc_ldap_group_member_id_map: "<Required>"
-    
+
     ## The User script will uncomment the section needed based on user's input from User script.  If you are deploying without the User script,
     ## uncomment the necessary section (depending if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
     # ad:
@@ -167,7 +167,7 @@ spec:
 
     ## User script will uncomment the section needed based on user's input from User script.
     ## If you are deploying without the User script, uncomment the necessary section (depending
-    ## if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.    
+    ## if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
     # ad:
     ## This is the Global Catalog port for the LDAP
     #   lc_ad_gc_host: "<Required>"
@@ -178,7 +178,7 @@ spec:
     #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
 
-   ## Uncomment this section if you have OpenId Connect providers. 
+   ## Uncomment this section if you have OpenId Connect providers.
     # open_id_connect_providers: "<Required>"
     ## Set the provider name that is for your redirect url.
     #- provider_name: "<Required>"
@@ -206,12 +206,12 @@ spec:
     #  user_identifier: "sub" # sub for ums and ibm id, email for google
     #  unique_user_identifier: "sub" # sub for ums and ibm id, email for google
     #  user_identity_to_create_subject: "sub" # sub for ums and ibm id, email for google
-       ##  
+       ##
        ## Uncomment out discovery_endpoint_url for Google or UMS IdP.
        ##
-    #  discovery_endpoint_url: 
+    #  discovery_endpoint_url:
        ##
-       ## Optional parameters 
+       ## Optional parameters
        ##
     #    authorization_endpoint_url: ""
     #    token_endpoint_url: ""
@@ -225,17 +225,17 @@ spec:
     #      graphql: ""  # Points to a secret with client_id and client_secret in that format.
     #    token_reuse: "true"
        ##
-       ## User defined parameters.  
+       ## User defined parameters.
        ## If you do not see a parameter that is needed for you OpenId Connect provider.
        ## You are able to defined in this section has a key value pair separated by the delimeter `:`
-       ## If you want to change the default delimeter, add `DELIM=<NEW_DELIMETER>` infront of your 
-       ## key value pair. Ex: 'DELIM=;myKey;myValue'.  In this example, the new delimeter is `;` and 
+       ## If you want to change the default delimeter, add `DELIM=<NEW_DELIMETER>` infront of your
+       ## key value pair. Ex: 'DELIM=;myKey;myValue'.  In this example, the new delimeter is `;` and
        ## the key value pair is set to `myKey;myValue` instead of `myKey:myValue`.
        ##
     #    oidc_ud_param:
     #    - 'DELIM=;myKey;myValue'
     #    - "myKey2:myValue2"
-    #    - "myKey3:myValue3"      
+    #    - "myKey3:myValue3"
 
   ## The beginning section of database configuration for CP4A
   datasource_configuration:
@@ -259,7 +259,7 @@ spec:
       database_port: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_gcd_jdbc_url: "<Required>"
-    
+
       ## If the database type is Db2 HADR, then complete the rest of the parameters below.
       ## Provide the database server name or IP address of the standby database server.
       dc_hadr_standby_servername: "<Required>"
@@ -271,19 +271,19 @@ spec:
       dc_hadr_retry_interval_for_client_reroute: 15
       ## Provide the max # of retries.  If not preference, keep the default value.
       dc_hadr_max_retries_for_client_reroute: 3
-    
+
     ## The database configuration for the object store 1 (OS1) datasource for CPE
     dc_os_datasources:
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the 
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the
       ## GCD configuration above.
     - dc_database_type: "<Required>"
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
-      ## This label must match the OS secret you define in ibm-fncm-secret.  
+      ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
       ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
       ## If you don't define dc_os_label, then your secret will be defined as:
       ## --from-literal=osDBUsername="<your os db username>" --from-literal=osDBPassword="<your os db password>".
-      ## If you have multiple object stores, then you need to define multiple datasource sections starting 
+      ## If you have multiple object stores, then you need to define multiple datasource sections starting
       ## at "dc_database_type" element.
       ## If all the object store databases share the same username and password, then dc_os_label value should be the same
       ## in all the datasource sections.
@@ -292,7 +292,7 @@ spec:
       dc_common_os_datasource_name: "FNOS1DS"
       ## The OS1 XA datasource name.  The default value is "FNOS1DSXA".
       dc_common_os_xa_datasource_name: "FNOS1DSXA"
-      ## Provide the database server name or IP address of the database server.  This should be the same as the 
+      ## Provide the database server name or IP address of the database server.  This should be the same as the
       ## GCD configuration above.
       database_servername: "<Required>"
       ## Provide the name of the database for the object store 1 for CPE.  For example: "OS1DB"
@@ -316,7 +316,7 @@ spec:
       dc_hadr_max_retries_for_client_reroute: 3
     ## The database configuration for ICN (Navigator) - aka BAN (Business Automation Navigator)
     dc_icn_datasource:
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the 
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the
       ## GCD and object store configuration above.
       dc_database_type: "<Required>"
       ## Provide the ICN datasource name.  The default value is "ECMClientDS".
@@ -368,7 +368,7 @@ spec:
     ## FNCM secret that contains GCD DB user name and password, Object Store DB user name and password,
     ## LDAP user and password, CPE username and password, keystore password, and LTPA passs, etc.
     fncm_secret_name: ibm-fncm-secret
-    
+
     ####################################
     ## Start of configuration for CPE ##
     ####################################
@@ -377,8 +377,8 @@ spec:
       arch:
         amd64: "3 - Most preferred"
 
-      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env, 
-      ## it is recommended to have 2 or more.        
+      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## it is recommended to have 2 or more.
       replica_count: 2
 
       ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
@@ -403,8 +403,8 @@ spec:
         limits:
           cpu: 1
           memory: 3072Mi
-      
-      ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change 
+
+      ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
       ## this settings to meet your requirement.
       auto_scaling:
         enabled: false
@@ -427,8 +427,8 @@ spec:
         ##  -Dmy.test.jvm.arg2=abc
         ##  -XX:+SomeJVMSettings
         ##  -XshowSettings:vm"
-        ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"        
-        jvm_customize_options: 
+        ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
+        jvm_customize_options:
 
         ## Default JNDI name for GCD for non-XA data source
         gcd_jndi_name: FNGCDDS
@@ -457,7 +457,7 @@ spec:
         existing_pvc_for_cpe_textextstore: "cpe-textextstore"
         existing_pvc_for_cpe_bootstrapstore: "cpe-bootstrapstore"
         existing_pvc_for_cpe_fnlogstore: "cpe-fnlogstore"
-      
+
       ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
       probe:
         readiness:
@@ -471,7 +471,7 @@ spec:
           timeout_seconds: 5
           failure_threshold: 6
 
-      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.          
+      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
       image_pull_secrets:
         name: "admin.registrykey"
     ####################################
@@ -482,8 +482,8 @@ spec:
       arch:
         amd64: "3 - Most preferred"
 
-      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env, 
-      ## it is recommended to have 2 or more.        
+      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## it is recommended to have 2 or more.
       replica_count: 2
 
       ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
@@ -545,22 +545,22 @@ spec:
           period_seconds: 5
           timeout_seconds: 5
           failure_threshold: 6
-      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.          
+      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
       image_pull_secrets:
         name: "admin.registrykey"
 
     #####################################
     ## Start of configuration for CMIS ##
-    #####################################       
+    #####################################
     cmis:
       ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
       arch:
         amd64: "3 - Most preferred"
 
-      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env, 
+      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
       ## it is recommended to have 2 or more.
       replica_count: 2
-      
+
       ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
       image:
         ## The default repository is the IBM Entitled Registry.
@@ -584,7 +584,7 @@ spec:
           cpu: 1
           memory: 1536Mi
 
-      ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change 
+      ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
       ## this settings to meet your requirement.
       auto_scaling:
         enabled: false
@@ -611,9 +611,9 @@ spec:
         ##  -XX:+SomeJVMSettings
         ##  -XshowSettings:vm"
         ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
-        jvm_customize_options: 
+        jvm_customize_options:
 
-        ## Enable/disable Websphere Security 
+        ## Enable/disable Websphere Security
         ws_security_enabled: false
 
         # Enable/disable the content-stream of the Private Working Copy should be copied from the Document that was checked out.
@@ -668,7 +668,7 @@ spec:
       datavolume:
         existing_pvc_for_cmis_cfgstore: "cmis-cfgstore"
         existing_pvc_for_cmis_logstore: "cmis-logstore"
-      
+
       ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
       probe:
         readiness:
@@ -694,7 +694,7 @@ spec:
       arch:
         amd64: "3 - Most preferred"
 
-      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env, 
+      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
       ## it is recommended to have 2 or more.
       replica_count: 2
 
@@ -721,7 +721,7 @@ spec:
           cpu: 1
           memory: 1536Mi
 
-      ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change 
+      ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
       ## this settings to meet your requirement.
       auto_scaling:
         enabled: false
@@ -738,14 +738,14 @@ spec:
         jvm_initial_heap_percentage: 40
         ## The maximum percentage of available memory to use.
         jvm_max_heap_percentage: 66
-        
+
         ## Use this "jvm_customize_options" parameter to specify JVM arguments using comma separation. For example, if you want to set the following JVM arguments:
         ##  -Dmy.test.jvm.arg1=123
         ##  -Dmy.test.jvm.arg2=abc
         ##  -XX:+SomeJVMSettings
         ##  -XshowSettings:vm"
         ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
-        jvm_customize_options: 
+        jvm_customize_options:
 
         license_model: FNCM.PVUNonProd
 
@@ -755,7 +755,7 @@ spec:
         enable_graph_iql: false
 
         ## By default, this parameter is set by the Operator using the CPE service endpoint (e.g., "http://{{ meta.name }}-cpe-svc:9080/wsi/FNCEWS40MTOM")
-        cpe_uri: 
+        cpe_uri:
 
       ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
       monitor_enabled: false
@@ -764,7 +764,7 @@ spec:
 
       ## By default, the plugin for Graphite is enable to emit container metrics.
       collectd_enable_plugin_write_graphite: false
-      
+
       ## Persistent Volume Claims for GraphQL.  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
@@ -783,19 +783,19 @@ spec:
           period_seconds: 5
           timeout_seconds: 5
           failure_threshold: 6
-      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.          
+      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
       image_pull_secrets:
         name: "admin.registrykey"
 
     ###############################################
     ## Start of configuration for External Share ##
-    ###############################################        
+    ###############################################
     es:
       ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
       arch:
         amd64: "3 - Most preferred"
 
-      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env, 
+      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
       ## it is recommended to have 2 or more.
       replica_count: 2
 
@@ -818,7 +818,7 @@ spec:
           cpu: 1
           memory: 1536Mi
 
-      ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change 
+      ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
       ## this settings to meet your requirement.
       auto_scaling:
         enabled: false
@@ -845,7 +845,7 @@ spec:
 
       ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
       monitor_enabled: false
-      ## Enable/disable logging where logs can be sent to Elasticsearch.      
+      ## Enable/disable logging where logs can be sent to Elasticsearch.
       logging_enabled: false
 
       ## By default, the plugin for Graphite is enable to emit container metrics.
@@ -857,7 +857,7 @@ spec:
       datavolume:
         existing_pvc_for_es_cfgstore: "es-cfgstore"
         existing_pvc_for_es_logstore: "es-logstore"
-      
+
       ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
       probe:
         readiness:
@@ -870,7 +870,7 @@ spec:
           period_seconds: 5
           timeout_seconds: 5
           failure_threshold: 6
-      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.          
+      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
       image_pull_secrets:
         name: "admin.registrykey"
 
@@ -881,11 +881,11 @@ spec:
     ## Navigator secret that contains user credentials for LDAP and database
     ban_secret_name: ibm-ban-secret
 
-    ## The architecture of the cluster.  This is the default for Linux and should not be changed.    
+    ## The architecture of the cluster.  This is the default for Linux and should not be changed.
     arch:
-      amd64: "3 - Most preferred" 
+      amd64: "3 - Most preferred"
 
-    ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env, 
+    ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
     ## it is recommended to have 2 or more.
     replica_count: 2
 
@@ -893,7 +893,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-308-icn-if002
+      tag: ga-308-icn-la002
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -911,8 +911,8 @@ spec:
       limits:
         cpu: 1
         memory: 1536Mi
-    
-    ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change 
+
+    ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
     ## this settings to meet your requirement.
     auto_scaling:
       enabled: false
@@ -920,7 +920,7 @@ spec:
       min_replicas: 2
       ## This is the default cpu percentage before autoscaling occurs.
       target_cpu_utilization_percentage: 80
-      
+
     ## send email
     java_mail:
       host: "fncm-exchange1.ibm.com"
@@ -943,16 +943,16 @@ spec:
       ##  -Dmy.test.jvm.arg2=abc
       ##  -XX:+SomeJVMSettings
       ##  -XshowSettings:vm"
-      ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"      
-      jvm_customize_options: 
+      ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
+      jvm_customize_options:
 
-      icn_db_type: 
+      icn_db_type:
       icn_jndids_name: ECMClientDS
       icn_schema: ICNDB
       icn_table_space: ICNDB
       allow_remote_plugins_via_http: false
-    
-    
+
+
     ## Default settings for monitoring
     monitor_enabled: false
     ## Default settings for logging
@@ -980,7 +980,7 @@ spec:
         period_seconds: 5
         timeout_seconds: 5
         failure_threshold: 6
-    
+
     ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
     image_pull_secrets:
       name: "admin.registrykey"
@@ -997,7 +997,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
     admin_secret_name: ibm-dba-ums-secret
     ## optional for secure communication with UMS
     external_tls_secret_name: ibm-dba-ums-external-tls-secret
@@ -1054,10 +1054,10 @@ spec:
   ## The deployment of FNCM will be initialized with the default values assigned to the parameters below.
   ## The initialization process includes the creation of the P8 domain, the creation of the directory services,
   ## the assignments of users/groups to the P8 domain and object store(s), the creation of the object store(s),
-  ## the creation/addition of add-ons for each object store, the enablement of workflow for each object store, the 
+  ## the creation/addition of add-ons for each object store, the enablement of workflow for each object store, the
   ## creation of Content Search Services servers, index areas, and the enabling of Content-based Retrieval (CBR) for each object store.
   ## In addition, the creation of Navigator desktop will also occur.
-  ## If any of the values below does not fit your infrastructure, then change the value to correpond to your configuration 
+  ## If any of the values below does not fit your infrastructure, then change the value to correpond to your configuration
   ## (e.g., "CEAdmin" is the default user for ic_ldap_admin_user_name parameter and if you do not have "CEAdmin" user in your directory
   ## server and have a different user, then replace "CEAdmin" with your own user).  Otherwise, the rest of the values should remain as default.
   initialize_configuration:
@@ -1111,8 +1111,8 @@ spec:
         oc_cpe_obj_store_workflow_date_time_mask: "mm/dd/yy hh:tt am"
         oc_cpe_obj_store_workflow_locale: "en"
         oc_cpe_obj_store_workflow_pe_conn_point_name: "pe_conn_os1"
-        # Enable the content event emitter only when deploying 
-        # BAI and have shared_configuration.kafka_configuration defined in 
+        # Enable the content event emitter only when deploying
+        # BAI and have shared_configuration.kafka_configuration defined in
         # your cr.  Default value is false if not specified in cr.
         oc_cpe_obj_store_enable_content_event_emitter: false
     ic_css_creation:

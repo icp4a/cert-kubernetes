@@ -24,13 +24,13 @@ spec:
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
   shared_configuration:
-    ## CP4A patterns or capabilities to be deployed.  This CR represents the "application" pattern (aka Business Automation Manager), which includes the following 
+    ## CP4A patterns or capabilities to be deployed.  This CR represents the "application" pattern (aka Business Automation Manager), which includes the following
     ## mandatory components: ban(Business Automation Navigator), ums (User Management Service), app_engine( Application Engine) and optional components: app_designer
     sc_deployment_patterns: application
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
     ## The optional components are: app_designer
-    sc_optional_components: 
+    sc_optional_components:
 
   #####################################################################
   ## IBM App Engine production configuration                          #
@@ -43,10 +43,10 @@ spec:
       pull_policy: IfNotPresent
       solution_server:
         repository: cp.icr.io/cp/cp4a/aae/solution-server
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
       db_job:
         repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
     # If you inputed hostname and port here. They will be used always
     # If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value)
     # Then you don't need to fill the hostname and port. It will use shared_configuration.sc_deployment_hostname_suffix to generate one
@@ -59,7 +59,7 @@ spec:
     # AE_DATABASE_USER: <Input your database user>
     admin_secret_name: <Required>
     # The default admin user id for application engine
-    # The user ID should be bootstrap admin ID for IBM Business Automation Navigator. It is case sensitive. 
+    # The user ID should be bootstrap admin ID for IBM Business Automation Navigator. It is case sensitive.
     # The same ID should be a User Management Service (UMS) admin user also.
     admin_user: <Required>
     external_tls_secret:
@@ -88,12 +88,12 @@ spec:
       ## Required only when type is Oracle, both ssl and non-ssl. The format must be purely oracle descriptor like (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=<your database host/IP>)(PORT=<your database port>))(CONNECT_DATA=(SERVICE_NAME=<your oracle service name>)))
       oracle_url_without_wallet_directory:
       enable_ssl: false
-      ## Required only when type is Oracle and enable_ssl is true. The format must be purely oracle descriptor. SSO wallet directory must be specified and fixed to (MY_WALLET_DIRECTORY=/shared/resources/oracle/wallet). 
-      oracle_url_with_wallet_directory: 
+      ## Required only when type is Oracle and enable_ssl is true. The format must be purely oracle descriptor. SSO wallet directory must be specified and fixed to (MY_WALLET_DIRECTORY=/shared/resources/oracle/wallet).
+      oracle_url_with_wallet_directory:
       ## Required only when enable_ssl is true, both db2 and oracle db type
       db_cert_secret_name:
       ## Required only when type is oracle and enable_ssl is true.
-      oracle_sso_wallet_secret_name: 
+      oracle_sso_wallet_secret_name:
       ## Optional. If it is empty, the DBASB is default when db2 and the AE_DATABASE_USER set in the admin_secret_name is default when oracle
       current_schema: DBASB
       initial_pool_size: 1
@@ -176,5 +176,5 @@ spec:
       auto_provision:
         enabled: false
         # Required if you enabled the auto provision
-        storage_class: 
+        storage_class:
         size: 20Gi

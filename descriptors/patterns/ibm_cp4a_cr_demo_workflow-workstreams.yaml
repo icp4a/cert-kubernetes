@@ -52,16 +52,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
       db2u_tools:
         repository: docker.io/ibmcom/db2u.tools
         tag: 11.5.1.0-CN1
@@ -107,7 +107,7 @@ spec:
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: ga-308-icn-if002
+      tag: ga-308-icn-la002
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########
   ########################################################################
@@ -115,7 +115,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
   ########################################################################
   ########   IBM Application Engine configuration      ########
   ########################################################################
@@ -124,10 +124,10 @@ spec:
     images:
       db_job:
         repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
       solution_server:
         repository: cp.icr.io/cp/cp4a/aae/solution-server
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
   ########################################################################
   ########      IBM Resource Registry configuration               ########
   ########################################################################
@@ -135,7 +135,7 @@ spec:
     images:
       resource_registry:
         repository: cp.icr.io/cp/cp4a/baw/dba-etcd
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
   ########################################################################
   ########   IBM Workstream Server configuration  ########
   ########################################################################
@@ -164,7 +164,7 @@ spec:
     jms:
       image:
         repository: cp.icr.io/cp/cp4a/baw/jms
-        tag: "20.0.2-IF001"
+        tag: "20.0.2-IF002"
   ########################################################################
   ########   IBM Process Federation Server configuration  ########
   ########################################################################

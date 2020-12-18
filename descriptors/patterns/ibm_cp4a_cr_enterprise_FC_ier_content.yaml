@@ -72,7 +72,7 @@ spec:
       ier_production_setting:
         license: accept
       collectd_enable_plugin_write_graphite: false
-      run_as_user: 
+      run_as_user:
      # Specify the names of existing persistent volume claims to be used by your application.
      # Specify an empty string if you don't have existing persistent volume claim.
       datavolume:
@@ -88,4 +88,4 @@ spec:
           initial_delay_seconds: 600
           period_seconds: 5
           timeout_seconds: 5
-          failure_threshold: 
+          failure_threshold:

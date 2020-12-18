@@ -54,6 +54,13 @@ spec:
   ## The application_engine_configuration is a list. You can deploy multiple instances of App Engine and assign different configurations for each instance.
   ## For each instance, application_engine_configuration.name and application_engine_configuration.name.hostname must have different values.
   - name: workspace
+    images:
+      db_job:
+        repository: cp.icr.io/cp/cp4a/bas/solution-server-helmjob-db
+        tag: 20.0.2-IF002
+      solution_server:
+        repository: cp.icr.io/cp/cp4a/bas/solution-server
+        tag: 20.0.2-IF002
     #Adjust this one if you created the secret with name other than the default
     admin_secret_name: "{{ meta.name }}-workspace-aae-app-engine-admin-secret"
     #Provide application engine default administrator ID
@@ -69,4 +76,24 @@ spec:
       alternative_host:
       alternative_port:
       type: db2
-      
+
+  ########################################################################
+  ########      IBM Business Automation Studio configuration      ########
+  ########################################################################      
+  bastudio_configuration:
+    images:
+      bastudio:
+        repository: cp.icr.io/cp/cp4a/bas/bastudio
+        tag: 20.0.2-IF002
+    jms_server:
+      image:
+        repository: cp.icr.io/cp/cp4a/bas/jms
+        tag: 20.0.2-IF002
+    playback_server:
+      images:
+        db_job:
+          repository: cp.icr.io/cp/cp4a/bas/solution-server-helmjob-db
+          tag: 20.0.2-IF002
+        solution_server:
+          repository: cp.icr.io/cp/cp4a/bas/solution-server
+          tag: 20.0.2-IF002

@@ -122,7 +122,7 @@ spec:
     rr_integration:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
 
       resources:
         requests:
@@ -156,7 +156,7 @@ spec:
     front:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-front
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
 
       replica_count: 1
       resources:
@@ -171,7 +171,7 @@ spec:
       ums_enabled: true
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-download
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
 
       replica_count: 1
       resources:
@@ -185,7 +185,7 @@ spec:
     rest_api:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-restapi
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
       replica_count: 2
 
       resources:
@@ -199,7 +199,7 @@ spec:
     git_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
       replica_count: 2
 
       persistence:
@@ -221,7 +221,7 @@ spec:
     parsing_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-parsing
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
       replica_count: 2
 
       resources:
@@ -235,7 +235,7 @@ spec:
     run_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-run
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
       replica_count: 2
 
       resources:
@@ -249,7 +249,7 @@ spec:
     decision_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: 20.0.2-IF001
+        tag: 20.0.2-IF002
       replica_count: 2
 
       # Whether the decision runtime should include an exception stack trace when an incident occurs.

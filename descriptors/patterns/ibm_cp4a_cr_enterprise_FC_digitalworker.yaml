@@ -187,4 +187,4 @@ spec:
       # specify the URL of elasticSearch
       #url: ""
       # specify the URL of kibana
-      #kibanaUrl: ""      
+      #kibanaUrl: ""

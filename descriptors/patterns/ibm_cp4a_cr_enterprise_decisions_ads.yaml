@@ -65,3 +65,43 @@ spec:
 
     decision_runtime:
       enabled: false
+     
+    rr_integration:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
+        tag: 20.0.2-IF002
+
+    front:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-front
+        tag: 20.0.2-IF002
+
+    download_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-download
+        tag: 20.0.2-IF002
+
+    rest_api:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-restapi
+        tag: 20.0.2-IF002
+
+    git_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
+        tag: 20.0.2-IF002
+
+    parsing_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-parsing
+        tag: 20.0.2-IF002
+
+    run_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-run
+        tag: 20.0.2-IF002
+
+    decision_runtime_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-runtime
+        tag: 20.0.2-IF002

@@ -104,5 +104,5 @@ spec:
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-308-icn-if002
+      tag: ga-308-icn-la002
       
