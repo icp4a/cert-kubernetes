@@ -22,7 +22,7 @@ spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 20.0.3
+  appVersion: 20.0.3.2
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -424,7 +424,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-556-p8cpe
+        tag: ga-556-p8cpe-la001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -529,7 +529,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: ga-556-p8css
+        tag: ga-556-p8css-la001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -604,7 +604,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-305-cmis-if002
+        tag: ga-305-cmis-if003
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -741,7 +741,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: ga-556-p8cgql
+        tag: ga-556-p8cgql-if001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -842,7 +842,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: ga-309-es
+        tag: ga-309-es-if001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -929,7 +929,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: ga-309-tm
+        tag: ga-309-tm-if001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1028,7 +1028,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-309-icn
+      tag: ga-309-icn-if001
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -1133,7 +1133,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.3
+        tag: 20.0.3-IF002
     admin_secret_name: ibm-dba-ums-secret
     ## optional for secure communication with UMS
     external_tls_secret_name:
@@ -1422,7 +1422,7 @@ spec:
       replica_count: 1
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: ga-521-ier-fp005
+        tag: ga-5215-ier-if001
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -1470,9 +1470,6 @@ spec:
  ########################################################################
   iccsap_configuration:
 
-    ## Enable/Disable log for ICCSAP
-    no_log: false
-
     ## ICCSAP secret that contains the password to be used for the generation of Keystore and Truststore files
     iccsap_secret_name: "ibm-iccsap-secret"
 
@@ -1488,7 +1485,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: ga-4004-iccsap
+      tag: ga-4004-iccsap-if001
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent

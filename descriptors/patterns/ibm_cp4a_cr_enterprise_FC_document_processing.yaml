@@ -22,7 +22,7 @@ spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 20.0.3
+  appVersion: 20.0.3.2
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -573,7 +573,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-556-p8cpe
+        tag: ga-556-p8cpe-la001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -678,7 +678,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: ga-556-p8css
+        tag: ga-556-p8css-la001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -753,7 +753,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-305-cmis-if002
+        tag: ga-305-cmis-if003
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -890,7 +890,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: ga-556-p8cgql
+        tag: ga-556-p8cgql-if001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -991,7 +991,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: ga-309-es
+        tag: ga-309-es-if001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1131,7 +1131,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/gitgateway
-          tag: 20.0.3
+          tag: 20.0.3-IF002
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1188,7 +1188,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cds
-          tag: 20.0.3
+          tag: 20.0.3-IF002
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1252,7 +1252,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cdra
-          tag: 20.0.3
+          tag: 20.0.3-IF002
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1336,7 +1336,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cpds
-          tag: 20.0.3
+          tag: 20.0.3-IF002
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1423,7 +1423,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/viewone
-          tag: 20.0.3
+          tag: 20.0.3-IF002
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1520,7 +1520,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-309-icn
+      tag: ga-309-icn-if001
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -1628,7 +1628,7 @@ spec:
       db_secret:
       image:
         repository: "cp.icr.io/cp/cp4a/iadp"
-        tag: "20.0.3"
+        tag: "20.0.3-IF002"
         pull_policy: "IfNotPresent"
 ## Overwrite the default SHA digest for Content Analyzer containers by providing the SHA for each containers below.  To use SHA digest, you must comment out the `tag` parameter or leave it blank and you must use entilement registry as the repository.
         processing_digest:
@@ -1670,8 +1670,12 @@ spec:
       rabbitmq:
         resources:
           limits:
-            memory: "640Mi"
+            memory: "1024Mi"
             cpu: "0.5"
+        # RabbitMQ high watermark memory setting.  Typically it should be around 50% of the memory limit of the pod
+        memory_high_watermark: "512MB"
+        # The number of archive logs for RabbitMQ
+        log_rotate_count: 20
         replica_count: 3
     # Caller_api configuration
     caller_api:
@@ -1799,7 +1803,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.3
+        tag: 20.0.3-IF002
     admin_secret_name: ibm-dba-ums-secret
     ## optional for secure communication with UMS
     external_tls_secret_name:
@@ -2007,6 +2011,13 @@ spec:
         # BAI and have shared_configuration.kafka_configuration defined in
         # your cr.  Default value is false if not specified in cr.
         oc_cpe_obj_store_enable_content_event_emitter: false
+
+        # Enable object store for publishing of document processing application.
+        # For Evaluation (Demo) deployment, the default object store is "DEVOS1"
+        # By default, the object named "DEVOS1" will be enabled.  If you have defined
+        # any other object stores (e.g., OS1, etc) and wish to enable for publishing of 
+        # document processing application, then set oc_cpe_obj_store_enable_document_processing to "true"
+        oc_cpe_obj_store_enable_document_processing: true        
       ## Configuration for the application engine object store
       ## Display name for the application engine object store to create
       - oc_cpe_obj_store_display_name: "AEOS"

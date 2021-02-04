@@ -125,10 +125,12 @@ function bind_scc() {
 }
 
 function prepare_install() {
+    oc project ${project_name} >> ${LOG_FILE}
     sed -e "s/<NAMESPACE>/${project_name}/g" ${CLUSTER_ROLE_BINDING_FILE} > ${CLUSTER_ROLE_BINDING_FILE_TEMP}
     echo
     echo -ne "Creating the custom resource definition (CRD) and a service account that has the permissions to manage the resources..."
-    oc apply -f ${CRD_FILE} -n ${project_name} --validate=false >> ${LOG_FILE}
+    oc apply -f ${CRD_FILE} -n ${project_name} --validate=false >/dev/null 2>&1
+    echo " Done!"
     if [[ "$DEPLOYMENT_TYPE" == "demo" ]];then
         oc apply -f ${CLUSTER_ROLE_FILE} --validate=false >> ${LOG_FILE}
         oc apply -f ${CLUSTER_ROLE_BINDING_FILE_TEMP} --validate=false >> ${LOG_FILE}
@@ -147,9 +149,9 @@ function prepare_install() {
             break    
         fi
     done   
-
+    echo -n "Creating ibm-cp4a-operator role binding ..."
     oc apply -f ${ROLE_BINDING_FILE} -n ${project_name} --validate=false >> ${LOG_FILE}
-    echo "Done"
+    echo "Done!"
 
     echo
     echo -ne Adding the user ${user_name} to the ibm-cp4a-operator role...
@@ -161,12 +163,12 @@ function prepare_install() {
     if [[ "$DEPLOYMENT_TYPE" == "demo" ]];then
         oc adm policy add-cluster-role-to-user ibm-cp4a-operator ${user_name} >> ${LOG_FILE}
     fi
-    echo "Done"
+    echo "Done!"
 
     echo
     echo -ne Label the default namespace to allow network policies to open traffic to the ingress controller using a namespaceSelector...
     oc label --overwrite namespace default 'network.openshift.io/policy-group=ingress'
-    echo "Done"
+    echo "Done!"
 }
 
 function check_existing_sc(){
@@ -579,7 +581,7 @@ else
     CS_INSTALL="NO"
     
 fi
-
+clear
 select_platform
 validate_cli
 check_platform_version
@@ -589,10 +591,10 @@ then
     check_existing_sc
 fi
 collect_input
-#create_project
+# create_project
 # bind_scc
 prepare_install
-#create_scc
+# create_scc
 check_storage_class
 apply_no_root_squash
 

@@ -177,7 +177,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-556-p8cpe
+        tag: ga-556-p8cpe-la001
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -241,7 +241,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: ga-556-p8css
+        tag: ga-556-p8css-la001
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -292,7 +292,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-305-cmis-if002
+        tag: ga-305-cmis-if003
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -370,7 +370,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: ga-556-p8cgql
+        tag: ga-556-p8cgql-if001
         pull_policy: IfNotPresent
       ## resource
       resources:
@@ -428,7 +428,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: ga-309-es
+        tag: ga-309-es-if001
         pull_policy: IfNotPresent
       ## resource
       resources:
@@ -490,7 +490,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: ga-309-tm
+        tag: ga-309-tm-if001
         pull_policy: IfNotPresent
      ## LOGGING FOR WORKLOADS
       log:
@@ -559,7 +559,7 @@ spec:
     # run_as_user: 1000110001
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-309-icn
+      tag: ga-309-icn-if001
       pull_policy: IfNotPresent
       arbitrary_uid_enabled: true
     ## Logging for workloads

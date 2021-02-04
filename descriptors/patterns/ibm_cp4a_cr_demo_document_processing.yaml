@@ -18,7 +18,7 @@ metadata:
     app.kubernetes.io/name: ibm-dba
     release: 20.0.3
 spec:
-  appVersion: 20.0.3
+  appVersion: 20.0.3.2
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept" 
   ibm_license: ""
@@ -77,23 +77,23 @@ spec:
     cpe:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-556-p8cpe
+        tag: ga-556-p8cpe-la001
     css:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: ga-556-p8css
+        tag: ga-556-p8css-la001
     graphql:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: ga-556-p8cgql
+        tag: ga-556-p8cgql-if001
     cmis:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-305-cmis-if002
+        tag: ga-305-cmis-if003
     es:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: ga-309-es
+        tag: ga-309-es-if001
     ########################################################################
     ###########   IBM Automation Document Processing configuration  ########
     ########################################################################
@@ -101,23 +101,23 @@ spec:
       cds:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/cds
-          tag: 20.0.3
+          tag: 20.0.3-IF002
       cdra:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/cdra
-          tag: 20.0.3          
+          tag: 20.0.3-IF002
       cpds:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/cpds
-          tag: 20.0.3
+          tag: 20.0.3-IF002
       viewone:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/viewone
-          tag: 20.0.3          
+          tag: 20.0.3-IF002
       gitgateway:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/gitgateway
-          tag: 20.0.3                     
+          tag: 20.0.3-IF002
       mongo:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/mongo
@@ -129,7 +129,7 @@ spec:
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-309-icn
+      tag: ga-309-icn-if001
 
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########
@@ -138,7 +138,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.3
+        tag: 20.0.3-IF002
     teamserver:
       admingroup: "cn=ADPEnvironmentOwners,dc=example,dc=org"
 
@@ -146,6 +146,9 @@ spec:
   ########   IBM Business Automation Content Analyzer configuration   ########
   ############################################################################
   ca_configuration:
+    global:
+      image:
+        tag: "20.0.3-IF002"  
     # Deep Learning configuration
     deeplearning:
       gpu_enabled:  # true or false.  Set it to true if you have a GPU enabled worker nodes

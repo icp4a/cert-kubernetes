@@ -121,9 +121,9 @@ function check_platform_version(){
     else
         # PLATFORM_VERSION="3.11"
         PLATFORM_VERSION="4.4OrLater"
-        echo -e "\x1B[1;31mIMPORTANT: Only support OCp4.4 or Later, exit...(deadline 2020.11.02)\n\x1B[0m"
+        echo -e "\x1B[1;31mIMPORTANT: Only support OCp4.4 or Later, exit...\n\x1B[0m"
         read -rsn1 -p"Press any key to continue";echo
-        # exit 0
+        exit 1
     fi
 }
 

@@ -13,3 +13,4 @@ SET skip_create_tenant_db=true
 
 AddTenant.bat
 
+SET skip_create_tenant_db=

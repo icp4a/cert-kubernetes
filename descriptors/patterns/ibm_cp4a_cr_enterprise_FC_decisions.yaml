@@ -90,13 +90,13 @@ spec:
     # Allow to specify which version of ODM you want to deploy.
     # Supported version > 19.0.2
     # If omitted the latest version will be used.
-    version: 20.0.3
+    version: 20.0.3.2
     image:
       # Specify the repository used to retrieve the Docker images if you do not want to use the default one.
       repository: "cp.icr.io/cp/cp4a/odm"
       # Specify the tag for the Docker images.
       # It's a Mandatory tag when you enable odm_configuration.
-      tag: 8.10.5.0
+      tag: 8.10.5.0-IF003
       # Specify the pull policy for the Docker images. See Kuberntes documentation for more inforations.
       # Possible values : IfNotPresent, Always, Never
       pullPolicy: IfNotPresent

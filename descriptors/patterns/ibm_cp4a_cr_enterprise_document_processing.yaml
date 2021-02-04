@@ -22,7 +22,7 @@ spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 20.0.3
+  appVersion: 20.0.3.2
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -454,6 +454,9 @@ spec:
   ########   IBM Business Automation Content Analyzer configuration   ########
   ############################################################################
   ca_configuration:
+    global:
+      image:
+        tag: "20.0.3-IF002"
     # Deep Learning configuration
     deeplearning:
       gpu_enabled:  # true or false.  Set it to true if you have a GPU enabled worker nodes

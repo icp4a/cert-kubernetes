@@ -18,7 +18,7 @@ metadata:
     app.kubernetes.io/name: ibm-dba
     release: 20.0.3
 spec:
-  appVersion: 20.0.3
+  appVersion: 20.0.3.2
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -59,18 +59,18 @@ spec:
     cpe:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-556-p8cpe
+        tag: ga-556-p8cpe-la001
     cmis:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-305-cmis-if002
+        tag: ga-305-cmis-if003
   ########################################################################
   ########   IBM Business Automation Navigator configuration      ########
   ########################################################################
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: ga-309-icn
+      tag: ga-309-icn-if001
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########
   ########################################################################
@@ -78,7 +78,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.3
+        tag: 20.0.3-IF002
   ########################################################################
   ########      IBM Business Automation Studio configuration      ########
   ########################################################################
@@ -86,19 +86,19 @@ spec:
     images:
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: 20.0.3
+        tag: 20.0.3-IF002
     jms_server:
       image:
         repository: cp.icr.io/cp/cp4a/bas/jms
-        tag: 20.0.3
+        tag: 20.0.3-IF002
     playback_server:
       images:
         db_job:
           repository: cp.icr.io/cp/cp4a/bas/solution-server-helmjob-db
-          tag: 20.0.3
+          tag: 20.0.3-IF002
         solution_server:
           repository: cp.icr.io/cp/cp4a/bas/solution-server
-          tag: 20.0.3
+          tag: 20.0.3-IF002
   ########################################################################
   ########      IBM Resource Registry configuration               ########
   ########################################################################
@@ -106,38 +106,38 @@ spec:
     images:
       resource_registry:
         repository: cp.icr.io/cp/cp4a/baw/dba-etcd
-        tag: 20.0.3
+        tag: 20.0.3-IF002
   ########################################################################
   ########   IBM BAW Designer Server configuration  ########
   ########################################################################
   workflow_authoring_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/bas/workflow-authoring
-      tag: 20.0.3
+      tag: 20.0.3-IF002
     pfs_bpd_database_init_job:
       repository: cp.icr.io/cp/cp4a/baw/pfs-bpd-database-init-prod
-      tag: 20.0.3
+      tag: 20.0.3-IF002
     upgrade_job:
       repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
-      tag: 20.0.3
+      tag: 20.0.3-IF002
     ibm_workplace_job:
       repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
-      tag: 20.0.3
+      tag: 20.0.3-IF002
     bas_auto_import_job:
       repository: cp.icr.io/cp/cp4a/baw/toolkit-installer
-      tag: 20.0.3
+      tag: 20.0.3-IF002
     content_integration:
       init_job_image:
         repository: cp.icr.io/cp/cp4a/baw/iaws-ps-content-integration
-        tag: 20.0.3
+        tag: 20.0.3-IF002
     case:
       init_job_image:
         repository: cp.icr.io/cp/cp4a/baw/workflow-server-case-initialization
-        tag: 20.0.3
+        tag: 20.0.3-IF002
     jms:
       image:
         repository: cp.icr.io/cp/cp4a/baw/jms
-        tag: 20.0.3
+        tag: 20.0.3-IF002
   ##################################################################################
   ########   IBM Business Automation Machine Learning Server configuration  ########
   ##################################################################################
@@ -145,11 +145,11 @@ spec:
     intelligent_task_prioritization:
       image:
         repository: cp.icr.io/cp/cp4a/baw/bui-task-prioritization
-        tag: "20.0.3"
+        tag: "20.0.3-IF002"
     workforce_insights:
       image:
         repository: cp.icr.io/cp/cp4a/baw/workforce-insights
-        tag: "20.0.3"
+        tag: "20.0.3-IF002"
 
   ########################################################################
   ########   IBM Process Federation Server configuration  ########
@@ -157,17 +157,17 @@ spec:
   pfs_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/baw/pfs-prod
-      tag: 20.0.3
+      tag: 20.0.3-IF002
   ########################################################################
   ########   Elasticsearch configuration  ########
   ########################################################################
   elasticsearch_configuration:
     es_image:
       repository: cp.icr.io/cp/cp4a/baw/pfs-elasticsearch-prod
-      tag: 20.0.3
+      tag: 20.0.3-IF002
     es_init_image:
       repository: cp.icr.io/cp/cp4a/baw/pfs-init-prod
-      tag: 20.0.3
+      tag: 20.0.3-IF002
     es_nginx_image:
       repository: cp.icr.io/cp/cp4a/baw/pfs-nginx-prod
-      tag: 20.0.3
+      tag: 20.0.3-IF002
