@@ -18,7 +18,7 @@ metadata:
     app.kubernetes.io/name: ibm-dba
     release: 20.0.3
 spec:
-  appVersion: 20.0.3
+  appVersion: 20.0.3.2
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -55,16 +55,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer
-        tag: 20.0.3
+        tag: 20.0.3-IF002
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer
-        tag: 20.0.3
+        tag: 20.0.3-IF002
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: 20.0.3
+        tag: 20.0.3-IF002
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: 20.0.3
+        tag: 20.0.3-IF002
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -422,35 +422,35 @@ spec:
       ## Workflow image repository URL
       repository: cp.icr.io/cp/cp4a/baw/workflow-server
       ## Image tag for Workflow server container
-      tag: 20.0.3
+      tag: 20.0.3-IF002
       ## Pull policy for Workflow container
       pullPolicy: IfNotPresent
     pfs_bpd_database_init_job:
       ## Database initialization image repository URL for Process Federation Server
       repository: cp.icr.io/cp/cp4a/baw/pfs-bpd-database-init-prod
       ## Image tag for database initialization for Process Federation Server
-      tag: 20.0.3
+      tag: 20.0.3-IF002
       ## Pull policy for Process Federation Server database initialization image
       pullPolicy: IfNotPresent
     upgrade_job:
       ## Workflow server database handling image repository URL
       repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
       ## Image tag for Workflow server database handling
-      tag: 20.0.3
+      tag: 20.0.3-IF002
       ## Pull policy for Workflow server database handling
       pullPolicy: IfNotPresent
     bas_auto_import_job:
       ## BAS toolkit init image repository URL
       repository: cp.icr.io/cp/cp4a/baw/toolkit-installer
       ## Image tag for BAS toolkit init image
-      tag: 20.0.3
+      tag: 20.0.3-IF002
       ## Pull policy for BAS toolkit init image
       pullPolicy: IfNotPresent
     ibm_workplace_job:
       ## IBM Workplace deployment job image repository URL
       repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
       ## Image tag for IBM Workplace deployment job image
-      tag: 20.0.3
+      tag: 20.0.3-IF002
       ## Pull policy for IBM Workplace deployment job image
       pull_policy: IfNotPresent
 
@@ -502,7 +502,7 @@ spec:
         ## Image name for content integration container.
         repository: cp.icr.io/cp/cp4a/baw/iaws-ps-content-integration
         ## Image tag for content integration container
-        tag: 20.0.3
+        tag: 20.0.3-IF002
         ## Pull policy for content integration container.
         pull_policy: IfNotPresent
       ## Domain name for content integration
@@ -518,7 +518,7 @@ spec:
         ## Image name for CASE init job container.
         repository: cp.icr.io/cp/cp4a/baw/workflow-server-case-initialization
         ## Image tag for CASE init job container.
-        tag: 20.0.3
+        tag: 20.0.3-IF002
         ## Pull policy for CASE init job container.
         pull_policy: IfNotPresent
 
@@ -564,7 +564,7 @@ spec:
         ## Image name for Java Messaging Service container
         repository: cp.icr.io/cp/cp4a/baw/jms
         ## Image tag for Java Messaging Service container
-        tag: 20.0.3
+        tag: 20.0.3-IF002
         ## Pull policy for Java Messaging Service container
         pull_policy: IfNotPresent
       tls:
@@ -776,7 +776,7 @@ spec:
       image:
         repository: cp.icr.io/cp/cp4a/baw/bui-task-prioritization
         ## Image tag for Intelligent Task Prioritization container
-        tag: "20.0.3"
+        tag: 20.0.3-IF002
         pull_policy: IfNotPresent
       ## Resource configuration
       resources:
@@ -819,7 +819,7 @@ spec:
           initial_delay_seconds: 40
       image:
         repository: cp.icr.io/cp/cp4a/baw/workforce-insights
-        tag: "20.0.3"
+        tag: 20.0.3-IF002
         pull_policy: IfNotPresent
       ## Resource configuration
       resources:
@@ -872,7 +872,7 @@ spec:
       ## Process Federation Server image
       repository: cp.icr.io/cp/cp4a/baw/pfs-prod
       ## Process Federation Server image tag
-      tag: "20.0.3"
+      tag: 20.0.3-IF002
       ## Process Federation Server image pull policy
       pull_policy: IfNotPresent
 
@@ -1043,7 +1043,7 @@ spec:
       ## Elasticsearch image
       repository: cp.icr.io/cp/cp4a/baw/pfs-elasticsearch-prod
       ## Elasticsearch image tag
-      tag: "20.0.3"
+      tag: 20.0.3-IF002
       ## Elasticsearch image pull policy
       pull_policy: IfNotPresent
     es_init_image:
@@ -1051,14 +1051,14 @@ spec:
       ## This value is only relevant if elasticsearch_configuration.privileged is set to true
       repository: cp.icr.io/cp/cp4a/baw/pfs-init-prod
       ## The image tag for Elasticsearch init container
-      tag: "20.0.3"
+      tag: 20.0.3-IF002
       ## The pull policy for Elasticsearch init container
       pull_policy: IfNotPresent
     es_nginx_image:
       ## The name of the Nginx docker image to be used by Elasticsearch pods
       repository: cp.icr.io/cp/cp4a/baw/pfs-nginx-prod
       ## The image tag of the Nginx docker image to be used by Elasticsearch pods
-      tag: "20.0.3"
+      tag: 20.0.3-IF002
       ## The pull policy for the Nginx docker image to be used by Elasticsearch pods
       pull_policy: IfNotPresent
 

@@ -28,7 +28,6 @@ else
 fi
 DOCKER_REG_KEY=""
 REGISTRY_IN_FILE="cp.icr.io"
-OPERATOR_IMAGE=${DOCKER_REG_SERVER}/cp/cp4a/icp4a-operator:20.0.3
 
 old_db2="docker.io\/ibmcom"
 old_db2_alpine="docker.io\/alpine"
@@ -1889,8 +1888,8 @@ function verify_local_registry_password(){
 
         if [[ $LOCAL_REGISTRY_SERVER == docker-registry* || $LOCAL_REGISTRY_SERVER == image-registry* || $LOCAL_REGISTRY_SERVER == default-route-openshift-image-registry* ]] ;
         then
-            if [[ $OCP_VERSION == "3.11" || "$machine" == "Mac" ]];then
-                if docker login -u "$LOCAL_REGISTRY_USER" -p $(${CLI_CMD} whoami -t) "$LOCAL_REGISTRY_SERVER"; then
+            if [[ "$machine" == "Mac" ]];then
+                if docker login "$local_public_registry_server" -u "$LOCAL_REGISTRY_USER" -p $(${CLI_CMD} whoami -t); then
                     printf 'Verifying Local Registry passed...\n'
                     verify_passed="passed"
                 else
@@ -1898,6 +1897,7 @@ function verify_local_registry_password(){
                     verify_passed=""
                     local_registry_user=""
                     local_registry_server=""
+                    local_public_registry_server=""
                     echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
                 fi
             elif [[ $OCP_VERSION == "4.4OrLater" ]]
@@ -3636,7 +3636,7 @@ function apply_pattern_cr(){
                 fi
                 case "$ans" in
                 "y"|"Y"|"yes"|"Yes"|"YES")
-                    ${CUR_DIR}/pull-eventstreams-connection-info.sh -f ${CP4A_PATTERN_FILE_TMP} || true
+                    ${CUR_DIR}/pull-eventstreams-connection-info.sh -f ${CP4A_PATTERN_FILE_TMP}
                     retVal=$?
                     if [ $retVal -eq 0 ]; then
                         break

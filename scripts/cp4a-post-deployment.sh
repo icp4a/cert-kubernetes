@@ -637,6 +637,7 @@ function display_document_processing_routes_credentials() {
     fi
   fi
   display_gitea_routes_credentails
+  display_content_routes_credentials
 }
 
 validate_cli

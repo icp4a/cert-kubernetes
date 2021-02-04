@@ -22,7 +22,7 @@ spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 20.0.3
+  appVersion: 20.0.3.2
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""

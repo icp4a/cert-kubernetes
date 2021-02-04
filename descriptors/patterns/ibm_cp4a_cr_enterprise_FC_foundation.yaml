@@ -22,7 +22,7 @@ spec:
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
 
-  appVersion: 20.0.3
+  appVersion: 20.0.3.2
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
@@ -55,16 +55,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer
-        tag: 20.0.3
+        tag: 20.0.3-IF002
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer
-        tag: 20.0.3
+        tag: 20.0.3-IF002
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer
-        tag: 20.0.3
+        tag: 20.0.3-IF002
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
-        tag: 20.0.3
+        tag: 20.0.3-IF002
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -306,7 +306,7 @@ spec:
 
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: ga-309-icn
+      tag: ga-309-icn-if001
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -392,7 +392,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.3
+        tag: 20.0.3-IF002
     admin_secret_name: ibm-dba-ums-secret
     ## optional for secure communication with UMS
     external_tls_secret_name:
@@ -449,20 +449,6 @@ spec:
 
     # Configuration for sso pods
     sso:
-      ## optional: full DN of an LDAP group that is authorized to manage OIDC clients, in addition to primary admin from admin secret
-      client_manager_group:
-      ## optional: full DN of an LDAP group that is authorized to manage app_tokens, in addition to primary admin from admin secret
-      token_manager_group:
-      ## optional: lifetime of OAuth access_tokens. default is 7200s
-      access_token_lifetime:
-      ## optional: lifetime of app-tokens. default is 366d
-      app_token_lifetime:
-      ## optional: lifetime of app-passwords. default is 366d
-      app_password_lifetime:
-      ## optional: maximimum number of app-tokens or app-passwords per client. default is 100
-      app_token_or_password_limit:
-      ## optional: encoding / encryption when sotring client secrets in OAuth database. Default is xor for compatibility. Recommended value is PBKDF2WithHmacSHA512
-      client_secret_encoding:
       replica_count: 2
       resources:
         limits:
@@ -534,7 +520,7 @@ spec:
       pull_policy: IfNotPresent
       resource_registry:
         repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-        tag: 20.0.3
+        tag: 20.0.3-IF002
     admin_secret_name: resource-registry-admin-secret
     replica_size: 3
     probe:
@@ -583,7 +569,7 @@ spec:
       pull_policy: IfNotPresent
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: 20.0.3
+        tag: 20.0.3-IF002
     #Adjust this one if you created the secret with name other than the default
     admin_secret_name: "{{ meta.name }}-bas-admin-secret"
     #-----------------------------------------------------------------------
@@ -705,7 +691,7 @@ spec:
         ## Image name for Java Messaging Service container
         repository: cp.icr.io/cp/cp4a/bas/jms
         ## Image tag for Java Messaging Service container
-        tag: 20.0.3
+        tag: 20.0.3-IF002
         ## Pull policy for Java Messaging Service container
         pull_policy: IfNotPresent
       tls:
@@ -745,10 +731,10 @@ spec:
         pull_policy: IfNotPresent
         db_job:
           repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-          tag: 20.0.3
+          tag: 20.0.3-IF002
         solution_server:
           repository: cp.icr.io/cp/cp4a/aae/solution-server
-          tag: 20.0.3
+          tag: 20.0.3-IF002
       # If you inputed hostname and port here. They will be used always
       # If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value)
       # Then you don't need to fill the hostname and port. It will use shared_configuration.sc_deployment_hostname_suffix to generate one
@@ -1001,12 +987,12 @@ spec:
       # Set this parameter to false if you do not want to create
       # the OpenShift route automatically for the administration service.
       createRoute: true
-      # Optional: Enables SSL with an existing certificate for automatic creation of OpenShift routes. 
+      # Optional: Enables SSL with an existing certificate for automatic creation of OpenShift routes.
       # If you don't want to provide an external TLS certificate, leave this empty, the operator will generate one for you.
       externalTlsSecretName: "{{ meta.name }}-bai-admin-external-tls-secret"
-      # Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes. 
+      # Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes.
       # If you do not want to provide a CA to sign the external TLS certificate, leave this parameter empty.
-      externalTlsCaSecretName: 
+      externalTlsCaSecretName:
     management:
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-management
@@ -1022,10 +1008,10 @@ spec:
       # The number of Management service replicas. For High Availability,
       # use at least 2 replicas.
       replicas: 2
-      # Optional: Enables SSL with an existing certificate for automatic creation of OpenShift routes. 
+      # Optional: Enables SSL with an existing certificate for automatic creation of OpenShift routes.
       # If you don't want to provide an external TLS certificate, leave this empty, the operator will generate one for you.
       externalTlsSecretName: "{{ meta.name }}-bai-management-external-tls-secret"
-      # Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes. 
+      # Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes.
       # If you do not want to provide a CA to sign the external TLS certificate, leave this parameter empty.
       externalTlsCaSecretName: ""
     flinkPv:
@@ -1228,9 +1214,9 @@ spec:
         backoffLimit: 10
         # A Boolean value to state whether to create the security configuration job.
         initOpenDistroConfig: true
-        # The name of a secret that is already deployed to Kubernetes and contains the configuration files 
+        # The name of a secret that is already deployed to Kubernetes and contains the configuration files
         # for the Open Distro for Elasticsearch security plugin. All keys from this secret are copied as files
-        # to the plugins/opendistro_security/securityconfig directory. Set this parameter only if the 
+        # to the plugins/opendistro_security/securityconfig directory. Set this parameter only if the
         # security.initOpenDistroConfig parameter is set to true.
         openDistroConfigSecret: ""
       elasticsearch:
@@ -1277,7 +1263,7 @@ spec:
           antiAffinity: "Soft"
 
           # External ElasticSearch Parameters
-          # Provide values for the following ibm_dba_ek parameters only 
+          # Provide values for the following ibm_dba_ek parameters only
           # if you choose to work with an external installation of Elasticsearch and Kibana.
           # The URL to Elasticsearch.
           url: ""
@@ -1408,10 +1394,10 @@ spec:
         # Set this parameter to false if you do not want to create
         # the OpenShift route automatically for the Kibana service.
         createRoute: true
-        # Optional: Enables SSL with an existing certificate for automatic creation of OpenShift routes. 
+        # Optional: Enables SSL with an existing certificate for automatic creation of OpenShift routes.
         # If you don't want to provide an external TLS certificate, leave this empty, the operator will generate one for you.
         externalTlsSecretName: "{{ meta.name }}-bai-kibana-external-tls-secret"
-        # Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes. 
+        # Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes.
         # If you do not want to provide a CA to sign the external TLS certificate, leave this parameter empty.
         externalTlsCaSecretName: ""
     businessPerformanceCenter:
@@ -1492,10 +1478,10 @@ spec:
       # Set this parameter to false if you do not want to create
       # the OpenShift route automatically for the Business Performance Center service.
       createRoute: true
-      # Optional: Enables SSL with an existing certificate for automatic creation of OpenShift routes. 
+      # Optional: Enables SSL with an existing certificate for automatic creation of OpenShift routes.
       # If you don't want to provide an external TLS certificate, leave this empty, the operator will generate one for you.
       externalTlsSecretName: "{{ meta.name }}-bai-bperf-external-tls-secret"
-      # Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes. 
+      # Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes.
       # If you do not want to provide a CA to sign the external TLS certificate, leave this parameter empty.
       externalTlsCaSecretName: ""
   #############################################################################
@@ -1515,10 +1501,10 @@ spec:
       pull_policy: IfNotPresent
       solution_server:
         repository: cp.icr.io/cp/cp4a/aae/solution-server
-        tag: 20.0.3
+        tag: 20.0.3-IF002
       db_job:
         repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-        tag: 20.0.3
+        tag: 20.0.3-IF002
     # If you inputed hostname and port here. They will be used always
     # If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value)
     # Then you don't need to fill the hostname and port. It will use shared_configuration.sc_deployment_hostname_suffix to generate one
