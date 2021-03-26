@@ -48,7 +48,7 @@ function show_help {
 }
 
 function prepare_olm_install() {
-    local online_source="ibm-cp4a-operator-catalog"
+    local online_source="ibm-operator-catalog"
     local maxRetry=20
     project_name=$NAMESPACE
 
@@ -67,7 +67,7 @@ function prepare_olm_install() {
     for ((retry=0;retry<=${maxRetry};retry++)); do        
       echo "Waiting for CP4A Operator Catalog pod initialization"         
        
-      isReady=$(oc get pod -n openshift-marketplace --no-headers | grep ibm-cp4a-operator-catalog | grep "Running")
+      isReady=$(oc get pod -n openshift-marketplace --no-headers | grep ibm-operator-catalog | grep "Running")
       if [[ -z $isReady ]]; then
         if [[ $retry -eq ${maxRetry} ]]; then 
           echo "Timeout Waiting for  CP4BA Operator Catalog pod to start"

@@ -7,5 +7,5 @@ spec:
   channel: stable
   name: ibm-cp4a-operator
   installPlanApproval: Automatic
-  source: ibm-cp4a-operator-catalog
+  source: ibm-operator-catalog
   sourceNamespace: openshift-marketplace
