@@ -1,0 +1,15 @@
+# Sample script for running the DB2 scripts non-interactively by providing the needed env vars
+# To use:  Make a copy and name it "common_for_DB2.sh", update the needed variables.
+
+# --- For adding tenant:
+
+tenant_db_name=
+
+tenant_ontology=
+
+tenant_db_user=
+#The SaaS flag is true/false.
+SaaS=true
+# skip confirmation prompts:
+confirmation=y
+

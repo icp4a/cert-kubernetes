@@ -3,7 +3,7 @@
 ##
 ##Licensed Materials - Property of IBM
 ##
-##(C) Copyright IBM Corp. 2020. All Rights Reserved.
+##(C) Copyright IBM Corp. 2021. All Rights Reserved.
 ##
 ##US Government Users Restricted Rights - Use, duplication or
 ##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -17,9 +17,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.3
+    release: 21.0.1
 spec:
-  appVersion: 20.0.3.2
+  appVersion: 21.0.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept" 
   ibm_license: ""
@@ -75,7 +75,7 @@ spec:
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/cpe
-  #       tag: ga-556-p8cpe-la001
+  #       tag: ga-556-p8cpe-if001
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
@@ -129,6 +129,9 @@ spec:
   #       # The license must be set to "accept" in order for the component to install.  This is the default value.
   #       license: accept
 
+  #       # Enable/disable FIPS (default value is "false")
+  #       disable_fips: false
+
   #     ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
   #     monitor_enabled: false
   #     ## Enable/disable logging where logs can be sent to Elasticsearch.
@@ -181,7 +184,7 @@ spec:
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/graphql
-  #       tag: ga-556-p8cgql-if001
+  #       tag: ga-556-p8cgql-if002
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent

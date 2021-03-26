@@ -3,7 +3,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2020. All Rights Reserved.
+# (C) Copyright IBM Corp. 2021. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -17,10 +17,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.3
+    release: 21.0.1
 spec:
   ## CP4A application version
-  appVersion: 20.0.3.2
+  appVersion: 21.0.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -29,16 +29,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer
-        tag: 20.0.3-IF002
+        tag: 21.0.1
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer
-        tag: 20.0.3-IF002
+        tag: 21.0.1
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer
-        tag: 20.0.3-IF002
+        tag: 21.0.1
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
-        tag: 20.0.3-IF002
+        tag: 21.0.1
       db2u_tools:
         repository: docker.io/ibmcom/db2u.tools
         tag: 11.5.1.0-CN1
@@ -54,7 +54,7 @@ spec:
       db2_etcd:
         repository: quay.io/coreos/etcd
         tag: v3.3.10
-      db2_alpine: 
+      db2_alpine:
         repository: cp.icr.io/cp/cp4a/demo/alpine
         tag: 3.6
       openldap:
@@ -98,7 +98,7 @@ spec:
     sc_image_repository: cp.icr.io
 
     sc_deployment_hostname_suffix: {{ meta.name }}
-  
+
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false
 
@@ -117,44 +117,13 @@ spec:
       sc_medium_file_storage_classname: cp4a-file-retain-silver-gid
       sc_fast_file_storage_classname: cp4a-file-retain-gold-gid
 
-    ##############################################################################################
-    # Kafka client configuration for IBM Business Automation Insights and other ICP4A products.
-    #
-    # Only used when BAI is selected as optional component.
-    ##############################################################################################
-    kafka_configuration:
-      # A comma-separated list of hosts:port for connection to the Kafka cluster.
-      # This parameter is mandatory for any Kafka configuration.
-      bootstrap_servers:
-      # The URL of the Kafka schema registry.
-      # If the Business Automation Insights processor for custom events is configured, the value of this
-      # parameter must provide the URL of the schema registry. Otherwise, it can be left empty.
-      schema_registry_url:
-      # The type of the Kafka schema registry.
-      # Valid value: APICURIO. If not set, defaults to APICURIO. If set to any other value, the processing of
-      # events using Avro schema in Business Automation Insights is not possible and the BAI Management
-      # service is not deployed.
-      schema_registry_type:
-      # The value for the Kafka security.protocol property.
-      # Valid values: PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL. Default: SASL_SSL.
-      security_protocol:
-      # The value for the Kafka sasl.mechanism property.
-      # Valid values: PLAIN, SCRAM-SHA-512. Default: PLAIN.
-      sasl_mechanism:
-      # If the Kafka server requires authentication or uses SSL communications, the value of this parameter
-      # must provide the name of a Kubernetes secret that holds the following keys as base64-encoded strings:
-      # kafka-username: Kafka username; leave empty if no authentication
-      # kafka-password: Kafka password; leave empty if no authentication
-      # kafka-server-certificate: server certificate for SSL communications; leave empty if SSL protocol is not used
-      connection_secret_name:
-
   ########################################################################
   ########   IBM Business Automation Navigator configuration      ########
   ########################################################################
   navigator_configuration:
     image:
-      repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: ga-309-icn-if001
+      repository: cp.icr.io/cp/cp4a/ban/navigator
+      tag: ga-309-icn-if002
 
   ########################################################################
   ########      IBM Resource Registry configuration               ########
@@ -163,7 +132,7 @@ spec:
     images:
       resource_registry:
         repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-        tag: 20.0.3-IF002
+        tag: 21.0.1
 
   ########################################################################
   ########      IBM Business Automation Studio configuration      ########
@@ -172,19 +141,19 @@ spec:
     images:
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: 20.0.3-IF002
+        tag: 21.0.1
     jms_server:
       image:
         repository: cp.icr.io/cp/cp4a/bas/jms
-        tag: 20.0.3-IF002
+        tag: 21.0.1
     playback_server:
       images:
         db_job:
           repository: cp.icr.io/cp/cp4a/bas/solution-server-helmjob-db
-          tag: 20.0.3-IF002
+          tag: 21.0.1
         solution_server:
           repository: cp.icr.io/cp/cp4a/bas/solution-server
-          tag: 20.0.3-IF002
+          tag: 21.0.1
 
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########
@@ -193,17 +162,16 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.3-IF002
+        tag: 21.0.1
 
   ########################################################################
   ########      IBM Business Automation Insights configuration    ########
   ########################################################################
   bai_configuration:
-    createRoutes: true
-    imageCredentials:
+    image_credentials:
       registry: cp.icr.io/cp/cp4a
-    businessPerformanceCenter:
-      allUsersAccess: true
+    business_performance_center:
+      all_users_access: true
 
   ########################################################################
   ###### IBM Business Automation Application server  configurations    ###
@@ -216,7 +184,7 @@ spec:
     images:
       db_job:
         repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-        tag: 20.0.3-IF002
+        tag: 21.0.1
       solution_server:
         repository: cp.icr.io/cp/cp4a/aae/solution-server
-        tag: 20.0.3-IF002
+        tag: 21.0.1

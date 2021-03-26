@@ -3,7 +3,7 @@
 ##
 ##Licensed Materials - Property of IBM
 ##
-##(C) Copyright IBM Corp. 2020. All Rights Reserved.
+##(C) Copyright IBM Corp. 2021. All Rights Reserved.
 ##
 ##US Government Users Restricted Rights - Use, duplication or
 ##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -17,12 +17,12 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.3
+    release: 21.0.1
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 20.0.3.2
+  appVersion: 21.0.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -166,8 +166,8 @@ spec:
     # ad:
     #   lc_ad_gc_host: "<Required>"
     #   lc_ad_gc_port: "<Required>"
-    #   lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
-    #   lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
+    #   lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
+    #   lc_group_filter: "(&(cn=%v)(objectcategory=group))"
     # tds:
     #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
@@ -198,8 +198,8 @@ spec:
     ## This is the Global Catalog port for the LDAP
     #   lc_ad_gc_host: "<Required>"
     #   lc_ad_gc_port: "<Required>"
-    #   lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
-    #   lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
+    #   lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
+    #   lc_group_filter: "(&(cn=%v)(objectcategory=group))"
     # tds:
     #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
@@ -424,7 +424,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-556-p8cpe-la001
+        tag: ga-556-p8cpe-if001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -478,6 +478,9 @@ spec:
         # The license must be set to "accept" in order for the component to install.  This is the default value.
         license: accept
 
+        # Enable/disable FIPS (default value is "false")
+        disable_fips: false
+      
       ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
       monitor_enabled: false
       ## Enable/disable logging where logs can be sent to Elasticsearch.
@@ -529,7 +532,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: ga-556-p8css-la001
+        tag: ga-556-p8css-if001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -604,7 +607,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-305-cmis-if003
+        tag: ga-305-cmis-if004
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -741,7 +744,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: ga-556-p8cgql-if001
+        tag: ga-556-p8cgql-if002
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -842,7 +845,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: ga-309-es-if001
+        tag: ga-309-es-if002
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -929,7 +932,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: ga-309-tm-if001
+        tag: ga-309-tm-if002
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1028,7 +1031,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-309-icn-if001
+      tag: ga-309-icn-if002
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -1133,7 +1136,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.3-IF002
+        tag: 21.0.1
     admin_secret_name: ibm-dba-ums-secret
     ## optional for secure communication with UMS
     external_tls_secret_name:
@@ -1334,9 +1337,8 @@ spec:
         oc_cpe_obj_store_workflow_date_time_mask: "mm/dd/yy hh:tt am"
         oc_cpe_obj_store_workflow_locale: "en"
         oc_cpe_obj_store_workflow_pe_conn_point_name: "pe_conn_os1"
-        # Enable the content event emitter only when deploying
-        # BAI and have shared_configuration.kafka_configuration defined in
-        # your cr.  Default value is false if not specified in cr.
+        # Enable the content event emitter only when deploying BAI.
+        # Default value is false if not specified in the CR.
         oc_cpe_obj_store_enable_content_event_emitter: false
     ic_css_creation:
       - css_site_name: "Initial Site"
@@ -1422,7 +1424,7 @@ spec:
       replica_count: 1
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: ga-5215-ier-if001
+        tag: ga-5215-ier-if002
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -1485,7 +1487,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: ga-4004-iccsap-if001
+      tag: ga-4004-iccsap-if002
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent

@@ -1,13 +1,15 @@
  IBM Aria Content Project Deployment Service Scripts Readme
-© Copyright IBM Corporation 2020.
+© Copyright IBM Corporation 2020-2021
 
 Readme file for: IBM® Aria Content Project Deployment Service Scripts
 Update name: 
-Publication date: 8 December 2020
-Last modified date: 8 December 2020
+Publication date: 9 February 2021
+Last modified date: 9 February 2021
 
 Project Deployment Scripts
+
 	cpds_getOSInitStat.sh
+	cpds_initOS.sh
 	cpds_deployProj.sh
 	cpds_getDeployedProjSnapshot.sh
 	cpds_getDeploymentRec.sh
@@ -26,8 +28,9 @@ General Overview
              
      The cpds.properties.sample are a list of properties which can be input used as input in to the scripts.  Copy the sample, for example to cpds.properties, and insert your values into the file.
      
-     The four main scripts are:
+     The five main scripts are:
      	cpds_getOSInitStat.sh - checks the initialization status on the Object Store
+     	cpds_initOS.sh - initializes or updates/upgrades the Content Platform Engine Object Store to current level. This should be run if the cpds_getOSInitStat.sh script returns a response which the "isInitialized" value is false.
 	    cpds_deployProj.sh - deploys a content project deployment project version
 	    cpds_getDeployedProjSnapshot.sh - returns the project version information for the deployed snapshot/version
 		cpds_getDeploymentStatus.sh - returns the deployment record for the deployment project version
@@ -329,6 +332,43 @@ Object Store Initialization Status
 	  }
 	}
 	
+Initialize Object Store
+
+	cpds_initOS.sh
 	
+	Runs the Content Project Deployment Service REST POST initialization endpoint which Initializes or updates/upgrades the 
+	the Content Platform Engine Object Store (OS).  If the cpds_getOSInitStat.sh was run and the OS returned false for isInitialized,
+	the operations performed in this script would initialize the OS to the appropriate levels.
+	
+	NOTE: The operator should perform initialization of the Object Store automatically when setting up a Automatic Document Processing (ADP) Object Store.
+	
+	To execute the operation, the user must be a CPE administrator for the OS  and  member of the DocProcessingManagers UMS Team on the Test/Staging/Prod (runtime) Environment. 
+	NOTE: For Development/Demo environments, the user must be a CPE administrator for the OS and a member of the DocProcessingManagers or DocProcessingAnalysis UMS Team. 
+	
+	Example to run script using cdps.properties file:
+	./cpds_initOS.sh --file cpds.properties
+	
+	Documentation in the Knowledge Center will provide more information for the POST /v1/repositories/{repositoryIdentifier}/initialization 
+	
+	Sample Output
+	 ./cpds_initOS.sh --file cpds.properties
+	Extracting fields from file cpds.properties ......
+	Getting RunTime UMSToken ...
+	{"data":{"elapsedTime":624,"initializationStatus":"Success"},"status":{"code":200,"message":"Successfully initialized the repository.","messageId":"FNRDD0002I"}}
+	Return Code=200
+	
+	
+	Explanation of output:
+	{
+	  "data": {
+	    "elapsedTime": 624, => the number of ms to perform the initialization/upgrade
+	    "initializationStatus": "Success" => the initialization/upgrade was successful.
+	  },
+	  "status": {
+	    "code": 200,
+	    "message": "Successfully initialized the repository.",
+	    "messageId": "FNRDD0002I"
+	  }
+	}
 	
 	

@@ -1,0 +1,8 @@
+apiVersion: operators.coreos.com/v1alpha2
+kind: OperatorGroup
+metadata:
+  name: ibm-cp4a-operator-catalog-group
+  namespace: REPLACE_NAMESPACE
+spec:
+  targetNamespaces:
+  - REPLACE_NAMESPACE

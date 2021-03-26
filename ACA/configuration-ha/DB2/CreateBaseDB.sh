@@ -100,9 +100,9 @@ do
 done
 
 if [[ $base_user_already_defined = 1 ]]; then
-  base_pwdconfirmed=1
+ base_pwdconfirmed=1
 else
-  base_pwdconfirmed=0
+ base_pwdconfirmed=0
 fi
 
 while [[ $base_pwdconfirmed -ne 1 ]] # While pwd is not yet received and confirmed (i.e. entered the same time twice)
@@ -173,3 +173,7 @@ sed -i s/\$base_db_user/"$base_db_user"/ sql/CreateBaseTable.sql
 echo
 echo "Running script: sql/CreateBaseTable.sql"
 db2 -stvf sql/CreateBaseTable.sql
+
+echo -e "\x1B[1;32mPlease note down the following information as you will need them to create the ADP database secret later: \x1B[0m"
+echo "BASE_DB_USER="$base_db_user""
+echo "BASE_DB_CONFIG=REPLACE_WITH_YOUR_DB_PASSWORD"

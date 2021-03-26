@@ -1,5 +1,15 @@
 #!/bin/bash
-#set -x
+# set -x
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2021. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
 echo -e "\033[1;31mImportant! Please ensure that you had login to the target Docker registry in advance. \033[0m"
 echo -e "\033[1;31mImportant! The load image sample script is for x86_64, amd64, or i386 platforms only.\n \033[0m"
 
@@ -21,7 +31,7 @@ function showHelp {
     echo "  -h  Display help"
     echo "  -r  Target Docker registry and namespace"
     echo "      For example: mycorp-docker-local.mycorp.com/image-space"
-    echo "  -t  Optional: Download OSS images from IBM Staging Entitled Registry"
+    # echo "  -t  Optional: Download OSS images from IBM Staging Entitled Registry"
     echo "  -l  Optional: Target a local registry"
 }
 
@@ -90,10 +100,12 @@ fi
 
 function loginEntitlementRepo() {
     printf "\n"
-    printf "\x1B[1mThe script will pull 'openldap, busybox, phpldapadmin, alpine, gitea' images from Entitled Registry.\n \x1B[0m"
-    printf "\x1B[1mNote: If you are using the Staging Entiled Registry, then use IAMAPIKey in the format 'iamapikey:xxxxx' where 'xxxxx' is the IAMAPIKey.\n \x1B[0m"
+    printf "\x1B[1mThe script will pull 'openldap, busybox, phpldapadmin, alpine, gitea' images from Entitled Registry. \n\x1B[0m"
+    printf "\x1B[1mFollow the instructions on how to get your Entitlement Key if you don't have it: \n\x1B[0m"
+    printf "\x1B[1mhttps://www.ibm.com/support/knowledgecenter/en/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_images_enterp.html\n\x1B[0m"
+    # printf "\x1B[1mNote: If you are using the Staging Entiled Registry, then use IAMAPIKey in the format 'iamapikey:xxxxx' where 'xxxxx' is the IAMAPIKey.\n \x1B[0m"
     printf "\n"
-    printf "\x1B[1mEnter your Entitlement Registry key (or IAMAPIKey): \x1B[0m"
+    printf "\x1B[1mEnter your Entitlement Registry key: \x1B[0m"
     while [[ $entitlement_key == '' ]]
     do
         read -rsp "" entitlement_key

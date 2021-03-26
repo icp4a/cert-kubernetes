@@ -18,5 +18,6 @@ GRANT ALTER ON TABLE $tenant_ontology.FONTS_TRANSID TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.TRAINING_LOG TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.IMPLEMENTATION TO USER $tenant_db_user ;
 GRANT ALTER ON TABLE $tenant_ontology.attribute_alias TO USER $tenant_db_user ;
-
+GRANT ALTER ON TABLE $tenant_ontology.ERROR_LOG TO USER $tenant_db_user ;
+GRANT ALTER ON TABLE $tenant_ontology.PROCESSED_FILE TO USER $tenant_db_user ;
 CONNECT RESET;

@@ -3,7 +3,7 @@
 ##
 ##Licensed Materials - Property of IBM
 ##
-##(C) Copyright IBM Corp. 2020. All Rights Reserved.
+##(C) Copyright IBM Corp. 2021. All Rights Reserved.
 ##
 ##US Government Users Restricted Rights - Use, duplication or
 ##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -17,9 +17,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.3
+    release: 21.0.1
 spec:
-  appVersion: 20.0.3.2
+  appVersion: 21.0.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -47,7 +47,7 @@ spec:
 
     ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
     ## This secret is also used by Workflow and BAStudio to store AES encryption key.
-    encryption_key_secret: "<Required>"
+    encryption_key_secret: ibm-iaws-shared-key-secret
 
     ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
@@ -190,52 +190,63 @@ spec:
   ########   IBM Business Automation Workflow configuration     ########
   ########################################################################
   baw_configuration:
-  ## The baw_configuration is a list. You can deploy multiple instances of Workflow server and assign different configurations for each instance.
+  ## The baw_configuration is a list. You can deploy multiple instances of Workflow Server and assign different configurations for each instance.
   ## For each instance, baw_configuration.name and baw_configuration.name.hostname must have different values.
   - name: awsins1
-    ## Workflow server capability
+    ## Workflow Server capability.
     capabilities: "workstreams"
-    ## Provide Workflow server default administrator ID
+    ## Designate an existing LDAP user for the Workflow Server admin user.
     admin_user: "<Required>"
-    ## If config the Process Portal for a federated environment
-    host_federated_portal: true
-    ## The database configuration for Workflow server
+    ## The database configuration for Workflow Server
     database:
-      ## Whether to enable Secure Sockets Layer (SSL) support for the Workflow server database connection
+      ## Whether to enable Secure Sockets Layer (SSL) support for the Workflow Server database connection.
       enable_ssl: true
-      ## Secret name for storing the database TLS certificate when enable SSL connections to the Workflow server databae engine. Required only when enable_ssl is true
+      ## Secret name for storing the database TLS certificate when an SSL connection is enabled. Required only when enable_ssl is true
       db_cert_secret_name: "<Required>"
-      ## Workflow server database type, Possible values are: db2, oracle, postgresql
+      ## Workflow Server database type. Possible values are: db2, oracle, postgresql
       type: "<Required>"
-      ## Workflow server database server name.
+      ## Workflow Server database server name. This parameter is required.
       server_name: "<Required>"
-      ## Workflow server database name
+      ## Workflow Server database name. This parameter is required.
       database_name: "<Required>"
-      ## Workflow server database port. For DB2, the default value is "50000"
+      ## Workflow Server database port. This parameter is required. For DB2, the default value is "50000"
       port: "<Required>"
-      ## Workflow server database secret name which include the database user name and password.
+      ## Workflow Server database secret name. This parameter is required.
+      ## apiVersion: v1
+      ## kind: Secret
+      ## metadata:
+      ##   name: ibm-baw-wfs-server-db-secret
+      ## type: Opaque
+      ## data:
+      ##   dbUser: <DB_USER>
+      ##   password: <DB_USER_PASSWORD>
       secret_name: "<Required>"
-      ## Required if the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
-      jdbc_url: "<Required>"
-      ## Set to true if using custom JDBC drivers (For example using Oracle, PostgreSQL or some special DB2 driver)
+      ## Oracle database connection string. If the database type is Oracle, provide this string. For example, jdbc:oracle:thin:@//<oracle_server>:1521/orcl.
+      jdbc_url:
+      ## Whether to use custom JDBC drivers. Set to true if you are using Oracle, PostgreSQL, or a special Db2 driver.
       use_custom_jdbc_drivers: false
-      ## The PVC name which bind to the PV which have the custom JDBC driver files stored, required only when use_custom_jdbc_drivers is true
-      custom_jdbc_pvc: "<Required>"
-      ## The custom JDBC driver files set
+      ## Name of the persistent volume claim (PVC) that binds to the persistent volume (PV) where the custom JDBC driver files are stored.
+      custom_jdbc_pvc:
+      ## The set of JDBC driver files.
+      ## For DB2, it is normally "db2jcc4.jar db2jcc_license_cisuz.jar db2jcc_license_cu.jar".
+      ## For Oracle, it is normally "ojdbc8.jar".
+      ## For PostgreSQL, it is normally "postgresql-42.2.14.jar".
       jdbc_driver_files: 'db2jcc4.jar db2jcc_license_cisuz.jar db2jcc_license_cu.jar'
 
       hadr:
         ## Database standby host for high availability disaster recovery (HADR)
-        ## To enable database HADR, configure both standby host and port
+        ## To enable database HADR, configure both standby host and port.
         standbydb_host:
-        ## Database standby port for HADR
+        ## Database standby port for HADR. To enable database HADR, configure both standby host and port.
         standbydb_port:
 
-    ## The configurations for content integration
+    ## The configurations for content integration for attachment in process
     content_integration:
-      ## Domain name for content integration
+      ## Domain name for content integration. The value must be the same as initialize_configuration.ic_domain_creation.domain_name.
       domain_name: "P8DOMAIN"
-      ## Object Store name for content integration
+      ## Object Store name for content integration.
+      ## The value must be an existing object store in CPE.
+      ## If use initialize_configuration for the object store initilization, the value must be one of initialize_configuration.ic_obj_store_creation.object_stores.
       object_store_name: "AWSINS1DOCS"
 
   ########################################################################
@@ -256,11 +267,6 @@ spec:
   ########  IBM FileNet Content Manager initialize configuration  ########
   ########################################################################
   initialize_configuration:
-    ic_domain_creation:
-      ## Provide a name for the domain
-      domain_name: "P8DOMAIN"
-      ## The encryption strength
-      encryption_key: "128"
     ic_ldap_creation:
       ## Administrator user
       ic_ldap_admin_user_name:

@@ -11,13 +11,13 @@
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
-  name: ibm-operator-catalog
+  name: ibm-cp4a-operator-catalog
   namespace: openshift-marketplace
 spec:
-  displayName: "IBM Operator Catalog"
-  image: docker.io/ibmcom/ibm-operator-catalog
+  displayName: IBM Cloud Pak for Business Automation
   publisher: IBM
   sourceType: grpc
+  image: cp.stg.icr.io/cp/cp4a/ibm-cp-automation-catalog:latest
   updateStrategy:
     registryPoll:
       interval: 45m

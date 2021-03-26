@@ -1,4 +1,5 @@
-The translated license terms can be viewed here: http://www14.software.ibm.com/cgi-bin/weblap/lap.pl?li_formnum=L-ASAY-BX6KW9 
+The translated license terms can be viewed here: http://www14.software.ibm.com/cgi-bin/weblap/lap.pl?li_formnum=L-ASAY-BXTFZJ
+
 IMPORTANT: READ CAREFULLY
 
 Two license agreements are presented below.
@@ -25,13 +26,13 @@ The Programs listed below are licensed under the following License Information t
 
 Program Name (Program Number):
 
-IBM Cloud Pak for Automation 20.0.3 SR2 (Evaluation)
+IBM Cloud Pak for Business Automation 21.0.1 (Evaluation)
 
 The following standard terms apply to Licensee's use of the Program.
 
 Evaluation Period
 
-The evaluation period begins on the date that Licensee agrees to the terms of this Agreement and ends after 30 days.
+The evaluation period begins on the date that Licensee agrees to the terms of this Agreement and ends after 90 days.
 
 Prohibited Uses
 
@@ -79,7 +80,7 @@ IBM Enterprise Records
 
 Process Mining
 
-IBM Robotic Process Automation Platform
+IBM Robotic Process Automation
 
 Supporting Programs
 
@@ -89,11 +90,9 @@ Supporting Programs:
 
 IBM Db2 Standard Edition
 
-IBM WebSphere Liberty
+IBM WebSphere Application Server Liberty
 
 IBM WebSphere Application Server Network Deployment
-
-IBM Event Streams
 
 Permitted Components
 
@@ -165,13 +164,15 @@ The Programs listed below are licensed under the following License Information t
 
 Program Name (Program Number):
 
-IBM Cloud Pak for Automation 20.0.3 SR2 (5737-I23)
+IBM Cloud Pak for Business Automation 21.0.1 (5737-I23)
 
 The following standard terms apply to Licensee's use of the Program.
 
 Limited use right
 
-Licensee is not authorized to use the Program to provide commercial IT services to any third party, to provide commercial hosting or timesharing, or to sublicense, rent, or lease the Program unless expressly provided for in the applicable agreements under which Licensee obtains authorizations to use the Program.
+With the exception of Bundled Programs, all IBM software provided to Licensee with the Program can only be used to support Licensee's use of the Principal Program under this License Information document, which means such use must be directly related to a licensed use of the Principal Program.
+
+Licensee is not authorized to use the Program to provide commercial IT services to any third party, to provide commercial hosting or timesharing, or to sublicense, rent, or lease the Program.
 
 Prohibited Uses
 
@@ -219,7 +220,7 @@ IBM Enterprise Records
 
 Process Mining
 
-IBM Robotic Process Automation Platform
+IBM Robotic Process Automation
 
 Supporting Programs
 
@@ -229,11 +230,9 @@ Supporting Programs:
 
 IBM Db2 Standard Edition
 
-IBM WebSphere Liberty
+IBM WebSphere Application Server Liberty
 
 IBM WebSphere Application Server Network Deployment
-
-IBM Event Streams
 
 Permitted Components
 
@@ -300,6 +299,8 @@ Licensee may install and use the following Program components, under the license
 - IBM Robotic Process Automation Studio 20.12
 
 - IBM Db2 Standard Edition
+
+- IBM Automation Foundation
 
 Separately Licensed Code
 
@@ -553,10 +554,8 @@ Additional IBM DB2 Standard Edition Details
 
 The Supporting Program may use a maximum of 16 processor cores and 128 GB of memory on each physical or virtual server; however, if the Supporting Program is used on a cluster of servers configured to work together using database partitioning or other permitted clustering technology, the Supporting Program may use a maximum of 16 processor cores and 128 GB of memory across all virtual or physical servers in that cluster.
 
-L/N: L-ASAY-BX6KW9
+L/N: L-ASAY-BXTFZJ
 
-D/N: L-ASAY-BX6KW9
+D/N: L-ASAY-BXTFZJ
 
-P/N: L-ASAY-BX6KW9 
-
-
+P/N: L-ASAY-BXTFZJ 

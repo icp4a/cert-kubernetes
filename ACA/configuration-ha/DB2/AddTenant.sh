@@ -263,7 +263,7 @@ if [[ $use_existing_tenant -eq 1 ]]; then
   daily_limit=$(echo  $resp | awk '{print $2}') 
 fi
 
-rdbmsconnection="DSN=$tenant_dsn_name;UID=$tenant_db_user;PWD=$tenant_db_pwd;"
+rdbmsconnection="DSN=$tenant_dsn_name;UID=$tenant_db_user;"
 if [[ "$ssl" == "Yes" || "$ssl" == "yes" || "$ssl" == "YES" || "$ssl" == "y" || "$ssl" == "Y" ]]; then
     echo
     rdbmsconnection+="Security=SSL;"
@@ -439,3 +439,5 @@ fi
 echo -e "\n-- Script completed.\n"
 
 # echo "-- URL (replace frontend with your frontend host): https://frontend/?tid=$tenant_id&ont=$tenant_ontology"
+echo -e "\x1B[1;32mPlease note down the following information as you will need them to create the ADP database secret later: \x1B[0m"
+echo "${tenant_db_name}_DB_CONFIG=REPLACE_WITH_YOUR_DATABASE_PASSWORD" | tr '[:lower:]' '[:upper:]'
