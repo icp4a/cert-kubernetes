@@ -68,7 +68,7 @@ IF NOT DEFINED base_db_name SET "base_db_name=CABASEDB"
 set /p base_db_user= "Enter the name of the database user for Content Analyzer Base database. If nothing is entered, we will use the default value 'CABASEUSER' : "
 IF NOT DEFINED base_db_user SET "base_db_user=CABASEUSER"
 
-IF NOT DEFINED rdbmsconnection SET "rdbmsconnection=DSN=%tenant_dsn_name%;UID=%tenant_db_user%;PWD=%tenant_db_pwd%;"
+IF NOT DEFINED rdbmsconnection SET "rdbmsconnection=DSN=%tenant_dsn_name%;UID=%tenant_db_user%;"
 set /p ssl= "Please enter if database is enabled for SSL default is false [Y/N] :"
 if /I "%ssl%" EQU "Y" (
 	SET rdbmsconnection=%rdbmsconnection%Security=SSL;

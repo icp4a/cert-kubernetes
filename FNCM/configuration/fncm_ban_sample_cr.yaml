@@ -1,3 +1,13 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2021. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
 apiVersion: icp4a.ibm.com/v1
 kind: ICP4ACluster
 metadata:
@@ -6,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.3
+    release: 21.0.1
 spec:
   ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
   ## For example, serviceAccount in the spec becomes service_account in ansible.
@@ -37,8 +47,8 @@ spec:
     ad:
       lc_ad_gc_host: ""
       lc_ad_gc_port: ""
-      lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
-      lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
+      lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
+      lc_group_filter: "(&(cn=%v)(objectcategory=group))"
     tds:
       lc_user_filter: "(&(cn=%v)(objectclass=person))"
       lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
@@ -64,8 +74,8 @@ spec:
     ad:
       lc_ad_gc_host: ""
       lc_ad_gc_port: ""
-      lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
-      lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
+      lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
+      lc_group_filter: "(&(cn=%v)(objectcategory=group))"
     tds:
       lc_user_filter: "(&(cn=%v)(objectclass=person))"
       lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
@@ -177,7 +187,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-556-p8cpe-la001
+        tag: ga-556-p8cpe-if001
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -241,7 +251,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: ga-556-p8css-la001
+        tag: ga-556-p8css-if001
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -292,7 +302,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-305-cmis-if003
+        tag: ga-305-cmis-if004
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -370,7 +380,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: ga-556-p8cgql-if001
+        tag: ga-556-p8cgql-if002
         pull_policy: IfNotPresent
       ## resource
       resources:
@@ -428,7 +438,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: ga-309-es-if001
+        tag: ga-309-es-if002
         pull_policy: IfNotPresent
       ## resource
       resources:
@@ -490,7 +500,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: ga-309-tm-if001
+        tag: ga-309-tm-if002
         pull_policy: IfNotPresent
      ## LOGGING FOR WORKLOADS
       log:
@@ -559,7 +569,7 @@ spec:
     # run_as_user: 1000110001
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-309-icn-if001
+      tag: ga-309-icn-if002
       pull_policy: IfNotPresent
       arbitrary_uid_enabled: true
     ## Logging for workloads

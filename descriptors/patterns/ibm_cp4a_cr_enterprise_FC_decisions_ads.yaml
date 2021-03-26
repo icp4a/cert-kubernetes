@@ -2,7 +2,7 @@
 ##
 ##Licensed Materials - Property of IBM
 ##
-##(C) Copyright IBM Corp. 2020. All Rights Reserved.
+##(C) Copyright IBM Corp. 2021. All Rights Reserved.
 ##
 ##US Government Users Restricted Rights - Use, duplication or
 ##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -16,9 +16,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.3
+    release: 21.0.1
 spec:
-  appVersion: 20.0.3.2
+  appVersion: 21.0.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept" 
   ibm_license: ""
@@ -70,7 +70,7 @@ spec:
 
       # Config maps containing certificates to trust
       git_servers_certs:
-      wml_providers_certs:
+      ml_providers_certs:
       other_trusted_certs:
 
 #      # Optional: you can add custom annotations to routes or ingresses.
@@ -126,10 +126,6 @@ spec:
       admin_secret_name: ibm-dba-ads-runtime-secret
       # Authentication mode can be "basic" or "ums".
       authentication_mode: "basic"
-      archive_repository:
-        # Left part of the url to access your decision archives.
-        # Optional credentials are in decision_runtime.admin_secret_name
-        url_prefix: "<Required>"
 
       # Only for debugging, default value is true.
       internal_tls: true
@@ -165,7 +161,7 @@ spec:
     rr_integration:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
-        tag: 20.0.3-IF002
+        tag: 21.0.1
 
       resources:
         requests:
@@ -183,7 +179,7 @@ spec:
       admin_secret_name: ibm-dba-ads-mongo-secret
       image:
         repository: cp.icr.io/cp/cp4a/ads/mongo
-        tag: 4.2.10
+        tag: 4.2.12
 
       persistence:
         use_dynamic_provisioning: true
@@ -205,7 +201,7 @@ spec:
     front:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-front
-        tag: 20.0.3-IF002
+        tag: 21.0.1
 
       replica_count: 1
       resources:
@@ -219,7 +215,7 @@ spec:
     download_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-download
-        tag: 20.0.3-IF002
+        tag: 21.0.1
 
       replica_count: 2
       resources:
@@ -233,7 +229,7 @@ spec:
     rest_api:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-restapi
-        tag: 20.0.3-IF002
+        tag: 21.0.1
       replica_count: 2
 
       resources:
@@ -247,7 +243,7 @@ spec:
     credentials_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-credentials
-        tag: 20.0.3-IF002
+        tag: 21.0.1
       replica_count: 2
 
       resources:
@@ -261,7 +257,7 @@ spec:
     git_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
-        tag: 20.0.3-IF002
+        tag: 21.0.1
       replica_count: 2
 
       persistence:
@@ -284,7 +280,7 @@ spec:
     parsing_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-parsing
-        tag: 20.0.3-IF002
+        tag: 21.0.1
       replica_count: 2
 
       resources:
@@ -298,7 +294,7 @@ spec:
     run_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-run
-        tag: 20.0.3-IF002
+        tag: 21.0.1
       replica_count: 2
 
       resources:
@@ -312,7 +308,7 @@ spec:
     embedded_build_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-build
-        tag: 20.0.3-IF002
+        tag: 21.0.1
       replica_count: 2
 
       persistence:
@@ -335,7 +331,7 @@ spec:
     embedded_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: 20.0.3-IF002
+        tag: 21.0.1
       replica_count: 2
 
       # Whether the decision runtime should include an exception stack trace when an incident occurs.
@@ -368,7 +364,7 @@ spec:
     decision_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: 20.0.3-IF002
+        tag: 21.0.1
       replica_count: 2
 
       # Whether the decision runtime should include an exception stack trace when an incident occurs.
@@ -397,3 +393,14 @@ spec:
         limits:
           cpu: '2000m'
           memory: '2Gi'
+
+      autoscaling:
+        enabled: true
+        min_replicas: 2
+        max_replicas: 5
+        target_cpu_average_utilization: 160
+
+      archive_repository:
+        # Left part of the url to access your decision archives.
+        # Optional credentials are in decision_runtime.admin_secret_name
+        url_prefix: "<Required>"

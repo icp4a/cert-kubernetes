@@ -3,7 +3,7 @@
 ##
 ##Licensed Materials - Property of IBM
 ##
-##(C) Copyright IBM Corp. 2020. All Rights Reserved.
+##(C) Copyright IBM Corp. 2021. All Rights Reserved.
 ##
 ##US Government Users Restricted Rights - Use, duplication or
 ##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -17,12 +17,12 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.3
+    release: 21.0.1
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 20.0.3.2
+  appVersion: 21.0.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -51,7 +51,7 @@ spec:
     ##     - backend, redis, rabbitmq;
     ##     - extraction (callerapi, pdfprocess, utf8process, ocr-extraction);
     ##     - processing (postprocessing, setup, classifyprocess-classify, processing-extraction, updatefiledetail);
-    ##     - natural_language_extractor; deep learning (???);
+    ##     - natural_language_extractor; deep learning;
     ##     - ums;
     ##     - bastudio, jms, solution-server-helmjob-db, solution-server, dba-etcd;
     ##   - Runtime env:
@@ -103,7 +103,7 @@ spec:
 
     ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
     ## This secret is also used by Workflow and BAStudio to store AES encryption key.
-    encryption_key_secret: "<Required>"
+    encryption_key_secret: ibm-iaws-shared-key-secret
 
     ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
@@ -192,8 +192,8 @@ spec:
     # ad:
     #   lc_ad_gc_host: "<Required>"
     #   lc_ad_gc_port: "<Required>"
-    #   lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
-    #   lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
+    #   lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
+    #   lc_group_filter: "(&(cn=%v)(objectcategory=group))"
     # tds:
     #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
@@ -224,8 +224,8 @@ spec:
     ## This is the Global Catalog port for the LDAP
     #   lc_ad_gc_host: "<Required>"
     #   lc_ad_gc_port: "<Required>"
-    #   lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
-    #   lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
+    #   lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
+    #   lc_group_filter: "(&(cn=%v)(objectcategory=group))"
     # tds:
     #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
@@ -454,14 +454,11 @@ spec:
   ########   IBM Business Automation Content Analyzer configuration   ########
   ############################################################################
   ca_configuration:
-    global:
-      image:
-        tag: "20.0.3-IF002"
     # Deep Learning configuration
     deeplearning:
       gpu_enabled:  # true or false.  Set it to true if you have a GPU enabled worker nodes
-      nodelabel_key: # The unique node label key/value on the GPU node. For example: ibm-cloud.kubernetes.io/gpu-enabled:true.  Set this value when `gpu_enabled` is set to true
-      nodelabel_value:  # The node label value on the GPU node.  For example: "true". Set this value when `gpu_enabled` is set to true
+      nodelabel_key: # The unique node label key/value on the GPU node. For example: ibm-cloud.kubernetes.io/gpu-enabled:true.  Set this value when `gpu_enabled` is set to true.  This must be a string value
+      nodelabel_value:  # The node label value on the GPU node.  For example: "true". Set this value when `gpu_enabled` is set to true.  This must be a string value
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########
   ########################################################################
@@ -516,5 +513,5 @@ spec:
         add_desktop_name: "icn_desktop"	
         add_desktop_description: "This is ICN desktop"	
         add_desktop_is_default: false	
-        add_desktop_repo_id: "demo_repo1"	
+        add_desktop_repo_id: "devos1_repo1"
         add_desktop_repo_workflow_enable: false

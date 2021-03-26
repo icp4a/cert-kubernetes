@@ -4,7 +4,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2020. All Rights Reserved.
+# (C) Copyright IBM Corp. 2021. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -262,6 +262,7 @@ function display_application_routes_credentials() {
       fi
       printf "\n"
       echo -e "\x1B[1mYou can access Business Automation Studio using the following URLs:\x1B[0m"
+      echo -e "https://$(oc get routes --no-headers | grep ^cpd | awk {'print $2'})/"
       if [ "$isIngressEnabed" = "true" ]; then
         echo -e "https://$(oc get ingress --no-headers | grep bastudio-route | awk -v temp=${INGRESS_COLUMN} {'print $temp'})/BAStudio"
       else
@@ -330,7 +331,7 @@ function display_decisions_ads_routes_credentials() {
     printf "\n"
     if [[ " ${OPT_COMPONENT_ARR[@]} " =~ "ads_designer" ]]; then
         echo -e "\x1B[1mYou can access ADS Designer using the Business Automation Studio URL:\x1B[0m"
-
+        echo -e "https://$(oc get routes --no-headers | grep ^cpd | awk {'print $2'})/"
         if [ "$isIngressEnabed" = "true" ]; then
           echo -e "https://$(oc get ingress --no-headers | grep bastudio-route | awk -v temp=${INGRESS_COLUMN} {'print $temp'})/BAStudio"
         else
@@ -381,6 +382,7 @@ function display_digitalworker_routes_credentials() {
 
     echo -e "\x1B[1mYou can access ADW Designer using the Business Automation Studio URL:\x1B[0m"
 
+    echo -e "https://$(oc get routes --no-headers | grep ^cpd | awk {'print $2'})/"
     echo -e "https://$(oc get routes --no-headers | grep bastudio-route | awk {'print $2'})/BAStudio"
     echo
     if [[ ${deployment_type} == "demo" ]]; then
@@ -407,34 +409,19 @@ function display_digitalworker_routes_credentials() {
 
 function display_bai_routes_credentials() {
     isIngressEnabed=$(${YQ_CMD} r $pattern_file spec.shared_configuration.sc_ingress_enable)
-    printf "\n"
-    oc get routes -l app=ibm-business-automation-insights
 
-    bai_auto_create_routes=$(${YQ_CMD} r $pattern_file spec.bai_configuration.createRoutes)
-
-    bai_auto_create_route_bpc=$(${YQ_CMD} r $pattern_file spec.bai_configuration.businessPerformanceCenter.createRoute)
     echo -e "\x1B[1mYou can access Business Performance Center using the following URL:\x1B[0m"
     if [ "$isIngressEnabed" = "true" ]; then
         echo -e "https://$(oc get ingress --no-headers | grep bai-business-performance-center-ingress | awk -v temp=${INGRESS_COLUMN} {'print $temp'})"
-    elif [[ (-z ${bai_auto_create_routes} || ${bai_auto_create_routes} == "true") && (-z ${bai_auto_create_route_bpc} || ${bai_auto_create_route_bpc} == "true") ]]; then
-        echo -e "https://$(oc get routes --no-headers | grep ${metadata_name}-bai-business-performance-center-route | awk {'print $2'})"
     else
-        echo "no resources, ingress not enabled, nor automatic routes creation"
+        echo -e "https://$(oc get routes --no-headers | grep ${metadata_name}-bai-business-performance-center-route | awk {'print $2'})"
     fi
-    if [[ $deployment_type == "demo" ]]; then
+    if [[ ${deployment_type} == "demo" ]]; then
         echo "User credentials:"
-        echo "================"
+        echo "================="
         echo
-        echo -n "Default username: "; echo "user1"
-        echo -n "Default password: "; pwd=$(echo $(oc get secret ${metadata_name}-openldap-customldif -o yaml | grep ldap_user.ldif | cut -d ' ' -f4) | base64 --decode | grep "userpassword: " | head -n2); pwd=${pwd//*userpassword: /}; echo "$pwd"
-        echo
-        bai_bpc_secret=$(${YQ_CMD} r $pattern_file spec.bai_configuration.businessPerformanceCenter.configSecretName)
-        if [[ -z ${bai_bpc_secret} || ${bai_bpc_secret} == null ]]; then
-          bai_bpc_secret="${metadata_name}-bai-business-performance-center-secret"
-        fi
-        echo -n "Admin username: "; oc get secret ${bai_bpc_secret} -o jsonpath='{ .data.admin-username}' | base64 --decode; echo
-        echo -n "Admin password: "; oc get secret ${bai_bpc_secret} -o jsonpath='{ .data.admin-password}' | base64 --decode; echo
-        echo
+        echo -n "Default administrator username: "; echo "cp4admin"
+        echo -n "Default administrator password: "; pwd=$(echo $(oc get secret ${metadata_name}-openldap-customldif -o yaml | grep ldap_user.ldif | cut -d ' ' -f4) | base64 --decode | grep "userpassword: " | head -n1); pwd=${pwd//*userpassword: /}; echo "$pwd"
     fi
 
     nav_installed=$(${YQ_CMD} r $pattern_file spec.navigator_configuration)
@@ -455,96 +442,35 @@ function display_bai_routes_credentials() {
       fi
     fi
 
-    bai_auto_create_route_kibana=$(${YQ_CMD} r $pattern_file spec.bai_configuration.kibana.createRoute)
-    echo -e "\x1B[1mYou can access Kibana using the following URL:\x1B[0m"
-    if [ "$isIngressEnabed" = "true" ]; then
-        echo -e "https://$(oc get ingress --no-headers | grep bai-kibana-ingress | awk -v temp=${INGRESS_COLUMN} {'print $temp'})"
-    elif [[ (-z ${bai_auto_create_routes} || ${bai_auto_create_routes} == "true") && (-z ${bai_auto_create_route_kibana} || ${bai_auto_create_route_kibana} == "true") ]]; then
-        echo -e "https://$(oc get routes --no-headers | grep ${metadata_name}-bai-kibana-route | awk {'print $2'})"
-    else
-        echo "no resources, ingress not enabled, nor automatic routes creation"
-    fi
-    echo
-    echo "User credentials:"
-    echo "================="
-    echo
-    ek_secret=$(${YQ_CMD} r $pattern_file spec.bai_configuration.ekSecret)
-    if [[ -z $ek_secret || $ek_secret == null ]]; then
-        echo "Default username: admin";
-        echo "Default password: passw0rd";
-    else
-        echo -n "Username: "; oc get $ek_secret -o jsonpath='{ .data.elasticsearch-username}' | base64 --decode; echo
-        echo -n "Password: "; oc get $ek_secret -o jsonpath='{ .data.elasticsearch-password}' | base64 --decode; echo
-    fi
-
-    bai_auto_create_route_admin=$(${YQ_CMD} r $pattern_file spec.bai_configuration.admin.createRoute)
     echo -e "\x1B[1mYou can access Admin API using the following URL:\x1B[0m"
     if [ "$isIngressEnabed" = "true" ]; then
         echo -e "https://$(oc get ingress --no-headers | grep bai-admin-ingress | awk -v temp=${INGRESS_COLUMN} {'print $temp'})"
-    elif [[ (-z ${bai_auto_create_routes} || ${bai_auto_create_routes} == "true") && (-z ${bai_auto_create_route_admin} || ${bai_auto_create_route_admin} == "true") ]]; then
+    else
         echo -e "https://$(oc get routes --no-headers | grep ${metadata_name}-bai-admin-route | awk {'print $2'})"
-    else
-        echo "no resources, ingress not enabled, nor automatic routes creation"
     fi
-    echo
-    echo "User credentials:"
-    echo "================="
-    echo
-    bai_secret=$(${YQ_CMD} r $pattern_file spec.bai_configuration.baiSecret)
-    if [[ -z $bai_secret || $bai_secret == null ]]; then
-        echo -n "Default username: "; oc get cm ${metadata_name}-bai-env -o jsonpath='{ .data.admin-username}'; echo
-        echo -n "Default password: "; oc get secret ${metadata_name}-bai-secrets -o jsonpath='{ .data.admin-password}' | base64 --decode; echo
-    else
-        echo -n "Username: "; oc get secret $bai_secret -o jsonpath='{ .data.admin-username}' | base64 --decode; echo
-        echo -n "Password: "; oc get secret $bai_secret -o jsonpath='{ .data.admin-password}' | base64 --decode; echo
+    if [[ $deployment_type == "demo" ]]; then
+      echo
+      echo "User credentials:"
+      echo "================="
+      echo
+      echo -n "Default username: "; oc get secret ${metadata_name}-bai-secret-internal -o jsonpath='{ .data.admin-username}' | base64 --decode; echo
+      echo -n "Default password: "; oc get secret ${metadata_name}-bai-secret-internal -o jsonpath='{ .data.admin-password}' | base64 --decode; echo
+      echo
     fi
 
-    kafka_configuration=$(${YQ_CMD} r $pattern_file spec.shared_configuration.kafka_configuration)
-    if [[ -z $kafka_configuration || $kafka_configuration == null ]]; then
-        echo
-        echo -e "\x1B[1mThere is no Kafka client configuration provided.\x1B[0m"
-        echo
+    echo -e "\x1B[1mYou can access Management API using the following URL:\x1B[0m"
+    if [ "$isIngressEnabed" = "true" ]; then
+        echo -e "https://$(oc get ingress --no-headers | grep bai-management-ingress | awk -v temp=${INGRESS_COLUMN} {'print $temp'})"
     else
-        schema_registry_url=$(${YQ_CMD} r $pattern_file spec.shared_configuration.kafka_configuration.schema_registry_url)
-        schema_registry_type=$(${YQ_CMD} r $pattern_file spec.shared_configuration.kafka_configuration.schema_registry_type)
-        if [[ ! ( (-z $schema_registry_url || $schema_registry_url == null) || (! (-z $schema_registry_type || $schema_registry_type == null) && $schema_registry_type != 'APICURIO') )  ]]; then
-            bai_auto_create_route_management=$(${YQ_CMD} r $pattern_file spec.bai_configuration.management.createRoute)
-            echo -e "\x1B[1mYou can access Management using the following URL:\x1B[0m"
-            if [ "$isIngressEnabed" = "true" ]; then
-                echo -e "https://$(oc get ingress --no-headers | grep bai-management-ingress | awk -v temp=${INGRESS_COLUMN} {'print $temp'})"
-            elif [[ (-z ${bai_auto_create_routes} || ${bai_auto_create_routes} == "true") && (-z ${bai_auto_create_route_management} || ${bai_auto_create_route_management} == "true") ]]; then
-                echo -e "https://$(oc get routes --no-headers | grep ${metadata_name}-bai-management-route | awk {'print $2'})"
-            else
-                echo "no resources, ingress not enabled, nor automatic routes creation"
-            fi
-            echo
-            echo "User credentials:"
-            echo "================="
-            echo
-            if [[ -z $bai_secret || $bai_secret == null ]]; then
-                echo -n "Default username: "; oc get cm ${metadata_name}-bai-env -o jsonpath='{ .data.management-username}'; echo
-                echo -n "Default password: "; oc get secret ${metadata_name}-bai-secrets -o jsonpath='{ .data.management-password}' | base64 --decode; echo
-            else
-                echo -n "Username: "; oc get secret $bai_secret -o jsonpath='{ .data.management-username }' | base64 --decode; echo
-                echo -n "Password: "; oc get secret $bai_secret -o jsonpath='{ .data.management-password }' | base64 --decode; echo
-            fi
-        fi
-        echo
-        echo -e "\x1B[1mYou can configure Kafka client with the following configuration information:\x1B[0m"
-        echo
-        echo -n "Bootstrap servers: "; ${YQ_CMD} r $pattern_file spec.shared_configuration.kafka_configuration.bootstrap_servers;
-        echo -n "Schema registry URL: "; ${YQ_CMD} r $pattern_file spec.shared_configuration.kafka_configuration.schema_registry_url;
-        echo -n "Schema registry type: "; ${YQ_CMD} r $pattern_file spec.shared_configuration.kafka_configuration.schema_registry_type;
-        echo -n "Security protocol: "; ${YQ_CMD} r $pattern_file spec.shared_configuration.kafka_configuration.security_protocol;
-        echo -n "SASL mechanism: "; ${YQ_CMD} r $pattern_file spec.shared_configuration.kafka_configuration.sasl_mechanism;
-        kafka_connection_secret=$(${YQ_CMD} r $pattern_file spec.shared_configuration.kafka_configuration.connection_secret_name)
-        if [[ -z $kafka_connection_secret || $kafka_connection_secret == null ]]; then
-            echo "The Kafka server doesn't require authentication."
-        else
-            echo -n "Username: "; oc get secret $kafka_connection_secret -o jsonpath='{ .data.kafka-username}' | base64 --decode; echo
-            echo -n "Password: "; oc get secret $kafka_connection_secret -o jsonpath='{ .data.kafka-password}' | base64 --decode; echo
-            echo -n "Server certificate: "; oc get secret $kafka_connection_secret -o jsonpath='{ .data.kafka-server-certificate}' | base64 --decode; echo
-        fi
+        echo -e "https://$(oc get routes --no-headers | grep ${metadata_name}-bai-management-route | awk {'print $2'})"
+    fi
+    if [[ $deployment_type == "demo" ]]; then
+      echo
+      echo "User credentials:"
+      echo "================="
+      echo
+      echo -n "Default username: "; oc get secret ${metadata_name}-bai-secret-internal -o jsonpath='{ .data.management-username}' | base64 --decode; echo
+      echo -n "Default password: "; oc get secret ${metadata_name}-bai-secret-internal -o jsonpath='{ .data.management-password}' | base64 --decode; echo
     fi
 }
 
@@ -560,6 +486,7 @@ function display_workflow_authoring_routes_credentials() {
     echo
     if [[ $item == "workflow" || $item == "workflow-workstreams" ]]; then
       echo -e "\x1B[1mYou can access Business Automation Studio, Business Automation Workflow Portal, Case Client, and IBM Workplace using the following URLs:\x1B[0m"
+      echo -e "https://$(oc get routes --no-headers | grep ^cpd | awk {'print $2'})/"
       if [ "$isIngressEnabed" = "true" ]; then
         echo -e "https://$(oc get ingress --no-headers | grep bastudio-route | awk -v temp=${INGRESS_COLUMN} {'print $temp'})/BAStudio"
         echo -e "https://$(oc get ingress --no-headers | grep baw-service | awk -v temp=${INGRESS_COLUMN} {'print $temp'})/ProcessPortal"
@@ -622,6 +549,7 @@ function display_document_processing_routes_credentials() {
     if [[ $deployment_type == "demo" ]]; then
       if [[ (" ${OPT_COMPONENT_ARR[@]} " =~ "document_processing_designer") ]]; then
         echo -e "\x1B[1mYou can access Business Automation Studio using the following URLs:\x1B[0m"
+        echo -e "https://$(oc get routes --no-headers | grep ^cpd | awk {'print $2'})/"
         if [ "$isIngressEnabed" = "true" ]; then
           echo -e "https://$(oc get ingress --no-headers | grep bastudio-route | awk -v temp=${INGRESS_COLUMN} {'print $temp'})/BAStudio"
         else
@@ -638,6 +566,32 @@ function display_document_processing_routes_credentials() {
   fi
   display_gitea_routes_credentails
   display_content_routes_credentials
+}
+
+function display_ier_routes_credentials() {
+    isIngressEnabed=$(${YQ_CMD} r $pattern_file spec.shared_configuration.sc_ingress_enable)
+    printf "\n"
+    echo -e "\x1B[1mYou can access IER using the following URL:\x1B[0m" 
+
+    if [ "$isIngressEnabed" = "true" ]; then
+      echo -e "https://$(oc get ingress --no-headers | grep ier-ingress | awk -v temp=${INGRESS_COLUMN} {'print $temp'})/EnterpriseRecordsPlugin/IERApplicationPlugin.jar"
+    else
+      echo -e "https://$(oc get routes --no-headers | grep ier-route | awk {'print $2'})/EnterpriseRecordsPlugin/IERApplicationPlugin.jar"
+    fi
+}
+
+function display_iccsap_routes_credentials() {
+    isIngressEnabed=$(${YQ_CMD} r $pattern_file spec.shared_configuration.sc_ingress_enable)
+    printf "\n"
+    echo -e "\x1B[1mYou can access ICCSAP using the following URL:\x1B[0m" 
+
+    if [ "$isIngressEnabed" = "true" ]; then
+      echo -e "SSL Webport: https://$(oc get ingress --no-headers | grep iccsap-ingress | awk -v temp=${INGRESS_COLUMN} {'print $temp'})"
+      echo -e "Plugin: https://$(oc get ingress --no-headers | grep iccsap-ingress | awk -v temp=${INGRESS_COLUMN} {'print $temp'})/files"
+    else
+      echo -e "SSL Webport: https://$(oc get routes --no-headers | grep iccsap-ssl-webport-route | awk {'print $2'})"
+      echo -e "Plugin: https://$(oc get routes --no-headers | grep iccsap-plugin-route | awk {'print $2'})/files"
+    fi
 }
 
 validate_cli
@@ -696,6 +650,26 @@ for item in "${OPT_COMPONENT_ARR[@]}"; do
     case "$item" in
         "bai")
           display_bai_routes_credentials
+          break
+          ;;
+    esac
+done
+
+#Check if IER is in Optional Components list
+for item in "${OPT_COMPONENT_ARR[@]}"; do
+    case "$item" in
+        "ier")
+          display_ier_routes_credentials
+          break
+          ;;
+    esac
+done
+
+#Check if ICCSAP is in Optional Components list
+for item in "${OPT_COMPONENT_ARR[@]}"; do
+    case "$item" in
+        "iccsap")
+          display_iccsap_routes_credentials
           break
           ;;
     esac
