@@ -1,7 +1,0 @@
-CONNECT TO $tenant_db_name ;
-SET SCHEMA $tenant_ontology ;
-
-load from ./CSVFiles/doc_class.csv of del insert into doc_class ;
-load from ./CSVFiles/object_type.csv of del insert into object_type ;
-
-CONNECT RESET;

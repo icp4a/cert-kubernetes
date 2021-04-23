@@ -1,4 +1,0 @@
-CONNECT TO $tenant_db_name ;
-
-SET SCHEMA $tenant_ontology ;
-
