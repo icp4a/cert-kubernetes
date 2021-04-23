@@ -1,4 +1,5 @@
 #!/bin/bash
+# set -x
 ###############################################################################
 #
 # Licensed Materials - Property of IBM
@@ -29,16 +30,14 @@ OPERATOR_PVC_FILE_TMP1=$TEMP_FOLDER/.operator-shared-pvc_tmp1.yaml
 OPERATOR_PVC_FILE_TMP=$TEMP_FOLDER/.operator-shared-pvc_tmp.yaml
 OPERATOR_PVC_FILE_BAK=$BAK_FOLDER/.operator-shared-pvc.yaml
 
-
-OLM_CATALOG=${PARENT_DIR}/descriptors/op-olm/catalog_source.yaml
 OLM_OPT_GROUP=${PARENT_DIR}/descriptors/op-olm/operator_group.yaml
 OLM_SUBSCRIPTION=${PARENT_DIR}/descriptors/op-olm/subscription.yaml
 
 OLM_CATALOG_TMP=${TEMP_FOLDER}/.catalog_source.yaml
 OLM_OPT_GROUP_TMP=${TEMP_FOLDER}/.operator_group.yaml
 OLM_SUBSCRIPTION_TMP=${TEMP_FOLDER}/.subscription.yaml
-
-PLATFORM_SELECTED=$(eval echo $(kubectl get icp4acluster $(kubectl get icp4acluster | grep NAME -v | awk '{print $1}') -o yaml | grep sc_deployment_platform | tail -1 | cut -d ':' -f 2))
+LICENSE_FILE=${PARENT_DIR}/LICENSE
+LICENSE_ACCEPTED=""
 
 function show_help {
     echo -e "\nPrerequisite:"
@@ -61,7 +60,7 @@ then
     show_help
     exit -1
 else
-    while getopts "h?i:p:a:n:" opt; do
+    while getopts "h?i:p:a:n:m:" opt; do
         case "$opt" in
         h|\?)
             show_help
@@ -75,6 +74,8 @@ else
             ;;    
         a)  LICENSE_ACCEPTED=$OPTARG
             ;;
+        m)  RUNTIME_MODE=$OPTARG
+            ;;
         :)  echo "Invalid option: -$OPTARG requires an argument"
             show_help
             exit -1
@@ -86,32 +87,45 @@ fi
 [ -f ${CUR_DIR}/../upgradeOperator.yaml ] && rm ${CUR_DIR}/../upgradeOperator.yaml
 cp ${CUR_DIR}/../descriptors/operator.yaml ${CUR_DIR}/../upgradeOperator.yaml
 
+PLATFORM_SELECTED=$(eval echo $(kubectl get icp4acluster $(kubectl get icp4acluster -n $NAMESPACE | grep NAME -v | awk '{print $1}') -n $NAMESPACE -o yaml | grep sc_deployment_platform | tail -1 | cut -d ':' -f 2))
+if [[ !($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" || $PLATFORM_SELECTED == "other") ]]; then
+  clear
+  echo -e "\x1B[1;31mA deployed custom resource cannot be found.\n\x1B[0m"
+  echo -e "\x1B[1;31mYou must apply an instance of a custom resource before you can upgrade. The script is exiting...\n\x1B[0m"
+  exit 1 
+fi
+
 # Show license file
 function readLicense() {
     echo -e "\033[32mYou need to read the International Program License Agreement before start\033[0m"
     sleep 3
-    more LICENSE
+    more ${LICENSE_FILE}
 }
 
 # Get user's input on whether accept the license
 function userInput() {
-    echo -e "\033[32mDo you accept the International Program License?(y/n)\033[0m"
-    read -e choice
-    if [[ "$choice" == "y" || "$choice" == "Y" ]]; then
-        LICENSE_ACCEPTED=accept
-    elif [[ "$choice" == "n" || "$choice" == "N" ]]; then
-        echo -e "\033[31mScript will exit ...\033[0m"
-        sleep 2
-        exit 0
-    else
-        echo -e "\033[31mUnexpected input\033[0m"
-        userInput
-    fi
+    while true; do
+        echo -e "\033[32mDo you accept the International Program License?(Yes/No): \033[0m"
+        read -rp "" ans
+        case "$ans" in
+        "y"|"Y"|"yes"|"Yes"|"YES")
+            LICENSE_ACCEPTED="accept"
+            break
+            ;;
+        "n"|"N"|"no"|"No"|"NO")
+            echo -e "\033[31mScript will exit ...\033[0m"
+            sleep 2
+            exit 0
+            ;;
+        *)
+            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            ;;
+        esac
+    done
 }
 
 
 function prepare_olm_install() {
-    local online_source="ibm-operator-catalog"
     local maxRetry=20
     project_name=$NAMESPACE
 
@@ -130,7 +144,7 @@ function prepare_olm_install() {
     for ((retry=0;retry<=${maxRetry};retry++)); do        
       echo "Waiting for CP4A Operator Catalog pod initialization"         
        
-      isReady=$(oc get pod -n openshift-marketplace --no-headers | grep ibm-operator-catalog | grep "Running")
+      isReady=$(oc get pod -n openshift-marketplace --no-headers | grep $online_source | grep "Running")
       if [[ -z $isReady ]]; then
         if [[ $retry -eq ${maxRetry} ]]; then 
           echo "Timeout Waiting for  CP4BA Operator Catalog pod to start"
@@ -160,6 +174,7 @@ function prepare_olm_install() {
     fi
 
     sed "s/REPLACE_NAMESPACE/$project_name/g" ${OLM_SUBSCRIPTION} > ${OLM_SUBSCRIPTION_TMP}
+    ${YQ_CMD} w -i ${OLM_SUBSCRIPTION_TMP} spec.source "$online_source"
     oc apply -f ${OLM_SUBSCRIPTION_TMP} -n $NAMESPACE
     # sed <"${OLM_SUBSCRIPTION}" "s|REPLACE_NAMESPACE|${project_name}|g; s|REPLACE_CHANNEL_NAME|stable|g" | oc apply -f -
     if [ $? -eq 0 ]
@@ -188,18 +203,6 @@ function prepare_olm_install() {
       fi
     done
 }
-
-function select_uninstall_type(){
-    local returnValue
-    oc get subscription -n $NAMESPACE | grep ibm-operator-catalog >/dev/null 2>&1
-    returnValue=$?
-    if [ "$returnValue" == 0 ] ; then
-        uninstall_olm_cp4a
-    elif [ "$returnValue" == 1 ] ; then
-        uninstall_cp4a
-    fi
-}
-
 
 function uninstall_cp4a(){
     printf "\n"
@@ -283,7 +286,8 @@ function cp4a_operator_uninstall(){
         break
       else
         if [[ $retry -eq ${maxRetry} ]]; then 
-          error_exit "Timeout Waiting for CP4A operator to be removed!"
+          echo -e "\x1B[1;31mTimeout Waiting for CP4A operator to be removed!\n\x1B[0m"
+          exit 1
         else
           sleep 30
           continue
@@ -292,19 +296,34 @@ function cp4a_operator_uninstall(){
     done 
 }
 
+if [[ $RUNTIME_MODE == "dev" ]];then
+    OLM_CATALOG=${PARENT_DIR}/descriptors/op-olm/cp4a_catalogsource.yaml
+    online_source="ibm-cp4a-operator-catalog"
+else
+    OLM_CATALOG=${PARENT_DIR}/descriptors/op-olm/catalog_source.yaml
+    online_source="ibm-operator-catalog"
+fi
+
+if [[ $LICENSE_ACCEPTED == "" ]]; then
+  readLicense
+  userInput
+fi
+
 if [[ $LICENSE_ACCEPTED == "accept" ]]; then
   if [[ $(kubectl get pvc | grep cp4a-shared-log-pvc) == '' ]]; then
       create_new_shared_logs_pvc
   fi
   if [[ "$PLATFORM_SELECTED" == "OCP" || "$PLATFORM_SELECTED" == "ocp" || "$PLATFORM_SELECTED" == "ROKS" || "$PLATFORM_SELECTED" == "roks" ]]; then
-    cp4a_operator_uninstall
-    uninstall_cp4a
+    kubectl get subscription -n $NAMESPACE| grep ibm-cp4a-operator-catalog-subscription >/dev/null 2>&1
+    returnValue=$?
+    if [ "$returnValue" == 1 ] ; then
+        uninstall_cp4a
+    fi
+    # cp4a_operator_uninstall
+    # uninstall_cp4a
     prepare_olm_install
   else
     cncf_install
   fi
   echo -e "\033[32mAll descriptors have been successfully applied. Monitor the pod status with 'kubectl get pods -w'.\033[0m"
-else
-  readLicense
-  userInput
 fi

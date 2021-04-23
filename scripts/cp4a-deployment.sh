@@ -3671,6 +3671,15 @@ function apply_pattern_cr(){
         ${SED_COMMAND} "s|sc_image_repository:.*|sc_image_repository: ${CONVERT_LOCAL_REGISTRY_SERVER}|g" ${CP4A_PATTERN_FILE_TMP}
     fi
 
+    #
+    if [[ "$ENABLE_GPU_ARIA" == "Yes" ]]; then
+        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.node_labels.gpu_enabled "true"
+        # ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.ca_configuration.deeplearning.nodelabel_key "$nodelabel_key"
+        ${SED_COMMAND} "s|gpu_nodelabel_key:.*|gpu_nodelabel_key: \"$nodelabel_key\"|g" ${CP4A_PATTERN_FILE_TMP}
+    elif [[ "$ENABLE_GPU_ARIA" == "No" ]]
+    then
+        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.node_labels.gpu_enabled "false"
+    fi
     # Replace image URL
     old_fmcn="$REGISTRY_IN_FILE\/cp\/cp4a\/fncm"
     old_ban="$REGISTRY_IN_FILE\/cp\/cp4a\/ban"

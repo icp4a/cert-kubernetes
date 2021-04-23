@@ -18,7 +18,7 @@ metadata:
     app.kubernetes.io/name: ibm-dba
     release: 21.0.1
 spec:
-  appVersion: 21.0.1
+  appVersion: 21.0.1.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept" 
   ibm_license: ""

@@ -20,7 +20,7 @@ metadata:
     release: 21.0.1
 spec:
   ## CP4A application version
-  appVersion: 21.0.1
+  appVersion: 21.0.1.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""

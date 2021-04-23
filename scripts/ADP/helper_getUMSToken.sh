@@ -17,8 +17,8 @@
 ######## Constants 
 # Provide defaults that can be override by passed in params
 #URL=https://ums-sso.adp.ibm.com
-#CLIENT_ID=OcPtsBMyLOjYVPqChXTd
-#CLIENT_SECRET=EXwj3D0tp4HaugA2sQT2
+#CLIENT_ID=XXXXXXXX
+#CLIENT_SECRET=XXXXXXXXX
 #USER=Admin
 #PWD=password
 

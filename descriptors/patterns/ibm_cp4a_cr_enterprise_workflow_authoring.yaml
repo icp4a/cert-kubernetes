@@ -18,7 +18,7 @@ metadata:
     app.kubernetes.io/name: ibm-dba
     release: 21.0.1
 spec:
-  appVersion: 21.0.1
+  appVersion: 21.0.1.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -299,11 +299,15 @@ spec:
       ##   dbUser: <DB_USER>
       ##   password: <DB_USER_PASSWORD>
       secret_name: "<Required>"
-      ## Oracle database connection string. If the database type is Oracle, provide this string. For example, jdbc:oracle:thin:@//<oracle_server>:1521/orcl. 
+      ## Oracle and PostgreSQL database connection string. 
+      ## If the database type is Oracle, provide the Oracle database connection string. For example, jdbc:oracle:thin:@//<oracle_server>:1521/orcl. 
+      ## If the database type is PostgreSQL, this parameter is optional. For example, jdbc:postgresql://<postgresql_server>:5432/<your_database>. This parameter is not required for PostgreSQL if you enter server_name, database_name, and port. If you do not need this parameter, remove it or comment it out.
+      ## In all other cases, remove or comment out this parameter.
       jdbc_url: "<Required>"
       ## Whether to use custom JDBC drivers. Set to true if you are using Oracle, PostgreSQL, or a special Db2 driver.
       use_custom_jdbc_drivers: false
-      ## Name of the persistent volume claim (PVC) that binds to the persistent volume (PV) where the custom JDBC driver files are stored.
+      ## If use_custom_jdbc_drivers is set to true, input the name of the persistent volume claim (PVC) that binds to the persistent volume (PV) where the custom JDBC driver files are stored.
+      ## If use_custom_jdbc_drivers is set to false, remove or comment out this parameter.
       custom_jdbc_pvc: "<Required>"
       ## The set of JDBC driver files.
       ## For DB2, it is normally "db2jcc4.jar db2jcc_license_cisuz.jar db2jcc_license_cu.jar".

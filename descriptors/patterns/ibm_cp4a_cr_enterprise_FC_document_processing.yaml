@@ -1134,7 +1134,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/gitgateway
-          tag: 21.0.1
+          tag: 21.0.1-IF001
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1191,7 +1191,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cds
-          tag: 21.0.1
+          tag: 21.0.1-IF001
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1255,7 +1255,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cdra
-          tag: 21.0.1
+          tag: 21.0.1-IF001
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1339,7 +1339,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cpds
-          tag: 21.0.1
+          tag: 21.0.1-IF001
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1426,7 +1426,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/viewone
-          tag: 21.0.1
+          tag: 21.0.1-IF001
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1523,7 +1523,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-309-icn-if002
+      tag: ga-309-icn-if003
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -1631,7 +1631,7 @@ spec:
       db_secret:
       image:
         repository: "cp.icr.io/cp/cp4a/iadp"
-        tag: "21.0.1"
+        tag: "21.0.1-IF001"
         pull_policy: "IfNotPresent"
 ## Overwrite the default SHA digest for Content Analyzer containers by providing the SHA for each containers below.  To use SHA digest, you must comment out the `tag` parameter or leave it blank and you must use entilement registry as the repository.
         processing_digest:
@@ -1643,9 +1643,6 @@ spec:
         deep_learning:
       # The max of retrying for CA deployment verification task until all the pods are in Ready status. A delay of 20 seconds between each attempt.  Default will be 90 if blank
       retries: "90"
-      # Timeout for Content Analyzer's ocr_extraction, classifyprocess, processing, updatefiledetail components.  Default will be 300 seconds if blank
-      celery:
-        process_timeout: 300
       # ACA configuration PVC setting
       configs:
         claimname: "sp-config-pvc"

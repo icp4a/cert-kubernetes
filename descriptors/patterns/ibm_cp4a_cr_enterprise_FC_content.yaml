@@ -1031,7 +1031,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-309-icn-if002
+      tag: ga-309-icn-if003
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -1424,7 +1424,7 @@ spec:
       replica_count: 1
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: ga-5215-ier-if002
+        tag: ga-5215-ier-if003
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads

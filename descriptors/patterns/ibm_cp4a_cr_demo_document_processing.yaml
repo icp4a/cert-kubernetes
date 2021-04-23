@@ -101,23 +101,23 @@ spec:
       cds:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/cds
-          tag: 21.0.1
+          tag: 21.0.1-IF001
       cdra:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/cdra
-          tag: 21.0.1
+          tag: 21.0.1-IF001
       cpds:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/cpds
-          tag: 21.0.1
+          tag: 21.0.1-IF001
       viewone:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/viewone
-          tag: 21.0.1
+          tag: 21.0.1-IF001
       gitgateway:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/gitgateway
-          tag: 21.0.1
+          tag: 21.0.1-IF001
       mongo:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/mongo
@@ -129,7 +129,7 @@ spec:
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-309-icn-if002
+      tag: ga-309-icn-if003
 
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########

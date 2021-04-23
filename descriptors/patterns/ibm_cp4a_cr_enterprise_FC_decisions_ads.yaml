@@ -18,7 +18,7 @@ metadata:
     app.kubernetes.io/name: ibm-dba
     release: 21.0.1
 spec:
-  appVersion: 21.0.1
+  appVersion: 21.0.1.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept" 
   ibm_license: ""
@@ -161,7 +161,7 @@ spec:
     rr_integration:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
-        tag: 21.0.1
+        tag: 21.0.1-IF001
 
       resources:
         requests:
@@ -201,7 +201,7 @@ spec:
     front:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-front
-        tag: 21.0.1
+        tag: 21.0.1-IF001
 
       replica_count: 1
       resources:
@@ -215,7 +215,7 @@ spec:
     download_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-download
-        tag: 21.0.1
+        tag: 21.0.1-IF001
 
       replica_count: 2
       resources:
@@ -229,7 +229,7 @@ spec:
     rest_api:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-restapi
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       replica_count: 2
 
       resources:
@@ -243,7 +243,7 @@ spec:
     credentials_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-credentials
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       replica_count: 2
 
       resources:
@@ -257,7 +257,7 @@ spec:
     git_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       replica_count: 2
 
       persistence:
@@ -280,7 +280,7 @@ spec:
     parsing_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-parsing
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       replica_count: 2
 
       resources:
@@ -294,7 +294,7 @@ spec:
     run_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-run
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       replica_count: 2
 
       resources:
@@ -308,7 +308,7 @@ spec:
     embedded_build_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-build
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       replica_count: 2
 
       persistence:
@@ -331,7 +331,7 @@ spec:
     embedded_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       replica_count: 2
 
       # Whether the decision runtime should include an exception stack trace when an incident occurs.
@@ -364,7 +364,7 @@ spec:
     decision_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       replica_count: 2
 
       # Whether the decision runtime should include an exception stack trace when an incident occurs.

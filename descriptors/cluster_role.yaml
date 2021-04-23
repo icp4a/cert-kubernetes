@@ -29,19 +29,12 @@ rules:
   - patch
   - update
   - watch
-  - use
 - apiGroups:
-  - ""
+  - security.openshift.io
   resources:
   - securitycontextconstraints
-  - namespaces
   verbs:
-  - create
-  - get
-  - list
-  - patch
-  - update
-  - watch
+  - use
 - apiGroups:
   - icp4a.ibm.com
   resources:

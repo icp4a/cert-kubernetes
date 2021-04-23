@@ -29,8 +29,8 @@
 ######## Constants 
 # Provide defaults that can be override by passed in params
 #runtimeUmsUrl=https://ums-sso.adp.ibm.com
-#runtimeUmsClientId=OcPtsBMyLOjYVPqChXTd
-#runtimeUmsClientSecret=EXwj3D0tp4HaugA2sQT2
+#runtimeUmsClientId=XXXXXXXX
+#runtimeUmsClientSecret=XXXXXXXXX
 #runtimeUser=Admin
 #runtimePwd=password
 

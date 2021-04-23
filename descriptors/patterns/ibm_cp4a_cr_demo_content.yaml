@@ -80,7 +80,7 @@ spec:
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-309-icn-if002
+      tag: ga-309-icn-if003
      
   ########################################################################
   ########   IBM Enterprise Records configuration      ########
@@ -88,7 +88,7 @@ spec:
   ier_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ier/ier
-      tag: ga-5215-ier-if002
+      tag: ga-5215-ier-if003
 
  ########################################################################
  ########             IBM Content Collector for SAP              ########

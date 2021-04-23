@@ -18,7 +18,7 @@ metadata:
     app.kubernetes.io/name: ibm-dba
     release: 21.0.1
 spec:
-  appVersion: 21.0.1
+  appVersion: 21.0.1.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -49,7 +49,7 @@ spec:
     ## it should be "cp.icr.io".  Otherwise, it will be a local docker registry.
     sc_image_repository: cp.icr.io
 
-    ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is required
+    ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is required. Not supported on OCP and ROKS.
     sc_run_as_user:
 
     images:
@@ -408,6 +408,10 @@ spec:
     admin_secret_name: "{{ meta.name }}-baw-admin-secret"
     ## Whether to use the built-in monitoring capability.
     monitor_enabled: false
+    federated_portal:
+      # Set up the content security policy (CSP) by adding your Workflow Server address to your Workflow Authoring
+      # Content security policy additional origins for federate on container BAW systems, e.g ["on-container-baw1-hostname:port","on-container-baw2-hostname:port"]
+      content_security_policy_additional_origins: []
     ## External connection timeout.
     external_connection_timeout: ""
 
@@ -434,35 +438,35 @@ spec:
       ## Workflow Authoring image repository URL.
       repository: cp.icr.io/cp/cp4a/bas/workflow-authoring
       ## Image tag for Workflow Authoring container.
-      tag: 21.0.1
+      tag: 21.0.1-IF001
       ## Pull policy for Workflow Authoring container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pullPolicy: IfNotPresent
     pfs_bpd_database_init_job:
       ## Database initialization image repository URL for Process Federation Server.
       repository: cp.icr.io/cp/cp4a/baw/pfs-bpd-database-init-prod
       ## Database initialization image repository tag for Process Federation Server.
-      tag: 21.0.1
+      tag: 21.0.1-IF001
       ## Pull policy for Process Federation Server database initialization image. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pullPolicy: IfNotPresent
     upgrade_job:
       ## Workflow Authoring database handling image repository URL.
       repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
       ## Workflow Authoring database handling image repository tag.
-      tag: 21.0.1
+      tag: 21.0.1-IF001
       ## Pull policy for database handling. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pullPolicy: IfNotPresent
     bas_auto_import_job:
       ## Workflow Authoring Business Automation Studio toolkit init image repository URL.
       repository: cp.icr.io/cp/cp4a/baw/toolkit-installer
       ## Workflow Authoring Business Automation Studio toolkit init image repository tag.
-      tag: 21.0.1
+      tag: 21.0.1-IF001
       ## Pull policy for Workflow Authoring Business Automation Studio toolkit init image. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pullPolicy: IfNotPresent
     ibm_workplace_job:
       ## Workflow Authoring IBM Workplace deployment job image repository URL
       repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
       ## Workflow Authoring IBM Workplace deployment job image repository tag.
-      tag: 21.0.1
+      tag: 21.0.1-IF001
       ## Pull policy for Workflow Authoring IBM Workplace deployment job image. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pull_policy: IfNotPresent
 
@@ -490,12 +494,16 @@ spec:
       ##   dbUser: <DB_USER>
       ##   password: <DB_USER_PASSWORD>
       secret_name: "<Required>"
-      ## Oracle database connection string. If the database type is Oracle, provide this string. For example, jdbc:oracle:thin:@//<oracle_server>:1521/orcl. 
-      jdbc_url:
+      ## Oracle and PostgreSQL database connection string. 
+      ## If the database type is Oracle, provide the Oracle database connection string. For example, jdbc:oracle:thin:@//<oracle_server>:1521/orcl. 
+      ## If the database type is PostgreSQL, this parameter is optional. For example, jdbc:postgresql://<postgresql_server>:5432/<your_database>. This parameter is not required for PostgreSQL if you enter server_name, database_name, and port. If you do not need this parameter, remove it or comment it out.
+      ## In all other cases, remove or comment out this parameter.
+      jdbc_url: "<Required>"
       ## Whether to use custom JDBC drivers. Set to true if you are using Oracle, PostgreSQL, or a special Db2 driver.
       use_custom_jdbc_drivers: false
-      ## Name of the persistent volume claim (PVC) that binds to the persistent volume (PV) where the custom JDBC driver files are stored.
-      custom_jdbc_pvc:
+      ## If use_custom_jdbc_drivers is set to true, input the name of the persistent volume claim (PVC) that binds to the persistent volume (PV) where the custom JDBC driver files are stored.
+      ## If use_custom_jdbc_drivers is set to false, remove or comment out this parameter.
+      custom_jdbc_pvc: "<Required>"
       ## The set of JDBC driver files.
       ## For DB2, it is normally "db2jcc4.jar db2jcc_license_cisuz.jar db2jcc_license_cu.jar".
       ## For Oracle, it is normally "ojdbc8.jar".
@@ -525,7 +533,7 @@ spec:
         ## Image name for content integration container.
         repository: cp.icr.io/cp/cp4a/baw/iaws-ps-content-integration
         ## Image tag for content integration container.
-        tag: 21.0.1
+        tag: 21.0.1-IF001
         ## Pull policy for content integration container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
         pull_policy: IfNotPresent
       ## Domain name for content integration. The value must be the same as initialize_configuration.ic_domain_creation.domain_name.
@@ -543,7 +551,7 @@ spec:
         ## Image name for CASE init job container.
         repository: cp.icr.io/cp/cp4a/baw/workflow-server-case-initialization
         ## Image tag for CASE init job container.
-        tag: 21.0.1
+        tag: 21.0.1-IF001
         ## Pull policy for CASE init job container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
         pull_policy: IfNotPresent
 
@@ -557,6 +565,9 @@ spec:
       object_store_name_tos: "BAWTOS"
       ## Connection point name for Target Object Store.
       connection_point_name_tos: "pe_conn_target"
+      ## Specify the name of the non-XA datasource of Target Object Store (from dc_common_os_datasource_name in the dc_os_datasources section)
+      ## It will not take effect if TOS object store exists in initialize_configuration.ic_obj_store_creation.object_stores.
+      datasource_name_tos: "BAWTOS"
 
       ## Name of the target environment or project area to register with the case components and associate with an IBM Content Navigator desktop.
       target_environment_name: "dev_env_connection_definition"
@@ -622,7 +633,7 @@ spec:
         ## Image name for Java Messaging Service container.
         repository: cp.icr.io/cp/cp4a/baw/jms
         ## Image tag for Java Messaging Service container.
-        tag: 21.0.1
+        tag: 21.0.1-IF001
         ## Pull policy for Java Messaging Service container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
         pull_policy: IfNotPresent
       tls:
@@ -850,7 +861,7 @@ spec:
       image:
         repository: cp.icr.io/cp/cp4a/baw/bui-task-prioritization
         ## Image tag for Intelligent Task Prioritization container
-        tag: "21.0.1"
+        tag: "21.0.1-IF001"
         pull_policy: IfNotPresent
       ## Resource configuration
       resources:
@@ -892,7 +903,7 @@ spec:
           initial_delay_seconds: 40
       image:
         repository: cp.icr.io/cp/cp4a/baw/workforce-insights
-        tag: "21.0.1"
+        tag: "21.0.1-IF001"
         pull_policy: IfNotPresent
       ## Resource configuration
       resources:
@@ -1179,8 +1190,6 @@ spec:
       ## The maximum number of connections allowed for a route when PFS connects to the elasticsearch cluster to call its REST API.
       ## Specify a positive integer. If the provided value is less than or equal to 0, then the default Elasticsearch High Level REST Client value will be used.
       max_connection_per_route: -1
-      ## keep the default value
-      use_iaf: false
 
     ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
     image:
@@ -1188,7 +1197,7 @@ spec:
       ## The default repository is the IBM Entitled Registry.
       repository: cp.icr.io/cp/cp4a/baw/pfs-prod
       ## Process Federation Server image tag
-      tag: "21.0.1"
+      tag: "21.0.1-IF001"
       ## Process Federation Server image pull policy. This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
 
@@ -1370,7 +1379,7 @@ spec:
       ## Elasticsearch image
       repository: cp.icr.io/cp/cp4a/baw/pfs-elasticsearch-prod
       ## Elasticsearch image tag
-      tag: "21.0.1"
+      tag: "21.0.1-IF001"
       ## Elasticsearch image pull policy
       pull_policy: IfNotPresent
     es_init_image:
@@ -1378,14 +1387,14 @@ spec:
       ## This value is only relevant if elasticsearch_configuration.privileged is set to true
       repository: cp.icr.io/cp/cp4a/baw/pfs-init-prod
       ## The image tag for Elasticsearch init container
-      tag: "21.0.1"
+      tag: "21.0.1-IF001"
       ## The pull policy for Elasticsearch init container
       pull_policy: IfNotPresent
     es_nginx_image:
       ## The name of the Nginx docker image to be used by Elasticsearch pods
       repository: cp.icr.io/cp/cp4a/baw/pfs-nginx-prod
       ## The image tag of the Nginx docker image to be used by Elasticsearch pods
-      tag: "21.0.1"
+      tag: "21.0.1-IF001"
       ## The pull policy for the Nginx docker image to be used by Elasticsearch pods
       pull_policy: IfNotPresent
 

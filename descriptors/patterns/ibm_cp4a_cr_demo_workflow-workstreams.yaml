@@ -18,7 +18,7 @@ metadata:
     app.kubernetes.io/name: ibm-dba
     release: 21.0.1
 spec:
-  appVersion: 21.0.1
+  appVersion: 21.0.1.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -70,7 +70,7 @@ spec:
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: ga-309-icn-if002
+      tag: ga-309-icn-if003
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########
   ########################################################################
@@ -86,19 +86,19 @@ spec:
     images:
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: 21.0.1
+        tag: 21.0.1-IF001
     jms_server:
       image:
         repository: cp.icr.io/cp/cp4a/bas/jms
-        tag: 21.0.1
+        tag: 21.0.1-IF001
     playback_server:
       images:
         db_job:
           repository: cp.icr.io/cp/cp4a/bas/solution-server-helmjob-db
-          tag: 21.0.1
+          tag: 21.0.1-IF001
         solution_server:
           repository: cp.icr.io/cp/cp4a/bas/solution-server
-          tag: 21.0.1
+          tag: 21.0.1-IF001
   ########################################################################
   ########      IBM Resource Registry configuration               ########
   ########################################################################
@@ -106,38 +106,38 @@ spec:
     images:
       resource_registry:
         repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-        tag: 21.0.1
+        tag: 21.0.1-IF001
   ########################################################################
   ########   IBM BAW Designer Server configuration  ########
   ########################################################################
   workflow_authoring_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/bas/workflow-authoring
-      tag: 21.0.1
+      tag: 21.0.1-IF001
     pfs_bpd_database_init_job:
       repository: cp.icr.io/cp/cp4a/baw/pfs-bpd-database-init-prod
-      tag: 21.0.1
+      tag: 21.0.1-IF001
     upgrade_job:
       repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
-      tag: 21.0.1
+      tag: 21.0.1-IF001
     ibm_workplace_job:
       repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
-      tag: 21.0.1
+      tag: 21.0.1-IF001
     bas_auto_import_job:
       repository: cp.icr.io/cp/cp4a/baw/toolkit-installer
-      tag: 21.0.1
+      tag: 21.0.1-IF001
     content_integration:
       init_job_image:
         repository: cp.icr.io/cp/cp4a/baw/iaws-ps-content-integration
-        tag: 21.0.1
+        tag: 21.0.1-IF001
     case:
       init_job_image:
         repository: cp.icr.io/cp/cp4a/baw/workflow-server-case-initialization
-        tag: 21.0.1
+        tag: 21.0.1-IF001
     jms:
       image:
         repository: cp.icr.io/cp/cp4a/baw/jms
-        tag: 21.0.1
+        tag: 21.0.1-IF001
   ##################################################################################
   ########   IBM Business Automation Machine Learning Server configuration  ########
   ##################################################################################
@@ -145,11 +145,11 @@ spec:
     intelligent_task_prioritization:
       image:
         repository: cp.icr.io/cp/cp4a/baw/bui-task-prioritization
-        tag: "21.0.1"
+        tag: "21.0.1-IF001"
     workforce_insights:
       image:
         repository: cp.icr.io/cp/cp4a/baw/workforce-insights
-        tag: "21.0.1"
+        tag: "21.0.1-IF001"
 
   ########################################################################
   ########   IBM Process Federation Server configuration  ########
@@ -157,17 +157,17 @@ spec:
   pfs_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/baw/pfs-prod
-      tag: 21.0.1
+      tag: 21.0.1-IF001
   ########################################################################
   ########   Elasticsearch configuration  ########
   ########################################################################
   elasticsearch_configuration:
     es_image:
       repository: cp.icr.io/cp/cp4a/baw/pfs-elasticsearch-prod
-      tag: 21.0.1
+      tag: 21.0.1-IF001
     es_init_image:
       repository: cp.icr.io/cp/cp4a/baw/pfs-init-prod
-      tag: 21.0.1
+      tag: 21.0.1-IF001
     es_nginx_image:
       repository: cp.icr.io/cp/cp4a/baw/pfs-nginx-prod
-      tag: 21.0.1
+      tag: 21.0.1-IF001

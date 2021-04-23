@@ -22,7 +22,7 @@ spec:
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
 
-  appVersion: 21.0.1
+  appVersion: 21.0.1.1
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
@@ -49,7 +49,7 @@ spec:
     ## it should be "cp.icr.io".  Otherwise, it will be a local docker registry.
     sc_image_repository: cp.icr.io
 
-    ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is required
+    ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is required. Not supported on OCP and ROKS.
     sc_run_as_user:
 
     images:
@@ -276,7 +276,7 @@ spec:
 
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: ga-309-icn-if002
+      tag: ga-309-icn-if003
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -490,7 +490,7 @@ spec:
       pull_policy: IfNotPresent
       resource_registry:
         repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-        tag: 21.0.1
+        tag: 21.0.1-IF001
     admin_secret_name: resource-registry-admin-secret
     replica_size: 3
     probe:
@@ -541,7 +541,7 @@ spec:
       pull_policy: IfNotPresent
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: 21.0.1
+        tag: 21.0.1-IF001
     #Adjust this one if you created the secret with name other than the default
     admin_secret_name: "{{ meta.name }}-bas-admin-secret"
     #-----------------------------------------------------------------------
@@ -663,7 +663,7 @@ spec:
         ## Image name for Java Messaging Service container
         repository: cp.icr.io/cp/cp4a/bas/jms
         ## Image tag for Java Messaging Service container
-        tag: 21.0.1
+        tag: 21.0.1-IF001
         ## Pull policy for Java Messaging Service container
         pull_policy: IfNotPresent
       tls:
@@ -703,10 +703,10 @@ spec:
         pull_policy: IfNotPresent
         db_job:
           repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-          tag: 21.0.1
+          tag: 21.0.1-IF001
         solution_server:
           repository: cp.icr.io/cp/cp4a/aae/solution-server
-          tag: 21.0.1
+          tag: 21.0.1-IF001
       # If you inputed hostname and port here. They will be used always
       # If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value)
       # Then you don't need to fill the hostname and port. It will use shared_configuration.sc_deployment_hostname_suffix to generate one
@@ -905,24 +905,27 @@ spec:
     # If not set, the BAI pods use the pull secrets from shared_configuration.image_pull_secrets.
     image_pull_secrets:
     - ""
-    sc_deployment_license: "production"
+
     # This section allow to enhance the configuration of Kafka clients.
     # Those parameters are not mandatory.
     kafka:
       # Indicates whether event consumption starts at the "earliest" offset or at the "latest" offset.
       # Setting it to "latest" means that events sent before BAI is running are not processed.
       # If you want to process events sent before BAI is running set this parameter to "earliest".
-      auto_offset_reset: "latest"
+      auto_offset_reset: latest
       # You can provide the name of a ConfigMap that is already deployed to Kubernetes
-      # and contains Kafka Consumer and producer properties.
+      # and contains Kafka Consumer and producer properties. Default: none.
       properties_config_map: ""
-      # The number of seconds before the socket communication with the Kafka server times out.
+      # The number of seconds before the socket communication with the Kafka server times out. Default: 10000
       socket_timeout_ms: 10000
+
     settings:
-      # Set it to true to enable Apache Kafka data egress.
+      # Set it to true to enable Apache Kafka data egress. Default: false.
       egress: true
-      # Set it to true to enable writing events to HDFS.
+      # Set it to true to enable writing events to HDFS. Default: false.
       hdfs: true
+      # URL of an external Kibana OSS. Default: none.
+      external_kibana_url:
       # Provide configuration of Apache Kafka topics.
       # All topics must be prefixed with icp4ba-bai
       # If not set, topics with default names as below are created.
@@ -934,9 +937,9 @@ spec:
     setup:
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-setup
-        tag: 21.0.1
-      # The back-off limit property specifies the number of retries before the setup job is considered failed.
-      backoff_limit: 6
+        tag: 21.0.1-IF001
+      # The back-off limit property specifies the number of retries before the setup job is considered failed. Default: 6.
+      backoff_limit: 7
       resources:
         requests:
           # The minimum memory required, including JVM heap and file system cache, to start the setup pod.
@@ -946,16 +949,12 @@ spec:
         limits:
           # The maximum memory, including JVM heap and file system cache, to allocate to the setup pod.
           memory: "120Mi"
-      # The runAsUser value for the security context of the setup pod.
-      # This is usually a numeric value that corresponds to a user ID.
-      # If not set, the value of shared_configuration.sc_run_as_user is used as a default value.
-      run_as_user: "{{ shared_configuration.sc_run_as_user }}"
 
     # The BAI Administration service. Provides business data anonymization services for HDFS storage.
     admin:
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-admin
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       # Supported values are ClusterIP and NodePort. Default: ClusterIP.
       service_type: NodePort
       # Set this parameter only if serviceType property is set to NodePort.
@@ -966,14 +965,6 @@ spec:
       # The number of Admin service replicas. For High Availability,
       # use at least 2 replicas.
       replicas: 2
-      # The username to the administration service API.
-      username: admin
-      # The password to the administration service API. It is recommended to use a randomly-generated password.
-      password: passw0rd
-      # The runAsUser value for the security context of the admin pod.
-      # This is usually a numeric value that corresponds to a user ID.
-      # If not set, the value of shared_configuration.sc_run_as_user is used as a default value.
-      run_as_user: "{{ shared_configuration.sc_run_as_user }}"
       # Optional: Enables SSL with an existing certificate for automatic creation of OpenShift routes.
       # If you don't want to provide an external TLS certificate, leave this empty, the operator will generate one for you.
       external_tls_secret_name: "{{ meta.name }}-bai-admin-external-tls-secret"
@@ -984,7 +975,7 @@ spec:
     management:
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-management
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       # You can use this parameter to customize the hostname of the management service route.
       # If not set, the value of shared_configuration.sc_deployment_hostname_suffix is used.
       hostname: "management.bai.{{ shared_configuration.sc_deployment_hostname_suffix }}"
@@ -1007,23 +998,65 @@ spec:
       existing_claim_name: ""
 
     flink:
-      # The logging level for the Flink event processor. Default: info.
-      log_level: 'info'
-      # The total memory allocation for Apache Flink task managers (in megabytes).
-      task_manager_memory: 1536
-      # The interval between checkpoints of an Apache Flink jobs (in milliseconds).
+      # Use this parameter to increase log verbosity when Flink jobs process events from custom sources through the event forwarder.
+      # Valid values: info and trace. Default: info
+      log_level: trace
+      # Set this parameter to true to increase log verbosity when Flink jobs process fixed-format events.
+      # Valid values: true and false. Defaut: false
+      verbose_logs: true
+
+      # The total size of the Flink task manager process.
+      # Corresponding Flink parameter: taskmanager.memory.process.size
+      # Valid units: https://ci.apache.org/projects/flink/flink-docs-release-1.11/api/java/org/apache/flink/configuration/MemorySize.MemoryUnit.html
+      # Default: 1728mb
+      task_manager_memory: '1728mb'
+      # The total size of the Apache Flink job manager process.
+      # Corresponding Flink parameter: jobmanager.memory.process.size
+      # Valid units: https://ci.apache.org/projects/flink/flink-docs-release-1.11/api/java/org/apache/flink/configuration/MemorySize.MemoryUnit.html
+      # Default: 1728mb
+      job_manager_memory: '1728mb'
+      # The number of CPUs that are used by Flink task managers (in CPU units).
+      # Corresponding Flink parameter: kubernetes.taskmanager.cpu
+      # Default: 1
+      task_manager_cpu: 1
+
+      # The parameters below configure the memory and CPU requests and limits at Kubernetes level.
+      # For the valid units of memory requests and limits,
+      # see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#meaning-of-memory.
+      # For the valid units of CPU requests and limits,
+      # see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#meaning-of-cpu.
+      # The default values are those included below.
+      #
+      # The memory request for pods of Apache Flink task managers.
+      task_manager_memory_request: '1728Mi'
+      # The memory limit for pods of Flink task managers.
+      task_manager_memory_limit: '1728Mi'
+      # The CPU request for pods of Apache Flink task managers.
+      task_manager_cpu_request: 1
+      # The CPU limit for pods of Apache Flink task managers.
+      task_manager_cpu_limit: 1
+      # The memory request for pods of Apache Flink job managers.
+      job_manager_memory_request: '1728Mi'
+      # The memory limit for pods of Apache Flink job managers.
+      job_manager_memory_limit: '1728Mi'
+      # The CPU request for pods of Apache Flink job managers.
+      job_manager_cpu_request: 1
+      # The CPU limit for pods of Apache Flink job managers.
+      job_manager_cpu_limit: 1
+
+      # The interval between checkpoints of an Apache Flink jobs (in milliseconds). Default: 5000
       job_checkpointing_interval: 5000
       # The name of a ConfigMap object that is already deployed to Kubernetes and contains RocksDB properties for Flink.
       # Optional. Default: none.
       rocks_db_properties_config_map: ""
-      # The batch size for bucketing sink storage (in bytes).
+      # The batch size for bucketing sink storage (in bytes). Default: 268435456
       batch_size: 268435456
-      # How frequently the job checks for inactive buckets (in milliseconds)
+      # How frequently the job checks for inactive buckets (in milliseconds). Default: 300000.
       check_interval: 300000
+ 
       # The minimum amount of time after which a bucket that does not receive
-      # new data is considered inactive (in milliseconds).
+      # new data is considered inactive (in milliseconds). Default: 900000.
       bucket_threshold: 900000
-      # Indicates whether the Flink storage directory needs to be initialized.
       # The HDFS URL for long-term storage.
       # Example:
       # storage_bucket_url: "hdfs://<node_name>:/bucket_path"
@@ -1031,6 +1064,8 @@ spec:
       # Indicates the user for Flink processors to access HDFS. Default: bai.
       # However, when Kerberos is enabled with HDFS, processing jobs access HDFS with the name of the Kerberos principal.
       hadoop_user: bai
+
+      # Indicates whether the Flink storage directory needs to be initialized.
       # The default value is true when shared_configuration.sc_deployment_platform parameter is ROKS, false otherwise.
       init_storage_directory: false
 
@@ -1042,7 +1077,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-ingestion
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1058,7 +1093,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-bpmn
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1081,7 +1116,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-bawadv
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1098,7 +1133,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-icm
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1115,7 +1150,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-odm
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1132,7 +1167,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-content
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1148,7 +1183,7 @@ spec:
     event_forwarder:
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-event-forwarder
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       recovery_path: ""
       # The number of parallel instances (task managers) to use for running the processing job.
       # For High Availability, use at least 2 parallel instances.
@@ -1182,13 +1217,13 @@ spec:
     init_image:
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-init
-        tag: 21.0.1
+        tag: 21.0.1-IF001
 
     # Business data dashboarding.
     business_performance_center:
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-monitoring-app
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       # Set to false to disable Business Performance Center. Default: true.
       install: true
       # The name of a secret that is already deployed to Kubernetes,
@@ -1204,11 +1239,11 @@ spec:
       init_keytool:
         image:
           repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer
-          tag: 21.0.1
+          tag: 21.0.1-IF001
       init_ums:
         image:
           repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
-          tag: 21.0.1
+          tag: 21.0.1-IF001
       oidc:
         # The internal communication with single-sign-on (SSO) service.
         # If UMS installation can be reach internally, set this parameter to the UMS SSO service name
@@ -1243,10 +1278,6 @@ spec:
       # In this case, users still see the same Business Performance Center window but needs to log in
       # again before they can resume working with Business Performance Center.
       logout_redirect_uris: ""
-      # For the security context of the Business Performance Center pod,
-      # this parameter is usually a numeric value that corresponds to a user ID.
-      # If not set, the value of shared_configuration.sc_run_as_user is used as a default value.
-      run_as_user: "{{ shared_configuration.sc_run_as_user }}"
       # You can use this parameter to customize the hostname of the Business Performance Center route.
       # If not set, the value of shared_configuration.sc_deployment_hostname_suffix is used.
       hostname: "business-performance-center.bai.{{ shared_configuration.sc_deployment_hostname_suffix }}"
@@ -1286,10 +1317,10 @@ spec:
       pull_policy: IfNotPresent
       solution_server:
         repository: cp.icr.io/cp/cp4a/aae/solution-server
-        tag: 21.0.1
+        tag: 21.0.1-IF001
       db_job:
         repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-        tag: 21.0.1
+        tag: 21.0.1-IF001
     # If you inputed hostname and port here. They will be used always
     # If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value)
     # Then you don't need to fill the hostname and port. It will use shared_configuration.sc_deployment_hostname_suffix to generate one

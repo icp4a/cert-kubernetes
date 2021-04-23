@@ -22,7 +22,7 @@ spec:
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
-
+  appVersion: 21.0.1.1
   #################################################################################################################
   ##  The contents of this template CR file reflect only the specific parameters and configuration
   ##  settings applicable to the represented ICP4A capability.
@@ -92,7 +92,7 @@ spec:
     # Allow to specify which version of ODM you want to deploy.
     # Supported version > 19.0.2
     # If omitted the latest version will be used.
-    version: 21.0.1
+
     image:
       # Specify to override the tag docker images in case of an interim fix.
       tag: 21.0.1

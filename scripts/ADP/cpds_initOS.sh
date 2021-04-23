@@ -1,5 +1,5 @@
 #!/bin/bash
-# cpds_initStat.sh: script to initialize ObjectStore for deployment
+# cpds_initStat.sh: script to initialize or update/upgrade an ObjectStore for deployment
 #
 # Runtime Parameters required which are included in the cpds.properies sample file:
 #    runtimeUmsUrl, runtimeUmsClientIdSecret, runtimeUser, runtimePwd=password,runtimeCpdsUrl,runtimeObjectStore
@@ -12,8 +12,8 @@
 ######## Constants 
 # Provide defaults that can be override by passed in params
 #runtimeUmsUrl=https://ums-sso.adp.ibm.com
-#runtimeUmsClientId=OcPtsBMyLOjYVPqChXTd
-#runtimeUmsClientSecret=EXwj3D0tp4HaugA2sQT2
+#runtimeUmsClientId=XXXXXXXX
+#runtimeUmsClientSecret=XXXXXXXX
 #runtimeUser=Admin
 #runtimePwd=password
 

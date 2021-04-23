@@ -22,8 +22,8 @@
 #
 # examples:
 #         runtimeUmsUrl=https://ums-sso.adp.ibm.com
-#         runtimeUmsClientId=OcPtsBMyLOjYVPqChXTd
-#         runtimeUmsClientSecret=EXwj3D0tp4HaugA2sQT2
+#         runtimeUmsClientId=XXXXXXXXXXX
+#         runtimeUmsClientSecret=XXXXXXXXXXX
 #         runtimeUser=Admin
 #         runtimePwd=password
 #
@@ -55,8 +55,8 @@ runtimePwd=<Password>
 #
 # examples:
 #         devUrl=https://ums-sso.development.adp.ibm.com
-#         devUmsClientId=DfPtsBMyLOjYVPqChIKL
-#         devUmsClientSecret=Dwvj3D0tp4HaugA2s22a
+#         devUmsClientId=XXXXXXXXXX
+#         devUmsClientSecret=XXXXXXXXXX
 #         devUser=DevAdmin
 #         devPwd=password
 #

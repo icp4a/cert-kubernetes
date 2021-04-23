@@ -20,9 +20,9 @@ TEMP_FOLDER=${CUR_DIR}/.tmp
 INSTALL_BAI=""
 CRD_FILE=${PARENT_DIR}/descriptors/ibm_cp4a_crd.yaml
 SA_FILE=${PARENT_DIR}/descriptors/service_account.yaml
-CLUSTER_ROLE_FILE=${PARENT_DIR}/descriptors/cluster_role.yaml
-CLUSTER_ROLE_BINDING_FILE=${PARENT_DIR}/descriptors/cluster_role_binding.yaml
-CLUSTER_ROLE_BINDING_FILE_TEMP=${TEMP_FOLDER}/.cluster_role_binding.yaml
+# CLUSTER_ROLE_FILE=${PARENT_DIR}/descriptors/cluster_role.yaml
+# CLUSTER_ROLE_BINDING_FILE=${PARENT_DIR}/descriptors/cluster_role_binding.yaml
+# CLUSTER_ROLE_BINDING_FILE_TEMP=${TEMP_FOLDER}/.cluster_role_binding.yaml
 ROLE_FILE=${PARENT_DIR}/descriptors/role.yaml
 ROLE_BINDING_FILE=${PARENT_DIR}/descriptors/role_binding.yaml
 BRONZE_STORAGE_CLASS=${PARENT_DIR}/descriptors/cp4a-bronze-storage-class.yaml
@@ -57,6 +57,14 @@ if [[ $RUNTIME_MODE == "dev" ]];then
 else
     OLM_CATALOG=${PARENT_DIR}/descriptors/op-olm/catalog_source.yaml
 fi
+
+# the source is different for stage of development and final public
+if [[ $RUNTIME_MODE == "dev" ]]; then
+    online_source="ibm-cp4a-operator-catalog"
+else
+    online_source="ibm-operator-catalog"
+fi
+
 OLM_OPT_GROUP=${PARENT_DIR}/descriptors/op-olm/operator_group.yaml
 OLM_SUBSCRIPTION=${PARENT_DIR}/descriptors/op-olm/subscription.yaml
 
@@ -109,9 +117,7 @@ function collect_input() {
     done
     if [[ "$PLATFORM_SELECTED" == "OCP" || "$PLATFORM_SELECTED" == "ROKS" ]]; then
         user_name=""
-        if [[ $SCRIPT_MODE != "OLM" ]];then
-            select_user
-        fi
+        select_user
     fi
 }
 
@@ -180,15 +186,15 @@ function prepare_install() {
     if [[ "$PLATFORM_SELECTED" == "OCP" || "$PLATFORM_SELECTED" == "ROKS" ]]; then
         ${CLI_CMD} project ${project_name} >> ${LOG_FILE}
     fi
-    sed -e "s/<NAMESPACE>/${project_name}/g" ${CLUSTER_ROLE_BINDING_FILE} > ${CLUSTER_ROLE_BINDING_FILE_TEMP}
+    # sed -e "s/<NAMESPACE>/${project_name}/g" ${CLUSTER_ROLE_BINDING_FILE} > ${CLUSTER_ROLE_BINDING_FILE_TEMP}
     echo
     echo -ne "Creating the custom resource definition (CRD) and a service account that has the permissions to manage the resources..."
     ${CLI_CMD} apply -f ${CRD_FILE} -n ${project_name} --validate=false >/dev/null 2>&1
     echo " Done!"
-    if [[ "$DEPLOYMENT_TYPE" == "demo" ]];then
-        ${CLI_CMD} apply -f ${CLUSTER_ROLE_FILE} --validate=false >> ${LOG_FILE}
-        ${CLI_CMD} apply -f ${CLUSTER_ROLE_BINDING_FILE_TEMP} --validate=false >> ${LOG_FILE}
-    fi
+    # if [[ "$DEPLOYMENT_TYPE" == "demo" ]];then
+    #     ${CLI_CMD} apply -f ${CLUSTER_ROLE_FILE} --validate=false >> ${LOG_FILE}
+    #     ${CLI_CMD} apply -f ${CLUSTER_ROLE_BINDING_FILE_TEMP} --validate=false >> ${LOG_FILE}
+    # fi
     ${CLI_CMD} apply -f ${SA_FILE} -n ${project_name} --validate=false >> ${LOG_FILE}
     ${CLI_CMD} apply -f ${ROLE_FILE} -n ${project_name} --validate=false >> ${LOG_FILE}
     
@@ -281,7 +287,6 @@ function apply_cp4a_operator(){
 }
 
 function prepare_olm_install() {
-    local online_source="ibm-operator-catalog"
     local maxRetry=20
 
     if ${CLI_CMD} get catalogsource -n openshift-marketplace | grep $online_source; then
@@ -306,7 +311,7 @@ function prepare_olm_install() {
     for ((retry=0;retry<=${maxRetry};retry++)); do        
       echo "Waiting for CP4A Operator Catalog pod initialization"         
        
-      isReady=$(${CLI_CMD} get pod -n openshift-marketplace --no-headers | grep ibm-operator-catalog | grep "Running")
+      isReady=$(${CLI_CMD} get pod -n openshift-marketplace --no-headers | grep $online_source | grep "Running")
       if [[ -z $isReady ]]; then
         if [[ $retry -eq ${maxRetry} ]]; then 
           echo "Timeout Waiting for  CP4BA Operator Catalog pod to start"
@@ -336,6 +341,7 @@ function prepare_olm_install() {
     fi
 
     sed "s/REPLACE_NAMESPACE/$project_name/g" ${OLM_SUBSCRIPTION} > ${OLM_SUBSCRIPTION_TMP}
+    ${YQ_CMD} w -i ${OLM_SUBSCRIPTION_TMP} spec.source "$online_source"
     ${CLI_CMD} apply -f ${OLM_SUBSCRIPTION_TMP}
     # sed <"${OLM_SUBSCRIPTION}" "s|REPLACE_NAMESPACE|${project_name}|g; s|REPLACE_CHANNEL_NAME|stable|g" | oc apply -f -
     if [ $? -eq 0 ]
@@ -360,10 +366,36 @@ function prepare_olm_install() {
         fi
       else
         echo "CP4A operator is running $isReady"
-        copy_jdbc_driver
+        if [[ "$DEPLOYMENT_TYPE" == "enterprise" && "$RUNTIME_MODE" == "dev" ]]; then
+            copy_jdbc_driver
+        fi
         break
       fi
     done
+
+    echo
+    echo -ne Adding the user ${user_name} to the ibm-cp4a-operator role...
+    role_name_olm=$(${CLI_CMD} get role -n "$project_name" --no-headers|grep ibm-cp4a-operator.v|awk '{print $1}')
+    if [[ -z $role_name_olm ]]; then
+        echo "No role found for CP4BA operator"
+        exit 1     
+    else
+        ${CLI_CMD} project ${project_name} >> ${LOG_FILE}
+        ${CLI_CMD} adm policy add-role-to-user edit ${user_name} >> ${LOG_FILE}
+        ${CLI_CMD} adm policy add-role-to-user registry-editor ${user_name} >> ${LOG_FILE}
+        ${CLI_CMD} adm policy add-role-to-user $role_name_olm ${user_name} >/dev/null 2>&1
+        ${CLI_CMD} adm policy add-role-to-user $role_name_olm ${user_name} >> ${LOG_FILE}
+        if [[ "$DEPLOYMENT_TYPE" == "demo" ]];then
+            cluster_role_name_olm=$(${CLI_CMD} get clusterrole|grep ibm-cp4a-operator.v|sort -t"t" -k1r|awk 'NR==1{print $1}')
+            if [[ -z $cluster_role_name_olm ]]; then
+                echo "No cluster role found for CP4BA operator"
+                exit 1     
+            else
+                ${CLI_CMD} adm policy add-cluster-role-to-user $cluster_role_name_olm ${user_name} >> ${LOG_FILE}
+            fi
+        fi
+        echo "Done!"
+    fi
 
     echo
     echo -ne Label the default namespace to allow network policies to open traffic to the ingress controller using a namespaceSelector...
@@ -386,7 +418,7 @@ function check_existing_sc(){
 }
 
 function validate_docker_podman_cli(){
-    if [[ $OCP_VERSION == "3.11" || "$machine" == "Mac" ]];then
+    if [[ "$machine" == "Mac" || $PLATFORM_SELECTED == "other" ]];then
         which docker &>/dev/null
         [[ $? -ne 0 ]] && \
             echo -e  "\x1B[1;31mUnable to locate docker, please install it first.\x1B[0m" && \
@@ -517,7 +549,10 @@ function create_secret_entitlement_registry(){
 }
 
 function get_storage_class_name(){
-
+    if [[ $PLATFORM_SELECTED == "other" || $PLATFORM_SELECTED == "OCP" ]]; then
+        check_existing_sc
+    fi
+    check_storage_class
     # For dynamic storage classname
     storage_class_name=""
     sc_slow_file_storage_classname=""
@@ -614,7 +649,7 @@ function allocate_operator_pvc_olm_or_cncf(){
     fi
 }
 
-function display_storage_classes_ocp() {
+function display_storage_classes() {
     echo
     echo "Storage classes are needed to run the deployment script. For the "Demo" deployment scenario, you may use one (1) storage class.  For an "Enterprise" deployment, the deployment script will ask for three (3) storage classes to meet the "slow", "medium", and "fast" storage for the configuration of CP4A components.  If you don't have three (3) storage classes, you can use the same one for "slow", "medium", or fast.  Note that you can get the existing storage class(es) in the environment by running the following command: oc get storageclass. Take note of the storage classes that you want to use for deployment. "
 	${CLI_CMD} get storageclass
@@ -764,10 +799,6 @@ function display_installationprompt(){
 
 
 function check_storage_class() {
-    if  [[ $PLATFORM_SELECTED == "OCP" ]];
-    then
-        display_storage_classes_ocp
-    fi
     if [[ $PLATFORM_SELECTED == "ROKS" ]];
     then
         # echo ""
@@ -776,7 +807,7 @@ function check_storage_class() {
 
        create_storage_classes_roks
     fi
-
+    display_storage_classes
 }
 
 function apply_no_root_squash() {
@@ -790,7 +821,7 @@ fi
 
 function create_storage_classes_roks() {
     echo
-    echo -ne "\x1B[1mCreate storage classes for deployment: \x1B[0m"
+    echo -ne "\x1B[1mCreate storage classes for deployment... \x1B[0m"
     ${CLI_CMD} apply -f ${BRONZE_STORAGE_CLASS} --validate=false >/dev/null 2>&1
     ${CLI_CMD} apply -f ${SILVER_STORAGE_CLASS} --validate=false >/dev/null 2>&1
     ${CLI_CMD} apply -f ${GOLD_STORAGE_CLASS} --validate=false >/dev/null 2>&1
@@ -808,10 +839,11 @@ function display_storage_classes_roks() {
 }
 
 function check_platform_version(){
-    currentver=$(kubectl  get nodes | awk 'NR==2{print $5}')
+    currentver=$(${CLI_CMD}  get nodes | awk 'NR==2{print $5}')
     requiredver="v1.17.1"
     if [ "$(printf '%s\n' "$requiredver" "$currentver" | sort -V | head -n1)" = "$requiredver" ]; then
-        PLATFORM_VERSION="4.4OrLater"  
+        PLATFORM_VERSION="4.4OrLater"
+        OCP_VERSION="4.4OrLater"
     else
         # PLATFORM_VERSION="3.11"
         PLATFORM_VERSION="4.4OrLater"
@@ -1033,7 +1065,6 @@ function select_ocp_olm(){
         esac
     done
 }
-
 
 function get_local_registry_server(){
     # For internal/external Registry Server
@@ -1293,9 +1324,10 @@ clear
 #select_ocp_olm
 select_platform
 validate_cli
-check_platform_version
+if [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]]; then
+    check_platform_version
+fi
 select_deployment_type
-check_existing_sc
 collect_input
 ${CLI_CMD} project $project_name >/dev/null 2>&1
 # create_project
@@ -1311,11 +1343,9 @@ else
     validate_docker_podman_cli
     if [[ $PLATFORM_SELECTED == "other" ]]; then
         get_entitlement_registry
-        create_secret_entitlement_registry
     fi
     if [[ "$use_entitlement" == "no" ]]; then
         verify_local_registry_password
-        create secret docker-registry
     fi   
     get_storage_class_name
     if [[ "$use_entitlement" == "yes" ]]; then
@@ -1330,7 +1360,7 @@ else
 fi
 
 # create_scc
-check_storage_class
+
 apply_no_root_squash
 
 if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]];

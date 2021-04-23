@@ -24,8 +24,6 @@ OLM_CATALOG_TMP=${TEMP_FOLDER}/.catalog_source.yaml
 OLM_OPT_GROUP_TMP=${TEMP_FOLDER}/.operator_group.yaml
 OLM_SUBSCRIPTION_TMP=${TEMP_FOLDER}/.subscription.yaml
 
-
-OLM_CATALOG=${PARENT_DIR}/descriptors/op-olm/catalog_source.yaml
 OLM_OPT_GROUP=${PARENT_DIR}/descriptors/op-olm/operator_group.yaml
 OLM_SUBSCRIPTION=${PARENT_DIR}/descriptors/op-olm/subscription.yaml
 
@@ -48,7 +46,6 @@ function show_help {
 }
 
 function prepare_olm_install() {
-    local online_source="ibm-operator-catalog"
     local maxRetry=20
     project_name=$NAMESPACE
 
@@ -67,7 +64,7 @@ function prepare_olm_install() {
     for ((retry=0;retry<=${maxRetry};retry++)); do        
       echo "Waiting for CP4A Operator Catalog pod initialization"         
        
-      isReady=$(oc get pod -n openshift-marketplace --no-headers | grep ibm-operator-catalog | grep "Running")
+      isReady=$(oc get pod -n openshift-marketplace --no-headers | grep $online_source | grep "Running")
       if [[ -z $isReady ]]; then
         if [[ $retry -eq ${maxRetry} ]]; then 
           echo "Timeout Waiting for  CP4BA Operator Catalog pod to start"
@@ -97,6 +94,7 @@ function prepare_olm_install() {
     fi
 
     sed "s/REPLACE_NAMESPACE/$project_name/g" ${OLM_SUBSCRIPTION} > ${OLM_SUBSCRIPTION_TMP}
+    ${YQ_CMD} w -i ${OLM_SUBSCRIPTION_TMP} spec.source "$online_source"
     oc apply -f ${OLM_SUBSCRIPTION_TMP}
     # sed <"${OLM_SUBSCRIPTION}" "s|REPLACE_NAMESPACE|${project_name}|g; s|REPLACE_CHANNEL_NAME|stable|g" | oc apply -f -
     if [ $? -eq 0 ]
@@ -131,7 +129,7 @@ then
     show_help
     exit -1
 else
-    while getopts "h?i:p:n:t:a:" opt; do
+    while getopts "h?i:p:n:t:a:m:" opt; do
         case "$opt" in
         h|\?)
             show_help
@@ -147,6 +145,8 @@ else
             ;;
         a)  LICENSE_ACCEPTED=$OPTARG
             ;;
+        m)  RUNTIME_MODE=$OPTARG
+            ;;
         :)  echo "Invalid option: -$OPTARG requires an argument"
             show_help
             exit -1
@@ -155,6 +155,13 @@ else
     done
 fi
 
+if [[ $RUNTIME_MODE == "dev" ]];then
+    OLM_CATALOG=${PARENT_DIR}/descriptors/op-olm/cp4a_catalogsource.yaml
+    online_source="ibm-cp4a-operator-catalog"
+else
+    OLM_CATALOG=${PARENT_DIR}/descriptors/op-olm/catalog_source.yaml
+    online_source="ibm-operator-catalog"
+fi
 [ -f ${CUR_DIR}/../deployoperator.yaml ] && rm ${CUR_DIR}/../deployoperator.yaml
 cp ${CUR_DIR}/../descriptors/operator.yaml ${CUR_DIR}/../deployoperator.yaml
 
