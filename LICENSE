@@ -1,4 +1,4 @@
-The translated license terms can be viewed here: http://www14.software.ibm.com/cgi-bin/weblap/lap.pl?li_formnum=L-ASAY-BXTFZJ
+The translated license terms can be viewed here: http://www14.software.ibm.com/cgi-bin/weblap/lap.pl?li_formnum=L-ASAY-BYZKLB
 
 IMPORTANT: READ CAREFULLY
 
@@ -26,7 +26,7 @@ The Programs listed below are licensed under the following License Information t
 
 Program Name (Program Number):
 
-IBM Cloud Pak for Business Automation 21.0.1 (Evaluation)
+IBM Cloud Pak for Business Automation 21.0.1 SR1 (Evaluation)
 
 The following standard terms apply to Licensee's use of the Program.
 
@@ -37,6 +37,10 @@ The evaluation period begins on the date that Licensee agrees to the terms of th
 Prohibited Uses
 
 Licensee may not use or authorize others to use the Program if failure of the Program could lead to death, bodily injury, or property or environmental damage.
+
+License Terms delivered with Program Not Applicable
+
+The terms of this Agreement supersede and void any electronic "click through," "shrinkwrap," or other licensing terms and conditions included with or accompanying the Program(s).
 
 Multi-Product Install Image
 
@@ -164,7 +168,7 @@ The Programs listed below are licensed under the following License Information t
 
 Program Name (Program Number):
 
-IBM Cloud Pak for Business Automation 21.0.1 (5737-I23)
+IBM Cloud Pak for Business Automation 21.0.1 SR1 (5737-I23)
 
 The following standard terms apply to Licensee's use of the Program.
 
@@ -177,6 +181,10 @@ Licensee is not authorized to use the Program to provide commercial IT services 
 Prohibited Uses
 
 Licensee may not use or authorize others to use the Program if failure of the Program could lead to death, bodily injury, or property or environmental damage.
+
+License Terms delivered with Program Not Applicable
+
+The terms of this Agreement supersede and void any electronic "click through," "shrinkwrap," or other licensing terms and conditions included with or accompanying the Program(s).
 
 Multi-Product Install Image
 
@@ -536,6 +544,8 @@ Red Hat OpenShift Container Platform
 
 "Additional Entitlement Ratio n/m" means that Licensee receives some number ('n') entitlements of the indicated metric for the identified program for every specified number ('m') entitlements of the specified metric for the Program as a whole. The specified ratio does not apply to any entitlements for the Program that are not of the required metric type. The number of entitlements for the identified program is rounded up to a multiple of 'n'.
 
+If the Client has acquired the Program as a result of a trade up or subscription license upgrade for the IBM Cloud Pak for Business Automation and IBM Business Automation Workflow User-Based Trade Up and Subscription License Upgrade Restriction, the Client must measure deployment for the trade up and subscription license upgrade on the user-based metrics of Authorized User, Employee User, External User, Concurrent User, and/or Infrequent User. No other metric shall be used for deployment measurement for license trade up and subscription license upgrade and subsequent additional license to this Program.
+
 Infrequent User
 
 Infrequent User is a unit of measure by which the Program can be licensed. Any Infrequent Users given access to the Program requires an entitlement. An Infrequent User is an Authorized User who accesses the Program not more than one hundred twenty (120) times in any consecutive 12 month period. A single access is comprised of one or more interactions between the Infrequent User and the Program or actions performed on behalf of the Infrequent User by the Program, all within a consecutive 15 minute period.
@@ -554,8 +564,8 @@ Additional IBM DB2 Standard Edition Details
 
 The Supporting Program may use a maximum of 16 processor cores and 128 GB of memory on each physical or virtual server; however, if the Supporting Program is used on a cluster of servers configured to work together using database partitioning or other permitted clustering technology, the Supporting Program may use a maximum of 16 processor cores and 128 GB of memory across all virtual or physical servers in that cluster.
 
-L/N: L-ASAY-BXTFZJ
+L/N: L-ASAY-BYZKLB
 
-D/N: L-ASAY-BXTFZJ
+D/N: L-ASAY-BYZKLB
 
-P/N: L-ASAY-BXTFZJ 
+P/N: L-ASAY-BYZKLB 
