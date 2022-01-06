@@ -1,15 +1,12 @@
 #!/bin/bash
-# @---lm_copyright_start
-# 5737-I23, 5900-A30
-# Copyright IBM Corp. 2018 - 2020. All Rights Reserved.
-# U.S. Government Users Restricted Rights:
-# Use, duplication or disclosure restricted by GSA ADP Schedule
-# Contract with IBM Corp.
-#@---lm_copyright_end
-# NOTES:
-# This script will create a new DB2 database to be used as the Content Analyzer Base database and initialize the database.
-# If you prefer to create your own database, and only want the script to initialize the existing database, 
-# please exit this script and run 'InitBaseDB.sh'."
+##
+## Licensed Materials - Property of IBM
+## 5737-I23
+## Copyright IBM Corp. 2018 - 2021. All Rights Reserved.
+## U.S. Government Users Restricted Rights:
+## Use, duplication or disclosure restricted by GSA ADP Schedule
+## Contract with IBM Corp.
+##
 
 . ./ScriptFunctions.sh
 
@@ -100,9 +97,9 @@ do
 done
 
 if [[ $base_user_already_defined = 1 ]]; then
-  base_pwdconfirmed=1
+ base_pwdconfirmed=1
 else
-  base_pwdconfirmed=0
+ base_pwdconfirmed=0
 fi
 
 while [[ $base_pwdconfirmed -ne 1 ]] # While pwd is not yet received and confirmed (i.e. entered the same time twice)
@@ -173,3 +170,7 @@ sed -i s/\$base_db_user/"$base_db_user"/ sql/CreateBaseTable.sql
 echo
 echo "Running script: sql/CreateBaseTable.sql"
 db2 -stvf sql/CreateBaseTable.sql
+
+echo -e "\x1B[1;32mPlease note down the following information as you will need them to create the ADP database secret later: \x1B[0m"
+echo "BASE_DB_USER="$base_db_user""
+echo "BASE_DB_CONFIG=REPLACE_WITH_YOUR_DB_PASSWORD"

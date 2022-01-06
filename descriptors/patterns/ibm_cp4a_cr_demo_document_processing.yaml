@@ -2,7 +2,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2020. All Rights Reserved.
+# (C) Copyright IBM Corp. 2021. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -16,11 +16,11 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.3
+    release: 21.0.2
 spec:
-  appVersion: 20.0.3.2
+  appVersion: 21.0.2
 
-  ## MUST exist, used to accept ibm license, valid value only can be "accept" 
+  ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
 
   ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
@@ -36,32 +36,35 @@ spec:
 
     ## CP4A patterns or capabilities to be deployed.  This CR represents the "Demo" deployment for the "document_processing" pattern (aka IBM Autoation Document Processing).
     ## The "Demo" deployment will deploy a Development env for the "document_processing" pattern, which consist fo the following components:
-    ##     - cds, cdra, cpds, viewone, Common Git Gateway (git-service and mongodb), cpe, navigator-sso, graphql; 
+    ##     - cds, cdra, cpds, viewone, Common Git Gateway (git-service and mongodb), cpe, navigator-sso, graphql;
     ##     - backend, redis, rabbitmq;
     ##     - extraction (callerapi, pdfprocess, utf8process, ocr-extraction);
     ##     - processing (postprocessing, setup, classifyprocess-classify, processing-extraction, updatefiledetail);
-    ##     - natural_language_extractor; deep learning (???);
+    ##     - natural_language_extractor; deep learning;
     ##     - ums;
     ##     - bastudio, jms, solution-server-helmjob-db, solution-server, dba-etcd;
     sc_deployment_patterns: document_processing
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
-    ## The optional components are: 
+    ## The optional components are:
     ##   - document_processing_designer (indicates the deployment is a development environment)
     ##   - document_processing_runtime (indicates the deployment is a runtime environment)
-    ##   - cmis, css, and es
+    ##   - cmis, css, es, tm
     sc_optional_components: document_processing_designer
 
     ## The deployment type as selected by the user.  Possible values are: demo or enterprise
     sc_deployment_type: demo
-
+    
+    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
+    # sc_deployment_hostname_suffix: "{{ meta.name }}"
+    
     ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that corresponds to a user ID
-    sc_run_as_user: 
+    sc_run_as_user:
 
     ## This is the deployment platform supported for CP4A and the possible values are: ROKS, OCP, and other (which includes all Certified Kubernetes platforms)
-    sc_deployment_platform: 
-        
-    sc_deployment_hostname_suffix: "{{ meta.name }}"
+    sc_deployment_platform:
+
+    
     storage_configuration:
       sc_dynamic_storage_classname: ""
     images:
@@ -77,23 +80,27 @@ spec:
     cpe:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-556-p8cpe-la001
+        tag: ga-557-p8cpe
     css:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: ga-556-p8css-la001
+        tag: ga-557-p8css
     graphql:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: ga-556-p8cgql-if001
+        tag: ga-557-p8cgql
     cmis:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-305-cmis-if003
+        tag: ga-306-cmis
     es:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: ga-309-es-if001
+        tag: ga-3010-es
+    tm:
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/taskmgr
+        tag: ga-3010-tm
     ########################################################################
     ###########   IBM Automation Document Processing configuration  ########
     ########################################################################
@@ -101,27 +108,27 @@ spec:
       cds:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/cds
-          tag: 20.0.3-IF002
+          tag: 21.0.2
       cdra:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/cdra
-          tag: 20.0.3-IF002
+          tag: 21.0.2
       cpds:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/cpds
-          tag: 20.0.3-IF002
+          tag: 21.0.2
       viewone:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/viewone
-          tag: 20.0.3-IF002
+          tag: 21.0.2
       gitgateway:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/gitgateway
-          tag: 20.0.3-IF002
+          tag: 21.0.2
       mongo:
         image:
           repository: cp.icr.io/cp/cp4a/iadp/mongo
-          tag: 4.2.10
+          tag: 4.2.14
 
   ########################################################################
   ########   IBM Business Automation Navigator configuration      ########
@@ -129,7 +136,7 @@ spec:
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-309-icn-if001
+      tag: ga-3010-icn
 
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########
@@ -138,7 +145,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.3-IF002
+        tag: 21.0.2
     teamserver:
       admingroup: "cn=ADPEnvironmentOwners,dc=example,dc=org"
 
@@ -146,11 +153,8 @@ spec:
   ########   IBM Business Automation Content Analyzer configuration   ########
   ############################################################################
   ca_configuration:
-    global:
-      image:
-        tag: "20.0.3-IF002"  
     # Deep Learning configuration
     deeplearning:
       gpu_enabled:  # true or false.  Set it to true if you have a GPU enabled worker nodes
-      nodelabel_key: # The unique node label key/value on the GPU node. For example: ibm-cloud.kubernetes.io/gpu-enabled:true.  Set this value when `gpu_enabled` is set to true
-      nodelabel_value:  # The node label value on the GPU node.  For example: "true". Set this value when `gpu_enabled` is set to true
+      nodelabel_key: # The unique node label key/value on the GPU node. For example: ibm-cloud.kubernetes.io/gpu-enabled:true.  Set this value when `gpu_enabled` is set to true. This must be a string value
+      nodelabel_value:  # The node label value on the GPU node.  For example: "true". Set this value when `gpu_enabled` is set to true.  This must be a string value

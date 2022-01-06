@@ -2,7 +2,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2020. All Rights Reserved.
+# (C) Copyright IBM Corp. 2021. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -16,9 +16,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.3
+    release: 21.0.2
 spec:
-  appVersion: 20.0.3.2
+  appVersion: 21.0.2
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept" 
   ibm_license: ""
@@ -39,7 +39,7 @@ spec:
     sc_deployment_patterns: content
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
-    ## The optional components are: cmis, css (Content Search Services), es (External Share), ier (Enterprise Records) and iccsap (Content Collector for SAP).
+    ## The optional components are: cmis, css (Content Search Services), es (External Share), ier (Enterprise Records), iccsap (Content Collector for SAP) and tm (Task Manager).
     sc_optional_components:
 
     ## The deployment type as selected by the user.  Possible values are: demo, non-production, and production
@@ -50,8 +50,10 @@ spec:
 
     ## This is the deployment platform supported for CP4A and the possible values are: ROKS, OCP, and other (which includes all Certified Kubernetes platforms)
     sc_deployment_platform: 
-        
-    sc_deployment_hostname_suffix: "{{ meta.name }}"
+
+    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
+    # sc_deployment_hostname_suffix:
+    
     storage_configuration:
       sc_dynamic_storage_classname: ""
   ########################################################################
@@ -61,26 +63,30 @@ spec:
     cpe:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-556-p8cpe-la001
+        tag: ga-557-p8cpe
     css:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: ga-556-p8css-la001
+        tag: ga-557-p8css
     graphql:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: ga-556-p8cgql-if001
+        tag: ga-557-p8cgql
     cmis:
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-305-cmis-if003
+        tag: ga-306-cmis
+    tm:
+      image:
+        repository: cp.icr.io/cp/cp4a/fncm/taskmgr
+        tag: ga-3010-tm
   ########################################################################
   ########   IBM Business Automation Navigator configuration      ########
   ########################################################################
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-309-icn-if001
+      tag: ga-3010-icn
      
   ########################################################################
   ########   IBM Enterprise Records configuration      ########
@@ -88,7 +94,7 @@ spec:
   ier_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ier/ier
-      tag: ga-5215-ier-if001
+      tag: ga-521-ier-fp006
 
  ########################################################################
  ########             IBM Content Collector for SAP              ########
@@ -96,4 +102,4 @@ spec:
   iccsap_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: ga-4004-iccsap-if001
+      tag: ga-4004-iccsap-if003

@@ -2,7 +2,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2020. All Rights Reserved.
+# (C) Copyright IBM Corp. 2021. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -16,9 +16,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.3
+    release: 21.0.2
 spec:
-  appVersion: 20.0.3.2
+  appVersion: 21.0.2
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept" 
   ibm_license: ""
@@ -42,8 +42,9 @@ spec:
     ## This is the version of the OCP/ROKS platform and the possible values are: 4.4, 4.5 and 4.6.  This is usually set by the User script and it is
     ## used by the Operator to determine the version to perform the pre-requisites in order to deploy Db2.
     sc_deployment_platform:
-
-    sc_deployment_hostname_suffix: "{{ meta.name }}"
+    
+    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
+    # sc_deployment_hostname_suffix:
 
     storage_configuration:
       ## For 4.4 or Later, the storage class will be provided by the user
@@ -61,7 +62,7 @@ spec:
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: ga-309-icn-if001
+      tag: ga-3010-icn
 
   ########################################################################
   ########      IBM Resource Registry configuration               ########
@@ -70,7 +71,7 @@ spec:
     images:
       resource_registry:
         repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-        tag: 20.0.3-IF002
+        tag: 21.0.2-IF001
 
   ########################################################################
   ########      IBM Business Automation Studio configuration      ########
@@ -79,19 +80,19 @@ spec:
     images:
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: 20.0.3-IF002
+        tag: 21.0.2-IF001
     jms_server:
       image:
         repository: cp.icr.io/cp/cp4a/bas/jms
-        tag: 20.0.3-IF002
+        tag: 21.0.2-IF001
     playback_server:
       images:
         db_job:
           repository: cp.icr.io/cp/cp4a/bas/solution-server-helmjob-db
-          tag: 20.0.3-IF002
+          tag: 21.0.2-IF001
         solution_server:
           repository: cp.icr.io/cp/cp4a/bas/solution-server
-          tag: 20.0.3-IF002
+          tag: 21.0.2-IF001
 
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########
@@ -100,7 +101,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.3-IF002
+        tag: 21.0.2
 
 
   ########################################################################
@@ -117,56 +118,51 @@ spec:
     rr_integration:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
-        tag: 20.0.3-IF002
+        tag: 21.0.2
 
     front:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-front
-        tag: 20.0.3-IF002
+        tag: 21.0.2-IF001
 
     download_service:
       ums_enabled: true
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-download
-        tag: 20.0.3-IF002
+        tag: 21.0.2
 
     rest_api:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-restapi
-        tag: 20.0.3-IF002
+        tag: 21.0.2-IF001
 
     credentials_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-credentials
-        tag: 20.0.3-IF002
+        tag: 21.0.2-IF001
 
     git_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
-        tag: 20.0.3-IF002
+        tag: 21.0.2
 
     parsing_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-parsing
-        tag: 20.0.3-IF002
+        tag: 21.0.2-IF001
 
     run_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-run
-        tag: 20.0.3-IF002
+        tag: 21.0.2-IF001
 
     embedded_build_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-build
-        tag: 20.0.3-IF002
-
-    embedded_runtime_service:
-      image:
-        repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: 20.0.3-IF002
+        tag: 21.0.2-IF001
 
     decision_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: 20.0.3-IF002
+        tag: 21.0.2
 

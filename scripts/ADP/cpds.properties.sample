@@ -5,25 +5,28 @@
 #
 #
 # To find URL links use https://github.ibm.com/dba/cert-kubernetes/blob/master/scripts/cp4a-post-deployment.sh
-#
+#   or from the openshift console Networking->Routes->Location for icp4adeploy-cpds-route and icp4adeploy-ums-sso-route external routes.
+# To find the client id and client secret for the ums check the openshift console, Workloads->Secrets, use values found in
+#    the icp4adeploy-cpds-oidc-secret data values for client_id and client_secret.
+# The ADP_DEPLOYMENT_ENV in the icp4adeploy-cpds-deploy environment value specifies DEV for Development and RUNTIME for runtime.
 #------------------------------------------------------------------------------
-# UMS SSO information for the Test/Staging/Prod (runtime) environment
-# Note: If you are running the script from a Development or Demo environment,
+# UMS SSO information for the runtime (Test/Staging/Prod) environment
+# Note: If you are running the script from a Development environment,
 #       enter the development UMS SSO information here.
 # Input:
-#     runtimeUmsUrl - The UMS-SSO URL associated with the Test/Staging/Prod Environment.
-#     runtimeUmsClientId - The value for this entry is the UMS-SSO Client Id located on the runtime (Test/Staging/Prod) environment.
+#     runtimeUmsUrl - The UMS-SSO URL associated with the runtime environment.
+#     runtimeUmsClientId - The value for this entry is the UMS-SSO Client Id located on the runtime environment.
 #	  runtimeUmsClientSecret - The value for this entry is the UMS-SSO Client Id 
 #                                and UMS-SSO Client Secret for the Content Project Deployment Service
-#                                located on the runtime (Test/Staging/Prod) environment.  
-#	  runtimeUser=A user who is a member of the DocProcessingManagers UMS Team on the Test/Staging/Prod (runtime) Environment.  Note: For deployment the user must be a member 
+#                                located on the runtime environment.  
+#	  runtimeUser=A user who is a member of the DocProcessingManagers UMS Team on the runtime Environment.  Note: For deployment the user must be a member 
 #                  of the DocProcessingManagers or DocProcessingAnalysis UMS Team for a development environment.
 #     runtimePwd=The password for the runtime user
 #
 # examples:
 #         runtimeUmsUrl=https://ums-sso.adp.ibm.com
-#         runtimeUmsClientId=OcPtsBMyLOjYVPqChXTd
-#         runtimeUmsClientSecret=EXwj3D0tp4HaugA2sQT2
+#         runtimeUmsClientId=XXXXXXXXXXXXX
+#         runtimeUmsClientSecret=XXXXXXXXXX
 #         runtimeUser=Admin
 #         runtimePwd=password
 #
@@ -37,9 +40,9 @@ runtimePwd=<Password>
 
 #------------------------------------------------------------------------------
 # UMS SSO information for the Development Environment 
-# The information required is for the environment where the Document Processing Designer repository 
-# for the project and version/snapshot to be deployed.
-# Note: This entry is required for Development/Demo/Test/Stating/Prod environments 
+# The information required is for the environment where the design repository is located 
+#        for the project and version/snapshot to be deployed.
+# Note: This entry is required for development and runtime environments 
 #        ONLY if using the project deployment script, cpds_deployProj.sh
 #          
 #
@@ -55,8 +58,8 @@ runtimePwd=<Password>
 #
 # examples:
 #         devUrl=https://ums-sso.development.adp.ibm.com
-#         devUmsClientId=DfPtsBMyLOjYVPqChIKL
-#         devUmsClientSecret=Dwvj3D0tp4HaugA2s22a
+#         devUmsClientId=XXXXXXXXXX
+#         devUmsClientSecret=XXXXXXXXXX
 #         devUser=DevAdmin
 #         devPwd=password
 #
@@ -69,12 +72,12 @@ devPwd=<Password>
 
 
 #------------------------------------------------------------------------------
-# Content Project Deployment Service Information for the Test/Staging/Prod environment
+# Content Project Deployment Service Information for the runtime environment
 #
 #
 # Input:
-#	runtimeCpdsUrl - The URL of the Content Project Deployment Service in the Test/Staging/Prod environment
-#                    NOTE: If the script is being run for the Development or Demo Environment, enter the 
+#	runtimeCpdsUrl - The URL of the Content Project Deployment Service in the runtime environment
+#                    NOTE: If the script is being run for the Development Environment, enter the 
 #                          Content Project Deployment Service URL for the environment where the Project will be deployed into. 
 #                    
 # examples:
@@ -99,8 +102,8 @@ snapshotVersion=<version>
 
 
 #------------------------------------------------------------------------------
-# Object Store Name for the Test/Staging/Prod Content Processing Engine Object Store Used for the Aria
-# NOTE: If script used for Development or Demo environment, the default Object Store Name is DEVOS1
+# Object Store Name for the runtime Content Platform Engine Object Store used for the runtime environment.
+# NOTE: If script used for Development environment, the Object Store Name is DEVOS1 but others may have been specified similar to the runtime environment. 
 #
 # 
 # Input:
@@ -111,4 +114,43 @@ snapshotVersion=<version>
 #
 
 runtimeObjectStore=<Object Store SymbolicName>
+
+#------------------------------------------------------------------------------
+# Uncomment and assign a proper value to set the Accept-Language header for REST api. 
+# 
+# Input:
+#   languageSelected - Specify the language that client prefers to get back status response
+#		default to en_US if not specify
+# examples:
+#   acceptLanguage=en_US
+#
+acceptLanguage=en_US
+
+#------------------------------------------------------------------------------
+# CleanUpProject options. 
+# 
+# Input:
+#    cleanProjOptions   JSON string option passed in to clean project REST url.
+#						If not specified, default to " \"filterIncludeDocDetails\": false, \"timeOutInSecs\": 10, \"cleanPropertyTemplates\": false ")   
+#    	Description of sub-options in cleanProjOptions string:
+#    		filterIncludeDocDetails - boolean value with default is false.  If true, returns the details of each deleted document. 
+#    		timeOutInSecs -	integer value with default to 10 seconds.  This value limits the number of seconds to clean up the documents of a project. 
+#							If the time is too short, cleanup will not be complete and the API will return a status stating so. User can 
+#							continuously rerun the API until project is deleted. Default is 10 seconds
+#    		cleanPropertyTemplates -boolean value with default to false.  If true, removes the property templates associated with the project.  Note: Property templates may be share with 
+#                            other projects. Property templates can only be delete if NO other projects in that objectStore are using it, otherwise that property is skipped.
+#
+#cleanProjOptions=" \"filterIncludeDocDetails\": false, \"timeOutInSecs\": 10, \"cleanPropertyTemplates\": false "
+
+#------------------------------------------------------------------------------
+# CleanUpTeams options. 
+# 
+# Input:
+#    cleanTeamsOptions   JSON string option passed in to clean team REST url.
+#						If not specified, default to "\"cleanTeams\": true")   
+#    	Description of sub-options in cleanTeamsOptions string:
+#    		cleanTeams -boolean value with default to true.  If true, removes the teams that are NOT referenced in any projects in the Object Store.
+#
+#cleanTeamsOptions="\"cleanTeams\": true"
+
 

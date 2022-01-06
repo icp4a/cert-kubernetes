@@ -14,7 +14,7 @@
 
 #This script is used to collect logs for IBM Business Automation Content Analyzer.
 
-export CA_CONTAINERS="spbackend,callerapi,ocr-extraction,pdfprocess,setup,classifyprocess-classify,processing-extraction,postprocessing,updatefiledetail,utf8process,natural-language-extractor,deep-learning"
+export CA_CONTAINERS="spbackend,callerapi,ocr-extraction,setup,classifyprocess-classify,processing-extraction,postprocessing,updatefiledetail,natural-language-extractor,deep-learning,rabbitmq-ha"
 export TMP_DIR="/tmp/aca"
 echo "======================================="
 
@@ -60,6 +60,14 @@ do
         kubectl exec $aca -- tar -cf /var/www/app/current/$META_NAME-$c.tar /var/log/$META_NAME-$c 2>/dev/null
         echo "Copy log from $aca to $TMP_DIR/$META_NAME-$c"
         kubectl cp $aca:/var/www/app/current/$META_NAME-$c.tar $TMP_DIR/$META_NAME-$c.tar 2>/dev/null
+    elif [[ $c == "rabbitmq-ha" ]]; then
+        echo "======================================="
+        echo "Get the first pod for $c"
+        aca=$(kubectl get po |grep $c | head -1 | awk {'print $1'})
+        echo "Tar up logs in $aca"
+        kubectl exec  $aca -- tar -cf /var/app/$META_NAME-$c.tar /var/log/rabbitmq 2>/dev/null
+        echo "Copy log from $aca to $TMP_DIR/$META_NAME-$c"
+        kubectl cp $aca:/var/app/$META_NAME-$c.tar $TMP_DIR/$META_NAME-$c.tar 2>/dev/null
     else
         echo "======================================="
         echo "Get the first pod for $c"

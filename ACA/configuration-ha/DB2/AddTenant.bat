@@ -1,13 +1,12 @@
+::
+:: Licensed Materials - Property of IBM
+:: 5737-I23
+:: Copyright IBM Corp. 2018 - 2021. All Rights Reserved.
+:: U.S. Government Users Restricted Rights:
+:: Use, duplication or disclosure restricted by GSA ADP Schedule
+:: Contract with IBM Corp.
+::
 @echo off
-REM ************************************************************************************
-REM * @---lm_copyright_start
-REM * 5737-I23, 5900-A30
-REM * Copyright IBM Corp. 2018 - 2020. All Rights Reserved.
-REM * U.S. Government Users Restricted Rights:
-REM * Use, duplication or disclosure restricted by GSA ADP Schedule
-REM * Contract with IBM Corp.
-REM * @---lm_copyright_end
-REM ************************************************************************************
 
 SETLOCAL
 
@@ -68,7 +67,7 @@ IF NOT DEFINED base_db_name SET "base_db_name=CABASEDB"
 set /p base_db_user= "Enter the name of the database user for Content Analyzer Base database. If nothing is entered, we will use the default value 'CABASEUSER' : "
 IF NOT DEFINED base_db_user SET "base_db_user=CABASEUSER"
 
-IF NOT DEFINED rdbmsconnection SET "rdbmsconnection=DSN=%tenant_dsn_name%;UID=%tenant_db_user%;PWD=%tenant_db_pwd%;"
+IF NOT DEFINED rdbmsconnection SET "rdbmsconnection=DSN=%tenant_dsn_name%;UID=%tenant_db_user%;"
 set /p ssl= "Please enter if database is enabled for SSL default is false [Y/N] :"
 if /I "%ssl%" EQU "Y" (
 	SET rdbmsconnection=%rdbmsconnection%Security=SSL;

@@ -4,7 +4,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2020. All Rights Reserved.
+# (C) Copyright IBM Corp. 2021. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -20,14 +20,21 @@ DOCKER_RES_SECRET_NAME="admin.registrykey"
 DOCKER_REG_USER=""
 SCRIPT_MODE=$1
 
-if [[ "$SCRIPT_MODE" == "dev" || "$SCRIPT_MODE" == "review" ]] # During dev, OLM uses stage image repo
+if [[ "$SCRIPT_MODE" == "baw-dev" || "$SCRIPT_MODE" == "dev" || "$SCRIPT_MODE" == "review" ]] # During dev, OLM uses stage image repo
 then
     DOCKER_REG_SERVER="cp.stg.icr.io"
+    if [[ -z $2 ]]; then
+        IMAGE_TAG_DEV="21.0.2-IF001"
+    else
+        IMAGE_TAG_DEV=$2
+    fi
+    IMAGE_TAG_FINAL="21.0.2-IF001"
 else
     DOCKER_REG_SERVER="cp.icr.io"
 fi
 DOCKER_REG_KEY=""
 REGISTRY_IN_FILE="cp.icr.io"
+OPERATOR_IMAGE=${DOCKER_REG_SERVER}/cp/cp4a/icp4a-operator:21.0.2
 
 old_db2="docker.io\/ibmcom"
 old_db2_alpine="docker.io\/alpine"
@@ -80,12 +87,12 @@ function prompt_license(){
 
     if [[ $retVal_baw -eq 0 ]]; then
         echo -e "\x1B[1;31mIMPORTANT: Review the IBM Business Automation Workflow license information here: \n\x1B[0m"
-        echo -e "\x1B[1;31mhttps://github.com/ibmbpm/BAW-Ctnr/blob/20.0.0.2/LICENSE\n\x1B[0m"
+        echo -e "\x1B[1;31mhttp://www14.software.ibm.com/cgi-bin/weblap/lap.pl?li_formnum=L-ASAY-BWYJP4\n\x1B[0m"
         INSTALL_BAW_ONLY="Yes"
     fi
     if [[ $retVal_baw -eq 1 ]]; then
-        echo -e "\x1B[1;31mIMPORTANT: Review the IBM Cloud Pak for Automation license information here: \n\x1B[0m"
-        echo -e "\x1B[1;31mhttps://github.com/icp4a/cert-kubernetes/blob/20.0.3/LICENSE\n\x1B[0m"
+        echo -e "\x1B[1;31mIMPORTANT: Review the IBM Cloud Pak for Business Automation license information here: \n\x1B[0m"
+        echo -e "\x1B[1;31m$PARENT_DIR/LICENSE\n\x1B[0m"
         INSTALL_BAW_ONLY="No"
     fi
 
@@ -97,13 +104,13 @@ function prompt_license(){
             printf "\x1B[1mDo you accept the IBM Business Automation Workflow license (Yes/No, default: No): \x1B[0m"
         fi
         if [[ $retVal_baw -eq 1 ]]; then
-            printf "\x1B[1mDo you accept the IBM Cloud Pak for Automation license (Yes/No, default: No): \x1B[0m"
+            printf "\x1B[1mDo you accept the IBM Cloud Pak for Business Automation license (Yes/No, default: No): \x1B[0m"
         fi
         read -rp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
             printf "\n"
-            echo -e "Starting to Install the Cloud Pak for Automation Operator...\n"
+            echo -e "Starting to Install the Cloud Pak for Business Automation Operator...\n"
             IBM_LICENS="Accept"
             validate_cli
             break
@@ -172,6 +179,29 @@ function containsObjectStore(){
         fi
         ((os_num++))
     done
+}
+
+function getTotalFNCMObjectStore(){
+    object_array=("FNOS1DS" "FNOS2DS" "FNOS3DS" "FNOS4DS" "FNOS5DS" "FNOS6DS" "FNOS7DS" "FNOS8DS" "FNOS9DS" "FNOS10DS")
+    FILE=$1
+    os_index_array=()
+    total_os=0
+    for object_name in "${object_array[@]}"
+    do
+        os_num=0
+        while true; do
+            object_name_tmp=`cat $FILE | ${YQ_CMD} r - spec.datasource_configuration.dc_os_datasources.[$os_num].dc_common_os_datasource_name`
+            if [ -z "$object_name_tmp" ]; then
+                break
+            else
+                if [[ "$object_name" == "$object_name_tmp" ]]; then
+                    os_index_array=( "${os_index_array[@]}" "${os_num}" )
+                fi
+            fi
+            ((os_num++))
+        done
+    done
+    total_os=${#os_index_array[@]}
 }
 
 function containsInitObjectStore(){
@@ -255,27 +285,56 @@ function containsAEInstance(){
     done
 }
 
-function get_baw_mode(){
-    if [ -f "$OPERATOR_FILE" ]; then
-        content_start="$(grep -n "env:" ${OPERATOR_FILE} | head -n 1 | cut -d: -f1)"
-        content_stop="$(tail -n +$content_start < ${OPERATOR_FILE} | grep -n "name: delivery_type" | head -n1 | cut -d: -f1)"
-
-        if [ -z $content_stop ]; then
-            return 1
+function containsICNRepos(){
+    FILE=$1
+    icn_repo_instance_num=0
+    icn_repo_index_array=()
+    while true; do
+        name_tmp=`cat $FILE | ${YQ_CMD} r - spec.initialize_configuration.ic_icn_init_info.icn_repos.[$icn_repo_instance_num].add_repo_id`
+        if [ -z "$name_tmp" ]; then
+            break
         else
-            content_stop=$(( $content_stop + $content_start - 1))
-            baw_mode="$(tail -n +$content_stop < ${OPERATOR_FILE} | grep -n "value: " | head -n1 | cut -d: -f3)"
-            baw_mode=`echo $baw_mode | sed "s/\"//g"`
-            # echo -e "$baw_mode"
-            if [[ "${baw_mode}" == "baw" ]]; then
-                return 0
-            else
-                return 1
-            fi
+            icn_repo_index_array=( "${icn_repo_index_array[@]}" "${icn_repo_instance_num}" )
         fi
+        ((icn_repo_instance_num++))
+    done
+}
+
+function containsICNDesktop(){
+    FILE=$1
+    icn_desktop_instance_num=0
+    icn_desktop_index_array=()
+    while true; do
+        name_tmp=`cat $FILE | ${YQ_CMD} r - spec.initialize_configuration.ic_icn_init_info.icn_desktop.[$icn_desktop_instance_num].add_desktop_id`
+        if [ -z "$name_tmp" ]; then
+            break
+        else
+            icn_desktop_index_array=( "${icn_desktop_index_array[@]}" "${icn_desktop_instance_num}" )
+        fi
+        ((icn_desktop_instance_num++))
+    done
+}
+
+function containsTenantDB(){
+    FILE=$1
+    tenant_db_instance_num=0
+    tenant_db_index_array=()
+    while true; do
+        name_tmp=`cat $FILE | ${YQ_CMD} r - spec.datasource_configuration.dc_ca_datasource.tenant_databases.[$tenant_db_instance_num]`
+        if [ -z "$name_tmp" ]; then
+            break
+        else
+            tenant_db_index_array=( "${tenant_db_index_array[@]}" "${tenant_db_instance_num}" )
+        fi
+        ((tenant_db_instance_num++))
+    done
+}
+
+function get_baw_mode(){
+    if [[ "$SCRIPT_MODE" == "baw" || "$SCRIPT_MODE" == "baw-dev" ]]; then
+       return 0
     else
-        echo -e "\x1B[1;31m\"${OPERATOR_FILE}\" FILE NOT FOUND\x1B[0m"
-        exit 0
+       return 1
     fi
 }
 
@@ -306,10 +365,12 @@ function select_platform(){
             case $opt in
                 "RedHat OpenShift Kubernetes Service (ROKS) - Public Cloud")
                     PLATFORM_SELECTED="ROKS"
+                    use_entitlement="yes"
                     break
                     ;;
                 "Openshift Container Platform (OCP) - Private Cloud")
                     PLATFORM_SELECTED="OCP"
+                    use_entitlement="yes"
                     break
                     ;;
                 "Other ( Certified Kubernetes Cloud Platform / CNCF)")
@@ -360,7 +421,7 @@ function select_platform(){
 
 function check_ocp_version(){
     if [[ ${PLATFORM_SELECTED} == "OCP" || ${PLATFORM_SELECTED} == "ROKS" ]];then
-        temp_ver=`${CLI_CMD} version | grep v[1-9]\.[1-9][1-9] | tail -n1`
+        temp_ver=`${CLI_CMD} version | grep v[1-9]\.[1-9][0-9] | tail -n1`
         if [[ $temp_ver == *"Kubernetes Version"* ]]; then
             currentver="${temp_ver:20:7}"
         else
@@ -392,7 +453,7 @@ function select_pattern(){
 
     if [[ "${DEPLOYMENT_TYPE}" == "demo" ]];
     then
-        options=("FileNet Content Manager" "Operational Decision Manager" "Automation Decision Services" "Business Automation Application" "Business Automation Workflow and Automation Workstream Services" "IBM Automation Document Processing")
+        options=("FileNet Content Manager" "Operational Decision Manager" "Automation Decision Services" "Business Automation Application" "Business Automation Workflow Authoring and Automation Workstream Services" "IBM Automation Document Processing")
         options_cr_val=("content" "decisions" "decisions_ads" "application" "workflow-workstreams" "document_processing")
         foundation_0=("BAN" "RR")                 # Foundation for FileNet Content Manager
         foundation_1=("BAN" "RR")                # Foundation for Operational Decision Manager
@@ -420,7 +481,7 @@ function select_pattern(){
     patter_ent_input_array=("1" "2" "3" "4" "5a" "5b" "5A" "5B" "6" "7a" "7b" "7A" "7B" "5b,6" "5B,6" "5b, 6" "5B, 6" "5b 6" "5B 6")
     tips1="\x1B[1;31mTips\x1B[0m:\x1B[1mPress [ENTER] to accept the default (None of the patterns is selected)\x1B[0m"
     tips2="\x1B[1;31mTips\x1B[0m:\x1B[1mPress [ENTER] when you are done\x1B[0m"
-    pattern_tips="\x1B[1mInfo: Business Automation Navigator will be automatically installed in the environment as it is part of the Cloud Pak for Automation foundation platform. \n\nTips:  After you make your first selection you will be able to make additional selections since you can combine multiple selections.\n\x1B[0m"
+    pattern_tips="\x1B[1mInfo: Business Automation Navigator will be automatically installed in the environment as it is part of the Cloud Pak for Business Automation foundation platform. \n\nTips:  After you make your first selection you will be able to make additional selections since you can combine multiple selections.\n\x1B[0m"
     baw_iaws_tips="\x1B[1mInfo: Note that Business Automation Workflow Authoring (5a) cannot be installed together with Automation Workstream Services (6). However, Business Automation Workflow Runtime (5b) can be installed together with Automation Workstream Services (6).\n\x1B[0m"
 
     indexof() {
@@ -432,7 +493,7 @@ function select_pattern(){
     }
     menu() {
         clear
-        echo -e "\x1B[1mSelect the Cloud Pak for Automation capability to install: \x1B[0m"
+        echo -e "\x1B[1mSelect the Cloud Pak for Business Automation capability to install: \x1B[0m"
         for i in ${!options[@]}; do
             if [[ $DEPLOYMENT_TYPE == "demo" ]];then
                 containsElement "${options_cr_val[i]}" "${EXISTING_PATTERN_ARR[@]}"
@@ -531,7 +592,7 @@ function select_pattern(){
                             elif [[ $baw_authoring_Val -eq 0 && ${choices_pattern[5]} == "(To Be Uninstalled)" && ${choices_pattern[6]} == "" ]]; then
                                 printf "%1d) %s \x1B[1m%s\x1B[0m\n" $((i+1)) "${options[i]}"   "(To Be Uninstalled)"
                                 printf "%s \x1B[1m%s\x1B[0m\n" "   ${options[i+1]}"   "${choices_pattern[i+1]}"
-                                printf "%s \x1B[1m%s\x1B[0m\n" "   ${options[i+2]}"  "${choices_pattern[i+2]}"                            
+                                printf "%s \x1B[1m%s\x1B[0m\n" "   ${options[i+2]}"  "${choices_pattern[i+2]}"
                             else
                                 printf "%1d) %s \x1B[1m%s\x1B[0m\n" $((i+1)) "${options[i]}"   "(Installed)"
                                 if [[ $baw_authoring_Val -eq 0 ]]; then
@@ -629,14 +690,14 @@ function select_pattern(){
             "5b"|"5B")
                 num=6
                 if [[ !(" ${EXISTING_PATTERN_ARR[@]} " =~ "workstreams") && !(" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow") ]]; then
-                    
+
                     choices_pattern[5]=""
                 elif [[ " ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-runtime" && " ${EXISTING_PATTERN_ARR[@]} " =~ "workstreams" && ${choices_pattern[5]} == "(Selected)" ]]; then
-                    
+
                     choices_pattern[6]=""
                 elif [[ " ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-authoring" ]]; then
                         if [[ ${choices_pattern[5]} == "(To Be Uninstalled)" ]]; then
-                            
+
                             num=6
                         elif [[ ${choices_pattern[5]} == "(Selected)" || ${choices_pattern[5]} == "" ]]; then
                             choices_pattern[6]="(Selected)"
@@ -775,7 +836,7 @@ function select_pattern(){
                         elif [[ "${choices_pattern[5]}" == "(Selected)" ]]; then
                             choices_pattern[num]="(To Be Uninstalled)"
                         fi
-                        
+
                         # choices_pattern[num-2]="(Installed)"
                     elif  [[ " ${EXISTING_PATTERN_ARR[@]} " =~ "workstreams" && "${choices_pattern[7]}" == "" && " ${EXISTING_PATTERN_ARR[@]} " =~ "workflow" && "${choices_pattern[6]}" == "" ]]; then
                         choices_pattern[num]=""
@@ -795,7 +856,7 @@ function select_pattern(){
                         elif [[ "${choices_pattern[5]}" == "(Selected)" ]]; then
                             choices_pattern[num]="(To Be Uninstalled)"
                         fi
-                        
+
                         # choices_pattern[num-2]="(Installed)"
                     elif  [[ " ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-runtime" && "${choices_pattern[7]}" == "" && " ${EXISTING_PATTERN_ARR[@]} " =~ "workflow" && "${choices_pattern[6]}" == "" ]]; then
                         choices_pattern[num]=""
@@ -897,7 +958,7 @@ function select_optional_component(){
 
         tips1="\x1B[1;31mTips\x1B[0m:\x1B[1m Press [ENTER] to accept the default (None of the components is selected)\x1B[0m"
         tips2="\x1B[1;31mTips\x1B[0m:\x1B[1m Press [ENTER] when you are done\x1B[0m"
-        fncm_tips="\x1B[1mNote: IBM Enterprise Records (IER), IBM Content Collector for SAP (ICCSAP) and Task Manager (TM) do not integrate with User Management Service (UMS).\n"
+        fncm_tips="\x1B[1mNote: IBM Enterprise Records (IER) and IBM Content Collector for SAP (ICCSAP) do not integrate with User Management Service (UMS).\n"
         ads_tips="\x1B[1mTips:\x1B[0m Decision Designer is typically required if you are deploying a development or test environment.\nThis feature will automatically install Business Automation Studio, if not already present. \n\nDecision Runtime is typically recommended if you are deploying a test or production environment. \n\nYou should choose at least one these features to have a minimum environment configuration.\n"
         if [[ $DEPLOYMENT_TYPE == "demo" ]];then
             decision_tips="\x1B[1mTips:\x1B[0m Decision Center, Rule Execution Server and Decision Runner will be installed by default.\n"
@@ -1368,7 +1429,7 @@ function select_optional_component(){
                     optional_components_cr_list=()
                     break
                     ;;
-                "Business Automation Workflow and Automation Workstream Services")
+                "Business Automation Workflow Authoring and Automation Workstream Services")
                     if [[ $DEPLOYMENT_TYPE == "demo" ]]; then
                         optional_components_list=("Business Automation Insights")
                         optional_components_cr_list=("bai")
@@ -1415,8 +1476,8 @@ function select_optional_component(){
                     ;;
                 "IBM Automation Document Processing")
                     if [[ $DEPLOYMENT_TYPE == "demo" ]]; then
-                        optional_components_list=("Content Search Services" "External Share" "Content Management Interoperability Services")
-                        optional_components_cr_list=("css" "es" "cmis")
+                        optional_components_list=("Content Search Services" "Content Management Interoperability Services" "Task Manager")
+                        optional_components_cr_list=("css" "cmis" "tm")
                         show_optional_components
                         optional_component_cr_arr=( "${optional_component_cr_arr[@]}" "document_processing_designer" )
                     fi
@@ -1427,11 +1488,11 @@ function select_optional_component(){
                 "(a) Development Environment")
                     if [[ $DEPLOYMENT_TYPE == "enterprise" ]]; then
                         if [[ " ${EXISTING_PATTERN_ARR[@]} " =~ "workflow" || " ${EXISTING_PATTERN_ARR[@]} " =~ "workstreams" || " ${pattern_cr_arr[@]} " =~ "workflow" || " ${pattern_cr_arr[@]} " =~ "workstreams" ]]; then
-                            optional_components_list=("Content Search Services" "External Share")
-                            optional_components_cr_list=("css" "es")
+                            optional_components_list=("Content Search Services" "External Share" "Task Manager")
+                            optional_components_cr_list=("css" "es" "tm")
                         else
-                            optional_components_list=("Content Search Services" "External Share" "Content Management Interoperability Services")
-                            optional_components_cr_list=("css" "es" "cmis")
+                            optional_components_list=("Content Search Services" "External Share" "Content Management Interoperability Services" "Task Manager")
+                            optional_components_cr_list=("css" "es" "cmis" "tm")
                         fi
                         show_optional_components
                         optional_component_cr_arr=( "${optional_component_cr_arr[@]}" "ae_data_persistence" )
@@ -1447,8 +1508,8 @@ function select_optional_component(){
                             optional_components_list=("Content Search Services" "External Share")
                             optional_components_cr_list=("css" "es")
                         else
-                            optional_components_list=("Content Search Services" "External Share" "Content Management Interoperability Services")
-                            optional_components_cr_list=("css" "es" "cmis")
+                            optional_components_list=("Content Search Services" "External Share" "Content Management Interoperability Services" "Task Manager")
+                            optional_components_cr_list=("css" "es" "cmis" "tm")
                         fi
                         show_optional_components
                         optional_component_cr_arr=( "${optional_component_cr_arr[@]}" "ae_data_persistence" )
@@ -1563,14 +1624,14 @@ function get_entitlement_registry(){
     printf "\x1B[1;31mhttps://www.ibm.com/support/knowledgecenter/en/SSYHZ8_20.0.x/com.ibm.dba.install/op_topics/tsk_images_enterp.html\n\x1B[0m"
     printf "\n"
     while true; do
-        printf "\x1B[1mDo you have a Cloud Pak for Automation Entitlement Registry key (Yes/No, default: No): \x1B[0m"
+        printf "\x1B[1mDo you have a Cloud Pak for Business Automation Entitlement Registry key (Yes/No, default: No): \x1B[0m"
         read -rp "" ans
 
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
             use_entitlement="yes"
-            printf "\n"
-            printf "\x1B[1mEnter your Entitlement Registry key: \x1B[0m"
+            # printf "\n"
+            # printf "\x1B[1mEnter your Entitlement Registry key: \x1B[0m"
             # During dev, OLM uses stage image repo
             if [[ "$SCRIPT_MODE" == "dev" || "$SCRIPT_MODE" == "review" || "$SCRIPT_MODE" == "OLM" ]]
             then
@@ -1579,60 +1640,60 @@ function get_entitlement_registry(){
                 DOCKER_REG_SERVER="cp.icr.io"
             fi
             # During dev, OLM uses stage image repo
-            while [[ $entitlement_key == '' ]]
-            do
-                read -rsp "" entitlement_key
-                if [ -z "$entitlement_key" ]; then
-                    printf "\n"
-                    echo -e "\x1B[1;31mEnter a valid Entitlement Registry key\x1B[0m"
-                else
-                    if  [[ $entitlement_key == iamapikey:* ]] ;
-                    then
-                        DOCKER_REG_USER="iamapikey"
-                        DOCKER_REG_KEY="${entitlement_key#*:}"
-                    else
-                        DOCKER_REG_USER="cp"
-                        DOCKER_REG_KEY=$entitlement_key
+            # while [[ $entitlement_key == '' ]]
+            # do
+            #     read -rsp "" entitlement_key
+            #     if [ -z "$entitlement_key" ]; then
+            #         printf "\n"
+            #         echo -e "\x1B[1;31mEnter a valid Entitlement Registry key\x1B[0m"
+            #     else
+            #         if  [[ $entitlement_key == iamapikey:* ]] ;
+            #         then
+            #             DOCKER_REG_USER="iamapikey"
+            #             DOCKER_REG_KEY="${entitlement_key#*:}"
+            #         else
+            #             DOCKER_REG_USER="cp"
+            #             DOCKER_REG_KEY=$entitlement_key
 
-                    fi
-                    entitlement_verify_passed=""
-                    while [[ $entitlement_verify_passed == '' ]]
-                    do
-                        printf "\n"
-                        printf "\x1B[1mVerifying the Entitlement Registry key...\n\x1B[0m"
-                        if [[ $OCP_VERSION == "3.11" || "$machine" == "Mac" || $PLATFORM_SELECTED == "other" ]];then
-                            if docker login -u "$DOCKER_REG_USER" -p "$DOCKER_REG_KEY" "$DOCKER_REG_SERVER"; then
-                                printf 'Entitlement Registry key is valid.\n'
-                                entitlement_verify_passed="passed"
-                            else
-                                printf '\x1B[1;31mThe Entitlement Registry key failed.\n\x1B[0m'
-                                printf '\x1B[1mEnter a valid Entitlement Registry key.\n\x1B[0m'
-                                entitlement_key=''
-                                entitlement_verify_passed="failed"
-                            fi
-                        elif [[ $PLATFORM_SELECTED == "other" || $OCP_VERSION == "4.4OrLater" || $PLATFORM_SELECTED == "ROKS" ]]
-                        then
-                            if podman login -u "$DOCKER_REG_USER" -p "$DOCKER_REG_KEY" "$DOCKER_REG_SERVER" --tls-verify=false; then
-                                printf 'Entitlement Registry key is valid.\n'
-                                entitlement_verify_passed="passed"
-                            else
-                                printf '\x1B[1;31mThe Entitlement Registry key failed.\n\x1B[0m'
-                                printf '\x1B[1mEnter a valid Entitlement Registry key.\n\x1B[0m'
-                                entitlement_key=''
-                                entitlement_verify_passed="failed"
-                            fi
-                        fi
-                    done
-                fi
-            done
+            #         fi
+            #         entitlement_verify_passed=""
+            #         while [[ $entitlement_verify_passed == '' ]]
+            #         do
+            #             printf "\n"
+            #             printf "\x1B[1mVerifying the Entitlement Registry key...\n\x1B[0m"
+            #             if [[ $OCP_VERSION == "3.11" || "$machine" == "Mac" || $PLATFORM_SELECTED == "other" ]];then
+            #                 if docker login -u "$DOCKER_REG_USER" -p "$DOCKER_REG_KEY" "$DOCKER_REG_SERVER"; then
+            #                     printf 'Entitlement Registry key is valid.\n'
+            #                     entitlement_verify_passed="passed"
+            #                 else
+            #                     printf '\x1B[1;31mThe Entitlement Registry key failed.\n\x1B[0m'
+            #                     printf '\x1B[1mEnter a valid Entitlement Registry key.\n\x1B[0m'
+            #                     entitlement_key=''
+            #                     entitlement_verify_passed="failed"
+            #                 fi
+            #             elif [[ $PLATFORM_SELECTED == "other" || $OCP_VERSION == "4.4OrLater" || $PLATFORM_SELECTED == "ROKS" ]]
+            #             then
+            #                 if podman login -u "$DOCKER_REG_USER" -p "$DOCKER_REG_KEY" "$DOCKER_REG_SERVER" --tls-verify=false; then
+            #                     printf 'Entitlement Registry key is valid.\n'
+            #                     entitlement_verify_passed="passed"
+            #                 else
+            #                     printf '\x1B[1;31mThe Entitlement Registry key failed.\n\x1B[0m'
+            #                     printf '\x1B[1mEnter a valid Entitlement Registry key.\n\x1B[0m'
+            #                     entitlement_key=''
+            #                     entitlement_verify_passed="failed"
+            #                 fi
+            #             fi
+            #         done
+            #     fi
+            # done
             break
             ;;
         "n"|"N"|"no"|"No"|"NO"|"")
             use_entitlement="no"
             DOCKER_REG_KEY="None"
-            if [[ "$PLATFORM_SELECTED" == "ROKS" ]]; then
+            if [[ "$PLATFORM_SELECTED" == "ROKS" || "$PLATFORM_SELECTED" == "OCP" ]]; then
                 printf "\n"
-                printf '\x1B[1;31m\"ROKS\" only supports the Entitlement Registry, exiting...\n\x1B[0m'
+                printf "\x1B[1;31m\"${PLATFORM_SELECTED}\" only supports the Entitlement Registry, exiting...\n\x1B[0m"
                 exit 1
             else
                 break
@@ -1730,31 +1791,31 @@ function get_local_registry_user(){
 }
 
 
-function get_infra_name(){
+# function get_infra_name(){
 
-    # For Infrastructure Node
-    printf "\n"
-    printf "\x1B[1mIn order for the deployment to create routes for the Cloud Pak services,\n\x1B[0m"
-    printf "\x1B[1mYou can get the host name by running the following command: \n\x1B[0m"
-    if [[ $OCP_VERSION == "3.11" ]];then
-        printf "\x1B[1;31moc get nodes --selector node-role.kubernetes.io/infra=true -o custom-columns=\":metadata.name\"\n\x1B[0m"
-    elif [[ $OCP_VERSION == "4.4OrLater" ]]
-    then
-        printf "\x1B[1;31moc get route console -n openshift-console -o yaml|grep routerCanonicalHostname\n\x1B[0m"
-    fi
-    printf "\x1B[1mInput the host name: \x1B[0m"
+#     # For Infrastructure Node
+#     printf "\n"
+#     printf "\x1B[1mIn order for the deployment to create routes for the Cloud Pak services,\n\x1B[0m"
+#     printf "\x1B[1mYou can get the host name by running the following command: \n\x1B[0m"
+#     if [[ $OCP_VERSION == "3.11" ]];then
+#         printf "\x1B[1;31moc get nodes --selector node-role.kubernetes.io/infra=true -o custom-columns=\":metadata.name\"\n\x1B[0m"
+#     elif [[ $OCP_VERSION == "4.4OrLater" ]]
+#     then
+#         printf "\x1B[1;31moc get route console -n openshift-console -o yaml|grep routerCanonicalHostname\n\x1B[0m"
+#     fi
+#     printf "\x1B[1mInput the host name: \x1B[0m"
 
-    infra_name=""
-    while [[ $infra_name == "" ]]
-    do
-       read -rp  "" infra_name
-       if [ -z "$infra_name" ]; then
-       echo -e "\x1B[1;31mEnter the host name of your Infrastructure Node.\x1B[0m"
-       fi
-    done
-    export INFRA_NAME=${infra_name}
+#     infra_name=""
+#     while [[ $infra_name == "" ]]
+#     do
+#        read -rp  "" infra_name
+#        if [ -z "$infra_name" ]; then
+#        echo -e "\x1B[1;31mEnter the host name of your Infrastructure Node.\x1B[0m"
+#        fi
+#     done
+#     export INFRA_NAME=${infra_name}
 
-}
+# }
 
 function get_storage_class_name(){
 
@@ -1763,6 +1824,7 @@ function get_storage_class_name(){
     sc_slow_file_storage_classname=""
     sc_medium_file_storage_classname=""
     sc_fast_file_storage_classname=""
+
     printf "\n"
     if [[ $DEPLOYMENT_TYPE == "demo" && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "other")]] ;
     then
@@ -1778,7 +1840,6 @@ function get_storage_class_name(){
     elif [[ ($DEPLOYMENT_TYPE == "enterprise" && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "other")) || $PLATFORM_SELECTED == "ROKS" ]]
     then
         printf "\x1B[1mTo provision the persistent volumes and volume claims\n\x1B[0m"
-
         while [[ $sc_slow_file_storage_classname == "" ]] # While get slow storage clase name
         do
             printf "\x1B[1mplease enter the dynamic storage classname for slow storage: \x1B[0m"
@@ -1836,8 +1897,8 @@ function verify_local_registry_password(){
     # require to preload image for CP4A image and ldap/db2 image for demo
     printf "\n"
     while true; do
-        printf "\x1B[1mHave you pushed the images to the local registry using 'loadimages.sh' (CP4A images)\n\x1B[0m"
-        printf "\x1B[1mand 'loadPrereqImages.sh' (Db2 and OpenLDAP for demo) scripts (Yes/No)? \x1B[0m"
+        printf "\x1B[1mHave you pushed the images to the local registry using 'loadimages.sh' (CP4A images) (Yes/No)? \x1B[0m"
+        # printf "\x1B[1mand 'loadPrereqImages.sh' (Db2 and OpenLDAP for demo) scripts (Yes/No)? \x1B[0m"
         read -rp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -1857,11 +1918,11 @@ function verify_local_registry_password(){
     # Select whice type of image registry to use.
     if [[ "${PLATFORM_SELECTED}" == "OCP" ]]; then
         printf "\n"
-        echo -e "\x1B[1mSelect the type of image registry to use:: \x1B[0m"
+        echo -e "\x1B[1mSelect the type of image registry to use: \x1B[0m"
         COLUMNS=12
-        options=("Openshift Container Platform (OCP) - Internal image registry" "Other ( External image registry: abc.xyz.com )")
+        options=("Other ( External image registry: abc.xyz.com )")
 
-        PS3='Enter a valid option [1 to 2]: '
+        PS3='Enter a valid option [1 to 1]: '
         select opt in "${options[@]}"
         do
             case $opt in
@@ -1879,83 +1940,95 @@ function verify_local_registry_password(){
     else
         REGISTRY_TYPE="external"
     fi
+    get_local_registry_server
+    # while [[ $verify_passed == "" && $PRE_LOADED_IMAGE == "Yes" ]]
+    # do
+    #     get_local_registry_server
+    #     get_local_registry_user
+    #     get_local_registry_password
 
-    while [[ $verify_passed == "" && $PRE_LOADED_IMAGE == "Yes" ]]
-    do
-        get_local_registry_server
-        get_local_registry_user
-        get_local_registry_password
-
-        if [[ $LOCAL_REGISTRY_SERVER == docker-registry* || $LOCAL_REGISTRY_SERVER == image-registry* || $LOCAL_REGISTRY_SERVER == default-route-openshift-image-registry* ]] ;
-        then
-            if [[ "$machine" == "Mac" ]];then
-                if docker login "$local_public_registry_server" -u "$LOCAL_REGISTRY_USER" -p $(${CLI_CMD} whoami -t); then
-                    printf 'Verifying Local Registry passed...\n'
-                    verify_passed="passed"
-                else
-                    printf '\x1B[1;31mLogin failed...\n\x1B[0m'
-                    verify_passed=""
-                    local_registry_user=""
-                    local_registry_server=""
-                    local_public_registry_server=""
-                    echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
-                fi
-            elif [[ $OCP_VERSION == "4.4OrLater" ]]
-            then
-                which podman &>/dev/null
-                if [[ $? -eq 0 ]];then
-                    if podman login "$local_public_registry_server" -u "$LOCAL_REGISTRY_USER" -p $(${CLI_CMD} whoami -t) --tls-verify=false; then
-                        printf 'Verifying Local Registry passed...\n'
-                        verify_passed="passed"
-                    else
-                        printf '\x1B[1;31mLogin failed...\n\x1B[0m'
-                        verify_passed=""
-                        local_registry_user=""
-                        local_registry_server=""
-                        local_public_registry_server=""
-                        echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
-                    fi
-                else
-                     if docker login "$local_public_registry_server" -u "$LOCAL_REGISTRY_USER" -p $(${CLI_CMD} whoami -t); then
-                        printf 'Verifying Local Registry passed...\n'
-                        verify_passed="passed"
-                    else
-                        printf '\x1B[1;31mLogin failed...\n\x1B[0m'
-                        verify_passed=""
-                        local_registry_user=""
-                        local_registry_server=""
-                        local_public_registry_server=""
-                        echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
-                    fi
-                fi
-            fi
-        else
-            which podman &>/dev/null
-            if [[ $? -eq 0 ]];then
-                if podman login -u "$LOCAL_REGISTRY_USER" -p "$LOCAL_REGISTRY_PWD"  "$LOCAL_REGISTRY_SERVER" --tls-verify=false; then
-                    printf 'Verifying the information for the local docker registry...\n'
-                    verify_passed="passed"
-                else
-                    printf '\x1B[1;31mLogin failed...\n\x1B[0m'
-                    verify_passed=""
-                    local_registry_user=""
-                    local_registry_server=""
-                    echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
-                fi
-            else
-                if docker login -u "$LOCAL_REGISTRY_USER" -p "$LOCAL_REGISTRY_PWD"  "$LOCAL_REGISTRY_SERVER"; then
-                    printf 'Verifying the information for the local docker registry...\n'
-                    verify_passed="passed"
-                else
-                    printf '\x1B[1;31mLogin failed...\n\x1B[0m'
-                    verify_passed=""
-                    local_registry_user=""
-                    local_registry_server=""
-                    echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
-                fi
-            fi
-        fi
-     done
+    #     if [[ $LOCAL_REGISTRY_SERVER == docker-registry* || $LOCAL_REGISTRY_SERVER == image-registry* || $LOCAL_REGISTRY_SERVER == default-route-openshift-image-registry* ]] ;
+    #     then
+    #         if [[ $OCP_VERSION == "3.11" ]];then
+    #             if docker login -u "$LOCAL_REGISTRY_USER" -p $(${CLI_CMD} whoami -t) "$LOCAL_REGISTRY_SERVER"; then
+    #                 printf 'Verifying Local Registry passed...\n'
+    #                 verify_passed="passed"
+    #             else
+    #                 printf '\x1B[1;31mLogin failed...\n\x1B[0m'
+    #                 verify_passed=""
+    #                 local_registry_user=""
+    #                 local_registry_server=""
+    #                 echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
+    #             fi
+    #         elif [[ "$machine" == "Mac" ]]
+    #         then
+    #             if docker login "$local_public_registry_server" -u "$LOCAL_REGISTRY_USER" -p $(${CLI_CMD} whoami -t); then
+    #                 printf 'Verifying Local Registry passed...\n'
+    #                 verify_passed="passed"
+    #             else
+    #                 printf '\x1B[1;31mLogin failed...\n\x1B[0m'
+    #                 verify_passed=""
+    #                 local_registry_user=""
+    #                 local_registry_server=""
+    #                 local_public_registry_server=""
+    #                 echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
+    #             fi
+    #         elif [[ $OCP_VERSION == "4.4OrLater" ]]
+    #         then
+    #             which podman &>/dev/null
+    #             if [[ $? -eq 0 ]];then
+    #                 if podman login "$local_public_registry_server" -u "$LOCAL_REGISTRY_USER" -p $(${CLI_CMD} whoami -t) --tls-verify=false; then
+    #                     printf 'Verifying Local Registry passed...\n'
+    #                     verify_passed="passed"
+    #                 else
+    #                     printf '\x1B[1;31mLogin failed...\n\x1B[0m'
+    #                     verify_passed=""
+    #                     local_registry_user=""
+    #                     local_registry_server=""
+    #                     local_public_registry_server=""
+    #                     echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
+    #                 fi
+    #             else
+    #                  if docker login "$local_public_registry_server" -u "$LOCAL_REGISTRY_USER" -p $(${CLI_CMD} whoami -t); then
+    #                     printf 'Verifying Local Registry passed...\n'
+    #                     verify_passed="passed"
+    #                 else
+    #                     printf '\x1B[1;31mLogin failed...\n\x1B[0m'
+    #                     verify_passed=""
+    #                     local_registry_user=""
+    #                     local_registry_server=""
+    #                     local_public_registry_server=""
+    #                     echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
+    #                 fi
+    #             fi
+    #         fi
+    #     else
+    #         which podman &>/dev/null
+    #         if [[ $? -eq 0 ]];then
+    #             if podman login -u "$LOCAL_REGISTRY_USER" -p "$LOCAL_REGISTRY_PWD"  "$LOCAL_REGISTRY_SERVER" --tls-verify=false; then
+    #                 printf 'Verifying the information for the local docker registry...\n'
+    #                 verify_passed="passed"
+    #             else
+    #                 printf '\x1B[1;31mLogin failed...\n\x1B[0m'
+    #                 verify_passed=""
+    #                 local_registry_user=""
+    #                 local_registry_server=""
+    #                 echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
+    #             fi
+    #         else
+    #             if docker login -u "$LOCAL_REGISTRY_USER" -p "$LOCAL_REGISTRY_PWD"  "$LOCAL_REGISTRY_SERVER"; then
+    #                 printf 'Verifying the information for the local docker registry...\n'
+    #                 verify_passed="passed"
+    #             else
+    #                 printf '\x1B[1;31mLogin failed...\n\x1B[0m'
+    #                 verify_passed=""
+    #                 local_registry_user=""
+    #                 local_registry_server=""
+    #                 echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
+    #             fi
+    #         fi
+    #     fi
+    #  done
 
 }
 function select_installation_type(){
@@ -2147,15 +2220,33 @@ function set_ldap_type_content_pattern(){
         ${COPY_CMD} -rf ${CONTENT_PATTERN_FILE_BAK} ${CONTENT_PATTERN_FILE_TMP}
 
         if [[ "$LDAP_TYPE" == "AD" ]]; then
-            content_start="$(grep -n "ad:" ${CONTENT_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
+            content_start="$(grep -n "## The User script will uncomment" ${CONTENT_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
         else
-            content_start="$(grep -n "tds:" ${CONTENT_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
+            content_start="$(grep -n "## The User script will uncomment" ${CONTENT_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
         fi
         content_stop="$(tail -n +$content_start < ${CONTENT_PATTERN_FILE_TMP} | grep -n "lc_group_filter:" | head -n1 | cut -d: -f1)"
-        content_stop=$(( $content_stop + $content_start - 1))
-        vi ${CONTENT_PATTERN_FILE_TMP} -c ':'"${content_start}"','"${content_stop}"'s/    # /    ' -c ':wq' >/dev/null 2>&1
+        content_stop=$(( $content_stop + $content_start + 2))
+        vi ${CONTENT_PATTERN_FILE_TMP} -c ':'"${content_start}"','"${content_stop}"'d' -c ':wq' >/dev/null 2>&1
 
         ${COPY_CMD} -rf ${CONTENT_PATTERN_FILE_TMP} ${CONTENT_PATTERN_FILE_BAK}
+    fi
+}
+
+function set_ldap_type_adp_pattern(){
+    if [[ $DEPLOYMENT_TYPE == "enterprise" ]] ;
+    then
+        ${COPY_CMD} -rf ${ARIA_PATTERN_FILE_BAK} ${ARIA_PATTERN_FILE_TMP}
+
+        if [[ "$LDAP_TYPE" == "AD" ]]; then
+            content_start="$(grep -n "## The User script will uncomment" ${ARIA_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
+        else
+            content_start="$(grep -n "## The User script will uncomment" ${ARIA_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
+        fi
+        content_stop="$(tail -n +$content_start < ${ARIA_PATTERN_FILE_TMP} | grep -n "lc_group_filter:" | head -n1 | cut -d: -f1)"
+        content_stop=$(( $content_stop + $content_start + 2))
+        vi ${ARIA_PATTERN_FILE_TMP} -c ':'"${content_start}"','"${content_stop}"'d' -c ':wq' >/dev/null 2>&1
+
+        ${COPY_CMD} -rf ${ARIA_PATTERN_FILE_TMP} ${ARIA_PATTERN_FILE_BAK}
     fi
 }
 
@@ -2286,21 +2377,6 @@ function set_object_store_content_pattern(){
             ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[${j}].dc_common_os_datasource_name "FNOS${obj_num}DS"
             ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[${j}].dc_common_os_xa_datasource_name "FNOS${obj_num}DSXA"
         done
-        # # 2nd object store
-        # if [[ "$content_os_number" == 2 ]]; then
-        #     vi ${CONTENT_PATTERN_FILE_TMP} -c ':'"${content_start}"','"${content_stop}"' copy '"${content_stop}"'' -c ':wq' >/dev/null 2>&1
-        #     ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[1].dc_common_os_datasource_name "FNOS2DS"
-        #     ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[1].dc_common_os_xa_datasource_name "FNOS2DSXA"
-        # fi
-        # # 3rd object store
-        # if [[ "$content_os_number" == 3 ]]; then
-        #     vi ${CONTENT_PATTERN_FILE_TMP} -c ':'"${content_start}"','"${content_stop}"' copy '"${content_stop}"'' -c ':wq' >/dev/null 2>&1
-        #     vi ${CONTENT_PATTERN_FILE_TMP} -c ':'"${content_start}"','"${content_stop}"' copy '"${content_stop}"'' -c ':wq' >/dev/null 2>&1
-        #     ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[1].dc_common_os_datasource_name "FNOS2DS"
-        #     ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[1].dc_common_os_xa_datasource_name "FNOS2DSXA"
-        #     ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[2].dc_common_os_datasource_name "FNOS3DS"
-        #     ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[2].dc_common_os_xa_datasource_name "FNOS3DSXA"
-        # fi
         ${COPY_CMD} -rf ${CONTENT_PATTERN_FILE_TMP} ${CONTENT_PATTERN_FILE_BAK}
     fi
 }
@@ -2430,7 +2506,7 @@ function select_baw_only(){
     pattern_arr=()
     pattern_cr_arr=()
     printf "\n"
-    echo -e "\x1B[1mSelect the Cloud Pak for Automation capability to install: \x1B[0m"
+    echo -e "\x1B[1mSelect the Cloud Pak for Business Automation capability to install: \x1B[0m"
     COLUMNS=12
 
     options=("Business Automation Workflow")
@@ -2472,7 +2548,7 @@ function input_information(){
         validate_docker_podman_cli
     elif [[ ${INSTALLATION_TYPE} == "new" ]]
     then
-        select_ocp_olm
+        # select_ocp_olm
         select_deployment_type
         select_platform
         check_ocp_version
@@ -2494,15 +2570,17 @@ function input_information(){
     fi
     select_optional_component
     if [[ "$INSTALLATION_TYPE" == "new" ]]; then
-        get_entitlement_registry
+        if [[ $PLATFORM_SELECTED == "other" ]]; then
+            get_entitlement_registry
+        fi
         if [[ "$use_entitlement" == "no" ]]; then
             verify_local_registry_password
         fi
 
-        if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]];
-        then
-            get_infra_name
-        fi
+        # if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]];
+        # then
+        #     get_infra_name
+        # fi
         get_storage_class_name
         if [[ "$DEPLOYMENT_TYPE" == "enterprise" ]]; then
             select_ldap_type
@@ -2510,8 +2588,12 @@ function input_information(){
     elif [[ "$INSTALLATION_TYPE" == "existing" ]]
     then
         existing_infra_name=`cat $CP4A_EXISTING_BAK | ${YQ_CMD} r - spec.shared_configuration.sc_deployment_hostname_suffix`
-        chrlen=${#existing_infra_name}
-        INFRA_NAME=${existing_infra_name:21:chrlen}
+        if [ -z "$existing_infra_name" ]; then
+            echo "No sc_deployment_hostname_suffix found in existing custom resource file"
+        else
+            chrlen=${#existing_infra_name}
+            INFRA_NAME=${existing_infra_name:21:chrlen}
+        fi
         existing_ldap_type=`cat $CP4A_EXISTING_BAK | ${YQ_CMD} r - spec.ldap_configuration.lc_selected_ldap_type`
         if [[ "$existing_ldap_type" == "Microsoft Active Directory" ]];then
             LDAP_TYPE="AD"
@@ -2578,7 +2660,7 @@ function apply_cp4a_operator(){
 
     printf "\n"
     if [[ ("$SCRIPT_MODE" != "review") && ("$SCRIPT_MODE" != "OLM") ]]; then
-        echo -e "\x1B[1mInstalling the Cloud Pak for Automation operator...\x1B[0m"
+        echo -e "\x1B[1mInstalling the Cloud Pak for Business Automation operator...\x1B[0m"
     fi
     # set db2_license
     ${SED_COMMAND} '/baw_license/{n;s/value:.*/value: accept/;}' ${OPERATOR_FILE_TMP}
@@ -2890,6 +2972,7 @@ function merge_pattern(){
                     break
                     ;;
                 "document_processing")
+                    set_ldap_type_adp_pattern
                     set_aria_gpu
                     ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${ARIA_PATTERN_FILE_BAK}
                     break
@@ -2959,6 +3042,7 @@ function merge_optional_components(){
                     break
                     ;;
                 "css")
+                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration.css
                     break
                     ;;
                 "es")
@@ -2982,7 +3066,6 @@ function merge_optional_components(){
                         break
                     else
                         ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.bai_configuration
-                        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.kafka_configuration
                         break
                     fi
                     ;;
@@ -3145,11 +3228,11 @@ function select_objectstore_number(){
 
 function select_gpu_document_processing(){
     printf "\n"
-    printf "\x1B[1mAre there GPU enabled worker nodes (Yes/No)? \x1B[0m"
     set_gpu_enabled=""
     ENABLE_GPU_ARIA=""
     while [[ $set_gpu_enabled == "" ]];
     do
+        printf "\x1B[1mAre there GPU enabled worker nodes (Yes/No)? \x1B[0m"
         read -rp "" set_gpu_enabled
         case "$set_gpu_enabled" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -3313,18 +3396,24 @@ function set_aria_gpu(){
     then
         if [[ "$ENABLE_GPU_ARIA" == "Yes" ]]; then
             ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.ca_configuration.deeplearning.gpu_enabled "true"
-            ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.ca_configuration.deeplearning.nodelabel_key "$nodelabel_key"
-            ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.ca_configuration.deeplearning.nodelabel_value "$nodelabel_value"
+            # ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.ca_configuration.deeplearning.nodelabel_key "$nodelabel_key"
+            ${SED_COMMAND} "s|nodelabel_key:.*|nodelabel_key: \"$nodelabel_key\"|g" ${ARIA_PATTERN_FILE_TMP}
+            # ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.ca_configuration.deeplearning.nodelabel_value "$nodelabel_value"
+            ${SED_COMMAND} "s|nodelabel_value:.*|nodelabel_value: \"$nodelabel_value\"|g" ${ARIA_PATTERN_FILE_TMP}
+
         elif [[ "$ENABLE_GPU_ARIA" == "No" ]]
         then
             ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.ca_configuration.deeplearning.gpu_enabled "false"
         fi
+    else
+        ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.ca_configuration.deeplearning.gpu_enabled "false"
     fi
     ${COPY_CMD} -rf ${ARIA_PATTERN_FILE_TMP} ${ARIA_PATTERN_FILE_BAK}
 }
 
 # Begin - Modify FOUNDATION pattern yaml according patterns/components selected
 function apply_pattern_cr(){
+    # echo -e "\x1B[1mCreating a custom resource YAML file for IBM CP4A Operator ......\x1B[0m"
     # echo "length of optional_component_cr_arr:${#optional_component_cr_arr[@]}"
     # echo "!!optional_component_cr_arr!!!${optional_component_cr_arr[*]}"
     # echo "EXISTING_PATTERN_ARR: ${EXISTING_PATTERN_ARR[*]}"
@@ -3423,24 +3512,24 @@ function apply_pattern_cr(){
         else
             object_array=()
         fi
-        if (( ${#object_array[@]} >= 1 ));then 
+        if (( ${#object_array[@]} >= 1 ));then
             for object_name in "${object_array[@]}"
             do
                 containsObjectStore "$object_name" "${CP4A_EXISTING_TMP}"
                 if (( ${#os_index_array[@]} >= 1 ));then
                     # ((index_array_temp=${#os_index_array[@]}-1))
                     for ((j=0;j<${#os_index_array[@]};j++))
-                    do 
-                        index_os=${os_index_array[$j]}
+                    do
+                        ((index_os=${os_index_array[$j]}-j))
                         ${YQ_CMD} d -i ${CP4A_EXISTING_TMP} spec.datasource_configuration.dc_os_datasources.[$index_os]
                     done
                 fi
                 containsInitObjectStore "$object_name" "${CP4A_EXISTING_TMP}"
                 if (( ${#os_index_array[@]} >= 1 ));then
                     # ((index_array_temp=${#os_index_array[@]}-1))
-                    for ((j=0;j<${#os_index_array[@]};j++)) 
-                    do 
-                        index_os=${os_index_array[$j]}
+                    for ((j=0;j<${#os_index_array[@]};j++))
+                    do
+                        ((index_os=${os_index_array[$j]}-j))
                         ${YQ_CMD} d -i ${CP4A_EXISTING_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$index_os]
                     done
                 fi
@@ -3453,20 +3542,41 @@ function apply_pattern_cr(){
         else
             object_array=()
         fi
-        if (( ${#object_array[@]} >= 1 ));then 
+        if (( ${#object_array[@]} >= 1 ));then
             for object_name in "${object_array[@]}"
             do
                 containsObjectStore "$object_name" "${CP4A_EXISTING_TMP}"
                 if (( ${#os_index_array[@]} >= 1 ));then
                     # ((index_array_temp=${#os_index_array[@]}-1))
                     for ((j=0;j<${#os_index_array[@]};j++))
-                    do 
-                        index_os=${os_index_array[$j]}
+                    do
+                        ((index_os=${os_index_array[$j]}-j))
                         ${YQ_CMD} d -i ${CP4A_EXISTING_TMP} spec.datasource_configuration.dc_os_datasources.[$index_os]
                     done
                 fi
             done
             object_array=()
+        fi
+
+        if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "content") && (" ${PATTERNS_CR_SELECTED[@]} " =~ "content") ]]; then
+            total_os_new=0
+            total_os_exist=0
+            os_index_array_new=()
+            os_index_array_exist=()
+
+            getTotalFNCMObjectStore "${CP4A_PATTERN_FILE_TMP}"
+            total_os_new=$total_os
+            os_index_array_new=( "${os_index_array[@]}" )
+            # echo "total_os_new: ${total_os_new}"
+            # echo "os_index_array_new: ${os_index_array_new[*]}"
+            # echo "length of os_index_array_new:${#os_index_array_new[@]}"
+
+            getTotalFNCMObjectStore "${CP4A_EXISTING_TMP}"
+            total_os_exist=$total_os
+            os_index_array_exist=( "${os_index_array[@]}" )
+            # echo "total_os_exist: ${total_os_exist}"
+            # echo "os_index_array_exist: ${os_index_array_exist[*]}"
+            # echo "length of os_index_array_exist:${#os_index_array_exist[@]}"
         fi
 
         if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow") && !(" ${PATTERNS_CR_SELECTED[@]} " =~ "workflow") ]]; then
@@ -3477,24 +3587,32 @@ function apply_pattern_cr(){
         else
             baw_name_array=()
         fi
-        if (( ${#baw_name_array[@]} >= 1 ));then 
+        if (( ${#baw_name_array[@]} >= 1 ));then
             for object_name in "${baw_name_array[@]}"
             do
                 containsBAWInstance "$object_name" "${CP4A_EXISTING_TMP}"
                 if (( ${#baw_index_array[@]} >= 1 ));then
                     # ((index_array_temp=${#baw_index_array[@]}-1))
                     for ((j=0;j<${#baw_index_array[@]};j++))
-                    do 
-                        index_os=${baw_index_array[$j]}
+                    do
+                        ((index_os=${baw_index_array[$j]}-j))
                         ${YQ_CMD} d -i ${CP4A_EXISTING_TMP} spec.baw_configuration
                     done
                 fi
             done
             baw_name_array=()
         fi
+        
+        if grep "ums_configuration:" $CP4A_EXISTING_TMP > /dev/null
+        then
+            ${YQ_CMD} w -i ${CP4A_EXISTING_TMP} spec.ums_configuration.fix "dummy"
+        fi
         # read -rsn1 -p"Before:Press any key to exit";echo
         ${YQ_CMD} m -i -a -M --overwrite --autocreate=false ${CP4A_PATTERN_FILE_TMP} ${CP4A_EXISTING_TMP}
         # read -rsn1 -p"After:Press any key to exit";echo
+        ${YQ_CMD} d -i ${CP4A_EXISTING_TMP} spec.ums_configuration.fix
+        ${SED_COMMAND} "s|ums_configuration: {}|ums_configuration:|g" ${CP4A_EXISTING_TMP}
+        ${SED_COMMAND} "s|ums_configuration: {}|ums_configuration:|g" ${CP4A_PATTERN_FILE_TMP}
     fi
 
     # ${COPY_CMD} -rf ${CP4A_PATTERN_FILE_BAK} ${CP4A_PATTERN_FILE_TMP}
@@ -3528,12 +3646,19 @@ function apply_pattern_cr(){
 
 
     # Set sc_deployment_hostname_suffix
-    if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]];
-    then
-        ${SED_COMMAND} "s|sc_deployment_hostname_suffix:.*|sc_deployment_hostname_suffix: \"{{ meta.namespace }}.${INFRA_NAME}\"|g" ${CP4A_PATTERN_FILE_TMP}
+
+    if [ -z "$existing_infra_name" ]; then
+        echo ""
     else
-        ${SED_COMMAND} "s|sc_deployment_hostname_suffix:.*|sc_deployment_hostname_suffix: \"{{ meta.namespace }}\"|g" ${CP4A_PATTERN_FILE_TMP}
+        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_deployment_hostname_suffix "$existing_infra_name"
+        if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]];
+        then
+            ${SED_COMMAND} "s|sc_deployment_hostname_suffix:.*|sc_deployment_hostname_suffix: \"{{ meta.namespace }}.${INFRA_NAME}\"|g" ${CP4A_PATTERN_FILE_TMP}
+        else
+            ${SED_COMMAND} "s|sc_deployment_hostname_suffix:.*|sc_deployment_hostname_suffix: \"{{ meta.namespace }}\"|g" ${CP4A_PATTERN_FILE_TMP}
+        fi
     fi
+
 
     # Set lc_selected_ldap_type
 
@@ -3614,93 +3739,110 @@ function apply_pattern_cr(){
 
     fi
 
-    # If BAI is selected as an optional component in a demo deployment, the installation of IBM Event Streams
-    # 10.0.0+ in the namespace targeted by the ICP4A deployment is a prerequisite. The connection
-    # information for Kafka clients is automatically extracted from the Event Streams instance
-    # and stored in shared_configuration.kafka_configuration.
-
-    if [[ $DEPLOYMENT_TYPE == "demo" || $DEPLOYMENT_TYPE == "enterprise" ]];then
-        containsElement "BusinessAutomationInsights" "${OPT_COMPONENTS_SELECTED[@]}"
-        retVal=$?
-        if [[ $retVal -eq 0 ]]; then
-            printf "\n"
-            while true; do
-                if [[ $DEPLOYMENT_TYPE == "demo" ]];then
-                  printf "\x1B[1mIBM Event Streams installed in the same namespace is a prerequisite for Business Automation Insights when using the deployment script for evaluation purposes. For full capabilities including processing of Avro events, use Event Streams with Apicurio schema registry. Has Event Streams already been deployed to the same namespace for CP4A?\x1B[0m"
-                  printf "\n"
-                  printf "\x1B[1mFor more information about the IBM Event Streams supported version number and licensing restrictions, see IBM Knowledge Center\x1B[0m"
-                  read -rp "?(Yes/No):" ans
-                else
-                  printf "\x1B[1mIBM Event Streams or another Kafka server is a prerequisite for Business Automation Insights. For full capabilities including processing of Avro events, use Event Streams with Apicurio schema registry. Has IBM Event Streams already been deployed to the same namespace for CP4A? (\x1B[0m"
-                  read -rp "?(Yes/No):" ans
-                fi
-                case "$ans" in
-                "y"|"Y"|"yes"|"Yes"|"YES")
-                    ${CUR_DIR}/pull-eventstreams-connection-info.sh -f ${CP4A_PATTERN_FILE_TMP}
-                    retVal=$?
-                    if [ $retVal -eq 0 ]; then
-                        break
-                    else
-                        echo -e "\x1B[1;31mThere seems to be an issue with your Event Stream installation, like the Event Stream user might not be ready.\n\x1B[0m"
-                        echo -e "\x1B[1;31mPlease check your Event Stream installation and try again.\n\x1B[0m"                      
-                        if [[ "$SCRIPT_MODE" == "review" ]]; then
-                            echo -e "Continue to deploy ICP4A operator and generate Custom Resource file in \"Review Mode\"...\n"
-                            break
-                        else
-                            echo -e "Exiting...\n"  
-                            exit 1
-                        fi
-                    fi
-                    ;;
-                "n"|"N"|"no"|"No"|"NO")
-                    if [[ $DEPLOYMENT_TYPE == "demo" ]];then
-                      printf "\n"
-                      printf "\x1B[1mIBM Event Streams installed in the same namespace is a prerequisite for Business Automation Insights when using the deployment script for evaluation purposes. For full capabilities including processing of Avro events, use Event Streams with Apicurio schema registry.\x1B[0m"
-                      printf "\n"
-                      echo -e "Exiting the deployment. Please ensure that you have Event Streams installed in the same namespace...\n"
-                      exit 0
-                    else
-                      echo -e "\x1B[1;31mYou must manually execute the pull-eventstreams-connection-info.sh script to pull Event Streams configuration information from a different namespace, or manually provide the Kafka connection information in the CP4A custom resource. For details, refer to the documentation in Knowledge Center.\n\x1B[0m"
-                      break
-                    fi
-                    ;;
-                *)
-                    echo -e "Answer must be \"Yes\" or \"No\"\n"
-                    ;;
-                esac
-            done
-        fi
-    fi
-
-    object_array=("DEVOS1" "AEOS" "BAWINS1DOCS" "BAWINS1DOS" "BAWINS1TOS" "BAWDOCS" "BAWDOS" "BAWTOS" "AWSINS1DOCS")
+    object_array=("DEVOS1DS" "DEVOS1" "AEOS" "BAWINS1DOCS" "BAWINS1DOS" "BAWINS1TOS" "BAWDOCS" "BAWDOS" "BAWTOS" "AWSINS1DOCS")
     for object_name in "${object_array[@]}"
     do
         containsObjectStore "$object_name" "${CP4A_PATTERN_FILE_TMP}"
         if (( ${#os_index_array[@]} > 1 ));then
             ((index_array_temp=${#os_index_array[@]}-1))
+            # read -rsn1 -p"index_array_temp: $index_array_temp";echo
             for ((j=0;j<${index_array_temp};j++))
-            do 
-                index_os=${os_index_array[$j]}
+            do
+                ((index_os=${os_index_array[$j]}-j))
+                # read -rsn1 -p"index_os: $index_os";echo
                 ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$index_os]
             done
         fi
         containsInitObjectStore "$object_name" "${CP4A_PATTERN_FILE_TMP}"
         if (( ${#os_index_array[@]} > 1 ));then
             ((index_array_temp=${#os_index_array[@]}-1))
-            for ((j=0;j<${index_array_temp};j++)) 
-            do 
-                index_os=${os_index_array[$j]}
+            for ((j=0;j<${index_array_temp};j++))
+            do
+                ((index_os=${os_index_array[$j]}-j))
                 ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$index_os]
             done
         fi
     done
 
+    if (( total_os_new >= total_os_exist ));then
+        object_array=()
+        for ((j=0;j<${#os_index_array_exist[@]};j++))
+        do
+            ((num_os=j+1))
+            object_array=( "${object_array[@]}" "FNOS${num_os}DS" )
+        done
+
+        for object_name in "${object_array[@]}"
+        do
+            containsObjectStore "$object_name" "${CP4A_PATTERN_FILE_TMP}"
+            if (( ${#os_index_array[@]} > 1 ));then
+                ((index_array_temp=${#os_index_array[@]}-1))
+                for ((j=0;j<${index_array_temp};j++))
+                do
+                    ((index_os=${os_index_array[$j]}-j))
+                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$index_os]
+                done
+            fi
+        done
+    elif (( total_os_new < total_os_exist ))
+    then
+        object_array=()
+        for ((j=0;j<${#os_index_array_new[@]};j++))
+        do
+            ((num_os=j+1))
+            object_array=( "${object_array[@]}" "FNOS${num_os}DS" )
+        done
+
+        for object_name in "${object_array[@]}"
+        do
+            containsObjectStore "$object_name" "${CP4A_PATTERN_FILE_TMP}"
+            if (( ${#os_index_array[@]} > 1 ));then
+                ((index_array_temp=${#os_index_array[@]}-1))
+                for ((j=0;j<${index_array_temp};j++))
+                do
+                    ((index_os=${os_index_array[$j]}-j))
+                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$index_os]
+                done
+            fi
+        done
+
+        object_array_new=()
+        object_array_exist=()
+
+        for ((j=0;j<${#os_index_array_new[@]};j++))
+        do
+            ((num_os=j+1))
+            object_array_new=( "${object_array_new[@]}" "FNOS${num_os}DS" )
+        done
+
+        for ((j=0;j<${#os_index_array_exist[@]};j++))
+        do
+            ((num_os=j+1))
+            object_array_exist=( "${object_array_exist[@]}" "FNOS${num_os}DS" )
+        done
+        object_array=($(echo "${object_array_new[@]}" "${object_array_exist[@]}" | tr ' ' '\n' | sort | uniq -u))
+
+        for object_name in "${object_array[@]}"
+        do
+            containsObjectStore "$object_name" "${CP4A_PATTERN_FILE_TMP}"
+            if (( ${#os_index_array[@]} > 0 ));then
+                ((index_array_temp=${#os_index_array[@]}))
+                for ((j=0;j<${index_array_temp};j++))
+                do
+                    ((index_os=${os_index_array[$j]}-j))
+                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$index_os]
+                done
+            fi
+        done
+
+    fi
+
     containsInitLDAPGroups "${CP4A_PATTERN_FILE_TMP}"
     if (( ${#ldap_groups_index_array[@]} > 1 ));then
         ((index_array_temp=${#ldap_groups_index_array[@]}-1))
         for ((j=0;j<${index_array_temp};j++))
-        do 
-            index_os=${ldap_groups_index_array[$j]}
+        do
+            ((index_os=${ldap_groups_index_array[$j]}-j))
             ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_ldap_creation.ic_ldap_admins_groups_name.[$index_os]
         done
 
@@ -3710,11 +3852,11 @@ function apply_pattern_cr(){
      if (( ${#ldap_users_index_array[@]} > 1 ));then
         ((index_array_temp=${#ldap_users_index_array[@]}-1))
         for ((j=0;j<${index_array_temp};j++))
-        do 
-            index_os=${ldap_users_index_array[$j]}
+        do
+            ((index_os=${ldap_users_index_array[$j]}-j))
             ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_ldap_creation.ic_ldap_admin_user_name.[$index_os]
         done
-        
+
     fi
 
     baw_name_array=("bawins1" "awsins1")
@@ -3724,8 +3866,8 @@ function apply_pattern_cr(){
         if (( ${#baw_index_array[@]} > 1 ));then
             ((index_array_temp=${#baw_index_array[@]}-1))
             for ((j=0;j<${index_array_temp};j++))
-            do 
-                index_os=${baw_index_array[$j]}
+            do
+                ((index_os=${baw_index_array[$j]}-j))
                 ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[$index_os]
             done
         fi
@@ -3735,13 +3877,60 @@ function apply_pattern_cr(){
      if (( ${#ae_index_array[@]} > 1 ));then
         ((index_array_temp=${#ae_index_array[@]}-1))
         for ((j=0;j<${index_array_temp};j++))
-        do 
-            index_os=${ae_index_array[$j]}
+        do
+            ((index_os=${ae_index_array[$j]}-j))
             ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[$index_os]
         done
-        
-    fi 
+    fi
+
+    containsICNRepos "${CP4A_PATTERN_FILE_TMP}"
+     if (( ${#icn_repo_index_array[@]} > 1 ));then
+        ((index_array_temp=${#icn_repo_index_array[@]}-1))
+        for ((j=0;j<${index_array_temp};j++))
+        do
+            ((index_os=${icn_repo_index_array[$j]}-j))
+            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_icn_init_info.icn_repos.[$index_os]
+        done
+    fi
+
+    containsICNDesktop "${CP4A_PATTERN_FILE_TMP}"
+     if (( ${#icn_desktop_index_array[@]} > 1 ));then
+        ((index_array_temp=${#icn_desktop_index_array[@]}-1))
+        for ((j=0;j<${index_array_temp};j++))
+        do
+            ((index_os=${icn_desktop_index_array[$j]}-j))
+            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_icn_init_info.icn_desktop.[$index_os]
+        done
+    fi
+
+    containsTenantDB "${CP4A_PATTERN_FILE_TMP}"
+     if (( ${#tenant_db_index_array[@]} > 1 ));then
+        ((index_array_temp=${#tenant_db_index_array[@]}-1))
+        for ((j=0;j<${index_array_temp};j++))
+        do
+            ((index_os=${tenant_db_index_array[$j]}-j))
+            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_ca_datasource.tenant_databases.[$index_os]
+        done
+    fi
+
     # ${COPY_CMD} -rf ${CP4A_PATTERN_FILE_TMP} ${CP4A_PATTERN_FILE_BAK}
+    if [[ "$SCRIPT_MODE" == "baw-dev" || "$SCRIPT_MODE" == "dev" || "$SCRIPT_MODE" == "review" ]]; then
+        ${SED_COMMAND} "s|tag: \"${IMAGE_TAG_FINAL}\"|tag: ${IMAGE_TAG_DEV}|g" ${CP4A_PATTERN_FILE_TMP}
+        ${SED_COMMAND} "s|tag: ${IMAGE_TAG_FINAL}|tag: ${IMAGE_TAG_DEV}|g" ${CP4A_PATTERN_FILE_TMP}
+        # ${SED_COMMAND} "/cp\/cp4a\/fncm\/cpe/{n;s/tag:.*/tag: ${IMAGE_TAG_DEV}/;}" ${CP4A_PATTERN_FILE_TMP}
+        # ${SED_COMMAND} "/cp\/cp4a\/fncm\/css/{n;s/tag:.*/tag: ${IMAGE_TAG_DEV}/;}" ${CP4A_PATTERN_FILE_TMP}
+        # ${SED_COMMAND} "/cp\/cp4a\/fncm\/graphql/{n;s/tag:.*/tag: ${IMAGE_TAG_DEV}/;}" ${CP4A_PATTERN_FILE_TMP}
+        # ${SED_COMMAND} "/cp\/cp4a\/fncm\/cmis/{n;s/tag:.*/tag: ${IMAGE_TAG_DEV}/;}" ${CP4A_PATTERN_FILE_TMP}
+        # ${SED_COMMAND} "/cp\/cp4a\/fncm\/extshare/{n;s/tag:.*/tag: ${IMAGE_TAG_DEV}/;}" ${CP4A_PATTERN_FILE_TMP}
+        # ${SED_COMMAND} "/cp\/cp4a\/fncm\/taskmgr/{n;s/tag:.*/tag: ${IMAGE_TAG_DEV}/;}" ${CP4A_PATTERN_FILE_TMP}
+        # ${SED_COMMAND} "/cp\/cp4a\/ier\/ier/{n;s/tag:.*/tag: ${IMAGE_TAG_DEV}/;}" ${CP4A_PATTERN_FILE_TMP}
+        # ${SED_COMMAND} "/cp\/cp4a\/iccsap\/iccsap/{n;s/tag:.*/tag: ${IMAGE_TAG_DEV}/;}" ${CP4A_PATTERN_FILE_TMP}
+        # ${SED_COMMAND} "/cp\/cp4a\/ban\/navigator/{n;s/tag:.*/tag: ${IMAGE_TAG_DEV}/;}" ${CP4A_PATTERN_FILE_TMP}
+    fi
+
+    if [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "document_processing" ]]; then
+        ${SED_COMMAND} "s/.*# ecm_configuration:.*/  # ecm_configuration:/g" ${CP4A_PATTERN_FILE_TMP}
+    fi
 
     if [[ "$DEPLOYMENT_TYPE" == "demo" && "$INSTALLATION_TYPE" == "new" && ("$SCRIPT_MODE" != "review" || "$SCRIPT_MODE" != "OLM") ]];then
         ${CLI_CMD} delete -f ${CP4A_PATTERN_FILE_BAK} >/dev/null 2>&1
@@ -3855,40 +4044,72 @@ function show_summary(){
         done
     fi
 
-    echo -e "\x1B[1;31m3. Entitlement Registry key:\x1B[0m" # not show plaintext password
-    echo -e "\x1B[1;31m4. Docker registry service name or URL:\x1B[0m ${LOCAL_REGISTRY_SERVER}"
-    echo -e "\x1B[1;31m5. Docker registry user name:\x1B[0m ${LOCAL_REGISTRY_USER}"
-    # echo -e "\x1B[1;31m5. Docker registry password: ${LOCAL_REGISTRY_PWD}\x1B[0m"
-    echo -e "\x1B[1;31m6. Docker registry password:\x1B[0m" # not show plaintext password
+    if [[ $PLATFORM_SELECTED == "other" ]]; then
+        echo -e "\x1B[1;31m3. Entitlement Registry key:\x1B[0m" # not show plaintext password
+        echo -e "\x1B[1;31m4. Docker registry service name or URL:\x1B[0m ${LOCAL_REGISTRY_SERVER}"
+        echo -e "\x1B[1;31m5. Docker registry user name:\x1B[0m ${LOCAL_REGISTRY_USER}"
+        # echo -e "\x1B[1;31m5. Docker registry password: ${LOCAL_REGISTRY_PWD}\x1B[0m"
+        echo -e "\x1B[1;31m6. Docker registry password:\x1B[0m" # not show plaintext password
+    fi
     if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]];
     then
-        if  [[ $PLATFORM_SELECTED == "OCP" ]]; then
-            echo -e "\x1B[1;31m7. OCP Infrastructure Node:\x1B[0m ${INFRA_NAME}"
-        elif [[ $PLATFORM_SELECTED == "ROKS" ]]
-        then
-            echo -e "\x1B[1;31m7. ROKS Infrastructure Node:\x1B[0m ${INFRA_NAME}"
-        fi
-        if  [[ $DEPLOYMENT_TYPE == "demo" ]];
-        then
-            echo -e "\x1B[1;31m8. Dynamic storage classname:\x1B[0m ${STORAGE_CLASS_NAME}"
+        # if  [[ $PLATFORM_SELECTED == "OCP" ]]; then
+        #     echo -e "\x1B[1;31m3. OCP Infrastructure Node:\x1B[0m ${INFRA_NAME}"
+        # elif [[ $PLATFORM_SELECTED == "ROKS" ]]
+        # then
+        #     echo -e "\x1B[1;31m3. ROKS Infrastructure Node:\x1B[0m ${INFRA_NAME}"
+        # fi
+        # if  [[ $DEPLOYMENT_TYPE == "demo" && $PLATFORM_SELECTED == "OCP" ]];
+        # then
+        #     echo -e "\x1B[1;31m3. Dynamic storage classname:\x1B[0m ${STORAGE_CLASS_NAME}"
+        # else
+        #     echo -e "\x1B[1;31m3. Dynamic storage classname:\x1B[0m"
+        #     printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Slow:" "${SLOW_STORAGE_CLASS_NAME}"
+        #     printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Medium:" "${MEDIUM_STORAGE_CLASS_NAME}"
+        #     printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Fast:" "${FAST_STORAGE_CLASS_NAME}"
+        # fi
+        if [ -z "$existing_infra_name" ]; then
+            if  [[ $DEPLOYMENT_TYPE == "demo" && $PLATFORM_SELECTED == "OCP" ]];
+            then
+                echo -e "\x1B[1;31m3. Dynamic storage classname:\x1B[0m ${STORAGE_CLASS_NAME}"
+            else
+                echo -e "\x1B[1;31m3. Dynamic storage classname:\x1B[0m"
+                printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Slow:" "${SLOW_STORAGE_CLASS_NAME}"
+                printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Medium:" "${MEDIUM_STORAGE_CLASS_NAME}"
+                printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Fast:" "${FAST_STORAGE_CLASS_NAME}"
+            fi           
         else
-            echo -e "\x1B[1;31m8. Dynamic storage classname:\x1B[0m"
-            printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Slow:" "${SLOW_STORAGE_CLASS_NAME}"
-            printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Medium:" "${MEDIUM_STORAGE_CLASS_NAME}"
-            printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Fast:" "${FAST_STORAGE_CLASS_NAME}"
+            if  [[ $PLATFORM_SELECTED == "OCP" ]]; then
+                echo -e "\x1B[1;31m3. OCP Infrastructure Node:\x1B[0m ${INFRA_NAME}"
+            elif [[ $PLATFORM_SELECTED == "ROKS" ]]
+            then
+                echo -e "\x1B[1;31m3. ROKS Infrastructure Node:\x1B[0m ${INFRA_NAME}"
+            fi
+            if  [[ $DEPLOYMENT_TYPE == "demo" && $PLATFORM_SELECTED == "OCP" ]];
+            then
+                echo -e "\x1B[1;31m4. Dynamic storage classname:\x1B[0m ${STORAGE_CLASS_NAME}"
+            else
+                echo -e "\x1B[1;31m4. Dynamic storage classname:\x1B[0m"
+                printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Slow:" "${SLOW_STORAGE_CLASS_NAME}"
+                printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Medium:" "${MEDIUM_STORAGE_CLASS_NAME}"
+                printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Fast:" "${FAST_STORAGE_CLASS_NAME}"
+            fi            
         fi
     else
         if  [[ $DEPLOYMENT_TYPE == "demo" ]];
         then
-            echo -e "\x1B[1;31m7. Dynamic storage classname:\x1B[0m ${STORAGE_CLASS_NAME}"
+            echo -e "\x1B[1;31m3. Dynamic storage classname:\x1B[0m ${STORAGE_CLASS_NAME}"
         else
-            echo -e "\x1B[1;31m7. Dynamic storage classname:\x1B[0m"
-            printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Slow:" "${SLOW_STORAGE_CLASS_NAME}"
-            printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Medium:" "${MEDIUM_STORAGE_CLASS_NAME}"
-            printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Fast:" "${FAST_STORAGE_CLASS_NAME}"
+            if [[ $PLATFORM_SELECTED == "other" ]]; then
+                echo -e "\x1B[1;31m7. Dynamic storage classname:\x1B[0m"
+            else
+                echo -e "\x1B[1;31m3. Dynamic storage classname:\x1B[0m"
+            fi
         fi
+        printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Slow:" "${SLOW_STORAGE_CLASS_NAME}"
+        printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Medium:" "${MEDIUM_STORAGE_CLASS_NAME}"
+        printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Fast:" "${FAST_STORAGE_CLASS_NAME}"
     fi
-
     echo -e "\x1B[1m*******************************************************\x1B[0m"
 }
 
@@ -3949,9 +4170,9 @@ function prepare_pattern_file(){
         # WORKSTREAMS_PATTERN_FILE_TMP=$TEMP_FOLDER/.ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workstreams_tmp.yaml
         # WORKSTREAMS_PATTERN_FILE_BAK=$BAK_FOLDER/.ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workstreams.yaml
 
-        WW_PATTERN_FILE=${PARENT_DIR}/descriptors/patterns/ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow-workstreams.yaml
-        WW_PATTERN_FILE_TMP=$TEMP_FOLDER/.ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow-workstreams_tmp.yaml
-        WW_PATTERN_FILE_BAK=$BAK_FOLDER/.ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow-workstreams.yaml
+        WW_PATTERN_FILE=${PARENT_DIR}/descriptors/patterns/ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow_authoring-workstreams.yaml
+        WW_PATTERN_FILE_TMP=$TEMP_FOLDER/.ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow_authoring-workstreams_tmp.yaml
+        WW_PATTERN_FILE_BAK=$BAK_FOLDER/.ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow_authoring-workstreams.yaml
         ${COPY_CMD} -rf "${WORKFLOW_PATTERN_FILE}" "${WORKFLOW_PATTERN_FILE_BAK}"
         ${COPY_CMD} -rf "${WW_PATTERN_FILE}" "${WW_PATTERN_FILE_BAK}"
         # get_baw_mode
@@ -3961,9 +4182,9 @@ function prepare_pattern_file(){
         #     WORKFLOW_PATTERN_FILE_TMP=$TEMP_FOLDER/.ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow_tmp.yaml
         #     WORKFLOW_PATTERN_FILE_BAK=$BAK_FOLDER/.ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow.yaml
         # else
-        #     WORKFLOW_PATTERN_FILE=${PARENT_DIR}/descriptors/patterns/ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow-workstreams.yaml
-        #     WORKFLOW_PATTERN_FILE_TMP=$TEMP_FOLDER/.ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow-workstreams_tmp.yaml
-        #     WORKFLOW_PATTERN_FILE_BAK=$BAK_FOLDER/.ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow-workstreams.yaml
+        #     WORKFLOW_PATTERN_FILE=${PARENT_DIR}/descriptors/patterns/ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow_authoring-workstreams.yaml
+        #     WORKFLOW_PATTERN_FILE_TMP=$TEMP_FOLDER/.ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow_authoring-workstreams_tmp.yaml
+        #     WORKFLOW_PATTERN_FILE_BAK=$BAK_FOLDER/.ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow_authoring-workstreams.yaml
         # fi
     elif [[ "$DEPLOYMENT_TYPE" == "enterprise" ]]
     then
@@ -4017,9 +4238,11 @@ while true; do
     read -rp "" ans
     case "$ans" in
     "y"|"Y"|"yes"|"Yes"|"YES")
-        # printf "\n"
         if [[ ("$SCRIPT_MODE" != "review") && ("$SCRIPT_MODE" != "OLM") ]]; then
-            echo -e "\x1B[1mInstalling the Cloud Pak for Automation operator...\x1B[0m"
+            if [[ $DEPLOYMENT_TYPE == "enterprise" ]];then
+                printf "\n"
+                echo -e "\x1B[1mCreating the Custom Resource of the Cloud Pak for Business Automation operator...\x1B[0m"
+            fi
         fi
         printf "\n"
         if [[ "${INSTALLATION_TYPE}"  == "new" ]]; then
@@ -4032,27 +4255,34 @@ while true; do
                 # read -rsn1 -p"Press any key to continue";echo
             else
                 if [ "$use_entitlement" = "no" ] ; then
-                    create_secret_local_registry
-                else
-                    create_secret_entitlement_registry
+                    isReady=$(${CLI_CMD} get secret | grep admin.registrykey)
+                    if [[ -z $isReady ]]; then
+                        echo "NOT found secret \"admin.registrykey\", exiting..."
+                        exit 1
+                    else
+                        echo "Found secret \"admin.registrykey\", continue...."
+                    fi
+                    # create_secret_local_registry
+                # else
+                #     create_secret_entitlement_registry
                 fi
-                allocate_operator_pvc
-                apply_cp4a_operator
-                copy_jdbc_driver
-                containsElement "iccsap" "${OPT_COMPONENTS_CR_SELECTED[@]}"
-                retVal=$?
-                if [[ $retVal -eq 0 ]]; then
-                    copy_sap_libraries
-                fi
+                # allocate_operator_pvc
+                # apply_cp4a_operator
+                # copy_jdbc_driver
+                # containsElement "iccsap" "${OPT_COMPONENTS_CR_SELECTED[@]}"
+                # retVal=$?
+                # if [[ $retVal -eq 0 ]]; then
+                #     copy_sap_libraries
+                # fi
             fi
-        elif [[ "${INSTALLATION_TYPE}"  == "existing" ]]; then
-            if [[ ("$SCRIPT_MODE" != "review") && ("$SCRIPT_MODE" != "OLM") ]]; then
-                containsElement "iccsap" "${OPT_COMPONENTS_CR_SELECTED[@]}"
-                retVal=$?
-                if [[ $retVal -eq 0 ]]; then
-                    copy_sap_libraries
-                fi
-            fi
+        # elif [[ "${INSTALLATION_TYPE}"  == "existing" ]]; then
+        #     if [[ ("$SCRIPT_MODE" != "review") && ("$SCRIPT_MODE" != "OLM") ]]; then
+        #         containsElement "iccsap" "${OPT_COMPONENTS_CR_SELECTED[@]}"
+        #         retVal=$?
+        #         if [[ $retVal -eq 0 ]]; then
+        #             copy_sap_libraries
+        #         fi
+        #     fi
         fi
         apply_pattern_cr
         break
@@ -4064,7 +4294,7 @@ while true; do
             printf "\n"
             if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]];
             then
-                printf "\x1B[1mEnter the number from 1 to 8 that you want to change: \x1B[0m"
+                printf "\x1B[1mEnter the number from 1 to 4 that you want to change: \x1B[0m"
             else
                 printf "\x1B[1mEnter the number from 1 to 7 that you want to change: \x1B[0m"
             fi
@@ -4082,32 +4312,32 @@ while true; do
                     select_optional_component
                     break
                     ;;
+                # "3")
+                #     get_entitlement_registry
+                #     break
+                #     ;;
+                # "3")
+                #     get_local_registry_server
+                #     break
+                #     ;;
+                # "4")
+                #     get_local_registry_user
+                #     break
+                #     ;;
+                # "5")
+                #     get_local_registry_password
+                #     break
+                #     ;;
+                # "3")
+                #     get_infra_name
+                #     break
+                #     ;;
                 "3")
-                    get_entitlement_registry
-                    break
-                    ;;
-                "4")
-                    get_local_registry_server
-                    break
-                    ;;
-                "5")
-                    get_local_registry_user
-                    break
-                    ;;
-                "6")
-                    get_local_registry_password
-                    break
-                    ;;
-                "7")
-                    get_infra_name
-                    break
-                    ;;
-                "8")
                     get_storage_class_name
                     break
                     ;;
                 *)
-                    echo -e "\x1B[1mEnter a valid number [1 to 8] \x1B[0m"
+                    echo -e "\x1B[1mEnter a valid number [1 to 4] \x1B[0m"
                     ;;
                 esac
             else

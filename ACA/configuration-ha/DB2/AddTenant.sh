@@ -1,15 +1,12 @@
 #!/bin/bash
-# @---lm_copyright_start
-# 5737-I23, 5900-A30
-# Copyright IBM Corp. 2018 - 2020. All Rights Reserved.
-# U.S. Government Users Restricted Rights:
-# Use, duplication or disclosure restricted by GSA ADP Schedule
-# Contract with IBM Corp.
-#@---lm_copyright_end
-# NOTES:
-# This script will create a DB2 database and initialize the database for a Content Analyzer tenant and load it with default data.
-# If you prefer to create your own database, and only want the script to initialize the existing database, 
-# please exit this script and run 'InitTenantDB.sh'.
+##
+## Licensed Materials - Property of IBM
+## 5737-I23
+## Copyright IBM Corp. 2018 - 2021. All Rights Reserved.
+## U.S. Government Users Restricted Rights:
+## Use, duplication or disclosure restricted by GSA ADP Schedule
+## Contract with IBM Corp.
+##
 
 . ./ScriptFunctions.sh
 
@@ -263,7 +260,7 @@ if [[ $use_existing_tenant -eq 1 ]]; then
   daily_limit=$(echo  $resp | awk '{print $2}') 
 fi
 
-rdbmsconnection="DSN=$tenant_dsn_name;UID=$tenant_db_user;PWD=$tenant_db_pwd;"
+rdbmsconnection="DSN=$tenant_dsn_name;UID=$tenant_db_user;"
 if [[ "$ssl" == "Yes" || "$ssl" == "yes" || "$ssl" == "YES" || "$ssl" == "y" || "$ssl" == "Y" ]]; then
     echo
     rdbmsconnection+="Security=SSL;"
@@ -439,3 +436,5 @@ fi
 echo -e "\n-- Script completed.\n"
 
 # echo "-- URL (replace frontend with your frontend host): https://frontend/?tid=$tenant_id&ont=$tenant_ontology"
+echo -e "\x1B[1;32mPlease note down the following information as you will need them to create the ADP database secret later: \x1B[0m"
+echo "${tenant_db_name}_DB_CONFIG=REPLACE_WITH_YOUR_DATABASE_PASSWORD" | tr '[:lower:]' '[:upper:]'

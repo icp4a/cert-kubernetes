@@ -26,10 +26,16 @@ to separate the rtsAdministrator and the resAdministrator roles -->
          <member name="odmAdmin"/>
          <member name="rtsAdmin"/>
       </group>
+
+      <group name="rtsInstallers">
+        <member name="odmAdmin"/>
+        <member name="rtsAdmin"/>
+      </group>
+
       <group name="rtsConfigManagers">
          <member name="rtsConfig"/>
       </group>
-
+      
       <!-- Groups for Decision Server -->
       <group name="resAdministrators">
          <member name="odmAdmin" />

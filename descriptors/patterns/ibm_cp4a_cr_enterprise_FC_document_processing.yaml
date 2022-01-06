@@ -3,7 +3,7 @@
 ##
 ##Licensed Materials - Property of IBM
 ##
-##(C) Copyright IBM Corp. 2020. All Rights Reserved.
+##(C) Copyright IBM Corp. 2021. All Rights Reserved.
 ##
 ##US Government Users Restricted Rights - Use, duplication or
 ##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -17,12 +17,12 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 20.0.3
+    release: 21.0.2
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 20.0.3.2
+  appVersion: 21.0.2
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -49,6 +49,11 @@ spec:
     ## All CP4A components must use/share the root_ca_secret in order for integration.
     root_ca_secret: icp4a-root-ca
 
+
+    ## Shared custom TLS secret which will be used to sign all external routes if defined.
+    ## If this is not defined, all external routes will be signed with `root_ca_secret`
+    external_tls_certificate_secret:
+
     ## CP4A patterns or capabilities to be deployed.  This CR represents the "document_processing" pattern (aka IBM Autoation Document Processing),
     ## which includes the following required/mandatory components:
     ##   - Development env:
@@ -56,7 +61,7 @@ spec:
     ##     - backend, redis, rabbitmq;
     ##     - extraction (callerapi, pdfprocess, utf8process, ocr-extraction);
     ##     - processing (postprocessing, setup, classifyprocess-classify, processing-extraction, updatefiledetail);
-    ##     - natural_language_extractor; deep learning (???);
+    ##     - natural_language_extractor; deep learning;
     ##     - ums;
     ##     - bastudio, jms, solution-server-helmjob-db, solution-server, dba-etcd;
     ##   - Runtime env:
@@ -73,7 +78,7 @@ spec:
     ## The optional components are:
     ##   - document_processing_designer (indicates the deployment is a development environment)
     ##   - document_processing_runtime (indicates the deployment is a runtime environment)
-    ##   - cmis, css, and es
+    ##   - cmis, css, es, tm
     ##   - ae_data_persistence (Business Automation Application Data Persistence)
     sc_optional_components: ae_data_persistence
 
@@ -81,11 +86,12 @@ spec:
     sc_deployment_type: enterprise
 
     ## For "document_processing" (ADP), you have the option to select CPE "full storage" or "limited storage" (free).
-    ## By default, ADP is deployed with CPE "full storage" (sc_cpe_limited_storage: false).  Set sc_cpe_limited_storage 
+    ## By default, ADP is deployed with CPE "full storage" (sc_cpe_limited_storage: false).  Set sc_cpe_limited_storage
     ## to "true" if you want to use CPE "limited storage" license
     sc_cpe_limited_storage: false
 
     ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that corresponds to a user ID.
+    ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is optional. It is not supported on OCP and ROKS.
     sc_run_as_user:
 
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
@@ -96,15 +102,16 @@ spec:
     sc_deployment_platform:
 
     ## For OCP, this is used to create route, you should input a valid hostname in the required field.
-    sc_deployment_hostname_suffix: "{{ meta.namespace }}.<Required>"
+     
 
     ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
     ## the external service to the component's truststore.
     trusted_certificate_list: []
 
+
     ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
     ## This secret is also used by Workflow and BAStudio to store AES encryption key.
-    encryption_key_secret: "<Required>"
+    encryption_key_secret: ibm-iaws-shared-key-secret
 
     ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
@@ -163,7 +170,7 @@ spec:
     ## The name of the secret that contains the LDAP SSL/TLS certificate.
     lc_ldap_ssl_secret_name: "<Required>"
 
-    ## The LDAP user name attribute.  One possible value is "*:cn" for TDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    ## The LDAP user name attribute. Semicolon-separated list that must include the first RDN user distinguished names. One possible value is "*:uid" for TDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
     lc_ldap_user_name_attribute: "<Required>"
 
     ## The LDAP user display name attribute. One possible value is "cn" for TDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info.
@@ -178,7 +185,7 @@ spec:
     ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
     lc_ldap_group_display_name_attr: "cn"
 
-    ## The LDAP group membership search filter string.  One possible value is "(&(cn=%v)(|(objectclass=groupOfNames)(objectclass=groupOfUniqueNames)(objectclass=groupOfURLs)))" for TDS
+    ## The LDAP group membership search filter string.  One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS
     ## and "(&(cn=%v)(objectcategory=group))" for AD.
     lc_ldap_group_membership_search_filter: "<Required>"
 
@@ -190,8 +197,8 @@ spec:
     # ad:
     #   lc_ad_gc_host: "<Required>"
     #   lc_ad_gc_port: "<Required>"
-    #   lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
-    #   lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
+    #   lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
+    #   lc_group_filter: "(&(cn=%v)(objectcategory=group))"
     # tds:
     #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
@@ -222,8 +229,8 @@ spec:
     ## This is the Global Catalog port for the LDAP
     #   lc_ad_gc_host: "<Required>"
     #   lc_ad_gc_port: "<Required>"
-    #   lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
-    #   lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
+    #   lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
+    #   lc_group_filter: "(&(cn=%v)(objectcategory=group))"
     # tds:
     #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
@@ -297,7 +304,7 @@ spec:
    # database_precheck: true
     ## The database configuration for the GCD datasource for CPE
     dc_gcd_datasource:
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".
       dc_database_type: "<Required>"
       ## The GCD non-XA datasource name.  The default value is "FNGCDDS".
       dc_common_gcd_datasource_name: "FNGCDDS"
@@ -325,10 +332,22 @@ spec:
       dc_hadr_retry_interval_for_client_reroute: 15
       ## Provide the max # of retries.  If not preference, keep the default value.
       dc_hadr_max_retries_for_client_reroute: 3
+      ## Connection manager for a data source.
+      connection_manager:
+        ## Minimum number of physical connections to maintain in the pool.
+        min_pool_size: 0
+        ## Maximum number of physical connections for a pool.
+        max_pool_size: 50
+        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
+        max_idle_time: 1m
+        ## Amount of time between runs of the pool maintenance thread.
+        reap_time: 2m 
+        ## Specifies which connections to destroy when a stale connection is detected in a pool.
+        purge_policy: EntirePool
 
     dc_os_datasources:
     ## The data source configuration for DEVOS1 object store.
-    ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the GCD configuration above.
+    ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the GCD configuration above.
     - dc_database_type: "<Required>"
       ## For the "document_processing" pattern, the following parameters below MUST remain unchanged and have the default value:
       ##   dc_os_label: "devos1"
@@ -374,6 +393,19 @@ spec:
       dc_hadr_retry_interval_for_client_reroute: 15
       ## Provide the max # of retries.  If not preference, keep the default value.
       dc_hadr_max_retries_for_client_reroute: 3
+      ## Connection manager for a data source.
+      connection_manager:
+        ## Minimum number of physical connections to maintain in the pool.
+        min_pool_size: 0
+        ## Maximum number of physical connections for a pool.
+        max_pool_size: 50
+        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
+        max_idle_time: 1m
+        ## Amount of time between runs of the pool maintenance thread.
+        reap_time: 2m 
+        ## Specifies which connections to destroy when a stale connection is detected in a pool.
+        purge_policy: EntirePool
+
     ## The data source configuration for AEOS object store.
     - dc_database_type: "<Required>"
       ## For the "document_processing" pattern, the following parameters below MUST remain unchanged and have the default value:
@@ -419,9 +451,22 @@ spec:
       dc_hadr_retry_interval_for_client_reroute: 15
       ## Provide the max # of retries.  If not preference, keep the default value.
       dc_hadr_max_retries_for_client_reroute: 3
+      ## Connection manager for a data source.
+      connection_manager:
+        ## Minimum number of physical connections to maintain in the pool.
+        min_pool_size: 0
+        ## Maximum number of physical connections for a pool.
+        max_pool_size: 50
+        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
+        max_idle_time: 1m
+        ## Amount of time between runs of the pool maintenance thread.
+        reap_time: 2m 
+        ## Specifies which connections to destroy when a stale connection is detected in a pool.
+        purge_policy: EntirePool
+
     ## The database configuration for ICN (Navigator) - aka BAN (Business Automation Navigator)
     dc_icn_datasource:
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
       ## GCD and object store configuration above.
       dc_database_type: "<Required>"
       ## Provide the ICN datasource name.  The default value is "ECMClientDS".
@@ -448,6 +493,19 @@ spec:
       dc_hadr_retry_interval_for_client_reroute: 15
       ## Provide the max # of retries.  If not preference, keep the default value.
       dc_hadr_max_retries_for_client_reroute: 3
+      ## Connection manager for a data source.
+      connection_manager:
+        ## Minimum number of physical connections to maintain in the pool.
+        min_pool_size: 0
+        ## Maximum number of physical connections for a pool.
+        max_pool_size: 50
+        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
+        max_idle_time: 1m
+        ## Amount of time between runs of the pool maintenance thread.
+        reap_time: 2m 
+        ## Specifies which connections to destroy when a stale connection is detected in a pool.
+        purge_policy: EntirePool
+
     ## The database configuration for UMS (User Management Service)
     dc_ums_datasource:
       ## Provide the datasource configuration for oauth
@@ -494,7 +552,7 @@ spec:
     dc_ca_datasource:
       ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR"
       dc_database_type: "<Required>"
-      ## Provide  the hostname of the primary DB2 server in this variable and IF your DB2 hostname is not resolvable by DNS THEN  provide the corresponding IP address for the `database_IP` parameter below when `dc_database_type` is `db2HADR`.
+      ## Provide  the hostname of the primary DB2 server in this variable and IF your DB2 hostname is not resolvable by DNS THEN  provide the corresponding IP address.
       database_servername: "<Required>"
       ## Provide the name of the BASE database for ACA.  For example: "BASECA"
       database_name: "<Required>"
@@ -509,7 +567,7 @@ spec:
       ## If the database type is "Db2HADR", then complete the rest of the parameters below.
       ## Otherwise, remove or comment out the rest of the parameters below.
       ######################################################################################
-
+      ## The `database_servername` field above must be in the form of fully qualify DNS name if DB2 HADR is used.
       ## Provide the standby database server name and if your standby database server name cannot be resolvable by DNS, then provide the corresponding IP address for the `dc_hadr_standby_ip` parameter below.
       dc_hadr_standby_servername: "<Required>"
       ## Provide the standby database server port.  For Db2, the default is "50000".
@@ -521,9 +579,9 @@ spec:
       ## Provide the max # of retries.  If not preference, keep the default value.
       dc_hadr_max_retries_for_client_reroute: 3
       ## Provide the primary database server IP address if database_servername cannot be resolved by DNS.
-      database_ip: "<Required>"
+      database_ip: ""
       ## Provide the standby database server IP address if dc_hadr_standby_servername cannot be resolved by DNS.
-      dc_hadr_standby_ip: "<Required>"
+      dc_hadr_standby_ip: ""
 
    ## Monitor setting
  # monitoring_configuration:
@@ -565,7 +623,7 @@ spec:
       arch:
         amd64: "3 - Most preferred"
 
-      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## The number of replicas or pods to be deployed.  The default is 2 replica and for high availability in a production env,
       ## it is recommended to have 2 or more.
       replica_count: 2
 
@@ -573,7 +631,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-556-p8cpe-la001
+        tag: ga-557-p8cpe
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -592,7 +650,7 @@ spec:
           cpu: 1
           memory: 3072Mi
 
-      ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
+      ## By default "Autoscaling" is enabled with the following settings with a minimum of 2 replca and a maximum of 3 replicas.  Change
       ## this settings to meet your requirement.
       auto_scaling:
         enabled: false
@@ -626,6 +684,9 @@ spec:
 
         # The license must be set to "accept" in order for the component to install.  This is the default value.
         license: accept
+
+        # Enable/disable FIPS (default value is "false")
+        disable_fips: false
 
       ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
       monitor_enabled: false
@@ -670,7 +731,7 @@ spec:
       arch:
         amd64: "3 - Most preferred"
 
-      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## The number of replicas or pods to be deployed.  The default is 2 replica and for high availability in a production env,
       ## it is recommended to have 2 or more.
       replica_count: 2
 
@@ -678,7 +739,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: ga-556-p8css-la001
+        tag: ga-557-p8css
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -745,7 +806,7 @@ spec:
       arch:
         amd64: "3 - Most preferred"
 
-      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## The number of replicas or pods to be deployed.  The default is 2 replica and for high availability in a production env,
       ## it is recommended to have 2 or more.
       replica_count: 2
 
@@ -753,7 +814,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-305-cmis-if003
+        tag: ga-306-cmis
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -772,7 +833,7 @@ spec:
           cpu: 1
           memory: 1536Mi
 
-      ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
+      ## By default "Autoscaling" is enabled with the following settings with a minimum of 2 replca and a maximum of 3 replicas.  Change
       ## this settings to meet your requirement.
       auto_scaling:
         enabled: false
@@ -800,6 +861,9 @@ spec:
         ##  -XshowSettings:vm"
         ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
         jvm_customize_options:
+
+        ## Enable/disable FIPS (default value is "false")
+        disable_fips: false
 
         ## Enable/disable Websphere Security
         ws_security_enabled: false
@@ -882,7 +946,7 @@ spec:
       arch:
         amd64: "3 - Most preferred"
 
-      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## The number of replicas or pods to be deployed.  The default is 2 replica and for high availability in a production env,
       ## it is recommended to have 2 or more.
       replica_count: 2
 
@@ -890,7 +954,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: ga-556-p8cgql-if001
+        tag: ga-557-p8cgql
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -909,7 +973,7 @@ spec:
           cpu: 1
           memory: 1536Mi
 
-      ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
+      ## By default "Autoscaling" is enabled with the following settings with a minimum of 2 replca and a maximum of 3 replicas.  Change
       ## this settings to meet your requirement.
       auto_scaling:
         enabled: false
@@ -941,9 +1005,6 @@ spec:
         license: accept
 
         enable_graph_iql: false
-
-        ## By default, this parameter is set by the Operator using the CPE service endpoint (e.g., "http://{{ meta.name }}-cpe-svc:9080/wsi/FNCEWS40MTOM")
-        cpe_uri:
 
       ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
       monitor_enabled: false
@@ -983,7 +1044,7 @@ spec:
       arch:
         amd64: "3 - Most preferred"
 
-      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## The number of replicas or pods to be deployed.  The default is 2 replica and for high availability in a production env,
       ## it is recommended to have 2 or more.
       replica_count: 2
 
@@ -991,7 +1052,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: ga-309-es-if001
+        tag: ga-3010-es
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1006,7 +1067,7 @@ spec:
           cpu: 1
           memory: 1536Mi
 
-      ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
+      ## By default "Autoscaling" is enabled with the following settings with a minimum of 2 replca and a maximum of 3 replicas.  Change
       ## this settings to meet your requirement.
       auto_scaling:
         enabled: false
@@ -1061,6 +1122,95 @@ spec:
       ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
       image_pull_secrets:
         name: "admin.registrykey"
+    #############################################
+    ## Start of configuration for Task Manager ##
+    #############################################
+    tm:
+      ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
+      arch:
+        amd64: "3 - Most preferred"
+
+      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## it is recommened to have 2 or more.
+      replica_count: 2
+
+      ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+      image:
+        ## The default repository is the IBM Entitled Registry.
+        repository: cp.icr.io/cp/cp4a/fncm/taskmgr
+        tag: ga-3010-tm
+
+        ## This will override the image pull policy in the shared_configuration.
+        pull_policy: IfNotPresent
+
+      ## The initial resources (CPU, memory) requests and limits.  If more resources are needed,
+      ## make the changes here to meet your requirement.
+      resources:
+        requests:
+          cpu: 500m
+          memory: 512Mi
+        limits:
+          cpu: 1
+          memory: 1536Mi
+
+      ## By default "Autoscaling" is disabled with the following settings with a minimum of 2 replca and a maximum of 3 replicas.  Change
+      ## this settings to meet your requirement.
+      auto_scaling:
+        enabled: false
+        max_replicas: 3
+        min_replicas: 2
+        ## This is the default cpu percentage before autoscaling occurs.
+        target_cpu_utilization_percentage: 80
+
+      ## Below are the default TM Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
+      tm_production_setting:
+        time_zone: Etc/UTC
+
+        ## The initial use of available memory.
+        jvm_initial_heap_percentage: 40
+        ## The maximum percentage of available memory to use.
+        jvm_max_heap_percentage: 66
+
+        ## Use this "jvm_customize_options" parameter to specify JVM arguments using comma separation. For example, if you want to set the following JVM arguments:
+        ##  -Dmy.test.jvm.arg1=123
+        ##  -Dmy.test.jvm.arg2=abc
+        ##  -XX:+SomeJVMSettings
+        ##  -XshowSettings:vm"
+        ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
+        jvm_customize_options: "-Dcom.ibm.ecm.task.StartUpListener.defaultLogLevel=FINE"
+        license: accept
+
+      ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
+      monitor_enabled: false
+      ## Enable/disable logging where logs can be sent to Elasticsearch.
+      logging_enabled: false
+
+      ## By default, the plugin for Graphite is enable to emit container metrics.
+      collectd_enable_plugin_write_graphite: false
+
+      ## Persistent Volume Claims for Task Manager (TM).  If the storage_configuration in the shared_configuration is configured,
+      ## the Operator will create the PVC using the names below.
+      datavolume:
+        existing_pvc_for_tm_cfgstore: "tm-cfgstore"
+        existing_pvc_for_tm_logstore: "tm-logstore"
+        existing_pvc_for_tm_pluginstore: "tm-pluginstore"
+
+      ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
+      probe:
+        readiness:
+          initial_delay_seconds: 120
+          period_seconds: 10
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          initial_delay_seconds: 600
+          period_seconds: 10
+          timeout_seconds: 5
+          failure_threshold: 6
+
+      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
+      image_pull_secrets:
+        name: "admin.registrykey"
 
     #############################################
     ##                                         ##
@@ -1085,7 +1235,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/mongo
-          tag: 4.2.10
+          tag: 4.2.14
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1124,14 +1274,14 @@ spec:
         ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
         arch:
           amd64: "3 - Most preferred"
-        ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+        ## The number of replicas or pods to be deployed.  The default is 2 replica and for high availability in a production env,
         ## it is recommened to have 2 or more.
         replica_count: 2
         ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/gitgateway
-          tag: 20.0.3-IF002
+          tag: 21.0.2
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1144,7 +1294,7 @@ spec:
           limits:
             cpu: 1
             memory: 1024Mi
-        ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change this settings to meet your requirement.
+        ## By default "Autoscaling" is enabled with the following settings with a minimum of 2 replca and a maximum of 3 replicas.  Change this settings to meet your requirement.
         auto_scaling:
           enabled: true
           max_replicas: 3
@@ -1155,6 +1305,7 @@ spec:
         # Below are the default Git Gateway settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
         production_setting:
           log_trace_specification: "*=info"
+          git_gateway_timeout: 30000
 
         ## Persistent Volume Claims for Mongo.  If the storage_configuration in the shared_configuration is configured,
         ## the Operator will create the PVC using the names below.
@@ -1181,14 +1332,14 @@ spec:
         ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
         arch:
           amd64: "3 - Most preferred"
-        ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+        ## The number of replicas or pods to be deployed.  The default is 2 replica and for high availability in a production env,
         ## it is recommened to have 2 or more.
         replica_count: 2
         ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cds
-          tag: 20.0.3-IF002
+          tag: 21.0.2
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1202,7 +1353,7 @@ spec:
             cpu: 1
             memory: 1024Mi
 
-        ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change this settings to meet your requirement.
+        ## By default "Autoscaling" is enabled with the following settings with a minimum of 2 replca and a maximum of 3 replicas.  Change this settings to meet your requirement.
         auto_scaling:
           enabled: true
           max_replicas: 3
@@ -1245,14 +1396,14 @@ spec:
         ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
         arch:
           amd64: "3 - Most preferred"
-        ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+        ## The number of replicas or pods to be deployed.  The default is 2 replica and for high availability in a production env,
         ## it is recommened to have 2 or more.
         replica_count: 2
         ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cdra
-          tag: 20.0.3-IF002
+          tag: 21.0.2
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1267,7 +1418,7 @@ spec:
             cpu: 1
             memory: 3072Mi
 
-        ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change this settings to meet your requirement.
+        ## By default "Autoscaling" is enabled with the following settings with a minimum of 2 replca and a maximum of 3 replicas.  Change this settings to meet your requirement.
         auto_scaling:
           enabled: true
           max_replicas: 3
@@ -1290,7 +1441,7 @@ spec:
           ##  -XX:+SomeJVMSettings
           ##  -XshowSettings:vm"
           ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
-          jvm_customize_options: 
+          jvm_customize_options:
           license: accept
 
         ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
@@ -1328,7 +1479,7 @@ spec:
         arch:
           amd64: "3 - Most preferred"
 
-        ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+        ## The number of replicas or pods to be deployed.  The default is 2 replica and for high availability in a production env,
         ## it is recommened to have 2 or more.
         replica_count: 2
 
@@ -1336,7 +1487,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cpds
-          tag: 20.0.3-IF002
+          tag: 21.0.2
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1349,9 +1500,9 @@ spec:
             memory: 512Mi
           limits:
             cpu: 1
-            memory: 1024Mi
+            memory: 3096Mi
 
-        ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change this settings to meet your requirement.
+        ## By default "Autoscaling" is enabled with the following settings with a minimum of 2 replca and a maximum of 3 replicas.  Change this settings to meet your requirement.
         auto_scaling:
           enabled: true
           max_replicas: 3
@@ -1376,15 +1527,17 @@ spec:
           ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
           jvm_customize_options:
           license: accept
-          
+
           ## The repository service url.
-          ## For a development environment default url is 
+          ## For a development environment default url is
           ## https://{{ meta.name }}-cdra-svc:9443/cdapi
-          ## For a runtime environment update this value to point to your 
-          ## development cdra environment. 
+          ## For a runtime environment update this value to point to your
+          ## development cdra environment.
           repo_service_url: "https://{{ meta.name }}-cdra-svc:9443/cdapi"
 
+        ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
         monitor_enabled: false
+        ## Enable/disable logging where logs can be sent to Elasticsearch.
         logging_enabled: false
 
 
@@ -1415,7 +1568,7 @@ spec:
         arch:
           amd64: "3 - Most preferred"
 
-        ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+        ## The number of replicas or pods to be deployed.  The default is 2 replica and for high availability in a production env,
         ## it is recommened to have 2 or more.
         replica_count: 2
 
@@ -1423,7 +1576,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/viewone
-          tag: 20.0.3-IF002
+          tag: 21.0.2
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1438,7 +1591,7 @@ spec:
             cpu: 1
             memory: 4096Mi
 
-        ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change this settings to meet your requirement.
+        ## By default "Autoscaling" is enabled with the following settings with a minimum of 2 replica and a maximum of 3 replicas.  Change this settings to meet your requirement.
         auto_scaling:
           enabled: true
           max_replicas: 3
@@ -1446,7 +1599,7 @@ spec:
           ## This is the default cpu percentage before autoscaling occurs.
           target_cpu_utilization_percentage: 80
 
-       ## Below are the default ViewOne Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
+        ## Below are the default ViewOne Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
         production_setting:
 
           ## Font sync interval
@@ -1469,9 +1622,10 @@ spec:
           ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
           jvm_customize_options:
 
+        ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
         monitor_enabled: false
+        ## Enable/disable logging where logs can be sent to Elasticsearch.
         logging_enabled: false
-
 
         ## Persistent Volume Claims for ViewOne.  If the storage_configuration in the shared_configuration is configured,
         ## the Operator will create the PVC using the names below.
@@ -1512,7 +1666,7 @@ spec:
     arch:
       amd64: "3 - Most preferred"
 
-    ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+    ## The number of replicas or pods to be deployed.  The default is 2 replica and for high availability in a production env,
     ## it is recommended to have 2 or more.
     replica_count: 2
 
@@ -1520,7 +1674,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-309-icn-if001
+      tag: ga-3010-icn
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -1539,7 +1693,7 @@ spec:
         cpu: 1
         memory: 1536Mi
 
-    ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
+    ## By default "Autoscaling" is enabled with the following settings with a minimum of 2 replca and a maximum of 3 replicas.  Change
     ## this settings to meet your requirement.
     auto_scaling:
       enabled: false
@@ -1573,10 +1727,17 @@ spec:
       ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
       jvm_customize_options:
 
+      ## Enable/disable FIPS (default value is "false")
+      disable_fips: false
+
       icn_jndids_name: ECMClientDS
       icn_schema: ICNDB
       icn_table_space: ICNDB
       allow_remote_plugins_via_http: false
+      ## uncomment copy_files_to_war parameter to copy customized files into Navigator web application.  
+      ## The <custom-dir>/navigator_war_filesources.xml must be located in config volume mapping, which is /opt/ibm/wlp/usr/servers/defaultServer/configDropins/overrides 
+      # copy_files_to_war: <custom-dir>/navigator_war_filesources.xml
+
 
 
     ## Default settings for monitoring
@@ -1611,24 +1772,35 @@ spec:
     image_pull_secrets:
       name: "admin.registrykey"
 
-############################################################################
+  ############################################################################
   ########   IBM Business Automation Content Analyzer configuration   ########
   ############################################################################
   ca_configuration:
     global:
-## Route and Ingress annotations. For more information on the annotations, refer to https://docs.openshift.com/container-platform/4.3/networking/routes/route-configuration.html#nw-route-specific-annotations_route-configuration
+## Route and Ingress annotations. For more information on the annotations, refer to https://docs.openshift.com/container-platform/4.6/networking/routes/route-configuration.html#nw-route-specific-annotations_route-configuration
 ## By default, Content Analyzer will predefine `haproxy.router.openshift.io/disable_cookies: 'true'`.
 ## The timeout will be set to 120s if not specified. The timeout can be overwritten by specifying a new timeout value in second (s).
       route_ingress_annotations:
       - haproxy.router.openshift.io/timeout: 150s
 ## Indicate whether to enable metrics for ACA.  True or false
       metrics: "true"
+      ## The external tls certificate secret name for signing ACA certificates. It will take precedent over the shared_configuration.external_tls_certificate_secret when it's defined.
+      external_tls_certificate_secret:
       arch: "amd64"
       # The database secret name created as part of the pre-req.  Default will be "aca-basedb" if blank.
       db_secret:
+      # The flag to indicate whether the OCP cluster is FIPS enabled or not (true or false).  Default will be false if blank
+      enable_fips: false
+      # Global HPA auto scaling configuration. These parameters will take effect if the `auto_scaling` section under individual components are not defined. Once you define the auto_scaling section here, it will apply the same settings for all CA's subcomponents.
+      # The min_replicas and max_replicas will be used if auto_scaling.enabled is true.
+      auto_scaling:
+        enabled: false
+        target_cpu_utilization_percentage: 90
+        min_replicas: 2
+        max_replicas: 3
       image:
         repository: "cp.icr.io/cp/cp4a/iadp"
-        tag: "20.0.3-IF002"
+        tag: "21.0.2"
         pull_policy: "IfNotPresent"
 ## Overwrite the default SHA digest for Content Analyzer containers by providing the SHA for each containers below.  To use SHA digest, you must comment out the `tag` parameter or leave it blank and you must use entilement registry as the repository.
         processing_digest:
@@ -1640,9 +1812,6 @@ spec:
         deep_learning:
       # The max of retrying for CA deployment verification task until all the pods are in Ready status. A delay of 20 seconds between each attempt.  Default will be 90 if blank
       retries: "90"
-      # Timeout for Content Analyzer's ocr_extraction, classifyprocess, processing, updatefiledetail components.  Default will be 300 seconds if blank
-      celery:
-        process_timeout: 300
       # ACA configuration PVC setting
       configs:
         claimname: "sp-config-pvc"
@@ -1650,6 +1819,8 @@ spec:
         size:
       # ACA log PVC setting
       logs:
+        #  Number of log files to be kept before they will be rolled over.  Default is 20 if it's not defined.
+        log_rotate_count: 20
         claimname: "sp-log-pvc"
         log_level: "info"
         #Size of log PVC in GB
@@ -1666,20 +1837,28 @@ spec:
             memory: "640Mi"
             cpu: "0.25"
         replica_count: 3
-      # RabbitMQ configuration
+      # RabbitMQ configuration.
+      # memory_high_watermark is the memory threshold assigned to RabbitMQ.  It's recommended to be at 50% of the total memory of the RabbitMQ pod.
       rabbitmq:
         resources:
           limits:
             memory: "1024Mi"
-            cpu: "0.5"
-        # RabbitMQ high watermark memory setting.  Typically it should be around 50% of the memory limit of the pod
-        memory_high_watermark: "512MB"
-        # The number of archive logs for RabbitMQ
-        log_rotate_count: 20
+            cpu: "1"
         replica_count: 3
+        memory_high_watermark: "512MB"
+        # Number of acrhive logs for RabbitMQ
+        log_rotate_count: 20
     # Caller_api configuration
     caller_api:
       replica_count: 2
+    # HPA auto scaling configuration for caller_api.
+    # These parameters will take priority over all parameters that defined under ca_configuration.global.auto_scaling section.The min_replicas and max_replicas will be used if auto_scaling.enabled is true. And the value of min_replicas will instead of replica_count.
+    # The auto_scaling section should be commented out or removed if you plan to use the ca_configuration.global.auto_scaling section.
+      auto_scaling:
+        enabled: false
+        target_cpu_utilization_percentage: 90
+        min_replicas: 2
+        max_replicas: 3
       resources:
         limits:
           memory: "3072Mi"
@@ -1689,41 +1868,47 @@ spec:
       # Allow to specify a specific port (nodePort) for backend.  The port number must be between 30000-32767.  A random port will be generated if blank.
       port:
       replica_count: 2
+      # HPA auto scaling configuration for spbackend.
+      # These parameters will take priority over all parameters that defined under ca_configuration.global.auto_scaling section. The min_replicas and max_replicas will be used if auto_scaling.enabled is true. And the value of min_replicas will instead of replica_count.
+      # The auto_scaling section should be commented out or removed if you plan to use the ca_configuration.global.auto_scaling section.
+      auto_scaling:
+        enabled: false
+        target_cpu_utilization_percentage: 90
+        min_replicas: 2
+        max_replicas: 3
       resources:
         limits:
-          memory: "640Mi"
+          memory: "1Gi"
           cpu: "0.6"
     # Postprocessing configuration
     postprocessing:
       process_timeout: 1500
       replica_count: 2
+      # HPA auto scaling configuration for postprocessing.
+      # These parameters will take priority over all parameters that defined under ca_configuration.global.auto_scaling section. The min_replicas and max_replicas will be used if auto_scaling.enabled is true. And the value of min_replicas will instead of replica_count.
+      # The auto_scaling section should be commented out or removed if you plan to use the ca_configuration.global.auto_scaling section.
+      auto_scaling:
+        enabled: false
+        target_cpu_utilization_percentage: 90
+        min_replicas: 2
+        max_replicas: 3
       max_unavailable_count: 1
       resources:
         limits:
           memory: "480Mi"
           cpu: "0.6"
-    # Pdfprocess configuration
-    pdfprocess:
-      process_timeout: 1500
-      replica_count: 2
-      max_unavailable_count: 1
-      resources:
-        limits:
-          memory: "960Mi"
-          cpu: "0.6"
-    # utfprocess configuration
-    utfprocess:
-      process_timeout: 1500
-      replica_count: 2
-      max_unavailable_count: 1
-      resources:
-        limits:
-          memory: "960Mi"
-          cpu: "1"
     # setup configuration
     setup:
       process_timeout: 360
       replica_count: 2
+      # HPA auto scaling configuration for setup.
+      # These parameters will take priority over all parameters that defined under ca_configuration.global.auto_scaling section. The min_replicas and max_replicas will be used if auto_scaling.enabled is true. And the value of min_replicas will instead of replica_count.
+      # The auto_scaling section should be commented out or removed if you plan to use the ca_configuration.global.auto_scaling section.
+      auto_scaling:
+        enabled: false
+        target_cpu_utilization_percentage: 90
+        min_replicas: 2
+        max_replicas: 3
       max_unavailable_count: 1
       resources:
         limits:
@@ -1733,6 +1918,14 @@ spec:
     ocrextraction:
       process_timeout: 300
       replica_count: 2
+      # HPA auto scaling configuration for ocrextraction.
+      # These parameters will take priority over all parameters that defined under ca_configuration.global.auto_scaling section. The min_replicas and max_replicas will be used if auto_scaling.enabled is true. And the value of min_replicas will instead of replica_count.
+      # The auto_scaling section should be commented out or removed if you plan to use the ca_configuration.global.auto_scaling section.
+      auto_scaling:
+        enabled: false
+        target_cpu_utilization_percentage: 90
+        min_replicas: 2
+        max_replicas: 3
       max_unavailable_count: 1
       resources:
         limits:
@@ -1742,6 +1935,14 @@ spec:
     classifyprocess:
       process_timeout: 300
       replica_count: 2
+      # HPA auto scaling configuration for classifyprocess.
+      # These parameters will take priority over all parameters that defined under ca_configuration.global.auto_scaling section. The min_replicas and max_replicas will be used if auto_scaling.enabled is true. And the value of min_replicas will instead of replica_count.
+      # The auto_scaling section should be commented out or removed if you plan to use the ca_configuration.global.auto_scaling section.
+      auto_scaling:
+        enabled: false
+        target_cpu_utilization_percentage: 90
+        min_replicas: 2
+        max_replicas: 3
       max_unavailable_count: 1
       resources:
         limits:
@@ -1751,6 +1952,14 @@ spec:
     processingextraction:
       process_timeout: 600
       replica_count: 2
+      # HPA auto scaling configuration for processingextraction.
+      # These parameters will take priority over all parameters that defined under ca_configuration.global.auto_scaling section. The min_replicas and max_replicas will be used if auto_scaling.enabled is true. And the value of min_replicas will instead of replica_count.
+      # The auto_scaling section should be commented out or removed if you plan to use the ca_configuration.global.auto_scaling section.
+      auto_scaling:
+        enabled: false
+        target_cpu_utilization_percentage: 90
+        min_replicas: 2
+        max_replicas: 3
       max_unavailable_count: 1
       resources:
         limits:
@@ -1760,6 +1969,14 @@ spec:
     updatefiledetail:
       process_timeout: 300
       replica_count: 2
+      # HPA auto scaling configuration for updatefiledetail.
+      # These parameters will take priority over all parameters that defined under ca_configuration.global.auto_scaling section. The min_replicas and max_replicas will be used if auto_scaling.enabled is true. And the value of min_replicas will instead of replica_count.
+      # The auto_scaling section should be commented out or removed if you plan to use the ca_configuration.global.auto_scaling section.
+      auto_scaling:
+        enabled: false
+        target_cpu_utilization_percentage: 90
+        min_replicas: 2
+        max_replicas: 3
       max_unavailable_count: 1
       resources:
         limits:
@@ -1769,6 +1986,14 @@ spec:
     naturallanguageextractor:
       process_timeout: 300
       replica_count: 2
+      # HPA auto scaling configuration for naturallanguageextractor.
+      # These parameters will take priority over all parameters that defined under ca_configuration.global.auto_scaling section. The min_replicas and max_replicas will be used if auto_scaling.enabled is true. And the value of min_replicas will instead of replica_count.
+      # The auto_scaling section should be commented out or removed if you plan to use the ca_configuration.global.auto_scaling section.
+      auto_scaling:
+        enabled: false
+        target_cpu_utilization_percentage: 90
+        min_replicas: 2
+        max_replicas: 3
       max_unavailable_count: 1
       resources:
         limits:
@@ -1779,9 +2004,18 @@ spec:
     deeplearning:
       process_timeout: 300
       gpu_enabled:  # true or false.  Set it to true if you have a GPU enabled worker nodes
-      nodelabel_key: # The unique node label key/value on the GPU node. For example: ibm-cloud.kubernetes.io/gpu-enabled:true.  Set this value when `gpu_enabled` is set to true
-      nodelabel_value:  # The node label value on the GPU node.  For example: "true". Set this value when `gpu_enabled` is set to true
-      replica_count: 2 # If gpu_enabled is set to true, we expect you have at least 2 GPU to achieve HA configuration with 2 replicas.
+      nodelabel_key: # The unique node label key/value on the GPU node. For example: ibm-cloud.kubernetes.io/gpu-enabled:true.  Set this value when `gpu_enabled` is set to true.  This must be a string value
+      nodelabel_value:  # The node label value on the GPU node.  For example: "true". Set this value when `gpu_enabled` is set to true. This must be a string value
+      # If gpu_enabled is set to true, we expect you have at least 2 GPU to achieve HA configuration with 2 replicas.
+      replica_count: 2
+      # HPA auto scaling configuration for deep learning.
+      # These parameters will take priority over all parameters that defined under ca_configuration.global.auto_scaling section. The min_replicas and max_replicas will be used if auto_scaling.enabled is true. And the value of min_replicas will instead of replica_count.
+      # The auto_scaling section should be commented out or removed if you plan to use the ca_configuration.global.auto_scaling section.
+      auto_scaling:
+        enabled: false
+        target_cpu_utilization_percentage: 90
+        min_replicas: 2
+        max_replicas: 3
       max_unavailable_count: 1
       resources:
         limits:
@@ -1803,8 +2037,10 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 20.0.3-IF002
+        tag: 21.0.2
     admin_secret_name: ibm-dba-ums-secret
+    ## optional: create routes for backwards compatibility
+    backwards_compatibility_routes:    
     ## optional for secure communication with UMS
     external_tls_secret_name:
     ## optional for secure communication with UMS
@@ -1898,7 +2134,7 @@ spec:
       custom_xml:
       logs:
         traceSpecification: "*=info"
-        
+
     # configuration for scim pods
     scim:
       replica_count: 2
@@ -1936,10 +2172,10 @@ spec:
       custom_xml:
       logs:
         traceSpecification: "*=info"
-      ## Specify an LDAP Admin group (e.g., admingroup: "cn=ADPEnvironmentOwners,dc=example,dc=org" where 
-      ## the ADPEnvironmentOwners group will to be the default UMS teamserver administrators as required for 
+      ## Specify an LDAP Admin group (e.g., admingroup: "cn=ADPEnvironmentOwners,dc=example,dc=org" where
+      ## the ADPEnvironmentOwners group will to be the default UMS teamserver administrators as required for
       ## Automation Document Processing (ADP) capability)
-      admingroup: "<Required>"        
+      admingroup: "<Required>"
 
   ########################################################################
   ######## IBM FileNet Content Manager Initialization configuration ######
@@ -1960,39 +2196,60 @@ spec:
       encryption_key: "128"
     ic_ldap_creation:
       ic_ldap_admin_user_name:
-      - "CEAdmin"
+      - "<Required>" # user name for P8 domain admin, for example, "CEAdmin".  This parameter accepts a list of values.
       ic_ldap_admins_groups_name:
-      - "P8Administrators"
       - "<Required>" # Specify an LDAP Admin group (CE Environment Owners) as domain admin (required for "document_processing" capability)
       ic_ldap_name: "ldap_name"
     ic_obj_store_creation:
       object_stores:
-      - oc_cpe_obj_store_display_name: "DEVOS1"
-        oc_cpe_obj_store_symb_name: "DEVOS1"
+      - oc_cpe_obj_store_display_name: "DEVOS1" # "<Required>"
+        oc_cpe_obj_store_symb_name: "DEVOS1" # "<Required>"
         oc_cpe_obj_store_conn:
           name: "objectstore1_connection"
           site_name: "InitialSite"
           dc_os_datasource_name: "DEVOS1DS"
           dc_os_xa_datasource_name: "DEVOS1DSXA"
         oc_cpe_obj_store_admin_user_groups:
-        - "CEAdmin"
         - "<Required>" # Specify an LDAP Admin group (CE Environment Owners) as domain admin (required for "document_processing" capability)
         # Array of users
         oc_cpe_obj_store_basic_user_groups:
         oc_cpe_obj_store_addons: true
         oc_cpe_obj_store_addons_list:
+        # "5.2.1 Base Application Extensions"
         - "{CE460ADD-0000-0000-0000-000000000004}"
+        # "5.2.1 Base Content Engine Extensions"
         - "{CE460ADD-0000-0000-0000-000000000001}"
+        # "5.2.1 Process Engine Extensions"
         - "{CE460ADD-0000-0000-0000-000000000003}"
+        # "5.2.1 Publishing Extensions"
         - "{CE460ADD-0000-0000-0000-000000000005}"
+        # "5.2.1 Stored Search Extensions"
         - "{CE511ADD-0000-0000-0000-000000000006}"
+        # "5.2.1 Workplace Access Roles Extensions"
         - "{CE460ADD-0000-0000-0000-000000000008}"
+        # "5.2.1 Workplace Base Extensions"
         - "{CE460ADD-0000-0000-0000-000000000007}"
+        # "5.2.1 Workplace E-mail Extensions"
         - "{CE460ADD-0000-0000-0000-000000000009}"
+        # "5.2.1 Workplace Forms Extensions"
         - "{CE460ADD-0000-0000-0000-00000000000A}"
+        #  "5.2.1 Workplace Templates Extensions"
         - "{CE460ADD-0000-0000-0000-00000000000B}"
+        # "5.2.1 Workplace XT Extensions"
         - "{CE460ADD-0000-0000-0000-00000000000D}"
+        # "5.2.1 Thumbnail Extensions"
         - "{CE511ADD-0000-0000-0000-00000000000F}"
+        # "5.2.1 Teamspace Extensions"
+        - "{CE511ADD-0000-0000-0000-000000000010}"
+        # "5.2.1 Custom Role Extensions
+        - "{CE511ADD-0000-0000-0000-000000000015}"
+        # "5.5.2 Core Collaboration Extensions"
+        - "{CE552ADD-0000-0000-0000-00000000001C}"
+        # "5.2.1 Social Collaboration Role Extensions"
+        - "{CE521ADD-0000-0000-0000-000000000016}"
+        # "5.5.1 Social Collaboration Base Extensions"
+        - "{CE551ADD-0000-0000-0000-000000000011}"
+        oc_cpe_obj_store_enable_compression: false
         oc_cpe_obj_store_asa_name: "demo_storage"
         oc_cpe_obj_store_asa_file_systems_storage_device_name: "devos1_file_system_storage"
         oc_cpe_obj_store_asa_root_dir_path: "/opt/ibm/asa/devos1_storagearea1"
@@ -2007,22 +2264,23 @@ spec:
         oc_cpe_obj_store_workflow_date_time_mask: "mm/dd/yy hh:tt am"
         oc_cpe_obj_store_workflow_locale: "en"
         oc_cpe_obj_store_workflow_pe_conn_point_name: "pe_conn_devos1"
-        # Enable the content event emitter only when deploying
-        # BAI and have shared_configuration.kafka_configuration defined in
-        # your cr.  Default value is false if not specified in cr.
+        # Enable the content event emitter only when deploying BAI.
+        # Default value is false if not specified in the CR.
         oc_cpe_obj_store_enable_content_event_emitter: false
-
+        # Enable/disable object store database compression.  Default is false.
+        oc_cpe_obj_store_enable_compression: false
         # Enable object store for publishing of document processing application.
         # For Evaluation (Demo) deployment, the default object store is "DEVOS1"
         # By default, the object named "DEVOS1" will be enabled.  If you have defined
-        # any other object stores (e.g., OS1, etc) and wish to enable for publishing of 
+        # any other object stores (e.g., OS1, etc) and wish to enable for publishing of
         # document processing application, then set oc_cpe_obj_store_enable_document_processing to "true"
-        oc_cpe_obj_store_enable_document_processing: true        
+        oc_cpe_obj_store_enable_document_processing: true
+
       ## Configuration for the application engine object store
       ## Display name for the application engine object store to create
-      - oc_cpe_obj_store_display_name: "AEOS"
+      - oc_cpe_obj_store_display_name: "AEOS" # "<Required>"
         ## Symbolic name for the application engine object store to create
-        oc_cpe_obj_store_symb_name: "AEOS"
+        oc_cpe_obj_store_symb_name: "AEOS" # "<Required>"
         oc_cpe_obj_store_conn:
           ## Object store connection name
           name: "AEOS_connection" #database connection name
@@ -2034,25 +2292,48 @@ spec:
           dc_os_xa_datasource_name: "AEOSXA"
         ## Admin user group
         oc_cpe_obj_store_admin_user_groups:
-        - "<Required>"
+        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values. 
         ## An array of users with access to the object store
         oc_cpe_obj_store_basic_user_groups:
         ## Specify whether to enable add-ons
         oc_cpe_obj_store_addons: true
         ## Add-ons to enable for Content Platform Engine
         oc_cpe_obj_store_addons_list:
+        # "5.2.1 Base Application Extensions"
         - "{CE460ADD-0000-0000-0000-000000000004}"
+        # "5.2.1 Base Content Engine Extensions"
         - "{CE460ADD-0000-0000-0000-000000000001}"
+        # "5.2.1 Process Engine Extensions"
         - "{CE460ADD-0000-0000-0000-000000000003}"
+        # "5.2.1 Publishing Extensions"
         - "{CE460ADD-0000-0000-0000-000000000005}"
+        # "5.2.1 Stored Search Extensions"
         - "{CE511ADD-0000-0000-0000-000000000006}"
+        # "5.2.1 Workplace Access Roles Extensions"
         - "{CE460ADD-0000-0000-0000-000000000008}"
+        # "5.2.1 Workplace Base Extensions"
         - "{CE460ADD-0000-0000-0000-000000000007}"
+        # "5.2.1 Workplace E-mail Extensions"
         - "{CE460ADD-0000-0000-0000-000000000009}"
+        # "5.2.1 Workplace Forms Extensions"
         - "{CE460ADD-0000-0000-0000-00000000000A}"
+        #  "5.2.1 Workplace Templates Extensions"
         - "{CE460ADD-0000-0000-0000-00000000000B}"
+        # "5.2.1 Workplace XT Extensions"
         - "{CE460ADD-0000-0000-0000-00000000000D}"
+        # "5.2.1 Thumbnail Extensions"
         - "{CE511ADD-0000-0000-0000-00000000000F}"
+        # "5.2.1 Teamspace Extensions"
+        - "{CE511ADD-0000-0000-0000-000000000010}"
+        # "5.2.1 Custom Role Extensions
+        - "{CE511ADD-0000-0000-0000-000000000015}"
+        # "5.5.2 Core Collaboration Extensions"
+        - "{CE552ADD-0000-0000-0000-00000000001C}"
+        # "5.2.1 Social Collaboration Role Extensions"
+        - "{CE521ADD-0000-0000-0000-000000000016}"
+        # "5.5.1 Social Collaboration Base Extensions"
+        - "{CE551ADD-0000-0000-0000-000000000011}"
+        oc_cpe_obj_store_enable_compression: false
         ## Provide a name for the Advance Storage Area
         oc_cpe_obj_store_asa_name: "demo_storage"
         ## Provide a name for the file system storage device
@@ -2105,7 +2386,7 @@ spec:
     ic_icn_init_info:
       icn_repos:
       - add_repo_id: "devos1_repo1"
-        add_repo_ce_wsi_url: "http://{{ meta.name }}-cpe-svc:9080/wsi/FNCEWS40MTOM/"
+        add_repo_ce_wsi_url: "http://{{ meta.name }}-cpe-stateless-svc:9080/wsi/FNCEWS40MTOM/"
         add_repo_os_sym_name: "DEVOS1"
         add_repo_os_dis_name: "DEVOS1"
         add_repo_workflow_enable: false
@@ -2113,7 +2394,7 @@ spec:
         add_repo_protocol: "FileNetP8WSI"
       ## If you have more than 1 object store, uncomment this section for initialization of the object store.
       # - add_repo_id: "test_repo2"
-      #   add_repo_ce_wsi_url: "http://{{ meta.name }}-cpe-svc:9080/wsi/FNCEWS40MTOM/"
+      #   add_repo_ce_wsi_url: "http://{{ meta.name }}-cpe-stateless-svc:9080/wsi/FNCEWS40MTOM/"
       #   add_repo_os_sym_name: "OS02"
       #   add_repo_os_dis_name: "OS02"
       #   add_repo_workflow_enable: true
@@ -2124,7 +2405,7 @@ spec:
         add_desktop_name: "icn_desktop"
         add_desktop_description: "This is ICN desktop"
         add_desktop_is_default: false
-        add_desktop_repo_id: "demo_repo1"
+        add_desktop_repo_id: "devos1_repo1"
         add_desktop_repo_workflow_enable: false
 
   ########################################################################
