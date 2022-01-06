@@ -3,7 +3,7 @@
 ##
 ##Licensed Materials - Property of IBM
 ##
-##(C) Copyright IBM Corp. 2021. All Rights Reserved.
+##(C) Copyright IBM Corp. 2020. All Rights Reserved.
 ##
 ##US Government Users Restricted Rights - Use, duplication or
 ##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -17,9 +17,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 21.0.2
+    release: 20.0.3
 spec:
-  appVersion: 21.0.2
+  appVersion: 20.0.3.2
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept" 
   ibm_license: ""
@@ -44,7 +44,7 @@ spec:
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false
 
-    ## For ROKS Ingress, provide TLS secret name for Ingress controller. If you are not using ROKS, comment out this line.
+    ## For ROKS Ingress, provide TLS secret name for Ingress controller.
     sc_ingress_tls_secret_name: <Required>
 
   #--------------------------------------------------------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ spec:
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/cpe
-  #       tag: ga-557-p8cpe
+  #       tag: ga-556-p8cpe-la001
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
@@ -129,9 +129,6 @@ spec:
   #       # The license must be set to "accept" in order for the component to install.  This is the default value.
   #       license: accept
 
-  #       # Enable/disable FIPS (default value is "false")
-  #       disable_fips: false
-
   #     ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
   #     monitor_enabled: false
   #     ## Enable/disable logging where logs can be sent to Elasticsearch.
@@ -184,7 +181,7 @@ spec:
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/graphql
-  #       tag: ga-557-p8cgql
+  #       tag: ga-556-p8cgql-if001
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
@@ -236,6 +233,9 @@ spec:
 
   #       enable_graph_iql: false
 
+  #       ## By default, this parameter is set by the Operator using the CPE service endpoint (e.g., "http://{{ meta.name }}-cpe-svc:9080/wsi/FNCEWS40MTOM")
+  #       cpe_uri: 
+
   #     ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
   #     monitor_enabled: false
   #     ## Enable/disable logging where logs can be sent to Elasticsearch.
@@ -280,7 +280,7 @@ spec:
   #  # database_precheck: true
   #   ## The database configuration for the GCD datasource for CPE
   #   dc_gcd_datasource:
-  #     ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".
+  #     ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".
   #     dc_database_type: "<Required>"
   #     ## The GCD non-XA datasource name.  The default value is "FNGCDDS".
   #     dc_common_gcd_datasource_name: "FNGCDDS"
@@ -311,7 +311,7 @@ spec:
 
   #   ## The database configuration for the application engine object store (AEOS) datasource for CPE
   #   dc_os_datasources:
-  #     ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
+  #     ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the
   #     ## GCD configuration above.
   #   ## object store for AEOS
   #   - dc_database_type: "<Required>"
@@ -395,7 +395,7 @@ spec:
   #         dc_os_xa_datasource_name: "AEOSXA"
   #       ## Admin user group
   #       oc_cpe_obj_store_admin_user_groups:
-  #       - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values. 
+  #       - "<Required>"
   #       ## An array of users with access to the object store
   #       oc_cpe_obj_store_basic_user_groups:
   #       ## Specify whether to enable add-ons

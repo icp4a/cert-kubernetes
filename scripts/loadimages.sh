@@ -1,14 +1,4 @@
 #!/bin/bash
-###############################################################################
-#
-# Licensed Materials - Property of IBM
-#
-# (C) Copyright IBM Corp. 2021. All Rights Reserved.
-#
-# US Government Users Restricted Rights - Use, duplication or
-# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
-#
-###############################################################################
 
 echo -e "\033[1;31mImportant! Please ensure that you had login to the target Docker registry in advance. \033[0m"
 echo -e "\033[1;31mImportant! The load image sample script is for x86_64, amd64, or i386 platforms only.\n \033[0m"

@@ -2,7 +2,7 @@
 ##
 ##Licensed Materials - Property of IBM
 ##
-##(C) Copyright IBM Corp. 2021. All Rights Reserved.
+##(C) Copyright IBM Corp. 2020. All Rights Reserved.
 ##
 ##US Government Users Restricted Rights - Use, duplication or
 ##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -16,9 +16,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 21.0.2
+    release: 20.0.3
 spec:
-  appVersion: 21.0.2
+  appVersion: 20.0.3.2
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept" 
   ibm_license: ""
@@ -64,36 +64,72 @@ spec:
 
   ads_configuration:
 
-    # Optional: you can specify another pvc where ADS logs will be stored instead of the default pvc "cp4a-shared-log-pvc"
-    #existing_pvc_for_logstore: cp4a-shared-log-pvc
-
     decision_designer:
       enabled: false
       admin_secret_name: ibm-dba-ads-designer-secret
 
-      # Optional: you can restrict designer admin pages to a comma-separated list of groups. 
-      #administrator_groups: "mygroup1,mygroup2"
-
-      # Optional: you can set this property to false to disable pvc logging for designer
-      #mount_pvc_for_logstore: true
-
       # Config maps containing certificates to trust
       git_servers_certs:
-      ml_providers_certs:
+      wml_providers_certs:
       other_trusted_certs:
+
+#      # Optional: you can add custom annotations to routes or ingresses.
+#
+#      # For routes
+#      route_ingress_annotations:
+#        - haproxy.router.openshift.io/timeout: 1m
+#
+#      # For k8s Ingresses on certified kubernetes (CNCF)
+#      route_ingress_annotations:
+#        nginx.ingress.kubernetes.io/proxy-body-size: 8m
+
+      ingress:
+        # Optional: If omitted, calculated as designer-ads-{{ sc_deployment_hostname_suffix }} for ROKS or designer.ads.{{ sc_deployment_hostname_suffix }} otherwise.
+        # hostname:
+        tls_secret_name: ibm-dba-ads-designer-tls-cert
+
+#        # Optional: you can provide a custom CA for routes.
+#        tls_ca_secret_name:
 
       embedded_build_and_run:
         # Embedded build and run can be disabled
         enabled: true
+        # Embedded Runtime configuration
+        runtime:
+#        # Optional: you can add custom annotations to routes or ingresses.
+          route_ingress_annotations:
+            # For routes
+            - haproxy.router.openshift.io/balance: roundrobin
+#            - haproxy.router.openshift.io/timeout: 1m
+#          # For k8s Ingresses on certified kubernetes (CNCF)
+#            - nginx.ingress.kubernetes.io/proxy-body-size: 8m
+
+          ingress:
+            # Optional: If omitted, calculated as embedded-runtime-ads-{{ sc_deployment_hostname_suffix }} for ROKS, embedded-runtime.ads.{{ sc_deployment_hostname_suffix }} otherwise.
+            # hostname:
+            tls_secret_name: ibm-dba-ads-designer-embedded-runtime-tls-cert
+#           # Optional: you can provide a custom CA for routes.
+#            tls_ca_secret_name:
+
+        decision_archive_repo:
+          persistence:
+            use_dynamic_provisioning: true
+#           # defaulted to shared_configuration.storage_configuration.sc_dynamic_storage_classname
+#           # or shared_configuration.storage_configuration.sc_fast_file_storage_classname if use_dynamic_provisioning is false or shared_configuration.storage_configuration.sc_dynamic_storage_classname is not defined
+#            storage_class_name:
+            resources:
+              requests:
+                storage: "50Gi"
 
     decision_runtime:
       enabled: false
       admin_secret_name: ibm-dba-ads-runtime-secret
-      # Authentication mode can be "basic", "ums" or "ums_and_basic.
-      authentication_mode: "ums_and_basic"
-
-      # Optional: you can set this property to false to disable pvc logging for runtime
-      #mount_pvc_for_logstore: true
+      # Authentication mode can be "basic" or "ums".
+      authentication_mode: "basic"
+      archive_repository:
+        # Left part of the url to access your decision archives.
+        # Optional credentials are in decision_runtime.admin_secret_name
+        url_prefix: "<Required>"
 
       # Only for debugging, default value is true.
       internal_tls: true
@@ -108,7 +144,7 @@ spec:
 
 
       ingress:
-        # Optional: If omitted, calculated as ads-runtime-<default hostname suffix>.
+        # Optional: If omitted, calculated as runtime-ads-{{ sc_deployment_hostname_suffix }} for ROKS or runtime.ads.{{ sc_deployment_hostname_suffix }} otherwise.
         # hostname:
         tls_secret_name: ibm-dba-ads-runtime-tls-cert
 
@@ -129,7 +165,7 @@ spec:
     rr_integration:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
-        tag: 21.0.2
+        tag: 20.0.3-IF002
 
       resources:
         requests:
@@ -147,7 +183,7 @@ spec:
       admin_secret_name: ibm-dba-ads-mongo-secret
       image:
         repository: cp.icr.io/cp/cp4a/ads/mongo
-        tag: 4.2.14
+        tag: 4.2.10
 
       persistence:
         use_dynamic_provisioning: true
@@ -169,21 +205,21 @@ spec:
     front:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-front
-        tag: 21.0.2-IF001
+        tag: 20.0.3-IF002
 
-      replica_count: 2
+      replica_count: 1
       resources:
         requests:
-          cpu: '250m'
-          memory: '256Mi'
-        limits:
           cpu: '500m'
           memory: '512Mi'
+        limits:
+          cpu: '2000m'
+          memory: '2Gi'
 
     download_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-download
-        tag: 21.0.2
+        tag: 20.0.3-IF002
 
       replica_count: 2
       resources:
@@ -191,41 +227,41 @@ spec:
           cpu: '100m'
           memory: '200Mi'
         limits:
-          cpu: '300m'
+          cpu: '500m'
           memory: '200Mi'
 
     rest_api:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-restapi
-        tag: 21.0.2-IF001
+        tag: 20.0.3-IF002
       replica_count: 2
 
       resources:
         requests:
           cpu: '500m'
-          memory: '800Mi'
+          memory: '512Mi'
         limits:
-          cpu: '1000m'
-          memory: '1.5Gi'
+          cpu: '2000m'
+          memory: '2Gi'
 
     credentials_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-credentials
-        tag: 21.0.2-IF001
+        tag: 20.0.3-IF002
       replica_count: 2
 
       resources:
         requests:
-          cpu: '250m'
+          cpu: '500m'
           memory: '512Mi'
         limits:
-          cpu: '500m'
-          memory: '800Mi'
+          cpu: '2000m'
+          memory: '2Gi'
 
     git_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
-        tag: 21.0.2
+        tag: 20.0.3-IF002
       replica_count: 2
 
       persistence:
@@ -240,46 +276,44 @@ spec:
       resources:
         requests:
           cpu: '500m'
-          memory: '800Mi'
+          memory: '512Mi'
         limits:
-          cpu: '1000m'
-          memory: '1.5Gi'
+          cpu: '2000m'
+          memory: '2Gi'
 
     parsing_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-parsing
-        tag: 21.0.2-IF001
-      replica_count: 2
-
-      resources:
-        requests:
-          cpu: '250m'
-          memory: '800Mi'
-        limits:
-          cpu: '1000m'
-          memory: '1.5Gi'
-
-    run_service:
-      image:
-        repository: cp.icr.io/cp/cp4a/ads/ads-run
-        tag: 21.0.2-IF001
+        tag: 20.0.3-IF002
       replica_count: 2
 
       resources:
         requests:
           cpu: '500m'
-          memory: '800Mi'
+          memory: '512Mi'
         limits:
-          cpu: '1000m'
-          memory: '1.5Gi'
+          cpu: '2000m'
+          memory: '2Gi'
+
+    run_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-run
+        tag: 20.0.3-IF002
+      replica_count: 2
+
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '512Mi'
+        limits:
+          cpu: '2000m'
+          memory: '2Gi'
 
     embedded_build_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-build
-        tag: 21.0.2-IF001
+        tag: 20.0.3-IF002
       replica_count: 2
-
-      #executor_count: 5 # Number of Jenkins executors on master node, default 5, optional.
 
       persistence:
         use_dynamic_provisioning: true
@@ -293,15 +327,15 @@ spec:
       resources:
         requests:
           cpu: '500m'
-          memory: '1Gi'
+          memory: '512Mi'
         limits:
-          cpu: '1000m'
+          cpu: '2000m'
           memory: '2Gi'
 
-    decision_runtime_service:
+    embedded_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: 21.0.2
+        tag: 20.0.3-IF002
       replica_count: 2
 
       # Whether the decision runtime should include an exception stack trace when an incident occurs.
@@ -309,6 +343,8 @@ spec:
       stack_trace_enabled: false
 
       tls:
+        # whether TLS is required for decision store or ML providers connections (HTTPS protocol)
+        enabled: true
         # name of the config map holding the TLS certificates
         certs_config_map_name:
         # whether self-signed certificates are allowed
@@ -321,36 +357,43 @@ spec:
           resources: |-
             <heap unit="entries">100</heap>
 
-      metadata:
-        cache:
-          config:
-            expiry: ''
-            resources: |-
-              <heap unit="entries">100</heap>
-            check_interval: 30000
-            manager:
-              threads: 1
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '512Mi'
+        limits:
+          cpu: '2000m'
+          memory: '2Gi'
+
+    decision_runtime_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-runtime
+        tag: 20.0.3-IF002
+      replica_count: 2
+
+      # Whether the decision runtime should include an exception stack trace when an incident occurs.
+      # This should only be used for debugging purposes, as a stack trace may expose sensitive internal data.
+      stack_trace_enabled: false
+
+      tls:
+        # whether TLS is required for decision store or ML providers connections (HTTPS protocol)
+        enabled: true
+        # name of the config map holding the TLS certificates
+        certs_config_map_name:
+        # whether self-signed certificates are allowed
+        allow_self_signed: false
+        verify_hostname: true
+
+      cache:
+        config:
+          expiry: ''
+          resources: |-
+            <heap unit="entries">100</heap>
 
       resources:
         requests:
-          cpu: '1000m'
-          memory: '2Gi'
+          cpu: '500m'
+          memory: '512Mi'
         limits:
           cpu: '2000m'
-          memory: '3Gi'
-
-      persistence:
-        use_dynamic_provisioning: true
-#       # Optional: defaulted to shared_configuration.storage_configuration.sc_dynamic_storage_classname
-#       # or shared_configuration.storage_configuration.sc_fast_file_storage_classname if use_dynamic_provisioning is false or shared_configuration.storage_configuration.sc_dynamic_storage_classname is not defined
-#        storage_class_name:
-        resources:
-          requests:
-            storage: 1Gi
-
-
-      autoscaling:
-        enabled: true
-        min_replicas: 2
-        max_replicas: 5
-        target_cpu_average_utilization: 160
+          memory: '2Gi'

@@ -2,7 +2,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2021. All Rights Reserved.
+# (C) Copyright IBM Corp. 2020. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -16,9 +16,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 21.0.2
+    release: 20.0.3
 spec:
-  appVersion: 21.0.2
+  appVersion: 20.0.3.2
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept" 
   ibm_license: ""
@@ -33,9 +33,7 @@ spec:
     sc_optional_components: app_designer
     sc_deployment_type: demo
     sc_deployment_platform: OCP
-
-  ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-    # sc_deployment_hostname_suffix:
+    sc_deployment_hostname_suffix: "{{ meta.name }}"
     root_ca_secret: "{{ meta.name }}-root-ca"
     image_pull_secrets:
     - image-pull-secret
@@ -47,7 +45,7 @@ spec:
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: ga-3010-icn
+      tag: ga-309-icn-if001
   ########################################################################
   ########      IBM Business Automation Studio configuration      ########
   ########################################################################
@@ -55,19 +53,19 @@ spec:
     images:
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: 21.0.2-IF001
+        tag: 20.0.3-IF002
     jms_server:
       image:
         repository: cp.icr.io/cp/cp4a/bas/jms
-        tag: 21.0.2-IF001
+        tag: 20.0.3-IF002
     playback_server:
       images:
         db_job:
           repository: cp.icr.io/cp/cp4a/bas/solution-server-helmjob-db
-          tag: 21.0.2-IF001
+          tag: 20.0.3-IF002
         solution_server:
           repository: cp.icr.io/cp/cp4a/bas/solution-server
-          tag: 21.0.2-IF001
+          tag: 20.0.3-IF002
   ########################################################################
   ########      IBM Resource Registry configuration               ########
   ########################################################################
@@ -75,7 +73,7 @@ spec:
     images:
       resource_registry:
         repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-        tag: 21.0.2-IF001
+        tag: 20.0.3-IF002
         
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########

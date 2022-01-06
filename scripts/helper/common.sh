@@ -4,7 +4,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2021. All Rights Reserved.
+# (C) Copyright IBM Corp. 2020. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -114,7 +114,7 @@ function echo_impl() {
 # check OCP version
 ############################
 function check_platform_version(){
-    currentver=$(oc get nodes | awk 'NR==2{print $5}')
+    currentver=$(kubectl  get nodes | awk 'NR==2{print $5}')
     requiredver="v1.17.1"
     if [ "$(printf '%s\n' "$requiredver" "$currentver" | sort -V | head -n1)" = "$requiredver" ]; then
         PLATFORM_VERSION="4.4OrLater"  

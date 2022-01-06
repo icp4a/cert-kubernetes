@@ -17,11 +17,10 @@
 ######## Constants 
 # Provide defaults that can be override by passed in params
 #URL=https://ums-sso.adp.ibm.com
-#CLIENT_ID=XXXXXXXXXX
+#CLIENT_ID=XXXXXXXX
 #CLIENT_SECRET=XXXXXXXXX
 #USER=Admin
 #PWD=password
-acceptLanguage="en-US"
 
 
 ######### Functions
@@ -51,9 +50,6 @@ while [ "$1" != "" ]; do
         --pwd)        		shift
 				PWD="$1"
                                 ;;
-        --acceptLanguage)		shift
-								acceptLanguage="$1"
-								;;
         -h)                     usage
                                 exit 1
     esac
@@ -66,8 +62,8 @@ done
 #TOKEN=$(curl -k -s -i --location --request POST "${URL}" --header "Authorization: Basic ${CLIENT_ID}:${CLIENT_SECRET}" --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'grant_type=password' --data-urlencode 'scope=openid' --data-urlencode "username=${USER}" --data-urlencode "password=${PWD}" | grep -o "access_token\":[^,]*")
 
 
-# add acceptLang
-TOKEN=$(curl -k -s -i --location --request POST "${URL}/oidc/endpoint/ums/token" --header "Accept-Language:${acceptLanguage}" --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'grant_type=password' --data-urlencode 'scope=openid' --data-urlencode "username=${USER}" --data-urlencode "password=${PWD}" --user "${CLIENT_ID}:${CLIENT_SECRET}" | grep -o "access_token\":[^,]*")
+
+TOKEN=$(curl -k -s -i --location --request POST "${URL}/oidc/endpoint/ums/token" --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'grant_type=password' --data-urlencode 'scope=openid' --data-urlencode "username=${USER}" --data-urlencode "password=${PWD}" --user "${CLIENT_ID}:${CLIENT_SECRET}" | grep -o "access_token\":[^,]*")
 
 #echo $TOKEN
 

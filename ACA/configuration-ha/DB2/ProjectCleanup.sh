@@ -1,12 +1,11 @@
 #!/bin/bash
-##
-## Licensed Materials - Property of IBM
-## 5737-I23
-## Copyright IBM Corp. 2018 - 2021. All Rights Reserved.
-## U.S. Government Users Restricted Rights:
-## Use, duplication or disclosure restricted by GSA ADP Schedule
-## Contract with IBM Corp.
-##
+# @---lm_copyright_start
+# 5737-I23, 5900-A30
+# Copyright IBM Corp. 2018 - 2020. All Rights Reserved.
+# U.S. Government Users Restricted Rights:
+# Use, duplication or disclosure restricted by GSA ADP Schedule
+# Contract with IBM Corp.
+#@---lm_copyright_end
 
 . ./ScriptFunctions.sh
 
@@ -55,7 +54,6 @@ function delete_tenant(){
             db2 "connect to $base_db_name"
             db2 "set schema $base_db_user"
             db2 "delete from tenantinfo where tenantid='$tenant_id'"
-            echo "Deleted tenant db: ${tenant_db} with tenant user: ${tenant_user} and tenant id: ${tenant_id}"
         else
             echo "Failed to drop the database: " $rc
         fi
@@ -76,11 +74,9 @@ echo "Total projects marked for delete: "$END
 IFS="$SaveIFS"
 for i in $(seq 0 $(($END-1)))
 do
-  db2 "connect reset"
   tenant_db=$(echo ${array[i]} | awk '{print $1}')
   tenant_user=$(echo ${array[i]} | awk '{print $2}')
   tenant_id=$(echo ${array[i]} | awk '{print $3}')
   echo "Deleting the project with id: "$tenant_id
-  db2 "deactivate db $tenant_db"
   delete_tenant $base_db_name $base_db_user $tenant_db $tenant_user $tenant_id
 done

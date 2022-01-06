@@ -3,7 +3,7 @@
 ##
 ##Licensed Materials - Property of IBM
 ##
-##(C) Copyright IBM Corp. 2021. All Rights Reserved.
+##(C) Copyright IBM Corp. 2020. All Rights Reserved.
 ##
 ##US Government Users Restricted Rights - Use, duplication or
 ##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -17,12 +17,12 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 21.0.2
+    release: 20.0.3
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 21.0.2
+  appVersion: 20.0.3.2
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -38,7 +38,6 @@ spec:
     ## be defaulted to production.  This value could be different from the other licenses in the CR.
     sc_deployment_license: "<Required>"
 
-
     ## All CP4A components must use/share the image_pull_secrets to pull images.
     image_pull_secrets:
     - admin.registrykey
@@ -50,10 +49,6 @@ spec:
     ## All CP4A components must use/share the root_ca_secret in order for integration.
     root_ca_secret: icp4a-root-ca
 
-    ## Shared custom TLS secret which will be used to sign all external routes if defined.
-    ## If this is not defined, all external routes will be signed with `root_ca_secret`
-    external_tls_certificate_secret:
-
     ## CP4A patterns or capabilities to be deployed.  This CR represents the "content" pattern (aka FileNet Content Manager), which includes the following
     ## mandatory components: cpe, icn (BAN/Navigator), graphql and optional components: cmis, es (External Share).
     sc_deployment_patterns: content
@@ -61,14 +56,13 @@ spec:
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
     ## The optional components are: Content Manager Image Services (cmis), css (Content Search Services), es (External Share), tm (Task Manager),
     ##                              IBM Enterprise Records (ier) and IBM Content Collector for SAP (iccsap)
-    ## NOTE: ier, and iccsap does NOT support integration with ums.
+    ## NOTE: tm, ier, and iccsap does NOT support integration with ums.
     sc_optional_components:
 
     ## The deployment type as selected by the user.  Possible values are: demo, enterprise.
     sc_deployment_type: enterprise
 
     ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that corresponds to a user ID.
-    ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is optional. It is not supported on OCP and ROKS.
     sc_run_as_user:
 
     ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
@@ -78,11 +72,11 @@ spec:
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false
 
-    ## For ROKS Ingress, provide TLS secret name for Ingress controller. If you are not using ROKS, comment out this line.
+    ## For ROKS Ingress, provide TLS secret name for Ingress controller.
     sc_ingress_tls_secret_name: <Required>
-    
-    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-    # sc_deployment_hostname_suffix: "{{ meta.namespace }}"
+
+    ## For OCP, this is used to create route, you should input a valid hostname in the required field.
+    sc_deployment_hostname_suffix: "{{ meta.namespace }}.<Required>"
 
     ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
     ## the external service to the component's truststore.
@@ -145,7 +139,7 @@ spec:
     ## The name of the secret that contains the LDAP SSL/TLS certificate.
     lc_ldap_ssl_secret_name: "<Required>"
 
-    ## The LDAP user name attribute. Semicolon-separated list that must include the first RDN user distinguished names. One possible value is "*:uid" for TDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    ## The LDAP user name attribute.  One possible value is "*:cn" for TDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
     lc_ldap_user_name_attribute: "<Required>"
 
     ## The LDAP user display name attribute. One possible value is "cn" for TDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info.
@@ -160,7 +154,7 @@ spec:
     ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
     lc_ldap_group_display_name_attr: "cn"
 
-    ## The LDAP group membership search filter string.  One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS
+    ## The LDAP group membership search filter string.  One possible value is "(&(cn=%v)(|(objectclass=groupOfNames)(objectclass=groupOfUniqueNames)(objectclass=groupOfURLs)))" for TDS
     ## and "(&(cn=%v)(objectcategory=group))" for AD.
     lc_ldap_group_membership_search_filter: "<Required>"
 
@@ -172,8 +166,8 @@ spec:
     # ad:
     #   lc_ad_gc_host: "<Required>"
     #   lc_ad_gc_port: "<Required>"
-    #   lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
-    #   lc_group_filter: "(&(cn=%v)(objectcategory=group))"
+    #   lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
+    #   lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
     # tds:
     #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
@@ -204,8 +198,8 @@ spec:
     ## This is the Global Catalog port for the LDAP
     #   lc_ad_gc_host: "<Required>"
     #   lc_ad_gc_port: "<Required>"
-    #   lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
-    #   lc_group_filter: "(&(cn=%v)(objectcategory=group))"
+    #   lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
+    #   lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
     # tds:
     #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
@@ -279,7 +273,7 @@ spec:
    # database_precheck: true
     ## The database configuration for the GCD datasource for CPE
     dc_gcd_datasource:
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".
       dc_database_type: "<Required>"
       ## The GCD non-XA datasource name.  The default value is "FNGCDDS".
       dc_common_gcd_datasource_name: "FNGCDDS"
@@ -307,21 +301,10 @@ spec:
       dc_hadr_retry_interval_for_client_reroute: 15
       ## Provide the max # of retries.  If not preference, keep the default value.
       dc_hadr_max_retries_for_client_reroute: 3
-      ## Connection manager for a data source.
-      connection_manager:
-        ## Minimum number of physical connections to maintain in the pool.
-        min_pool_size: 0
-        ## Maximum number of physical connections for a pool.
-        max_pool_size: 50
-        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
-        max_idle_time: 1m
-        ## Amount of time between runs of the pool maintenance thread.
-        reap_time: 2m 
-        ## Specifies which connections to destroy when a stale connection is detected in a pool.
-        purge_policy: EntirePool
+
     ## The database configuration for the object store 1 (OS1) datasource for CPE
     dc_os_datasources:
-    ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
+    ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the
     ## GCD configuration above.
     - dc_database_type: "<Required>"
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
@@ -363,22 +346,9 @@ spec:
       dc_hadr_retry_interval_for_client_reroute: 15
       ## Provide the max # of retries.  If not preference, keep the default value.
       dc_hadr_max_retries_for_client_reroute: 3
-      ## Connection manager for a data source.
-      connection_manager:
-        ## Minimum number of physical connections to maintain in the pool.
-        min_pool_size: 0
-        ## Maximum number of physical connections for a pool.
-        max_pool_size: 50
-        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
-        max_idle_time: 1m
-        ## Amount of time between runs of the pool maintenance thread.
-        reap_time: 2m 
-        ## Specifies which connections to destroy when a stale connection is detected in a pool.
-        purge_policy: EntirePool
-
     ## The database configuration for ICN (Navigator) - aka BAN (Business Automation Navigator)
     dc_icn_datasource:
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the
       ## GCD and object store configuration above.
       dc_database_type: "<Required>"
       ## Provide the ICN datasource name.  The default value is "ECMClientDS".
@@ -405,18 +375,6 @@ spec:
       dc_hadr_retry_interval_for_client_reroute: 15
       ## Provide the max # of retries.  If not preference, keep the default value.
       dc_hadr_max_retries_for_client_reroute: 3
-      ## Connection manager for a data source.
-      connection_manager:
-        ## Minimum number of physical connections to maintain in the pool.
-        min_pool_size: 0
-        ## Maximum number of physical connections for a pool.
-        max_pool_size: 50
-        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
-        max_idle_time: 1m
-        ## Amount of time between runs of the pool maintenance thread.
-        reap_time: 2m 
-        ## Specifies which connections to destroy when a stale connection is detected in a pool.
-        purge_policy: EntirePool
 
    ## Monitor setting
  # monitoring_configuration:
@@ -449,12 +407,7 @@ spec:
     #    route_ingress_annotations:
     #      - haproxy.router.openshift.io/balance: roundrobin
     route_ingress_annotations:
-    # Optional: Use an existing certificate for automatic creation of OpenShift routes.
-    # Set this key if you have an external TLS certificate. Leave this empty if you don't have an external TLS certificate, operator will generate one for you.
-    fncm_ext_tls_secret_name:
-    ## Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes.
-    ## Set this key if you have a CA to sign the external TLS certificate, leave this parameter empty if you don't have the CA of your external TLS certificate.
-    fncm_auth_ca_secret_name:
+
     ####################################
     ## Start of configuration for CPE ##
     ####################################
@@ -471,7 +424,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-557-p8cpe
+        tag: ga-556-p8cpe-la001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -525,9 +478,6 @@ spec:
         # The license must be set to "accept" in order for the component to install.  This is the default value.
         license: accept
 
-        # Enable/disable FIPS (default value is "false")
-        disable_fips: false
-
       ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
       monitor_enabled: false
       ## Enable/disable logging where logs can be sent to Elasticsearch.
@@ -579,7 +529,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: ga-557-p8css
+        tag: ga-556-p8css-la001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -654,7 +604,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-306-cmis
+        tag: ga-305-cmis-if003
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -701,9 +651,6 @@ spec:
         ##  -XshowSettings:vm"
         ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
         jvm_customize_options:
-
-        ## Enable/disable FIPS (default value is "false")
-        disable_fips: false
 
         ## Enable/disable Websphere Security
         ws_security_enabled: false
@@ -794,7 +741,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: ga-557-p8cgql
+        tag: ga-556-p8cgql-if001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -846,6 +793,9 @@ spec:
 
         enable_graph_iql: false
 
+        ## By default, this parameter is set by the Operator using the CPE service endpoint (e.g., "http://{{ meta.name }}-cpe-svc:9080/wsi/FNCEWS40MTOM")
+        cpe_uri:
+
       ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
       monitor_enabled: false
       ## Enable/disable logging where logs can be sent to Elasticsearch.
@@ -892,7 +842,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: ga-3010-es
+        tag: ga-309-es-if001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -979,7 +929,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: ga-3010-tm
+        tag: ga-309-tm-if001
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1065,12 +1015,6 @@ spec:
     #      - haproxy.router.openshift.io/balance: roundrobin
     route_ingress_annotations:
 
-    ## Optional: Use an existing certificate for automatic creation of OpenShift routes.
-    ## Set this key if you have an external TLS certificate. Leave this empty if you don't have an external TLS certificate, operator will generate one for you.
-    ban_ext_tls_secret_name:
-    ## Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes.
-    ## Set this key if you have a CA to sign the external TLS certificate, leave this parameter empty if you don't have the CA of your external TLS certificate.
-    ban_auth_ca_secret_name:
 
     ## The architecture of the cluster.  This is the default for Linux and should not be changed.
     arch:
@@ -1084,7 +1028,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-3010-icn
+      tag: ga-309-icn-if001
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -1137,16 +1081,10 @@ spec:
       ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
       jvm_customize_options:
 
-      ## Enable/disable FIPS (default value is "false")
-      disable_fips: false
-
       icn_jndids_name: ECMClientDS
       icn_schema: ICNDB
       icn_table_space: ICNDB
       allow_remote_plugins_via_http: false
-      ## uncomment copy_files_to_war parameter to copy customized files into Navigator web application.  
-      ## The <custom-dir>/navigator_war_filesources.xml must be located in config volume mapping, which is /opt/ibm/wlp/usr/servers/defaultServer/configDropins/overrides 
-      # copy_files_to_war: <custom-dir>/navigator_war_filesources.xml
 
 
     ## Default settings for monitoring
@@ -1195,10 +1133,8 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: 21.0.2
+        tag: 20.0.3-IF002
     admin_secret_name: ibm-dba-ums-secret
-    ## optional: create routes for backwards compatibility
-    backwards_compatibility_routes:
     ## optional for secure communication with UMS
     external_tls_secret_name:
     ## optional for secure communication with UMS
@@ -1353,60 +1289,37 @@ spec:
   #      email_suffix: "gmail.com"
     ic_ldap_creation:
       ic_ldap_admin_user_name:
-      - "<Required>" # user name for P8 domain admin, for example, "CEAdmin".  This parameter accepts a list of values.
+      - "CEAdmin"
       ic_ldap_admins_groups_name:
-      - "<Required>" # group name for P8 domain admin, for example, "P8Administrators".  This parameter accepts a list of values.
+      - "P8Administrators"
       ic_ldap_name: "ldap_name"
     ic_obj_store_creation:
       object_stores:
-      - oc_cpe_obj_store_display_name: "OS01" # Required display name of the object store, for example, "OS01"
-        oc_cpe_obj_store_symb_name: "OS01" # Required symbolic name of the object store, for example, "OS01"
+      - oc_cpe_obj_store_display_name: "OS01"
+        oc_cpe_obj_store_symb_name: "OS01"
         oc_cpe_obj_store_conn:
           name: "objectstore1_connection"
           site_name: "InitialSite"
-          dc_os_datasource_name: "FNOS1DS" # This value must match with the non-XA datasource name in the "datasource_configuration" above.
-          dc_os_xa_datasource_name: "FNOS1DSXA" # This value must match with the XA datasource name in the "datasource_configuration" above.
+          dc_os_datasource_name: "FNOS1DS"
+          dc_os_xa_datasource_name: "FNOS1DSXA"
         oc_cpe_obj_store_admin_user_groups:
-        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values. 
+        - "CEAdmin"
         # Array of users
         oc_cpe_obj_store_basic_user_groups:
         oc_cpe_obj_store_addons: true
         oc_cpe_obj_store_addons_list:
-        # "5.2.1 Base Application Extensions"
         - "{CE460ADD-0000-0000-0000-000000000004}"
-        # "5.2.1 Base Content Engine Extensions"
         - "{CE460ADD-0000-0000-0000-000000000001}"
-        # "5.2.1 Process Engine Extensions"
         - "{CE460ADD-0000-0000-0000-000000000003}"
-        # "5.2.1 Publishing Extensions"
         - "{CE460ADD-0000-0000-0000-000000000005}"
-        # "5.2.1 Stored Search Extensions"
         - "{CE511ADD-0000-0000-0000-000000000006}"
-        # "5.2.1 Workplace Access Roles Extensions"
         - "{CE460ADD-0000-0000-0000-000000000008}"
-        # "5.2.1 Workplace Base Extensions"
         - "{CE460ADD-0000-0000-0000-000000000007}"
-        # "5.2.1 Workplace E-mail Extensions"
         - "{CE460ADD-0000-0000-0000-000000000009}"
-        # "5.2.1 Workplace Forms Extensions"
         - "{CE460ADD-0000-0000-0000-00000000000A}"
-        #  "5.2.1 Workplace Templates Extensions"
         - "{CE460ADD-0000-0000-0000-00000000000B}"
-        # "5.2.1 Workplace XT Extensions"
         - "{CE460ADD-0000-0000-0000-00000000000D}"
-        # "5.2.1 Thumbnail Extensions"
         - "{CE511ADD-0000-0000-0000-00000000000F}"
-        # "5.2.1 Teamspace Extensions"
-        - "{CE511ADD-0000-0000-0000-000000000010}"
-        # "5.2.1 Custom Role Extensions
-        - "{CE511ADD-0000-0000-0000-000000000015}"
-        # "5.5.2 Core Collaboration Extensions"
-        - "{CE552ADD-0000-0000-0000-00000000001C}"
-        # "5.2.1 Social Collaboration Role Extensions"
-        - "{CE521ADD-0000-0000-0000-000000000016}"
-        # "5.5.1 Social Collaboration Base Extensions"
-        - "{CE551ADD-0000-0000-0000-000000000011}"
-        oc_cpe_obj_store_enable_compression: false
         oc_cpe_obj_store_asa_name: "demo_storage"
         oc_cpe_obj_store_asa_file_systems_storage_device_name: "demo_file_system_storage"
         oc_cpe_obj_store_asa_root_dir_path: "/opt/ibm/asa/os01_storagearea1"
@@ -1421,11 +1334,10 @@ spec:
         oc_cpe_obj_store_workflow_date_time_mask: "mm/dd/yy hh:tt am"
         oc_cpe_obj_store_workflow_locale: "en"
         oc_cpe_obj_store_workflow_pe_conn_point_name: "pe_conn_os1"
-        # Enable the content event emitter only when deploying BAI.
-        # Default value is false if not specified in the CR.
+        # Enable the content event emitter only when deploying
+        # BAI and have shared_configuration.kafka_configuration defined in
+        # your cr.  Default value is false if not specified in cr.
         oc_cpe_obj_store_enable_content_event_emitter: false
-        # Enable/disable object store database compression.  Default is false.
-        oc_cpe_obj_store_enable_compression: false
     ic_css_creation:
       - css_site_name: "Initial Site"
         css_text_search_server_name: "{{ meta.name }}-css-1"
@@ -1450,7 +1362,7 @@ spec:
     ic_icn_init_info:
       icn_repos:
       - add_repo_id: "demo_repo1"
-        add_repo_ce_wsi_url: "http://{{ meta.name }}-cpe-stateless-svc:9080/wsi/FNCEWS40MTOM/"
+        add_repo_ce_wsi_url: "http://{{ meta.name }}-cpe-svc:9080/wsi/FNCEWS40MTOM/"
         add_repo_os_sym_name: "OS01"
         add_repo_os_dis_name: "OS01"
         add_repo_workflow_enable: false
@@ -1458,7 +1370,7 @@ spec:
         add_repo_protocol: "FileNetP8WSI"
       ## If you have more than 1 object store, uncomment this section for initialization of the object store.
       # - add_repo_id: "test_repo2"
-      #   add_repo_ce_wsi_url: "http://{{ meta.name }}-cpe-stateless-svc:9080/wsi/FNCEWS40MTOM/"
+      #   add_repo_ce_wsi_url: "http://{{ meta.name }}-cpe-svc:9080/wsi/FNCEWS40MTOM/"
       #   add_repo_os_sym_name: "OS02"
       #   add_repo_os_dis_name: "OS02"
       #   add_repo_workflow_enable: true
@@ -1510,7 +1422,7 @@ spec:
       replica_count: 1
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: ga-521-ier-fp006
+        tag: ga-5215-ier-if001
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -1573,7 +1485,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: ga-4004-iccsap-if003
+      tag: ga-4004-iccsap-if001
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent

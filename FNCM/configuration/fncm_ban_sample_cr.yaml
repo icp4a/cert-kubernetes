@@ -1,13 +1,3 @@
-###############################################################################
-#
-# Licensed Materials - Property of IBM
-#
-# (C) Copyright IBM Corp. 2021. All Rights Reserved.
-#
-# US Government Users Restricted Rights - Use, duplication or
-# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
-#
-###############################################################################
 apiVersion: icp4a.ibm.com/v1
 kind: ICP4ACluster
 metadata:
@@ -16,7 +6,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 21.0.2
+    release: 20.0.3
 spec:
   ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
   ## For example, serviceAccount in the spec becomes service_account in ansible.
@@ -37,7 +27,7 @@ spec:
     lc_ldap_base_dn: "<Need Value>"
     lc_ldap_ssl_enabled: false
     lc_ldap_ssl_secret_name: ""
-    lc_ldap_user_name_attribute: "*:uid"
+    lc_ldap_user_name_attribute: "*:cn"
     lc_ldap_user_display_name_attr: "cn"
     lc_ldap_group_base_dn: "<Need Value>"
     lc_ldap_group_name_attribute: "*:cn"
@@ -47,8 +37,8 @@ spec:
     ad:
       lc_ad_gc_host: ""
       lc_ad_gc_port: ""
-      lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
-      lc_group_filter: "(&(cn=%v)(objectcategory=group))"
+      lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
+      lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
     tds:
       lc_user_filter: "(&(cn=%v)(objectclass=person))"
       lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
@@ -64,7 +54,7 @@ spec:
     lc_ldap_base_dn: "O=LOCAL"
     lc_ldap_ssl_enabled: false
     lc_ldap_ssl_secret_name: ""
-    lc_ldap_user_name_attribute: "*:uid"
+    lc_ldap_user_name_attribute: "*:cn"
     lc_ldap_user_display_name_attr: "cn"
     lc_ldap_group_base_dn: "O=LOCAL"
     lc_ldap_group_name_attribute: "*:cn"
@@ -74,8 +64,8 @@ spec:
     ad:
       lc_ad_gc_host: ""
       lc_ad_gc_port: ""
-      lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
-      lc_group_filter: "(&(cn=%v)(objectcategory=group))"
+      lc_user_filter: "(&(samAccountName=%v)(objectClass=user))"
+      lc_group_filter: "(&(samAccountName=%v)(objectclass=group))"
     tds:
       lc_user_filter: "(&(cn=%v)(objectclass=person))"
       lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
@@ -187,7 +177,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: ga-557-p8cpe
+        tag: ga-556-p8cpe-la001
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -251,7 +241,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: ga-557-p8css
+        tag: ga-556-p8css-la001
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -302,7 +292,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: ga-306-cmis
+        tag: ga-305-cmis-if003
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -380,7 +370,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: ga-557-p8cgql
+        tag: ga-556-p8cgql-if001
         pull_policy: IfNotPresent
       ## resource
       resources:
@@ -438,7 +428,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: ga-3010-es
+        tag: ga-309-es-if001
         pull_policy: IfNotPresent
       ## resource
       resources:
@@ -500,7 +490,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: ga-3010-tm
+        tag: ga-309-tm-if001
         pull_policy: IfNotPresent
      ## LOGGING FOR WORKLOADS
       log:
@@ -569,7 +559,7 @@ spec:
     # run_as_user: 1000110001
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-3010-icn
+      tag: ga-309-icn-if001
       pull_policy: IfNotPresent
       arbitrary_uid_enabled: true
     ## Logging for workloads
@@ -641,9 +631,9 @@ spec:
       encryption_key: "128"
     ic_ldap_creation:
       ic_ldap_admin_user_name:
-      - "<Required>" # user name for P8 domain admin, for example, "CEAdmin".  This parameter accepts a list of values.
+      - "CEAdmin"
       ic_ldap_admins_groups_name:
-      - "<Required>" # group name for P8 domain admin, for example, "P8Administrators".  This parameter accepts a list of values.
+      - "P8Administrators"
       ic_ldap_name: "ldap_name"
     ic_obj_store_creation:
       object_stores:
@@ -655,7 +645,7 @@ spec:
           dc_os_datasource_name: "FNOS1DS"
           dc_os_xa_datasource_name: "FNOS1DSXA"
         oc_cpe_obj_store_admin_user_groups:
-        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values. 
+        - "CEAdmin"
         # Array of users
         oc_cpe_obj_store_basic_user_groups:
         oc_cpe_obj_store_addons: true

@@ -1,11 +1,4 @@
 #!/bin/bash
-#/*
-# IBM Confidential
-# OCO Source Materials
-# 5737-I23
-# Copyright IBM Corp. 2021
-# The source code for this program is not published or otherwise divested of its trade secrets, irrespective of what has been deposited with the U.S Copyright Office.
-# */
 #
 # cpdp_getDeploymentStatus.sh: script to extract the deployment record associated with a deployment id.
 #
@@ -26,8 +19,8 @@
 ######## Constants 
 # Provide defaults that can be override by passed in params
 #runtimeUmsUrl=https://ums-sso.adp.ibm.com
-#devUmsClientId=XXXXXXXXXX
-#devUmsClientSecret=XXXXXXXXX
+#devUmsClientId=XXXXXXX
+#devUmsClientSecret=XXXXXX
 #runtimeUser=Admin
 #runtimePwd=password
 
@@ -36,7 +29,6 @@
 
 #deploymentRecId=
 
-acceptLanguage="en-US"
 
 ######### Functions
 f_usage()
@@ -45,14 +37,9 @@ f_usage()
     echo "  $0 -- retrieve the deployment record of a deployed Project version."
     echo ""
     echo "USAGE: $0  "
-    echo "    [--runtimeUmsUrl      url]  "
-    echo "    [--runtimeUmsClientId id] "
-    echo "    [--runtimeUmsClientSecret secret]    "
-    echo "    [ --runtimeUser       user]     "
-    echo "    [--runtimePwd         pwd]"
+    echo "    [--runtimeUmsUrl url]  [--runtimeUmsClientId id] [--runtimeUmsClientSecret secret]    [ --runtimeUser user]     [--runtimePwd pwd]"
     echo "    [--runtimeCpdsUrl     UrlToConnectToCPDS] "
-    echo "    [--deploymentRecId    deployment record guid]"
-    echo "    [--acceptLanguage     language] (default to en-US if not specified)" 
+    echo "    [--deploymentRecId    deploymentRecId]"
     echo "    [--file               inputFile to store Key/Value pair for arguments]"
     echo "    [-h]"
     echo ""
@@ -61,47 +48,34 @@ f_usage()
     echo "you can pass --file <file> --runtimeObjectStore <os>"
     echo ""
     echo "EXAMPLE:"
-    echo ""
-    echo "Example to get Deployment Status passed in all required keys. "
     echo "$0 "
     echo "   --runtimeUmsUrl                   https://ums-sso.adp.ibm.com"
-    echo "   --runtimeUmsClientId              XXXXXXXXXXXXXXXXXXXX"
-    echo "   --runtimeUmsClientSecret          XXXXXXXXXXXXXXXXXXXX"
+    echo "   --runtimeUmsClientId              DfPtsBMyLOjYVPqChIKL"
+    echo "   --runtimeUmsClientSecret          Dwvj3D0tp4HaugA2s22a"
     echo "   --runtimeUser                     deploy_user"
     echo "   --runtimePwd                      deploy_pwd"
     echo "   --runtimeCpdsUrl                  https://cpds.adp.ibm.com"
     echo "   --deploymentRecId                 D00E6C75-0000-CB1E-9CA6-ED3F7DB2AE9B"
     echo "   --runtimeObjectStore			  OS1"
     echo ""
-    echo "Example to get Deployment Status where all required keys are defined in cpds.properties file. "
     echo "$0 "
-    echo "   --file cpds.properties"
-    echo ""
-    echo "Example to get Deployment Status where all required keys are defined in cpds.properties file and deploymentRecId added on command line"
-    echo "      along with runtimeObjectStore overriding the input file value."
-    echo "      Note: The deploymentRecId value could be the lastDeploymentRecordId value returned by cpds_DeployedProjSnapshot.sh script."
-    echo "$0 "
-    echo "   --file cpds.properties --deploymentRecId 903B9279-0000-C61E-A4A0-AE9C8D023519  --runtimeObjectStore OS2"
+    echo "   --file filename"
 }
 
 f_extractFieldsFromFile()
 {
 	echo 'Extracting fields from file' $INPUT_FILE ......
-	if [ ! -z $INPUT_FILE ]
-	then
-    	set -a
-    	. "$INPUT_FILE"
-    	set +a
-    fi
+        export $(grep -v '^#' ${INPUT_FILE} | tr -d '"' | xargs)
+
+	for t in "${allParamsKeys[@]}"
+	do
+		val=$(eval echo \${$t})
+		#echo $t =  $val
+	done
 
 }
 
 ####### Main
-if [[ $# = 0 ]]; then 
-	echo "Parameters are required."
-    f_usage
-    exit 1
-fi
 
 #parse arg
 while [ "$1" != "" ]; do
@@ -130,9 +104,6 @@ while [ "$1" != "" ]; do
         --runtimeObjectStore)   shift
 								runtimeObjectStore="$1"
                                 ;;
-        --acceptLanguage)		shift
-								acceptLanguage="$1"
-								;;
         --file)                 shift
 								INPUT_FILE="$1"
 								f_extractFieldsFromFile
@@ -146,11 +117,11 @@ done
 
 
 
-# Extract Bearer token to runtime env to connect to GIT, add acceptLang
-CMD="./helper_getUMSToken.sh --acceptLanguage ${acceptLanguage} --url ${runtimeUmsUrl}  --id ${runtimeUmsClientId} --secret ${runtimeUmsClientSecret} --usr ${runtimeUser} --pwd ${runtimePwd}"
+# Extract Bearer token to runtime env to connect to GIT
+CMD="./helper_getUMSToken.sh --url ${runtimeUmsUrl}  --id ${runtimeUmsClientId} --secret ${runtimeUmsClientSecret} --usr ${runtimeUser} --pwd ${runtimePwd}"
 echo Getting Runtime UMSToken ... 
 RUNTIME_BEARER=$(${CMD})
 #echo 
 
 echo Retrieving deploymentRecord ...
-curl -X GET --header "Accept-Language:${acceptLanguage}" --header 'Content-Type:application/json' --header 'Accept:application/json' --header "Authorization:Bearer ${RUNTIME_BEARER}" "${runtimeCpdsUrl}/ibm-dba-content-deployment/v1/deploymentrecords/${deploymentRecId}?repositoryIdentifier=${runtimeObjectStore}" -w '\nReturn Code=%{http_code}\n\n'  -k
+curl -X GET --header 'Content-Type:application/json' --header 'Accept:application/json' --header "Authorization:Bearer ${RUNTIME_BEARER}" "${runtimeCpdsUrl}/ibm-dba-content-deployment/v1/deploymentrecords/${deploymentRecId}?repositoryIdentifier=${runtimeObjectStore}" -w '\nReturn Code=%{http_code}\n\n'  -k

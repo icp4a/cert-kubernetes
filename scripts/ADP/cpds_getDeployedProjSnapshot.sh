@@ -1,11 +1,5 @@
 #!/bin/bash
-#/*
-# IBM Confidential
-# OCO Source Materials
-# 5737-I23
-# Copyright IBM Corp. 2021
-# The source code for this program is not published or otherwise divested of its trade secrets, irrespective of what has been deposited with the U.S Copyright Office.
-# */
+
 # cpds_getDeployedProjSnapshot.sh: script to extract the deployed project version information from the deployment using the project name and snapshot version used to deploy.
 #                                  The lastDeploymentRecordId returned can be used to monitor the deployment by using the cpds_getDeploymentStatus.sh
 # 
@@ -18,7 +12,7 @@
 #
 # 
 #Example to run script:
-#	./cpds_getDeployedProjSnapshot.sh --file cpds.properties
+#	./cpds_getDeployedProjSnapshot.sh --file cdps.properties
 #   
 #      
 #
@@ -35,8 +29,8 @@
 ######## Constants 
 # Provide defaults that can be override by passed in params
 #runtimeUmsUrl=https://ums-sso.adp.ibm.com
-#runtimeUmsClientId=XXXXXXXXXXX
-#runtimeUmsClientSecret=XXXXXXXXX
+#runtimeUmsClientId=XXXXXXXXX
+#runtimeUmsClientSecret=XXXXXXX
 #runtimeUser=Admin
 #runtimePwd=password
 
@@ -45,7 +39,7 @@
 #snapshotVersion=v2-2020-10-13-1825
 #runtimeObjectStore=OS1
 
-acceptLanguage="en-US"
+
 
 ######### Functions
 f_usage()
@@ -54,16 +48,11 @@ f_usage()
     echo "  $0 -- retrieve the deployed Project version. "
     echo ""
     echo "USAGE: $0  "
-    echo "    [--runtimeUmsUrl url]  "
-    echo "    [--runtimeClientId id] "
-    echo "    [--runtimeClientSecret secret]  "
-    echo "    [ --runtimeUser user]     "
-    echo "    [--runtimePwd pwd]"
+    echo "    [--runtimeUmsUrl url]  [--runtimeClientId id] [--runtimeClientSecret secret]  [ --runtimeUser user]     [--runtimePwd pwd]"
     echo "    [--runtimeCpdsUrl     UrlToConnectToCPDS] "
     echo "    [--projectName        ProjectName]"
     echo "    [--snapshotVersion    ProjectSnapshotVersion]"
     echo "    [--runtimeObjectStore CPE ObjectStore symbolic name]]"
-    echo "    [--acceptLanguage       language] (default to en-US if not specified)" 
     echo "    [--file               inputFile to store Key/Value pair for arguments]"
     echo "    [-h]"
     echo ""
@@ -72,49 +61,35 @@ f_usage()
     echo "you can pass --file <file> --runtimeObjectStore <os>"
     echo ""
     echo "EXAMPLE:"
-    echo ""
-    echo "Example to getDeployedProjSnapshot where all required keys are passed in. "
     echo "$0 "
     echo "   --runtimeUmsUrl                   https://ums-sso.adp.ibm.com"
-    echo "   --runtimeUmsClientId              XXXXXXXXXXXXXXXXXXXX"
-    echo "   --runtimeUmsClientSecret          XXXXXXXXXXXXXXXXXXXX"
+    echo "   --runtimeUmsClientId              DfPtsBMyLOjYVPqChIKL"
+    echo "   --runtimeUmsClientSecret          Dwvj3D0tp4HaugA2s22a"
     echo "   --runtimeUser                     deploy_user"
     echo "   --runtimePwd                      deploy_pwd"
     echo "   --runtimeCpdsUrl                  https://cpds.adp.ibm.com"
-    echo "   --projectName                     PROJECT1"
+    echo "   --projectName                     GIT_PROJECT_23"
     echo "   --snapshotVersion                 v2-2020-10-13-1825"
     echo "   --runtimeObjectStore              OS1"
     echo ""
-    echo "Example to getDeployedProjSnapshot where all required keys are defined in cpds.properties file. "
     echo "$0 "
-    echo "   --file cpds.properties		       where filename contains a list of key/value pairs."
-    echo "                                     One can specify all required args in the file."
-    echo ""
-    echo "Example to getDeployedProjSnapshot where all required keys are defined in cpds.properties file and overriding --projectName. "
-    echo "$0 "
-    echo "   --file cpds.properties --projectName PROJECT2" --snapshotVersion v3-2020-10-14-1600 
-    echo "                                    to extract all params from filename except for projectName and snapshotVersion"
-    echo "                                    Note: order is important. The overriding argument should be listed last."
+    echo "   --file filename"
 }
 
 f_extractFieldsFromFile()
 {
 	echo 'Extracting fields from file' $INPUT_FILE ......
-	if [ ! -z $INPUT_FILE ]
-	then
-    	set -a
-    	. "$INPUT_FILE"
-    	set +a
-    fi
+        export $(grep -v '^#' ${INPUT_FILE} | tr -d '"' | xargs)
+
+	for t in "${allParamsKeys[@]}"
+	do
+		val=$(eval echo \${$t})
+		#echo $t =  $val
+	done
 
 }
 
 ####### Main
-if [[ $# = 0 ]]; then 
-	echo "Parameters are required."
-    f_usage
-    exit 1
-fi
 
 #parse arg
 while [ "$1" != "" ]; do
@@ -146,9 +121,6 @@ while [ "$1" != "" ]; do
         --runtimeObjectStore)   shift
 								runtimeObjectStore="$1"
                                 ;;
-        --acceptLanguage)		shift
-								acceptLanguage="$1"
-								;;
         --file)                 shift
 								INPUT_FILE="$1"
 								f_extractFieldsFromFile
@@ -160,26 +132,14 @@ while [ "$1" != "" ]; do
 done
 
 
-#check required params
-if [[ ${runtimeUser} = "" ]] ||  [[ ${runtimePwd} = "" ]] || 
-   [[ ${runtimeCpdsUrl} = "" ]] || [[ ${projectName} = "" ]] ||
-   [[ ${snapshotVersion} = "" ]] || [[ ${runtimeObjectStore} = "" ]] ||
-   [[ ${runtimeUmsUrl} = "" ]] || [[ ${runtimeUmsClientId} = "" ]] || [[ ${runtimeUmsClientSecret} = "" ]] 
-then
-	echo "ERROR: Missing required args: --runtimeUser --runtimePwd --runtimeCpdsUrl "
-	echo "                              --projectName --runtimeUmsClientId --runtimeUmsClientSecret"
-	echo ""
-	f_usage
-	exit 1
-fi
 
 
-# Extract Bearer token to runtime env to connect to GIT, add acceptLang
-CMD="./helper_getUMSToken.sh --acceptLanguage ${acceptLanguage} --url ${runtimeUmsUrl} --id ${runtimeUmsClientId} --secret ${runtimeUmsClientSecret} --usr ${runtimeUser} --pwd ${runtimePwd}"
+# Extract Bearer token to runtime env to connect to GIT
+CMD="./helper_getUMSToken.sh --url ${runtimeUmsUrl} --id ${runtimeUmsClientId} --secret ${runtimeUmsClientSecret} --usr ${runtimeUser} --pwd ${runtimePwd}"
 echo Getting Runtime UMSToken ... 
 RUNTIME_BEARER=$(${CMD})
 #echo 
 
 # Call CPDS deploy REST pass in both bearer tokens with different header
 echo Retrieving the deployed project information for ${runtimeObjectStore}/${projectName}/${snapshotVersion} ...
-curl -X GET --header "Accept-Language:${acceptLanguage}" --header Content-Type:application/json --header Accept:application/json --header "Authorization:Bearer ${RUNTIME_BEARER}" -w '\nReturn Code=%{http_code}\n\n' ${runtimeCpdsUrl}/ibm-dba-content-deployment/v1/deployment/projects/${projectName}/branches/master/snapshots/${snapshotVersion}?repositoryIdentifier=${runtimeObjectStore} -k
+curl -X GET --header Content-Type:application/json --header Accept:application/json --header "Authorization:Bearer ${RUNTIME_BEARER}" -w '\nReturn Code=%{http_code}\n\n' ${runtimeCpdsUrl}/ibm-dba-content-deployment/v1/deployment/projects/${projectName}/branches/master/snapshots/${snapshotVersion}?repositoryIdentifier=${runtimeObjectStore} -k

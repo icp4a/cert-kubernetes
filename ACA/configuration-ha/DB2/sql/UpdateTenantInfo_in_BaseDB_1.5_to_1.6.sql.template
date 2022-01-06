@@ -1,0 +1,6 @@
+--base DB changes
+connect to $base_db_name ;
+set schema $base_db_user ;
+
+update tenantinfo set TENANTDBVERSION=1.6 where TENANTID='$tenant_id' and ONTOLOGY='$tenant_ontology' ;
+connect reset ;

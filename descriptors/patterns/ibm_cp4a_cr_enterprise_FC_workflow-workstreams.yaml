@@ -2,7 +2,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2021. All Rights Reserved.
+# (C) Copyright IBM Corp. 2020. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -16,9 +16,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 21.0.2
+    release: 20.0.3
 spec:
-  appVersion: 21.0.2
+  appVersion: 20.0.3.2
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -49,33 +49,28 @@ spec:
     ## it should be "cp.icr.io".  Otherwise, it will be a local docker registry.
     sc_image_repository: cp.icr.io
 
-    ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that corresponds to a user ID.
-    ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is optional. It is not supported on OCP and ROKS.
+    ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is required
     sc_run_as_user:
 
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer
-        tag: 21.0.2
+        tag: 20.0.3-IF002
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer
-        tag: 21.0.2
+        tag: 20.0.3-IF002
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: 21.0.2
+        tag: 20.0.3-IF002
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: 21.0.2
+        tag: 20.0.3-IF002
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
 
     ## All CP4A components must use/share the root_ca_secret in order for integration
     root_ca_secret: icp4a-root-ca
-
-    ## Shared secret containing a wildcard certificate (and concatenated signers) to be used by all routes, unless overwritten for a specific component route.
-    ## If this is not defined, all external routes will be signed with root_ca_secret.
-    external_tls_certificate_secret:
 
     ## CP4A patterns or capabilities to be deployed.  This CR represents the "workflow-workstreams" pattern, which includes the following
     ## mandatory components: ban(Business Automation Navigator), ums (User Management Service), rr (Resource registry), app_engine( Application Engine) and optional components: bai
@@ -95,11 +90,11 @@ spec:
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false
 
-    ## For ROKS Ingress, provide TLS secret name for Ingress controller. If you are not using ROKS, comment out this line.
+    ## For ROKS Ingress, provide TLS secret name for Ingress controller.
     sc_ingress_tls_secret_name: <Required>
 
-    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-    # sc_deployment_hostname_suffix: "{{ meta.namespace }}.<Required>"
+    ## For OCP, this is used to create route, you should input a valid hostname in the required field.
+    sc_deployment_hostname_suffix: "{{ meta.namespace }}.<Required>"
 
     ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
     ## the external service to the component's truststore.
@@ -107,7 +102,7 @@ spec:
 
     ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
     ## This secret is also used by Workflow and BAStudio to store AES encryption key.
-    encryption_key_secret: ibm-iaws-shared-key-secret
+    encryption_key_secret: "<Required>"
 
     ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
@@ -126,6 +121,41 @@ spec:
       sc_medium_file_storage_classname: "<Required>"
       sc_fast_file_storage_classname: "<Required>"
 
+    # Kafka client configuration for IBM Business Automation Insights and other ICP4A products.
+    #
+    # The customization of the following 4 parameters is "<Required>" only if you have
+    # specificed "bai" as part of the sc_optional_components to specify that Business Automation
+    # Insights must be installed.
+    #
+    # Otherwise, if Business Automation Insights is not being installed, there is no need to configure
+    # these parameters and they can be kept empty.
+    ##############################################################################################
+    kafka_configuration:
+      # A comma-separated list of hosts:port for connection to the Kafka cluster.
+      # This parameter is mandatory for any Kafka configuration.
+      bootstrap_servers: "<Required>"
+      # The URL of the Kafka schema registry.
+      # If the Business Automation Insights processor for custom events is configured, the value of this
+      # parameter must provide the URL of the schema registry. Otherwise, it can be left empty.
+      schema_registry_url:
+      # The type of the Kafka schema registry.
+      # Valid value: APICURIO. If not set, defaults to APICURIO. If set to any other value, the processing of
+      # events using Avro schema in Business Automation Insights is not possible and the BAI Management
+      # service is not deployed.
+      schema_registry_type:
+      # The value for the Kafka security.protocol property.
+      # Valid values: PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL. Default: SASL_SSL.
+      security_protocol:
+      # The value for the Kafka sasl.mechanism property.
+      # Valid values: PLAIN, SCRAM-SHA-512. Default: PLAIN.
+      sasl_mechanism:
+      # If the Kafka server requires authentication or uses SSL communications, the value of this parameter
+      # must provide the name of a Kubernetes secret that holds the following keys as base64-encoded strings:
+      # kafka-username: Kafka username; leave empty if no authentication
+      # kafka-password: Kafka password; leave empty if no authentication
+      # kafka-server-certificate: server certificate for SSL communications; leave empty if SSL protocol is not used
+      connection_secret_name:
+
   ## The beginning section of database configuration for CP4A
   datasource_configuration:
     ## The dc_ssl_enabled parameter is used to support database connection over SSL for DB2/Oracle.
@@ -136,7 +166,7 @@ spec:
    # database_precheck: true
     ## The database configuration for the GCD datasource for CPE
     dc_gcd_datasource:
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".
       dc_database_type: "<Required>"
       ## The GCD non-XA datasource name.  The default value is "FNGCDDS".
       dc_common_gcd_datasource_name: "FNGCDDS"
@@ -164,22 +194,10 @@ spec:
       dc_hadr_retry_interval_for_client_reroute: 15
       ## Provide the max # of retries.  If not preference, keep the default value.
       dc_hadr_max_retries_for_client_reroute: 3
-      ## Connection manager for a data source.
-      connection_manager:
-        ## Minimum number of physical connections to maintain in the pool.
-        min_pool_size: 0
-        ## Maximum number of physical connections for a pool.
-        max_pool_size: 50
-        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
-        max_idle_time: 1m
-        ## Amount of time between runs of the pool maintenance thread.
-        reap_time: 2m 
-        ## Specifies which connections to destroy when a stale connection is detected in a pool.
-        purge_policy: EntirePool
 
     ## The database configuration for the document object store (DOCS) datasource for CPE
     dc_os_datasources:
-    ## Object store for FNDS DOCS. Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the GCD configuration above.
+    ## Object store for FNDS DOCS. Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle".  This should be the same as the GCD configuration above.
     - dc_database_type: "<Required>"
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
       ## This label must match the OS secret you define in ibm-fncm-secret.
@@ -220,19 +238,6 @@ spec:
       dc_hadr_retry_interval_for_client_reroute: 15
       ## Provide the max # of retries.  If not preference, keep the default value.
       dc_hadr_max_retries_for_client_reroute: 3
-      ## Connection manager for a data source.
-      connection_manager:
-        ## Minimum number of physical connections to maintain in the pool.
-        min_pool_size: 0
-        ## Maximum number of physical connections for a pool.
-        max_pool_size: 50
-        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
-        max_idle_time: 1m
-        ## Amount of time between runs of the pool maintenance thread.
-        reap_time: 2m 
-        ## Specifies which connections to destroy when a stale connection is detected in a pool.
-        purge_policy: EntirePool
-
     ## The database configuration for the target object store (TOS) datasource for CPE
     - dc_database_type: "<Required>"
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
@@ -274,19 +279,6 @@ spec:
       dc_hadr_retry_interval_for_client_reroute: 15
       ## Provide the max # of retries.  If not preference, keep the default value.
       dc_hadr_max_retries_for_client_reroute: 3
-      ## Connection manager for a data source.
-      connection_manager:
-        ## Minimum number of physical connections to maintain in the pool.
-        min_pool_size: 0
-        ## Maximum number of physical connections for a pool.
-        max_pool_size: 50
-        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
-        max_idle_time: 1m
-        ## Amount of time between runs of the pool maintenance thread.
-        reap_time: 2m 
-        ## Specifies which connections to destroy when a stale connection is detected in a pool.
-        purge_policy: EntirePool
-
     ## The database configuration for the design object store (DOS) datasource for CPE
     - dc_database_type: "<Required>"
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
@@ -326,19 +318,6 @@ spec:
       dc_hadr_retry_interval_for_client_reroute: 15
       ## Provide the max # of retries.  If not preference, keep the default value.
       dc_hadr_max_retries_for_client_reroute: 3
-      ## Connection manager for a data source.
-      connection_manager:
-        ## Minimum number of physical connections to maintain in the pool.
-        min_pool_size: 0
-        ## Maximum number of physical connections for a pool.
-        max_pool_size: 50
-        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
-        max_idle_time: 1m
-        ## Amount of time between runs of the pool maintenance thread.
-        reap_time: 2m 
-        ## Specifies which connections to destroy when a stale connection is detected in a pool.
-        purge_policy: EntirePool
-
     ## object store for AEOS
     - dc_database_type: "<Required>"
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
@@ -380,213 +359,156 @@ spec:
       dc_hadr_retry_interval_for_client_reroute: 15
       ## Provide the max # of retries.  If not preference, keep the default value.
       dc_hadr_max_retries_for_client_reroute: 3
-      ## Connection manager for a data source.
-      connection_manager:
-        ## Minimum number of physical connections to maintain in the pool.
-        min_pool_size: 0
-        ## Maximum number of physical connections for a pool.
-        max_pool_size: 50
-        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
-        max_idle_time: 1m
-        ## Amount of time between runs of the pool maintenance thread.
-        reap_time: 2m 
-        ## Specifies which connections to destroy when a stale connection is detected in a pool.
-        purge_policy: EntirePool
 
   ########################################################################
   ########   IBM Business Automation Workflow configuration     ########
   ########################################################################
   baw_configuration:
-  ## The baw_configuration is a list. You can deploy multiple instances of Workflow Server and assign different configurations for each instance.
-  ## For each instance, baw_configuration.name and hostname must be assigned different values.
-  ## For each instance's database configuration, you can choose to use either different database instances, or one shared database instance. If you use a shared database instance, in Db2 or PostgreSQL, you must assign different database names (baw_configuration[x].database.database_name); in Oracle, you must assign different database users (the dbUser in the baw_configuration[x].database.secret_name).
-  ## Each baw_configuration.name can consist of lowercase alphanumeric characters or '-', and must start and end with an alphanumeric character. Keep the instance name as short as possible.
-  ## For baw_configuration.tls.tls_secret_name, if you choose to use a customized Workflow Server TLS certificate, ensure that each BAW instance has a different value.
+  ## The baw_configuration is a list. You can deploy multiple instances of Workflow server and assign different configurations for each instance.
+  ## For each instance, baw_configuration.name and baw_configuration.name.hostname must have different values.
   - name: instance1
-    ## Whether the Business Automation Workflow instance hosts federated Process Portal and integrates with Intelligent Task Prioritization.
+    ## If config the Process Portal for a federated environment and integrate with intelligent task prioritization
     host_federated_portal: true
-    ## Workflow Server service type.
+    ## Workflow server service type.
     service_type: "Route"
-    ## Workflow Server hostname.
+    ## Workflow server hostname
     hostname: ""
-    ## Workflow Server port.
+    ## Workflow server port
     port: 443
-    ## Workflow Server node port.
+    ## Workflow server nodeport
     nodeport: 30026
-    ## Workflow Server environment type. Possible values are Development, Test, Staging, and Production.
+    ## Workflow server environment type. The possible value are "Development" or "Test" or "Staging" or "Production"
     env_type: "Production"
-    ## Workflow Server capability.
+    ## Workflow server capability
     capabilities: "workflow,workstreams"
-    ## Workflow Server replica count.
+    ## Workflow server replica count
     replicas: 2
     ## Designate an existing LDAP user for the Workflow Server admin user.
     admin_user: "<Required>"
-    ## The name of Workflow Server admin secret. This secret name is optional, if the secret name is null, default secret named {{ meta.name }}-<instance-name>-baw-admin-secret will be generated.
+    ## The name of Workflow server admin secret, the secret name is optional, if the secret name is null, default secret named {{ meta.name }}-<instance-name>-baw-admin-secret will be generated
     admin_secret_name: "{{ meta.name }}-instance1-baw-admin-secret"
-    ## Whether to use the built-in monitoring capability.
+    ## Specify whether to use the built-in monitoring capability
     monitor_enabled: false
 
-    ## Required if you implemented your own portal. For example, https://portal.mycompany.com.
+    # For scenario that customer has implemented their own Portal. E,g https://portal.mycompany.com
     customized_portal_endpoint: ""
 
     federated_portal:
-      ## Content security policy additional origins for federating on premise BAW systems. E.g ["https://on-prem-baw1","https://on-prem-baw2"]
+      ## Content security policy additional origins for federate on premise BAW systems. E.g ["https://on-prem-baw1","https://on-prem-baw2"]
       content_security_policy_additional_origins: []
-    ## External connection timeout.
     external_connection_timeout: ""
 
     ## The secret that contains the Transport Layer Security (TLS) key and certificate for external https visits. You can enter the secret name here.
-    ## If you do not want to use a customized external TLS certificate, leave it empty.
+    ## If you do not want to use the customized external TLS certificate, leave it empty.
     external_tls_secret:
     ## Certificate authority (CA) used to sign the external TLS secret. It is stored in the secret with the TLS key and certificate. You can enter the secret name here.
-    ## If you don't want to use a customized CA to sign the external TLS certificate, leave it empty.
+    ## If you don't want to use the customized CA to sign the external TLS certificate, leave it empty.
     external_tls_ca_secret:
 
     tls:
-      ## Workflow Server TLS secret that contains tls.key and tls.crt.
-      ## If you want to use a customized Workflow Server TLS certificate, ensure it is signed by the CA in shared_configuration.root_ca_secret.
-      ## If you do not want to use a customized Workflow Server TLS certificate, leave it empty.
+      ## Workflow server TLS secret that contains tls.key and tls.crt.
       tls_secret_name: ibm-baw-tls
-      ## Workflow Server TLS trust list.
+      ## Workflow server TLS trust list.
       ## You might specify a list of secrets, every secret stores a trusted CA
-      ## Use command `kubectl create secret generic baw_custom_trust_ca_secret1 --from-file=tls.crt=./ca1.crt` to generate the secret.
+      ## kubectl create secret generic baw_custom_trust_ca_secret1 --from-file=tls.crt=./ca1.crt
       tls_trust_list:
-      ## Secret to store your custom trusted keystore (optional). The type for the keystore must be JKS or PKCS12. All certificates from the keystore are imported into the trust keystore of the Workflow Server.
-      ## You might run the following sample command to create the secret:
-      ## `kubectl create secret generic baw_custom_trusted_keystore_secret --from-file=truststorefile=./trust.p12 --from-literal=type=PKCS12  --from-literal=password=WebAS`
+      ## The parameter is optional, if you want Workflow server to trust your custom trusted CAs, you can add them to a keystore and then create a secret to store the trusted keystore.
+      ## The keystore type must be JKS or PKCS12.
+      ## kubectl create secret generic baw_custom_trusted_keystore_secret --from-file=truststorefile=./trust.p12 --from-literal=type=PKCS12  --from-literal=password=WebAS
       tls_trust_store:
     image:
-      ## Workflow Server (Process Server) image repository URL.
+      ## Workflow image repository URL
       repository: cp.icr.io/cp/cp4a/baw/workflow-server
-      ## Image tag for Workflow Server container.
-      tag: 21.0.2-IF001
-      ## Pull policy for Workflow Server container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
+      ## Image tag for Workflow server container
+      tag: 20.0.3-IF002
+      ## Pull policy for Workflow container
       pullPolicy: IfNotPresent
     pfs_bpd_database_init_job:
-      ## Database initialization image repository tag for Process Federation Server.
+      ## Database initialization image repository URL for Process Federation Server
       repository: cp.icr.io/cp/cp4a/baw/pfs-bpd-database-init-prod
-      ## Database initialization image repository tag for Process Federation Server.
-      tag: 21.0.2-IF001
-      ## Pull policy for Process Federation Server database initialization image. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
+      ## Image tag for database initialization for Process Federation Server
+      tag: 20.0.3-IF002
+      ## Pull policy for Process Federation Server database initialization image
       pullPolicy: IfNotPresent
     upgrade_job:
-      ## Workflow Server database handling image repository URL.
+      ## Workflow server database handling image repository URL
       repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
-      ## Workflow Server database handling image repository tag.
-      tag: 21.0.2-IF001
-      ## Pull policy for database handling. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
+      ## Image tag for Workflow server database handling
+      tag: 20.0.3-IF002
+      ## Pull policy for Workflow server database handling
       pullPolicy: IfNotPresent
     bas_auto_import_job:
-      ## Workflow Server Business Automation Studio toolkit init image repository URL.
+      ## BAS toolkit init image repository URL
       repository: cp.icr.io/cp/cp4a/baw/toolkit-installer
-      ## Workflow Server Business Automation Studio toolkit init image repository tag.
-      tag: 21.0.2-IF001
-      ## Pull policy for Workflow Server Business Automation Studio toolkit init image. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
+      ## Image tag for BAS toolkit init image
+      tag: 20.0.3-IF002
+      ## Pull policy for BAS toolkit init image
       pullPolicy: IfNotPresent
     ibm_workplace_job:
-      ## Workflow Server IBM Workplace deployment job image repository URL
+      ## IBM Workplace deployment job image repository URL
       repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
-      ## Workflow Server IBM Workplace deployment job image repository tag.
-      tag: 21.0.2
-      ## Pull policy for Workflow Server IBM Workplace deployment job image. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
+      ## Image tag for IBM Workplace deployment job image
+      tag: 20.0.3-IF002
+      ## Pull policy for IBM Workplace deployment job image
       pull_policy: IfNotPresent
 
-    ## The database configuration for Workflow Server
+    ## The database configuration for Workflow server
     database:
-      ## Whether to enable Secure Sockets Layer (SSL) support for the Workflow Server database connection.
+      ## Whether to enable Secure Sockets Layer (SSL) support for the Workflow server database connection
       enable_ssl: true
-      ## Secret name for storing the database TLS certificate when an SSL connection is enabled, e.g  {{ meta.name }}-db-ssl-secret.
-      ## Required only when enable_ssl is true. If enable_ssl is false, comment out this line.
+      ## Secret name for storing the database TLS certificate when enable SSL connections to the Workflow server databae engine. Required only when enable_ssl is true
       db_cert_secret_name: "<Required>"
-      ## Workflow Server database type. Possible values are: db2, oracle, postgresql
+      ## Workflow server database type, Possible values are: db2, oracle, postgresql
       type: "<Required>"
-      ## Workflow Server database server name. It must be an accessible address, such as IP, hostname, or Kubernetes service name.
-      ## This parameter is required.
+      ## Workflow server database server name
       server_name: "<Required>"
-      ## Workflow Server database name. This parameter is required.
+      ## Workflow server database name
       database_name: "<Required>"
-      ## Workflow Server database port. This parameter is required. For DB2, the default value is "50000"
+      ## Workflow server database port. For DB2, the default value is "50000"
       port: "<Required>"
-      ## Workflow Server database secret name. This parameter is required.
-      ## apiVersion: v1
-      ## kind: Secret
-      ## metadata:
-      ##   name: ibm-baw-wfs-server-db-secret
-      ## type: Opaque
-      ## data:
-      ##   dbUser: <DB_USER>
-      ##   password: <DB_USER_PASSWORD>
+      ## Workflow server database secret name which include the database user name and password.
       secret_name: "<Required>"
-      ## Oracle and PostgreSQL database connection string.
-      ## If the database type is Oracle, provide the Oracle database connection string. For example, jdbc:oracle:thin:@//<oracle_server>:1521/orcl.
-      ## If the database type is PostgreSQL, this parameter is optional, you can choose inputs server_name, database_name, and port with or without this parameter here. If you do not need this parameter when PostgreSQL, remove or comment this parameter.
-      ## In any other cases, remove or comment this parameter.
-      jdbc_url: "<Required>"
-      ## Whether to use custom JDBC drivers. Set to true if you are using Oracle, PostgreSQL, or a special Db2 driver.
+      # If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      jdbc_url:
+      # Set to true if using custom JDBC drivers (For example using Oracle, PostgreSQL or some special DB2 driver)
       use_custom_jdbc_drivers: false
-      ## If use_custom_jdbc_drivers is set to true, input the name of the persistent volume claim (PVC) that binds to the persistent volume (PV) where the custom JDBC driver files are stored.
-      ## If use_custom_jdbc_drivers is set to false, remove or comments this parameter.
-      custom_jdbc_pvc: "<Required>"
-      ## The set of JDBC driver files.
-      ## For DB2, it is normally "db2jcc4.jar db2jcc_license_cisuz.jar db2jcc_license_cu.jar".
-      ## For Oracle, it is normally "ojdbc8.jar".
-      ## For PostgreSQL, it is normally "postgresql-42.2.14.jar".
+      # The PVC name which bind to the PV which have the custom JDBC driver files stored
+      custom_jdbc_pvc:
+      # The custom JDBC driver files set
       jdbc_driver_files: 'db2jcc4.jar db2jcc_license_cisuz.jar db2jcc_license_cu.jar'
-      ## Workflow Server database connect pool maximum number of physical connections.
+      ## Workflow server database connect pool maximum number of physical connections
       cm_max_pool_size: 200
       dbcheck:
-        ## The maximum wait time (seconds) to check the database intialization status. The server fails to start after wait_time.
+        ## The maximum waiting time (seconds) to check the database intialization status
         wait_time: 900
-        ## The interval time (seconds) to check the database initialization status before the database is ready and bootstrapped with system data.
+        ## The interval time (seconds) to check.
         interval_time: 15
       hadr:
         ## Database standby host for high availability disaster recovery (HADR)
-        ## To enable database HADR, configure both standby host and port.
+        ## To enable database HADR, configure both standby host and port
         standbydb_host:
-        ## Database standby port for HADR. To enable database HADR, configure both standby host and port.
+        ## Database standby port for HADR
         standbydb_port:
         ## Retry interval for HADR
         retryinterval:
         ## Maximum retries for HADR
         maxretries:
 
-    ## Workflow center configuration
-    workflow_center:
-      ## The URL of workflow Center
-      url: ""
-      ## The secret name of workflow center that contains username and password.
-      ## apiVersion: v1
-      ## kind: Secret
-      ## metadata:
-      ##  name: ibm-baw-wc-secret
-      ## type: Opaque
-      ## stringData:
-      ##  username: deadmin
-      ##  password: deadmin
-      secret_name: ""
-      ## Heartbeat interval (seconds) to connect to Workflow Center.
-      heartbeat_interval: 30
-      ## URL that is used by Workflow Center to link to the web Process Designer. For example, https://hostname:port/WebPD.
-      webpd_url: ""
-
-    ## The configurations for content integration for attachment in process
+    ## The configurations for content integration
     content_integration:
       init_job_image:
         ## Image name for content integration container.
         repository: cp.icr.io/cp/cp4a/baw/iaws-ps-content-integration
-        ## Image tag for content integration container.
-        tag: 21.0.2
-        ## Pull policy for content integration container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
+        ## Image tag for content integration container
+        tag: 20.0.3-IF002
+        ## Pull policy for content integration container.
         pull_policy: IfNotPresent
-      ## Domain name for content integration. The value must be the same as initialize_configuration.ic_domain_creation.domain_name.
+      ## Domain name for content integration
       domain_name: "P8DOMAIN"
-      ## Object Store name for content integration.
-      ## The value must be an existing object store in CPE.
-      ## If use initialize_configuration for the object store initilization, the value must be one of initialize_configuration.ic_obj_store_creation.object_stores.
+      ## Object Store name for content integration
       object_store_name: "DOCS"
-      ## Admin secret for connecting to Content Platform Engine (CPE). This parameter is optional. If not set, it will autodetect CPE's admin secret in the same namespace.
+      ## Admin secret for content integration
       cpe_admin_secret: ""
-
 
     ## The configuration for case
     case:
@@ -594,56 +516,45 @@ spec:
         ## Image name for CASE init job container.
         repository: cp.icr.io/cp/cp4a/baw/workflow-server-case-initialization
         ## Image tag for CASE init job container.
-        tag: 21.0.2-IF001
-        ## Pull policy for CASE init job container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
+        tag: 20.0.3-IF002
+        ## Pull policy for CASE init job container.
         pull_policy: IfNotPresent
 
-      ## Domain name for CASE. The value must be the same as initialize_configuration.ic_domain_creation.domain_name.
+      ## Domain name for CASE
       domain_name: "P8DOMAIN"
-      ## Design Object Store name of CASE.
-      ## The value must be the same as the oc_cpe_obj_store_symb_name value of one of the object stores defined in initialize_configuration.ic_obj_store_creation.object_stores.
+      ## Design Object Store name of CASE
       object_store_name_dos: "DOS"
       ## Target Object Store name of CASE
-      ## The value must be the same as the oc_cpe_obj_store_symb_name value of one of the object stores defined in initialize_configuration.ic_obj_store_creation.object_stores.
       object_store_name_tos: "TOS"
-      ## Connection point name for Target Object Store.
-      ## See initialize_configuration.ic_obj_store_creation.object_stores[x].oc_cpe_obj_store_workflow_pe_conn_point_name.
-      ## If oc_cpe_obj_store_workflow_pe_conn_point_name is not specified explicitly, the default value is pe_conn_<TOS_OS_DB_NAME>.
+      ## Connection point name for Target Object Store
       connection_point_name_tos: "cpe_conn_tos"
-      ## Specify the name of the non-XA datasource of Target Object Store (from dc_common_os_datasource_name in the dc_os_datasources section)
-      ## It will not take effect if TOS object store exists in initialize_configuration.ic_obj_store_creation.object_stores.
-      datasource_name_tos: "FNDSTOS"
 
-      ## Name of the target environment or project area to register with the case components and associate with an IBM Content Navigator desktop.
+      ## Name of the target environment/project area to register with the case components and associate with an IBM Content Navigator desktop
       target_environment_name: "target_env"
 
-      ## Persistent volume claim (PVC) name for case network shared directory.
-      ## This parameter must be set to the same value as the Business Automation Navigator pvc_for_icn_pluginstore parameter.
-      ## If navigator_configuration.datavolume.existing_pvc_for_icn_pluginstore is not specified explicitly, the default value is icn-pluginstore.
+      ## PVC name for CASE network shared directory
       network_shared_directory_pvc: "{{ navigator_configuration.datavolume.existing_pvc_for_icn_pluginstore | default('icn-pluginstore', true) }}"
-      ## Custom package names for installing custom packages, where the value format is similar to package1.zip, package2.zip.
+      ## The custom package names if need to install custom package, the value format like "package1.zip, package2,zip"
       custom_package_names: ""
-      ## Custom extension names for installing custom packages, where the value format is similar to extension1.zip, extension2.zip.
+      ## The custom extension names if need to install custom extension, the value format like "extension1.zip, extension2,zip"
       custom_extension_names: ""
-      ## The event emitter settings if you want to enable Case Event Emitter. The following example shows sample values:
-      ## event_emitter:
-      ##   date_sql: 20200630T002840Z
-      ##   logical_unique_id: bawinst1
-      ##   solution_list: SampleSolution1,SampleSolution2
+      ## The event emitter settings if you want to enable Case Event Emitter
       event_emitter:
-        ## Creation date of the events.
-        ## The emitter starts processing the events from that date. If a bookmark exists, the emitter ignores this parameter and processes the events from the bookmark.
         date_sql:
-        ## An 8-character alphanumeric string without underscores.
-        ## This value is always required. While processing, the emitter tracks the events that are processed by using the Content Engine Audit Processing Bookmark with a display name that is based on this value.
-        ## Therefore, if the emitter is restarted and if the bookmark exists, the emitter processes the events from the last bookmark.
         logical_unique_id:
-        ## Comma-separated list of all the case solution names that need to be processed. Add all the solutions that you want to be processed before you deploy the Case event emitter.
         solution_list:
-        ## Case event emitter batch size.
         emitter_batch_size:
-        ## Whether to process FileNet Process Engine events in addition to IBM Business Automation Workflow events.
         process_pe_events:
+
+    ## Workflow center configuration
+    workflow_center:
+      ## The URL of workflow center
+      url: ""
+      # The secret name of workflow center that contains username and password
+      secret_name: ""
+      # The hearbeat interval(seconds) to connect to workflow center
+      heartbeat_interval: 30
+      webpd_url: ""
 
     ## Application engine configuration, because application engine is an array,
     ## when there is only one Application engine deployed along with this CR, below three parameters are not required.
@@ -659,11 +570,11 @@ spec:
     ## The configuration for Java Messaging Service(JMS)
     jms:
       image:
-        ## Image name for Java Messaging Service container.
+        ## Image name for Java Messaging Service container
         repository: cp.icr.io/cp/cp4a/baw/jms
-        ## Image tag for Java Messaging Service container.
-        tag: 21.0.2-IF001
-        ## Pull policy for Java Messaging Service container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
+        ## Image tag for Java Messaging Service container
+        tag: 20.0.3-IF002
+        ## Pull policy for Java Messaging Service container
         pull_policy: IfNotPresent
       tls:
         ## TLS secret name for Java Message Service (JMS)
@@ -693,73 +604,63 @@ spec:
         storage_class: "{{ shared_configuration.storage_configuration.sc_fast_file_storage_classname }}"
       ## Default values for liveness probes. Modify these values to meet your requirements.
       liveness_probe:
-        ## Number of seconds after the Workflow Server container starts before the liveness probe is initiated
         initial_delay_seconds: 180
-        ## Number of seconds to wait before the next probe.
         period_seconds: 20
-        ## Number of seconds after which the probe times out.
         timeout_seconds: 10
-        ## When a probe fails, number of times that Kubernetes will try before giving up and restarting the container.
         failure_threshold: 3
-        ## Minimum consecutive successes for the probe to be considered successful after it failed.
         success_threshold: 1
       ## Default values for rediness probes. Modify these values to meet your requirements.
       readiness_probe:
-        ## Number of seconds after the Workflow Server container starts before the liveness probe is initiated
         initial_delay_seconds: 30
-        ## Number of seconds to wait before the next probe.
         period_seconds: 5
-        ## Number of seconds after which the probe times out.
         timeout_seconds: 5
-        ## When a probe fails, number of times that Kubernetes will try before giving up and restarting the container.
         failure_threshold: 6
-        ## Minimum consecutive successes for the probe to be considered successful after it failed.
         success_threshold: 1
 
     ## Resource configuration for init job
     resources_init:
       limits:
-        ## CPU limit for init job containers.
+        ## CPU limit
         cpu: "500m"
-        ## Memory limit for init job containers.
+        ## Memory limit
         memory: 256Mi
       requests:
-        ## Requested amount of CPU for init job containers.
+        ## Requested amount of CPU
         cpu: "200m"
-        ## Requested amount of memory for init job containers.
+        ## Requested amount of memory
         memory: 128Mi
 
     ## Resource configuration for heavy init job such as database init job
     resources_init_heavy_job:
       limits:
-        ## CPU limit for Workflow Server database init job container.
+        ## CPU limit
         cpu: 1
-        ## Memory limit for Workflow Server database init job container.
-        memory: 2048Mi
+        ## Memory limit
+        memory: 1536Mi
       requests:
-        ## Requested amount of CPU for Workflow Server database init job container.
+        ## Requested amount of CPU
         cpu: "500m"
-        ## Requested amount of memory for Workflow Server database init job container.
+        ## Requested amount of memory
         memory: 512Mi
 
     ## Resource configuration
     resources:
       limits:
-        ## CPU limit for Workflow Server.
+        ## CPU limit for Workflow server.
         cpu: 4
-        ## Memory limit for Workflow Server.
+        ## Memory limit for Workflow server
         memory: 3Gi
       requests:
-        ## Requested amount of CPU for Workflow Server.
+        ## Requested amount of CPU for Workflow server
         cpu: "500m"
-        ## Requested amount of memory for Workflow Server.
-        memory: 2048Mi
+        ## Requested amount of memory for Workflow server.
+        memory: 1048Mi
 
     ## liveness and readiness probes configuration
     probe:
       ws:
         liveness_probe:
-          ## Number of seconds after the Workflow Server container starts before the liveness probe is initiated
+          ## Number of seconds after the Workflow server container starts before the liveness probe is initiated
           initial_delay_seconds: 300
           ## Number of seconds to wait before the next probe.
           period_seconds: 10
@@ -770,7 +671,7 @@ spec:
           ## Minimum consecutive successes for the probe to be considered successful after it failed.
           success_threshold: 1
         readinessProbe:
-          ## Number of seconds after the Workflow Server container starts before the readiness probe is initiated
+          ## Number of seconds after the Workflow server container starts before the readiness probe is initiated
           initial_delay_seconds: 240
           ## Number of seconds to wait before the next probe.
           period_seconds: 5
@@ -783,119 +684,95 @@ spec:
 
     ## log trace configuration
     logs:
-      ## Format for printing logs on the console.
+      ## Format for printing logs on the console
       console_format: "json"
-      ## Log level for printing logs on the console.
+      ## Log level for printing logs on the console
       console_log_level: "INFO"
-      ## Source of the logs for printing on the console.
+      ## Source of the logs for printing on the console
       console_source: "message,trace,accessLog,ffdc,audit"
-      ## Required format for the messages.log file. Valid values are SIMPLE and JSON.
+      ## The required format for the messages.log file. Valid values are SIMPLE or JSON format.
       message_format: "SIMPLE"
-      ## Format of the trace log. Options values are: BASIC, ADVANCED, and ENHANCED.
+      ## Format for printing trace logs on the console
       trace_format: "ENHANCED"
-      ## Specification for printing trace logs.
+      ## Specification for printing trace logs
       trace_specification: "*=info"
-      # Maximum number of log files that are kept before the oldest file is removed.
+      # Maximum number of log files that are kept before the oldest file is removed
       max_files: 10
       # The maximum size (in MB) that a log file can reach before it is rolled.
       max_filesize: 50
 
     ## storage configuration
     storage:
-      ## Set to true to use dynamic storage provisioning. If set to false, you must set existing_pvc_for_logstore and existing_pvc_for_dumpstore.
+      ## Set to true to use dynamic storage provisioner. If set to false, then need set existing_pvc_for_logstore and existing_pvc_for_dumpstore
       use_dynamic_provisioning: true
-      ## Persistent volume claim (PVC) for logs.
+      ## The persistent volume claim for logs
       existing_pvc_for_logstore: ""
-      ## Minimum size of the persistent volume (PV) that is mounted as the log store.
-      size_for_logstore: "1Gi"
-      ## Persistent volume claim (PVC) for dump files.
+      ## The minimum size of the persistent volume used mounted as log store
+      size_for_logstore: "10Gi"
+      ## The persistent volume claim for dump files
       existing_pvc_for_dumpstore: ""
-      ## Minimum size of the persistent volume (PV) that is mounted as the dump store.
-      size_for_dumpstore: "5Gi"
-      ## Persistent volume claim (PVC) for generic files.
+      ## The minimum size of the persistent volume used mounted as dump store
+      size_for_dumpstore: "10Gi"
+      ## The persistent volume claim for generic files
       existing_pvc_for_filestore: ""
-      ## Minimum size of the persistent volume (PV) that is mounted as the generic file store.
-      size_for_filestore: "1Gi"
+      ## The minimum size of the persistent volume used mounted as generic file store
+      size_for_filestore: "10Gi"
 
     ## autoscaling
     autoscaling:
-      ## Whether to enable automatically scaling the number of pods.
       enabled: false
-      ## Upper limit for the number of pods that can be set by the autoscaler. If it is not specified or negative, the server uses the default value.
       max_replicas: 3
-      ## Lower limit for the number of pods that can be set by the autoscaler. If it is not specified or negative, the server uses the default value.
       min_replicas: 2
-      ## Target average CPU utilization (represented as a percent of requested CPU) over all the pods. If it is not specified or negative, the default is used.
       target_cpu_utilization_percentage: 80
 
     ## customize environment settings
     environment_config:
-      ## Whether to show the Intelligent Task Prioritization service toggle button in the web user interface to allow the user to enable or disable this service. This parameter is valid only for the first Workflow instance.
+      ## Whether to show intelligent task prioritization service toggle button in web UI to allow task user enable/disable task prioritization service
       show_task_prioritization_service_toggle: false
-      ## Whether to display the Intelligent Task Prioritization service toggle button. If this parameter is set to true, the previous parameter is ignored. This parameter is valid only for the first Workflow instance.
+      ## By default, it is false. If 'always_run_task_prioritization_service' is set to true, the value of the 'show_task_prioritization_service_toggle' is ignored and the toggle is not displayed to the user.
       always_run_task_prioritization_service: false
+      csrf:
+        ## Acceptable values in the Origin header field. The value of this property must be a comma-separated list of prefixes in the format protocol://host:port, e.g "https://example.com, http://example2.com:8080".
+        origin_whitelist:
+        ## Acceptable values in the Referer header field. The value of this property must be a comma-separated list of fully qualified host names, e.g "example1.com, example2.com".
+        referer_whitelist:
 
     ## federation config
     federation_config:
       workflow_server:
-          ## Number of primary shards of the Elasticsearch index used to store Workflow Server data.
+          ## Number of primary shards of the Elasticsearch index used to store workflow server data
           index_number_of_shards: 3
-          ## Number of shard replicas of the Elasticsearch index used to store Workflow Server data.
+          ## Number of shards replicas of the Elasticsearch index used to store workflow server data
           index_number_of_replicas: 1
       case_manager:
-            ## Case Manager object store name.
           - object_store_name: TOS
-            ## Number of primary shards of the Elasticsearch index used to store Case Manager object store data.
+            ## Number of primary shards of the Elasticsearch index used to store Case Manager object store data
             index_number_of_shards: 3
-            ## Number of shard replicas of the Elasticsearch index used to store Case Manager object store data.
+            ## Number of shards replicas of the Elasticsearch index used to store Case Manager object store data
             index_number_of_replicas: 1
 
-    ## JVM options separated with spaces, for example: -Dtest1=test -Dtest2=test2.
+    ## JVM options separated with space, for example: -Dtest1=test -Dtest2=test2
     jvm_customize_options:
 
-    ##  Workflow Server custom plain XML snippet
+    ##  Workflow server custom plain XML snippet
     ##  liberty_custom_xml: |+
     ##    <server>
     ##      <!-- custom propeties here -->
     ##    </server>
-    ## The custom_xml_secret_name is also used for Workflow Server customization. Ensure the configuration value exists either in liberty_custom_xml or custom_xml_secret_name.
-    ## Do not set the configuration value in both places.
     liberty_custom_xml:
 
-    ## Workflow Server custom XML secret name that contains custom configuration in Liberty server.xml,
-    ## put the custom.xml in secret with key "sensitiveCustomConfig"
-    ## kubectl create secret generic wfs-custom-xml-secret --from-file=sensitiveCustomConfig=./custom.xml
-    ## The liberty_custom_xml property is also used for Workflow Server customization. Ensure the configuration value exists either in liberty_custom_xml or custom_xml_secret_name.
-    ## Do not set the configuration value in both places
+    ##  Workflow server custom XML secret name that contains custom configuraiton in Liberty server.xml
     custom_xml_secret_name:
 
-    ## Workflow Server Lombardi custom XML secret name that contains custom configuration in 100Custom.xml
-    ## put the 100Custom.xml in secret with key "sensitiveCustomConfig"
-    #  kubectl create secret generic wfs-lombardi-custom-xml-secret --from-file=sensitiveCustomConfig=./100Custom.xml
+    ##  Workflow server Lombardi custom XML secret name that contains custom configuraiton in 100Custom.xml
     lombardi_custom_xml_secret_name:
 
     ##  IBM Business Automation Insights integration configuration
     business_event:
-      ## Whether to enable event monitoring for Dynamic Event Framework events for the Workflow Services container.
-      ## If Business Automation Insights and the Machine Learning Server parameters are configured, this parameter must be set to true.
       enable: false
-      ## Whether to enable the task record in generated events. This optional parameter is equivalent to the task-record-enabled parameter,
-      ## Also see https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.bai/topics/ref_bai_bpmn_summary_formats.html
       enable_task_record: true
-      ## Whether to record additional task information in generated events.
-      ## If Business Automation Insights and the Machine Learning Server parameters are configured, this parameter must be set to true.
-      ## This parameter is equivalent to the enable_task_api_def parameter.
-      ## Also see https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.bai/topics/ref_bai_bpmn_summary_formats.html
+      ## set it to true when Business Automation Machine Learning Server configuration is enabled as well
       enable_task_api: false
-      ## List of the subscription configurations. Each subscription attribute is listed in the rest of this table.
-      ## app_name: Name of the application that is the source of the events that are to be monitored.
-      ## version: Version of the application to be monitored.
-      ## component_type: Type of the component to be monitored.
-      ## component_name: Name of the component to be monitored.
-      ## element_type: Type of element to be monitored. BPMN types are PROCESS, ACTIVITY, EVENT, and GATEWAY.
-      ## element_name: Name of the element to be monitored.
-      ## nature: Nature of the event. One element can send events of various natures, such as STARTED, ACTIVE, COMPLETED.
-      ##         The BPMN nature categories are STARTED, COMPLETED, TERMINATED, DELETED, FAILED, CAUGHT, THROWN, EXPECTED, ACTIVE, READY, RESOURCE_ASSIGNED, ACTIVE, LOOP_CONDITION_TRUE, LOOP_CONDITION_FALSE, and MULTIPLE_INSTANCES_STARTED.
       subscription:
       - {'app_name': '*','version': '*','component_type': '*','component_name': '*','element_type': '*','element_name': '*','nature': '*'}
 
@@ -917,7 +794,7 @@ spec:
       image:
         repository: cp.icr.io/cp/cp4a/baw/bui-task-prioritization
         ## Image tag for Intelligent Task Prioritization container
-        tag: "21.0.2"
+        tag: 20.0.3-IF002
         pull_policy: IfNotPresent
       ## Resource configuration
       resources:
@@ -938,7 +815,7 @@ spec:
         ## The persistent volume claim for logs
         existing_pvc_for_logstore: ""
         ## The minimum size of the persistent volume used mounted as log store
-        size_for_logstore: "1Gi"
+        size_for_logstore: "10Gi"
         ## The persistent volume claim for Intelligent Task Prioritization trained piplines files
         existing_pvc_for_trained_pipelines: ""
         ## The minimum size of the persistent volume used mounted as Intelligent Task Prioritization trained piplines files
@@ -949,7 +826,7 @@ spec:
         min_replicas: 2
         target_cpu_utilization_percentage: 80
     ## Workforce Insights configuration
-    ## if this configuration is enabled, setting bai_configuration.bpmn.install to true and bai_configuration.bpmn.force_elasticsearch_timeseries to true
+    ## if this configuration is enabled, setting bai_configuration.bpmn.install to true and bai_configuration.bpmn.forceElasticsearchTimeseries to true
     workforce_insights:
       ## Workforce Insights replica count
       replicas: 2
@@ -960,7 +837,7 @@ spec:
           initial_delay_seconds: 40
       image:
         repository: cp.icr.io/cp/cp4a/baw/workforce-insights
-        tag: "21.0.2"
+        tag: 20.0.3-IF002
         pull_policy: IfNotPresent
       ## Resource configuration
       resources:
@@ -981,7 +858,7 @@ spec:
         ## The persistent volume claim for logs
         existing_pvc_for_logstore: ""
         ## The minimum size of the persistent volume used mounted as log store
-        size_for_logstore: "1Gi"
+        size_for_logstore: "10Gi"
       autoscaling:
         enabled: false
         max_replicas: 3
@@ -992,11 +869,6 @@ spec:
   ########   IBM Process Federation Server configuration          ########
   ########################################################################
   pfs_configuration:
-    ## If you input hostname and port here, they will always be used.
-    ## If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value),
-    ## you don't need to fill in the hostname and port: the shared_configuration.sc_deployment_hostname_suffix will be used to generate them.
-    ## But if you didn't input a suffix, and no hostname port is assigned, an error will be reported in the operator log during deployment.
-    ## For non pattern mode you must assign a valid hostname and port here.
     ## Process Federation Server hostname
     hostname: ""
     ## Process Federation Server port
@@ -1004,54 +876,33 @@ spec:
     ## How the HTTPS endpoint service should be published. Possible values are ClusterIP, NodePort, Route
     service_type: Route
 
-    ## The elasticsearch settings which will be used by PFS
+    ## If use the external elasticsearch server, provide the following configuration
     elasticsearch:
-      ## Required only when using external elasticsearch. Endpoint of external elasticearch, such as: https://<external_es_host>:<external_es_port>.
+      ## The endpoint of external elasticearch, such as: https://<external_es_host>:<external_es_port>
       endpoint: ""
-      ## Required only when using external elasticsearch. The external elasticsearch administrative secret that contains the keys: username, password and .htpasswd.
+      ## The external elasticsearch administrative secret that contains the username, password and .htpasswd.
       admin_secret_name: ""
-      ## The number of seconds for elasticsearch connection timeout setting.
       connect_timeout: 10s
-      ## The number of seconds for elasticsearch read timeout setting.
       read_timeout: 30s
-      ## elasticsearch thread count setting
       thread_count: 0
-      ## The maximum number of connections allowed across all routes when PFS connects to the elasticsearch cluster to call its REST API.
-      ## Specify a positive integer. If the provided value is less than or equal to 0, then the default Elasticsearch High Level REST Client value will be used.
-      max_connection_total: -1
-      ## The maximum number of connections allowed for a route when PFS connects to the elasticsearch cluster to call its REST API.
-      ## Specify a positive integer. If the provided value is less than or equal to 0, then the default Elasticsearch High Level REST Client value will be used.
-      max_connection_per_route: -1
 
-    ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
     image:
       ## Process Federation Server image
-      ## The default repository is the IBM Entitled Registry.
       repository: cp.icr.io/cp/cp4a/baw/pfs-prod
       ## Process Federation Server image tag
-      tag: "21.0.2-IF001"
-      ## Process Federation Server image pull policy. This will override the image pull policy in the shared_configuration.
+      tag: 20.0.3-IF002
+      ## Process Federation Server image pull policy
       pull_policy: IfNotPresent
 
-    ## The number of initial Process Federation Server pods.
+    ## Number of initial Process Federation Server pods
     replicas: 1
-    ## Service account name for Process Federation Server pod. If not set, the default service account named "{{ meta.name }}-pfs-service-account" will be created.
+    ## Service account name for Process Federation Server pod
     service_account:
     ## Whether Kubernetes can (soft) or must not (hard) deploy Process Federation Server pods onto the same node. Possible values are "soft" and "hard".
     anti_affinity: hard
 
-    ## Whether to enable notification server. Possible values are: true and false
-    enable_notification_server: true
-    ## Whether to enable default security roles. Possible values are: true and false
+    ## Whether to enable default security roles  and possible values are: true and false
     enable_default_security_roles: true
-    ## Designate a list of users for the Process Federation Server administrator by entering the distinguished name for the LDAP user, e.g "uid=cp4baAdminUser,ou=cp4ba,dc=company,dc=com".
-    ## This parameter is only used when you set enable_default_security_roles to true.
-    admin_user_id:
-    
-    ## Designate a list of groups for the Process Federation Server administrator by entering the distinguished name for the LDAP group, e.g "CN=cp4baAdminGroup,ou=cp4ba,dc=company,dc=com".
-    ## This parameter is only used when you set enable_default_security_roles to true.
-    admin_group_id:
-
     ## Name of the secret containing the Process Federation Server administration passwords, such as ltpaPassword, oidcClientPassword, sslKeyPassword
     admin_secret_name: ibm-pfs-admin-secret
     ## Name of the secret containing the files that will be mounted in the /config/configDropins/overrides folder
@@ -1060,20 +911,20 @@ spec:
     resources_security_secret: ""
     ## Name of the custom libraries containing the files that will be mounted in the /config/resources/libs folder
     custom_libs_pvc: ""
-
+    ## Whether to enable notification server and possible values are: true and false
+    enable_notification_server: true
     ## The secret that contains the Transport Layer Security (TLS) key and certificate for external https visits. You can enter the secret name here.
-    ## If you do not want to use a customized external TLS certificate, leave it empty.
+    ## If you do not want to use the customized external TLS certificate, leave it empty.
     external_tls_secret:
     ## Certificate authority (CA) used to sign the external TLS secret. It is stored in the secret with the TLS key and certificate. You can enter the secret name here.
-    ## If you don't want to use a customized CA to sign the external TLS certificate, leave it empty.
+    ## If you don't want to use the customized CA to sign the external TLS certificate, leave it empty.
     external_tls_ca_secret:
 
-    ## Whether to use the built-in monitoring capability.
+    ## Specify whether to use the built-in monitoring capability
     monitor_enabled: false
 
     tls:
-      ## Existing TLS secret containing keys tls.key and tls.crt. The certificate should be signed by the CA in shared_configuration.root_ca_secret.
-      ## If you do not want to use a customized TLS certificate, leave it empty.
+      ## Existing TLS secret containing tls.key and tls.crt
       tls_secret_name:
       ## Existing TLS trust secret list
       ## You might specify a list of secrets, every secret stores a trusted CA
@@ -1084,73 +935,67 @@ spec:
       ## kubectl create secret generic pfs_custom_trusted_keystore_secret --from-file=truststorefile=./trust.p12 --from-literal=type=PKCS12  --from-literal=password=WebAS
       tls_trust_store:
 
-    ## The initial resources (CPU, memory) requests and limits.
-    ## If more resources are needed, make the changes here to meet your requirement.
     resources:
       requests:
-        ## The minimum amount of CPU required to start a PFS pod.
+        ## Requested amount of CPU for PFS configuration
         cpu: 500m
-        ## The minimum memory required (including JVM heap and file system cache) to start a PFS pod.
+        ## Requested amount of memory for PFS configuration
         memory: 512Mi
       limits:
-        ## The maximum amount of CPU to allocate to each PFS pod.
+        ## CPU limit for PFS configuration
         cpu: 2
-        ## The maximum memory (including JVM heap and file system cache) to allocate to each PFS pod.
+        ## Memory limit for PFS configuration
         memory: 4Gi
 
-    ## Default values for liveness probes. Modify these values to meet your requirements.
     liveness_probe:
       ## Number of seconds after Process Federation Server container starts before the liveness probe is initiated
       initial_delay_seconds: 300
-
-    ## Default values for readiness probes. Modify these values to meet your requirements.
     readiness_probe:
       ## Number of seconds after Process Federation Server container starts before the readiness probe is initiated
       initial_delay_seconds: 240
 
-    ## Configurations for saved searches
     saved_searches:
-      ## Name of the Elasticsearch index used to store saved searches.
+      ## Name of the Elasticsearch index used to store saved searches
       index_name: ibmpfssavedsearches
-      ## Number of shards of the Elasticsearch index used to store saved searches.
+      ## Number of shards of the Elasticsearch index used to store saved searches
       index_number_of_shards: 3
-      ## Number of replicas (pods) of the Elasticsearch index used to store saved searches.
+      ## Number of replicas (pods) of the Elasticsearch index used to store saved searches
       index_number_of_replicas: 1
-      ## Batch size used when retrieving saved searches.
+      ## Batch size used when retrieving saved searches
       index_batch_size: 100
-      ## Amount of time before considering an update lock as expired. Valid values are numbers with a trailing 'm' or 's' for minutes or seconds.
+      ## Amount of time before considering an update lock as expired. Valid values are numbers with a trailing 'm' or 's' for minutes or seconds
       update_lock_expiration: 5m
-      ## Amount of time before considering a unique constraint as expired. Valid values are numbers with a trailing 'm' or 's' for minutes or seconds.
+      ## Amount of time before considering a unique constraint as expired. Valid values are numbers with a trailing 'm' or 's' for minutes or seconds
       unique_constraint_expiration: 5m
 
     security:
       sso:
-        ## The ssoDomainNames property of the <webAppSecurity> tag.
+        ## The ssoDomainNames property of the <webAppSecurity> tag
         domain_name:
-        ## The ssoCookieName property of the <webAppSecurity> tag.
+        ## The ssoCookieName property of the <webAppSecurity> tag
         cookie_name: "ltpatoken2"
         ltpa:
-          ## The keysFileName property of the <ltpa> tag.
+          ## The keysFileName property of the <ltpa> tag
           filename: "ltpa.keys"
-          ## The expiration property of the <ltpa> tag.
+          ## The expiration property of the <ltpa> tag
           expiration: "120m"
-          ## The monitorInterval property of the <ltpa> tag.
+          ## The monitorInterval property of the <ltpa> tag
           monitor_interval: "60s"
-      ## The sslProtocol property of the <ssl> tag used as default SSL config.
+      ## The sslProtocol property of the <ssl> tag used as default SSL config
       ssl_protocol: SSL
 
     executor:
-      ## Value of the maxThreads property of the <executor> tag.
+      ## Value of the maxThreads property of the <executor> tag
       max_threads: "80"
-      ## Value of the coreThreads property of the <executor> tag.
+      ## Value of the coreThreads property of the <executor> tag
       core_threads: "40"
 
     rest:
-      ## Value of the userGroupCheckInterval property of the <ibmPfs_restConfig> tag.
+      ## Value of the userGroupCheckInterval property of the <ibmPfs_restConfig> tag
       user_group_check_interval: "300s"
-      ## Value of the systemStatusCheckInterval property of the <ibmPfs_restConfig> tag.
+      ## Value of the systemStatusCheckInterval property of the <ibmPfs_restConfig> tag
       system_status_check_interval: "60s"
-      ## Value of the bdFieldsCheckInterval property of the <ibmPfs_restConfig> tag.
+      ## Value of the bdFieldsCheckInterval property of the <ibmPfs_restConfig> tag
       bd_fields_check_interval: "300s"
 
     custom_env_variables:
@@ -1160,83 +1005,63 @@ spec:
       ## Secret holding custom environment variables
       secret:
 
-    ## Log trace configuration.
+    ## log trace configuration
     logs:
-      ## Format for printing logs on the console.
+      ## Format for printing logs on the console
       console_format: "json"
-      ## Log level for printing logs on the console.
+      ## Log level for printing logs on the console
       console_log_level: "INFO"
-      ## Source of the logs for printing on the console.
+      ## Source of the logs for printing on the console
       console_source: "message,trace,accessLog,ffdc,audit"
-      ## The required format for the messages.log file. Valid values are SIMPLE or JSON format.
+      ## The required format for the messages.log file. Valid values are SIMPLE or JSON format
       message_format: "SIMPLE"
-      ## Format for printing trace logs on the console.
+      ## Format for printing trace logs on the console
       trace_format: "ENHANCED"
-      ## Specification for printing trace logs.
+      ## Specification for printing trace logs
       trace_specification: "*=info"
       storage:
-        ## Use Dynamic Provisioning for PFS logs data storage.
+        ## Use Dynamic Provisioning for PFS Logs Data Storage
         use_dynamic_provisioning: true
-        ## The minimum size of the persistent volume used mounted as PFS Liberty server /logs folder.
-        size: 1Gi
-        ## Storage class of the persistent volume used mounted as PFS Liberty server /logs folder.
+        ## The minimum size of the persistent volume used mounted as PFS Liberty server /logs folder
+        size: 5Gi
+        ## Storage class of the persistent volume used mounted as PFS Liberty server /logs folder
         storage_class: "{{ shared_configuration.storage_configuration.sc_medium_file_storage_classname }}"
-        ## The persistent volume claim for log data storage if dynamic provisioning is not used (use_dynamic_provisioning is false).
         existing_pvc_name: ""
 
-    ## Dump configuration.
-    dump:
-      ## Whether to persist dump files. Possible values are: true and false.
-      persistent: false      
-      storage:
-        ## Whether to use dynamic provisioning for PFS dump storage. Possible values are: true and false.
-        use_dynamic_provisioning: true
-        ## Minimum size of the persistent volume (PV) that is mounted as the dump store.
-        size: 5Gi
-        ## Storage class if using dynamic provisioning for PFS dump storage
-        storage_class: "{{ shared_configuration.storage_configuration.sc_slow_file_storage_classname }}"
-        ## The persistent volume claim for dump files if not using dynamic provisioning.
-        existing_pvc_name:
-
-    ## When PFS is deployed in an environment that includes the Resource Registry,
-    ## the following additional parameters can be used to configure the integration between PFS and the Resource Registry.
+    ## When PFS is deployed in a environment that includes the Resource Registry ,
+    ## the following additional parameters can be used to configure the integration between PFS and the Resource Registry
     dba_resource_registry:
       ## Time to live of the lease that creates the PFS entry in the DBA Resource Registry, in seconds.
       lease_ttl: 120
       ## The interval at which to check that PFS is running, in seconds.
       pfs_check_interval: 10
-      ## The number of seconds after which PFS will be considered as not running if no connection can be perfomed.
+      ## The number of seconds after which PFS will be considered as not running if no connection can be perfomed
       pfs_connect_timeout: 10
-      ## The number of seconds after which PFS will be considered as not running if has not yet responded.
+      ## The number of seconds after which PFS will be considered as not running if has not yet responded
       pfs_response_timeout: 30
-      ## The key under which PFS should be registered in the DBA Service Registry when running.
+      ## The key under which PFS should be registered in the DBA Service Registry when running
       pfs_registration_key: /dba/appresources/IBM_PFS/PFS_SYSTEM
-      ## The initial resources (CPU, memory) requests and limits.
-      ## If more resources are needed, make the changes here to meet your requirement.
       resources:
         limits:
-          ## The maximum memory to allocate to each PFS registration pod.
+          ## Memory limit for PFS and RR integration pod
           memory: '512Mi'
-          ## The maximum amount of CPU to allocate to each PFS registration pod.
-          cpu: '100m'
+          ## CPU limit for PFS and RR integration pod
+          cpu: '500m'
         requests:
-          ## The minimum memory required to start a PFS registration pod.
+          ## Requested amount of memory for PFS and RR integration pod
           memory: '512Mi'
-          ## The minimum amount of CPU required to start a PFS registration pod.
-          cpu: '50m'
+          ## Requested amount of CPU for PFS and RR integration pod
+          cpu: '200m'
 
   ########################################################################
   ########   Embedded Elasticsearch configuration                 ########
   ########################################################################
-  ## If the deployment platform is OpenShift Container Platform (OCP) or Red Hat OpenShift Kubernetes Service (ROKS),
-  ## or an external Elasticsearch server is used, you must remove all lines, including the header (elasticsearch_configuration) in the elasticsearch_configuration section.
-  ## If the deployment platform is not OCP or ROKS and no external Elasticsearch server is used, you must configure Elasticsearch.
   elasticsearch_configuration:
     es_image:
       ## Elasticsearch image
       repository: cp.icr.io/cp/cp4a/baw/pfs-elasticsearch-prod
       ## Elasticsearch image tag
-      tag: "21.0.2-IF001"
+      tag: 20.0.3-IF002
       ## Elasticsearch image pull policy
       pull_policy: IfNotPresent
     es_init_image:
@@ -1244,14 +1069,14 @@ spec:
       ## This value is only relevant if elasticsearch_configuration.privileged is set to true
       repository: cp.icr.io/cp/cp4a/baw/pfs-init-prod
       ## The image tag for Elasticsearch init container
-      tag: "21.0.2-IF001"
+      tag: 20.0.3-IF002
       ## The pull policy for Elasticsearch init container
       pull_policy: IfNotPresent
     es_nginx_image:
       ## The name of the Nginx docker image to be used by Elasticsearch pods
       repository: cp.icr.io/cp/cp4a/baw/pfs-nginx-prod
       ## The image tag of the Nginx docker image to be used by Elasticsearch pods
-      tag: "21.0.2-IF001"
+      tag: 20.0.3-IF002
       ## The pull policy for the Nginx docker image to be used by Elasticsearch pods
       pull_policy: IfNotPresent
 
@@ -1274,30 +1099,27 @@ spec:
     ## When set to true, a privileged init container will execute the appropriate sysctl commands to update the worker node configuration to match Elasticsearch requirements.
     ## When set to false, you must ask the cluster administrator to change the memory swapping and descriptor properties on each worker node.
     privileged: false
-    ## If elasticsearch_configuration.privileged is set to true, you must create a service account that has the privileged SecurityContextConstraint to allow running privileged containers. See "Preparing SecurityContextConstraints (SCC) requirements" for instructions.
+    ## If elasticsearch_configuration.privileged is set to true, you must create a service account that has the privileged SecurityContextConstraint to allow running privileged containers. Refer to Knowledge Center for more info.
     ## If elasticsearch_configuration.service_account not set, default service account "{{ meta.name }}-elasticsearch-service-account" will be used.
-    ## If elasticsearch_configuration.privileged is set to false, see "Preparing SecurityContextConstraints (SCC) requirements" for instructions.
     service_account: "<Required>"
     ## Initial delay for liveness and readiness probes of Elasticsearch pods
     probe_initial_delay: 90
     ## The JVM heap size to allocate to each Elasticsearch pod
     heap_size: "1024m"
-    ## Whether to use the built-in monitoring capability.
+    ## Specify whether to use the built-in monitoring capability
     monitor_enabled: false
 
-    ## The initial resources (CPU, memory) requests and limits.
-    ## If more resources are needed, make the changes here to meet your requirement.
     resources:
-      requests:
-        ## The minimum amount of CPU required to start a Elasticsearch pod.
-        cpu: "100m"
-        ## The minimum memory required (including JVM heap and file system cache) to start a Elasticsearch pod.
-        memory: "2Gi"
       limits:
-        ## The maximum amount of CPU to allocate to each Elasticsearch pod.
-        cpu: "1000m"
-        ## The maximum memory (including JVM heap and file system cache) to allocate to each Elasticsearch pod.
+        ## Memory limit for Elasticsearch configuration
         memory: "2Gi"
+        ## CPU limit for Elasticsearch configuration
+        cpu: "1000m"
+      requests:
+        ## Requested amount of memory for Elasticsearch configuration
+        memory: "2Gi"
+        ## Requested amount of CPU for Elasticsearch configuration
+        cpu: "100m"
 
     storage:
       ## If persistent the elasticsearch data. Set to false for non-production or trial-only deployment.
@@ -1342,10 +1164,10 @@ spec:
     ic_ldap_creation:
       ## Administrator user
       ic_ldap_admin_user_name:
-      - "<Required>" # user name for P8 domain admin, for example, "CEAdmin".  This parameter accepts a list of values.
+      - "CEAdmin"
       ## Administrator group
       ic_ldap_admins_groups_name:
-      - "<Required>" # group name for P8 domain admin, for example, "P8Administrators".  This parameter accepts a list of values.
+      - "P8Administrators"
       ## Name of the LDAP directory
       ic_ldap_name: "ldap_name"
     ic_obj_store_creation:
@@ -1366,7 +1188,7 @@ spec:
           dc_os_xa_datasource_name: "FNDSDOCSXA"
         ## Admin user group
         oc_cpe_obj_store_admin_user_groups:
-        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values. 
+        - "CEAdmin"
         ## An array of users with access to the object store
         oc_cpe_obj_store_basic_user_groups:
         ## Specify whether to enable add-ons
@@ -1393,11 +1215,31 @@ spec:
         oc_cpe_obj_store_asa_root_dir_path: "/opt/ibm/asa/os01_storagearea"
         ## Specify whether to enable workflow for the object store
         oc_cpe_obj_store_enable_workflow: false
-        # Enable the content event emitter only when deploying BAI.
-        # Default value is false if not specified in the CR.
+        ## Specify a name for the workflow region
+        oc_cpe_obj_store_workflow_region_name: "docs_region_name"
+        ## Specify the number of the workflow region
+        oc_cpe_obj_store_workflow_region_number: 1
+        ## Specify a table space for the workflow data
+        oc_cpe_obj_store_workflow_data_tbl_space: "VWDATA_TS"
+        ## Optionally specify a table space for the workflow index
+        oc_cpe_obj_store_workflow_index_tbl_space: "VWINDEX_TS"
+        ## Optionally specify a table space for the workflow blob.
+        oc_cpe_obj_store_workflow_blob_tbl_space: "VWBLOB_TS"
+        ## Designate an LDAP group for the workflow admin group.
+        oc_cpe_obj_store_workflow_admin_group: "P8Administrators"
+        ## Designate an LDAP group for the workflow config group
+        oc_cpe_obj_store_workflow_config_group: "P8Administrators"
+        ## Default format for date and time
+        oc_cpe_obj_store_workflow_date_time_mask: "mm/dd/yy hh:tt am"
+        ## Locale for the workflow
+        oc_cpe_obj_store_workflow_locale: "en"
+        ## Provide a name for the connection point
+        oc_cpe_obj_store_workflow_pe_conn_point_name: ""
+        # Enable the content event emitter only when deploying
+        # BAI and have shared_configuration.kafka_configuration defined in
+        # your cr.  Default value is false if not specified in cr.
         oc_cpe_obj_store_enable_content_event_emitter: false
-        # Enable/disable object store database compression.  Default is false.
-        oc_cpe_obj_store_enable_compression: false
+
       ## Configuration for the design object store
       ## Display name for the design object store to create
       - oc_cpe_obj_store_display_name: "DOS"
@@ -1414,7 +1256,7 @@ spec:
           dc_os_xa_datasource_name: "FNDSDOSXA"
         ## Admin user group
         oc_cpe_obj_store_admin_user_groups:
-        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values. 
+        - "CEAdmin"
         ## An array of users with access to the object store
         oc_cpe_obj_store_basic_user_groups:
         ## Specify whether to enable add-ons
@@ -1441,11 +1283,31 @@ spec:
         oc_cpe_obj_store_asa_root_dir_path: "/opt/ibm/asa/os02_storagearea"
         ## Specify whether to enable workflow for the object store
         oc_cpe_obj_store_enable_workflow: false
-        # Enable the content event emitter only when deploying BAI.
-        # Default value is false if not specified in the CR.
+        ## Specify a name for the workflow region
+        oc_cpe_obj_store_workflow_region_name: "dos_region_name"
+        ## Specify the number of the workflow region
+        oc_cpe_obj_store_workflow_region_number: 2
+        ## Specify a table space for the workflow data
+        oc_cpe_obj_store_workflow_data_tbl_space: "VWDATA_TS"
+        ## Optionally specify a table space for the workflow index
+        oc_cpe_obj_store_workflow_index_tbl_space: "VWINDEX_TS"
+        ## Optionally specify a table space for the workflow blob.
+        oc_cpe_obj_store_workflow_blob_tbl_space: "VWBLOB_TS"
+        ## Designate an LDAP group for the workflow admin group.
+        oc_cpe_obj_store_workflow_admin_group: "P8Administrators"
+        ## Designate an LDAP group for the workflow config group
+        oc_cpe_obj_store_workflow_config_group: "P8Administrators"
+        ## Default format for date and time
+        oc_cpe_obj_store_workflow_date_time_mask: "mm/dd/yy hh:tt am"
+        ## Locale for the workflow
+        oc_cpe_obj_store_workflow_locale: "en"
+        ## Provide a name for the connection point
+        oc_cpe_obj_store_workflow_pe_conn_point_name: ""
+        # Enable the content event emitter only when deploying
+        # BAI and have shared_configuration.kafka_configuration defined in
+        # your cr.  Default value is false if not specified in cr.
         oc_cpe_obj_store_enable_content_event_emitter: false
-        # Enable/disable object store database compression.  Default is false.
-        oc_cpe_obj_store_enable_compression: false
+
       ## Configuration for the target object store
       ## Display name for the target object store to create
       - oc_cpe_obj_store_display_name: "TOS"
@@ -1462,7 +1324,7 @@ spec:
           dc_os_xa_datasource_name: "FNDSTOSXA"
         ## Admin user group
         oc_cpe_obj_store_admin_user_groups:
-        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values. 
+        - "CEAdmin"
         ## An array of users with access to the object store
         oc_cpe_obj_store_basic_user_groups:
         ## Specify whether to enable add-ons
@@ -1509,11 +1371,11 @@ spec:
         oc_cpe_obj_store_workflow_locale: "en"
         ## Provide a name for the connection point
         oc_cpe_obj_store_workflow_pe_conn_point_name: "cpe_conn_tos"
-        # Enable the content event emitter only when deploying BAI.
-        # Default value is false if not specified in the CR.
+        # Enable the content event emitter only when deploying
+        # BAI and have shared_configuration.kafka_configuration defined in
+        # your cr.  Default value is false if not specified in cr.
         oc_cpe_obj_store_enable_content_event_emitter: false
-        # Enable/disable object store database compression.  Default is false.
-        oc_cpe_obj_store_enable_compression: false
+
       ## Configuration for the application engine object store
       ## Display name for the application engine object store to create
       - oc_cpe_obj_store_display_name: "AEOS"
@@ -1530,7 +1392,7 @@ spec:
           dc_os_xa_datasource_name: "AEOSXA"
         ## Admin user group
         oc_cpe_obj_store_admin_user_groups:
-        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values. 
+        - "CEAdmin"
         ## An array of users with access to the object store
         oc_cpe_obj_store_basic_user_groups:
         ## Specify whether to enable add-ons
@@ -1557,47 +1419,62 @@ spec:
         oc_cpe_obj_store_asa_root_dir_path: "/opt/ibm/asa/osae_storagearea"
         ## Specify whether to enable workflow for the object store
         oc_cpe_obj_store_enable_workflow: false
-        # Enable the content event emitter only when deploying BAI.
-        # Default value is false if not specified in the CR.
+        ## Specify a name for the workflow region
+        oc_cpe_obj_store_workflow_region_name: "aeos_region_name"
+        ## Specify the number of the workflow region
+        oc_cpe_obj_store_workflow_region_number: 1
+        ## Specify a table space for the workflow data
+        oc_cpe_obj_store_workflow_data_tbl_space: "VWDATA_TS"
+        ## Optionally specify a table space for the workflow index
+        oc_cpe_obj_store_workflow_index_tbl_space: "VWINDEX_TS"
+        ## Optionally specify a table space for the workflow blob.
+        oc_cpe_obj_store_workflow_blob_tbl_space: "VWBLOB_TS"
+        ## Designate an LDAP group for the workflow admin group.
+        oc_cpe_obj_store_workflow_admin_group: "P8Administrators"
+        ## Designate an LDAP group for the workflow config group
+        oc_cpe_obj_store_workflow_config_group: "P8Administrators"
+        ## Default format for date and time
+        oc_cpe_obj_store_workflow_date_time_mask: "mm/dd/yy hh:tt am"
+        ## Locale for the workflow
+        oc_cpe_obj_store_workflow_locale: "en"
+        ## Provide a name for the connection point
+        oc_cpe_obj_store_workflow_pe_conn_point_name: ""
+        # Enable the content event emitter only when deploying
+        # BAI and have shared_configuration.kafka_configuration defined in
+        # your cr.  Default value is false if not specified in cr.
         oc_cpe_obj_store_enable_content_event_emitter: false
-        # Enable/disable object store database compression.  Default is false.
-        oc_cpe_obj_store_enable_compression: false
+
   ########################################################################
   ########      IBM Business Automation Insights configuration    ########
   ########################################################################
   bai_configuration:
-    image_credentials:
+    imageCredentials:
       registry: cp.icr.io/cp/cp4a
+
+    # Set to true to automatically create the OpenShift routes when sc_deployment_platform is set
+    # to OCP or ROKS.
+    createRoutes: false
 
     # Set to true to enable the Flink job for sending events to HDFS.
     ingestion:
       install: false
 
     # Set to false to disable the Flink job for BAW.
-    # Enabled automatically if BAI is selected as an optional component of
-    # workflow or workflow-workstreams patterns.
     bpmn:
       install: true
 
     # Set to true to enable the Flink job for BAWAdv.
-    # Disabled by default. Can be enabled by setting bawadv.install to true.
     bawadv:
       install: false
 
     # Set to false to disable the Flink job for ICM.
-    # Enabled automatically if BAI is selected as an optional component of
-    # workflow or workflow-workstreams patterns.
     icm:
       install: true
 
     # Set to true to enable the Flink job for ODM.
-    # Enabled automatically if BAI is selected as an optional component of
-    # decisions pattern.
     odm:
       install: false
 
     # Set to true to enable the Flink job for Content.
-    # Enabled automatically if BAI is selected as an optional component of
-    # content pattern.
     content:
       install: false
