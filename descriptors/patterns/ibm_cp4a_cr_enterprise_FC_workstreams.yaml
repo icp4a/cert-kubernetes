@@ -296,7 +296,7 @@ spec:
       ## Workflow image repository URL
       repository: cp.icr.io/cp/cp4a/baw/workflow-server
       ## Image tag for Workflow server container
-      tag: 20.0.3-IF002
+      tag: 20.0.3-IF011
       ## Pull policy for Workflow container
       pullPolicy: IfNotPresent
     pfs_bpd_database_init_job:
@@ -310,7 +310,7 @@ spec:
       ## Workflow server database handling image repository URL
       repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
       ## Image tag for Workflow server database handling
-      tag: 20.0.3-IF002
+      tag: 20.0.3-IF011
       ## Pull policy for Workflow server database handling
       pullPolicy: IfNotPresent
     bas_auto_import_job:
@@ -610,7 +610,7 @@ spec:
       ## Process Federation Server image
       repository: cp.icr.io/cp/cp4a/baw/pfs-prod
       ## Process Federation Server image tag
-      tag: 20.0.3-IF002
+      tag: 20.0.3-IF011
       ## Process Federation Server image pull policy
       pull_policy: IfNotPresent
 
@@ -781,7 +781,7 @@ spec:
       ## Elasticsearch image
       repository: cp.icr.io/cp/cp4a/baw/pfs-elasticsearch-prod
       ## Elasticsearch image tag
-      tag: 20.0.3-IF002
+      tag: 20.0.3-IF011
       ## Elasticsearch image pull policy
       pull_policy: IfNotPresent
     es_init_image:

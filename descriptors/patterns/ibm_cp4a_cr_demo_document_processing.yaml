@@ -129,7 +129,7 @@ spec:
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: ga-309-icn-if001
+      tag: ga-309-icn-la009
 
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########

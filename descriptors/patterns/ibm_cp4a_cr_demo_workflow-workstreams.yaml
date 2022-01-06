@@ -70,7 +70,7 @@ spec:
   navigator_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: ga-309-icn-if001
+      tag: ga-309-icn-la009
   ########################################################################
   ########   IBM User and Group Management Service configuration  ########
   ########################################################################
@@ -86,7 +86,7 @@ spec:
     images:
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: 20.0.3-IF002
+        tag: 20.0.3-IF011
     jms_server:
       image:
         repository: cp.icr.io/cp/cp4a/bas/jms
@@ -113,13 +113,13 @@ spec:
   workflow_authoring_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/bas/workflow-authoring
-      tag: 20.0.3-IF002
+      tag: 20.0.3-IF011
     pfs_bpd_database_init_job:
       repository: cp.icr.io/cp/cp4a/baw/pfs-bpd-database-init-prod
       tag: 20.0.3-IF002
     upgrade_job:
       repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
-      tag: 20.0.3-IF002
+      tag: 20.0.3-IF011
     ibm_workplace_job:
       repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
       tag: 20.0.3-IF002
@@ -157,14 +157,14 @@ spec:
   pfs_configuration:
     image:
       repository: cp.icr.io/cp/cp4a/baw/pfs-prod
-      tag: 20.0.3-IF002
+      tag: 20.0.3-IF011
   ########################################################################
   ########   Elasticsearch configuration  ########
   ########################################################################
   elasticsearch_configuration:
     es_image:
       repository: cp.icr.io/cp/cp4a/baw/pfs-elasticsearch-prod
-      tag: 20.0.3-IF002
+      tag: 20.0.3-IF011
     es_init_image:
       repository: cp.icr.io/cp/cp4a/baw/pfs-init-prod
       tag: 20.0.3-IF002
