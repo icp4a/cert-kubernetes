@@ -1,571 +1,492 @@
-The translated license terms can be viewed here: http://www14.software.ibm.com/cgi-bin/weblap/lap.pl?li_formnum=L-ASAY-BYZKLB
+The translated license terms can be viewed here: http://www14.software.ibm.com/cgi-bin/weblap/lap.pl?li_formnum=L-ASAY-CCQCLE 
 
-IMPORTANT: READ CAREFULLY
+IMPORTANT: READ CAREFULLY 
 
-Two license agreements are presented below.
+Two license agreements are presented below. 
 
-1. IBM International License Agreement for Evaluation of Programs
+1. IBM International License Agreement for Evaluation of Programs 
+2. IBM International Program License Agreement 
 
-2. IBM International Program License Agreement
+If Licensee is obtaining the Program for purposes of productive use (other than evaluation, testing, trial "try or buy," or demonstration): By clicking on the "Accept" button below, Licensee accepts the IBM International Program License Agreement, without modification. 
 
-If Licensee is obtaining the Program for purposes of productive use (other than evaluation, testing, trial "try or buy," or demonstration): By clicking on the "Accept" button below, Licensee accepts the IBM International Program License Agreement, without modification.
+If Licensee is obtaining the Program for the purpose of evaluation, testing, trial "try or buy," or demonstration (collectively, an "Evaluation"): By clicking on the "Accept" button below, Licensee accepts both (i) the IBM International License Agreement for Evaluation of Programs (the "Evaluation License"), without modification; and (ii) the IBM International Program License Agreement (the "IPLA"), without modification. 
 
-If Licensee is obtaining the Program for the purpose of evaluation, testing, trial "try or buy," or demonstration (collectively, an "Evaluation"): By clicking on the "Accept" button below, Licensee accepts both (i) the IBM International License Agreement for Evaluation of Programs (the "Evaluation License"), without modification; and (ii) the IBM International Program License Agreement (the "IPLA"), without modification.
+The Evaluation License will apply during the term of Licensee's Evaluation. 
 
-The Evaluation License will apply during the term of Licensee's Evaluation.
+The IPLA will automatically apply if Licensee elects to retain the Program after the Evaluation (or obtain additional copies of the Program for use after the Evaluation) by entering into a procurement agreement (e.g., the IBM International Passport Advantage or the IBM Passport Advantage Express agreements). 
 
-The IPLA will automatically apply if Licensee elects to retain the Program after the Evaluation (or obtain additional copies of the Program for use after the Evaluation) by entering into a procurement agreement (e.g., the IBM International Passport Advantage or the IBM Passport Advantage Express agreements).
+The Evaluation License and the IPLA are not in effect concurrently; neither modifies the other; and each is independent of the other. 
 
-The Evaluation License and the IPLA are not in effect concurrently; neither modifies the other; and each is independent of the other.
+The complete text of each of these two license agreements follow. 
 
-The complete text of each of these two license agreements follow.
 
-LICENSE INFORMATION
 
-The Programs listed below are licensed under the following License Information terms and conditions in addition to the Program license terms previously agreed to by Client and IBM. If Client does not have previously agreed to license terms in effect for the Program, the International License Agreement for Evaluation of Programs (Z125-5543-05) applies.
+LICENSE INFORMATION 
 
-Program Name (Program Number):
+The Programs listed below are licensed under the following License Information terms and conditions in addition to the Program license terms previously agreed to by Client and IBM. If Client does not have previously agreed to license terms in effect for the Program, the International License Agreement for Evaluation of Programs (i125-5543-06) applies. 
 
-IBM Cloud Pak for Business Automation 21.0.1 SR1 (Evaluation)
+Program Name (Program Number): 
+IBM Cloud Pak for Business Automation 22.0.1 (Evaluation) 
 
-The following standard terms apply to Licensee's use of the Program.
+The following standard terms apply to Licensee's use of the Program. 
 
-Evaluation Period
+Evaluation Period 
 
-The evaluation period begins on the date that Licensee agrees to the terms of this Agreement and ends after 90 days.
+The evaluation period begins on the date that Licensee agrees to the terms of this Agreement and ends after 30 days. 
 
-Prohibited Uses
+License Terms delivered with Program Not Applicable 
 
-Licensee may not use or authorize others to use the Program if failure of the Program could lead to death, bodily injury, or property or environmental damage.
+The terms of this Agreement supersede and void any electronic "click through," "shrinkwrap," or other licensing terms and conditions included with or accompanying the Program(s). 
 
-License Terms delivered with Program Not Applicable
+Multi-Product Install Image 
 
-The terms of this Agreement supersede and void any electronic "click through," "shrinkwrap," or other licensing terms and conditions included with or accompanying the Program(s).
+The Program is provided as part of a multi-product install image. Licensee is authorized to install and use only the Program (and its Bundled or Supporting Programs, if any) for which a valid entitlement is obtained and may not install or use any of the other software included in the image unless Licensee has acquired separate entitlements for that other software. 
 
-Multi-Product Install Image
+Bundled Programs 
 
-The Program is provided as part of a multi-product install image. Licensee is authorized to install and use only the Program (and its Bundled or Supporting Programs, if any) for which a valid entitlement is obtained and may not install or use any of the other software included in the image unless Licensee has acquired separate entitlements for that other software.
+Licensee is authorized to install and use the Bundled Programs identified below. A Bundled Program may be accompanied by license terms, and those terms, if any, apply to Licensee's use of that Bundled Program. In the event of conflict, the terms in this License Information document supersede the Bundled Program's terms. The Principal Program and any Bundled Programs are all part of the Program, as a whole. Therefore, Licensee must obtain sufficient entitlements to the Program, as a whole, to cover Licensee's installation and use of all of the Bundled Programs, unless separate entitlements are provided within this License Information document. For example, if this Program were licensed on a VPC (Virtual Processor Core) basis and Licensee were to install the Principal Program or a Bundled Program on a 10 VPC machine and another Bundled Program on a second 10 VPC machine, Licensee would be required to obtain 20 VPC entitlements to the Program. 
 
-Bundled Programs
+Bundled Programs: 
+IBM FileNet Content Manager 
+IBM FileNet Content Manager for Non-Production Environment 
+IBM Datacap 
+IBM Datacap for Non-Production Environment 
+IBM Datacap Insight Edition Add-On 
+IBM Datacap Insight Edition Add-on for Non-Production Environment 
+IBM Datacap Accounts Payable Add-On 
+IBM Datacap Accounts Payable Add-on for Non-Production Environment 
+IBM Content Collector for Email 
+IBM Content Collector for File Systems 
+IBM Content Collector for Microsoft SharePoint 
+IBM Content Collector for SAP Applications 
+IBM Business Automation Workflow Enterprise 
+IBM Business Automation Workflow Enterprise for Non-Production Environment 
+IBM Operational Decision Manager Server 
+IBM Operational Decision Manager Server for Non-Production Environment 
+IBM Enterprise Records 
+Process Mining 
+IBM Robotic Process Automation 
+IBM FileNet Content Manager Connector for Salesforce 
 
-Licensee is authorized to install and use the Bundled Programs identified below. A Bundled Program may be accompanied by license terms, and those terms, if any, apply to Licensee's use of that Bundled Program. In the event of conflict, the terms in this License Information document supersede the Bundled Program's terms. The Principal Program and any Bundled Programs are all part of the Program, as a whole. Therefore, Licensee must obtain sufficient entitlements to the Program, as a whole, to cover Licensee's installation and use of all of the Bundled Programs, unless separate entitlements are provided within this License Information document. For example, if this Program were licensed on a VPC (Virtual Processor Core) basis and Licensee were to install the Principal Program or a Bundled Program on a 10 VPC machine and another Bundled Program on a second 10 VPC machine, Licensee would be required to obtain 20 VPC entitlements to the Program.
+Supporting Programs 
 
-Bundled Programs:
+Licensee is authorized to install and use the Supporting Programs identified below only to support Licensee's use of the Principal Program under this Agreement. The phrase "to support Licensee's use" would only include those uses that are necessary or otherwise directly related to a licensed use of the Principal Program or another Supporting Program. The Supporting Programs may not be used for any other purpose. A Supporting Program may be accompanied by license terms, and those terms, if any, apply to Licensee's use of that Supporting Program. In the event of conflict, the terms in this License Information document supersede the Supporting Program's terms. Licensee must obtain sufficient entitlements to the Program, as a whole, to cover Licensee's installation and use of all of the Supporting Programs, unless separate entitlements are provided within this License Information document. For example, if this Program were licensed on a VPC (Virtual Processor Core) basis and Licensee were to install the Principal Program or a Supporting Program on a 10 VPC machine and another Supporting Program on a second 10 VPC machine, Licensee would be required to obtain 20 VPC entitlements to the Program. 
 
-IBM FileNet Content Manager
+Supporting Programs: 
+IBM Db2 Standard Edition 
+IBM WebSphere Application Server Liberty 
+IBM WebSphere Application Server Network Deployment 
+IBM Spectrum Fusion
 
-IBM FileNet Content Manager for Non-Production Environment
+Permitted Components 
 
-IBM Datacap Processor Value Unit v9
+Licensee is permitted to use only the following components or functions of the identified Bundled or Supporting Program: 
+IBM FileNet Content Manager components in any version of IBM FileNet Content Manager being used: 
+- IBM Daeja ViewONE Professional 
+- IBM Daeja ViewONE Professional Module for Microsoft Office 
+- IBM Daeja ViewONE Professional Permanent Redaction Server Module 
+- IBM Daeja ViewONE Virtual 
+- IBM Daeja ViewONE Virtual Module for Microsoft Office 
+- IBM Daeja ViewONE Virtual Module for Permanent Redaction 
+- IBM FileNet P8 Connector to Hitachi Content Platform 
+- IBM FileNet P8 Connector to Centera Storage and Retrieval 
+- IBM FileNet P8 Connector to DR550 Storage and Retrieval 
+- IBM FileNet P8 Connector to Snaplock Storage and Retrieval 
+- IBM FileNet P8 Cloud Storage Connector to OpenStack-enabled devices 
+- IBM FileNet P8 Connector to EMC Atmos 
+- IBM FileNet P8 Connector to EMC Isilon 
+- IBM FileNet P8 Connector to S3-enabled devices 
 
-IBM Datacap for Non-Production Environment Processor Value Unit v9
+IBM WebSphere Application Server Network Deployment only for use in support of the following Bundled Programs: 
+- IBM FileNet Content Manager 
+- IBM FileNet Content Manager for Non-Production Environment 
+- IBM Datacap 
+- IBM Datacap Non-Production 
+- IBM Enterprise Records 
+- IBM Business Automation Workflow Enterprise 
+- IBM Business Automation Workflow Enterprise for Non-Production Environment 
+- IBM Operational Decision Manager Server 
+- IBM Operational Decision Manager Server for Non-Production Environment 
 
-IBM Datacap Insight Edition Add-On Processor Value Unit v9
+Prohibited Components 
 
-IBM Datacap Insight Edition Add-on for Non-Production Environment Processor Value Unit v9
+Licensee is not authorized to use any of the following components or functions of the Program: 
+pureScale clustering technology (of IBM Db2 Standard Edition) 
+Db2 Connect (of IBM Db2 Standard Edition) 
+SQL Warehousing Tool (SQW) (of IBM Db2 Standard Edition) 
+IBM InfoSphere Data Architect 9.1.4 (of IBM Db2 Standard Edition) 
+IBM InfoSphere Data Replication 11.4 (CDC component) (of IBM Db2 Standard Edition) 
+IBM InfoSphere Data Replication 11.4 (SQL Replication, Q Replication and CDC for Db2 LUW components) 
+IBM WebSphere Application Server 9.0 (of IBM Db2 Standard Edition) 
+IBM Data Server Manager Enterprise Edition 2.1.5 (of IBM Db2 Standard Edition) 
 
-IBM Content Collector for Email
+Modifiable Third Party Code 
 
-IBM Content Collector for File Systems
+To the extent, if any, in the NOTICES file IBM identifies third party code as "Modifiable Third Party Code," IBM authorizes Licensee to 1) modify the Modifiable Third Party Code and 2) reverse engineer the Program modules that directly interface with the Modifiable Third Party Code provided that it is only for the purpose of debugging Licensee's modifications to such third party code. IBM's service and support obligations, if any, apply only to the unmodified Program. 
 
-IBM Content Collector for Microsoft SharePoint
+Separately Licensed Code 
 
-IBM Content Collector for SAP Applications
+Each of the components listed in the NON_IBM_LICENSE file is considered "Separately Licensed Code" licensed to Licensee under the terms of the applicable third party license agreement(s) set forth in the NON_IBM_LICENSE file(s) that accompanies the Program, and not this Agreement. Future Program updates or fixes may contain additional Separately Licensed Code. Such additional Separately Licensed Code and related licenses are listed in the applicable NON_IBM_LICENSE file that accompanies the Program update or fix. 
+
+Note: Notwithstanding any of the terms in the third party license agreement, the Agreement, or any other agreement Licensee may have with IBM, with respect to the Separately Licensed Code: 
+(a) IBM provides it to Licensee WITHOUT WARRANTIES OF ANY KIND AND DISCLAIMS ANY AND ALL EXPRESS AND IMPLIED WARRANTIES AND CONDITIONS INCLUDING, BUT NOT LIMITED TO, THE WARRANTY OF TITLE, NON-INFRINGEMENT OR NON-INTERFERENCE, AND THE IMPLIED WARRANTIES AND CONDITIONS OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE; 
+(b) IBM is not liable for any direct, indirect, incidental, special, exemplary, punitive or consequential damages including, but not limited to, lost data, lost savings, and lost profits. 
 
-IBM Business Automation Workflow Enterprise
+Privacy 
 
-IBM Business Automation Workflow Enterprise for Non-Production Environment
+Licensee acknowledges and agrees that IBM may use cookie and tracking technologies to collect personal information in gathering product usage statistics and information designed to help improve user experience and/or to tailor interactions with users in accordance with the IBM Online Privacy Policy, available at http://www.ibm.com/privacy/. 
+
+Source Components and Sample Materials 
+
+The Program includes components in source code form ("Source Components"), or other materials identified as Sample Materials or both. Licensee may copy and modify Source Components and Sample Materials for internal use only within the limits of the license rights under this Agreement; provided, however, that Licensee may not alter or delete any copyright information or notices contained in the Source Components or Sample Materials. IBM provides the Source Components and Sample Materials without obligation of support and "AS IS", WITH NO WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING THE WARRANTY OF TITLE, NON-INFRINGEMENT OR NON-INTERFERENCE AND THE IMPLIED WARRANTIES AND CONDITIONS OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. 
+
+Third Party Data and Services 
+
+The Program provides access to third party data services, databases, web services, software, or other third party content (all, "Third Party Content"). Access to this Third Party Content is provided "AS-IS", WITH NO WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING THE WARRANTY OF TITLE, NON-INFRINGEMENT OR NON-INTERFERENCE AND THE IMPLIED WARRANTIES AND CONDITIONS OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. Access can be terminated by the relevant third parties at their sole discretion at any time. Licensee may be required to enter into separate agreements with the third parties for the access to or use of such Third Party Content. IBM is not a party to any such separate agreements and as an express condition of this license Licensee agrees to comply with the terms of such separate agreements. 
+
+
 
-IBM Operational Decision Manager Server
+LICENSE INFORMATION 
 
-IBM Operational Decision Manager Server for Non-Production Environment
+The Programs listed below are licensed under the following License Information terms and conditions in addition to the Program license terms previously agreed to by Client and IBM. If Client does not have previously agreed to license terms in effect for the Program, the International Program License Agreement (i125-3301-15) applies. 
 
-IBM Enterprise Records
+Program Name (Program Number): 
+IBM Cloud Pak for Business Automation 22.0.1 (5737-I23) 
+
+The following standard terms apply to Licensee's use of the Program. 
+
+License Terms delivered with Program Not Applicable 
+
+The terms of this Agreement supersede and void any electronic "click through," "shrinkwrap," or other licensing terms and conditions included with or accompanying the Program(s). 
+
+Multi-Product Install Image 
+
+The Program is provided as part of a multi-product install image. Licensee is authorized to install and use only the Program (and its Bundled or Supporting Programs, if any) for which a valid entitlement is obtained and may not install or use any of the other software included in the image unless Licensee has acquired separate entitlements for that other software. 
+
+Bundled Programs 
+
+Licensee is authorized to install and use the Bundled Programs identified below. A Bundled Program may be accompanied by license terms, and those terms, if any, apply to Licensee's use of that Bundled Program. In the event of conflict, the terms in this License Information document supersede the Bundled Program's terms. The Principal Program and any Bundled Programs are all part of the Program, as a whole. Therefore, Licensee must obtain sufficient entitlements to the Program, as a whole, to cover Licensee's installation and use of all of the Bundled Programs, unless separate entitlements are provided within this License Information document. For example, if this Program were licensed on a VPC (Virtual Processor Core) basis and Licensee were to install the Principal Program or a Bundled Program on a 10 VPC machine and another Bundled Program on a second 10 VPC machine, Licensee would be required to obtain 20 VPC entitlements to the Program. 
+
+Bundled Programs: 
+IBM FileNet Content Manager 
+IBM FileNet Content Manager for Non-Production Environment 
+IBM Datacap 
+IBM Datacap for Non-Production Environment 
+IBM Datacap Insight Edition Add-On 
+IBM Datacap Insight Edition Add-on for Non-Production Environment 
+IBM Datacap Accounts Payable Add-On 
+IBM Datacap Accounts Payable Add-on for Non-Production Environment 
+IBM Content Collector for Email 
+IBM Content Collector for File Systems 
+IBM Content Collector for Microsoft SharePoint 
+IBM Content Collector for SAP Applications 
+IBM Business Automation Workflow Enterprise 
+IBM Business Automation Workflow Enterprise for Non-Production Environment 
+IBM Operational Decision Manager Server 
+IBM Operational Decision Manager Server for Non-Production Environment 
+IBM Enterprise Records 
+Process Mining 
+IBM Robotic Process Automation 
+IBM FileNet Content Manager Connector for Salesforce 
+
+Supporting Programs 
 
-Process Mining
+Licensee is authorized to install and use the Supporting Programs identified below only to support Licensee's use of the Principal Program under this Agreement. The phrase "to support Licensee's use" would only include those uses that are necessary or otherwise directly related to a licensed use of the Principal Program or another Supporting Program. The Supporting Programs may not be used for any other purpose. A Supporting Program may be accompanied by license terms, and those terms, if any, apply to Licensee's use of that Supporting Program. In the event of conflict, the terms in this License Information document supersede the Supporting Program's terms. Licensee must obtain sufficient entitlements to the Program, as a whole, to cover Licensee's installation and use of all of the Supporting Programs, unless separate entitlements are provided within this License Information document. For example, if this Program were licensed on a VPC (Virtual Processor Core) basis and Licensee were to install the Principal Program or a Supporting Program on a 10 VPC machine and another Supporting Program on a second 10 VPC machine, Licensee would be required to obtain 20 VPC entitlements to the Program. 
 
-IBM Robotic Process Automation
+Supporting Programs: 
+IBM Db2 Standard Edition 
+IBM WebSphere Application Server Liberty 
+IBM WebSphere Application Server Network Deployment 
+IBM Spectrum Fusion
 
-Supporting Programs
+Permitted Components 
 
-Licensee is authorized to install and use the Supporting Programs identified below only to support Licensee's use of the Principal Program under this Agreement. The phrase "to support Licensee's use" would only include those uses that are necessary or otherwise directly related to a licensed use of the Principal Program or another Supporting Program. The Supporting Programs may not be used for any other purpose. A Supporting Program may be accompanied by license terms, and those terms, if any, apply to Licensee's use of that Supporting Program. In the event of conflict, the terms in this License Information document supersede the Supporting Program's terms. Licensee must obtain sufficient entitlements to the Program, as a whole, to cover Licensee's installation and use of all of the Supporting Programs, unless separate entitlements are provided within this License Information document. For example, if this Program were licensed on a VPC (Virtual Processor Core) basis and Licensee were to install the Principal Program or a Supporting Program on a 10 VPC machine and another Supporting Program on a second 10 VPC machine, Licensee would be required to obtain 20 VPC entitlements to the Program.
+Licensee is permitted to use only the following components or functions of the identified Bundled or Supporting Program: 
+IBM FileNet Content Manager components in any version of IBM FileNet Content Manager being used: 
+- IBM Daeja ViewONE Professional 
+- IBM Daeja ViewONE Professional Module for Microsoft Office 
+- IBM Daeja ViewONE Professional Permanent Redaction Server Module 
+- IBM Daeja ViewONE Virtual 
+- IBM Daeja ViewONE Virtual Module for Microsoft Office 
+- IBM Daeja ViewONE Virtual Module for Permanent Redaction 
+- IBM FileNet P8 Connector to Hitachi Content Platform 
+- IBM FileNet P8 Connector to Centera Storage and Retrieval 
+- IBM FileNet P8 Connector to DR550 Storage and Retrieval 
+- IBM FileNet P8 Connector to Snaplock Storage and Retrieval 
+- IBM FileNet P8 Cloud Storage Connector to OpenStack-enabled devices 
+- IBM FileNet P8 Connector to EMC Atmos 
+- IBM FileNet P8 Connector to EMC Isilon 
+- IBM FileNet P8 Connector to S3-enabled devices 
 
-Supporting Programs:
+IBM WebSphere Application Server Network Deployment only for use in support of the following Bundled Programs: 
+- IBM FileNet Content Manager 
+- IBM FileNet Content Manager for Non-Production Environment 
+- IBM Datacap 
+- IBM Datacap Non-Production 
+- IBM Enterprise Records 
+- IBM Business Automation Workflow Enterprise 
+- IBM Business Automation Workflow Enterprise for Non-Production Environment 
+- IBM Operational Decision Manager Server 
+- IBM Operational Decision Manager Server for Non-Production Environment 
 
-IBM Db2 Standard Edition
+Prohibited Components 
 
-IBM WebSphere Application Server Liberty
+Licensee is not authorized to use any of the following components or functions of the Program: 
+pureScale clustering technology (of IBM Db2 Standard Edition) 
+Db2 Connect (of IBM Db2 Standard Edition) 
+SQL Warehousing Tool (SQW) (of IBM Db2 Standard Edition) 
+IBM InfoSphere Data Architect 9.1.4 (of IBM Db2 Standard Edition) 
+IBM InfoSphere Data Replication 11.4 (CDC component) (of IBM Db2 Standard Edition) 
+IBM InfoSphere Data Replication 11.4 (SQL Replication, Q Replication and CDC for Db2 LUW components) 
+IBM WebSphere Application Server 9.0 (of IBM Db2 Standard Edition) 
+IBM Data Server Manager Enterprise Edition 2.1.5 (of IBM Db2 Standard Edition) 
 
-IBM WebSphere Application Server Network Deployment
+Non-Production Limitation 
 
-Permitted Components
+If the Program is designated as "Non-Production", Licensee can only use the Program as part of Licensee's internal development and test environment for internal non-production activities. 
 
-Licensee is permitted to use only the following components or functions of the identified Bundled or Supporting Program:
+Components Not Used for Establishing Required Entitlements 
 
-- IBM WebSphere Application Server Network Deployment only for use in support of the following Bundled Programs:
+Licensee may install and use the following Program components, under the license terms, but these components are not used to determine the number of entitlements required for the Program. 
+- IBM Automation Decision Services Designer 
+- IBM Business Automation Studio 
+- IBM Business Automation Navigator 
+- IBM Business Automation Application Designer 
+- IBM Business Automation Application Engine when used in Non-Production 
+- IBM Business Automation Insights when used in Non-Production 
+- IBM Automation Workstream Services when used in Non-Production 
+- IBM Workflow Process Service when used in Non-Production 
+- IBM Robotic Process Automation Studio 
+- IBM Db2 Standard Edition 
+- IBM Automation Foundation 
+- IBM FileNet Content Manager for Non-Production Environment when Concurrent, Authorized, Infrequent, External, Employee User Conversion Entitlement Ratio is used.
+- IBM Business Automation Workflow Enterprise for Non-Production Environment when Concurrent, Authorized, Infrequent, External, Employee User Conversion Entitlement Ratio is used.
+- IBM Content Collector for Email, Files & Sharepoint for Non-Production Environment when Authorized, Infrequent, External, Employee User Conversion Entitlement Ratio is used.
+- IBM Content Collector for SAP for Non-Production Environment when Authorized, Infrequent, External, Employee User Conversion Entitlement Ratio is used.
+- IBM FileNet Content Manager Connector for Salesforce 
+- IBM Content Navigator (Component of IBM FileNet Content Manager) when the container is used 
+- IBM Datacap Insight Edition Add-On 
+- IBM Datacap Insight Edition Add-on for Non-Production Environment 
+- IBM Datacap Accounts Payable Add-On 
+- IBM Datacap Accounts Payable Add-on for Non-Production Environment 
 
-- IBM FileNet Content Manager
+Modifiable Third Party Code 
 
-- IBM FileNet Content Manager for Non-Production Environment
+To the extent, if any, in the NOTICES file IBM identifies third party code as "Modifiable Third Party Code," IBM authorizes Licensee to 1) modify the Modifiable Third Party Code and 2) reverse engineer the Program modules that directly interface with the Modifiable Third Party Code provided that it is only for the purpose of debugging Licensee's modifications to such third party code. IBM's service and support obligations, if any, apply only to the unmodified Program. 
 
-- IBM Datacap
+Separately Licensed Code 
 
-- IBM Enterprise Records
+Each of the components listed in the NON_IBM_LICENSE file is considered "Separately Licensed Code" licensed to Licensee under the terms of the applicable third party license agreement(s) set forth in the NON_IBM_LICENSE file(s) that accompanies the Program, and not this Agreement. Future Program updates or fixes may contain additional Separately Licensed Code. Such additional Separately Licensed Code and related licenses are listed in the applicable NON_IBM_LICENSE file that accompanies the Program update or fix. 
 
-- IBM Business Automation Workflow Enterprise
+Note: Notwithstanding any of the terms in the third party license agreement, the Agreement, or any other agreement Licensee may have with IBM, with respect to the Separately Licensed Code: 
+(a) IBM provides it to Licensee WITHOUT WARRANTIES OF ANY KIND AND DISCLAIMS ANY AND ALL EXPRESS AND IMPLIED WARRANTIES AND CONDITIONS INCLUDING, BUT NOT LIMITED TO, THE WARRANTY OF TITLE, NON-INFRINGEMENT OR NON-INTERFERENCE, AND THE IMPLIED WARRANTIES AND CONDITIONS OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE; 
+(b) IBM is not liable for any direct, indirect, incidental, special, exemplary, punitive or consequential damages including, but not limited to, lost data, lost savings, and lost profits. 
 
-- IBM Business Automation Workflow Enterprise for Non-Production Environment
+Privacy 
 
-- IBM Operational Decision Manager Server
+Licensee acknowledges and agrees that IBM may use cookie and tracking technologies to collect personal information in gathering product usage statistics and information designed to help improve user experience and/or to tailor interactions with users in accordance with the IBM Online Privacy Policy, available at http://www.ibm.com/privacy/. 
 
-- IBM Operational Decision Manager Server for Non-Production Environment.
+Source Components and Sample Materials 
 
-Prohibited Components
+The Program includes components in source code form ("Source Components"), or other materials identified as Sample Materials or both. Licensee may copy and modify Source Components and Sample Materials for internal use only within the limits of the license rights under this Agreement; provided, however, that Licensee may not alter or delete any copyright information or notices contained in the Source Components or Sample Materials. IBM provides the Source Components and Sample Materials without obligation of support and "AS IS", WITH NO WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING THE WARRANTY OF TITLE, NON-INFRINGEMENT OR NON-INTERFERENCE AND THE IMPLIED WARRANTIES AND CONDITIONS OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. 
 
-Licensee is not authorized to use any of the following components or functions of the Program:
+Third Party Data and Services 
 
-pureScale clustering technology (of IBM Db2 Standard Edition)
+The Program provides access to third party data services, databases, web services, software, or other third party content (all, "Third Party Content"). Access to this Third Party Content is provided "AS-IS", WITH NO WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING THE WARRANTY OF TITLE, NON-INFRINGEMENT OR NON-INTERFERENCE AND THE IMPLIED WARRANTIES AND CONDITIONS OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. Access can be terminated by the relevant third parties at their sole discretion at any time. Licensee may be required to enter into separate agreements with the third parties for the access to or use of such Third Party Content. IBM is not a party to any such separate agreements and as an express condition of this license Licensee agrees to comply with the terms of such separate agreements. 
 
-Db2 Connect (of IBM Db2 Standard Edition)
+The following units of measure may apply to Licensee's use of the Program. 
 
-SQL Warehousing Tool (SQW) (of IBM Db2 Standard Edition)
+Authorized User 
 
-IBM InfoSphere Data Architect 9.1.4 (of IBM Db2 Standard Edition)
+Authorized User is a unit of measure by which the Program can be licensed. An Authorized User is a unique person who is given access to the Program. The Program may be installed on any number of computers or servers and each Authorized User may have simultaneous access to any number of instances of the Program at one time. Licensee must obtain separate, dedicated entitlements for each Authorized User given access to the Program in any manner directly or indirectly (for example: via a multiplexing program, device, or application server) through any means. An entitlement for an Authorized User is unique to that Authorized User and may not be shared, nor may it be reassigned other than for the permanent transfer of the Authorized User entitlement to another person. 
 
-IBM InfoSphere Data Replication 11.4 (CDC component) (of IBM Db2 Standard Edition)
+Concurrent Connection 
 
-IBM InfoSphere Data Replication 11.4 (SQL Replication, Q Replication and CDC for Db2 LUW components)
+Concurrent Connection is a unit of measure by which the Program can be licensed. A Concurrent Connection is a simultaneous link or association of a database, application, server, or any other type of device which has been or is made available to the Program. Licensee must obtain entitlements for the total number of Concurrent Connections, which have been or are made to the Program. 
 
-IBM WebSphere Application Server 9.0 (of IBM Db2 Standard Edition)
+Concurrent User 
 
-IBM Data Server Manager Enterprise Edition 2.1.5 (of IBM Db2 Standard Edition)
+Concurrent User is a unit of measure by which the Program can be licensed. A Concurrent User is a person who is accessing the Program at any particular point in time. Regardless of whether the person is simultaneously accessing the Program multiple times, the person counts only as a single Concurrent User. The Program may be installed on any number of computers or servers, but Licensee must obtain entitlements for the maximum number of Concurrent Users simultaneously accessing the Program. Licensee must obtain an entitlement for each simultaneous Concurrent User accessing the Program in any manner directly or indirectly (for example: via a multiplexing program, device, or application server) through any means. 
 
-Separately Licensed Code
+Install 
 
-Each of the components listed in the NON_IBM_LICENSE file is considered "Separately Licensed Code" licensed to Licensee under the terms of the applicable third party license agreement(s) set forth in the NON_IBM_LICENSE file(s) that accompanies the Program, and not this Agreement. Future Program updates or fixes may contain additional Separately Licensed Code. Such additional Separately Licensed Code and related licenses are listed in the applicable NON_IBM_LICENSE file that accompanies the Program update or fix.
+Install is a unit of measure by which the Program can be licensed. An Install is an installed copy of the Program on a physical or virtual disk made available to be executed on a computer. Licensee must obtain an entitlement for each Install of the Program. 
 
-Note: Notwithstanding any of the terms in the third party license agreement, the Agreement, or any other agreement Licensee may have with IBM, with respect to the Separately Licensed Code:
+Process 
 
-(a) IBM provides it to Licensee WITHOUT WARRANTIES OF ANY KIND AND DISCLAIMS ANY AND ALL EXPRESS AND IMPLIED WARRANTIES AND CONDITIONS INCLUDING, BUT NOT LIMITED TO, THE WARRANTY OF TITLE, NON-INFRINGEMENT OR NON-INTERFERENCE, AND THE IMPLIED WARRANTIES AND CONDITIONS OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE;
+Process is a unit of measure by which the Program can be licensed. A Process is an instance of the Program being executed. Sufficient entitlements must be obtained to cover the total number of Processes executing at any point in time. 
 
-(b) IBM is not liable for any direct, indirect, incidental, special, exemplary, punitive or consequential damages including, but not limited to, lost data, lost savings, and lost profits.
+Virtual Processor Core 
 
-Privacy
+Virtual Processor Core is a unit of measure by which the Program can be licensed. A Physical Server is a physical computer that is comprised of processing units, memory, and input/output capabilities and that executes requested procedures, commands, or applications for one or more users or client devices. Where racks, blade enclosures, or other similar equipment is being employed, each separable physical device (for example, a blade or a rack-mounted device) that has the required components is considered itself a separate Physical Server. A Virtual Server is either a virtual computer created by partitioning the resources available to a Physical Server or an unpartitioned Physical Server. A Processor Core is a functional unit within a computing device that interprets and executes instructions. A Processor Core consists of at least one instruction control unit and one or more arithmetic or logic units. A Virtual Processor Core is a Processor Core in an unpartitioned Physical Server, or a virtual core assigned to a Virtual Server. Licensee must obtain entitlements for each Virtual Processor Core made available to the Program. 
 
-Licensee acknowledges and agrees that IBM may use cookie and tracking technologies to collect personal information in gathering product usage statistics and information designed to help improve user experience and/or to tailor interactions with users in accordance with the IBM Online Privacy Policy, available at http://www.ibm.com/privacy/.
+Licensee can deploy the Program (if supported) using full capacity licensing, sub-capacity licensing (https://www.ibm.com/software/passportadvantage/subcaplicensing.html), or container licensing (https://www.ibm.com/software/passportadvantage/containerlicenses.html). See the linked websites for more information. 
 
-Source Components and Sample Materials
+Virtual Server 
 
-The Program includes components in source code form ("Source Components"), or other materials identified as Sample Materials or both. Licensee may copy and modify Source Components and Sample Materials for internal use only within the limits of the license rights under this Agreement; provided, however, that Licensee may not alter or delete any copyright information or notices contained in the Source Components or Sample Materials. IBM provides the Source Components and Sample Materials without obligation of support and "AS IS", WITH NO WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING THE WARRANTY OF TITLE, NON-INFRINGEMENT OR NON-INTERFERENCE AND THE IMPLIED WARRANTIES AND CONDITIONS OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+Virtual Server is a unit of measure by which the Program can be licensed. A server is a physical computer that is comprised of processing units, memory, and input/output capabilities and that executes requested procedures, commands, or applications for one or more users or client devices. Where racks, blade enclosures, or other similar equipment is being employed, each separable physical device (for example, a blade or a rack-mounted device) that has the required components is considered itself a separate server. A virtual server is either a virtual computer created by partitioning the resources available to a physical server or an unpartitioned physical server. Licensee must obtain Virtual Server entitlements for each virtual server made available to the Program, regardless of the number of processor cores in the virtual server or the number of copies of the Program on the virtual server. 
 
-Third Party Data and Services
+In addition to the above, the following terms apply to Licensee's use of the Program. 
 
-The Program provides access to third party data services, databases, web services, software, or other third party content (all, "Third Party Content"). Access to this Third Party Content is provided "AS-IS", WITH NO WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING THE WARRANTY OF TITLE, NON-INFRINGEMENT OR NON-INTERFERENCE AND THE IMPLIED WARRANTIES AND CONDITIONS OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. Access can be terminated by the relevant third parties at their sole discretion at any time. Licensee may be required to enter into separate agreements with the third parties for the access to or use of such Third Party Content. IBM is not a party to any such separate agreements and as an express condition of this license Licensee agrees to comply with the terms of such separate agreements.
+Million Event 
+A Million Event is a unit of measure by which the Program can be licensed. A Million Event is a log event generated from a server, application or device that can be processed for a specific purpose, rounded up to the nearest million. Sufficient entitlements must be obtained to cover the maximum number of Million Events to be collected and processed by the Program at any time. 
 
-LICENSE INFORMATION
+Entitlement Values 
 
-The Programs listed below are licensed under the following License Information terms and conditions in addition to the Program license terms previously agreed to by Client and IBM. If Client does not have previously agreed to license terms in effect for the Program, the International Program License Agreement (Z125-3301-14) applies.
+IBM Automation Decision Services (Component of the Program) 
+- Conversion Entitlement Ratio: 1 VPC/ 4 VPCs 
 
-Program Name (Program Number):
+IBM Automation Decision Services (Component of the Program) for Non-Production 
+- Conversion Entitlement Ratio: 1 VPC/ 2 VPCs 
 
-IBM Cloud Pak for Business Automation 21.0.1 SR1 (5737-I23)
+Business Automation Application Engine (Component of the Program) 
+- Conversion Entitlement Ratio: 1 VPC/ 1 VPC 
 
-The following standard terms apply to Licensee's use of the Program.
+Business Automation Insights (Component of the Program) 
+- Conversion Entitlement Ratio: 1 VPC/ 1 VPC 
 
-Limited use right
+IBM FileNet Content Manager 
+- Conversion Entitlement Ratio: 1 VPC/ 5 VPCs; or NEWLINE 
+- Conversion Entitlement Ratio: 10 Concurrent User/ 1 VPC; or 
+- Conversion Entitlement Ratio: 18 Authorized User/ 1 VPC and 180 Infrequent User / 1 VPC and 3579 External User/ 1 VPC; or 
+- Conversion Entitlement Ratio: 36 Employee User/ 1 VPC and 3579 External User/ 1 VPC 
+- Use Limitation: IBM FileNet Content Manager may be used as storage without requiring additional entitlements for one or more of the following use cases: 
+(1) Storage of documents up to 30 days for use with Automation Document Processing 
+(2) Storage of persisted data (AbstractPersistable objects) for use with Business Automation Application Designer and Business Automation Application Engine 
+(3) Storage of data and documents for development use with Workflow Authoring (a component of IBM Business Automation Studio) 
 
-With the exception of Bundled Programs, all IBM software provided to Licensee with the Program can only be used to support Licensee's use of the Principal Program under this License Information document, which means such use must be directly related to a licensed use of the Principal Program.
+IBM FileNet Content Manager for Non-Production Environment 
+- Conversion Entitlement Ratio: 2 VPCs/ 5VPCs 
 
-Licensee is not authorized to use the Program to provide commercial IT services to any third party, to provide commercial hosting or timesharing, or to sublicense, rent, or lease the Program.
+IBM Business Automation Workflow Enterprise 
+- Conversion Entitlement Ratio: 1 VPC/ 5 VPCs; or NEWLINE 
+- Conversion Entitlement Ratio: 5 Concurrent User/ 1 VPC; or 
+- Conversion Entitlement Ratio: 9 Authorized User/ 1 VPC and 90 Infrequent User/ 1 VPC and 1782 External User/ 1 VPC; or 
+- Conversion Entitlement Ratio: 18 Employee User/ 1 VPC and 1782 External User/ 1 VPC 
 
-Prohibited Uses
+IBM Business Automation Workflow Enterprise for Non-Production Environment 
+- Conversion Entitlement Ratio: 2 VPCs/ 5 VPCs 
 
-Licensee may not use or authorize others to use the Program if failure of the Program could lead to death, bodily injury, or property or environmental damage.
+IBM Automation Workstream Services 
+- Conversion Entitlement Ratio: 1 VPC/ 5 VPCs 
 
-License Terms delivered with Program Not Applicable
+IBM Operational Decision Manager Server 
+- Conversion Entitlement Ratio: 1 VPC/ 5 VPCs 
 
-The terms of this Agreement supersede and void any electronic "click through," "shrinkwrap," or other licensing terms and conditions included with or accompanying the Program(s).
+IBM Operational Decision Manager Server for Non-Production Environment 
+- Conversion Entitlement Ratio: 2 VPCs/ 5 VPCs 
 
-Multi-Product Install Image
+Automation Document Processing (Component of the Program) 
+- Conversion Entitlement Ratio: 1 VPC/ 1 VPC 
 
-The Program is provided as part of a multi-product install image. Licensee is authorized to install and use only the Program (and its Bundled or Supporting Programs, if any) for which a valid entitlement is obtained and may not install or use any of the other software included in the image unless Licensee has acquired separate entitlements for that other software.
+Automation Document Processing (Component of the Program) 
+- Conversion Entitlement Ratio: 2 VPC/ 1 VPC 
 
-Bundled Programs
+IBM Datacap 
+- Conversion Entitlement Ratio: 1 VPC/ 2 VPC 
 
-Licensee is authorized to install and use the Bundled Programs identified below. A Bundled Program may be accompanied by license terms, and those terms, if any, apply to Licensee's use of that Bundled Program. In the event of conflict, the terms in this License Information document supersede the Bundled Program's terms. The Principal Program and any Bundled Programs are all part of the Program, as a whole. Therefore, Licensee must obtain sufficient entitlements to the Program, as a whole, to cover Licensee's installation and use of all of the Bundled Programs, unless separate entitlements are provided within this License Information document. For example, if this Program were licensed on a VPC (Virtual Processor Core) basis and Licensee were to install the Principal Program or a Bundled Program on a 10 VPC machine and another Bundled Program on a second 10 VPC machine, Licensee would be required to obtain 20 VPC entitlements to the Program.
+IBM Datacap for Non-Production Environment 
+- Conversion Entitlement Ratio: 1 VPC/ 1 VPC 
 
-Bundled Programs:
+IBM Content Collector for Email, Files & Sharepoint 
+- Conversion Entitlement Ratio: 1 VPC/ 3 VPC ; or 
+- Conversion Entitlement Ratio: 200 Authorized User/ 1 VPC and 2000 Infrequent User/ 1 VPC and 40900 External User/ 1 VPC; or 
+- Conversion Entitlement Ratio: 499 Employee User/ 1 VPC and 40900 External User/ 1 VPC 
 
-IBM FileNet Content Manager
+IBM Content Collector for Email, Files & Sharepoint for Non-Production 
+- Conversion Entitlement Ratio: 2 VPC/ 3 VPC 
 
-IBM FileNet Content Manager for Non-Production Environment
+IBM Content Collector for SAP 
+- Conversion Entitlement Ratio: 1 VPC/ 3 VPC; or 
+- Conversion Entitlement Ratio: 36 Authorized User/ 1 VPC and 360 Infrequent User/ 1 VPC and 6860 External User/ 1 VPC; or 
+- Conversion Entitlement Ratio: 72 Employee User/ 1 VPC and 6860 External User/ 1 VPC 
 
-IBM Datacap Processor Value Unit v9
+IBM Content Collector for SAP for Non-Production 
+- Conversion Entitlement Ratio: 2 VPC/ 3 VPC 
 
-IBM Datacap for Non-Production Environment Processor Value Unit v9
+IBM Robotic Process Automation Platform 
+- Conversion Flat Entitlement: Licensee may convert 2 VPCs of the Program to use 1 Install of the listed program. Regardless of the number of entitlements obtained to the Program, Licensee's use of the listed program is limited to the one-time listed conversion. 
+- Licensee is entitled to use 2 Robotic Process Automation Environments, 2 Attended Bot Agents,1 Unattended Bot Agent, unlimited Robotic Process Automation Studio, with the Install of IBM Robotic Process Automation Platform. 
 
-IBM Datacap Insight Edition Add-On Processor Value Unit v9
+IBM Robotic Process Automation Environment add-on 
+- Conversion Entitlement Ratio: 1 Virtual Server/ 1 VPC 
 
-IBM Datacap Insight Edition Add-on for Non-Production Environment Processor Value Unit v9
+IBM Robotic Process Automation Unattended Bot Agent add-on 
+- Conversion Entitlement Ratio: 1 Concurrent Connection/ 1 VPC 
 
-IBM Content Collector for Email
+IBM Robotic Process Automation Attended Bot Agent add-on 
+- Conversion Entitlement Ratio: 5 Concurrent Connection/ 1 VPC 
 
-IBM Content Collector for File Systems
+Process Mining Platform 
+- Conversion Flat Entitlement: Licensee may convert 4 VPCs of the Program to use 1 Install of the listed program. Regardless of the number of entitlements obtained to the Program, Licensee's use of the listed program is limited to the one-time listed conversion. 
+- Licensee is entitled to use 3 Process Mining Processes, 20 Million Events, 1 Analyst User, 3 Business Users, 2 Task Mining Agents, with every Install of IBM Process Mining Platform. 
 
-IBM Content Collector for Microsoft SharePoint
+Process Mining Process add-on 
+- Conversion Entitlement Ratio: 3 Processes/ 1 VPC 
 
-IBM Content Collector for SAP Applications
+Process Mining Events add-on 
+- Conversion Entitlement Ratio: 10 Million Events/ 1 VPC 
 
-IBM Business Automation Workflow Enterprise
+Process Mining Analyst User add-on 
+- Conversion Entitlement Ratio: 4 Authorized User/ 1 VPC 
 
-IBM Business Automation Workflow Enterprise for Non-Production Environment
+Process Mining Business User add-on 
+- Conversion Entitlement Ratio: 17 Authorized User/ 1 VPC 
 
-IBM Operational Decision Manager Server
+Task Mining Agent add-on 
+- Conversion Entitlement Ratio: 17 Concurrent Connection/ 1 VPC 
 
-IBM Operational Decision Manager Server for Non-Production Environment
+IBM Workflow Process Service - Single Process App (Component of the Program) 
+- Conversion Entitlement Ratio: 1 VPC/ 1 VPCs 
+- Use Limitation: 1 TWX file (not including different versions of the same TWX file) per IBM Workflow Process Service instance 
 
-IBM Enterprise Records
+"Conversion Entitlement Ratio n/m" means that Licensee can convert some number ('n') entitlements of the indicated metric for the listed program for every specified number ('m') entitlements of the specified metric for the Program. Once converted, Licensee may only use such converted entitlements for the listed program. The specified conversion does not apply to any entitlements for the Program that are not of the required metric type. 
 
-Process Mining
+Red Hat Products 
 
-IBM Robotic Process Automation
+Red Hat Products are licensed separately and are supported by IBM only when used in support of the Program and only while Licensee has Software Subscription and Support in effect for the Program. The below entitlement restrictions apply solely to any Software Subscription and Support in effect for the Program and do not restrict Licensee's use of the Red Hat Products, which are licensed separately. Licensee agrees that its use of and support for the Red Hat Products are subject to the following terms (https://www.redhat.com/en/about/agreements), with the exception of the IBM backup policy and temporary use policy as referenced in the International Program License Agreement, which govern backups and temporary use for Red Hat Products included in the Program. 
 
-Supporting Programs
+Red Hat OpenShift Container Platform 
+- Additional Entitlement Ratio: 3 VPC/ 1 VPC 
 
-Licensee is authorized to install and use the Supporting Programs identified below only to support Licensee's use of the Principal Program under this Agreement. The phrase "to support Licensee's use" would only include those uses that are necessary or otherwise directly related to a licensed use of the Principal Program or another Supporting Program. The Supporting Programs may not be used for any other purpose. A Supporting Program may be accompanied by license terms, and those terms, if any, apply to Licensee's use of that Supporting Program. In the event of conflict, the terms in this License Information document supersede the Supporting Program's terms. Licensee must obtain sufficient entitlements to the Program, as a whole, to cover Licensee's installation and use of all of the Supporting Programs, unless separate entitlements are provided within this License Information document. For example, if this Program were licensed on a VPC (Virtual Processor Core) basis and Licensee were to install the Principal Program or a Supporting Program on a 10 VPC machine and another Supporting Program on a second 10 VPC machine, Licensee would be required to obtain 20 VPC entitlements to the Program.
+"Additional Entitlement Ratio n/m" means that Licensee receives some number ('n') entitlements of the indicated metric for the identified program for every specified number ('m') entitlements of the specified metric for the Program as a whole. The specified ratio does not apply to any entitlements for the Program that are not of the required metric type. The number of entitlements for the identified program is rounded up to a multiple of 'n'. 
 
-Supporting Programs:
+Red Hat OpenShift Data Foundation Essentials  
+- Additional Flat Entitlement: 48 Virtual Processing Cores (VPC) 
+- Use Limitation: Licensee’s entitlement to support for the listed program is limited to 6TB usable (18TB raw) capacity. Licensee’s entitlement to support for the listed program terminates 12 calendar months after Licensee’s initial purchase of entitlements to the Program. Upon termination, Licensee agrees that any support Licensee obtains for the Principal Program beyond that period of time, will not include support for the listed program. 
+- This Red Hat OpenShift Data Foundation entitlement cannot be used in a managed service environment. 
 
-IBM Db2 Standard Edition
+- “Additional Flat Entitlement” means that regardless of the number of entitlements obtained to the Program, Licensee’s use of the listed program is limited to the number of entitlement(s) listed.
 
-IBM WebSphere Application Server Liberty
+If the Client has acquired the Program as a result of agreeing to the terms of the addendum titled “IBM Cloud Pak for Business Automation and IBM Business Automation Workflow User-Based Trade Up and Subscription License Upgrade Restriction,” then the Client must measure deployment for the trade up and subscription license upgrade on the user-based metrics of Authorized User, Employee User, External User, Concurrent User, and/or Infrequent User. No other metric shall be used for deployment measurement for license trade up and subscription license upgrade and subsequent additional license to this Program.
 
-IBM WebSphere Application Server Network Deployment
+Use of Usage Metering Data 
+The Program enables use of a usage metering dashboard (the "Dashboard") that enables the display and monitoring of certain data and metrics regarding Licensee's deployment and usage of IBM and non-IBM software programs, as well as the computing environment on which they are deployed ("Usage Metering Data"). Usage of the Dashboard requires registration on either the Red Hat Marketplace or IBM Software Central. Licensee's usage of the Dashboard and IBM's use and sharing of Usage Metering Data are governed by the terms of the Service Description for the Red Hat Marketplace, Operated by IBM, available here: https://www.ibm.com/support/customer/csol/terms?id=i126-8719, and if Licensee enables or uses the Dashboard, Licensee agrees to those terms. 
 
-Permitted Components
+Infrequent User 
 
-Licensee is permitted to use only the following components or functions of the identified Bundled or Supporting Program:
+Infrequent User is a unit of measure by which the Program can be licensed. Any Infrequent Users given access to the Program requires an entitlement. An Infrequent User is an Authorized User who accesses the Program not more than one hundred twenty (120) times in any consecutive 12 month period. A single access is comprised of one or more interactions between the Infrequent User and the Program or actions performed on behalf of the Infrequent User by the Program, all within a consecutive 15 minute period. 
 
-- IBM WebSphere Application Server Network Deployment only for use in support of the following Bundled Programs:
+Licensee must track accesses by Infrequent Users to verify that they meet the access limitations of Infrequent Users. Licensee agrees to provide to IBM and its auditors details of the tracking mechanism described above, upon request. 
 
-- IBM FileNet Content Manager
+Employee User 
 
-- IBM FileNet Content Manager for Non-Production Environment
+Employee User is a unit of measure by which the Program can be licensed. An Employee User is a unique person employed in Licensee's Enterprise, whether or not given access to the Program, or a unique person otherwise paid by or acting on behalf of Licensee's Enterprise who is given access to the Program in any manner directly or indirectly (for example: via a multiplexing program, device, or application server) through any means. An entitlement for an Employee User is unique to that Employee User and may not be shared, nor may it be reassigned other than for the permanent transfer of the entitlement to another person. Licensee must acquire sufficient employee user entitlements to cover all employees and any other unique persons paid by or acting on behalf of Licensee's Enterprise. 
 
-- IBM Datacap
+External User 
 
-- IBM Enterprise Records
+External User is a unit of measure by which the Program can be licensed. An External User is a unique person, not employed in, paid by, or acting on behalf of Licensee's Enterprise, who is given access to the Program in any manner directly or indirectly (for example: via a multiplexing program, device, or application server) through any means. A person who is employed in or paid by Licensee's Enterprise, but is not accessing the Program within the scope of that relationship may be an External User. An entitlement for an External User is unique to that External User and may not be shared, nor may it be reassigned other than for the permanent transfer of the entitlement to another person. 
 
-- IBM Business Automation Workflow Enterprise
+Additional IBM DB2 Standard Edition Details 
 
-- IBM Business Automation Workflow Enterprise for Non-Production Environment
+The Supporting Program may use a maximum of 16 processor cores and 128 GB of memory on each physical or virtual server; however, if the Supporting Program is used on a cluster of servers configured to work together using database partitioning or other permitted clustering technology, the Supporting Program may use a maximum of 16 processor cores and 128 GB of memory across all virtual or physical servers in that cluster. 
 
-- IBM Operational Decision Manager Server
+Additional Flat Entitlement 
 
-- IBM Operational Decision Manager Server for Non-Production Environment.
+IBM Spectrum Fusion
+- Additional Flat Entitlement: 6 Terabtyes (TB) each of IBM Primary Storage, IBM Backup Storage, and Metadata Management.
+- Use Limitation: Licensee’s license to the listed programs is only available for first-time Cloud Pak purchases and terminates 12 calendar months after Licensee’s initial purchase of entitlements to the Program, or upon the termination or expiration of the Program to the extent such termination or expiration occurs prior to 12 months after initial purchase. Upon termination of the listed programs, Licensee agrees to promptly discontinue use of and destroy all of Licensee’s copies of the listed programs
 
-Prohibited Components
-
-Licensee is not authorized to use any of the following components or functions of the Program:
-
-pureScale clustering technology (of IBM Db2 Standard Edition)
-
-Db2 Connect (of IBM Db2 Standard Edition)
-
-SQL Warehousing Tool (SQW) (of IBM Db2 Standard Edition)
-
-IBM InfoSphere Data Architect 9.1.4 (of IBM Db2 Standard Edition)
-
-IBM InfoSphere Data Replication 11.4 (CDC component) (of IBM Db2 Standard Edition)
-
-IBM InfoSphere Data Replication 11.4 (SQL Replication, Q Replication and CDC for Db2 LUW components)
-
-IBM WebSphere Application Server 9.0 (of IBM Db2 Standard Edition)
-
-IBM Data Server Manager Enterprise Edition 2.1.5 (of IBM Db2 Standard Edition)
-
-Components Not Used for Establishing Required Entitlements
-
-Licensee may install and use the following Program components, under the license terms, but these components are not used to determine the number of entitlements required for the Program.
-
-- IBM Automation Decision Services Designer
-
-- IBM Business Automation Studio
-
-- IBM Business Automation Navigator
-
-- IBM Business Automation Application Designer
-
-- IBM Business Automation Application Engine when used in Non-Production
-
-- IBM Business Automation Insights when used in Non-Production
-
-- IBM Automation Workstream Services when used in Non-Production
-
-- IBM FileNet Content Manager Containers CP4Auto Limited Storage
-
-- IBM Robotic Process Automation Studio 20.12
-
-- IBM Db2 Standard Edition
-
-- IBM Automation Foundation
-
-Separately Licensed Code
-
-Each of the components listed in the NON_IBM_LICENSE file is considered "Separately Licensed Code" licensed to Licensee under the terms of the applicable third party license agreement(s) set forth in the NON_IBM_LICENSE file(s) that accompanies the Program, and not this Agreement. Future Program updates or fixes may contain additional Separately Licensed Code. Such additional Separately Licensed Code and related licenses are listed in the applicable NON_IBM_LICENSE file that accompanies the Program update or fix.
-
-Note: Notwithstanding any of the terms in the third party license agreement, the Agreement, or any other agreement Licensee may have with IBM, with respect to the Separately Licensed Code:
-
-(a) IBM provides it to Licensee WITHOUT WARRANTIES OF ANY KIND AND DISCLAIMS ANY AND ALL EXPRESS AND IMPLIED WARRANTIES AND CONDITIONS INCLUDING, BUT NOT LIMITED TO, THE WARRANTY OF TITLE, NON-INFRINGEMENT OR NON-INTERFERENCE, AND THE IMPLIED WARRANTIES AND CONDITIONS OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE;
-
-(b) IBM is not liable for any direct, indirect, incidental, special, exemplary, punitive or consequential damages including, but not limited to, lost data, lost savings, and lost profits.
-
-Privacy
-
-Licensee acknowledges and agrees that IBM may use cookie and tracking technologies to collect personal information in gathering product usage statistics and information designed to help improve user experience and/or to tailor interactions with users in accordance with the IBM Online Privacy Policy, available at http://www.ibm.com/privacy/.
-
-Source Components and Sample Materials
-
-The Program includes components in source code form ("Source Components"), or other materials identified as Sample Materials or both. Licensee may copy and modify Source Components and Sample Materials for internal use only within the limits of the license rights under this Agreement; provided, however, that Licensee may not alter or delete any copyright information or notices contained in the Source Components or Sample Materials. IBM provides the Source Components and Sample Materials without obligation of support and "AS IS", WITH NO WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING THE WARRANTY OF TITLE, NON-INFRINGEMENT OR NON-INTERFERENCE AND THE IMPLIED WARRANTIES AND CONDITIONS OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
-
-Third Party Data and Services
-
-The Program provides access to third party data services, databases, web services, software, or other third party content (all, "Third Party Content"). Access to this Third Party Content is provided "AS-IS", WITH NO WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING THE WARRANTY OF TITLE, NON-INFRINGEMENT OR NON-INTERFERENCE AND THE IMPLIED WARRANTIES AND CONDITIONS OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. Access can be terminated by the relevant third parties at their sole discretion at any time. Licensee may be required to enter into separate agreements with the third parties for the access to or use of such Third Party Content. IBM is not a party to any such separate agreements and as an express condition of this license Licensee agrees to comply with the terms of such separate agreements.
-
-The following units of measure may apply to Licensee's use of the Program.
-
-Authorized User
-
-Authorized User is a unit of measure by which the Program can be licensed. An Authorized User is a unique person who is given access to the Program. The Program may be installed on any number of computers or servers and each Authorized User may have simultaneous access to any number of instances of the Program at one time. Licensee must obtain separate, dedicated entitlements for each Authorized User given access to the Program in any manner directly or indirectly (for example: via a multiplexing program, device, or application server) through any means. An entitlement for an Authorized User is unique to that Authorized User and may not be shared, nor may it be reassigned other than for the permanent transfer of the Authorized User entitlement to another person.
-
-Concurrent Connection
-
-Concurrent Connection is a unit of measure by which the Program can be licensed. A Concurrent Connection is a simultaneous link or association of a database, application, server, or any other type of device which has been or is made available to the Program. Licensee must obtain entitlements for the total number of Concurrent Connections, which have been or are made to the Program.
-
-Concurrent User
-
-Concurrent User is a unit of measure by which the Program can be licensed. A Concurrent User is a person who is accessing the Program at any particular point in time. Regardless of whether the person is simultaneously accessing the Program multiple times, the person counts only as a single Concurrent User. The Program may be installed on any number of computers or servers, but Licensee must obtain entitlements for the maximum number of Concurrent Users simultaneously accessing the Program. Licensee must obtain an entitlement for each simultaneous Concurrent User accessing the Program in any manner directly or indirectly (for example: via a multiplexing program, device, or application server) through any means.
-
-Install
-
-Install is a unit of measure by which the Program can be licensed. An Install is an installed copy of the Program on a physical or virtual disk made available to be executed on a computer. Licensee must obtain an entitlement for each Install of the Program.
-
-Process
-
-Process is a unit of measure by which the Program can be licensed. A Process is an instance of the Program being executed. Sufficient entitlements must be obtained to cover the total number of Processes executing at any point in time.
-
-Virtual Processor Core
-
-Virtual Processor Core is a unit of measure by which the Program can be licensed. A Physical Server is a physical computer that is comprised of processing units, memory, and input/output capabilities and that executes requested procedures, commands, or applications for one or more users or client devices. Where racks, blade enclosures, or other similar equipment is being employed, each separable physical device (for example, a blade or a rack-mounted device) that has the required components is considered itself a separate Physical Server. A Virtual Server is either a virtual computer created by partitioning the resources available to a Physical Server or an unpartitioned Physical Server. A Processor Core is a functional unit within a computing device that interprets and executes instructions. A Processor Core consists of at least one instruction control unit and one or more arithmetic or logic units. A Virtual Processor Core is a Processor Core in an unpartitioned Physical Server, or a virtual core assigned to a Virtual Server. Licensee must obtain entitlements for each Virtual Processor Core made available to the Program.
-
-Licensee can deploy the Program (if supported) using full capacity licensing, sub-capacity licensing (https://www.ibm.com/software/passportadvantage/subcaplicensing.html), or container licensing (https://www.ibm.com/software/passportadvantage/containerlicenses.html). See the linked websites for more information.
-
-Virtual Server
-
-Virtual Server is a unit of measure by which the Program can be licensed. A server is a physical computer that is comprised of processing units, memory, and input/output capabilities and that executes requested procedures, commands, or applications for one or more users or client devices. Where racks, blade enclosures, or other similar equipment is being employed, each separable physical device (for example, a blade or a rack-mounted device) that has the required components is considered itself a separate server. A virtual server is either a virtual computer created by partitioning the resources available to a physical server or an unpartitioned physical server. Licensee must obtain Virtual Server entitlements for each virtual server made available to the Program, regardless of the number of processor cores in the virtual server or the number of copies of the Program on the virtual server.
-
-In addition to the above, the following terms apply to Licensee's use of the Program.
-
-Entitlement Values
-
-IBM Automation Decision Services (Component of the Program)
-
-- Conversion Entitlement Ratio: 1 VPC/ 4 VPCs
-
-IBM Automation Decision Services (Component of the Program) for Non-Production
-
-- Conversion Entitlement Ratio: 1 VPC/ 2 VPCs
-
-- Use Limitation: Non-Production
-
-Business Automation Application Engine (Component of the Program)
-
-- Conversion Entitlement Ratio: 1 VPC/ 1 VPC
-
-Business Automation Insights (Component of the Program)
-
-- Conversion Entitlement Ratio: 1 VPC/ 1 VPC
-
-IBM FileNet Content Manager
-
-- Conversion Entitlement Ratio: 1 VPC/ 5 VPCs or any one or any combination of any of the user measurements below:
-
-- Conversion Entitlement Ratio: 10 Concurrent User/ 1 VPC
-
-- Conversion Entitlement Ratio: 18 Authorized User/ 1 VPC
-
-- Conversion Entitlement Ratio: 36 Employee User/ 1 VPC
-
-- Conversion Entitlement Ratio: 180 Infrequent User/ 1 VPC
-
-- Conversion Entitlement Ratio: 3579 External User/ 1 VPC
-
-IBM FileNet Content Manager Containers - CP4Auto - Limited Storage
-
-- Use Limitation: Storage of documents up to 30 days except for AbstractPersistable objects which can be stored longer than 30 days
-
-IBM FileNet Content Manager for Non-Production Environment
-
-- Conversion Entitlement Ratio: 2 VPCs/ 5VPCs
-
-- Use Limitation: Non-Production
-
-IBM Business Automation Workflow Enterprise
-
-- Conversion Entitlement Ratio: 1 VPC/ 5 VPCs or any one or any combination of any of the user measurements below:
-
-- Conversion Entitlement Ratio: 5 Concurrent User/ 1 VPC
-
-- Conversion Entitlement Ratio: 9 Authorized User/ 1 VPC
-
-- Conversion Entitlement Ratio: 18 Employee User/ 1 VPC
-
-- Conversion Entitlement Ratio: 90 Infrequent User/ 1 VPC
-
-- Conversion Entitlement Ratio: 1782 External User/ 1 VPC
-
-IBM Business Automation Workflow Enterprise for Non-Production Environment
-
-- Conversion Entitlement Ratio: 2 VPCs/ 5 VPCs
-
-- Use Limitation: Non-Production
-
-IBM Automation Workstream Services
-
-- Conversion Entitlement Ratio: 1 VPC/ 5 VPCs
-
-IBM Operational Decision Manager Server
-
-- Conversion Entitlement Ratio: 1 VPC/ 5 VPCs
-
-IBM Operational Decision Manager Server for Non-Production Environment
-
-- Conversion Entitlement Ratio: 2 VPCs/ 5 VPCs
-
-- Use Limitation: Non-Production
-
-Automation Document Processing (Component of the Program)
-
-- Conversion Entitlement Ratio: 1 VPC/ 1 VPC
-
-Automation Document Processing (Component of the Program)
-
-- Conversion Entitlement Ratio: 2 VPC/ 1 VPC
-
-- Use Limitation: Non-Production
-
-IBM Datacap Processor Value Unit
-
-- Conversion Entitlement Ratio: 1 VPC/ 2 VPC
-
-IBM Datacap for Non-Production Environment Processor Value Unit
-
-- Conversion Entitlement Ratio: 1 VPC/ 1 VPC
-
-- Use Limitation: Non-Production
-
-IBM Datacap Insight Edition Add-On Processor Value Unit
-
-- Conversion Entitlement Ratio: 1 VPC/ 2 VPC
-
-IBM Datacap Insight Edition Add-on for Non-Production Environment Processor Value Unit
-
-- Conversion Entitlement Ratio: 1 VPC/ 1 VPC
-
-- Use Limitation: Non-Production
-
-IBM Content Collector for Email, Files & Sharepoint
-
-- Conversion Entitlement Ratio: 1 VPC/ 3 VPC
-
-- Conversion Entitlement Ratio: 200 Authorized User/ 1 VPC
-
-- Conversion Entitlement Ratio: 499 Employee User/ 1 VPC
-
-- Conversion Entitlement Ratio: 2000 Infrequent User/ 1 VPC
-
-- Conversion Entitlement Ratio: 40900 External User/ 1 VPC
-
-IBM Content Collector for Email, Files & Sharepoint for Non-Production
-
-- Conversion Entitlement Ratio: 2 VPC/ 3 VPC
-
-- Use Limitation: Non-Production
-
-IBM Content Collector for SAP
-
-- Conversion Entitlement Ratio: 1 VPC/ 3 VPC
-
-- Conversion Entitlement Ratio: 36 Authorized User/ 1 VPC
-
-- Conversion Entitlement Ratio: 72 Employee User/ 1 VPC
-
-- Conversion Entitlement Ratio: 360 Infrequent User/ 1 VPC
-
-- Conversion Entitlement Ratio: 6860 External User/ 1 VPC
-
-IBM Content Collector for SAP for Non-Production
-
-- Conversion Entitlement Ratio: 2 VPC/ 3 VPC
-
-- Use Limitation: Non-Production
-
-IBM Robotic Process Automation Platform
-
-- Conversion Flat Entitlement: Licensee may convert 2 VPCs of the Program to use 1 Install of the listed program. Regardless of the number of entitlements obtained to the Program Licensee's use of the listed program is limited to the one-time listed conversion.
-
-IBM Robotic Process Automation Environment add-on
-
-- Conversion Entitlement Ratio: 1 Virtual Server/ 1 VPC
-
-IBM Robotic Process Automation Unattended Bot Agent add-on
-
-- Conversion Entitlement Ratio: 1 Concurrent Connection/ 1 VPC
-
-IBM Robotic Process Automation Attended Bot Agent add-on
-
-- Conversion Entitlement Ratio: 5 Concurrent Connection/ 1 VPC
-
-Process Mining
-
-- Conversion Entitlement Ratio: 3 Processes/ 1 VPC
-
-"Conversion Entitlement Ratio n/m" means that Licensee can convert some number ('n') entitlements of the indicated metric for the listed program for every specified number ('m') entitlements of the specified metric for the Program. Once converted, Licensee may only use such converted entitlements for the listed program. The specified conversion does not apply to any entitlements for the Program that are not of the required metric type.
-
-"Non-Production" means that the Bundled Program can only be deployed as part of Licensee's internal development and test environment for internal non-production activities, including but not limited to testing, performance tuning, fault diagnosis, internal benchmarking, staging, quality assurance activity and/or developing internally used additions or extensions to the Program using published application programming interfaces. Licensee is not authorized to use any part of the Bundled Program for any other purposes without acquiring the appropriate production entitlements.
-
-Red Hat Products
-
-Red Hat Products are licensed separately and are supported by IBM only when used in support of the Program and only while Licensee has Software Subscription and Support in effect for the Program. The below entitlement restrictions apply solely to any Software Subscription and Support in effect for the Program and do not restrict Licensee's use of the Red Hat Products, which are licensed separately. Licensee agrees that its use of and support for the Red Hat Products are subject to the following terms (https://www.redhat.com/en/about/agreements), with the exception of the IBM backup policy and temporary use policy as referenced in Section 11 Compliance Verification of the International Program License Agreement, which govern backups and temporary use for Red Hat Products included in the Program.
-
-Red Hat OpenShift Container Platform
-
-- Additional Entitlement Ratio: 3 VPC/ 1 VPC
-
-"Additional Entitlement Ratio n/m" means that Licensee receives some number ('n') entitlements of the indicated metric for the identified program for every specified number ('m') entitlements of the specified metric for the Program as a whole. The specified ratio does not apply to any entitlements for the Program that are not of the required metric type. The number of entitlements for the identified program is rounded up to a multiple of 'n'.
-
-If the Client has acquired the Program as a result of a trade up or subscription license upgrade for the IBM Cloud Pak for Business Automation and IBM Business Automation Workflow User-Based Trade Up and Subscription License Upgrade Restriction, the Client must measure deployment for the trade up and subscription license upgrade on the user-based metrics of Authorized User, Employee User, External User, Concurrent User, and/or Infrequent User. No other metric shall be used for deployment measurement for license trade up and subscription license upgrade and subsequent additional license to this Program.
-
-Infrequent User
-
-Infrequent User is a unit of measure by which the Program can be licensed. Any Infrequent Users given access to the Program requires an entitlement. An Infrequent User is an Authorized User who accesses the Program not more than one hundred twenty (120) times in any consecutive 12 month period. A single access is comprised of one or more interactions between the Infrequent User and the Program or actions performed on behalf of the Infrequent User by the Program, all within a consecutive 15 minute period.
-
-Licensee must track accesses by Infrequent Users to verify that they meet the access limitations of Infrequent Users. Licensee agrees to provide to IBM and its auditors details of the tracking mechanism described above, upon request.
-
-Employee User
-
-Employee User is a unit of measure by which the Program can be licensed. An Employee User is a unique person employed in Licensee's Enterprise, whether or not given access to the Program, or a unique person otherwise paid by or acting on behalf of Licensee's Enterprise who is given access to the Program in any manner directly or indirectly (for example: via a multiplexing program, device, or application server) through any means. An entitlement for an Employee User is unique to that Employee User and may not be shared, nor may it be reassigned other than for the permanent transfer of the entitlement to another person. Licensee must acquire sufficient employee user entitlements to cover all employees and any other unique persons paid by or acting on behalf of Licensee's Enterprise.
-
-External User
-
-External User is a unit of measure by which the Program can be licensed. An External User is a unique person, not employed in, paid by, or acting on behalf of Licensee's Enterprise, who is given access to the Program in any manner directly or indirectly (for example: via a multiplexing program, device, or application server) through any means. A person who is employed in or paid by Licensee's Enterprise, but is not accessing the Program within the scope of that relationship may be an External User. An entitlement for an External User is unique to that External User and may not be shared, nor may it be reassigned other than for the permanent transfer of the entitlement to another person.
-
-Additional IBM DB2 Standard Edition Details
-
-The Supporting Program may use a maximum of 16 processor cores and 128 GB of memory on each physical or virtual server; however, if the Supporting Program is used on a cluster of servers configured to work together using database partitioning or other permitted clustering technology, the Supporting Program may use a maximum of 16 processor cores and 128 GB of memory across all virtual or physical servers in that cluster.
-
-L/N: L-ASAY-BYZKLB
-
-D/N: L-ASAY-BYZKLB
-
-P/N: L-ASAY-BYZKLB 
+L/N: L-ASAY-CCQCLE 
+D/N: L-ASAY-CCQCLE 
+P/N: L-ASAY-CCQCLE 
