@@ -8790,8 +8790,8 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     info "Checking \"ibm-operator-catalog\" exist or not in project \"openshift-marketplace\""
     printf "\n"
     if ${CLI_CMD} get catalogsource -n openshift-marketplace --no-headers --ignore-not-found | grep ibm-operator-catalog >/dev/null 2>&1; then
-        echo "${RED_TEXT}[WARNING]: ${RESET_TEXT}${YELLOW_TEXT}Detected \"ibm-operator-catalog\" catalog source in project \"openshift-marketplace\".  This configuration could cause IBM Cloud Pak foundational services script to timeout and potentially impact the upgrade, if you encounter a timeout, you could follow the tips from the output and rerun the commands to continue upgrade.${RESET_TEXT}"
-        read -rsn1 -p"Press any key to continue";echo
+        echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${RED_TEXT}Detected \"ibm-operator-catalog\" catalog source in project \"openshift-marketplace\".  This configuration is not yet supported for upgrade and will be supported in a future interim fix.  The upgrade will terminate.${RESET_TEXT}"
+        exit 1
     fi
 
     cp4a_operator_csv_name_target_ns=$(${CLI_CMD} get csv -n $TARGET_PROJECT_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
