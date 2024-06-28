@@ -1,0 +1,367 @@
+###############################################################################
+##
+##Licensed Materials - Property of IBM
+##
+##(C) Copyright IBM Corp. 2021, 2023. All Rights Reserved.
+##
+##US Government Users Restricted Rights - Use, duplication or
+##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+##
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: icp4adeploy
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 24.0.0
+spec:
+  appVersion: 24.0.0
+
+  ## MUST exist, used to accept ibm license, valid value only can be "accept" 
+  ibm_license: ""
+
+  #################################################################################################################
+  ##  The contents of this template CR file reflect only the specific parameters and configuration
+  ##  settings applicable to the represented ICP4A capability.
+  ##
+  ##  These values/configuration sections are to be used when manually assembling or updating the main
+  ##  ICP4A CR that is being applied in order to install and ICP4A environment.
+  ##
+  ##  If you are in the process of preparing a new install of an ICP4A environment, you should merge
+  ##  the required values and configuration sections from this file into the
+  ##  starting point CR template: ibm_cp4a_cr_enterprise[_FC]_foundation.yaml available in the
+  ##  same location as this template.
+  ##
+  ##  If you updating an existing ICP4A environment, you should merge the required values and configuration
+  ##  sections from this templated in the main ICP4A CR file already applied in the environment.
+  ##
+  ######################################################################################################################
+
+
+  ##########################################################################
+  ## This section contains the shared configuration for all CP4A components #
+  ##########################################################################
+  shared_configuration:
+
+    ## CP4A patterns or capabilities to be deployed. This CR represents the "decisions_ads" pattern that brings ADS Designer and ADS Runtime.
+
+    sc_deployment_patterns: decisions_ads
+
+    ## The optional components to be installed if listed here.
+    ## This is normally populated by the User script based on input from the user.
+    ## User can also manually specify the optional components to be deployed here.
+    ## ADS has two 'ads_designer' and 'ads_runtime' optional components. If 'ads_runtime' is here, it is possible to also add 'bai'.
+    ## If ads_designer is set, you also have to set the 'ads_configuration.decision_designer.enabled' flag to true to install it.
+    ## If ads_runtime is set, you also have to set the 'ads_configuration.decision_runtime.enabled' flag to true to install it.
+    sc_optional_components:
+
+    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or 
+    ## know the reason to change this value, please leave the default value.
+    sc_deployment_context: "CP4A"
+
+    ## If your Openshift cluster is configured for Hugepages and you want the applicable deployment resources to consume Hugepages.
+    ## You must set "true" for sc_hugepages.enabled. Default is "false".
+    ## You must set type for "Hugepages" like hugepages-2Mi or hugepages-1Gi. Default is "hugepages-2Mi".
+    ## You must set size for value which is suitable for Openshift cluster.
+    sc_hugepages:
+      enabled: false
+      type: ""
+      value: "" 
+
+    sc_egress_configuration:
+      ## Required. Enable or disable egress access to external systems.
+      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true". 
+      ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
+      sc_restricted_internet_access: true
+      ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
+      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
+      ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
+      sc_api_namespace:
+      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Default are 443,6443 for OCP and ROKS
+      sc_api_port:
+      ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
+      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
+      ## Default is "openshift-dns" for OCP and ROKS
+      sc_dns_namespace:
+      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Default are 53,5353 for OCP and ROKS
+
+    ## Enable/disable FIPS mode for the deployment (default value is "false")
+    ## Note: If set as "true", in order to complete enablement of FIPS for CP4BA, please refer to "FIPS wall" configuration in IBM documentation.
+    enable_fips: false
+
+  ########################################################################
+  ########   IBM Business Automation Decision Services            ########
+  ########################################################################
+
+  ads_configuration:
+
+    # Optional: You can specify a pvc where ADS logs will be stored. This PVC has to exist and be bound before ADS deployment.
+    # It can be shared with other cp4ba components as it will capture pod logs in ADS dedicated folders.
+    # To actually produce logs in this pvc set decision_designer.mount_pvc_for_logstore to true and/or decision_runtime.mount_pvc_for_logstore to true.
+    #existing_pvc_for_logstore:
+
+    # Optional: You can specify a profile size for ADS if different from CloudPak - valid values are small,medium,large - default is small.
+    # Resources in this file are reflecting small profile ones.
+    #deployment_profile_size: "small"
+
+    ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower.
+    ## For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
+    ## NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start. This custom profile should be created at the worker nodes.
+    ## If it is not set, it will fall back to shared_configuration.sc_seccomp_profile
+    seccomp_profile:
+    #  type: # RuntimeDefault, Localhost, Unconfined
+    #  localhost_profile: # Local path of custom seccomp profile when type `Localhost` is used. The custom profile must be accessible by the pod and must exist locally on all worker nodes.  For example: `/profiles/fine-grained.json`
+
+    decision_designer:
+      enabled: false
+      admin_secret_name: ibm-dba-ads-designer-secret
+
+      # Optional: You can specify a profile size for ADS Designer if different from CloudPak or from ADS - valid values are small,medium,large - default is small.
+      # Resources in this file are reflecting small profile ones.
+      #deployment_profile_size: "small"
+
+      # Optional: You can set this property to true to activate pvc logging for designer.
+      #mount_pvc_for_logstore: false
+
+      # Config maps containing certificates to trust.
+      git_servers_certs:
+      ml_providers_certs:
+      other_trusted_certs:
+
+    decision_runtime:
+      enabled: false
+      admin_secret_name: ibm-dba-ads-runtime-secret
+      # Authentication mode can be "zen", basic" or "none". Default mode is "zen" if not specified.
+      authentication_mode: "zen"
+
+      # Optional: You can specify a profile size for ADS Runtime if different from CloudPak or from ADS - valid values are small,medium,large,extra-large - default is small.
+      # Resources in this file are reflecting small profile ones.
+      #deployment_profile_size: "small"
+
+      # Optional: You can set this property to true to activate pvc logging for runtime.
+      #mount_pvc_for_logstore: false
+
+      # Optional, default "fs". Can be "fs" or "s3".
+      archive_storage_type: "fs"
+#       s3: # Optional, only used if archive_storage_type is "s3"
+#         # Following parameters must be set if archive_storage_type is "s3"
+#         bucket_name:
+#         region:
+#         server_url:
+#         # Optional
+#         secret_name:
+#         storage_region:
+#         connection_timeout:   # in milliseconds. Default value 0 meaning infinite.
+#         request_timeout:      # in milliseconds. Default value 0 meaning infinite.
+#         deployment_space_deletion_delay:  # in days. Default value 0 meaning immediate cleaning.
+
+
+      # Event emitter, needs Insight Engine (BAI).
+      event_emitter:
+        enabled: true  # default true, optional. Will be ignored if BAI is not installed.
+#        kafka_topic:  # default "ads-decision-execution-common-data", optional.
+#        kafka_properties_config_map_name: # default null, see KC for content. Optional.
+#        elasticsearch_index:  # default "ads-decision-execution-common-data", optional. See KC for elasticsearch indexes names criteria.
+#        allow_missing_events : # default true, optional.
+#        queue_capacity:  # default 50000, optional.
+#        dequeur_threads: # default null,  as startup time, optional.
+
+
+    rr_integration:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
+        tag: "24.0.0"
+
+      resources:
+        requests:
+          cpu: '200m'
+          memory: '256Mi'
+        limits:
+          cpu: '500m'
+          memory: '512Mi'
+
+    mongo:
+#      # Optional: defaulted to false. (true in starter mode)
+#      # Embedded mongoDB is not recommended in production. It is not enabled by default.
+#      use_embedded: false
+      # If you provide an external mongo db, fill the mongo connection string in the admin secret.
+      admin_secret_name: ibm-dba-ads-mongo-secret
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/mongo
+        tag: 6.0.15
+
+      persistence:
+        use_dynamic_provisioning: true
+#       # Optional: defaulted to shared_configuration.storage_configuration.sc_dynamic_storage_classname
+#       # or shared_configuration.storage_configuration.sc_fast_file_storage_classname if use_dynamic_provisioning is false or shared_configuration.storage_configuration.sc_dynamic_storage_classname is not defined
+#        storage_class_name:
+        resources:
+          requests:
+            storage: 3Gi
+
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '256Mi'
+        limits:
+          cpu: '1000m'
+          memory: '1Gi'
+
+    rest_api:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-restapi
+        tag: "24.0.0"
+      replica_count: 1
+
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '800Mi'
+        limits:
+          cpu: '1000m'
+          memory: '1.5Gi'
+#     Optional: Internal HTTP Client Timeout in milliseconds. Default value is 60000.
+#      http_client_timeout: 60000
+
+    credentials_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-credentials
+        tag: "24.0.0"
+      replica_count: 1
+
+      resources:
+        requests:
+          cpu: '250m'
+          memory: '800Mi'
+        limits:
+          cpu: '1000m'
+          memory: '1.5Gi'
+
+    git_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
+        tag: "24.0.0"
+      replica_count: 1
+
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '800Mi'
+        limits:
+          cpu: '1000m'
+          memory: '1.5Gi'
+
+    parsing_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-parsing
+        tag: "24.0.0"
+      replica_count: 1
+
+      resources:
+        requests:
+          cpu: '250m'
+          memory: '800Mi'
+        limits:
+          cpu: '1000m'
+          memory: '1.5Gi'
+          
+      autoscaling:
+        enabled: false # Default value is true if designer profile is set to "extra-large".
+        min_replicas: 2
+        max_replicas: 5
+        target_cpu_average_utilization: 160
+
+    run_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-run
+        tag: "24.0.0"
+      replica_count: 1
+
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '800Mi'
+        limits:
+          cpu: '1000m'
+          memory: '1.5Gi'
+
+      autoscaling:
+        enabled: false # Default value is true if designer profile is set to "extra-large".
+        min_replicas: 2
+        max_replicas: 5
+        target_cpu_average_utilization: 160
+
+    decision_runtime_service:
+      image:
+        repository: cp.icr.io/cp/cp4a/ads/ads-runtime
+        tag: "24.0.0"
+      replica_count: 1
+
+      # Whether the decision runtime should include an exception stack trace when an incident occurs.
+      # This should only be used for debugging purposes, as a stack trace may expose sensitive internal data.
+      stack_trace_enabled: false
+
+      tls:
+        # Name of the config map holding the TLS certificates.
+        certs_config_map_name:
+        # Whether self-signed certificates are allowed.
+        allow_self_signed: false
+        verify_hostname: true
+
+      storage_decision_check_status_interval: 30000 # The interval, in milliseconds, between checks and updates of the cached decisions, default 30000, optional
+
+      cache:
+        config:
+          expiry: ''
+          resources: |-
+            <heap unit="entries">100</heap>
+
+      metadata:
+        cache:
+          config:
+            expiry: ''
+            check_interval: 30000
+            manager:
+              threads: 1
+            resources: |-
+              <heap unit="entries">100</heap>
+
+      decision_selection:
+        threads: 1
+        update_interval: 120000 # milliseconds (2 minutes)
+        query_interval: 1000 # milliseconds (1 minute)
+        cache:
+          config:
+             expiry: ''
+             resources: |-
+                <heap unit="entries">100</heap>
+
+      resources:
+        requests:
+          cpu: '500m'
+          memory: '2Gi'
+        limits:
+          cpu: '1000m'
+          memory: '3Gi'
+
+      # Persistence is only used if decision_runtime.archive_storage_type is unset or set to "fs"
+      persistence:
+        use_dynamic_provisioning: true
+#       # Optional: defaulted to shared_configuration.storage_configuration.sc_dynamic_storage_classname
+#       # or shared_configuration.storage_configuration.sc_fast_file_storage_classname if use_dynamic_provisioning is false or shared_configuration.storage_configuration.sc_dynamic_storage_classname is not defined
+#        storage_class_name:
+        resources:
+          requests:
+            storage: 1Gi
+
+
+      autoscaling:
+        enabled: false # Default value is true if decision runtime profile is set to "extra-large".
+        min_replicas: 2
+        max_replicas: 5
+        target_cpu_average_utilization: 160

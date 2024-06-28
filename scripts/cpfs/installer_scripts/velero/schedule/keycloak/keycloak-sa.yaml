@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: keycloak-backup-sa
+  namespace: <keycloak namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: keycloak-data

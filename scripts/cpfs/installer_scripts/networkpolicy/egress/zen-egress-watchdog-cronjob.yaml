@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-watchdog-cronjob
+  namespace: "zenNamespace"
+  labels:
+    component: cpfs
+spec:
+  podSelector:
+    matchLabels:
+      icpdsupport/app: "watchdog-cronjob"
+  policyTypes:
+  - Egress
+  egress:
+  - {}

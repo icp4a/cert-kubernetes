@@ -1,0 +1,64 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: keycloak-backup
+  namespace: <keycloak namespace>
+spec:
+  selector:
+    matchLabels:
+      foundationservices.cloudpak.ibm.com: keycloak-data
+  template:
+    metadata:
+      annotations:
+        backup.velero.io/backup-volumes: keycloak-backup
+        pre.hook.backup.velero.io/command: '["sh", "-c", "/keycloak/br_keycloak.sh backup <keycloak namespace>"]'
+        pre.hook.backup.velero.io/timeout: 300s
+        post.hook.backup.velero.io/command: '["sh", "-c", "rm -rf /keycloak/keycloak-backup/database && rm -rf /keycloak/keycloak-backup/secrets"]'
+        post.hook.restore.velero.io/command: '["sh", "-c", "/keycloak/br_keycloak.sh restore <keycloak namespace>"]'
+        post.hook.restore.velero.io/wait-timeout: 300s
+        post.hook.restore.velero.io/exec-timeout: 300s
+        post.hook.restore.velero.io/timeout: 720s
+      name: keycloak-backup
+      namespace: <keycloak namespace>
+      labels:
+        foundationservices.cloudpak.ibm.com: keycloak-data
+    spec:
+        containers:
+        - command:
+          - sh
+          - -c
+          - sleep infinity
+          image: icr.io/cpopen/cpfs/cpfs-utils:4.3.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
+          imagePullPolicy: IfNotPresent
+          name: keycloak-br
+          resources:
+            limits:
+              cpu: 500m
+              ephemeral-storage: 512Mi
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              ephemeral-storage: 128Mi
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /keycloak/keycloak-backup
+            name: keycloak-backup-mount
+          - name: scripts
+            mountPath: "/keycloak"
+        dnsPolicy: ClusterFirst
+        schedulerName: default-scheduler
+        securityContext:
+          runAsNonRoot: true
+        serviceAccount: keycloak-backup-sa
+        serviceAccountName: keycloak-backup-sa
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: keycloak-backup-mount
+          persistentVolumeClaim:
+            claimName: keycloak-backup-pvc
+        - name: scripts
+          configMap:
+            name: keycloak-br-configmap
+            defaultMode: 0777

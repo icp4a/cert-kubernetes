@@ -1,0 +1,95 @@
+
+###############################################################################
+##
+##Licensed Materials - Property of IBM
+##
+##(C) Copyright IBM Corp. 2021, 2023. All Rights Reserved.
+##
+##US Government Users Restricted Rights - Use, duplication or
+##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+##
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: icp4adeploy
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 24.0.0
+spec:
+  appVersion: 24.0.0
+
+  ## MUST exist, used to accept ibm license, valid value only can be "accept" 
+  ibm_license: ""
+
+  #################################################################################################################
+  ##  The contents of this template CR file reflect only the specific parameters and configuration 
+  ##  settings applicable to the represented ICP4A capability. 
+  ##   
+  ##  These values/configuration sections are to be used when manually assembling or updating the main 
+  ##  ICP4A CR that is being applied in order to install an ICP4A environment. 
+  ##  
+  ##  If you are in the process of preparing a new install of an ICP4A environment, 
+  ##  you should merge the required values and configuration sections from this file into the   
+  ##  starting point CR template: ibm_cp4a_cr_enterprise_foundation.yaml available in the
+  ##  same location as this template. 
+  ##  
+  ##  If you updating an existing ICP4A environment, you should merge the required values and configuration
+  ##  sections from this template in the main ICP4A CR file already applied in the environment.  
+  ##  
+  ######################################################################################################################
+
+  shared_configuration:
+
+    ## CP4A patterns or capabilities to be deployed. This CR represents Operational Decsision Manage "decisions" pattern
+    ## that brings Decision Center, Rule Execution Server and Decision Runner, based on the user specification in the 
+    ## sc_optional_components specification
+    sc_deployment_patterns: decisions
+
+    ## The optional components to be installed if listed here.
+    ## This is normally populated by the deploy script based on input from the user.
+    ## User can also manually specify the optional components to be deployed here.
+    ## This pattern has has 5: decisionCenter (Business Console), decisionRunner (Testing and Simulation runtime), decisionServerRuntime (Rule Execution Server), bai (Business Automation Insight), ums (User Management Service) optionals components.
+    ## If decisionCenter is set, you also have to set the 'odm_configuration.decisionCenter.enabled' flag to true to install it.
+    ## If decisionRunner is set, you also have to set the 'odm_configuration.decisionRunner.enabled' flag to true to install it.
+    ## If decisionServerRuntime is set, you also have to set the 'odm_configuration.decisionRuntime.enabled' flag to true to install it.
+    sc_optional_components:
+
+    # Optional: You can specify a profile size for ODM if different from CloudPak - valid values are small,medium,large - default is small.
+    # Resources in this file are reflecting small profile ones.
+    sc_deployment_profile_size: "small"
+    ## Optional: You can provide your own driver to use your own external database by setting the sc_drivers_url parameter.
+    ## The sc_driver_url parameter accepts compressed files (in .zip, .tar, .tar.gz, .tar.bz2, or .tar.xz formats) with the following structure: jdbc/db2|oracle|postgresql|sqlserver/driver_files.
+    # sc_drivers_url:
+
+  ## The beginning section of database configuration for CP4A
+  datasource_configuration:
+    dc_odm_datasource:
+      ## Provide the database type from your infrastructure. 
+      ## The possible values are "db2" / "postgresql" / "sqlserver" / "oracle".
+      dc_database_type: "<Required>"
+      ## Provide the database server name or IP address of the database server.
+      database_servername: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000".
+      dc_common_database_port: "<Required>"
+      ## Provide the name of the database for ODM.  For example: "ODMDB"
+      dc_common_database_name: "<Required>"
+      ## The name of the secret that contains the credentials to connect to the database.
+      dc_common_database_instance_secret: "<Required>"
+      ## Set to true when the database is using SSL
+      dc_common_ssl_enabled: true
+      ## If SSL is used to secure the database connection, specify the name of the SSL secret.
+      dc_ssl_secret_name: "<Required>"
+
+  ########################################################################
+  ########      IBM Operational Decision Manager configuration    ########
+  ########################################################################
+  odm_configuration:
+    # For Zen Proxy/IAM configuration
+    # customization:
+      ## Customizes user authentication and management by realizing mapping between IAM Roles and LDAP groups.
+    #  authSecretRef: "<Required>"
+      # Specify the name of the topic that is used to send ODM events to the Kafka provider.
+    #  bai_kafka_topic:

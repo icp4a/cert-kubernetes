@@ -1,0 +1,17 @@
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: allow-webhook-access-from-apiserver
+  namespace: "csNamespace"
+  labels:
+    component: cpfs
+spec:
+  podSelector: {}
+  ingress:
+    - from:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              apiserver: 'true'
+  policyTypes:
+    - Ingress

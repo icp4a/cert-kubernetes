@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: access-to-volumes
+  namespace: "csNamespace"
+  labels:
+    component: cpfs3
+spec:
+  podSelector:
+    matchLabels:
+      icpdsupport/app: volumes
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {} 

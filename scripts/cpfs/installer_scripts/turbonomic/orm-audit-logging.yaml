@@ -1,0 +1,15 @@
+apiVersion: turbonomic.com/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: auditloggings.operator.ibm.com
+  labels:
+    component: cpfs
+spec:
+  resourceMappings:
+    - srcResourceSpec:
+        kind: DaemonSet
+        componentNames:
+          - audit-logging-fluentd-ds
+      resourceMappingTemplates:
+        - srcPath: .spec.template.spec.containers[?(@.name=="fluentd")].resources
+          destPath: .spec.resources

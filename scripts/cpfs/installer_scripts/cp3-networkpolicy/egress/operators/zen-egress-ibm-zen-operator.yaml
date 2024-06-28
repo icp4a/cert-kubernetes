@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-ibm-zen-operator
+  namespace: "opNamespace"
+  labels:
+    component: cpfs3
+spec:
+  egress:
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          component: "zen-minio"
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          component: "zen-core-api"
+  - ports:
+    - port: 443
+      protocol: TCP
+    - port: 6443
+      protocol: TCP
+    to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          apiserver: "true"
+  podSelector:
+    matchLabels:
+      name: "ibm-zen-operator"
+  policyTypes:
+  - Egress

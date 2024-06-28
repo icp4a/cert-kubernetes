@@ -1,0 +1,2092 @@
+###############################################################################
+##
+##Licensed Materials - Property of IBM
+##
+##(C) Copyright IBM Corp. 2021, 2023. All Rights Reserved.
+##
+##US Government Users Restricted Rights - Use, duplication or
+##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+##
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: icp4adeploy
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 24.0.0
+spec:
+
+  ## MUST exist, used to accept ibm license, valid value only can be "accept"
+  ibm_license: ""
+
+  appVersion: 24.0.0
+  ##########################################################################
+  ## This section contains the shared configuration for all CP4A components #
+  ##########################################################################
+  shared_configuration:
+
+    ## FileNet Content Manager (FNCM) license and possible values are: user, non-production, and production.
+    ## This value could be different from the other licenses in the CR.
+    sc_deployment_fncm_license: "<Required>"
+ 
+    ## Use this parameter to specify the license for the CP4A deployment and
+    ## the possible values are: non-production and production and if not set, the license will
+    ## be defaulted to production.  This value could be different from the other licenses in the CR.
+    sc_deployment_license: "<Required>"
+
+    ## All CP4A components must use/share the image_pull_secrets to pull images
+    image_pull_secrets:
+    - ibm-entitlement-key
+
+    ## All CP4A components must use/share the same docker image repository.  For example, if IBM Entitled Registry is used, then
+    ## it should be "cp.icr.io".  Otherwise, it will be a local docker registry.
+    sc_image_repository: cp.icr.io
+
+    ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that corresponds to a user ID.
+    ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is optional. It is not supported on OCP and ROKS.
+    sc_run_as_user:
+
+    ## If your Openshift cluster is configured for Hugepages and you want the applicable deployment resources to consume Hugepages.
+    ## You must set "true" for sc_hugepages.enabled. Default is "false".
+    ## You must set type for "Hugepages" like hugepages-2Mi or hugepages-1Gi. Default is "hugepages-2Mi".
+    ## You must set size for value which is suitable for Openshift cluster.
+    sc_hugepages:
+      enabled: false
+      type: ""
+      value: "" 
+
+    ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower. 
+    ## For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
+    ## NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start.  This custom profile should be created at the worker nodes.
+    sc_seccomp_profile:
+    #  type: # RuntimeDefault, Localhost, Unconfined
+    #  localhost_profile: # Local path of custom seccomp profile when type `Localhost` is used. The custom profile must be accessible by the pod and must exist locally on all worker nodes.  For example: `/profiles/fine-grained.json`.
+
+    images:
+      keytool_job_container:
+        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer
+        tag: "24.0.0"
+      dbcompatibility_init_container:
+        repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer
+        tag: "24.0.0"
+      keytool_init_container:
+        repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer
+        tag: "24.0.0"
+      umsregistration_initjob:
+        repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
+        tag: "24.0.0"
+
+      ## All CP4A components should use this pull_policy as the default, but it can override by each component
+      pull_policy: IfNotPresent
+
+    ## Used to sign all CP4A internal certificates for internal services communications. In most cases, this value should not be changed.
+    ## All CP4A components must use/share the root_ca_secret in order for integration
+    root_ca_secret: icp4a-root-ca
+
+    ## Shared secret containing a wildcard certificate (and concatenated signers) to be used by all routes, unless overwritten for a specific component route.
+    ## If this is not defined, all external routes will be signed with root_ca_secret.
+    ## Starting with CP4BA 21.0.3 release, this parameter only applies to non-OCP deployments. For OCP, all external traffic is routed via a 
+    ## common front door in Platform UI so custom TLS certificates must be configured in AutomationUIConfig. Please refer 
+    ## to https://www.ibm.com/docs/en/cloud-paks/1.0?topic=foundation-custom-resources#automationuiconfig for more information.
+    external_tls_certificate_secret:
+
+    ## CP4A patterns or capabilities to be deployed.  This CR represents the "foundation" pattern, which includes the following
+    ## mandatory components: icn (BAN/Navigator), rr (Resource Registry) and optional components: ums, bas, and bai
+    sc_deployment_patterns: foundation
+
+    ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.  User can
+    ## also manually specify the optional components to be deployed here.  For this foundation CR, the optional components are: ums, bas and bai
+    sc_optional_components:
+
+    ## The deployment type as selected by the user.  Possible values are: Starter and Production.
+    sc_deployment_type: Production
+
+    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or
+    ## know the reason to change this value, please leave the default value.
+    sc_deployment_context: "CP4A"
+
+    ## The platform to be deployed specified by the user.  Possible values are: OCP and other.  This is normally populated by the User script
+    ## based on input from the user.
+    sc_deployment_platform:
+
+    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
+    # sc_deployment_hostname_suffix: "{{ meta.namespace }}"
+
+    sc_egress_configuration:
+      ## Required. Enable or disable egress access to external systems.
+      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true". 
+      ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
+      sc_restricted_internet_access: true
+      ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
+      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
+      ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
+      sc_api_namespace:
+      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Default are 443,6443 for OCP and ROKS
+      sc_api_port:
+      ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
+      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
+      ## Default is "openshift-dns" for OCP and ROKS
+      sc_dns_namespace:
+      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Default are 53,5353 for OCP and ROKS
+      sc_dns_port:
+
+    ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
+    sc_ingress_enable: false
+
+    ## For ROKS Ingress, provide TLS secret name for Ingress controller. If you are not using ROKS, comment out this line.
+    sc_ingress_tls_secret_name: <Required>
+
+    ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
+    ## the external service to the component's truststore.
+    trusted_certificate_list: []
+
+    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers,
+    ## all the files must be compressed in a single file.
+    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or
+    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed
+    ## file should have the following structure and content:
+    ##   /jdbc/db2/db2jcc4.jar
+    ##   /jdbc/db2/db2jcc_license_cu.jar
+    ##   /jdbc/oracle/ojdbc8.jar
+    ##   /saplibs/libicudata.so.50
+    ##   /saplibs/...
+    ## Then you need to put the compressed package on an anonymously accessible web server and provide the link here.
+    ## The CR can handle .zip files using unzip as well as .tar, .tar.gz, .tar.bz2, .tar.xz. Does not handle .gz files, .bz2 files, .xz, or .zst files that do not contain a .tar archive.
+    sc_drivers_url:
+
+    ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
+    ## This secret is also used by Workflow and BAStudio to store AES encryption key.
+    encryption_key_secret: ibm-iaws-shared-key-secret
+
+    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
+    # sc_deployment_hostname_suffix: "{{ meta.namespace }}"
+
+    ## On OCP 3.x and 4.x, the User script will populate these three (3) parameters based on your input for "production" deployment.
+    ## If you manually deploying without using the User script, then you would provide the different storage classes for the slow, medium
+    ## and fast storage parameters below.  If you only have 1 storage class defined, then you can use that 1 storage class for all 3 parameters.
+    ## sc_block_storage_classname is for Zen, Zen requires/recommends block storage (RWO) for metastoreDB
+    storage_configuration:
+      sc_slow_file_storage_classname: "<Required>"
+      sc_medium_file_storage_classname: "<Required>"
+      sc_fast_file_storage_classname: "<Required>"
+      sc_block_storage_classname: "<Required>"
+
+    # Enables or disables the deployment of AutomationBase from IBM Automation foundation.
+    # AutomationBase is deployed only if Business Automation Insights is part of the ICP4BA deployment
+    # and this parameter is set to true.
+    # Set this parameter to false to deploy a custom configuration of AutomationBase or
+    # to customize an existing instance with no risk of the ICP4BA operator overriding it
+    # with the default configuration.
+    # Default: true
+    sc_install_automation_base: true
+
+    ## IAM Settings
+    sc_iam:
+      ## Provide non default admin user for IAM in case you do not want to use cpadmin
+      default_admin_username: ""
+
+    ## Enable/disable FIPS mode for the deployment (default value is "false")
+    ## Note: If set as "true", in order to complete enablement of FIPS for CP4BA, please refer to "FIPS wall" configuration in IBM documentation.
+    enable_fips: false
+
+  ## The beginning section of LDAP configuration for CP4A
+  ldap_configuration:
+    ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory" or "Custom"
+    lc_selected_ldap_type: "<Required>"
+
+    ## The name of the LDAP server to connect
+    lc_ldap_server: "<Required>"
+
+    ## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc.
+    lc_ldap_port: "<Required>"
+
+    ## The LDAP bind secret for LDAP authentication.  The secret is expected to have ldapUsername and ldapPassword keys.  Refer to Knowledge Center for more info.
+    lc_bind_secret: ldap-bind-secret
+
+    ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    lc_ldap_base_dn: "<Required>"
+
+    ## Enable SSL/TLS for LDAP communication. Refer to Knowledge Center for more info.
+    lc_ldap_ssl_enabled: true
+
+    ## The name of the secret that contains the LDAP SSL/TLS certificate.
+    lc_ldap_ssl_secret_name: "<Required>"
+
+    ## The LDAP user name attribute. Semicolon-separated list that must include the first RDN user distinguished names. One possible value is "*:uid" for TDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_user_name_attribute: "<Required>"
+
+    ## The LDAP user display name attribute. One possible value is "cn" for TDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_user_display_name_attr: "<Required>"
+
+    ## The LDAP group base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    lc_ldap_group_base_dn: "<Required>"
+
+    ## The LDAP group name attribute.  One possible value is "*:cn" for TDS and "*:cn" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_group_name_attribute: "*:cn"
+
+    ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
+    lc_ldap_group_display_name_attr: "cn"
+
+    ## The LDAP group membership search filter string.  One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS
+    ## and "(&(cn=%v)(objectcategory=group))" for AD.
+    lc_ldap_group_membership_search_filter: "<Required>"
+
+    ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
+    lc_ldap_group_member_id_map: "<Required>"
+
+    ## Set to true if you want to enable LDAP nested search in IAM, by default it is false
+    lc_ldap_recursive_search: false
+
+    ## Set to true if you want to enable LDAP pagination in IAM, by default it is false
+    lc_enable_pagination: false
+
+    ## If lc_enable_pagination is set to true, then specify the pagination size. If not specified, the following default values will be used:
+    ## IBM Tivoli Directory Server: 20000; Microsoft Active Directory:1000, and Custom: 4500
+    lc_pagination_size: 1000 
+
+    ## add custom group search bases to IAM
+    lc_group_searchbase_list: []
+
+    ## add custom user search bases to IAM
+    lc_user_searchbase_list: []
+    
+    ## The lc_ldap_precheck parameter is used to enable or disable LDAP connection check.
+    ## If set to "true", then LDAP connection check will be enabled.
+    ## if set to "false", then LDAP connection check will not be enabled.
+    # lc_ldap_precheck: true
+
+    ## The User script will uncomment the section needed based on user's input from User script.  If you are deploying without the User script,
+    ## uncomment the necessary section (depending if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
+    # ad:
+    #   lc_ad_gc_host: "<Required>"
+    #   lc_ad_gc_port: "<Required>"
+    #   lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
+    #   lc_group_filter: "(&(cn=%v)(objectcategory=group))"
+    # tds:
+    #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
+    #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+    # custom:
+    #   lc_user_filter: "(&(objectClass=person)(cn=%v))"
+    #   lc_group_filter:  "(&(objectClass=group)(cn=%v))"
+
+    ## This is to add customized IAM SCIM LDAP attributes for this LDAP configuration, If you only add 'scim_configuration_iam', we will create SCIM LDAP attributes mapping using default values and the default value meant for IBM Security Directory Server only. Comment the whole section if you don't want this to be configured.
+    # scim_configuration_iam:
+    #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
+    #   user_unique_id_attribute: dn
+    #   user_external_id_attribute: dn
+    #   user_emails_attribute: mail
+    #   user_name_attribute: uid
+    #   user_display_name_attribute: cn
+    #   user_groups_attribute: memberOf
+    #   user_object_class_attribute: person
+    #   user_principal_name_attribute: uid
+    #   user_given_name_attribute: cn
+    #   user_family_name_attribute: sn
+    #   user_full_name_attribute: cn
+    #   ## Optional:  Uncomment 'user_custom_mapping' and add any custom mapping below
+    #   # user_custom_mapping:
+    #     # <scim_attr_name> : <ldap attr name>
+    #     # like below
+    #     # ibmentryuuid : ibm-entryuuid
+    #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
+    #   group_unique_id_attribute: dn
+    #   group_external_id_attribute: dn
+    #   group_display_name_attribute : cn
+    #   group_members_attribute: member
+    #   group_object_class_attribute: groupOfNames
+    #   group_name_attribute: cn
+    #   group_principal_name_attribute: cn
+    #   ## Optional:  Uncomment 'group_custom_mapping' and add any custom mapping below
+    #   # group_custom_mapping:
+    #     # <scim_attr_name> : <ldap attr name>
+    #     # like below
+    #     # ibmentryuuid : ibm-entryuuid
+
+    ## This section allows to enhance the ldap configuration for the UMS SCIM capability. If lc_user_filter or lc_group_filter cannot handle a custom LDAP filter for user or group searches this section should be enabled.
+    ## optional: enables the liberty ldapEntityType configuration and disables the usage of lc_user_filter, lc_group_filter, lc_ldap_group_member_id_map, lc_ldap_user_name_attribute and lc_ldap_group_name_attribute in the UMS capabilities.
+    ## for detailed information about the ldapEntityType, loginProperty and groupProperties  parameters please see the liberty documentation: https://www.ibm.com/docs/en/was-liberty/nd?topic=configuration-ldapregistry
+    ## default is false
+    lc_use_ldap_entity_type:
+    ## optional: only used if lc_use_ldap_entity_type is true
+    ## default is uid
+    lc_ldap_login_property:
+    ## optional: only used if lc_use_ldap_entity_type is true
+    ## the defaults depends on the lc_selected_ldap_type
+    lc_ldap_entity_type_user:
+      object_class:
+      search_base:
+      search_filter:
+    ## optional: only used if lc_use_ldap_entity_type is true
+    ## the defaults depends on the lc_selected_ldap_type
+    lc_ldap_entity_type_group:
+      object_class:
+      search_base:
+      search_filter:
+    ## optional: only used if lc_use_ldap_entity_type is true
+    ## the defaults depends on the lc_selected_ldap_type
+    lc_ldap_group_properties:
+      # member_attribute:
+        # The name of the member. Required if member_attribute is set
+        # name:
+        # The name of the object class. Required member_attribute is set
+        # object_class:
+        ## the scope options are: all, direct, nested
+        # scope:
+      #membership_attribute:
+        # The name of the membership. Required if membership_attribute is set
+        # name:
+        ## the scope options are: all, direct, nested
+        # scope:
+
+  ## The beginning section of multi ldap configuration for CP4BA
+  # ldap_configuration_<id_name>:
+    #lc_ldap_id: <id_name>
+    ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory" or "Custom"
+    #lc_selected_ldap_type: "<Required>"
+
+    ## The name of the LDAP server to connect
+    #lc_ldap_server: "<Required>"
+
+    ## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc.
+    #lc_ldap_port: "<Required>"
+
+    ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    #lc_ldap_base_dn: "<Required>"
+
+    ## Enable SSL/TLS for LDAP communication. Refer to Knowledge Center for more info.
+    #lc_ldap_ssl_enabled: true
+
+    ## The name of the secret that contains the LDAP SSL/TLS certificate.
+    #lc_ldap_ssl_secret_name: "<Required>"
+
+    ## The LDAP user name attribute.  One possible value is "*:cn" for TDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    #lc_ldap_user_name_attribute: "<Required>"
+
+    ## The LDAP user display name attribute. One possible value is "cn" for TDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    #lc_ldap_user_display_name_attr: "<Required>"
+
+    ## The LDAP group base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    #lc_ldap_group_base_dn: "<Required>"
+
+    ## The LDAP group name attribute.  One possible value is "*:cn" for TDS and "*:cn" for AD. Refer to Knowledge Center for more info.
+    #lc_ldap_group_name_attribute: "*:cn"
+
+    ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
+    #lc_ldap_group_display_name_attr: "cn"
+
+    ## The LDAP group membership search filter string.  One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS and AD
+    #lc_ldap_group_membership_search_filter: "<Required>"
+
+    ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
+    #lc_ldap_group_member_id_map: "<Required>"
+
+    ## The lc_ldap_precheck parameter is used to enable or disable LDAP connection check.
+    ## If set to "true", then LDAP connection check will be enabled.
+    ## if set to "false", then LDAP connection check will not be enabled.
+    # lc_ldap_precheck: true
+
+    ## Uncomment the necessary section (depending if you are using Active Directory (ad) or Tivoli Directory Service (tds) or custom for other LDAP type) accordingly.
+    #ad:
+    #  lc_ad_gc_host: "<Required>"
+    #  lc_ad_gc_port: "<Required>"
+    #  lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
+    #  lc_group_filter: "(&(cn=%v)(objectcategory=group))"
+    #tds:
+    #  lc_user_filter: "(&(cn=%v)(objectclass=person))"
+    #  lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+    #custom:
+    #  lc_user_filter: "(&(objectClass=person)(cn=%v))"
+    #  lc_group_filter:  "(&(objectClass=group)(cn=%v))"
+
+    ## This is to add customized IAM SCIM LDAP attributes for this LDAP configuration, If you only add 'scim_configuration_iam', we will create SCIM LDAP attributes mapping using default values and the default value meant for IBM Security Directory Server only. Comment the whole section if you don't want this to be configured.
+    # scim_configuration_iam:
+    #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
+    #   user_unique_id_attribute: dn
+    #   user_external_id_attribute: dn
+    #   user_emails_attribute: mail
+    #   user_name_attribute: uid
+    #   user_display_name_attribute: cn
+    #   user_groups_attribute: memberOf
+    #   user_object_class_attribute: person
+    #   user_principal_name_attribute: uid
+    #   user_given_name_attribute: cn
+    #   user_family_name_attribute: sn
+    #   user_full_name_attribute: cn
+    #   ## Optional:  Uncomment 'user_custom_mapping' and add any custom mapping below
+    #   # user_custom_mapping:
+    #     # <scim_attr_name> : <ldap attr name>
+    #     # like below
+    #     # ibmentryuuid : ibm-entryuuid
+    #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
+    #   group_unique_id_attribute: dn
+    #   group_external_id_attribute: dn
+    #   group_display_name_attribute : cn
+    #   group_members_attribute: member
+    #   group_object_class_attribute: groupOfNames
+    #   group_name_attribute: cn
+    #   group_principal_name_attribute: cn
+    #   ## Optional:  Uncomment 'group_custom_mapping' and add any custom mapping below
+    #   # group_custom_mapping:
+    #     # <scim_attr_name> : <ldap attr name>
+    #     # like below
+    #     # ibmentryuuid : ibm-entryuuid
+
+  ## The beginning section of database configuration for CP4A
+  datasource_configuration:
+    ## The dc_ssl_enabled parameter is used to support database connection over SSL for DB2/Oracle/PostgreSQL.
+    dc_ssl_enabled: true
+    ## The database_precheck parameter is used to enable or disable CPE/Navigator database connection check.
+    ## If set to "true", then CPE/Navigator database connection check will be enabled.
+    ## if set to "false", then CPE/Navigator database connection check will not be enabled.
+   # database_precheck: true
+    ## The database configuration for ICN (Navigator) - aka BAN (Business Automation Navigator)
+    dc_icn_datasource:
+      ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
+      ## If you want PostgresDB to be created for a Navigator database, set this parameter to true
+      dc_use_postgres: false
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
+      ## GCD and object store configuration above.
+      dc_database_type: "<Required>"
+      ## Provide the ICN datasource name.  The default value is "ECMClientDS".
+      dc_common_icn_datasource_name: "ECMClientDS"
+      database_servername: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_port: "<Required>"
+      ## Provide the name of the database for ICN (Navigator).  For example: "ICNDB". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_name: "<Required>"
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      database_ssl_secret_name: "<Required>"
+      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      dc_oracle_icn_jdbc_url: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+      ######################################################################################
+      ## If the database type is "Db2HADR", then complete the rest of the parameters below.
+      ## Otherwise, remove or comment out the rest of the parameters below.
+      ######################################################################################
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+      ## Connection manager for a data source.
+      connection_manager:
+        ## Minimum number of physical connections to maintain in the pool.
+        min_pool_size: 0
+        ## Maximum number of physical connections for a pool.
+        max_pool_size: 50
+        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
+        max_idle_time: 1m
+        ## Amount of time between runs of the pool maintenance thread.
+        reap_time: 2m
+        ## Specifies which connections to destroy when a stale connection is detected in a pool.
+        purge_policy: EntirePool
+
+  ########################################################################
+  ########   IBM Business Automation Navigator configuration      ########
+  ########################################################################
+  navigator_configuration:
+
+    ## Navigator secret that contains user credentials for LDAP and database
+    ban_secret_name: ibm-ban-secret
+
+    ## The architecture of the cluster.  This is the default for Linux and should not be changed.
+    arch:
+      amd64: "3 - Most preferred"
+
+    ## The number of replicas or pods to be deployed.  The default is 2 replica and for high availability in a production env,
+    ## it is recommended to have 2 or more.
+    replica_count: 2
+
+    ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+    image:
+
+      ## The default repository is the IBM Entitled Registry
+      repository: cp.icr.io/cp/cp4a/ban/navigator-sso
+      tag: "24.0.0"
+
+      ## This will override the image pull policy in the shared_configuration.
+      pull_policy: IfNotPresent
+
+    ## Logging for workloads.  This is the default setting.
+    log:
+      format: json
+
+    ## This is the initial default resource requests.  If more resources are needed,
+    ## make the changes here to meet your requirement.
+    resources:
+      requests:
+        cpu: 1
+        memory: 3072Mi
+      limits:
+        cpu: 1
+        memory: 3072Mi
+
+    ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
+    ## this settings to meet your requirement.
+    auto_scaling:
+      enabled: false
+      max_replicas: 3
+      min_replicas: 2
+      ## This is the default cpu percentage before autoscaling occurs.
+      target_cpu_utilization_percentage: 80
+
+    node_affinity:
+      # Value in this field will be used as kubernetes.io/arch selector values. By default all support arch will be included
+      # It will be transformed to node selector value
+      # - key: kubernetes.io/arch
+      #   operator: In
+      #   values:
+      #     - amd64
+      #     - s390x
+      #     - ppc64le
+      deploy_arch:
+      - amd64
+      - s390x
+      - ppc64le
+      #-------------------------------------
+      # custom_node_selector_match_expression will be added in node selector match expressions.
+      # It accept array list inputs. You can assign mutiple selector match expressions except (kubernetes.io/arch)
+      # Example value:
+      # - key: kubernetes.io/hostname
+      #   operator: In
+      #   values:
+      #     - worker0
+      #     - worker1
+      #     - worker3
+      #-------------------------------------
+      custom_node_selector_match_expression: []
+    ## Values in this field will be used as annotations in all generated pods and it must be valid annotation key value pairs.
+    # Example:
+    # customAnnotationKey: customAnnotationValue
+    ## To include '{{ }}' in annotation like '{{example}}', add a backward slash before curly brace like '\{\{example\}\}'.
+    custom_annotations: {}
+    ## Values in this field will be used as labels in all generated pods and it must be valid label key value pairs
+    # Example:
+    # customLabelKey: customLableValue
+    ## This can be overwritten by componenent level definition for example ecm_configuration.cpe.custom_labels.
+    custom_labels: {}
+
+    ## Set securityContext for Navigator deployment.
+    security_context:
+      ## Controls which group IDs containers add. For example "supplemental_groups: [1000620001,1000620002]"
+      supplemental_groups:
+      ## This can take an array of key value pairs to assign SELinux labels to a Container, for example
+      ## selinux_options:
+        ## level: "s0:c123,c456"
+        ## type: "spc_t
+      selinux_options:
+      
+    # Optional performance tuning for Zen NGINX server.
+    # For more information, please refer to https://www.nginx.com/blog/tuning-nginx/#keepalive_requests and https://nginx.org/en/docs/http/ngx_http_proxy_module.html.
+    zen_performance:
+      # Timeout for establishing a connection with a proxy server. This parameter is optional. The default value is 300s.
+      proxy_connect_timeout: 300
+      # Timeout for transmitting a request to the proxy server. The timeout is set only between two successive write operations, not for the transmission of the whole request. If the proxy server does not receive anything within this time, the connection is closed. This parameter is optional. The default value is 300s.
+      proxy_send_timeout: 300
+      # Timeout for reading a response from the proxy server. The timeout is set only between two successive read operations, not for the transmission of the whole response. If the proxy server does not transmit anything within this time, the connection is closed. This parameter is optional. The default value is 300s.
+      proxy_read_timeout: 300
+      
+    ## Below are the default ICN Production settings.  Make the necessary changes as you see fit.
+    icn_production_setting:
+      timezone: Etc/UTC
+      jvm_initial_heap_percentage: 40
+      jvm_max_heap_percentage: 66
+      jvm_customize_options:
+      icn_jndids_name: ECMClientDS
+      icn_schema: ICNDB
+      icn_table_space: ICNDB
+      allow_remote_plugins_via_http: false
+      ## uncomment copy_files_to_war parameter to copy customized files into Navigator web application.
+      ## The <custom-dir>/navigator_war_filesources.xml must be located in config volume mapping, which is /opt/ibm/wlp/usr/servers/defaultServer/configDropins/overrides
+      # copy_files_to_war: <custom-dir>/navigator_war_filesources.xml
+
+      ## The WalkMe URL references a WalkMe snippet.  This snippet is a piece of JavaScript code that allows WalkMe to be displayed in the application.
+      ## Each WalkMe Editor account has a unique snippet code that can be accessed inside the Editor.
+      #  walkme_url: https://cdn.walkme.com/users/4e7c687193414395aa0411837a9eee4b/test/walkme_4e7c687193414395aa0411837a9eee4b_https.js
+
+      # This section is optional and it takes a list of configmaps. 
+      # A configmap can hold files or environment data but it cannot a mix of both.
+      # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
+      # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
+      # then is_env is required and set it to true.
+      #
+      # custom_configmap:
+      #  - name: <name of configmap>
+      #    volume_path:  # optional
+      #  - name: <name of configmap>
+      #    is_env: # required if the configmap holds environment variables.
+
+    ## Default settings for monitoring
+    monitor_enabled: false
+    ## Default settings for logging
+    logging_enabled: false
+
+    ## Persistent Volume Claims for Navigator.  The Operator will create the PVC using the names below by default.
+    datavolume:
+      existing_pvc_for_icn_cfgstore:
+        name: "icn-cfgstore"
+        size: 1Gi
+      existing_pvc_for_icn_logstore:
+        name: "icn-logstore"
+        size: 1Gi
+      existing_pvc_for_icn_pluginstore:
+        name: "icn-pluginstore"
+        size: 1Gi
+      existing_pvc_for_icnvw_cachestore:
+        name: "icn-vw-cachestore"
+        size: 1Gi
+      existing_pvc_for_icnvw_logstore:
+        name: "icn-vw-logstore"
+        size: 1Gi
+      existing_pvc_for_icn_aspera:
+        name: "icn-asperastore"
+        size: 1Gi
+
+    ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
+    probe:
+      startup:
+        initial_delay_seconds: 120
+        period_seconds: 10
+        timeout_seconds: 10
+        failure_threshold: 6
+      readiness:
+        period_seconds: 10
+        timeout_seconds: 10
+        failure_threshold: 6
+      liveness:
+        period_seconds: 10
+        timeout_seconds: 5
+        failure_threshold: 6
+
+    ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
+    image_pull_secrets:
+      name: "ibm-entitlement-key"
+
+  ########################################################################
+  ########        IBM Business Teams Service configuration        ########
+  ########################################################################
+  bts_configuration:
+    ## Allows to specify BTS CR settings via the CP4BA CR. Any mappings under template
+    ## will get merged into the BTS CR and overwrite built-in settings.
+    ## The available BTS CR settings can be found here:
+    ## https://www.ibm.com/docs/en/cloud-paks/1.0?topic=services-business-teams-service
+    template:
+
+  ##################################################################
+  ########   Resource Registry configuration                ########
+  ##################################################################
+  resource_registry_configuration:
+    # For most cases, you don't need to input hostname and port here. They can be calculated with your environment informations
+    # And all the endpoints can be visit through unified external URL
+    # With none zen mode. If you want to customize external hostname and port. Update values here. They will be used as resource registry external visit hostname and port. 
+    # Invalid value will cause resource registry not working and cannot be visited
+    hostname:
+    port:
+    images:
+      pull_policy: IfNotPresent
+      resource_registry:
+        repository: cp.icr.io/cp/cp4a/aae/dba-etcd
+        tag: "24.0.0"
+    admin_secret_name: resource-registry-admin-secret
+    replica_size: 1
+    probe:
+      liveness:
+        initial_delay_seconds: 60
+        period_seconds: 10
+        timeout_seconds: 5
+        success_threshold: 1
+        failure_threshold: 3
+      readiness:
+        initial_delay_seconds: 10
+        period_seconds: 10
+        timeout_seconds: 5
+        success_threshold: 1
+        failure_threshold: 3
+    resource:
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+        ephemeral_storage: 2Gi
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+        ephemeral_storage: 128Mi
+    auto_backup:
+      enable: true
+      minimal_time_interval: 300
+      pvc_name: "{{ meta.name }}-dba-rr-pvc"
+      log_pvc_name: 'cp4a-shared-log-pvc'
+      dynamic_provision:
+        enable: true
+        size: 3Gi
+        size_for_logstore:
+        storage_class: "{{ shared_configuration.storage_configuration.sc_fast_file_storage_classname }}"
+    node_affinity:
+      # Value in this field will be used as kubernetes.io/arch selector values. By default all support arch will be included
+      # It will be transformed to node selector value
+      # - key: kubernetes.io/arch
+      #   operator: In
+      #   values:
+      #     - amd64
+      #     - s390x
+      #     - ppc64le
+      deploy_arch:
+      - amd64
+      - s390x
+      - ppc64le
+      #-------------------------------------
+      # custom_node_selector_match_expression will be added in node selector match expressions.
+      # It accept array list inputs. You can assign mutiple selector match expressions except (kubernetes.io/arch)
+      # Example value:
+      # - key: kubernetes.io/hostname
+      #   operator: In
+      #   values:
+      #     - worker0
+      #     - worker1
+      #     - worker3
+      #-------------------------------------
+      custom_node_selector_match_expression: []
+    # Values in this field will be used as annotations in all generated pods
+    # It must be valid annotation key value pairs
+    # Example:
+    # customAnnotationKey: customAnnotationValue
+    custom_annotations: {}
+    # Values in this field will be used as labels in all generated pods
+    # It must be valid label key value pairs
+    # Example:
+    # customLabelKey: customLableValue
+    custom_labels: {}
+
+    # Disable FIPS for the component (default value is "false"), change it to "true" if you enable FIPS mode for the deployment with shared_configuration.enable_fips = true, but want to disable FIPS mode for the component.
+    disable_fips: false
+
+    # # Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower. 
+    # # For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
+    # # NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start.
+    # # By default, the settings of shared_configuration for seccomp profile will be used.
+    # # profile settings support options: RuntimeDefault, Localhost, Unconfined
+    # seccomp_profile: 
+    # # Local path of custom seccomp profile when type `Localhost` is used. The custom profile must be accessible by the pod.  For example: `/profiles/fine-grained.json`
+    # localhost_profile: 
+    
+  #############################################################################
+  ## This section contains the BAStudio component configurations              #
+  ##  it's the optional component: app_designer, ads_designer, bas,           #
+  ##                               workflow-authoring                         #
+  #############################################################################
+  bastudio_configuration:
+    # For most cases, you don't need to input hostname and port here. They can be calculated with your environment informations
+    # And all the endpoints can be visit through unified external URL
+    # With none zen mode. If you want to customize external hostname and port. Update values here. They will be used as BA Studio external visit hostname and port. 
+    # Invalid value will cause BA Studio not working and cannot be visited
+    hostname:
+    port:
+    images:
+      pull_policy: IfNotPresent
+      bastudio:
+        repository: cp.icr.io/cp/cp4a/bas/bastudio
+        tag: "24.0.0"
+    #Adjust this one if you created the secret with name other than the default
+    admin_secret_name: "{{ meta.name }}-bas-admin-secret"
+    #-----------------------------------------------------------------------
+    # bastudio admin Secret template will be
+    #-----------------------------------------------------------------------
+    # apiVersion: v1
+    # stringData:
+    #   dbPassword: "<Your database password>"
+    #   dbUsername: "<Your database username>"
+    # kind: Secret
+    # metadata:
+    #   name: icp4adeploy-bas-admin-secret
+    # type: Opaque
+    #----------------------------------------
+    # Designate an existing LDAP user for the BAStudio admin user.
+    admin_user:  "<Required>"
+    replica_size: 1
+    database:
+      # Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
+      # If you want PostgresDB to be created for a bastudio database, set this parameter to true
+      # When you set dc_use_postgres to true, please ensure that the fields for host, port, and certificate_secret_name are left empty, and also set ssl_enabled to true.
+      dc_use_postgres: false 
+      # The database type used. Only DB2, Oracle, PostgreSQL, SQLServer supported
+      type: "db2"
+      # DB2, PostgreSQL, SQLServer - Provide the database server hostname for BAStudio use, for example, BASDB
+      host: "<Required>"
+      # DB2, PostgreSQL, SQLServer - Provide the database name for BAStudio use
+      # The database provided should be created by the BAStudio SQL script template.
+      name: "<Required>"
+      # DB2, PostgreSQL, SQLServer - Provide the database server port for BAStudio use
+      port: "<Required>"
+      ## Optional. It only supports to customize database schema name for Db2 and Postgresql. For DB2, the schema name is case-sensitive, and must be specified in uppercase characters, refer to https://www.ibm.com/docs/en/db2/11.5?topic=SSEPGG_11.5.0/com.ibm.db2.luw.apdv.java.doc/src/tpc/imjcc_r0052075.htm
+      current_schema:
+      # If you want to enable DB2 database automatic client reroute (ACR) for HADR or PostgreSQL Connection Fail-over, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
+      alternative_host:
+      alternative_port:
+      # Enabled SSL for Database is true by default
+      ssl_enabled: true
+      # Oracle - If you are using Oracle input the oracle database connection URL here
+      # PostgreSQL, SQLServer - Provide the database connection URL if you don't provide database host, port and name. 
+      jdbc_url:
+      cm_max_pool_size: '50'
+      cm_min_pool_size: '2'
+      # Enabled the SSL for database is true by default. Please save the TLS certificate used by database in a secret and put the name here
+      certificate_secret_name: <Required>
+      # Default is false. If you are using custom JDBC. Then you must set shared_configuration.sc_drivers_url and change this value to true.
+      use_custom_jdbc_drivers: false
+      # The custom JDBC file set
+      jdbc_driver_files: ""
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetAverageUtilization: 80
+    external_connection_timeout: 60s
+    # Custom liberty XML configurations
+    custom_xml:
+    # The secret name which contain custom liberty configurations
+    custom_secret_name:
+    # The Business Automation Custom XML configurations
+    bastudio_custom_xml:
+    # If you don't want to use walkme script. You can set this one to false
+    use_walkme: true
+    max_cached_objects_during_refactoring: 256
+    logs:
+      # You can find all possible options for this section on liberty document
+      # https://www.ibm.com/support/knowledgecenter/SSEQTP_liberty/com.ibm.websphere.liberty.autogen.base.doc/ae/rwlp_config_logging.html
+      consoleFormat: 'json'
+      consoleLogLevel: 'INFO'
+      consoleSource: 'message,trace,accessLog,ffdc,audit'
+      traceFormat: 'ENHANCED'
+      traceSpecification: '*=info'
+      messageFormat: 'SIMPLE'
+      max_files: '2'
+      max_file_size: '20'
+    ## audit log configuration
+    audit_log:
+      ## Whether to enable Process Admin Console audit log. Default value is false.
+      enable: false
+      ## Persistent volume claim (PVC) for audit logs. If it is not specified, audit logs are stored in log PVC. Default value is empty.
+      pvc_name: ""
+      ## Size of the persistent volume (PV) that is mounted as the audit log store. Default value is 2Gi.
+      pvc_size: 2Gi
+      ## Audit log file name. Default value is bawaudit.log
+      file_name: bawaudit.log
+      ## Audit log rollover size(in MB). Default value is 100.
+      rollover_size: 100
+      ## Whether to enable verbose mode. Default value is true.
+      verbose: true
+      ## Maximum number of historical files that are kept. Default value is 5.
+      max_historical_files: 5
+    tls:
+      tlsTrustList: []
+    liveness_probe:
+      initialDelaySeconds: 300
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+    readiness_probe:
+      initialDelaySeconds: 240
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 5
+      successThreshold: 1
+    startup_probe:
+      period_seconds: 5
+      timeout_seconds: 10
+      failure_threshold: 120
+      success_threshold: 1
+    resources:
+      bastudio:
+        limits:
+          cpu: '2'
+          memory: '3072Mi'
+          ephemeral_storage: 2Gi
+        requests:
+          cpu: '1100m'
+          memory: '1752Mi'
+          ephemeral_storage: 1Gi
+      init_process:
+        limits:
+          cpu: '500m'
+          memory: '512Mi'
+          ephemeral_storage: 2Gi
+        requests:
+          cpu: '100m'
+          memory: '128Mi'
+          ephemeral_storage: 1Gi
+    csrf_referrer:
+      allowlist: ''
+    # Content Security Policy directory folder settings. We will add our required CSP folders in default setting
+    # If you require any extra settings for those content security policy directory folder setting.
+    # Set them here
+    additional_csp_folders:
+      # Folder for setting all folders. For example: ['host1','host2']
+      all: []
+      # Folder for setting default-src. For example: ['host1','host2']
+      default_src: []
+      # Folder for setting script-src. For example: ['host1','host2']
+      script_src: []
+      # Folder for setting frame-src. For example: ['host1','host2']
+      frame_src: []
+      # Folder for setting object-src. For example: ['host1','host2']
+      object_src: []
+      # Folder for setting connect-src. For example: ['host1','host2']
+      connect_src: []
+      # Folder for setting frame-ancestors. For example: ['host1','host2']
+      frame_ancestors: []
+      # Folder for setting image-src. For example: ['host1','host2']
+      img_src: []
+      # Folder for setting font-src. For example: ['host1','host2']
+      font_src: []
+      # Folder for setting style-src. For example: ['host1','host2']
+      style_src: []
+    environment_config:
+      # Two authorization modes are provided for the REST APIs granting access to user, group, and team information.
+      # false -- mode provides limited authorization control
+      # true -- an enhanced mode is available to extend authorization control to all concerned APIs.
+      authorization_enabled_for_org_info: "true"
+      csrf:
+        ## Comma-separated list of user agents. For the REST API requests with the path pattern "/rest/bpm/wle/v1/*" that is sent by the agents in the list, the server will not validate the "XSRF-TOKEN" cookie. The value of this property must be a comma-separated list, e.g "agentkeyworkd1, agentkeyworkd2".
+        user_agent_keyword_allow_list_for_old_restapi_csrf_check: "java,wink client,httpclient,curl,jersey,httpurlconnection"
+        ## Whether to validate the cookie "XSRF-TOKEN" against incoming REST API requests (POST/PUT/DELETE) with the path pattern "/rest/bpm/wle/v1/*". The value must be "true" or "false".
+        check_xsrf_for_old_restapi: "true"
+    storage:
+      # Main switch for the data persistence of BAStudio
+      enabled: "true"
+      # PVC name used to store the BAStudio server log
+      existing_pvc_for_logstore: "cp4a-shared-log-pvc"
+      # Size of the PV to store the BAStudio server log. Used when creating the PVC
+      size_for_logstore: "10Gi"
+      # PVC name used to store the BAStudio server dump files
+      existing_pvc_for_dumpstore: "{{ meta.name }}-bastudio-dump-pvc"
+      # Size of the PV to store the BAStudio server dump files. Used when creating the PVC
+      size_for_dumpstore: "10Gi"
+      # storage class name used for the PVC when not availble
+      storage_class: "{{ shared_configuration.storage_configuration.sc_fast_file_storage_classname }}"
+      # Size of the PV to store the BAStudio server index files. Used when creating the PVC
+      size_for_index: "10Gi"
+      # storage class name used for the BAStudio server index PVC
+      block_storage_class: "{{ shared_configuration.storage_configuration.sc_block_storage_classname }}"
+    jms_server:
+      storage:
+        ## Whether to enable persistent storage for JMS
+        persistent: true
+        ## Size for JMS persistent storage
+        size: "1Gi"
+        ## Whether to enable dynamic provisioning for JMS persistent storage
+        use_dynamic_provisioning: true
+        ## Access modes for JMS persistent storage
+        access_modes:
+        - ReadWriteOnce
+        ## Storage class name for JMS persistent storage
+        storage_class: "{{ shared_configuration.storage_configuration.sc_fast_file_storage_classname }}"
+    node_affinity:
+      # Value in this field will be used as kubernetes.io/arch selector values. By default all support arch will be included
+      # It will be transformed to node selector value
+      # - key: kubernetes.io/arch
+      #   operator: In
+      #   values:
+      #     - amd64
+      #     - s390x
+      #     - ppc64le
+      deploy_arch:
+      - amd64
+      - s390x
+      - ppc64le
+      #-------------------------------------
+      # custom_node_selector_match_expression will be added in node selector match expressions.
+      # It accept array list inputs. You can assign mutiple selector match expressions except (kubernetes.io/arch)
+      # Example value:
+      # - key: kubernetes.io/hostname
+      #   operator: In
+      #   values:
+      #     - worker0
+      #     - worker1
+      #     - worker3
+      #-------------------------------------
+      custom_node_selector_match_expression: []
+    # Values in this field will be used as annotations in all generated pods
+    # It must be valid annotation key value pairs
+    # Example:
+    # customAnnotationKey: customAnnotationValue
+    custom_annotations: {}
+    # Values in this field will be used as labels in all generated pods
+    # It must be valid label key value pairs
+    # Example:
+    # customLabelKey: customLableValue
+    custom_labels: {}
+
+    # Disable FIPS for the component (default value is "false"), change it to "true" if you enable FIPS mode for the deployment with shared_configuration.enable_fips = true, but want to disable FIPS mode for the component.
+    disable_fips: false
+
+    # # Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower. 
+    # # For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
+    # # NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start.
+    # # By default, the settings of shared_configuration for seccomp profile will be used.
+    # # profile settings support options: RuntimeDefault, Localhost, Unconfined
+    # seccomp_profile: 
+    # # Local path of custom seccomp profile when type `Localhost` is used. The custom profile must be accessible by the pod.  For example: `/profiles/fine-grained.json`
+    # localhost_profile: 
+
+    # Optional performance tuning for Zen NGINX server.
+    # For more information, please refer to https://www.nginx.com/blog/tuning-nginx/#keepalive_requests and https://nginx.org/en/docs/http/ngx_http_proxy_module.html.
+    zen_performance:
+      # Optional: the number of idle keepalive connections to an upstream server that remain open for each worker process. The default vaue is 512.
+      keepalive: "512"
+      # Optional: how long an idle keepalive connection remains open. The default value is 30s.
+      keepalive_timeout: "30s"
+      # Optional: the number of requests a client can make over a single keepalive connection. The default is 500.
+      keepalive_requests: "500"
+      # Optional: sets the size of the buffer used for reading the first part of the response received from the proxied server. The default value is 256k.
+      proxy_buffer_size: "256k"
+      # Optional: sets the number and size of the buffers used for reading a response from the proxied server, for a single connection. The default value is 8 512k.
+      proxy_buffers: "8 512k"
+      # Optional: when buffering of responses from the proxied server is enabled, limits the total size of buffers that can be busy sending a response to the client while the response is not yet fully read. 
+      # The default value is 512k.
+      proxy_busy_buffers_size: "512k"
+      # Optional: Defines a timeout for establishing a connection with a proxied server. The default value is 300s.
+      proxy_connect_timeout: "300"
+      # Optional: Sets a timeout for transmitting a request to the proxied server. The timeout is set only between two successive write operations, not for the transmission of the whole request.
+      # If the proxied server does not receive anything within this time, the connection is closed. The default value is 300s.
+      proxy_send_timeout: "300"
+      # Optional: Defines a timeout for reading a response from the proxied server. The timeout is set only between two successive read operations, not for the transmission of the whole response.
+      # If the proxied server does not transmit anything within this time, the connection is closed. The default value is 300s.
+      proxy_read_timeout: "300"
+
+    #-----------------------------------------------------------------------
+    #  App Engine Playback Server (playback_server) can be only one instance.
+    #  This is different from App Engine
+    #  (where application_engine_configuration is a list and you can deploy multiple instances).
+    #  You should use different database, admin_secret, hostname for playback server and the application engine servers
+    #-----------------------------------------------------------------------
+    playback_server:
+      images:
+        pull_policy: IfNotPresent
+        db_job:
+          repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
+          tag: "24.0.0"
+        solution_server:
+          repository: cp.icr.io/cp/cp4a/aae/solution-server
+          tag: "24.0.0"
+      # For most cases, you don't need to input hostname and port here. They can be calculated with your environment informations
+      # And all the endpoints can be visit through unified external URL
+      # With none zen mode. If you want to customize external hostname and port. Update values here. They will be used as application playback server external visit hostname and port. 
+      # Invalid value will cause application playback server not working and cannot be visited
+      hostname:
+      port:
+      # Inside the admin secret. There are two must fields
+      admin_secret_name: "playback-server-admin-secret"
+      #-----------------------------------------------------------------------
+      # The playback server admin Secret template will be
+      #-----------------------------------------------------------------------
+      # apiVersion: v1
+      # stringData:
+      #   AE_DATABASE_PWD: "<Your database password>"
+      #   AE_DATABASE_USER: "<Your database username>"
+      #   REDIS_PASSWORD: "<Your Redis server password>"
+      # kind: Secret
+      # metadata:
+      #   name: playback-server-admin-secret
+      # type: Opaque
+      #-----------------------------------------------------------------------
+      # Designate an existing LDAP user for the Playback Application Engine admin user.
+      # This user ID should be in the IBM Business Automation Navigator administrator role, as specified as appLoginUsername in the Navigator secret.
+      # Required only when User Management Service (UMS) is configured: This user should also belong to UMS Teams admin group or the UMS Teams Administrators team.
+      # If not, follow the instructions in "Completing post-deployment tasks for Business Automation Studio and Application Engine" in the IBM Documentation to add it to the Navigator Administrator role and UMS team server admin group.
+      admin_user: <Required>
+      external_tls_secret:
+      external_connection_timeout: 90s
+      replica_size: 1
+      # Default is false. If you are using custom JDBC. Then you must set shared_configuration.sc_drivers_url and change this value to true.
+      use_custom_jdbc_drivers: false
+      service_type: Route
+      autoscaling:
+        enabled: false
+        max_replicas: 5
+        min_replicas: 2
+        target_cpu_utilization_percentage: 80
+      server_identifier: ""
+      # Max Request Body, the unit is KB
+      max_request_body_size: 2000
+      database:
+        # Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
+        # If you want PostgresDB to be created for a AE database, set this parameter to true
+        # When you set dc_use_postgres to true, please ensure that the fields for host, port, and db_cert_secret_name are left empty, and also set enable_ssl to true.
+        dc_use_postgres: false
+        # AE Database host name or IP when the database type is Db2, PostgreSQL, SQLSERVER.
+        host: <Required>
+        # AE Database name when the database type is Db2, PostgreSQL, SQLSERVER, for example, APPDB
+        name: <Required>
+        # AE database port number when the database type is Db2, PostgreSQL, SQLSERVER.
+        port: <Required>
+        ## If you setup Db2 HADR or PostgreSQL, SQLSERVER Connection Fail-over and want to use it, you need to configure alternative_host and alternative_port, or else, leave is as blank.
+        ## If more than one server name is specified, delimit the server names with commas (,). The number of values that is specified for alternative_host must match the number of values that is specified for alternative_port.
+        alternative_host:
+        alternative_port:
+        ## Only Db2, Oracle, PostgreSQL, SQLSERVER are supported.
+        type: <Required>
+        ## Required only when the database type is Oracle, both ssl and non-ssl. The format must be purely Oracle descriptor like (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=<your database host/IP>)(PORT=<your database port>))(CONNECT_DATA=(SERVICE_NAME=<your Oracle service name>))). NOTES: PROTOCOL=TCP for non-ssl, PROTOCOL=TCPS for ssl.
+        oracle_url_without_wallet_directory:
+        enable_ssl: true
+        ## Required only when type is Oracle and enable_ssl is true. The format must be purely oracle descriptor. SSO wallet directory must be specified and fixed to (MY_WALLET_DIRECTORY=/shared/resources/oracle/wallet).
+        oracle_url_with_wallet_directory:
+        ## Required only when enable_ssl is true, when the database type is Db2, Oracle, SQLSERVER or PostgreSQL
+        db_cert_secret_name: <Required>
+        ## Required only when type is oracle and enable_ssl is true.
+        oracle_sso_wallet_secret_name:
+        ## Optional. If it is empty, the DBASB is default when the database type is Db2 or PostgreSQL; the AE_DATABASE_USER set in the admin_secret_name is default when the database type is Oracle and SQLSERVER.
+        ## It only supports to customize database schema name for Db2 and Postgresql. For DB2, the schema name is case-sensitive, and must be specified in uppercase characters, refer to https://www.ibm.com/docs/en/db2/11.5?topic=SSEPGG_11.5.0/com.ibm.db2.luw.apdv.java.doc/src/tpc/imjcc_r0052075.htm
+        current_schema: DBASB
+        initial_pool_size: 1
+        max_pool_size: 100
+        max_lru_cache_size: 1000
+        max_lru_cache_age: 600000
+        dbcompatibility_max_retries: 30
+        dbcompatibility_retry_interval: 10
+      log_level:
+        node: info
+        browser: 2
+      content_security_policy:
+        enable: false
+        allowlist:
+        frame_ancestor:
+      env:
+        max_size_lru_cache_rr: 1000
+        server_env_type: development
+        purge_stale_apps_interval: 86400000
+        # Number of preview-only automation application must be more to trigger purge,
+        apps_threshold: 100
+        # Age of preview-only automation application since publish to be stale in milliseconds
+        stale_threshold: 172800000
+        # Number of preview-only automation services must be more to trigger purge,
+        service_threshold: 100
+        # Age of preview-only automation service since publish to be stale in milliseconds
+        service_stale_threshold: 172800000
+        # Service socket connection timeout in milliseconds
+        connection_timeout: 120000
+        uv_thread_pool_size: 40
+        # The context root used to expose the public applications
+        public_app_context: public-app
+        # Set custom enviroment varaible on app engine pods
+        custom_environment_variables:
+        # # example entry for setting timezone on pod
+        # - key: TZ
+        #   value: Europe/Warsaw
+      max_age:
+        auth_cookie: "900000"
+        csrf_cookie: "3600000"
+        static_asset: "2592000"
+        hsts_header: "2592000"
+      probe:
+        liveness:
+          failure_threshold: 5
+          initial_delay_seconds: 60
+          period_seconds: 10
+          success_threshold: 1
+          timeout_seconds: 180
+        readiness:
+          failure_threshold: 5
+          initial_delay_seconds: 10
+          period_seconds: 10
+          success_threshold: 1
+          timeout_seconds: 180
+      #-----------------------------------------------------------------------
+      # If you want better HA experience.
+      # - Set the session.use_external_store to true
+      # - Fill in your redis server information
+      #-----------------------------------------------------------------------
+      redis:
+        # Your external redis host/ip
+        host:
+        # Your external redis port
+        port: '6379'
+        ttl: 1800
+        # If your redis enabled TLS connection set this to true
+        # You should add redis server CA certificate in tls_trust_list or trusted_certificate_list
+        tls_enabled: false
+        # If you are using Redis V6 and above with username fill in this field.
+        # Otherwise leave this field as empty
+        username:
+      resource_ae:
+        limits:
+          cpu: 500m
+          memory: 1Gi
+          ephemeral_storage: 2Gi
+        requests:
+          cpu: 300m
+          memory: 256Mi
+          ephemeral_storage: 512Mi
+      resource_init:
+        limits:
+          cpu: 500m
+          memory: 256Mi
+          ephemeral_storage: 2Gi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+          ephemeral_storage: 512Mi
+      session:
+        check_period: "3600000"
+        duration: "1800000"
+        max: "10000"
+        resave: "false"
+        rolling: "true"
+        save_uninitialized: "false"
+        #-----------------------------------------------------------------------
+        # If you want better HA experience.
+        # - Set the session.use_external_store to true
+        # - Fill in your redis server information
+        #-----------------------------------------------------------------------
+        use_external_store: "false"
+      tls:
+        tls_trust_list: []
+      # If you want to make the replicate size more than 1 for this cluster. Then you must enable the shared storage
+      share_storage:
+        enabled: true
+        # If you create the PV manually. Then please provide the PVC name bind here
+        pvc_name:
+        auto_provision:
+          enabled: true
+          # Required if you enabled the auto provision
+          storage_class:
+          size: 20Gi
+      log_storage:
+        enabled: true
+        pvc_name: 'cp4a-shared-log-pvc'
+        log_file_size: '20M'
+        log_rotate_size: 5
+        auto_provision:
+          enabled: true
+          # By default it will reuse the operator shared log pvc. If you assgined other name
+          # And enabled the auto provision. We will provision that with fast storage class by default
+          # If you want to adjust that please fill in this value.
+          storage_class: ""
+          size: '5Gi'
+      node_affinity:
+        # Value in this field will be used as kubernetes.io/arch selector values. By default all support arch will be included
+        # It will be transformed to node selector value
+        # - key: kubernetes.io/arch
+        #   operator: In
+        #   values:
+        #     - amd64
+        #     - s390x
+        #     - ppc64le
+        deploy_arch:
+        - amd64
+        - s390x
+        - ppc64le
+        #-------------------------------------
+        # custom_node_selector_match_expression will be added in node selector match expressions.
+        # It accept array list inputs. You can assign mutiple selector match expressions except (kubernetes.io/arch)
+        # Example value:
+        # - key: kubernetes.io/hostname
+        #   operator: In
+        #   values:
+        #     - worker0
+        #     - worker1
+        #     - worker3
+        #-------------------------------------
+        custom_node_selector_match_expression: []
+      # Values in this field will be used as annotations in all generated pods
+      # It must be valid annotation key value pairs
+      # Example:
+      # customAnnotationKey: customAnnotationValue
+      custom_annotations: {}
+      # Values in this field will be used as labels in all generated pods
+      # It must be valid label key value pairs
+      # Example:
+      # customLabelKey: customLableValue
+      custom_labels: {}
+
+      # Disable FIPS for the component (default value is "false"), change it to "true" if you enable FIPS mode for the deployment with shared_configuration.enable_fips = true, but want to disable FIPS mode for the component.
+      disable_fips: false
+      
+      # Optional performance tuning for Zen NGINX server.
+      # For more information, please refer to https://www.nginx.com/blog/tuning-nginx/#keepalive_requests and https://nginx.org/en/docs/http/ngx_http_proxy_module.html.
+      zen_performance:
+        # Optional: the number of idle keepalive connections to an upstream server that remain open for each worker process. The default vaue is 512.
+        keepalive: "512"
+        # Optional: how long an idle keepalive connection remains open. The default value is 30s.
+        keepalive_timeout: "30s"
+        # Optional: the number of requests a client can make over a single keepalive connection. The default is 500.
+        keepalive_requests: "500"
+        # Optional: sets the size of the buffer used for reading the first part of the response received from the proxied server. The default value is 256k.
+        proxy_buffer_size: "256k"
+        # Optional: sets the number and size of the buffers used for reading a response from the proxied server, for a single connection. The default value is 8 512k.
+        proxy_buffers: "8 512k"
+        # Optional: when buffering of responses from the proxied server is enabled, limits the total size of buffers that can be busy sending a response to the client while the response is not yet fully read. 
+        # The default value is 512k.
+        proxy_busy_buffers_size: "512k"
+        # Optional: Defines a timeout for establishing a connection with a proxied server. The default value is 300s.
+        proxy_connect_timeout: "300"
+        # Optional: Sets a timeout for transmitting a request to the proxied server. The timeout is set only between two successive write operations, not for the transmission of the whole request.
+        # If the proxied server does not receive anything within this time, the connection is closed. The default value is 300s.
+        proxy_send_timeout: "300"
+        # Optional: Defines a timeout for reading a response from the proxied server. The timeout is set only between two successive read operations, not for the transmission of the whole response.
+        # If the proxied server does not transmit anything within this time, the connection is closed. The default value is 300s.
+        proxy_read_timeout: "300"
+
+  ##############################################################################
+  ########      IBM Business Automation Insights (BAI) configuration    ########
+  ##############################################################################
+  bai_configuration:
+    persistence:
+      # Set this parameter to false to disable dynamic provisioning as the persistence mode for BAI components.
+      useDynamicProvisioning: true
+    # Name of a secret that is already deployed and contains custom values for configuration parameters.
+    # Default value: none.
+    bai_secret: ""
+    image_credentials:
+      # Specific docker registry for the BAI images.
+      # If not set, shared_configuration.sc_image_repository is used.
+      registry: cp.icr.io/cp/cp4a
+    # Image pull policy for BAI images.
+    # If not set, shared_configuration.images.pull_policy is used.
+    image_pull_policy: "IfNotPresent"
+
+    ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower.
+    ## For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
+    ## NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start.  This custom profile should be created at the worker nodes.
+    ## If it is not set, it will fall back to shared_configuration.sc_seccomp_profile
+    seccomp_profile:
+    #  type: # RuntimeDefault, Localhost, Unconfined
+    #  localhost_profile: # Local path of custom seccomp profile when type `Localhost` is used. The custom profile must be accessible by the pod and must exist locally on all worker nodes.  For example: `/profiles/fine-grained.json`
+    
+    ## # Disable FIPS for the component (default value is "false"), change it to "true" if you enable FIPS mode for the deployment with shared_configuration.enable_fips = true, but want to disable FIPS mode for the component. 
+    # disable_fips: false 
+    # This section allow to enhance the configuration of Kafka clients.
+    # Those parameters are not mandatory.
+    kafka:
+      # Indicates whether event consumption starts at the "earliest" offset or at the "latest" offset.
+      # Setting it to "latest" means that events sent before BAI is running are not processed.
+      # If you want to process events sent before BAI is running set this parameter to "earliest".
+      auto_offset_reset: latest
+      # You can provide the name of a ConfigMap that is already deployed to Kubernetes
+      # and contains Kafka Consumer and producer properties. Default: none.
+      properties_config_map: ""
+      # The number of seconds before the socket communication with the Kafka server times out. Default: 10000
+      socket_timeout_ms: 10000
+
+    settings:
+      # Set it to true to enable Apache Kafka data egress. Default: false.
+      egress: true
+      # Provide configuration of Apache Kafka topics.
+      # All topics must be prefixed with icp4ba-bai
+      # If not set, topics with default names as below are created.
+      ingress_topic: "icp4ba-bai-ingress"
+      egress_topic: "icp4ba-bai-egress"
+      service_topic: "icp4ba-bai-service"
+
+    # Setup of BAI Application.
+    application_setup:
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/insights-engine-application-setup
+        tag: "24.0.0"
+      # The back-off limit property specifies the number of retries before the setup job is considered failed. Default: 6.
+      backoff_limit: 7
+      resources:
+        requests:
+          ## TODO: validate values or remove
+          # The minimum memory required, including JVM heap and file system cache, to start the application setup pod.
+          memory: "50Mi"
+          # The minimum amount of CPU required to start the application setup pod.
+          cpu: "200m"
+        limits:
+          # The maximum memory, including JVM heap and file system cache, to allocate to the application setup pod.
+          memory: "120Mi"
+
+    # Setup of Elasticsearch for BAI.
+    setup:
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-setup
+        tag: "24.0.0"
+      # The back-off limit property specifies the number of retries before the setup job is considered failed. Default: 6.
+      backoff_limit: 7
+      resources:
+        requests:
+          # The minimum memory required, including JVM heap and file system cache, to start the setup pod.
+          memory: "50Mi"
+          # The minimum amount of CPU required to start the setup pod.
+          cpu: "200m"
+        limits:
+          # The maximum memory, including JVM heap and file system cache, to allocate to the setup pod.
+          memory: "120Mi"
+
+    # The BAI Management service. Provides public and internal REST endpoints to manage BAI event processing.
+    management:
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/insights-engine-management
+        tag: "24.0.0"
+      backend:
+        image:
+          repository: cp.icr.io/cp/cp4a/bai/insights-engine-management-backend
+          tag: "24.0.0"
+      # You can use this parameter to customize the hostname of the management service route.
+      # If not set, the value of shared_configuration.sc_deployment_hostname_suffix is used.
+      hostname: "management.bai.{{ shared_configuration.sc_deployment_hostname_suffix }}"
+      # The number of Management service replicas. For High Availability,
+      # use at least 2 replicas.
+      replicas: 2
+      # Optional: Enables SSL with an existing certificate for the automatic creation of the OpenShift route
+      # for the Management service.
+      # If not specified, the value of shared_configuration.external_tls_certificate_secret parameter is used.
+      # If this later parameter is not present, the operator generates a self-signed certificate.
+      external_tls_secret_name: "{{ meta.name }}-bai-management-external-tls-secret"
+      # Optional. The Certificate Authority (CA) used to sign the external TLS secret for the automatic creation
+      # of the OpenShift route for the Management service.
+      # If you do not want to provide a CA to sign the external TLS certificate, leave this parameter empty.
+      external_tls_ca_secret_name:
+
+    flink_pv:
+      # The capacity of the persistent volume. Default: "20Gi"
+      capacity: "20Gi"
+      # If not set, shared_configuration.sc_dynamic_storage_classname is used as a default value.
+      storage_class_name: "{{ shared_configuration.storage_configuration.sc_medium_file_storage_classname }}"
+      # Provide the name of an existing claim if one is available. By default, a new persistent volume claim is created.
+      existing_claim_name: ""
+
+    flink:
+      # Use this parameter to increase log verbosity when Flink jobs process events from custom sources through the event forwarder.
+      # Valid values: info and trace. Default: info
+      log_level: trace
+      # Set this parameter to true to increase log verbosity when Flink jobs process fixed-format events.
+      # Valid values: true and false. Default: false
+      verbose_logs: true
+
+      # The total size of the Flink task manager process.
+      # Corresponding Flink parameter: taskmanager.memory.process.size
+      # Valid units: https://ci.apache.org/projects/flink/flink-docs-release-1.11/api/java/org/apache/flink/configuration/MemorySize.MemoryUnit.html
+      # Default: 1728mb
+      task_manager_memory: '1728mb'
+      # The total size of the Apache Flink job manager process.
+      # Corresponding Flink parameter: jobmanager.memory.process.size
+      # Valid units: https://ci.apache.org/projects/flink/flink-docs-release-1.11/api/java/org/apache/flink/configuration/MemorySize.MemoryUnit.html
+      # Default: 1728mb
+      job_manager_memory: '1728mb'
+      # The number of CPUs that are used by Flink task managers (in CPU units).
+      # Corresponding Flink parameter: kubernetes.taskmanager.cpu
+      # Default: 1
+      task_manager_cpu: 1
+
+      # The number of create, delete and update actions to be performed on document indexes in a single request.
+      # Default: 1
+      elasticsearch_max_actions: 1
+      # The time interval at which to flush the buffered actions, regardless of the number or size of buffered actions.
+      # If set to -1, a flush internal of 2000 ms is applied when elasticsearch_max_actions is larger than 1, and
+      # the buffer is flushed immediately when elasticsearch_max_actions is 1.
+      # Otherwise, the specified interval is used.
+      # Default: -1
+      elasticsearch_flush_interval_ms: -1
+
+      # The interval between checkpoints of an Apache Flink jobs (in milliseconds). Default: 5000
+      job_checkpointing_interval: 5000
+      # The name of a ConfigMap object that is already deployed to Kubernetes and contains RocksDB properties for Flink.
+      # Optional. Default: none.
+      rocks_db_properties_config_map: ""
+
+      # Allows to enable the automatic deployment of an OpenShift route to the Flink web interface.
+      # On ROKS, if you set the sc_ingress_enable parameter to true, an Ingress is deployed for the Flink web user interface.
+      # Default: false
+      create_route: true
+      # Optional: Enables SSL with an existing certificate for the automatic creation of the OpenShift route
+      # for the Flink UI.
+      # If not specified, the value of shared_configuration.external_tls_certificate_secret parameter is used.
+      # If this later parameter is not present, the operator generates a self-signed certificate.
+      external_tls_secret_name: "{{ meta.name }}-bai-flink-ui-external-tls-secret"
+      # Optional. The Certificate Authority (CA) used to sign the external TLS secret for the automatic creation
+      # of the OpenShift route for the Flink UI.
+      # If you do not want to provide a CA to sign the external TLS certificate, leave this parameter empty.
+      external_tls_ca_secret_name:
+
+      # The parameters below configure the memory and CPU requests and limits at Kubernetes level.
+      # For the valid units of memory requests and limits,
+      # see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#meaning-of-memory.
+      # For the valid units of CPU requests and limits,
+      # see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#meaning-of-cpu.
+      # The default values are those included below.
+      #
+      # The memory request for pods of Apache Flink task managers.
+      task_manager_memory_request: '1728Mi'
+      # The memory limit for pods of Flink task managers.
+      task_manager_memory_limit: '1728Mi'
+      # The CPU request for pods of Apache Flink task managers.
+      task_manager_cpu_request: 1
+      # The CPU limit for pods of Apache Flink task managers.
+      task_manager_cpu_limit: 1
+      # The memory request for pods of Apache Flink job managers.
+      job_manager_memory_request: '1728Mi'
+      # The memory limit for pods of Apache Flink job managers.
+      job_manager_memory_limit: '1728Mi'
+      # The CPU request for pods of Apache Flink job managers.
+      job_manager_cpu_request: 1
+      # The CPU limit for pods of Apache Flink job managers.
+      job_manager_cpu_limit: 1
+      # The number of additional Flink task managers that must be created to host custom Processing Applications.
+      # Required only if using custom Processing Applications.
+      # Default: 0
+      additional_task_managers: 0
+      ## Flink manager_image, if you want to use new flink image,specify it here
+      ## Format can be cp.icr.io/cp/iaf-flink@sha256:078a3e22637510a9735cab9382caa541d181fe82b7be778d99473b18133ccfb1
+      # manager_image: 
+      ## Flink eventprocessing_proxy_image, if you want to use new flink image, specify it here
+      ## Format can be cp.icr.io/cp/iaf-eventprocessing-proxy@sha256:fe8062c7485348a09536e02f6bd644a64b28c5ba61d74be0cc880ae65ea89b96
+      # eventprocessing_proxy_image:
+    # The Flink job for processing BPMN events.
+    # Enabled automatically if BAI is selected as an optional component of
+    # workflow or workflow-workstreams patterns.
+    bpmn:
+      # Set to true to enable the Flink job for BAW.
+      install: false
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-bpmn
+        tag: "24.0.0"
+      # The path to the savepoint or checkpoint from which a job will recover.
+      # You can use this path to restart the job from a previous state in case of failure.
+      # To use the default workflow of the job, leave this option empty.
+      recovery_path: ""
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+      # The delay in milliseconds before clearing the Flink states used for summary transformation.
+      # This value cannot be set to 0 nor be greater than 30 minutes.
+      # Otherwise, the default value applies instead.
+      end_aggregation_delay: 10000
+      # Set this parameter to true if you want time series
+      # to be written to Elasticsearch indexes.
+      force_elasticsearch_timeseries: false
+
+    # The Flink job for processing BAW Advanced events.
+    # Disabled by default. Can be enabled by setting bawadv.install to true.
+    bawadv:
+      # Set to true to enable the Flink job for BAWAdv.
+      install: false
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-bawadv
+        tag: "24.0.0"
+      # The path to the savepoint or checkpoint from which a job will recover.
+      # You can use this path to restart the job from a previous state in case of failure.
+      # To use the default workflow of the job, leave this option empty.
+      recovery_path: ""
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+
+    # The Flink job for processing ICM events.
+    # Enabled automatically if BAI is selected as an optional component of
+    # workflow or workflow-workstreams patterns.
+    icm:
+      # Set to true to enable the Flink job for ICM.
+      install: false
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-icm
+        tag: "24.0.0"
+      # The path to the savepoint or checkpoint from which a job will recover.
+      # You can use this path to restart the job from a previous state in case of failure.
+      # To use the default workflow of the job, leave this option empty.
+      recovery_path: ""
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+      # Whether the Flink job for ICM events processes events after completion. Default: false
+      process_events_after_completion: false
+      # Set this parameter to true if you want time series
+      # to be written to Elasticsearch indexes.
+      force_elasticsearch_timeseries: false
+
+    # The Flink job for processing ODM events.
+    # Enabled automatically if BAI is selected as an optional component of
+    # decisions pattern.
+    odm:
+      # Set to true to enable the Flink job for ODM.
+      # For ODM, the bai-flink image is used.
+      install: false
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-flink
+        tag: "24.0.0"
+      # The path to the savepoint or checkpoint from which a job will recover.
+      # You can use this path to restart the job from a previous state in case of failure.
+      # To use the default workflow of the job, leave this option empty.
+      recovery_path: ""
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+
+    # The Flink job for processing Content events.
+    # Enabled automatically if BAI is selected as an optional component of
+    # content pattern.
+    content:
+      # Set to true to enable the Flink job for Content.
+      install: false
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-flink
+        tag: "24.0.0"
+      # The path to the savepoint or checkpoint from which a job will recover.
+      # You can use this path to restart the job from a previous state in case of failure.
+      # To use the default workflow of the job, leave this option empty.
+      recovery_path: ""
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+
+    # The Flink job for processing Navigator events.
+    # Enabled automatically if BAI is selected as an optional component of
+    # content pattern.
+    navigator:
+      # Set to true to enable the Flink job for Content.
+      install: false
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-flink
+        tag: "24.0.0"
+      # The path to the savepoint or checkpoint from which a job will recover.
+      # You can use this path to restart the job from a previous state in case of failure.
+      # To use the default workflow of the job, leave this option empty.
+      recovery_path: ""
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+
+    # The Flink job for processing ADS events.
+    # Enabled automatically if BAI is selected as an optional component of
+    # ADS pattern.
+    ads:
+      # Set to true to enable the Flink job for ADS.
+      # For ADS, the bai-flink image is used.
+      install: false
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-flink
+        tag: "24.0.0"
+      # The path to the savepoint or checkpoint from which a job will recover.
+      # You can use this path to restart the job from a previous state in case of failure.
+      # To use the default workflow of the job, leave this option empty.
+      recovery_path: ""
+      # The number of parallel instances (task slots) to use for running the processing job.
+      # For High Availability, use at least 2 parallel instances.
+      parallelism: 2
+    
+    # Enable workforce insights registration
+    baml:
+      install: false
+
+    # Configuration of initialization containers.
+    init_image:
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/bai-init
+        tag: "24.0.0"
+
+    # Business data dashboarding.
+    business_performance_center:
+      image:
+        repository: cp.icr.io/cp/cp4a/bai/insights-engine-cockpit
+        tag: "24.0.0"
+      # Set to false to disable Business Performance Center. Default: true.
+
+      # add this to set workforce_insights configuration properties
+      # workforce_insights_secret:
+
+      install: true
+      ## For SaaS
+      # The name of a secret that is already deployed to Kubernetes,
+      # which contains configuration information for the Business Performance Center.
+      # If you leave this field empty and an UMS instance is installed by the Cloud Pak,
+      # the configuration information is automatically generated and stored in a default secret.
+      config_secret_name: ""
+      # The port to which the Business Performance Center service API is exposed.
+      external_port: 9443
+      # The number of Business Performance Center replicas. For High Availability,
+      # use at least 2 replicas.
+      replicas: 2
+      ## For SaaS
+      init_ums:
+        image:
+          repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
+          tag: "24.0.0"
+      ## For SaaS
+      oidc:
+        # The internal communication with single-sign-on (SSO) service.
+        # If UMS installation can be reach internally, set this parameter to the UMS SSO service name
+        # Otherwise, set it to the SSO external route hostname.
+        # If you leave this field empty it will use the default value of the UMS instance installed by the Cloud Pak.
+        host: ""
+        # The external communication with the UMS single-sign-on (SSO) service.
+        # Set this parameter to the SSO external route hostname.
+        # If you leave this field empty it will use the default value of the UMS instance installed by the Cloud Pak.
+        external_host: ""
+        # The host used to retrieve the UMS issuer. Set this parameter to the UMS default route.
+        # If you leave this field empty it will use the default value of the UMS instance installed by the Cloud Pak.
+        issuer_host: ""
+        port: 443
+      ## For SaaS
+      # Represents the external communication to the UMS team server service. Set this parameter to the team server external route hostname.
+      # If you leave this field empty it will use the default value of the UMS instance installed by the Cloud Pak.
+      teamserver_host: ""
+      ## For SaaS
+      # The external communication to the UMS SCIM service. Set this parameter to the SCIM external route hostname.
+      # If you leave this field empty it will use the default value of the UMS instance installed by the Cloud Pak.
+      scim_host: ""
+      ## For SaaS
+      # The UUID identifier, which is taken from UMS, of the team that you nominate to be the administration team
+      # for Business Performance Center.
+      # If no admin_team has been specified, a team named bpc_admins will be created automatically and used by BPC.
+      # Default: None
+      admin_team: ""
+      ## For SaaS
+      # The name of a LDAP group to be used by the BPC admin team. The group should be created beforehand. Default: None
+      admin_group: ""
+      ## For SaaS
+      # Enable automatic creation of the bpc_admins team in UMS if no UUID has been provided under admin_team parameter. Default: true
+      register_admin_team: true
+      # Set to true if you want to grant all users access to all data.
+      all_users_access: false
+      # You can use the redirectURIs parameter to specify the route to access Business Performance Center.
+      # The URL must end with a forward slash (/).
+      # It is not necessary to specify this parameter when relying on the route created by default.
+      redirect_uris: ""
+      # The URL to which users are redirected when they log out of Business Performance Center.
+      # This URL can be the same as the redirectURIs URL.
+      # In this case, users still see the same Business Performance Center window but needs to log in
+      # again before they can resume working with Business Performance Center.
+      logout_redirect_uris: ""
+      # You can use this parameter to customize the hostname of the Business Performance Center route.
+      # If not set, the value of shared_configuration.sc_deployment_hostname_suffix is used.
+      hostname: "business-performance-center.bai.{{ shared_configuration.sc_deployment_hostname_suffix }}"
+      resources:
+        limits:
+          # The maximum memory, including JVM heap size and file system cache, to allocate to the Business Performance Center pod.
+          # Adjust this parameter value for better resource allocation and better performance.
+          memory: "2Gi"
+          # The maximum amount of CPU to allocate to the Business Performance Center pod.
+          # Adjust this parameter value for better resource allocation and better performance.
+          cpu: "2000m"
+      # Set this parameter to false if you do not want
+      # the Business Performance Center plug-in to be automatically installed into Navigator.
+      auto_plugin: true
+      # Optional: Enables SSL with an existing certificate for the automatic creation of the OpenShift route
+      # for the Business Performance Center.
+      # If not specified, the value of shared_configuration.external_tls_certificate_secret parameter is used.
+      # If this later parameter is not present, the operator generates a self-signed certificate.
+      external_tls_secret_name: "{{ meta.name }}-bai-bperf-external-tls-secret"
+      # Optional. The Certificate Authority (CA) used to sign the external TLS secret for the automatic creation
+      # of the OpenShift route for the Business Performance Center.
+      # If you do not want to provide a CA to sign the external TLS certificate, leave this parameter empty.
+      external_tls_ca_secret_name:
+      alert:
+        # The Kafka alert topic. Default is icp4ba-bai-alerts
+        topic: "icp4ba-bai-alerts"
+        # The Kafka alert topic replication factor. Default is kafka size
+        replication_factor:
+        # Enables Kafka alert notifier. Default is true
+        enable_notifier: true
+        # Set the alert computation polling interval. Default is 5000
+        polling_interval: "5000"
+
+  #############################################################################
+  ######## IBM Business Automation Application server  configurations  ########
+  ##  This section contains the configurations for                           ##
+  ##  * App Engine Server                                                    ##
+  ##  it's the optional component and will be installed when                 ##
+  ##  patterns include: application, workflow, workstreams,                  ##
+  ##                    workflow-workstreams or document_processing          ##
+  #############################################################################
+  application_engine_configuration:
+  # For most cases, you don't need to input hostname and port here. They can be calculated with your environment informations
+  # And all the endpoints can be visit through unified external URL
+  # With none zen mode. If you want to customize external hostname and port. Update values here. They will be used as application engine server external visit hostname and port. 
+  # Invalid value will cause application engine serve not working and cannot be visited
+  ## Each application_engine_configuration.name can consist of lowercase alphanumeric characters or '-', and must start and end with an alphanumeric character. Keep the instance name as short as possible. 
+  ## You can refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/ for more limitation.  
+  - name: workspace
+    images:
+      pull_policy: IfNotPresent
+      solution_server:
+        repository: cp.icr.io/cp/cp4a/aae/solution-server
+        tag: "24.0.0"
+      db_job:
+        repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
+        tag: "24.0.0"
+    # If you inputed hostname and port here. They will be used always
+    # If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value)
+    # Then you don't need to fill the hostname and port. It will use shared_configuration.sc_deployment_hostname_suffix to generate one
+    # But if you haven't input suffix. And no hostname port assigned. A error will be reported in operator log during deploy
+    # For non pattern mode you must assign a valid hostname and port here
+    hostname: "{{ 'ae-workspace-' + shared_configuration.sc_deployment_hostname_suffix }}"
+    port: 443
+    # Inside the admin secret. There are two must fields
+    admin_secret_name: "{{ meta.name }}-workspace-aae-app-engine-admin-secret"
+    #-----------------------------------------------------------------------
+    # The app engine admin Secret template will be
+    #-----------------------------------------------------------------------
+    # apiVersion: v1
+    # stringData:
+    #   AE_DATABASE_PWD: "<Your database password>"
+    #   AE_DATABASE_USER: "<Your database username>"
+    #   REDIS_PASSWORD: "<Your Redis server password>"
+    # kind: Secret
+    # metadata:
+    #   name: icp4adeploy-workspace-aae-app-engine-admin-secret
+    # type: Opaque
+    #-----------------------------------------------------------------------
+    # Designate an existing LDAP user for the Application Engine admin user.
+    # This user ID should be in the IBM Business Automation Navigator administrator role, as specified as appLoginUsername in the Navigator secret.
+    # Required only when User Management Service (UMS) is configured: This user should also belong to UMS Teams admin group or the UMS Teams Administrators team.
+    # If not, follow the instructions in "Completing post-deployment tasks for Business Automation Studio and Application Engine" in the IBM Documentation to add it to the Navigator Administrator role and UMS team server admin group.
+    admin_user: <Required>
+    external_tls_secret:
+    external_connection_timeout: 90s
+    replica_size: 1
+    # data_persistence is for Business Automation Application Data Persistence(ae_data_persistence).
+    # If you are using pattern mode, the shared_configuration.sc_deployment_patterns contains value and sc_optional_components contains ae_data_persistence, then you do not need input any value to data_persistence.enable, it is enabled by default.
+    # If you are using non-pattern mode, you can set data_persistence.enable to true to enable it.
+    # Notes: ae_data_persistence is not supported in starter pattern mode and when AE is as playback server
+    data_persistence:
+        enable:
+        ## If ae_data_persistence is enabled. Then you must input one CPE object store name. If you keep the default object store configuration. Then the default name filled should be AEOS.
+        object_store_name: "AEOS"
+    # Default is false. If you are using custom JDBC. Then you must set shared_configuration.sc_drivers_url and change this value to true.
+    use_custom_jdbc_drivers: false
+    service_type: Route
+    autoscaling:
+      enabled: false
+      max_replicas: 5
+      min_replicas: 2
+      target_cpu_utilization_percentage: 80
+    server_identifier: ""
+    # Max Request Body, the unit is KB
+    max_request_body_size: 2000    
+    database:
+      # Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
+      # If you want PostgresDB to be created for a AE database, set this parameter to true
+      # When you set dc_use_postgres to true, please ensure that the fields for host, port, and db_cert_secret_name are left empty, and also set enable_ssl to true.
+      dc_use_postgres: false
+      # AE Database host name or IP when the database type is Db2, PostgreSQL, SQLSERVER.
+      host: <Required>
+      # AE Database name when the database type is Db2, PostgreSQL, SQLSERVER.
+      #Provide the database name for runtime application engine use, for example, AAEDB
+      #Please pay attention that if you selected authoring environment also.
+      #The database used by playback server and this one should be different
+      name: <Required>
+      # AE database port number when the database type is Db2, PostgreSQL, SQLSERVER.
+      port: <Required>
+      ## If you setup Db2 HADR or PostgreSQL, SQLSERVER Connection Fail-over and want to use it, you need to configure alternative_host and alternative_port, or else, leave is as blank.
+      ## If more than one server name is specified, delimit the server names with commas (,). The number of values that is specified for alternative_host must match the number of values that is specified for alternative_port.
+      alternative_host:
+      alternative_port:
+      ## Only Db2, Oracle, PostgreSQL, SQLSERVER are supported.
+      type: <Required>
+      ## Required only when the database type is Oracle, both ssl and non-ssl. The format must be purely Oracle descriptor like (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=<your database host/IP>)(PORT=<your database port>))(CONNECT_DATA=(SERVICE_NAME=<your Oracle service name>))). NOTES: PROTOCOL=TCP for non-ssl, PROTOCOL=TCPS for ssl.
+      oracle_url_without_wallet_directory:
+      enable_ssl: true
+      ## Required only when type is Oracle and enable_ssl is true. The format must be purely oracle descriptor. SSO wallet directory must be specified and fixed to (MY_WALLET_DIRECTORY=/shared/resources/oracle/wallet).
+      oracle_url_with_wallet_directory:
+      ## Required only when enable_ssl is true, when the database type is Db2, Oracle, SQLSERVER or PostgreSQL
+      db_cert_secret_name: <Required>
+      ## Required only when type is oracle and enable_ssl is true.
+      oracle_sso_wallet_secret_name:
+      ## Optional. If it is empty, the DBASB is default when the database type is Db2 or PostgreSQL; the AE_DATABASE_USER set in the admin_secret_name is default when the database type is Oracle and SQLSERVER.
+      ## It only supports to customize database schema name for Db2 and Postgresql. For DB2, the schema name is case-sensitive, and must be specified in uppercase characters, refer to https://www.ibm.com/docs/en/db2/11.5?topic=SSEPGG_11.5.0/com.ibm.db2.luw.apdv.java.doc/src/tpc/imjcc_r0052075.htm
+      current_schema: DBASB
+      initial_pool_size: 1
+      max_pool_size: 100
+      max_lru_cache_size: 1000
+      max_lru_cache_age: 600000
+      dbcompatibility_max_retries: 30
+      dbcompatibility_retry_interval: 10
+    log_level:
+      node: info
+      browser: 2
+    content_security_policy:
+      enable: false
+      allowlist:
+      frame_ancestor:
+    env:
+      max_size_lru_cache_rr: 1000
+      server_env_type: development
+      purge_stale_apps_interval: 86400000
+      # Number of preview-only automation application must be more to trigger purge,
+      apps_threshold: 100
+      # Age of preview-only automation application since publish to be stale in milliseconds
+      stale_threshold: 172800000
+      # Number of preview-only automation services must be more to trigger purge,
+      service_threshold: 100
+      # Age of preview-only automation service since publish to be stale in milliseconds
+      service_stale_threshold: 172800000
+      # Service socket connection timeout in milliseconds
+      connection_timeout: 120000
+      uv_thread_pool_size: 40
+      # The context root used to expose the public applications
+      public_app_context: public-app
+      # Set custom enviroment varaible on app engine pods
+      custom_environment_variables:
+      # # example entry for setting timezone on pod
+      # - key: TZ
+      #   value: Europe/Warsaw
+    max_age:
+      auth_cookie: "900000"
+      csrf_cookie: "3600000"
+      static_asset: "2592000"
+      hsts_header: "2592000"
+    probe:
+      liveness:
+        failure_threshold: 5
+        initial_delay_seconds: 60
+        period_seconds: 10
+        success_threshold: 1
+        timeout_seconds: 180
+      readiness:
+        failure_threshold: 5
+        initial_delay_seconds: 10
+        period_seconds: 10
+        success_threshold: 1
+        timeout_seconds: 180
+    #-----------------------------------------------------------------------
+    # If you want better HA experience.
+    # - Set the session.use_external_store to true
+    # - Fill in your redis server information
+    #-----------------------------------------------------------------------
+    redis:
+      # Your external redis host/ip
+      host:
+      # Your external redis port
+      port: '6379'
+      ttl: 1800
+      # If your redis enabled TLS connection set this to true
+      # You should add redis server CA certificate in tls_trust_list or trusted_certificate_list
+      tls_enabled: false
+      # If you are using Redis V6 and above with username fill in this field.
+      # Otherwise leave this field as empty
+      username:
+    resource_ae:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+        ephemeral_storage: 2Gi
+      requests:
+        cpu: 300m
+        memory: 256Mi
+        ephemeral_storage: 512Mi
+    resource_init:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+        ephemeral_storage: 2Gi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+        ephemeral_storage: 512Mi
+    session:
+      check_period: "3600000"
+      duration: "1800000"
+      max: "10000"
+      resave: "false"
+      rolling: "true"
+      save_uninitialized: "false"
+      #-----------------------------------------------------------------------
+      # If you want better HA experience.
+      # - Set the session.use_external_store to true
+      # - Fill in your redis server information
+      #-----------------------------------------------------------------------
+      use_external_store: "false"
+    tls:
+      tls_trust_list: []
+    # If you want to make the replicate size more than 1 for this cluster. Then you must enable the shared storage
+    share_storage:
+      enabled: true
+      # If you create the PV manually. Then please provide the PVC name bind here
+      pvc_name:
+      auto_provision:
+        enabled: true
+        # Required if you enabled the auto provision
+        storage_class:
+        size: 20Gi
+    log_storage:
+      enabled: true
+      pvc_name: 'cp4a-shared-log-pvc'
+      log_file_size: '20M'
+      log_rotate_size: 5
+      auto_provision:
+        enabled: true
+        # By default it will reuse the operator shared log pvc. If you assgined other name
+        # And enabled the auto provision. We will provision that with fast storage class by default
+        # If you want to adjust that please fill in this value.
+        storage_class: ""
+        size: '5Gi'
+    node_affinity:
+      # Value in this field will be used as kubernetes.io/arch selector values. By default all support arch will be included
+      # It will be transformed to node selector value
+      # - key: kubernetes.io/arch
+      #   operator: In
+      #   values:
+      #     - amd64
+      #     - s390x
+      #     - ppc64le
+      deploy_arch:
+      - amd64
+      - s390x
+      - ppc64le
+      #-------------------------------------
+      # custom_node_selector_match_expression will be added in node selector match expressions.
+      # It accept array list inputs. You can assign mutiple selector match expressions except (kubernetes.io/arch)
+      # Example value:
+      # - key: kubernetes.io/hostname
+      #   operator: In
+      #   values:
+      #     - worker0
+      #     - worker1
+      #     - worker3
+      #-------------------------------------
+      custom_node_selector_match_expression: []
+    # Values in this field will be used as annotations in all generated pods
+    # It must be valid annotation key value pairs
+    # Example:
+    # customAnnotationKey: customAnnotationValue
+    custom_annotations: {}
+    # Values in this field will be used as labels in all generated pods
+    # It must be valid label key value pairs
+    # Example:
+    # customLabelKey: customLableValue
+    custom_labels: {}
+
+    # Disable FIPS for the component (default value is "false"), change it to "true" if you enable FIPS mode for the deployment with shared_configuration.enable_fips = true, but want to disable FIPS mode for the component.
+    disable_fips: false
+    
+    # # Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower. 
+    # # For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
+    # # NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start.
+    # # By default, the settings of shared_configuration for seccomp profile will be used.
+    # # profile settings support options: RuntimeDefault, Localhost, Unconfined
+    # seccomp_profile: 
+    # # Local path of custom seccomp profile when type `Localhost` is used. The custom profile must be accessible by the pod.  For example: `/profiles/fine-grained.json`
+    # localhost_profile: 
+    
+    # Optional performance tuning for Zen NGINX server.
+    # For more information, please refer to https://www.nginx.com/blog/tuning-nginx/#keepalive_requests and https://nginx.org/en/docs/http/ngx_http_proxy_module.html.
+    zen_performance:
+      # Optional: the number of idle keepalive connections to an upstream server that remain open for each worker process. The default vaue is 512.
+      keepalive: "512"
+      # Optional: how long an idle keepalive connection remains open. The default value is 30s.
+      keepalive_timeout: "30s"
+      # Optional: the number of requests a client can make over a single keepalive connection. The default is 500.
+      keepalive_requests: "500"
+      # Optional: sets the size of the buffer used for reading the first part of the response received from the proxied server. The default value is 256k.
+      proxy_buffer_size: "256k"
+      # Optional: sets the number and size of the buffers used for reading a response from the proxied server, for a single connection. The default value is 8 512k.
+      proxy_buffers: "8 512k"
+      # Optional: when buffering of responses from the proxied server is enabled, limits the total size of buffers that can be busy sending a response to the client while the response is not yet fully read. 
+      # The default value is 512k.
+      proxy_busy_buffers_size: "512k"
+      # Optional: Defines a timeout for establishing a connection with a proxied server. The default value is 300s.
+      proxy_connect_timeout: "300"
+      # Optional: Sets a timeout for transmitting a request to the proxied server. The timeout is set only between two successive write operations, not for the transmission of the whole request.
+      # If the proxied server does not receive anything within this time, the connection is closed. The default value is 300s.
+      proxy_send_timeout: "300"
+      # Optional: Defines a timeout for reading a response from the proxied server. The timeout is set only between two successive read operations, not for the transmission of the whole response.
+      # If the proxied server does not transmit anything within this time, the connection is closed. The default value is 300s.
+      proxy_read_timeout: "300"

@@ -1,0 +1,15 @@
+apiVersion: turbonomic.com/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: ibmlicensings.operator.ibm.com
+  labels:
+    component: cpfs
+spec:
+  resourceMappings:
+    - srcResourceSpec:
+        kind: Deployment
+        componentNames:
+          - ibm-licensing-service-instance
+      resourceMappingTemplates:
+        - srcPath: .spec.template.spec.containers[?(@.name=="license-service")].resources
+          destPath: .spec.resources

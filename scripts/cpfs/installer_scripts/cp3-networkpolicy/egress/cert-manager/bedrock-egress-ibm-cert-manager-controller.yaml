@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-ibm-cert-manager-controller
+  namespace: "certNamespace"
+  labels:
+    component: cpfs3
+spec:
+  egress:
+    - ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+      to:
+        - podSelector:
+            matchLabels:
+              apiserver: 'true'
+          namespaceSelector: {}
+  podSelector:
+    matchLabels:
+      app: "ibm-cert-manager-controller"
+  policyTypes:
+  - Egress

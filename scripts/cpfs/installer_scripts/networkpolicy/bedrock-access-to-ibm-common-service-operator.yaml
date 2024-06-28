@@ -1,0 +1,15 @@
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: access-to-ibm-common-service-operator
+  namespace: "csNamespace"
+  labels:
+    component: cpfs
+spec:
+  podSelector:
+    matchLabels:
+      name: ibm-common-service-operator
+  ingress:
+    - {}
+  policyTypes:
+    - Ingress

@@ -1,0 +1,60 @@
+\c "$tenant_db_name" ;
+
+set search_path to "$tenant_ontology" ;
+
+--
+-- Licensed Materials - Property of IBM
+-- 5737-I23
+-- Copyright IBM Corp. 2018 - 2022. All Rights Reserved.
+-- U.S. Government Users Restricted Rights:
+-- Use, duplication or disclosure restricted by GSA ADP Schedule
+-- Contract with IBM Corp.
+--
+
+grant all on schema "$tenant_ontology" to "$tenant_user";
+alter VIEW audit_sys_report owner to "$tenant_user";
+alter table audit_integration_activity owner to "$tenant_user";
+alter table audit_system_activity owner to "$tenant_user";
+alter table audit_api_activity owner to "$tenant_user";
+alter table audit_user_activity owner to "$tenant_user";
+alter table audit_processed_files owner to "$tenant_user";
+alter table audit_login_activity owner to "$tenant_user";
+alter table audit_ontology owner to "$tenant_user";
+alter table error_log owner to "$tenant_user";
+alter table processed_file owner to "$tenant_user";
+alter table smartpages_options owner to "$tenant_user";
+alter table api_integrations_objectsstore owner to "$tenant_user";
+alter table import_ontology owner to "$tenant_user";
+alter table integration owner to "$tenant_user";
+alter table login_detail owner to "$tenant_user";
+alter table user_detail owner to "$tenant_user";
+alter table heading_alias owner to "$tenant_user";
+alter table heading owner to "$tenant_user";
+alter table attribute_alias owner to "$tenant_user";
+alter table implementation_kc owner to "$tenant_user";
+alter table key_alias owner to "$tenant_user";
+alter table cword owner to "$tenant_user";
+alter table key_class owner to "$tenant_user";
+alter table implementation owner to "$tenant_user";
+alter table object_type owner to "$tenant_user";
+alter table doc_alias owner to "$tenant_user";
+alter table feature owner to "$tenant_user";
+alter table doc_class owner to "$tenant_user";
+alter table published_models owner to "$tenant_user";
+alter table models owner to "$tenant_user";
+alter table templates owner to "$tenant_user";
+alter table training_log owner to "$tenant_user";
+alter table kvp_model_detail owner to "$tenant_user";
+alter table runtime_page owner to "$tenant_user";
+alter table runtime_doc owner to "$tenant_user";
+alter table systemt_model_metadata owner to "$tenant_user";
+alter table systemt_models owner to "$tenant_user";
+alter table feedback owner to "$tenant_user";
+alter table models_testing_doc owner to "$tenant_user";
+alter table value_metrics owner to "$tenant_user";
+alter table system_options owner to "$tenant_user";
+alter table webhook owner to "$tenant_user";
+alter sequence MINOR_VER_SEQ owner to "$tenant_user";
+alter sequence error_log_id_seq owner to "$tenant_user";
+alter sequence processed_file_id_seq owner to "$tenant_user";
+alter sequence smartpages_options_id_seq owner to "$tenant_user";

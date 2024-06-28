@@ -1,0 +1,41 @@
+create table system_options
+(
+    config CLOB(10M),
+    opt_flags bigint not null with default 0
+);
+
+INSERT into system_options (config) values ('{"language": ["en"]}');
+
+alter table doc_class add column display_name varchar(1024);
+update doc_class set display_name = doc_class_name where display_name is NULL;
+alter table doc_class alter column display_name set NOT NULL;
+alter table doc_class add column localization_names CLOB (1M) INLINE LENGTH 1024;
+reorg table doc_class;
+create unique index ix_doc_class_name_ts ON doc_class(REPLACE(doc_class_name,' ',''));
+reorg table doc_class;
+
+alter table object_type add column localization_names CLOB (1M) INLINE LENGTH 1024;
+reorg table object_type;
+
+alter table key_class add column display_name varchar(1024);
+update key_class set display_name = key_class_name where display_name is NULL;
+alter table key_class alter column display_name set NOT NULL;
+alter table key_class add column localization_names CLOB (1M) INLINE LENGTH 1024;
+reorg table key_class;
+create unique index ix_key_class_name_ts ON key_class(doc_class_id, REPLACE(key_class_name,' ',''), parent_id);
+reorg table key_class;
+
+alter table key_alias alter column language drop not NULL;
+reorg table key_alias;
+update key_alias set language = NULL;
+alter table key_alias alter column language set data type VARCHAR(32);
+reorg table key_alias;
+
+alter table doc_alias alter column language set data type VARCHAR(32);
+reorg table doc_alias;
+
+alter table attribute_alias alter column language set data type VARCHAR(32);
+reorg table attribute_alias;
+
+alter table runtime_doc add column annotations CLOB(100M);
+reorg table runtime_doc;

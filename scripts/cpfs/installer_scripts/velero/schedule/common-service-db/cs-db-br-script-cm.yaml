@@ -1,0 +1,142 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cs-db-br-configmap
+  namespace: <cs-db namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: cs-db-data
+data:
+  br_cs-db.sh: |
+    #!/usr/bin/env bash
+
+    # Licensed Materials - Property of IBM
+    # Copyright IBM Corporation 2024. All Rights Reserved
+    # US Government Users Restricted Rights -
+    # Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+    #
+    # This is an internal component, bundled with an official IBM product.
+    # Please refer to that particular license for additional information.
+
+    # ---------- Command arguments ----------
+
+    set -o errtrace
+    set -o errexit
+
+    MODE=$1
+    CSDB_NAMESPACE=$2
+
+    BACKUP_DIR=/cs-db/cs-db-backup
+
+    function main {
+        if [[ $MODE == "backup" ]]; then
+            info "Mode set to backup, beginning backup process."
+            backup
+            success "Backup completed successfully."
+        elif [[ $MODE == "restore" ]]; then
+            info "Mode is set to restore, beginning restore process."
+            restore
+            success "Restore completed successfully."
+        else
+            error "Mode selected is $MODE. Please use either \"backup\" or \"restore\"."
+        fi
+    }
+
+    function backup {
+        mkdir -p $BACKUP_DIR/database
+        #mkdir -p $BACKUP_DIR/secrets
+        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` && \
+        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- mkdir -p /run/cs-db_backup && \
+        info "Beginning backup of cloudpak database..."
+        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=cloudpak -f /run/cs-db_backup/cs-db_cloudpak_backup.dump --format=c
+        info "Beginning backup of im database..."
+        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=im -f /run/cs-db_backup/cs-db_im_backup.dump --format=c
+        info "Beginning backup of zen database..."
+        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=zen -f /run/cs-db_backup/cs-db_zen_backup.dump --format=c
+
+        #Move backup to backup location
+        info "Copy backup file."
+        oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_cloudpak_backup.dump $BACKUP_DIR/database/cs-db_cloudpak_backup.dump
+        oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump $BACKUP_DIR/database/cs-db_im_backup.dump
+        oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump $BACKUP_DIR/database/cs-db_zen_backup.dump
+
+    }
+    
+    function restore {
+
+        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` 
+        oc exec $CNPG_PRIMARY_POD -n $CSDB_NAMESPACE -- mkdir -p /run/cs-db_backup
+        oc cp $BACKUP_DIR/database/cs-db_cloudpak_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_cloudpak_backup.dump
+        oc cp $BACKUP_DIR/database/cs-db_im_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump
+        oc cp $BACKUP_DIR/database/cs-db_zen_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump
+        
+        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+        info "Beginning restore of cloudpak database..."
+        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname cloudpak --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_cloudpak_backup.dump
+        info "Beginning restore of im database..."
+        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname im --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_im_backup.dump
+        info "Beginning restore of zen database..."
+        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname zen --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_zen_backup.dump
+        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+
+        info "Rerunning OIDC registration job..."
+        oc -n $CSDB_NAMESPACE get job oidc-client-registration -o yaml > /tmp/oidc-client-registration.yaml
+        oc -n $CSDB_NAMESPACE delete job oidc-client-registration
+        yq -i 'del(.metadata.creationTimestamp) | del(.metadata.managedFields) | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.spec.selector) | del(.spec.template.metadata.labels) | del(.status)' /tmp/oidc-client-registration.yaml || error "Failed to remove metadata fields from temp oidc client registration yaml for namespace ${CSDB_NAMESPACE}."
+        info "Wait for previous job to delete..."
+        sleep 30
+        oc apply -f /tmp/oidc-client-registration.yaml
+        rm -f /tmp/oidc-client-registration.yaml
+        wait_for_oidc
+    }
+
+    function wait_for_oidc {
+        job_name="oidc-client-registration"
+        info "Waiting for job $job_name to complete in namespace $CSDB_NAMESPACE."
+        job_exists=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers || echo fail)
+        if [[ $job_exists != "fail" ]]; then
+            completed=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers | awk '{print $2}')
+            retry_count=20
+            while [[ $completed != "1/1" ]] && [[ $retry_count > 0 ]]
+            do
+                info "Wait for job $job_name to complete. Try again in 15s."
+                sleep 15
+                completed=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers | awk '{print $2}')
+                retry_count=$retry_count-1
+            done
+
+            if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
+                error "Timed out waiting for job $job_name."
+            else
+                info "Job $job_name completed."
+            fi
+        else
+            error "Job $job_name not present."
+        fi
+    }
+
+    function msg() {
+        printf '%b\n' "$1"
+    }
+
+    function success() {
+        msg "\33[32m[✔] ${1}\33[0m"
+    }
+
+    function warning() {
+        msg "\33[33m[✗] ${1}\33[0m"
+    }
+
+    function error() {
+        msg "\33[31m[✘] ${1}\33[0m"
+        exit 1
+    }
+
+    function title() {
+        msg "\33[34m# ${1}\33[0m"
+    }
+
+    function info() {
+        msg "[INFO] ${1}"
+    }
+
+    main $*

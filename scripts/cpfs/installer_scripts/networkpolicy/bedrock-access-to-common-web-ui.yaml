@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: access-to-common-web-ui
+  namespace: "csNamespace"
+  labels:
+    component: cpfs
+spec:
+  podSelector:
+    matchLabels:
+      k8s-app: common-web-ui
+  ingress:
+  - {}
+  policyTypes:
+  - Ingress

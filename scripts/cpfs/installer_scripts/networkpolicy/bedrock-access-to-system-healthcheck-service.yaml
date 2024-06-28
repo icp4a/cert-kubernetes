@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: access-to-system-healthcheck-service
+  namespace: "csNamespace"
+  labels:
+    component: cpfs
+spec:
+  podSelector:
+    matchLabels:
+      app: "system-healthcheck-service"
+  policyTypes:
+  - Ingress
+  ingress:
+  - {}

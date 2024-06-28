@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<server>
+   <!-- SSL keystore configuration -->
+   <keyStore id="defaultKeyStore" location="resources/security/keys.jks" type="JKS" password="{xor}PDc+MTg6Nis=" />
+</server>

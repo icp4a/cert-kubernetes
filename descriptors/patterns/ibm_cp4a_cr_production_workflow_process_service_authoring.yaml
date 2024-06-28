@@ -1,0 +1,216 @@
+###############################################################################
+##
+##Licensed Materials - Property of IBM
+##
+##(C) Copyright IBM Corp. 2022, 2023. All Rights Reserved.
+##
+##US Government Users Restricted Rights - Use, duplication or
+##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+##
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: icp4adeploy
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 24.0.0
+spec:
+  ## CP4A application version
+  appVersion: 24.0.0
+
+  ## MUST exist, used to accept ibm license, valid value only can be "accept"
+  ibm_license: ""
+  shared_configuration:
+
+    ## Use this parameter to specify the license for the CP4A deployment and
+    ## the possible values are: non-production and production and if not set, the license will
+    ## be defaulted to production.  This value could be different from the other licenses in the CR.
+    sc_deployment_license: "<Required>"
+
+
+    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or 
+    ## know the reason to change this value, please leave the default value.
+    sc_deployment_context: "CP4A"
+
+    ## All CP4A components must use/share the image_pull_secrets to pull images
+    image_pull_secrets:
+    - ibm-entitlement-key
+
+    ## All CP4A components must use/share the same docker image repository.  For example, if IBM Entitled Registry is used, then
+    ## it should be "cp.icr.io".  Otherwise, it will be a local docker registry.
+    sc_image_repository: cp.icr.io
+
+    ## All CP4A components must use/share the root_ca_secret in order for integration
+    root_ca_secret: icp4a-root-ca
+
+    ## The deployment type as selected by the user.  Possible values are: Starter and Production.
+    sc_deployment_type: Production
+
+    ## The platform to be deployed specified by the user.  Possible values are: OCP and other.  This is normally populated by the User script
+    ## based on input from the user.
+    sc_deployment_platform:
+
+    ## Optional: You can specify a profile size for CloudPak - valid values are small,medium,large - default is small.
+    sc_deployment_profile_size: "small"
+
+    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
+    # sc_deployment_hostname_suffix: "{{ meta.namespace }}.<Required>" 
+
+    ## CP4A patterns or capabilities to be deployed.  This CR represents the "workflow-process-service" pattern, which includes the following
+    ## mandatory components: bas(Business Automation Studio) and optional components: bai
+    sc_deployment_patterns: workflow-process-service
+
+    ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
+    ## The optional components are: bai,pfs. Please do not delete wfps_authoring, because it determines that this is an Authoring environment.
+    ## pfs will bring advanced full text search function to workplace. And the external workplace can be enabled only when pfs is enabled.       
+    sc_optional_components: wfps_authoring
+
+    ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
+    ## This secret is also used by Workflow and BAStudio to store AES encryption key.
+    encryption_key_secret: ibm-iaws-shared-key-secret
+
+    sc_egress_configuration:
+      ## Required. Enable or disable egress access to external systems.
+      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true". 
+      ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
+      sc_restricted_internet_access: true
+      ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
+      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
+      ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
+      sc_api_namespace:
+      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Default are 443,6443 for OCP and ROKS
+      sc_api_port:
+      ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
+      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
+      ## Default is "openshift-dns" for OCP and ROKS
+      sc_dns_namespace:
+      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Default are 53,5353 for OCP and ROKS
+      sc_dns_port:
+
+    ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
+    sc_ingress_enable: false
+    
+    ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
+    ## the external service to the component's truststore.
+    trusted_certificate_list: []
+
+    ## On OCP 3.x and 4.x, the User script will populate these three (3) parameters based on your input for "production" deployment.
+    ## If you manually deploying without using the User script, then you would provide the different storage classes for the slow, medium
+    ## and fast storage parameters below.  If you only have 1 storage class defined, then you can use that 1 storage class for all 3 parameters.
+    ## sc_block_storage_classname is for Zen, Zen requires/recommends block storage (RWO) for metastoreDB
+    storage_configuration:
+      sc_slow_file_storage_classname: "<Required>"
+      sc_medium_file_storage_classname: "<Required>"
+      sc_fast_file_storage_classname: "<Required>"
+      sc_block_storage_classname: "<Required>"
+
+  ## The beginning section of LDAP configuration for CP4A
+  ## LDAP configuration is not required. But if you want to login with LDAP user. Then you can
+  ## 1. Uncomment following configurations and apply this file to make operator configure the LDAP settings for you. Or
+  ## 2. Do post actions with https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/22.0.1?topic=tasks-business-automation-studio to add the LDAP connection manually after install
+  
+  ldap_configuration:
+    ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory"
+    lc_selected_ldap_type: "<Required>"
+
+    ## The name of the LDAP server to connect
+    lc_ldap_server: "<Required>"
+
+    ## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc.
+    lc_ldap_port: "<Required>"
+
+    ## The LDAP bind secret for LDAP authentication.  The secret is expected to have ldapUsername and ldapPassword keys.  Refer to Knowledge Center for more info.
+    lc_bind_secret: ldap-bind-secret
+
+    ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    lc_ldap_base_dn: "<Required>"
+
+    ## Enable SSL/TLS for LDAP communication. Refer to Knowledge Center for more info.
+    lc_ldap_ssl_enabled: true
+
+    ## The name of the secret that contains the LDAP SSL/TLS certificate.
+    lc_ldap_ssl_secret_name: "<Required>"
+
+    ## The LDAP user name attribute. Semicolon-separated list that must include the first RDN user distinguished names. One possible value is "*:uid" for TDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_user_name_attribute: "<Required>"
+
+    ## The LDAP user display name attribute. One possible value is "cn" for TDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_user_display_name_attr: "<Required>"
+
+    ## The LDAP group base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    lc_ldap_group_base_dn: "<Required>"
+
+    ## The LDAP group name attribute.  One possible value is "*:cn" for TDS and "*:cn" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_group_name_attribute: "*:cn"
+
+    ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
+    lc_ldap_group_display_name_attr: "cn"
+
+    ## The LDAP group membership search filter string.  One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS
+    ## and "(&(cn=%v)(objectcategory=group))" for AD.
+    lc_ldap_group_membership_search_filter: "<Required>"
+
+    ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
+    lc_ldap_group_member_id_map: "<Required>"
+
+    ## The User script will uncomment the section needed based on user's input from User script.  If you are deploying without the User script,
+    ## uncomment the necessary section (depending if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
+    # ad:
+    #   lc_ad_gc_host: "<Required>"
+    #   lc_ad_gc_port: "<Required>"
+    #   lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
+    #   lc_group_filter: "(&(cn=%v)(objectcategory=group))"
+    # tds:
+    #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
+    #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+
+
+  #############################################################################
+  ## This section contains the BAStudio component configurations              #
+  #############################################################################
+  bastudio_configuration:
+    # Designate an existing LDAP user for the BAStudio and WfPS authoring repostiory admin user.
+    # If not provided. Then the default IAM admin user will be used as the default admin user ID.
+    # You can get that from secret ibm-iam-bindinfo-platform-auth-idp-credentials
+    admin_user:  ""
+    # By default WPS authoring can provsion an EDB postgreSQL database to use.
+    # If you want to use external postgreSQL database. Uncommment following section and input values accordingly.
+    admin_secret_name: "{{ meta.name }}-bas-admin-secret"
+    #-----------------------------------------------------------------------
+    # bastudio admin Secret template will be
+    #-----------------------------------------------------------------------
+    # apiVersion: v1
+    # stringData:
+    #   dbPassword: "<Your database password>"
+    #   dbUsername: "<Your database username>"
+    # kind: Secret
+    # metadata:
+    #   name: icp4adeploy-bas-admin-secret
+    # type: Opaque
+    #-----------------------------------------------------------------------
+    database:
+      ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
+      ## If you want PostgresDB to be created for a bastudio database, set this parameter to true
+      ## When you set dc_use_postgres to true, please ensure that the fields for host, port, and certificate_secret_name are left empty, and also set ssl_enabled to true.
+      dc_use_postgres: false
+      type: postgresql
+      ## Provide the database server hostname for BAStudio use
+      host: "<Required>"
+      ## Provide the database name for BAStudio use, for example, wfpsdb. It is case sensitive.
+      ## The database provided should be created by the BAStudio SQL script template.
+      name: "<Required>"
+      ## Provide the database server port for BAStudio use
+      port: "<Required>"
+    #   ## If you want to enable PostgreSQL Connection Fail-over, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
+    #   alternative_host:
+    #   alternative_port:
+    #   # ssl_enabled: <true/false>
+    #   # # After enabled the database SSL connection with true. Please save the TLS certificate used by database in a secret 
+    #   # # and put the name here. The secret can be create with command:
+    #   # # kubectl create secret generic <db-certificate-secret-name> --from-file=tls.crt=<certificate-pem-file-location>
+    #   # certificate_secret_name: <db-certificate-secret-name>

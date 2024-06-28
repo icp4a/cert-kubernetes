@@ -1,0 +1,23 @@
+<server>
+	<dataSource id="DESIGNDS" jndiName="DESIGNDS"  isolationLevel="TRANSACTION_READ_COMMITTED"  type="javax.sql.DataSource">
+		<jdbcDriver libraryRef="OracleLib"/>
+		<properties.oracle URL="jdbc:oracle:thin:@//<hostname>:1521/orcl"
+    		user="OSDBUser" 
+                        password="password"
+			resultSetHoldability="HOLD_CURSORS_OVER_COMMIT"
+		/>
+		<connectionManager  enableSharingForDirectLookups="false"/>
+
+	</dataSource>
+
+	<dataSource id="DESIGNDSXA" jndiName="DESIGNDSXA"  isolationLevel="TRANSACTION_READ_COMMITTED"  type="javax.sql.XADataSource" supplementalJDBCTrace="true">
+		<properties.oracle URL="jdbc:oracle:thin:@//<hostname>:1521/orcl"
+    		user="OSDBUser"
+                        password="password"
+		/>
+		<connectionManager  enableSharingForDirectLookups="true"/>
+
+		<jdbcDriver libraryRef="OracleLib"/>
+
+	</dataSource>
+</server>

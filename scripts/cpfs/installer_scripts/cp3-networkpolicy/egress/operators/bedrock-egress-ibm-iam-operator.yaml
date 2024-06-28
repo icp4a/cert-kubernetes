@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-ibm-iam-operator
+  namespace: "opNamespace"
+  labels:
+    component: cpfs3
+spec:
+  egress:
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchExpressions:
+          - key: k8s.enterprisedb.io/cluster
+            operator: Exists
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: "platform-identity-provider"
+  - ports:
+    - port: 443
+      protocol: TCP
+    - port: 6443
+      protocol: TCP
+    to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          apiserver: "true"
+  podSelector:
+    matchLabels:
+      name: "ibm-iam-operator"
+  policyTypes:
+  - Egress

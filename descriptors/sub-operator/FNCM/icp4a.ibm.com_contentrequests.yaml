@@ -1,0 +1,365 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2022. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: contentrequests.icp4a.ibm.com
+  labels:
+    app.kubernetes.io/instance: ibm-dba-content
+    app.kubernetes.io/managed-by: ibm-dba-content
+    app.kubernetes.io/name: ibm-dba-content
+    release: 24.0.0
+spec:
+  group: icp4a.ibm.com
+  names:
+    kind: ContentRequest
+    listKind: ContentRequestList
+    plural: contentrequests
+    singular: contentrequest
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: ContentRequest is the Schema for the contentrequests API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: CP4BA Content Request Spec defined the desired state 
+            required:
+            - appVersion
+            - license
+            x-kubernetes-preserve-unknown-fields: true
+            properties:
+              license:
+                type: object
+                required:
+                  - accept
+                properties:
+                  accept:
+                    type: boolean
+              appVersion:
+                type: string
+              content_deployment_type:
+                type: string
+              datasource_configuration:
+                type: object
+                description: Datasource Configuration for CP4A
+                x-kubernetes-preserve-unknown-fields: true
+                properties:
+                  dc_ssl_enabled: 
+                    type: boolean
+                  dc_gcd_datasource:
+                    type: object
+                    description: Database configuration for the GCD datasource for CPE
+                    x-kubernetes-preserve-unknown-fields: true
+                    properties:
+                      dc_database_type:
+                        type: string 
+                      dc_common_gcd_datasource_name:
+                        type: string
+                      dc_common_gcd_xa_datasource_name: 
+                        type: string
+                      database_servername: 
+                        type: string
+                      database_name: 
+                        type: string
+                      database_port: 
+                        type: string
+                      database_ssl_secret_name: 
+                        type: string
+                        nullable: true
+                      dc_oracle_gcd_jdbc_url: 
+                        type: string
+                        nullable: true
+                      dc_hadr_standby_servername: 
+                        type: string
+                        nullable: true
+                      dc_hadr_standby_port: 
+                        type: string
+                        nullable: true
+                      dc_hadr_validation_timeout: 
+                        type: number
+                      dc_hadr_retry_interval_for_client_reroute:
+                        type: number
+                      dc_hadr_max_retries_for_client_reroute: 
+                        type: number
+                  dc_os_datasources:
+                    type: array
+                    description: Database configuration for the object store datasource for CPE
+                    items:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                      properties:
+                        dc_database_type: 
+                          type: string
+                        dc_os_label: 
+                          type: string
+                          nullable: true
+                        dc_common_os_datasource_name: 
+                          type: string
+                        dc_common_os_xa_datasource_name: 
+                          type: string
+                        database_servername: 
+                          type: string
+                        database_name: 
+                          type: string
+                        database_port: 
+                          type: string
+                        database_ssl_secret_name: 
+                          type: string
+                          nullable: true
+                        dc_oracle_os_jdbc_url: 
+                          type: string
+                          nullable: true
+                        dc_hadr_standby_servername: 
+                          type: string
+                          nullable: true
+                        dc_hadr_standby_port: 
+                          type: string
+                          nullable: true
+                        dc_hadr_validation_timeout: 
+                          type: number
+                        dc_hadr_retry_interval_for_client_reroute: 
+                          type: number
+                        dc_hadr_max_retries_for_client_reroute: 
+                          type: number
+                  dc_icn_datasource:
+                    type: object
+                    description: Database configuration for ICN (Navigator) - aka BAN (Business Automation Navigator)
+                    x-kubernetes-preserve-unknown-fields: true
+                    properties:
+                      dc_database_type: 
+                        type: string
+                      dc_common_icn_datasource_name:
+                        type: string 
+                      database_servername: 
+                        type: string
+                      database_port: 
+                        type: string
+                      database_name: 
+                        type: string
+                      database_ssl_secret_name: 
+                        type: string
+                        nullable: true
+                      dc_oracle_icn_jdbc_url: 
+                        type: string
+                        nullable: true
+                      dc_hadr_standby_servername: 
+                        type: string
+                        nullable: true
+                      dc_hadr_standby_port: 
+                        type: string
+                        nullable: true
+                      dc_hadr_validation_timeout: 
+                        type: number
+                      dc_hadr_retry_interval_for_client_reroute: 
+                        type: number
+                      dc_hadr_max_retries_for_client_reroute: 
+                        type: number
+                  dc_cpe_datasources:
+                    type: array
+                    description: The database configuration for CPE, Operator will only add them as data source for CPE, won't create Object Store for these database connection.
+                    items:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                      properties:
+                        dc_database_type: 
+                          type: string
+                        dc_os_label: 
+                          type: string
+                          nullable: true
+                        dc_common_cpe_datasource_name: 
+                          type: string
+                        dc_common_cpe_xa_datasource_name: 
+                          type: string
+                        database_servername: 
+                          type: string
+                        database_name: 
+                          type: string
+                        database_port: 
+                          type: string
+                        database_ssl_secret_name: 
+                          type: string
+                          nullable: true
+                        dc_oracle_os_jdbc_url: 
+                          type: string
+                          nullable: true
+                        dc_common_conn_name:
+                          type: string
+                          nullable: true
+              initialize_configuration:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+                properties:
+                  ic_ldap_creation:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                    properties:
+                      ic_ldap_admin_user_name:
+                        items:
+                          type: string
+                        type: array
+                      ic_ldap_admins_groups_name:
+                        items:
+                          type: string
+                        type: array
+                  ic_obj_store_creation:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                    properties:
+                      object_stores:
+                        type: array
+                        items:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                          properties:
+                            oc_cpe_obj_store_display_name:
+                              type: string
+                            oc_cpe_obj_store_symb_name:
+                              type: string
+                            oc_cpe_obj_store_conn:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                              properties:
+                                name:
+                                  type: string
+                                dc_os_datasource_name:
+                                  type: string
+                                dc_os_xa_datasource_name:
+                                  type: string
+                            oc_cpe_obj_store_admin_user_groups:
+                              items:
+                                type: string
+                              type: array
+                            oc_cpe_obj_store_enable_workflow: 
+                              type: boolean
+                            oc_cpe_obj_store_workflow_data_tbl_space: 
+                              type: string
+                              nullable: true
+                            oc_cpe_obj_store_workflow_admin_group: 
+                              type: string
+                              nullable: true
+                            oc_cpe_obj_store_workflow_config_group: 
+                              type: string
+                              nullable: true
+                            oc_cpe_obj_store_workflow_pe_conn_point_name: 
+                              type: string
+                              nullable: true
+                  ic_icn_init_info:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                    properties:
+                      icn_repos:
+                        type: array
+                        items:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                          properties:
+                            add_repo_id:
+                              type: string
+                            add_repo_ce_wsi_url:
+                              type: string
+                            add_repo_os_sym_name:
+                              type: string
+                            add_repo_os_dis_name:
+                              type: string
+                            add_repo_workflow_enable:
+                              type: boolean
+                            add_repo_work_conn_pnt:
+                              type: string
+                            add_repo_protocol:
+                              type: string
+                      icn_desktop:
+                        type: array
+                        items:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                          properties:
+                            add_desktop_id:
+                              type: string
+                            add_desktop_name:
+                              type: string
+                            add_desktop_description:
+                              type: string
+                            add_desktop_is_default:
+                              type: boolean
+                            add_desktop_repo_id:
+                              type: string
+                            add_desktop_repo_workflow_enable:
+                              type: boolean
+            type: object
+          status:
+            description: CloudPakAutomationStatus defines the observed state of Automation
+            x-kubernetes-preserve-unknown-fields: true
+            properties:
+              components:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              endpoints:
+                type: array 
+                items:
+                  properties:
+                    type:
+                      type: string
+                    name:
+                      type: string
+                    scope:
+                      type: string
+                    uri:
+                      type: string
+                    caSecret:
+                      type: object
+                      properties:
+                        secretName:
+                          type: string
+                        key:
+                          type: string                   
+                  type: object 
+              conditions:
+                items:
+                  properties:
+                    message:
+                      type: string
+                    reason:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array      
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: null
+  storedVersions: null

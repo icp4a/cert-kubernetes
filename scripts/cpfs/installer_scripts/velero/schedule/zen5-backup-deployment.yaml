@@ -1,0 +1,69 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: zen5-backup
+  namespace: <zenservice namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: zen5-data
+spec:
+  selector:
+    matchLabels:
+      foundationservices.cloudpak.ibm.com: zen5-data
+  template:
+    metadata:
+      annotations:
+        backup.velero.io/backup-volumes: zen5-backup
+        pre.hook.backup.velero.io/command: '["sh", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh <zenservice namespace>"]'
+        pre.hook.backup.velero.io/timeout: 300s
+        post.hook.restore.velero.io/command: '["sh", "-c", "/zen5/restore_zen5.sh <zenservice namespace> <zenservice name>"]'
+        post.hook.restore.velero.io/wait-timeout: 1000s
+        post.hook.restore.velero.io/exec-timeout: 1000s
+        post.hook.restore.velero.io/timeout: 1000s
+      name: zen5-backup
+      namespace: <zenservice namespace>
+      labels:
+        foundationservices.cloudpak.ibm.com: zen5-data
+    spec:
+        containers:
+        - command:
+          - sh
+          - -c
+          - sleep infinity
+          image: icr.io/cpopen/cpfs/cpfs-utils:4.3.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
+          imagePullPolicy: IfNotPresent
+          name: zen5-backup-job
+          resources:
+            limits:
+              cpu: 500m
+              ephemeral-storage: 512Mi
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              ephemeral-storage: 128Mi
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /zen5/zen-backup
+            name: zen5-backup-mount
+          - name: scripts
+            mountPath: "/zen5"
+          - name: ext
+            mountPath: /zen5/extensions
+        dnsPolicy: ClusterFirst
+        schedulerName: default-scheduler
+        securityContext:
+          runAsNonRoot: true
+        serviceAccount: zen5-backup-sa
+        serviceAccountName: zen5-backup-sa
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: zen5-backup-mount
+          persistentVolumeClaim:
+            claimName: zen5-backup-pvc
+        - name: scripts
+          configMap:
+            name: zen5-br-configmap
+            defaultMode: 0777
+        - emptyDir: {}
+          name: ext

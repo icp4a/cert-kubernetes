@@ -1,0 +1,2284 @@
+
+###############################################################################
+##
+##Licensed Materials - Property of IBM
+##
+##(C) Copyright IBM Corp. 2021, 2023. All Rights Reserved.
+##
+##US Government Users Restricted Rights - Use, duplication or
+##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+##
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: icp4adeploy
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 24.0.0
+spec:
+  ##########################################################################
+  ## This section contains the shared configuration for all CP4A components #
+  ##########################################################################
+  appVersion: 24.0.0
+
+  ## MUST exist, used to accept ibm license, valid value only can be "accept"
+  ibm_license: ""
+
+  shared_configuration:
+
+    ## FileNet Content Manager (FNCM) license and possible values are: user, non-production, and production.
+    ## This value could be different from the other licenses in the CR.
+    sc_deployment_fncm_license: "<Required>"
+
+    ## Use this parameter to specify the license for the CP4A deployment and
+    ## the possible values are: non-production and production and if not set, the license will
+    ## be defaulted to production.  This value could be different from the other licenses in the CR.
+    sc_deployment_license: "<Required>"
+
+    
+   
+    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or 
+    ## know the reason to change this value, please leave the default value.
+    sc_deployment_context: "CP4A"
+
+    ## All CP4A components must use/share the image_pull_secrets to pull images.
+    image_pull_secrets:
+    - ibm-entitlement-key
+
+    ## All CP4A components must use/share the same docker image repository.  For example, if IBM Entitled Registry is used, then
+    ## it should be "cp.icr.io".  Otherwise, it will be a local docker registry.
+    sc_image_repository: cp.icr.io
+
+    ## Used to sign all CP4A internal certificates for internal services communications. In most cases, this value should not be changed.
+    ## All CP4A components must use/share the root_ca_secret in order for integration.
+    root_ca_secret: icp4a-root-ca
+
+    ## Optional: You can specify a profile size for CloudPak - valid values are small,medium,large - default is small.
+    sc_deployment_profile_size: "small"
+
+    ## If your Openshift cluster is configured for Hugepages and you want the applicable deployment resources to consume Hugepages.
+    ## You must set "true" for sc_hugepages.enabled. Default is "false".
+    ## You must set type for "Hugepages" like hugepages-2Mi or hugepages-1Gi. Default is "hugepages-2Mi".
+    ## You must set size for value which is suitable for Openshift cluster.
+    sc_hugepages:
+      enabled: false
+      type: ""
+      value: "" 
+
+    ## Shared custom TLS secret which will be used to sign all external routes if defined.
+    ## If this is not defined, all external routes will be signed with `root_ca_secret`
+    ## Starting with CP4BA 21.0.3 release, this parameter only applies to non-OCP deployments. For OCP, all external traffic is routed via a 
+    ## common front door in Platform UI so custom TLS certificates must be configured in AutomationUIConfig. Please refer 
+    ## to https://www.ibm.com/docs/en/cloud-paks/1.0?topic=foundation-custom-resources#automationuiconfig for more information.
+    external_tls_certificate_secret:
+
+    ## CP4A patterns or capabilities to be deployed.  This CR represents the "content" pattern (aka FileNet Content Manager), which includes the following
+    ## mandatory components: cpe, icn (BAN/Navigator), graphql and optional components: cmis, es (External Share).
+    sc_deployment_patterns: content
+
+    ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
+    ## The optional components are: Content Manager Image Services (cmis), css (Content Search Services), es (External Share), tm (Task Manager),
+    ##                              IBM Enterprise Records (ier) and IBM Content Collector for SAP (iccsap)
+    ## NOTE: ier, and iccsap does NOT support integration with ums.
+    ## NOTE: es does not work when using Zen and IAM for authentication.
+    sc_optional_components:
+
+    ## The deployment type as selected by the user.  Possible values are: Starter and Production.
+    sc_deployment_type: Production
+
+    ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that corresponds to a user ID.
+    ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is optional. It is not supported on OCP and ROKS.
+    sc_run_as_user:
+
+    ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower. 
+    ## For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
+    ## NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start.  This custom profile should be created at the worker nodes.
+    sc_seccomp_profile:
+    #  type: # RuntimeDefault, Localhost, Unconfined
+    #  localhost_profile: # Local path of custom seccomp profile when type `Localhost` is used. The custom profile must be accessible by the pod and must exist locally on all worker nodes.  For example: `/profiles/fine-grained.json`.
+
+    images:
+      keytool_init_container:
+        repository: cp.icr.io/cp/cp4a/common/dba-keytool-initcontainer
+        tag: "24.0.0"
+
+    ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
+    ## based on input from the user.
+    sc_deployment_platform:
+
+    sc_egress_configuration:
+      ## Required. Enable or disable egress access to external systems.
+      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true". 
+      ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
+      sc_restricted_internet_access: true
+      ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
+      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
+      ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
+      sc_api_namespace:
+      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Default are 443,6443 for OCP and ROKS
+      sc_api_port:
+      ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
+      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
+      ## Default is "openshift-dns" for OCP and ROKS
+      sc_dns_namespace:
+      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Default are 53,5353 for OCP and ROKS
+      sc_dns_port:
+
+    ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
+    sc_ingress_enable: false
+
+    ## For ROKS Ingress, provide TLS secret name for Ingress controller. If you are not using ROKS, comment out this line.
+    sc_ingress_tls_secret_name: <Required>
+
+    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
+    # sc_deployment_hostname_suffix: "{{ meta.namespace }}"
+
+    ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
+    ## the external service to the component's truststore.
+    trusted_certificate_list: []
+
+
+    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers, 
+    ## all the files must be compressed in a single file.
+    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or 
+    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed 
+    ## file should have the following structure and content:
+    ##   /jdbc/db2/db2jcc4.jar
+    ##   /jdbc/db2/db2jcc_license_cu.jar
+    ##   /jdbc/oracle/ojdbc8.jar
+    ##   /saplibs/libicudata.so.50
+    ##   /saplibs/...
+    ## Then you need to put the compressed package on an anonymously accessible web server and provide the link here.
+    ## The CR can handle .zip files using unzip as well as .tar, .tar.gz, .tar.bz2, .tar.xz. Does not handle .gz files, .bz2 files, .xz, or .zst files that do not contain a .tar archive.    
+    sc_drivers_url:
+
+    ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
+    ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
+    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true" (or the parameter doesn't exist), then the initialization will occur.
+    ## However, if sc_content_initialization is set to "false", then the initialization will not occur (even with the "initialize_configuration" section defined)
+    sc_content_initialization: false
+
+    ## OR
+    ## If you want to enable the initialize for a specific product for ECM (FNCM) / BAN, you will need to use
+    ## these fields instead.  Otherwise, use the default sc_content_initialization: false
+    # sc_content_initialization:
+    #  cpe: false
+    #  css: false
+    #  ban: false
+
+
+    ## Enable/disable the ECM (FNCM) / BAN verification (e.g., creation of test folder, creation of test document,
+    ## execution of CBR search, and creation of Navigator demo repository and desktop).  If the "verify_configuration"
+    ## section is defined in the CR and sc_content_verification is set to true, then the verification will occur.  Note that if you are upgrading or
+    ## migrating, set this parameter to "false" since the env has been previously verified.
+    sc_content_verification: false
+    ## OR
+    ## If you want to enable the verification for a specific product for ECM (FNCM) / BAN, you will need to use
+    ## these fields instead.  Otherwise, use the default sc_content_verification: false
+    # sc_content_verification:
+    #  cpe: false
+    #  css: false
+    #  ban: false
+
+    ## On OCP 3.x and 4.x, the User script will populate these three (3) parameters based on your input for "production" deployment.
+    ## If you manually deploying without using the User script, then you would provide the different storage classes for the slow, medium
+    ## and fast storage parameters below.  If you only have 1 storage class defined, then you can use that 1 storage class for all 3 parameters.
+    ## sc_block_storage_classname is for Zen, Zen requires/recommends block storage (RWO) for metastoreDB
+    storage_configuration:
+      sc_slow_file_storage_classname: "<Required>"
+      sc_medium_file_storage_classname: "<Required>"
+      sc_fast_file_storage_classname: "<Required>"
+      sc_block_storage_classname: "<Required>"
+
+    ## The CPE container and other components that use HTTP Basic Authentication are configured to use the OAuth JaaS loginModule         
+    ## to remove all remaining LDAP dependencies by allowing username/password credentials to be converted into an OAuth token for        
+    ## authentication. When you are upgrading from a release prior to CP4BA 22.0.2 to 22.0.2 or later, or when
+    ## you are migrating FileNet Content Manager on-prem or standalone deployment to IBM Cloud Pak for Business Automation (CP4BA), 
+    ## you must set "sc_skip_ldap_config: false".  If you are performing fresh install using 23.0.2-IF004 or later, you can also set     
+    ## "sc_skip_ldap_config: false" in order to have the FileNet Content Manager P8 domain to be configured with direct LDAP bind
+    ## as opposed to the default SCIM configuration.
+    sc_skip_ldap_config: true
+
+    ## Enable/disable FIPS mode for the deployment (default value is "false")
+    ## Note: If set as "true", in order to complete enablement of FIPS for CP4BA, please refer to "FIPS wall" configuration in IBM documentation.
+    enable_fips: false
+
+    ## This optional property is a string value corresponding to the "ipFamilyPolicy" property of Kubernetes "service" objects.
+    ## Ref: https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
+    ## This setting is only applicable in dual-stack clusters where both IPv4 and IPv6 are enabled. 
+    ## If not set, then the "ipFamilyPolicy" property of the services will default to the cluster-level settings. 
+    ## ALLOWED VALUES (case-sensitive): "PreferDualStack", "RequireDualStack"
+    ## WARNING: Setting this property to a value not supported by your cluster will cause CP4BA deployment to fail. 
+    ## For example, if your cluster only supports one IP family, using "RequireDualStack" will cause deployment to fail.
+    sc_service_ip_family_policy: 
+
+    ## This optional property is a list value corresponding to the "ipFamilies" property of Kubernetes "service" objects.
+    ## Ref: https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
+    ## This parameter works in conjunction with the ipFamilyPolicy to define the IP addressing behaviors for the Service.
+    ## If not set, then the "ipFamilies" property of the services will default to the cluster-level settings.
+    ## ALLOWED VALUES (case-sensitive):
+    ##   If "sc_service_ip_family_policy: PreferDualStack" or "RequireDualStack", then a list of two IP families supported by your cluster in desired order ("IPv6", "IPv4")
+    ## WARNING: Setting this property to a value not supported by your cluster will cause CP4BA deployment to fail.
+    ## For example, if your cluster does not support "IPv6" family, then including "IPv6" in this property will cause deployment to fail.
+    ## IMPORTANT: This setting is only supported for initial deployment. Updating this property after deployment has completed may
+    ## cause system instability and require some pods (such as "ibm-nginx") to be manually restarted.
+    sc_service_ip_families: 
+
+  ## The beginning section of LDAP configuration for CP4A
+  ldap_configuration:
+    ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory" or "Custom"
+    lc_selected_ldap_type: "<Required>"
+
+    ## The name of the LDAP server to connect
+    lc_ldap_server: "<Required>"
+
+    ## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc.
+    lc_ldap_port: "<Required>"
+
+    ## The LDAP bind secret for LDAP authentication.  The secret is expected to have ldapUsername and ldapPassword keys.  Refer to Knowledge Center for more info.
+    lc_bind_secret: ldap-bind-secret
+
+    ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    lc_ldap_base_dn: "<Required>"
+
+    ## Enable SSL/TLS for LDAP communication. Refer to Knowledge Center for more info.
+    lc_ldap_ssl_enabled: true
+
+    ## The name of the secret that contains the LDAP SSL/TLS certificate.
+    lc_ldap_ssl_secret_name: "<Required>"
+
+    ## The LDAP user name attribute. Semicolon-separated list that must include the first RDN user distinguished names. One possible value is "*:uid" for TDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_user_name_attribute: "<Required>"
+
+    ## The LDAP user display name attribute. One possible value is "cn" for TDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_user_display_name_attr: "<Required>"
+
+    ## The LDAP group base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    lc_ldap_group_base_dn: "<Required>"
+
+    ## The LDAP group name attribute.  One possible value is "*:cn" for TDS and "*:cn" for AD. Refer to Knowledge Center for more info.
+    lc_ldap_group_name_attribute: "*:cn"
+
+    ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
+    lc_ldap_group_display_name_attr: "cn"
+
+    ## The LDAP group membership search filter string.  One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS
+    ## and "(&(cn=%v)(objectcategory=group))" for AD.
+    lc_ldap_group_membership_search_filter: "<Required>"
+
+    ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
+    lc_ldap_group_member_id_map: "<Required>"
+
+    ## Set to true if you want to enable LDAP nested search in IAM, by default it is false
+    lc_ldap_recursive_search: false 
+
+    ## Set to true if you want to enable LDAP pagination in IAM, by default it is false
+    lc_enable_pagination: false
+
+    ## If lc_enable_pagination is set to true, then specify the pagination size. If not specified, the following default values will be used:
+    ## IBM Tivoli Directory Server: 20000; Microsoft Active Directory:1000, and Custom: 4500
+    lc_pagination_size: 1000 
+
+    ## add custom group search bases to IAM
+    lc_group_searchbase_list: []
+
+    ## add custom user search bases to IAM
+    lc_user_searchbase_list: []
+    
+    ## The lc_ldap_precheck parameter is used to enable or disable LDAP connection check.
+    ## If set to "true", then LDAP connection check will be enabled.
+    ## if set to "false", then LDAP connection check will not be enabled.
+    # lc_ldap_precheck: true
+
+    ## The User script will uncomment the section needed based on user's input from User script.  If you are deploying without the User script,
+    ## uncomment the necessary section (depending if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
+    # ad:
+    #   lc_ad_gc_host: "<Required>"
+    #   lc_ad_gc_port: "<Required>"
+    #   lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
+    #   lc_group_filter: "(&(cn=%v)(objectcategory=group))"
+    # tds:
+    #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
+    #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+    # custom:
+    #   lc_user_filter: "(&(objectClass=person)(cn=%v))"
+    #   lc_group_filter:  "(&(objectClass=group)(cn=%v))"
+
+    ## This is to add customized IAM SCIM LDAP attributes for this LDAP configuration, If you only add 'scim_configuration_iam', we will create SCIM LDAP attributes mapping using default values and the default value meant for IBM Security Directory Server only. Comment the whole section if you don't want this to be configured.
+    # scim_configuration_iam:
+    #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
+    #   user_unique_id_attribute: dn
+    #   user_external_id_attribute: dn
+    #   user_emails_attribute: mail
+    #   user_name_attribute: uid
+    #   user_display_name_attribute: cn
+    #   user_groups_attribute: memberOf
+    #   user_object_class_attribute: person
+    #   user_principal_name_attribute: uid
+    #   user_given_name_attribute: cn
+    #   user_family_name_attribute: sn
+    #   user_full_name_attribute: cn
+    #   ## Optional:  Uncomment 'user_custom_mapping' and add any custom mapping below
+    #   # user_custom_mapping:
+    #     # <scim_attr_name> : <ldap attr name>
+    #     # like below
+    #     # ibmentryuuid : ibm-entryuuid
+    #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
+    #   group_unique_id_attribute: dn
+    #   group_external_id_attribute: dn
+    #   group_display_name_attribute : cn
+    #   group_members_attribute: member
+    #   group_object_class_attribute: groupOfNames
+    #   group_name_attribute: cn
+    #   group_principal_name_attribute: cn
+    #   ## Optional:  Uncomment 'group_custom_mapping' and add any custom mapping below
+    #   # group_custom_mapping:
+    #     # <scim_attr_name> : <ldap attr name>
+    #     # like below
+    #     # ibmentryuuid : ibm-entryuuid
+
+    ## This section allows to enhance the ldap configuration for the UMS SCIM capability. If lc_user_filter or lc_group_filter cannot handle a custom LDAP filter for user or group searches this section should be enabled.
+    ## optional: enables the liberty ldapEntityType configuration and disables the usage of lc_user_filter, lc_group_filter, lc_ldap_group_member_id_map, lc_ldap_user_name_attribute and lc_ldap_group_name_attribute in the UMS capabilities.
+    ## for detailed information about the ldapEntityType, loginProperty and groupProperties  parameters please see the liberty documentation: https://www.ibm.com/docs/en/was-liberty/nd?topic=configuration-ldapregistry
+    ## default is false
+    lc_use_ldap_entity_type:
+    ## optional: only used if lc_use_ldap_entity_type is true
+    ## default is uid
+    lc_ldap_login_property:
+    ## optional: only used if lc_use_ldap_entity_type is true
+    ## the defaults depends on the lc_selected_ldap_type
+    lc_ldap_entity_type_user:
+      object_class:
+      search_base:
+      search_filter:
+    ## optional: only used if lc_use_ldap_entity_type is true
+    ## the defaults depends on the lc_selected_ldap_type
+    lc_ldap_entity_type_group:
+      object_class:
+      search_base:
+      search_filter:
+    ## optional: only used if lc_use_ldap_entity_type is true
+    ## the defaults depends on the lc_selected_ldap_type
+    lc_ldap_group_properties:
+      # member_attribute:
+        # The name of the member. Required if member_attribute is set
+        # name:
+        # The name of the object class. Required member_attribute is set
+        # object_class:
+        ## the scope options are: all, direct, nested
+        # scope:
+      #membership_attribute:
+        # The name of the membership. Required if membership_attribute is set
+        # name:
+        ## the scope options are: all, direct, nested
+        # scope:
+
+  ## The beginning section of multi ldap configuration for CP4BA
+  # ldap_configuration_<id_name>:
+    #lc_ldap_id: <id_name>
+    ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory" or "Custom"
+    #lc_selected_ldap_type: "<Required>"
+
+    ## The name of the LDAP server to connect
+    #lc_ldap_server: "<Required>"
+
+    ## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc.
+    #lc_ldap_port: "<Required>"
+
+    ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    #lc_ldap_base_dn: "<Required>"
+
+    ## Enable SSL/TLS for LDAP communication. Refer to Knowledge Center for more info.
+    #lc_ldap_ssl_enabled: true
+
+    ## The name of the secret that contains the LDAP SSL/TLS certificate.
+    #lc_ldap_ssl_secret_name: "<Required>"
+
+    ## The LDAP user name attribute.  One possible value is "*:cn" for TDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    #lc_ldap_user_name_attribute: "<Required>"
+
+    ## The LDAP user display name attribute. One possible value is "cn" for TDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    #lc_ldap_user_display_name_attr: "<Required>"
+
+    ## The LDAP group base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+    #lc_ldap_group_base_dn: "<Required>"
+
+    ## The LDAP group name attribute.  One possible value is "*:cn" for TDS and "*:cn" for AD. Refer to Knowledge Center for more info.
+    #lc_ldap_group_name_attribute: "*:cn"
+
+    ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
+    #lc_ldap_group_display_name_attr: "cn"
+
+    ## The LDAP group membership search filter string.  One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS and AD
+    #lc_ldap_group_membership_search_filter: "<Required>"
+
+    ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
+    #lc_ldap_group_member_id_map: "<Required>"
+
+    ## The lc_ldap_precheck parameter is used to enable or disable LDAP connection check.
+    ## If set to "true", then LDAP connection check will be enabled.
+    ## if set to "false", then LDAP connection check will not be enabled.
+    #lc_ldap_precheck: true
+
+    ## Uncomment the necessary section (depending if you are using Active Directory (ad) or Tivoli Directory Service (tds) or custom for other LDAP type) accordingly.
+    #ad:
+    #  lc_ad_gc_host: "<Required>"
+    #  lc_ad_gc_port: "<Required>"
+    #  lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
+    #  lc_group_filter: "(&(cn=%v)(objectcategory=group))"
+    #tds:
+    #  lc_user_filter: "(&(cn=%v)(objectclass=person))"
+    #  lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+    #custom:
+    #  lc_user_filter: "(&(objectClass=person)(cn=%v))"
+    #  lc_group_filter:  "(&(objectClass=group)(cn=%v))"
+
+    ## This is to add customized IAM SCIM LDAP attributes for this LDAP configuration, If you only add 'scim_configuration_iam', we will create SCIM LDAP attributes mapping using default values and the default value meant for IBM Security Directory Server only. Comment the whole section if you don't want this to be configured.
+    # scim_configuration_iam:
+    #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
+    #   user_unique_id_attribute: dn
+    #   user_external_id_attribute: dn
+    #   user_emails_attribute: mail
+    #   user_name_attribute: uid
+    #   user_display_name_attribute: cn
+    #   user_groups_attribute: memberOf
+    #   user_object_class_attribute: person
+    #   user_principal_name_attribute: uid
+    #   user_given_name_attribute: cn
+    #   user_family_name_attribute: sn
+    #   user_full_name_attribute: cn
+    #   ## Optional:  Uncomment 'user_custom_mapping' and add any custom mapping below
+    #   # user_custom_mapping:
+    #     # <scim_attr_name> : <ldap attr name>
+    #     # like below
+    #     # ibmentryuuid : ibm-entryuuid
+    #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
+    #   group_unique_id_attribute: dn
+    #   group_external_id_attribute: dn
+    #   group_display_name_attribute : cn
+    #   group_members_attribute: member
+    #   group_object_class_attribute: groupOfNames
+    #   group_name_attribute: cn
+    #   group_principal_name_attribute: cn
+    #   ## Optional:  Uncomment 'group_custom_mapping' and add any custom mapping below
+    #   # group_custom_mapping:
+    #     # <scim_attr_name> : <ldap attr name>
+    #     # like below
+    #     # ibmentryuuid : ibm-entryuuid
+      
+
+  ## User script should only uncomment this section if External Share if selected as an optional component.
+  ## If you are deploying without the User script, uncomment the necessary section (depending
+  ## if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
+  # ext_ldap_configuration:
+  #   lc_selected_ldap_type: "<Required>"
+  #   lc_ldap_server: "<Required>"
+  #   lc_ldap_port: "<Required>"
+  #   lc_bind_secret: ldap-bind-secret
+  #   lc_ldap_base_dn: "<Required>"
+  #   lc_ldap_ssl_enabled: true
+  #   lc_ldap_ssl_secret_name: "<Required>"
+  #   lc_ldap_user_name_attribute: "<Required>"
+  #   lc_ldap_user_display_name_attr: "<Required>"
+  #   lc_ldap_group_base_dn: "<Required>"
+  #   lc_ldap_group_name_attribute: "<Required>"
+  #   lc_ldap_group_display_name_attr: "cn"
+  #   lc_ldap_group_membership_search_filter: "<Required>"
+  #   lc_ldap_group_member_id_map: "<Required>"
+
+    ## The lc_ldap_precheck parameter is used to enable or disable LDAP connection check.
+    ## If set to "true", then LDAP connection check will be enabled.
+    ## if set to "false", then LDAP connection check will not be enabled.
+    # lc_ldap_precheck: true
+
+    ## User script will uncomment the section needed based on user's input from User script.
+    ## If you are deploying without the User script, uncomment the necessary section (depending
+    ## if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
+    # ad:
+    ## This is the Global Catalog port for the LDAP
+    #   lc_ad_gc_host: "<Required>"
+    #   lc_ad_gc_port: "<Required>"
+    #   lc_user_filter: "(&(sAMAccountName=%v)(objectcategory=user))"
+    #   lc_group_filter: "(&(cn=%v)(objectcategory=group))"
+    # tds:
+    #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
+    #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+
+   ## Uncomment this section if you have OpenId Connect providers.
+    # open_id_connect_providers: "<Required>"
+    ## Set the provider name that is for your redirect url.
+    #- provider_name: "<Required>"
+       ## Set the display name for the sign in button in navigator.
+    #  display_name: "Single Sign on"
+       ## Enter your oidc secret names here for cpe, nav external share and graphql.
+       ## Not all are required depending on you deployment.
+    #  client_oidc_secret:
+    #    es: "" # Points to a secret with client_id and client_secret in that format.
+    #    nav: "" # Points to a secret with client_id and client_secret in that format.
+    #    cpe: "" # Points to a secret with client_id and client_secret in that format.
+    #    graphql: "" # Points to a secret with client_id and client_secret in that format.
+    #  issuer_identifier: ""
+       ## REQUIRED PROPERTIES AND VALUES which are common
+       ## If not set will be set to the defaults.
+    #  response_type: "code"
+    #  scope: "openid email profile"
+    #  map_identity_to_registry_user: "false"
+    #  authn_session_disabled: "false"
+    #  inbound_propagation: "supported"
+    #  https_required: "true"
+    #  validation_method: "introspect"
+    #  disable_ltpa_cookie: "true"
+    #  signature_algorithm: "RS256"
+    #  user_identifier: "sub" # sub for ums and ibm id, email for google
+    #  unique_user_identifier: "sub" # sub for ums and ibm id, email for google
+    #  user_identity_to_create_subject: "sub" # sub for ums and ibm id, email for google
+       ##
+       ## Uncomment out discovery_endpoint_url for Google or UMS IdP.
+       ##
+    #  discovery_endpoint_url:
+       ##
+       ## Optional parameters
+       ##
+    #    authorization_endpoint_url: ""
+    #    token_endpoint_url: ""
+    #    validation_endpoint_url: ""
+    #    trust_alias_name: "secrent name you created"
+    #    disables_iss_checking: "true"
+    #    jwk_client_oidc_secret:
+    #      es: "" # Points to a secret with client_id and client_secret in that format.
+    #      nav: "" # Points to a secret with client_id and client_secret in that format.
+    #      cpe: "" # Points to a secret with client_id and client_secret in that format.
+    #      graphql: ""  # Points to a secret with client_id and client_secret in that format.
+    #    token_reuse: "true"
+       ##
+       ## User defined parameters.
+       ## If you do not see a parameter that is needed for you OpenId Connect provider.
+       ## You are able to defined in this section has a key value pair separated by the delimeter `:`
+       ## If you want to change the default delimeter, add `DELIM=<NEW_DELIMETER>` infront of your
+       ## key value pair. Ex: 'DELIM=;myKey;myValue'.  In this example, the new delimeter is `;` and
+       ## the key value pair is set to `myKey;myValue` instead of `myKey:myValue`.
+       ##
+    #    oidc_ud_param:
+    #    - 'DELIM=;myKey;myValue'
+    #    - "myKey2:myValue2"
+    #    - "myKey3:myValue3"
+
+  ## The idp_iam_configuration is meant when you have an identity provider configured in iam that isn't a directory provider service
+  ## Such as Okta or AzureAD configured in IAM as the identity provider.
+  ## Set the idp_id to the name giving to the identity provider configured in IAM.
+  ## Set the idp_type.  Supported types are okta or azuread.
+  ## idp_allow_email_or_upn_short_names by default is true. Only specify idp_allow_email_or_upn_short_names: false if
+  ## email or upn short name is not used to login
+  #idp_iam_configuration:
+  #  - idp_id: <idp_name>
+  #    idp_type: okta (or azuread) 
+  #    idp_allow_email_or_upn_short_names: true (optional - default value is true) 
+
+  ## The beginning section of database configuration for CP4A
+  datasource_configuration:
+    ## The dc_ssl_enabled parameter is used to support database connection over SSL for DB2/Oracle/PostgreSQL.
+    dc_ssl_enabled: true
+    ## The database_precheck parameter is used to enable or disable CPE/Navigator database connection check.
+    ## If set to "true", then CPE/Navigator database connection check will be enabled.
+    ## if set to "false", then CPE/Navigator database connection check will not be enabled.
+   # database_precheck: true
+    ## The database configuration for the GCD datasource for CPE
+    dc_gcd_datasource:
+      ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
+      ## If you want PostgresDB to be created for a GCD database, set this parameter to true
+      dc_use_postgres: false
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".
+      dc_database_type: "<Required>"
+      ## The GCD non-XA datasource name.  The default value is "FNGCDDS".
+      dc_common_gcd_datasource_name: "FNGCDDS"
+      ## The GCD XA datasource name. The default value is "FNGCDDSXA".
+      dc_common_gcd_xa_datasource_name: "FNGCDDSXA"
+      ## Provide the database server name or IP address of the database server. As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_servername: "<Required>"
+      ## Provide the name of the database for the GCD for CPE.  For example: "GCDDB". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_name: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_port: "<Required>"
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      database_ssl_secret_name: "<Required>"
+      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      dc_oracle_gcd_jdbc_url: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+
+      ## If the database type is Db2 HADR, then complete the rest of the parameters below.
+      ## Provide the database server name or IP address of the standby database server.
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+      ## Connection manager for a data source.
+      connection_manager:
+        ## Minimum number of physical connections to maintain in the pool.
+        min_pool_size: 0
+        ## Maximum number of physical connections for a pool.
+        max_pool_size: 50
+        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
+        max_idle_time: 1m
+        ## Amount of time between runs of the pool maintenance thread.
+        reap_time: 2m
+        ## Specifies which connections to destroy when a stale connection is detected in a pool.
+        purge_policy: EntirePool
+    ## The database configuration for the object store 1 (OS1) datasource for CPE
+    dc_os_datasources:
+    ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
+    ## GCD configuration above.
+    - dc_database_type: "<Required>"
+      ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
+      ## If you want PostgresDB to be created for a GCD database, set this parameter to true
+      dc_use_postgres: false      
+      ## Provide the object store label for the object store.  The default value is "os" or not defined.
+      ## This label must match the OS secret you define in ibm-fncm-secret.
+      ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
+      ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
+      ## If you don't define dc_os_label, then your secret will be defined as:
+      ## --from-literal=osDBUsername="<your os db username>" --from-literal=osDBPassword="<your os db password>".
+      ## If you have multiple object stores, then you need to define multiple datasource sections starting
+      ## at "dc_database_type" element.
+      ## If all the object store databases share the same username and password, then dc_os_label value should be the same
+      ## in all the datasource sections.
+      dc_os_label: "os"
+      ## The OS1 non-XA datasource name.  The default value is "FNOS1DS".
+      dc_common_os_datasource_name: "FNOS1DS"
+      ## The OS1 XA datasource name.  The default value is "FNOS1DSXA".
+      dc_common_os_xa_datasource_name: "FNOS1DSXA"
+      ## Provide the database server name or IP address of the database server. As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter. This should be the same as the
+      ## GCD configuration above.
+      database_servername: "<Required>"
+      ## Provide the name of the database for the object store 1 for CPE.  For example: "OS1DB". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_name: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_port: "<Required>"
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      database_ssl_secret_name: "<Required>"
+      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      dc_oracle_os_jdbc_url: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+      ######################################################################################
+      ## If the database type is "Db2HADR", then complete the rest of the parameters below.
+      ## Otherwise, remove or comment out the rest of the parameters below.
+      ######################################################################################
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+      ## Connection manager for a data source.
+      connection_manager:
+        ## Minimum number of physical connections to maintain in the pool.
+        min_pool_size: 0
+        ## Maximum number of physical connections for a pool.
+        max_pool_size: 50
+        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
+        max_idle_time: 1m
+        ## Amount of time between runs of the pool maintenance thread.
+        reap_time: 2m
+        ## Specifies which connections to destroy when a stale connection is detected in a pool.
+        purge_policy: EntirePool
+    
+    ## The database configuration for CPE, Operator will only add them as data source for CPE, won't create Object Store for these database connection.
+    dc_cpe_datasources:
+    ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
+    ## GCD configuration above.
+    - dc_database_type: "<Required>"
+      ## Provide the label for the CPE data source. The default value is "os" or not defined.
+      ## This label must match the OS secret you define in ibm-fncm-secret.
+      ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
+      ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
+      ## If you don't define dc_os_label, then your secret will be defined as:
+      ## --from-literal=osDBUsername="<your os db username>" --from-literal=osDBPassword="<your os db password>".
+      ## If all the CPE datasource databases share the same username and password, then dc_os_label value should be the same in all the datasource sections.
+      dc_os_label: "os"
+      ## The XA datasource name. 
+      dc_common_cpe_xa_datasource_name: CASEHISTORYDSXA
+      ## The non-XA datasource name. 
+      dc_common_cpe_datasource_name: CASEHISTORYDS
+      ## Provide the database server name or IP address of the database server
+      database_servername: "<Required>"
+      ## Provide the name of the database for the CPE data source.  For example: "DS1DB"
+      database_name: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_port: "<Required>"
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      database_ssl_secret_name: "<Required>"
+      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      dc_oracle_os_jdbc_url: "<Required>"
+      ## Database connection name
+      dc_common_conn_name: "<Required>"
+      ######################################################################################
+      ## If the database type is "Db2HADR", then complete the rest of the parameters below.
+      ## Otherwise, remove or comment out the rest of the parameters below.
+      ######################################################################################
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+      ## Connection manager for a data source.
+      connection_manager:
+        ## Minimum number of physical connections to maintain in the pool.
+        min_pool_size: 0
+        ## Maximum number of physical connections for a pool.
+        max_pool_size: 50
+        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
+        max_idle_time: 1m
+        ## Amount of time between runs of the pool maintenance thread.
+        reap_time: 2m
+        ## Specifies which connections to destroy when a stale connection is detected in a pool.
+        purge_policy: EntirePool
+    ## The database configuration for ICN (Navigator) - aka BAN (Business Automation Navigator)
+    dc_icn_datasource:
+      ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
+      ## If you want PostgresDB to be created for a Navigator database, set this parameter to true
+      dc_use_postgres: false
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
+      ## GCD and object store configuration above.
+      dc_database_type: "<Required>"
+      ## Provide the ICN datasource name.  The default value is "ECMClientDS".
+      dc_common_icn_datasource_name: "ECMClientDS"
+      database_servername: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_port: "<Required>"
+      ## Provide the name of the database for ICN (Navigator).  For example: "ICNDB". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_name: "<Required>"
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      database_ssl_secret_name: "<Required>"
+      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      dc_oracle_icn_jdbc_url: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+      ######################################################################################
+      ## If the database type is "Db2HADR", then complete the rest of the parameters below.
+      ## Otherwise, remove or comment out the rest of the parameters below.
+      ######################################################################################
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+      ## Connection manager for a data source.
+      connection_manager:
+        ## Minimum number of physical connections to maintain in the pool.
+        min_pool_size: 0
+        ## Maximum number of physical connections for a pool.
+        max_pool_size: 50
+        ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
+        max_idle_time: 1m
+        ## Amount of time between runs of the pool maintenance thread.
+        reap_time: 2m
+        ## Specifies which connections to destroy when a stale connection is detected in a pool.
+        purge_policy: EntirePool
+
+   ## Monitor setting
+ # monitoring_configuration:
+  #   mon_metrics_writer_option: 4
+  #   mon_enable_plugin_pch: false
+  #   mon_enable_plugin_mbean: false
+  #   collectd_plugin_write_graphite_host: localhost
+  #   collectd_plugin_write_graphite_port: 2003
+  #   collectd_interval: 10
+  #   collectd_disable_host_monitoring: false
+  #   collectd_plugin_write_prometheus_port: 9103
+## You can use this configmap to customize PCH counters mounted at /opt/ibm/monitoring/pchmonitor/counters.xml. If not provided, Operator will create a default config map and any updates to it will not be overwritten by the Operator.
+  #   pch_counters_configmap: {{ meta.name }}-pch-counters-config
+
+  # # Logging setting
+  # logging_configuration:
+  #   mon_log_parse: false
+  #   mon_log_service_endpoint: localhost:5044
+  #   private_logging_enabled: false
+  #   logging_type: default
+  #   mon_log_path: /path_to_extra_log
+
+  ########################################################################
+  ########      IBM FileNet Content Manager configuration         ########
+  ########################################################################
+  ecm_configuration:
+    ## FNCM secret that contains GCD DB user name and password, Object Store DB user name and password,
+    ## LDAP user and password, CPE username and password, keystore password, and LTPA passs, etc.
+    fncm_secret_name: ibm-fncm-secret
+
+    ## By default all the components create ingress and routes with required annotations. In case any custom annotation is needed for the environment provide below.
+    #    route_ingress_annotations:
+    #      - haproxy.router.openshift.io/balance: roundrobin
+    route_ingress_annotations:
+
+    # Optional: You can specify a profile size for FNCM if different from CloudPak (see shared_configuration.sc_deployment_profile_size).  In other words,
+    # you can override "shared_configuration.sc_deployment_profile_size" with "deployment_profile_size" defined here.
+    # The valid values are small, medium, large - default is small.  The resources in this file are reflecting a "small" profile.
+    #deployment_profile_size: "small"
+
+    # Optional: Use an existing certificate for automatic creation of OpenShift routes.
+    # Set this key if you have an external TLS certificate. Leave this empty if you don't have an external TLS certificate, operator will generate one for you.
+    fncm_ext_tls_secret_name:
+    ## Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes.
+    ## Set this key if you have a CA to sign the external TLS certificate, leave this parameter empty if you don't have the CA of your external TLS certificate.
+    fncm_auth_ca_secret_name:
+ 
+    ## This can be overwritten by componenent level definition for example ecm_configuration.cpe.node_affinity.
+    node_affinity:
+      # Value in this field will be used as kubernetes.io/arch selector values. By default all support arch will be included
+      # It will be transformed to node selector value
+      # - key: kubernetes.io/arch
+      #   operator: In
+      #   values:
+      #     - amd64
+      #     - s390x
+      #     - ppc64le
+      deploy_arch:
+      - amd64
+      - s390x
+      - ppc64le
+      #-------------------------------------
+      # custom_node_selector_match_expression will be added in node selector match expressions.
+      # It accept array list inputs. You can assign mutiple selector match expressions except (kubernetes.io/arch)
+      # Example value:
+      # - key: kubernetes.io/hostname
+      #   operator: In
+      #   values:
+      #     - worker0
+      #     - worker1
+      #     - worker3
+      #-------------------------------------
+      custom_node_selector_match_expression: []
+    ## Values in this field will be used as annotations in all generated pods and it must be valid annotation key value pairs.
+    # Example:
+    # customAnnotationKey: customAnnotationValue
+    ## This can be overwritten by componenent level definition for example ecm_configuration.cpe.custom_annotations.
+    ## To include '{{ }}' in annotation like '{{example}}', add a backward slash before curly brace like '\{\{example\}\}'.
+    custom_annotations: {}
+    ## Values in this field will be used as labels in all generated pods and it must be valid label key value pairs
+    # Example:
+    # customLabelKey: customLableValue
+    ## This can be overwritten by componenent level definition for example ecm_configuration.cpe.custom_labels.
+    custom_labels: {}
+
+    # Optional performance tuning for Zen NGINX server.
+    # For more information, please refer to https://www.nginx.com/blog/tuning-nginx/#keepalive_requests and https://nginx.org/en/docs/http/ngx_http_proxy_module.html.
+    # This can be overwritten by componenent level definition for example ecm_configuration.graphql.zen_performance.
+    # For CPE we allow more granular setting like below and they take precedence over ecm_configuration.cpe.zen_performance. 
+    # cpe.zen_performance.acce
+    # cpe.zen_performance.fncews40mtom
+    # cpe.zen_performance.pewsi
+    # cpe.zen_performance.peengine
+    # cpe.zen_performance.p8ce
+    zen_performance:
+      # Timeout for establishing a connection with a proxy server. This parameter is optional. The default value is 300s.
+      proxy_connect_timeout: 300
+      # Timeout for transmitting a request to the proxy server. The timeout is set only between two successive write operations, not for the transmission of the whole request. If the proxy server does not receive anything within this time, the connection is closed. This parameter is optional. The default value is 300s.
+      proxy_send_timeout: 300
+      # Timeout for reading a response from the proxy server. The timeout is set only between two successive read operations, not for the transmission of the whole response. If the proxy server does not transmit anything within this time, the connection is closed. This parameter is optional. The default value is 300s.
+      proxy_read_timeout: 300
+
+    ## Enable/disable basic auth. 
+    ## From 22.0.2 this by default is true to use jaaslogin module
+    ## Set this to false let FNCM component to use basic auth 
+    disable_basic_auth: true
+    ####################################
+    ## Start of configuration for CPE ##
+    ####################################
+    cpe:
+      ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
+      arch:
+        amd64: "3 - Most preferred"
+
+      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## it is recommended to have 2 or more.
+      replica_count: 2
+
+      ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+      image:
+        ## The default repository is the IBM Entitled Registry.
+        repository: cp.icr.io/cp/cp4a/fncm/cpe
+        tag: "24.0.0"
+
+        ## This will override the image pull policy in the shared_configuration.
+        pull_policy: IfNotPresent
+
+      ## Logging for workloads.  This is the default setting.
+      log:
+       format: json
+
+      ## Set securityContext for CPE deployment.
+      security_context:
+        ## Controls which group IDs containers add. For example "supplemental_groups: [1000620001,1000620002]"
+        supplemental_groups:
+        ## This can take an array of key value pairs to assign SELinux labels to a Container, for example
+        ## selinux_options:
+          ## level: "s0:c123,c456"
+          ## type: "spc_t
+        selinux_options:
+        # Defines behavior for changing ownership and permission of the volume before being exposed inside a Pod. This field has two possible values (Always,OnRootMismatch)
+        # For example fs_groupchangepolicy: "OnRootMismatch"
+        fs_groupchangepolicy:
+
+      ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.  If more resources are needed,
+      ## make the changes here to meet your requirement.
+      resources:
+        requests:
+          cpu: 1
+          memory: 3072Mi
+          ephemeral_storage: 4Gi
+        limits:
+          cpu: 1
+          memory: 3072Mi
+          ephemeral_storage: 4Gi
+
+      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+      ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
+      auto_scaling:
+        enabled: false
+        max_replicas: "<Required>"
+        min_replicas: "<Required>"
+        ## This is the default cpu percentage before autoscaling occurs.
+        target_cpu_utilization_percentage: "<Required>"
+
+      ## Below are the default CPE Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
+      cpe_production_setting:
+        time_zone: Etc/UTC
+
+        ## The initial use of available memory.
+        jvm_initial_heap_percentage: 18
+        ## The maximum percentage of available memory to use.
+        jvm_max_heap_percentage: 33
+
+        ## Use this "jvm_customize_options" parameter to specify JVM arguments using comma separation. For example, if you want to set the following JVM arguments:
+        ##  -Dmy.test.jvm.arg1=123
+        ##  -Dmy.test.jvm.arg2=abc
+        ##  -XX:+SomeJVMSettings
+        ##  -XshowSettings:vm"
+        ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
+        ## If your JVM option contains comma then you have to include 'DELIM=;' to use a different separator, for example jvm_customize_options="DELIM=;-Dmy.test.jvm.arg1=123;-Dcom.filenet.authentication.wsi.AuthTokenOrder=oauth,oidc,ltpa". Semicolon can be replaced with any other char.
+        ## If your JVM option contains double quotes then you need to escape it like this: jvm_customize_options="-Dsettings.navigator.default=logging.level={\"_value\":\"4\",\"_mergeOption\":\"replace\"}"
+
+        jvm_customize_options:
+
+        ## Default JNDI name for GCD for non-XA data source
+        gcd_jndi_name: FNGCDDS
+        ## Default JNDI name for GCD for XA data source
+        gcd_jndixa_name: FNGCDDSXA
+        license_model: FNCM.PVUNonProd
+
+        ## GCD schema name - uncomment below code and update it's value with your custom GCD Schema name
+        # gcd_schema:
+
+        # The license must be set to "accept" in order for the component to install.  This is the default value.
+        license: accept
+
+        # This section is optional and it takes a list of configmaps. 
+        # A configmap can hold files or environment data but it cannot a mix of both.
+        # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
+        # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
+        # then is_env is required and set it to true.
+        #
+        # custom_configmap:
+        #  - name: <name of configmap>
+        #    volume_path:  # optional
+        #  - name: <name of configmap>
+        #    is_env: # required if the configmap holds environment variables.
+
+        # This section you can set custom environments in the CR for the deployment
+        # custom_env_var:
+        # - some_custom_var_name: "some_custom_var_value"
+
+      ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
+      monitor_enabled: false
+      ## Enable/disable logging where logs can be sent to Elasticsearch.
+      logging_enabled: false
+
+      ## By default, the plugin for Graphite is enable to emit container metrics.
+      collectd_enable_plugin_write_graphite: false
+
+      ## Persistent Volume Claims for CPE.  If the storage_configuration in the shared_configuration is configured,
+      ## the Operator will create the PVC using the names below.
+      datavolume:
+        existing_pvc_for_cpe_cfgstore: 
+          name: "cpe-cfgstore"
+          size: 1Gi
+        existing_pvc_for_cpe_logstore: 
+          name: "cpe-logstore"
+          size: 1Gi
+        existing_pvc_for_cpe_filestore: 
+          name: "cpe-filestore"
+          size: 1Gi
+        existing_pvc_for_cpe_icmrulestore: 
+          name: "cpe-icmrulesstore"
+          size: 1Gi
+        existing_pvc_for_cpe_textextstore: 
+          name: "cpe-textextstore"
+          size: 3Gi
+        existing_pvc_for_cpe_bootstrapstore: 
+          name: "cpe-bootstrapstore"
+          size: 1Gi
+        existing_pvc_for_cpe_fnlogstore: 
+          name: "cpe-fnlogstore"
+          size: 1Gi
+
+      ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
+      probe:
+        startup:
+          initial_delay_seconds: 120
+          period_seconds: 30
+          timeout_seconds: 10
+          failure_threshold: 40
+        liveness:
+          period_seconds: 30
+          timeout_seconds: 5
+          failure_threshold: 6
+
+      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
+      image_pull_secrets:
+        name: "ibm-entitlement-key"
+
+      ## This is only used to deploy CPE in AWS EKS Cluster, and it will create and mount aws-iam-token.
+      #aws_iam:
+      #  aws_iam_enable: true
+      #  audience: "sts.amazonaws.com"
+      #  expirationSeconds: 7200 
+    ####################################
+    ## Start of configuration for CSS ##
+    ####################################
+    css:
+      ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
+      arch:
+        amd64: "3 - Most preferred"
+
+      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## it is recommended to have 2 or more.
+      replica_count: 2
+
+      ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+      image:
+        ## The default repository is the IBM Entitled Registry.
+        repository: cp.icr.io/cp/cp4a/fncm/css
+        tag: "24.0.0"
+
+        ## This will override the image pull policy in the shared_configuration.
+        pull_policy: IfNotPresent
+
+      ## Logging for workloads.  This is the default setting.
+      log:
+        format: json
+
+      ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.  If more resources are needed,
+      ## make the changes here to meet your requirement.
+      resources:
+        requests:
+          cpu: 1
+          memory: 4096Mi
+          ephemeral_storage: 500Mi
+        limits:
+          cpu: 1
+          memory: 4096Mi
+          ephemeral_storage: 1.5Gi
+
+      ## CSS Production setting
+      css_production_setting:
+        ## The maximum percentage of available memory to use.
+        jvm_max_heap_percentage: 50
+
+        # The license must be set to "accept" in order for the component to install.  This is the default value.
+        license: accept
+
+        ## Uncomment icc section below to enable IBM Content Collector P8 Content Search Services Support.  Refer to Knowledge Center documentation for details.
+        # icc:
+        #   icc_enabled: true
+        #   icc_secret_name: "ibm-icc-secret"
+        #   p8domain_name: "P8DOMAIN"
+        #   secret_masterkey_name: "icc-masterkey-txt"
+
+      ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
+      monitor_enabled: false
+      ## Enable/disable logging where logs can be sent to Elasticsearch.
+      logging_enabled: false
+      ## By default, the plugin for Graphite is enable to emit container metrics.
+      collectd_enable_plugin_write_graphite: false
+
+      ## Persistent Volume Claims for CSS.  If the storage_configuration in the shared_configuration is configured,
+      ## the Operator will create the PVC using the names below.
+      datavolume:
+        existing_pvc_for_css_cfgstore: 
+          name: "css-cfgstore"
+          size: 1Gi
+        existing_pvc_for_css_logstore: 
+          name: "css-logstore"
+          size: 1Gi
+        existing_pvc_for_css_tmpstore: 
+          name: "css-tempstore"
+          size: 1Gi
+        existing_pvc_for_index: 
+          name: "css-indexstore"
+          size: 1Gi
+        existing_pvc_for_css_customstore: 
+          name: "css-customstore"
+          size: 1Gi
+
+      ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
+      probe:
+        startup:
+          initial_delay_seconds: 60
+          period_seconds: 10
+          timeout_seconds: 10
+          failure_threshold: 6
+        readiness:
+          period_seconds: 10
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          period_seconds: 10
+          timeout_seconds: 5
+          failure_threshold: 6
+      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
+      image_pull_secrets:
+        name: "ibm-entitlement-key"
+
+    #####################################
+    ## Start of configuration for CMIS ##
+    #####################################
+    cmis:
+      ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
+      arch:
+        amd64: "3 - Most preferred"
+
+      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## it is recommended to have 2 or more.
+      replica_count: 2
+
+      ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+      image:
+        ## The default repository is the IBM Entitled Registry.
+        repository: cp.icr.io/cp/cp4a/fncm/cmis
+        tag: "24.0.0"
+
+        ## This will override the image pull policy in the shared_configuration.
+        pull_policy: IfNotPresent
+
+      ## Logging for workloads.  This is the default setting.
+      log:
+        format: json
+
+      ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.  If more resources are needed,
+      ## make the changes here to meet your requirement.
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1536Mi
+          ephemeral_storage: 1Gi
+        limits:
+          cpu: 1
+          memory: 1536Mi
+          ephemeral_storage: 1Gi
+
+      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+      ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
+      auto_scaling:
+        enabled: false
+        max_replicas: "<Required>"
+        min_replicas: "<Required>"
+        ## This is the default cpu percentage before autoscaling occurs.
+        target_cpu_utilization_percentage: "<Required>"
+
+      ## Below are the default CMIS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
+      cmis_production_setting:
+        ## By default, this parameter is set by the Operator using the CPE service endpoint (e.g., "https://{{ meta.name }}-cpe-sateless-svc:9443/wsi/FNCEWS40MTOM")
+        ## Stateless service point is used for balanced use of CPE pods by CMIS
+        ## If you want to change to a different endpoint, you can specify a new endpoint using the cpe_url parameter
+        cpe_url:
+
+        time_zone: Etc/UTC
+
+        ## The initial use of available memory.
+        jvm_initial_heap_percentage: 40
+        ## The maximum percentage of available memory to use.
+        jvm_max_heap_percentage: 66
+
+        ## Use this "jvm_customize_options" parameter to specify JVM arguments using comma separation. For example, if you want to set the following JVM arguments:
+        ##  -Dmy.test.jvm.arg1=123
+        ##  -Dmy.test.jvm.arg2=abc
+        ##  -XX:+SomeJVMSettings
+        ##  -XshowSettings:vm"
+        ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
+        ## If your JVM option contains comma then you have to include 'DELIM=;' to use a different separator, for example jvm_customize_options="DELIM=;-Dmy.test.jvm.arg1=123;-Dcom.filenet.authentication.wsi.AuthTokenOrder=oauth,oidc,ltpa". Semicolon can be replaced with any other char.
+        ## If your JVM option contains double quotes then you need to escape it like this: jvm_customize_options="-Dsettings.navigator.default=logging.level={\"_value\":\"4\",\"_mergeOption\":\"replace\"}"
+        jvm_customize_options:
+
+        ## Enable/disable Websphere Security
+        ws_security_enabled: false
+
+        # Enable/disable the content-stream of the Private Working Copy should be copied from the Document that was checked out.
+        checkout_copycontent: true
+        # The default value for the optional maxItems input argument on paging-related services.
+        default_maxitems: 25
+
+        # Enable/disable whether ChoiceLists will be cached once for all users.
+        cvl_cache: true
+        secure_metadata_cache: false
+
+        # Enable/disalbe hidden P8 domain properties should appear in CMIS type definitions and folder or document instance data.
+        filter_hidden_properties: true
+
+        # Timeout in seconds for the queries that specify timeout.
+        querytime_limit: 180
+
+        # If true, then a faster response time for REST next line. If false, the next link for REST will re-issue query.
+        resumable_queries_forrest: true
+
+        # Specifies whether to escape characters that are not valid for XML unicode as specified by the XML 1.0 standard.
+        escape_unsafe_string_characters: false
+
+        # Limits the maximum allowable Web Service SOAP message request size.
+        max_soap_size: 180
+
+        # Enable/disable the printing of the full stack trace in the response.
+        print_pull_stacktrace: false
+
+        # Configures the sequence in which CMIS tries to identify objects (folder or document first).
+        folder_first_search: false
+
+        # To ignore the reading or writing contents in root folder, set this parameter to true.
+        ignore_root_documents: false
+
+        # Enable/disable the support type mutability.
+        supporting_type_mutability: false
+
+        # The license must be set to "accept" in order for the component to install.  This is the default value.
+        license: accept
+
+        # This section is optional and it takes a list of configmaps. 
+        # A configmap can hold files or environment data but it cannot a mix of both.
+        # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
+        # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
+        # then is_env is required and set it to true.
+        #
+        # custom_configmap:
+        #  - name: <name of configmap>
+        #    volume_path:  # optional
+        #  - name: <name of configmap>
+        #    is_env: # required if the configmap holds environment variables.
+
+      ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
+      monitor_enabled: false
+      ## Enable/disable logging where logs can be sent to Elasticsearch.
+      logging_enabled: false
+
+      ## By default, the plugin for Graphite is enable to emit container metrics.
+      collectd_enable_plugin_write_graphite: false
+
+      ## Persistent Volume Claims for CMIS.  If the storage_configuration in the shared_configuration is configured,
+      ## the Operator will create the PVC using the names below.
+      datavolume:
+        existing_pvc_for_cmis_cfgstore: 
+          name: "cmis-cfgstore"
+          size: 1Gi
+        existing_pvc_for_cmis_logstore: 
+          name: "cmis-logstore"
+          size: 1Gi
+
+      ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
+      probe:
+        startup:
+          initial_delay_seconds: 90
+          period_seconds: 10
+          timeout_seconds: 10
+          failure_threshold: 6
+        readiness:
+          period_seconds: 10
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          period_seconds: 10
+          timeout_seconds: 5
+          failure_threshold: 6
+
+      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
+      image_pull_secrets:
+        name: "ibm-entitlement-key"
+
+    ########################################
+    ## Start of configuration for GraphQL ##
+    ########################################
+    graphql:
+      ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
+      arch:
+        amd64: "3 - Most preferred"
+
+      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## it is recommended to have 2 or more.
+      replica_count: 2
+
+      ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+      image:
+        ## The default repository is the IBM Entitled Registry.
+        repository: cp.icr.io/cp/cp4a/fncm/graphql
+        tag: "24.0.0"
+
+        ## This will override the image pull policy in the shared_configuration.
+        pull_policy: IfNotPresent
+
+      ## Logging for workloads.  This is the default setting.
+      log:
+        format: json
+
+      ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.  If more resources are needed,
+      ## make the changes here to meet your requirement.
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1536Mi
+          ephemeral_storage: 1Gi
+        limits:
+          cpu: 1
+          memory: 1536Mi
+          ephemeral_storage: 1Gi
+
+      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+      ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
+      auto_scaling:
+        enabled: false
+        max_replicas: "<Required>"
+        min_replicas: "<Required>"
+        ## This is the default cpu percentage before autoscaling occurs.
+        target_cpu_utilization_percentage: "<Required>"
+
+      ## Below are the default CMIS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
+      graphql_production_setting:
+        time_zone: Etc/UTC
+
+        ## The initial use of available memory.
+        jvm_initial_heap_percentage: 40
+        ## The maximum percentage of available memory to use.
+        jvm_max_heap_percentage: 66
+
+        ## Use this "jvm_customize_options" parameter to specify JVM arguments using comma separation. For example, if you want to set the following JVM arguments:
+        ##  -Dmy.test.jvm.arg1=123
+        ##  -Dmy.test.jvm.arg2=abc
+        ##  -XX:+SomeJVMSettings
+        ##  -XshowSettings:vm"
+        ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
+        ## If your JVM option contains comma then you have to include 'DELIM=;' to use a different separator, for example jvm_customize_options="DELIM=;-Dmy.test.jvm.arg1=123;-Dcom.filenet.authentication.wsi.AuthTokenOrder=oauth,oidc,ltpa". Semicolon can be replaced with any other char.
+        ## If your JVM option contains double quotes then you need to escape it like this: jvm_customize_options="-Dsettings.navigator.default=logging.level={\"_value\":\"4\",\"_mergeOption\":\"replace\"}"
+        jvm_customize_options:
+
+        license_model: FNCM.PVUNonProd
+
+        # The license must be set to "accept" in order for the component to install.  This is the default value.
+        license: accept
+
+        enable_graph_iql: false
+        # This section is optional and it takes a list of configmaps. 
+        # A configmap can hold files or environment data but it cannot a mix of both.
+        # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
+        # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
+        # then is_env is required and set it to true.
+        #
+        # custom_configmap:
+        #  - name: <name of configmap>
+        #    volume_path:  # optional
+        #  - name: <name of configmap>
+        #    is_env: # required if the configmap holds environment variables.
+
+
+      ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
+      monitor_enabled: false
+      ## Enable/disable logging where logs can be sent to Elasticsearch.
+      logging_enabled: false
+
+      ## By default, the plugin for Graphite is enable to emit container metrics.
+      collectd_enable_plugin_write_graphite: false
+
+      ## Persistent Volume Claims for GraphQL.  If the storage_configuration in the shared_configuration is configured,
+      ## the Operator will create the PVC using the names below.
+      datavolume:
+        existing_pvc_for_graphql_cfgstore: 
+          name: "graphql-cfgstore"
+          size: 1Gi
+        existing_pvc_for_graphql_logstore: 
+          name: "graphql-logstore"
+          size: 1Gi
+      ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
+      probe:
+        startup:
+          initial_delay_seconds: 120
+          period_seconds: 10
+          timeout_seconds: 10
+          failure_threshold: 6
+        readiness:
+          period_seconds: 10
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          period_seconds: 10
+          timeout_seconds: 5
+          failure_threshold: 6
+      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
+      image_pull_secrets:
+        name: "ibm-entitlement-key"
+
+    ###############################################
+    ## Start of configuration for External Share ##
+    ###############################################
+    es:
+      ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
+      arch:
+        amd64: "3 - Most preferred"
+
+      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## it is recommended to have 2 or more.
+      replica_count: 2
+
+      ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+      image:
+        ## The default repository is the IBM Entitled Registry.
+        repository: cp.icr.io/cp/cp4a/fncm/extshare
+        tag: "24.0.0"
+
+        ## This will override the image pull policy in the shared_configuration.
+        pull_policy: IfNotPresent
+
+      ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.  If more resources are needed,
+      ## make the changes here to meet your requirement.
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1536Mi
+          ephemeral_storage: 1Gi
+        limits:
+          cpu: 1
+          memory: 1536Mi
+          ephemeral_storage: 1Gi
+
+      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+      ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
+      auto_scaling:
+        enabled: false
+        max_replicas: "<Required>"
+        min_replicas: "<Required>"
+        ## This is the default cpu percentage before autoscaling occurs.
+        target_cpu_utilization_percentage: "<Required>"
+
+      ## Below are the default External Share Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
+      es_production_setting:
+        time_zone: Etc/UTC
+
+        ## The initial use of available memory.
+        jvm_initial_heap_percentage: 40
+        ## The maximum percentage of available memory to use.
+        jvm_max_heap_percentage: 66
+
+        jvm_customize_options:
+        license_model: FNCM.PVUNonProd
+
+        # The license must be set to "accept" in order for the component to install.  This is the default value.
+        license: accept
+        allowed_origins:
+
+        # This section is optional and it takes a list of configmaps. 
+        # A configmap can hold files or environment data but it cannot a mix of both.
+        # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
+        # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
+        # then is_env is required and set it to true.
+        #
+        # custom_configmap:
+        #  - name: <name of configmap>
+        #    volume_path:  # optional
+        #  - name: <name of configmap>
+        #    is_env: # required if the configmap holds environment variables.
+
+      ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
+      monitor_enabled: false
+      ## Enable/disable logging where logs can be sent to Elasticsearch.
+      logging_enabled: false
+
+      ## By default, the plugin for Graphite is enable to emit container metrics.
+      collectd_enable_plugin_write_graphite: false
+
+
+      ## Persistent Volume Claims for External Share.  If the storage_configuration in the shared_configuration is configured,
+      ## the Operator will create the PVC using the names below.
+      datavolume:
+        existing_pvc_for_es_cfgstore: 
+          name: "es-cfgstore"
+          size: 1Gi
+        existing_pvc_for_es_logstore: 
+          name: "es-logstore"
+          size: 1Gi
+
+      ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
+      probe:
+        startup:
+          initial_delay_seconds: 180
+          period_seconds: 10
+          timeout_seconds: 10
+          failure_threshold: 6
+        readiness:
+          period_seconds: 10
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          period_seconds: 10
+          timeout_seconds: 5
+          failure_threshold: 6
+      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
+      image_pull_secrets:
+        name: "ibm-entitlement-key"
+
+    #############################################
+    ## Start of configuration for Task Manager ##
+    #############################################
+    tm:
+      ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
+      arch:
+        amd64: "3 - Most preferred"
+
+      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## it is recommened to have 2 or more.
+      replica_count: 2
+
+      ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+      image:
+        ## The default repository is the IBM Entitled Registry.
+        repository: cp.icr.io/cp/cp4a/fncm/taskmgr
+        tag: "24.0.0"
+
+        ## This will override the image pull policy in the shared_configuration.
+        pull_policy: IfNotPresent
+
+      ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.  If more resources are needed,
+      ## make the changes here to meet your requirement.
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1536Mi
+          ephemeral_storage: 1Gi
+        limits:
+          cpu: 1
+          memory: 1536Mi
+          ephemeral_storage: 1Gi
+
+      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+      ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
+      auto_scaling:
+        enabled: false
+        max_replicas: "<Required>"
+        min_replicas: "<Required>"
+        ## This is the default cpu percentage before autoscaling occurs.
+        target_cpu_utilization_percentage: "<Required>"
+
+      ## Below are the default TM Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
+      tm_production_setting:
+        time_zone: Etc/UTC
+
+        ## The initial use of available memory.
+        jvm_initial_heap_percentage: 40
+        ## The maximum percentage of available memory to use.
+        jvm_max_heap_percentage: 66
+
+        ## Use this "jvm_customize_options" parameter to specify JVM arguments using comma separation. For example, if you want to set the following JVM arguments:
+        ##  -Dmy.test.jvm.arg1=123
+        ##  -Dmy.test.jvm.arg2=abc
+        ##  -XX:+SomeJVMSettings
+        ##  -XshowSettings:vm"
+        ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
+        ## If your JVM option contains comma then you have to include 'DELIM=;' to use a different separator, for example jvm_customize_options="DELIM=;-Dmy.test.jvm.arg1=123;-Dcom.filenet.authentication.wsi.AuthTokenOrder=oauth,oidc,ltpa". Semicolon can be replaced with any other char.
+        ## If your JVM option contains double quotes then you need to escape it like this: jvm_customize_options="-Dsettings.navigator.default=logging.level={\"_value\":\"4\",\"_mergeOption\":\"replace\"}"
+        jvm_customize_options: "-Dcom.ibm.ecm.task.StartUpListener.defaultLogLevel=FINE"
+        license: accept
+
+        # This section is optional and it takes a list of configmaps. 
+        # A configmap can hold files or environment data but it cannot a mix of both.
+        # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
+        # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
+        # then is_env is required and set it to true.
+        #
+        # custom_configmap:
+        #  - name: <name of configmap>
+        #    volume_path:  # optional
+        #  - name: <name of configmap>
+        #    is_env: # required if the configmap holds environment variables.
+
+        ## All users/groups belong to one of three roles (Admin, User, or Auditor) that are specific to Task Manager.
+        ## Each role takes a list of users/groups (e.g., groups: [taskAdmins, taskAdmins2]).  Refer to Knowledge Center documentation for details.
+        # security_roles_to_group_mapping:
+        #   task_admins:
+        #     groups: [taskAdmins]
+        #     users: []
+        #   task_users:
+        #     groups: [taskUsers]
+        #     users: []
+        #   task_auditors:
+        #     groups: [taskAuditors]
+        #     users: []
+
+      ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
+      monitor_enabled: false
+      ## Enable/disable logging where logs can be sent to Elasticsearch.
+      logging_enabled: false
+
+      ## By default, the plugin for Graphite is enable to emit container metrics.
+      collectd_enable_plugin_write_graphite: false
+
+      ## Persistent Volume Claims for Task Manager (TM).  If the storage_configuration in the shared_configuration is configured,
+      ## the Operator will create the PVC using the names below.
+      datavolume:
+        existing_pvc_for_tm_cfgstore: 
+          name: "tm-cfgstore"
+          size: 1Gi
+        existing_pvc_for_tm_logstore: 
+          name: "tm-logstore"
+          size: 1Gi
+        existing_pvc_for_tm_pluginstore: 
+          name: "tm-pluginstore"
+          size: 1Gi
+
+      ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
+      probe:
+        startup:
+          initial_delay_seconds: 120
+          period_seconds: 10
+          timeout_seconds: 10
+          failure_threshold: 6
+        readiness:
+          period_seconds: 10
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          period_seconds: 10
+          timeout_seconds: 5
+          failure_threshold: 6
+
+      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
+      image_pull_secrets:
+        name: "ibm-entitlement-key"
+
+  ########################################################################
+  ########   IBM Business Automation Navigator configuration      ########
+  ########################################################################
+  navigator_configuration:
+    ## Navigator secret that contains user credentials for LDAP and database
+    ban_secret_name: ibm-ban-secret
+
+    ## By default all the components create ingress and routes with required annotations. In case any custom annotation is needed for the environment provide below.
+    #    route_ingress_annotations:
+    #      - haproxy.router.openshift.io/balance: roundrobin
+    route_ingress_annotations:
+
+    # Optional: You can specify a profile size for FNCM if different from CloudPak (see shared_configuration.sc_deployment_profile_size).  In other words,
+    # you can override "shared_configuration.sc_deployment_profile_size" with "deployment_profile_size" defined here.
+    # The valid values are small, medium, large - default is small.  The resources in this file are reflecting a "small" profile.
+    #deployment_profile_size: "small"
+
+    ## Optional: Use an existing certificate for automatic creation of OpenShift routes.
+    ## Set this key if you have an external TLS certificate. Leave this empty if you don't have an external TLS certificate, operator will generate one for you.
+    ban_ext_tls_secret_name:
+    ## Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes.
+    ## Set this key if you have a CA to sign the external TLS certificate, leave this parameter empty if you don't have the CA of your external TLS certificate.
+    ban_auth_ca_secret_name:
+
+    ## The architecture of the cluster.  This is the default for Linux and should not be changed.
+    arch:
+      amd64: "3 - Most preferred"
+
+    ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+    ## it is recommended to have 2 or more.
+    replica_count: 2
+
+    ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+    image:
+      ## The default repository is the IBM Entitled Registry
+      repository: cp.icr.io/cp/cp4a/ban/navigator
+      tag: "24.0.0"
+
+      ## This will override the image pull policy in the shared_configuration.
+      pull_policy: IfNotPresent
+
+    ## Logging for workloads.  This is the default setting.
+    log:
+      format: json
+
+    ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.  If more resources are needed,
+    ## make the changes here to meet your requirement.
+    resources:
+      requests:
+        cpu: 1
+        memory: 3072Mi
+        ephemeral_storage: 1Gi
+      limits:
+        cpu: 1
+        memory: 3072Mi
+        ephemeral_storage: 2.5Gi
+
+    ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+    ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
+    auto_scaling:
+      enabled: false
+      max_replicas: "<Required>"
+      min_replicas: "<Required>"
+      ## This is the default cpu percentage before autoscaling occurs.
+      target_cpu_utilization_percentage: "<Required>"
+
+    ## send email
+    java_mail:
+      host: "fncm-exchange1.ibm.com"
+      port: "25"
+      sender: "MailAdmin@fncmexchange.com"
+      ssl_enabled: false
+
+    node_affinity:
+      # Value in this field will be used as kubernetes.io/arch selector values. By default all support arch will be included
+      # It will be transformed to node selector value
+      # - key: kubernetes.io/arch
+      #   operator: In
+      #   values:
+      #     - amd64
+      #     - s390x
+      #     - ppc64le
+      deploy_arch:
+      - amd64
+      - s390x
+      - ppc64le
+      #-------------------------------------
+      # custom_node_selector_match_expression will be added in node selector match expressions.
+      # It accept array list inputs. You can assign mutiple selector match expressions except (kubernetes.io/arch)
+      # Example value:
+      # - key: kubernetes.io/hostname
+      #   operator: In
+      #   values:
+      #     - worker0
+      #     - worker1
+      #     - worker3
+      #-------------------------------------
+      custom_node_selector_match_expression: []
+    ## Values in this field will be used as annotations in all generated pods and it must be valid annotation key value pairs.
+    # Example:
+    # customAnnotationKey: customAnnotationValue
+    ## To include '{{ }}' in annotation like '{{example}}', add a backward slash before curly brace like '\{\{example\}\}'.
+    custom_annotations: {}
+    ## Values in this field will be used as labels in all generated pods and it must be valid label key value pairs
+    # Example:
+    # customLabelKey: customLableValue
+    ## This can be overwritten by componenent level definition for example ecm_configuration.cpe.custom_labels.
+    custom_labels: {}
+
+    # Optional performance tuning for Zen NGINX server.
+    # For more information, please refer to https://www.nginx.com/blog/tuning-nginx/#keepalive_requests and https://nginx.org/en/docs/http/ngx_http_proxy_module.html.
+    zen_performance:
+      # Timeout for establishing a connection with a proxy server. This parameter is optional. The default value is 300s.
+      proxy_connect_timeout: 300
+      # Timeout for transmitting a request to the proxy server. The timeout is set only between two successive write operations, not for the transmission of the whole request. If the proxy server does not receive anything within this time, the connection is closed. This parameter is optional. The default value is 300s.
+      proxy_send_timeout: 300
+      # Timeout for reading a response from the proxy server. The timeout is set only between two successive read operations, not for the transmission of the whole response. If the proxy server does not transmit anything within this time, the connection is closed. This parameter is optional. The default value is 300s.
+      proxy_read_timeout: 300
+
+    ## Enable/disable basic auth. 
+    ## From 22.0.2 this by default is true to use jaaslogin module
+    ## Set this to false let Navigator component to use basic auth 
+    disable_basic_auth: true
+
+    ## Set securityContext for Navigator deployment.
+    security_context:
+      ## Controls which group IDs containers add. For example "supplemental_groups: [1000620001,1000620002]"
+      supplemental_groups:
+      ## This can take an array of key value pairs to assign SELinux labels to a Container, for example
+      ## selinux_options:
+        ## level: "s0:c123,c456"
+        ## type: "spc_t
+      selinux_options:
+    ## Below are the default ICN Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
+    icn_production_setting:
+      timezone: Etc/UTC
+
+      ## Customized font path for multi language support, put ALL used font files into this path, "/opt/ibm/wlp/usr/servers/defaultServer/configDropins/overrides/fonts" is suggested so the value can be persisted after pod restart. 
+      ## By default Navigator will load fonts from "/opt/ibm/java/jre/lib/fonts"
+      gdfontpath: "/opt/ibm/java/jre/lib/fonts"
+
+      ## The initial use of available memory.
+      jvm_initial_heap_percentage: 40
+      ## The maximum percentage of available memory to use.
+      jvm_max_heap_percentage: 66
+
+      ## Use this "jvm_customize_options" parameter to specify JVM arguments using comma separation. For example, if you want to set the following JVM arguments:
+      ##  -Dmy.test.jvm.arg1=123
+      ##  -Dmy.test.jvm.arg2=abc
+      ##  -XX:+SomeJVMSettings
+      ##  -XshowSettings:vm"
+      ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
+      ## If your JVM option contains comma then you have to include 'DELIM=;' to use a different separator, for example jvm_customize_options="DELIM=;-Dmy.test.jvm.arg1=123;-Dcom.filenet.authentication.wsi.AuthTokenOrder=oauth,oidc,ltpa". Semicolon can be replaced with any other char.
+      ## If your JVM option contains double quotes then you need to escape it like this: jvm_customize_options="-Dsettings.navigator.default=logging.level={\"_value\":\"4\",\"_mergeOption\":\"replace\"}"
+      jvm_customize_options:
+
+      icn_jndids_name: ECMClientDS
+      icn_schema: ICNDB
+      icn_table_space: ICNDB
+      allow_remote_plugins_via_http: false
+      ## uncomment copy_files_to_war parameter to copy customized files into Navigator web application.
+      ## The <custom-dir>/navigator_war_filesources.xml must be located in config volume mapping, which is /opt/ibm/wlp/usr/servers/defaultServer/configDropins/overrides
+      # copy_files_to_war: <custom-dir>/navigator_war_filesources.xml
+
+      ## The WalkMe URL references a WalkMe snippet.  This snippet is a piece of JavaScript code that allows WalkMe to be displayed in the application.
+      ## Each WalkMe Editor account has a unique snippet code that can be accessed inside the Editor.
+      #  walkme_url: https://cdn.walkme.com/users/4e7c687193414395aa0411837a9eee4b/test/walkme_4e7c687193414395aa0411837a9eee4b_https.js
+
+      # This section is optional and it takes a list of configmaps. 
+      # A configmap can hold files or environment data but it cannot a mix of both.
+      # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
+      # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
+      # then is_env is required and set it to true.
+      #
+      # custom_configmap:
+      #  - name: <name of configmap>
+      #    volume_path:  # optional
+      #  - name: <name of configmap>
+      #    is_env: # required if the configmap holds environment variables.
+
+      # This section you can set custom environments in the CR for the deployment
+      # custom_env_var:
+      # - some_custom_var_name: "some_custom_var_value"
+
+    ## Default settings for monitoring
+    monitor_enabled: false
+    ## Default settings for logging
+    logging_enabled: false
+
+    ## Persistent Volume Claims for ICN.  If the storage_configuration in the shared_configuration is configured,
+    ## the Operator will create the PVC using the names below.
+    datavolume:
+      existing_pvc_for_icn_cfgstore: 
+        name: "icn-cfgstore"
+        size: 1Gi
+      existing_pvc_for_icn_logstore: 
+        name: "icn-logstore"
+        size: 1Gi
+      existing_pvc_for_icn_pluginstore: 
+        name: "icn-pluginstore"
+        size: 1Gi
+      existing_pvc_for_icnvw_cachestore: 
+        name: "icn-vw-cachestore"
+        size: 1Gi
+      existing_pvc_for_icnvw_logstore: 
+        name: "icn-vw-logstore"
+        size: 1Gi
+      existing_pvc_for_icn_aspera: 
+        name: "icn-asperastore" 
+        size: 1Gi
+
+    ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
+    probe:
+      startup:
+        initial_delay_seconds: 120
+        period_seconds: 10
+        timeout_seconds: 10
+        failure_threshold: 6
+      readiness:
+        period_seconds: 10
+        timeout_seconds: 10
+        failure_threshold: 6
+      liveness:
+        period_seconds: 10
+        timeout_seconds: 5
+        failure_threshold: 6
+
+    ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
+    image_pull_secrets:
+      name: "ibm-entitlement-key"
+    ## BAN Sync services work with Zen URL by default, change it to false to use BAN Route URL.
+    use_sync_with_zen_url: true
+
+  ########################################################################
+  ######## IBM FileNet Content Manager Initialization configuration ######
+  ########################################################################
+  ## The deployment of FNCM will be initialized with the default values assigned to the parameters below.
+  ## The initialization process includes the creation of the P8 domain, the creation of the directory services,
+  ## the assignments of users/groups to the P8 domain and object store(s), the creation of the object store(s),
+  ## the creation/addition of add-ons for each object store, the enablement of workflow for each object store, the
+  ## creation of Content Search Services servers, index areas, and the enabling of Content-based Retrieval (CBR) for each object store.
+  ## In addition, the creation of Navigator desktop will also occur.
+  ## If any of the values below does not fit your infrastructure, then change the value to correpond to your configuration
+  ## (e.g., "CEAdmin" is the default user for ic_ldap_admin_user_name parameter and if you do not have "CEAdmin" user in your directory
+  ## server and have a different user, then replace "CEAdmin" with your own user).  Otherwise, the rest of the values should remain as default.
+  initialize_configuration:
+    ic_domain_creation:
+      domain_name: "P8DOMAIN"
+      encryption_key: "128"
+  ## Optional configuration for managed realm
+  #  ic_ldap_managed_realm:
+  #  - managed_realm_name: "externalManaged"
+  #    managed_realm_base_dn: "dc=externalManaged,dc=managed"
+  #    managed_realm_principal_cat: "External"
+  #    managed_realm_auth_realm_name: ""
+  #    managed_realm_uncon_user_cleanup_interval:
+  #    managed_realm_exclude_from_auth_user: true
+  #    managed_realm_identity_rules:
+  #    # ALLOW, ALLOW_SELF_REGISTER, BLOCK
+  #    - identity_rule_type: ALLOW_SELF_REGISTER # ALLOW, ALLOW_SELF_REGISTER, BLOCK
+  #      email_suffix: "gmail.com"
+    ic_ldap_creation:
+      ic_ldap_admin_user_name:
+      - "<Required>" # user name for P8 domain admin, for example, "CEAdmin".  This parameter accepts a list of values.
+      ic_ldap_admins_groups_name:
+      - "<Required>" # group name for P8 domain admin, for example, "P8Administrators".  This parameter accepts a list of values.
+      ic_ldap_name: "ldap_name"
+    ic_obj_store_creation:
+      object_stores:
+      - oc_cpe_obj_store_display_name: "OS01" # Required display name of the object store, for example, "OS01"
+        oc_cpe_obj_store_symb_name: "OS01" # Required symbolic name of the object store, for example, "OS01"
+        oc_cpe_obj_store_schema_name: "os01"
+        oc_cpe_obj_store_conn:
+          name: "objectstore1_connection"
+          site_name: "InitialSite"
+          dc_os_datasource_name: "FNOS1DS" # This value must match with the non-XA datasource name in the "datasource_configuration" above.
+          dc_os_xa_datasource_name: "FNOS1DSXA" # This value must match with the XA datasource name in the "datasource_configuration" above.
+        oc_cpe_obj_store_admin_user_groups:
+        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values.
+        # Array of users
+        oc_cpe_obj_store_basic_user_groups:
+        oc_cpe_obj_store_addons: true
+        oc_cpe_obj_store_addons_list:
+        # "5.2.1 Base Application Extensions"
+        - "{CE460ADD-0000-0000-0000-000000000004}"
+        # "5.2.1 Base Content Engine Extensions"
+        - "{CE460ADD-0000-0000-0000-000000000001}"
+        # "5.2.1 Process Engine Extensions"
+        - "{CE460ADD-0000-0000-0000-000000000003}"
+        # "5.2.1 Stored Search Extensions"
+        - "{CE511ADD-0000-0000-0000-000000000006}"
+        # "5.2.1 Workplace Access Roles Extensions"
+        - "{CE460ADD-0000-0000-0000-000000000008}"
+        # "5.2.1 Workplace Base Extensions"
+        - "{CE460ADD-0000-0000-0000-000000000007}"
+        # "5.2.1 Workplace E-mail Extensions"
+        - "{CE460ADD-0000-0000-0000-000000000009}"
+        # "5.2.1 Workplace Forms Extensions"
+        - "{CE460ADD-0000-0000-0000-00000000000A}"
+        #  "5.2.1 Workplace Templates Extensions"
+        - "{CE460ADD-0000-0000-0000-00000000000B}"
+        # "5.2.1 Workplace XT Extensions"
+        - "{CE460ADD-0000-0000-0000-00000000000D}"
+        # "5.2.1 Thumbnail Extensions"
+        - "{CE511ADD-0000-0000-0000-00000000000F}"
+        # "5.2.1 Teamspace Extensions"
+        - "{CE511ADD-0000-0000-0000-000000000010}"
+        # "5.2.1 Custom Role Extensions
+        - "{CE511ADD-0000-0000-0000-000000000015}"
+        # "5.5.2 Core Collaboration Extensions"
+        - "{CE552ADD-0000-0000-0000-00000000001C}"
+        # "5.2.1 Social Collaboration Role Extensions"
+        - "{CE521ADD-0000-0000-0000-000000000016}"
+        # "5.5.1 Social Collaboration Base Extensions"
+        - "{CE551ADD-0000-0000-0000-000000000011}"
+        oc_cpe_obj_store_asa_name: "demo_storage"
+        oc_cpe_obj_store_asa_file_systems_storage_device_name: "demo_file_system_storage"
+        oc_cpe_obj_store_asa_root_dir_path: "/opt/ibm/asa/os01_storagearea1"
+        oc_cpe_obj_store_enable_workflow: true
+        oc_cpe_obj_store_workflow_region_name: "design_region_name"
+        oc_cpe_obj_store_workflow_region_number: 1
+        oc_cpe_obj_store_workflow_data_tbl_space: "<Required>"
+        oc_cpe_obj_store_workflow_index_tbl_space: ""
+        oc_cpe_obj_store_workflow_blob_tbl_space: ""
+        #Designate an LDAP group for the workflow admin group, for example, "P8Administrators".
+        oc_cpe_obj_store_workflow_admin_group: "<Required>"
+        #Designate an LDAP group for the workflow config group, for example, "P8Administrators".
+        oc_cpe_obj_store_workflow_config_group: "<Required>"
+        oc_cpe_obj_store_workflow_date_time_mask: "mm/dd/yy hh:tt am"
+        oc_cpe_obj_store_workflow_locale: "en"
+        oc_cpe_obj_store_workflow_pe_conn_point_name: "pe_conn_os1"
+        # Enable the content event emitter only when deploying BAI.
+        # Default value is false if not specified in the CR.
+        oc_cpe_obj_store_enable_content_event_emitter: false
+        # Enable/disable object store database compression.  Default is false.
+        oc_cpe_obj_store_enable_compression: false
+    ic_css_creation:
+      - css_site_name: "Initial Site"
+        css_text_search_server_name: "{{ meta.name }}-css-1"
+        affinity_group_name: "aff_group"
+        css_text_search_server_status: 0
+        css_text_search_server_mode: 0
+        css_text_search_server_ssl_enable: "true"
+        css_text_search_server_credential: "RNUNEWc="
+        css_text_search_server_host: "{{ meta.name }}-css-svc-1.{{ meta.namespace }}.svc"
+        css_text_search_server_port: 8199
+    ic_css_index_area:
+      - object_store_name: "OS01"
+        index_area_name: "os1_index_area"
+        affinity_group_name: "aff_group"
+        root_dir: "/opt/ibm/indexareas"
+        max_indexes: 20
+        max_objects_per_index: 10000
+    ic_enable_cbr:
+      - object_store_name: "OS01"
+        class_name: "Document"
+        indexing_languages: "en"
+    ic_icn_init_info:
+      icn_repos:
+      - add_repo_id: "demo_repo1"
+        add_repo_ce_wsi_url: "https://{{ meta.name }}-cpe-stateless-svc.{{ meta.namespace }}.svc:9443/wsi/FNCEWS40MTOM/"
+        add_repo_os_sym_name: "OS01"
+        add_repo_os_dis_name: "OS01"
+        add_repo_workflow_enable: false
+        add_repo_work_conn_pnt: "pe_conn_os1:1"
+        add_repo_protocol: "FileNetP8WSI"
+      ## If you have more than 1 object store, uncomment this section for initialization of the object store.
+      # - add_repo_id: "test_repo2"
+      #   add_repo_ce_wsi_url: "https://{{ meta.name }}-cpe-stateless-svc.{{ meta.namespace }}.svc:9443/wsi/FNCEWS40MTOM/"
+      #   add_repo_os_sym_name: "OS02"
+      #   add_repo_os_dis_name: "OS02"
+      #   add_repo_workflow_enable: true
+      #   add_repo_work_conn_pnt: "pe_conn_os02:1"
+      #   add_repo_protocol: "FileNetP8WSI"
+      icn_desktop:
+      - add_desktop_id: "demo"
+        add_desktop_name: "icn_desktop"
+        add_desktop_description: "This is ICN desktop"
+        add_desktop_is_default: false
+        add_desktop_repo_id: "demo_repo1"
+        add_desktop_repo_workflow_enable: false
+
+  ########################################################################
+  ######## IBM FileNet Content Manager Verification configuration ######
+  ########################################################################
+  ## After the initialization process (see section above), the verification process will take place.
+  ## The verification process ensures that the FNCM and BAN components are functioning correctly.  The verification
+  ## process includes creation of a CPE folder, a CPE document, a CBR search, verifying the workflow configuration,
+  ## and validation of the ICN desktop.
+  verify_configuration:
+    vc_cpe_verification:
+      vc_cpe_folder:
+      - folder_cpe_obj_store_name: "OS01"
+        folder_cpe_folder_path: "/TESTFOLDER"
+      vc_cpe_document:
+      - doc_cpe_obj_store_name: "OS01"
+        doc_cpe_folder_name: "/TESTFOLDER"
+        doc_cpe_doc_title: "test_title"
+        doc_cpe_class_name: "Document"
+        doc_cpe_doc_content: "This is a simple document test"
+        doc_cpe_doc_content_name: "doc_content_name"
+      vc_cpe_cbr:
+      - cbr_cpe_obj_store_name: "OS01"
+        cbr_cpe_class_name: "Document"
+        cbr_cpe_search_string: "is a simple"
+      vc_cpe_workflow:
+      - workflow_cpe_enabled: false
+        workflow_cpe_connection_point: "pe_conn_os1"
+    vc_icn_verification:
+      - vc_icn_repository: "demo_repo1"
+        vc_icn_desktop_id: "demo"
+  ########################################################################
+  ########   IBM Enterprise Records configuration      ########
+  ########################################################################
+  ier_configuration:
+      arch:
+        amd64: "3 - Most preferred"
+      replica_count: 1
+      # Optional: Use an existing certificate for automatic creation of OpenShift routes.
+      # Set this key if you have an external TLS certificate. Leave this empty if you don't have an external TLS certificate, operator will generate one for you.
+      ier_ext_tls_secret_name:
+      ## Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes.
+      ## Set this key if you have a CA to sign the external TLS certificate, leave this parameter empty if you don't have the CA of your external TLS certificate.
+      ier_auth_ca_secret_name:
+
+      image:
+        repository: cp.icr.io/cp/cp4a/ier/ier
+        tag: "24.0.0"
+        pull_policy: IfNotPresent
+      ier_secret_name: ibm-ier-secret
+     # Logging for workloads
+      log:
+        format: json
+     # resource and autoscaling setting
+      resources:
+        requests:
+          cpu: 500m
+          memory: 512Mi
+          ephemeral_storage: "1Gi"
+        limits:
+          cpu: 1
+          memory: 1536Mi
+          ephemeral_storage: "1Gi"
+
+     # Horizontal Pod Autoscaler
+      auto_scaling:
+        enabled: false
+        max_replicas: 3
+        min_replicas: 1
+        target_cpu_utilization_percentage: 80
+      
+      node_affinity:
+        #-------------------------------------
+        # custom_node_selector_match_expression will be added in node selector match expressions.
+        # It accepts array list inputs. You can assign multiple selector match expressions except (kubernetes.io/arch)
+        # Example value:
+        # - key: kubernetes.io/hostname
+        #   operator: In
+        #   values:
+        #     - worker0
+        #     - worker1
+        #     - worker3
+        #-------------------------------------
+        custom_node_selector_match_expression: [ ]
+      ## Values in this field will be used as annotations in all generated pods, and it must be valid annotation key value pairs.
+      # Example:
+      # customAnnotationKey: customAnnotationValue
+      ## To include '{{ }}' in annotation like '{{example}}', add a backward slash before curly brace like '\{\{example\}\}'.
+      custom_annotations: { }
+      ## Values in this field will be used as labels in all generated pods, and it must be valid label key value pairs
+      # Example:
+      # customLabelKey: customLabelValue
+      custom_labels: { }
+
+     # IER Production setting
+      ier_production_setting:
+        time_zone: Etc/UTC
+
+        ## The initial use of available memory.
+        jvm_initial_heap_percentage: 40
+        ## The maximum percentage of available memory to use.
+        jvm_max_heap_percentage: 66
+
+        ## Use this "jvm_customize_options" parameter to specify JVM arguments using comma separation. For example, if you want to set the following JVM arguments:
+        ##  -Dmy.test.jvm.arg1=123
+        ##  -Dmy.test.jvm.arg2=abc
+        ##  -XX:+SomeJVMSettings
+        ##  -XshowSettings:vm"
+        ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
+        ## If your JVM option contains comma then you have to include 'DELIM=;' to use a different separator, for example jvm_customize_options="DELIM=;-Dmy.test.jvm.arg1=123;-Dcom.filenet.authentication.wsi.AuthTokenOrder=oauth,oidc,ltpa". Semicolon can be replaced with any other char.
+        ## If your JVM option contains double quotes then you need to escape it like this: jvm_customize_options="-Dsettings.navigator.default=logging.level={\"_value\":\"4\",\"_mergeOption\":\"replace\"}"
+        jvm_customize_options:
+        
+        license: accept
+
+      run_as_user:
+      #custom_configmap:
+      # - name: <name of configmap>
+      #   volume_path:  # optional
+      # - name: <name of configmap>
+      #   is_env: # required if the configmap holds environment variables.
+
+      ## By default, the plugin for Graphite is enabled to emit container metrics.
+      collectd_enable_plugin_write_graphite: false
+      
+      # Specify the names of existing persistent volume claims to be used by your application.
+      # Specify an empty string if you don't have existing persistent volume claim.
+      datavolume:
+        existing_pvc_for_ier_logstore:
+        name: "ier-logstore"
+        size: 1Gi
+
+      probe:
+        startup:
+          initial_delay_seconds: 180
+          period_seconds: 10
+          timeout_seconds: 10
+          failure_threshold: 6
+        readiness:
+          period_seconds: 5
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          period_seconds: 5
+          timeout_seconds: 5
+          failure_threshold: 6
+
+ ########################################################################
+ ########             IBM Content Collector for SAP              ########
+ ########################################################################
+  iccsap_configuration:
+
+    ## ICCSAP secret that contains the password to be used for the generation of Keystore and Truststore files
+    iccsap_secret_name: "ibm-iccsap-secret"
+
+    ## The architecture of the cluster.  This is the default for Linux and should not be changed.
+    arch:
+      amd64: "3 - Most preferred"
+
+    ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+    ## it is recommended to have 2 or more.
+    replica_count: 2
+
+    ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+    image:
+      ## The default repository is the IBM Entitled Registry
+      repository: cp.icr.io/cp/cp4a/iccsap/iccsap
+      tag: "24.0.0"
+
+      ## This will override the image pull policy in the shared_configuration.
+      pull_policy: IfNotPresent
+
+    ## Logging for workloads.  This is the default setting.
+    log:
+      format: json
+
+    ## The initial resources (CPU, memory) requests and limits.  If more resources are needed,
+    ## make the changes here to meet your requirement.
+    resources:
+      requests:
+        cpu: 1
+        memory: 1024Mi
+      limits:
+        cpu: 1
+        memory: 1024Mi
+
+    ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
+    ## this settings to meet your requirement.
+    auto_scaling:
+      enabled: true
+      max_replicas: 3
+      min_replicas: 1
+      ## This is the default cpu percentage before autoscaling occurs.
+      target_cpu_utilization_percentage: 80
+
+
+    ## Below are the default ICCSAP Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
+    iccsap_production_setting:
+      # The license must be set to "accept" in order for the component to install.  This is the default value.
+      license: accept
+
+    ## Default settings for monitoring
+    monitor_enabled: false
+    ## Default settings for logging
+    logging_enabled: false
+
+    ## Persistent Volume Claims for ICCSAP.  If the storage_configuration in the shared_configuration is configured,
+    ## the Operator will create the PVC using the names below.
+    datavolume:
+      existing_pvc_for_iccsap_instance: "iccsap-instance"
+      existing_pvc_for_iccsap_logs: "iccsap-logstore"
+    storage:
+        storage_class: "<Required>"
+        size_for_logstore: 1Gi
+    ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
+    probe:
+      readiness:
+        initial_delay_seconds: 120
+        period_seconds: 5
+        timeout_seconds: 10
+        failure_threshold: 6
+      liveness:
+        initial_delay_seconds: 600
+        period_seconds: 5
+        timeout_seconds: 5
+        failure_threshold: 6
+
+    ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
+    image_pull_secrets:
+      name: "ibm-entitlement-key"

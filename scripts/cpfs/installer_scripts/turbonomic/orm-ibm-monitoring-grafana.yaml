@@ -1,0 +1,21 @@
+apiVersion: turbonomic.com/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: grafanas.operator.ibm.com
+  labels:
+    component: cpfs
+spec:
+  resourceMappings:
+    - srcResourceSpec:
+        kind: Deployment
+        componentNames:
+          - ibm-monitoring-grafana
+      resourceMappingTemplates:
+        - srcPath: .spec.template.spec.containers[?(@.name=="router")].resources
+          destPath: .spec.routerConfig.resources
+        - srcPath: .spec.template.spec.containers[?(@.name=="dashboard-controller")].resources
+          destPath: .spec.dashboardConfig.resources
+        - srcPath: .spec.template.spec.containers[?(@.name=="ds-proxy")].resources
+          destPath: .spec.datasourceConfig.proxyResources.resources
+        - srcPath: .spec.template.spec.containers[?(@.name=="grafana")].resources
+          destPath: .spec.grafanaConfig.resources

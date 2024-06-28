@@ -1,0 +1,2365 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2024. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: workflowruntimes.icp4a.ibm.com
+  labels:
+    app.kubernetes.io/name: ibm-dba-workflow
+    app.kubernetes.io/instance: ibm-dba-workflow
+    app.kubernetes.io/managed-by: ibm-dba-workflow
+    release: 24.0.0
+spec:
+  group: icp4a.ibm.com
+  names:
+    kind: WorkflowRuntime
+    listKind: WorkflowRuntimeList
+    plural: workflowruntimes
+    singular: workflowruntime
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: WorkflowRuntime is the Schema for the workflowruntimes API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: WorkflowRuntimeSpec defines the desired state of WorkflowRuntime
+            properties:
+              app_version:
+                description: |-
+                  ! (Be consistent with the top operator)
+                  The version of the current release.
+                type: string
+              application_engine:
+                description: |-
+                  Application engine configuration, because application engine is an array,
+                  when there is only one Application engine deployed along with this CR, below four parameters are not required.
+                  when there is more then one application engine deployed, below four parameters are required.
+                properties:
+                  admin_secret_name:
+                    description: App Engine admin secret name
+                    type: string
+                  context_root:
+                    description: |-
+                      App Engine context root.
+                      The application default context root will be /{{ meta.name}}-{{ application engine instance name }}-aae
+                      Please adjust this value according to the App Engine instance you selected. Don't miss the slash in front of value
+                    type: string
+                  hostname:
+                    description: App Engine hostname
+                    type: string
+                  port:
+                    description: App Engine port
+                    format: int32
+                    type: integer
+                type: object
+              business_event:
+                description: IBM Business Automation Insights integration configuration.
+                properties:
+                  enable:
+                    default: false
+                    description: |-
+                      Whether to enable event monitoring for Dynamic Event Framework events for the Workflow Services container.
+                      If Business Automation Insights and the Machine Learning Server parameters are configured, this parameter must be set to true.
+                    type: boolean
+                  enable_task_api:
+                    default: false
+                    description: |-
+                      Whether to record additional task information in generated events.
+                      If Business Automation Insights and the Machine Learning Server parameters are configured, this parameter must be set to true.
+                      This parameter is equivalent to the enable_task_api_def parameter.
+                      Also see https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.bai/topics/ref_bai_bpmn_summary_formats.html
+                    type: boolean
+                  enable_task_record:
+                    default: true
+                    description: |-
+                      Whether to enable the task record in generated events. This optional parameter is equivalent to the task-record-enabled parameter,
+                      Also see https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.bai/topics/ref_bai_bpmn_summary_formats.html
+                    type: boolean
+                  subscription:
+                    default:
+                    - app_name: '*'
+                      component_name: '*'
+                      component_type: '*'
+                      element_name: '*'
+                      element_type: '*'
+                      nature: '*'
+                      version: '*'
+                    description: List of the subscription configurations. Each subscription
+                      attribute is listed in the rest of this table.
+                    items:
+                      properties:
+                        app_name:
+                          default: '*'
+                          description: Name of the application that is the source
+                            of the events that are to be monitored.
+                          type: string
+                        component_name:
+                          default: '*'
+                          description: Name of the component to be monitored.
+                          type: string
+                        component_type:
+                          default: '*'
+                          description: Type of the component to be monitored.
+                          type: string
+                        element_name:
+                          default: '*'
+                          description: Name of the element to be monitored.
+                          type: string
+                        element_type:
+                          default: '*'
+                          description: Type of element to be monitored. BPMN types
+                            are PROCESS, ACTIVITY, EVENT, and GATEWAY.
+                          type: string
+                        nature:
+                          default: '*'
+                          description: |-
+                            Nature of the event. One element can send events of various natures, such as STARTED, ACTIVE, COMPLETED.
+                            The BPMN nature categories are STARTED, COMPLETED, TERMINATED, DELETED, FAILED, CAUGHT, THROWN, EXPECTED, ACTIVE, READY, RESOURCE_ASSIGNED, ACTIVE, LOOP_CONDITION_TRUE, LOOP_CONDITION_FALSE, and MULTIPLE_INSTANCES_STARTED.
+                          type: string
+                        version:
+                          default: '*'
+                          description: Version of the application to be monitored.
+                          type: string
+                      type: object
+                    type: array
+                type: object
+              case:
+                description: The configurations for case capability
+                properties:
+                  case_history_emitter:
+                    description: The event emitter settings if you want to enable
+                      Case History Emitter.
+                    properties:
+                      case_history_store_schema_name:
+                        description: The schema name for Case History Store.
+                        type: string
+                      dc_common_cpe_datasource_name:
+                        description: The name of the non-XA datasource of Case History
+                          Store (from dc_common_cpe_datasource_name in the dc_cpe_datasources
+                          section)
+                        type: string
+                      enable:
+                        default: false
+                        description: To enable Case History Emitter
+                        type: boolean
+                    type: object
+                  cpe_metadata_cache_time_to_live:
+                    default: 100
+                    description: Number of seconds before a newly added or modified
+                      asset will take effect in the Case Client.
+                    format: int32
+                    type: integer
+                  custom_extension_names:
+                    description: Custom extension names for installing custom packages,
+                      where the value format is similar to extension1.zip, extension2.zip.
+                    type: string
+                  custom_package_names:
+                    description: Custom package names for installing custom packages,
+                      where the value format is similar to package1.zip, package2.zip.
+                    type: string
+                  domain_name:
+                    description: Domain name for CASE.
+                    type: string
+                  event_emitter:
+                    description: |-
+                      The event emitter settings if you want to enable Case Event Emitter.
+                      You can configure multiple Target Object Stores if you want to enable the Case Event Emitter for them.
+                    items:
+                      properties:
+                        casetype_list:
+                          default: ""
+                          description: Comma-separated list of all the case types
+                            that need to be processed, e.g "casetype1, casetype2".
+                            Default value is "".
+                          type: string
+                        connection_point_name:
+                          description: Connection point name for target object store.
+                          type: string
+                        date_sql:
+                          description: |-
+                            Creation date of the events.
+                            The emitter starts processing the events from that date. If a bookmark exists, the emitter ignores this parameter and processes the events from the bookmark.
+                          type: string
+                        emitter_batch_size:
+                          default: 1000
+                          description: Case event emitter batch size. Default value
+                            is 1000.
+                          format: int32
+                          type: integer
+                        logical_unique_id:
+                          description: |-
+                            An 8-character alphanumeric string without underscores.
+                            This value is always required. While processing, the emitter tracks the events that are processed by using the Content Engine Audit Processing Bookmark with a display name that is based on this value.
+                            Therefore, if the emitter is restarted and if the bookmark exists, the emitter processes the events from the last bookmark.
+                          type: string
+                        process_pe_events:
+                          default: true
+                          description: Whether to process FileNet Process Engine events
+                            in addition to IBM Business Automation Workflow events.
+                            Default value is true.
+                          type: boolean
+                        solution_list:
+                          default: '*'
+                          description: |-
+                            Comma-separated list of all the case solution names that need to be processed, e.g "solution1, solution2".
+                            Default value is "*". Add all the solutions that you want to be processed before you deploy the Case event emitter.
+                          type: string
+                        tos_name:
+                          description: Target Object Store name of CASE
+                          type: string
+                      type: object
+                    type: array
+                  jvm_customize_options:
+                    default: ""
+                    description: 'JVM options separated with spaces for case init
+                      job, for example: -Dtest1=test -Dtest2=test2.'
+                    type: string
+                  network_shared_directory_pvc:
+                    default: icn-pluginstore
+                    description: Persistent volume claim (PVC) name for case network
+                      shared directory, the default value is "icn-pluginstore".
+                    type: string
+                  object_store_name_dos:
+                    description: Design object store name of CASE.
+                    type: string
+                  tos_list:
+                    description: The tos_list is a list. You can deploy multiple target
+                      object stores.
+                    items:
+                      properties:
+                        connection_point_name:
+                          description: Connection point name for target object store.
+                          type: string
+                        desktop_id:
+                          description: Navigator desktop name for target object store.
+                          type: string
+                        is_default:
+                          default: false
+                          description: |-
+                            Whether to use this target object store as the default target object store.
+                            If none of the target object stores is set as default, the first one in the tos_list will be set as the default target object store.
+                          type: boolean
+                        object_store_name:
+                          description: Target object store name. The value must be
+                            an existing object store in CPE.
+                          type: string
+                        target_environment_name:
+                          description: Name of the target environment or project area
+                            to register with the case components and associate with
+                            an IBM Content Navigator desktop.
+                          type: string
+                      type: object
+                    type: array
+                  workitem_search_in_es:
+                    default: false
+                    description: The Work Item search settings if you want to enable
+                      Work Item search in ES.
+                    type: boolean
+                type: object
+              content_integration:
+                description: The configurations for content integration for attachment
+                  in process
+                properties:
+                  cpe_admin_secret:
+                    description: |-
+                      Admin secret for connecting to Content Platform Engine (CPE). This parameter is optional.
+                      If not set, it will autodetect CPE's admin secret in the same namespace.
+                    type: string
+                  domain_name:
+                    description: Domain name for content integration.
+                    type: string
+                  event_handler_path:
+                    default: /home/config/docs-config
+                    type: string
+                  object_store_name:
+                    description: Docs object Store name for content integration. The
+                      value must be an existing object store in CPE.
+                    type: string
+                type: object
+              database:
+                description: The database configuration for Workflow Server
+                properties:
+                  cm_max_pool_size:
+                    default: 200
+                    description: Workflow Server database connect pool maximum number
+                      of physical connections for a pool.
+                    format: int32
+                    type: integer
+                  cm_min_pool_size:
+                    default: 1
+                    description: Workflow Server database connect pool minimum number
+                      of physical connections to maintain in the pool.
+                    format: int32
+                    type: integer
+                  current_schema:
+                    description: |-
+                      Workflow Server database schema name. This parameter is optional. If not set, the schema name is the same as database user name.
+                      This parameter is only supported by DB2 and PostgreSQL. For DB2, the schema name is case-sensitive, and must be specified in uppercase characters.
+                    type: string
+                  custom_jdbc_pvc:
+                    default: ""
+                    description: If use_custom_jdbc_drivers is set to true, input
+                      the name of the persistent volume claim (PVC) that binds to
+                      the persistent volume (PV) where the custom JDBC driver files
+                      are stored.
+                    type: string
+                  database_name:
+                    description: Workflow Server database name. This parameter is
+                      required.
+                    type: string
+                  db_cert_secret_name:
+                    description: |-
+                      Secret name for storing the database TLS certificate when an SSL connection is enabled, if it's client authentication for PostgreSQL DB,
+                      The secret will store the database client key and client certificate and ca certification.
+                      Required only when enable_ssl is true.
+                    type: string
+                  dbcheck:
+                    default:
+                      interval_time: 15
+                      wait_time: 900
+                    description: DB connection check configuration
+                    properties:
+                      interval_time:
+                        default: 15
+                        description: The interval time (seconds) to check the database
+                          initialization status before the database is ready and bootstrapped
+                          with system data.
+                        format: int32
+                        type: integer
+                      wait_time:
+                        default: 900
+                        description: The maximum wait time (seconds) to check the
+                          database initialization status. The server fails to start
+                          after wait_time.
+                        format: int32
+                        type: integer
+                    type: object
+                  dc_use_postgres:
+                    default: false
+                    description: Whether to use EDB. If you set it to true, just set
+                      db_cert_secret_name, type, server_name, database_name, port
+                      and secret_name as "", and set enable_ssl to true.
+                    type: boolean
+                  enable_ssl:
+                    default: true
+                    description: Whether to enable Secure Sockets Layer (SSL) support
+                      for the Workflow Server database connection.
+                    type: boolean
+                  hadr:
+                    description: Database standby host for high availability disaster
+                      recovery (HADR)
+                    properties:
+                      max_retries:
+                        default: 5
+                        description: Maximum retries for HADR
+                        format: int32
+                        type: integer
+                      retry_interval:
+                        default: 600
+                        description: Retry interval for HADR
+                        format: int32
+                        type: integer
+                      standbydb_host:
+                        description: To enable database HADR, configure both standby
+                          host and port.
+                        type: string
+                      standbydb_port:
+                        description: Database standby port for HADR. To enable database
+                          HADR, configure both standby host and port.
+                        format: int32
+                        type: integer
+                    type: object
+                  jdbc_driver_files:
+                    default: '* db2jcc4.jar db2jcc_license_cisuz.jar db2jcc_license_cu.jar'
+                    description: The set of custom JDBC files.
+                    type: string
+                  jdbc_url:
+                    description: |-
+                      Oracle and PostgreSQL database connection string.
+                      If the database type is Oracle, provide the Oracle database connection string. For example, jdbc:oracle:thin:@//<oracle_server>:1521/orcl.
+                      If the database type is PostgreSQL, this parameter is optional, you can choose inputs server_name, database_name, and port with or without this parameter here. If you do not need this parameter when PostgreSQL, remove or comment this parameter.
+                    type: string
+                  port:
+                    description: Workflow Server database port. This parameter is
+                      required. For DB2, the default value is "50000"
+                    format: int32
+                    type: integer
+                  secret_name:
+                    description: Workflow Server database secret name. This parameter
+                      is required.
+                    type: string
+                  server_name:
+                    description: Workflow Server database server name. It must be
+                      an accessible address, such as IP, hostname, or Kubernetes service
+                      name.
+                    type: string
+                  type:
+                    description: 'Workflow Server database type. Possible values are:
+                      db2, oracle, postgresql, sqlserver'
+                    enum:
+                    - db2
+                    - oracle
+                    - postgresql
+                    - sqlserver
+                    type: string
+                  use_custom_jdbc_drivers:
+                    default: false
+                    description: Whether to use custom JDBC drivers. set it as true
+                      if you don't want use embedded jdbc drivers and don't specify
+                      jdbc_drivers_url.
+                    type: boolean
+                required:
+                - type
+                type: object
+              deployment_baw_license:
+                description: |-
+                  ! From ICP4ACluster shared_configuration.sc_deployment_baw_license
+                  Business Automation Workflow (BAW) license and possible values are: user, non-production, and production.
+                enum:
+                - user
+                - non-production
+                - production
+                - User
+                - Production
+                type: string
+              deployment_context:
+                default: CP4A
+                description: |-
+                  ! From ICP4ACluster shared_configuration.sc_deployment_context
+                  The deployment context, which has a default value of "CP4A". The possible values are: CP4A, BAW.
+                enum:
+                - BAW
+                - CP4A
+                type: string
+              deployment_cp4a_license:
+                default: production
+                description: |-
+                  ! From ICP4ACluster shared_configuration.sc_deployment_cp4a_license
+                  Use this parameter to specify the license for the CP4A deployment and the possible values are: non-production and production.
+                enum:
+                - non-production
+                - production
+                - Production
+                type: string
+              deployment_platform:
+                default: OCP
+                description: |-
+                  ! From ICP4ACluster shared_configuration.sc_deployment_platform
+                  The platform to be deployed specified by the user. Possible values are: OCP, ROKS and other.
+                enum:
+                - OCP
+                - ROKS
+                - other
+                type: string
+              deployment_profile_size:
+                default: small
+                description: |-
+                  ! From ICP4ACluster shared_configuration.sc_deployment_profile_size
+                  Specify a profile size for CloudPak, valid values are small,medium,large. The default value is small.
+                enum:
+                - small
+                - medium
+                - large
+                type: string
+              deployment_purpose:
+                description: |-
+                  ! From ICP4ACluster shared_configuration.sc_deployment_purpose
+                  Specify the deployment purpose.
+                type: string
+              deployment_type:
+                default: Production
+                description: |-
+                  ! From ICP4ACluster shared_configuration.sc_deployment_type
+                  The deployment type as selected by the user. Possible values are: Starter and Production.
+                enum:
+                - Starter
+                - Production
+                type: string
+              elasticsearch:
+                description: Elasticsearch information
+                properties:
+                  admin_secret_name:
+                    type: string
+                  endpoint:
+                    type: string
+                type: object
+              encryption_key_secret:
+                description: |-
+                  ! From ICP4ACluster shared_configuration.encryption_key_secret
+                  Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
+                type: string
+              federation_config:
+                description: Federation configurations
+                properties:
+                  case_manager:
+                    items:
+                      properties:
+                        index_number_of_replicas:
+                          default: 1
+                          description: Number of shard replicas of the Elasticsearch
+                            index used to store Case Manager object store data.
+                          format: int32
+                          type: integer
+                        index_number_of_shards:
+                          default: 3
+                          description: Number of primary shards of the Elasticsearch
+                            index used to store Case Manager object store data.
+                          format: int32
+                          type: integer
+                        object_store_name:
+                          description: Case Manager object store name.
+                          type: string
+                      type: object
+                    type: array
+                  workflow_server:
+                    properties:
+                      index_number_of_replicas:
+                        default: 1
+                        description: Number of shard replicas of the Elasticsearch
+                          index used to store Workflow Server data.
+                        format: int32
+                        type: integer
+                      index_number_of_shards:
+                        default: 3
+                        description: Number of primary shards of the Elasticsearch
+                          index used to store Workflow Server data.
+                        format: int32
+                        type: integer
+                    type: object
+                type: object
+              full_text_search:
+                description: |-
+                  Configure the full-text search feature for the Workflow Server.
+                  To enable full text search, you need add elasticsearch in shared_configuration.sc_optional_components and elasticsearch is deployed.
+                  You could also provide your own elasticsearch leveraging parameters: elasticsearch.endpoint and elasticsearch.admin_secret_name.
+                properties:
+                  enable:
+                    default: false
+                    description: |-
+                      To enable full text search, you need add elasticsearch in shared_configuration.sc_optional_components and elasticsearch is deployed.
+                      You could also provide your own elasticsearch leveraging parameters: elasticsearch.endpoint and elasticsearch.admin_secret_name.
+                    type: boolean
+                type: object
+              images:
+                description: Include all images used to deploy the workflow runtime
+                properties:
+                  bas_auto_import_job:
+                    default:
+                      repository: cp.icr.io/cp/cp4a/baw/toolkit-installer
+                    description: Workflow Server Business Automation Studio toolkit
+                      init image configuration
+                    properties:
+                      image_pull_secrets:
+                        items:
+                          type: string
+                        type: array
+                      pull_policy:
+                        default: IfNotPresent
+                        description: image pull policy, default is "IfNotPresent"
+                        enum:
+                        - IfNotPresent
+                        - Always
+                        - Never
+                        type: string
+                      repository:
+                        description: image repository URL
+                        type: string
+                      tag:
+                        description: image tag
+                        type: string
+                    type: object
+                  case_init_job_image:
+                    default:
+                      repository: cp.icr.io/cp/cp4a/baw/workflow-server-case-initialization
+                    description: Case init job image configuration
+                    properties:
+                      image_pull_secrets:
+                        items:
+                          type: string
+                        type: array
+                      pull_policy:
+                        default: IfNotPresent
+                        description: image pull policy, default is "IfNotPresent"
+                        enum:
+                        - IfNotPresent
+                        - Always
+                        - Never
+                        type: string
+                      repository:
+                        description: image repository URL
+                        type: string
+                      tag:
+                        description: image tag
+                        type: string
+                    type: object
+                  content_init_job_image:
+                    default:
+                      repository: cp.icr.io/cp/cp4a/baw/iaws-ps-content-integration
+                    description: Content integration init job image configuration
+                    properties:
+                      image_pull_secrets:
+                        items:
+                          type: string
+                        type: array
+                      pull_policy:
+                        default: IfNotPresent
+                        description: image pull policy, default is "IfNotPresent"
+                        enum:
+                        - IfNotPresent
+                        - Always
+                        - Never
+                        type: string
+                      repository:
+                        description: image repository URL
+                        type: string
+                      tag:
+                        description: image tag
+                        type: string
+                    type: object
+                  dbcompatibility_init_container:
+                    default:
+                      repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer
+                    description: Image for database compatibility init container.
+                    properties:
+                      image_pull_secrets:
+                        items:
+                          type: string
+                        type: array
+                      pull_policy:
+                        default: IfNotPresent
+                        description: image pull policy, default is "IfNotPresent"
+                        enum:
+                        - IfNotPresent
+                        - Always
+                        - Never
+                        type: string
+                      repository:
+                        description: image repository URL
+                        type: string
+                      tag:
+                        description: image tag
+                        type: string
+                    type: object
+                  image_pull_secrets:
+                    description: |-
+                      ! From ICP4ACluster shared_configuration
+                      shared image pull secrets
+                    items:
+                      type: string
+                    type: array
+                  image_repository:
+                    description: Image repository for all the images.
+                    type: string
+                  image_tag:
+                    description: Image tag for all images.
+                    type: string
+                  keytool_init_container:
+                    default:
+                      repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
+                    description: Image for Transport Layer Security (TLS) init container.
+                    properties:
+                      image_pull_secrets:
+                        items:
+                          type: string
+                        type: array
+                      pull_policy:
+                        default: IfNotPresent
+                        description: image pull policy, default is "IfNotPresent"
+                        enum:
+                        - IfNotPresent
+                        - Always
+                        - Never
+                        type: string
+                      repository:
+                        description: image repository URL
+                        type: string
+                      tag:
+                        description: image tag
+                        type: string
+                    type: object
+                  keytool_job_container:
+                    default:
+                      repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer
+                    description: Image for Transport Layer Security (TLS) job container.
+                    properties:
+                      image_pull_secrets:
+                        items:
+                          type: string
+                        type: array
+                      pull_policy:
+                        default: IfNotPresent
+                        description: image pull policy, default is "IfNotPresent"
+                        enum:
+                        - IfNotPresent
+                        - Always
+                        - Never
+                        type: string
+                      repository:
+                        description: image repository URL
+                        type: string
+                      tag:
+                        description: image tag
+                        type: string
+                    type: object
+                  pull_policy:
+                    default: IfNotPresent
+                    description: image pull policy for all images, default is "IfNotPresent"
+                    enum:
+                    - IfNotPresent
+                    - Always
+                    - Never
+                    type: string
+                  umsregistration_initjob:
+                    default:
+                      repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
+                    description: Image for OpenID Connect (OIDC) registration job
+                      container.
+                    properties:
+                      image_pull_secrets:
+                        items:
+                          type: string
+                        type: array
+                      pull_policy:
+                        default: IfNotPresent
+                        description: image pull policy, default is "IfNotPresent"
+                        enum:
+                        - IfNotPresent
+                        - Always
+                        - Never
+                        type: string
+                      repository:
+                        description: image repository URL
+                        type: string
+                      tag:
+                        description: image tag
+                        type: string
+                    type: object
+                  upgrade_job:
+                    default:
+                      repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
+                    description: Workflow Server database handling image configuration
+                    properties:
+                      pull_policy:
+                        default: IfNotPresent
+                        description: image pull policy, default is "IfNotPresent"
+                        enum:
+                        - IfNotPresent
+                        - Always
+                        - Never
+                        type: string
+                      repository:
+                        description: image repository URL
+                        type: string
+                      tag:
+                        description: image tag
+                        type: string
+                      trace_specification:
+                        description: The trace Specification for database handling
+                          job, the sample trace specification is WLE.wle.*=fine:com.ibm.bpm.*=all
+                        type: string
+                    type: object
+                  workflow_server:
+                    default:
+                      repository: cp.icr.io/cp/cp4a/baw/workflow-server
+                    description: Workflow server image configurations
+                    properties:
+                      image_pull_secrets:
+                        items:
+                          type: string
+                        type: array
+                      pull_policy:
+                        default: IfNotPresent
+                        description: image pull policy, default is "IfNotPresent"
+                        enum:
+                        - IfNotPresent
+                        - Always
+                        - Never
+                        type: string
+                      repository:
+                        description: image repository URL
+                        type: string
+                      tag:
+                        description: image tag
+                        type: string
+                    type: object
+                type: object
+              ingress_enable:
+                default: false
+                description: |-
+                  ! From ICP4ACluster shared_configuration.sc_ingress_enable
+                  For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
+                type: boolean
+              ingress_tls_secret_name:
+                description: |-
+                  ! From ICP4ACluster shared_configuration.sc_ingress_tls_secret_name
+                  For ROKS Ingress, provide TLS secret name for Ingress controller. If you are not using ROKS, do not need this.
+                type: string
+              jms:
+                description: The configuration for Java Messaging Service(JMS)
+                properties:
+                  custom_annotations:
+                    additionalProperties:
+                      type: string
+                    description: Values in this field will be used as annotations
+                      in all generated pods
+                    type: object
+                  custom_labels:
+                    additionalProperties:
+                      type: string
+                    description: Values in this field will be used as labels in all
+                      generated pods
+                    type: object
+                  custom_secret_name:
+                    description: |-
+                      JMS custom XML secret name that contains custom configuration in Liberty server.xml,
+                      put the custom.xml in secret with key "sensitiveCustom.xml"
+                      kubectl create secret generic jms-custom-xml-secret --from-file=sensitiveCustom.xml=./custom.xml
+                    type: string
+                  custom_xml:
+                    default: ""
+                    description: |-
+                      JMS Server custom plain XML snippet
+                      custom_xml: |+
+                        <server>
+                          <!-- custom properties here -->
+                        </server>
+                    type: string
+                  image:
+                    default:
+                      repository: cp.icr.io/cp/cp4a/baw/jms
+                    description: JMS image configurations
+                    properties:
+                      image_pull_secrets:
+                        items:
+                          type: string
+                        type: array
+                      pull_policy:
+                        default: IfNotPresent
+                        description: image pull policy, default is "IfNotPresent"
+                        enum:
+                        - IfNotPresent
+                        - Always
+                        - Never
+                        type: string
+                      repository:
+                        description: image repository URL
+                        type: string
+                      tag:
+                        description: image tag
+                        type: string
+                    type: object
+                  is_embedded:
+                    default: true
+                    description: Whether to embed JMS in BAW, default is true.
+                    type: boolean
+                  logging_to_elasticsearch:
+                    description: Configure the log storage to Elasticsearch capability.
+                    properties:
+                      admin_secret_name:
+                        description: Elasticsearch connection admin secret name
+                        type: string
+                      enable:
+                        default: false
+                        description: Enable/disable logging where logs can be sent
+                          to Elasticsearch, default is 'false'
+                        type: boolean
+                      endpoint:
+                        description: Elasticsearch connection endpoint
+                        type: string
+                      mon_elastic_search_index_prefix:
+                        description: Name prefix of elasticsearch index where server
+                          logs are stored, default is server deployment name
+                        type: string
+                    type: object
+                  node_affinity:
+                    description: Node affinity configurations
+                    properties:
+                      custom_node_selector_match_expression:
+                        description: Added in node selector match expressions. It
+                          accepts array list inputs. You can assign multiple selector
+                          match expressions except (kubernetes.io/arch).
+                        items:
+                          description: |-
+                            A node selector requirement is a selector that contains values, a key, and an operator
+                            that relates the key and values.
+                          properties:
+                            key:
+                              description: The label key that the selector applies
+                                to.
+                              type: string
+                            operator:
+                              description: |-
+                                Represents a key's relationship to a set of values.
+                                Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
+                              type: string
+                            values:
+                              description: |-
+                                An array of string values. If the operator is In or NotIn,
+                                the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                the values array must be empty. If the operator is Gt or Lt, the values
+                                array must have a single element, which will be interpreted as an integer.
+                                This array is replaced during a strategic merge patch.
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                      deploy_arch:
+                        default:
+                        - amd64
+                        - s390x
+                        - ppc64le
+                        description: Values in this field will be used as kubernetes.io/arch
+                          selector values. Default values are ['amd64','s390x','ppc64le']
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  probe:
+                    default:
+                      liveness_probe:
+                        failure_threshold: 3
+                        initial_delay_seconds: 180
+                        period_seconds: 20
+                        success_threshold: 1
+                        timeout_seconds: 10
+                      readiness_probe:
+                        failure_threshold: 6
+                        initial_delay_seconds: 30
+                        period_seconds: 5
+                        success_threshold: 1
+                        timeout_seconds: 5
+                      startup_probe:
+                        failure_threshold: 20
+                        period_seconds: 10
+                        success_threshold: 1
+                        timeout_seconds: 10
+                    description: Resource configuration for JMS server
+                    properties:
+                      liveness_probe:
+                        description: Liveness probe setting definition
+                        properties:
+                          failure_threshold:
+                            default: 3
+                            description: Minimum consecutive failures for the probe
+                              to be considered failed after having succeeded.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          initial_delay_seconds:
+                            default: 300
+                            description: Number of seconds after the container has
+                              started before liveness probes are initiated.
+                            format: int32
+                            type: integer
+                          period_seconds:
+                            default: 10
+                            description: How often (in seconds) to perform the probe.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          success_threshold:
+                            default: 1
+                            description: Minimum consecutive successes for the probe
+                              to be considered successful after it failed.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          timeout_seconds:
+                            default: 10
+                            description: Number of seconds after which the probe times
+                              out.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                        type: object
+                      readiness_probe:
+                        description: Readiness probe setting definition
+                        properties:
+                          failure_threshold:
+                            default: 6
+                            description: Minimum consecutive failures for the probe
+                              to be considered failed after having succeeded.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          initial_delay_seconds:
+                            default: 240
+                            description: Number of seconds after the container has
+                              started before liveness probes are initiated.
+                            format: int32
+                            type: integer
+                          period_seconds:
+                            default: 5
+                            description: How often (in seconds) to perform the probe.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          success_threshold:
+                            default: 1
+                            description: Minimum consecutive successes for the probe
+                              to be considered successful after it failed.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          timeout_seconds:
+                            default: 5
+                            description: Number of seconds after which the probe times
+                              out.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                        type: object
+                      startup_probe:
+                        description: Startup probe setting definition
+                        properties:
+                          failure_threshold:
+                            default: 80
+                            description: Minimum consecutive failures for the probe
+                              to be considered failed after having succeeded.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          period_seconds:
+                            default: 5
+                            description: How often (in seconds) to perform the probe.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          success_threshold:
+                            default: 1
+                            description: Minimum consecutive successes for the probe
+                              to be considered successful after it failed.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          timeout_seconds:
+                            default: 10
+                            description: Number of seconds after which the probe times
+                              out.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                        type: object
+                    type: object
+                  resources:
+                    description: Resource configuration
+                    properties:
+                      claims:
+                        description: |-
+                          Claims lists the names of resources, defined in spec.resourceClaims,
+                          that are used by this container.
+
+
+                          This is an alpha field and requires enabling the
+                          DynamicResourceAllocation feature gate.
+
+
+                          This field is immutable. It can only be set for containers.
+                        items:
+                          description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                          properties:
+                            name:
+                              description: |-
+                                Name must match the name of one entry in pod.spec.resourceClaims of
+                                the Pod where this field is used. It makes that resource available
+                                inside a container.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Limits describes the maximum amount of compute resources allowed.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Requests describes the minimum amount of compute resources required.
+                          If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                          otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                    type: object
+                  security_context:
+                    description: Set securityContext for JMS server.
+                    properties:
+                      fs_group:
+                        description: |-
+                          Specify the group which Kubernetes will change the permissions of all files in volumes to when volumes are mounted by a pod,
+                          which is specified on the pod level. With scc(on OCP) or psp(on Kubernetes), you need to map the service account to proper scc or psp,
+                          for example on OCP, use command line: `oc adm policy add-scc-to-user anyuid -z wfps-instance1-sa -n NAMESPACE`
+                        type: string
+                      run_as_user:
+                        description: |-
+                          ! From ICP4ACluster shared_configuration.run_as_user - (Be consistent with the top operator)
+                          For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is optional.
+                          It is not supported on OCP and ROKS.
+                          The UID to run the entrypoint of the container process.
+                          Defaults to user specified in image metadata if unspecified.
+                          May also be set in PodSecurityContext.  If set in both, the value specified in this field takes precedence.
+                        format: int64
+                        type: integer
+                      seccomp_profile:
+                        description: Optional setting for secure computing mode (seccomp)
+                          profile for JMS containers.
+                        properties:
+                          localhost_profile:
+                            description: The custom profile of secure computing mode.
+                            type: string
+                          type:
+                            description: The type of secure computing mode.
+                            enum:
+                            - RuntimeDefault
+                            - Unconfined
+                            - Localhost
+                            type: string
+                        type: object
+                      selinux_options:
+                        description: SELinuxOptions are the labels to be applied to
+                          the container
+                        properties:
+                          level:
+                            description: Level is SELinux level label that applies
+                              to the container.
+                            type: string
+                          role:
+                            description: Role is a SELinux role label that applies
+                              to the container.
+                            type: string
+                          type:
+                            description: Type is a SELinux type label that applies
+                              to the container.
+                            type: string
+                          user:
+                            description: User is a SELinux user label that applies
+                              to the container.
+                            type: string
+                        type: object
+                    type: object
+                  storage:
+                    description: JMS storage configuration
+                    properties:
+                      access_modes:
+                        default:
+                        - ReadWriteOnce
+                        description: Access modes for JMS persistent storage.
+                        items:
+                          type: string
+                        type: array
+                      persistent:
+                        default: false
+                        description: Whether to enable persistent storage for JMS.
+                        type: boolean
+                      size:
+                        default: 2Gi
+                        description: Size for JMS persistent storage.
+                        type: string
+                      storage_class:
+                        description: Storage class name for JMS persistent storage
+                        type: string
+                      use_dynamic_provisioning:
+                        default: true
+                        description: Whether to enable dynamic provisioning for JMS
+                          persistent storage.
+                        type: boolean
+                    type: object
+                  tls:
+                    description: JMS TLS configurations
+                    properties:
+                      tls_secret_name:
+                        description: TLS secret name for JMS
+                        type: string
+                    type: object
+                type: object
+              kafka_service:
+                default:
+                  enable: false
+                description: '! ICP4ACluster shared_configuration.kafka + baw_configuration.kafka_service'
+                properties:
+                  bootstrap_servers:
+                    description: A comma-separated list of hosts:port for connection
+                      to the Kafka cluster. This parameter is mandatory when enabling
+                      Kafka connection.
+                    type: string
+                  dynamic_generate_connection_info:
+                    default: false
+                    description: |-
+                      when integrating Business Automation Insights server and its pod is deployed in same project alone with Intelligent Task Prioritization server pod,
+                      Set value to true, operator retrieves Kafka connection information automatically
+                      Default value is false, operator always uses connection information provided, even Business Automation Insights server pod and Intelligent Task Prioritization server pod are in same project
+                    type: boolean
+                  enable:
+                    default: false
+                    description: |-
+                      Option to enable or disable the Kafka services.
+                      When enable the Kafka services, ignore other kafka configurations.
+                      When use customize Kafka configuration, set to true and specify other kafka configurations.
+                      When disable Kafka integration, set to false.
+                    type: boolean
+                  sasl_mechanism:
+                    default: SCRAM-SHA-512
+                    type: string
+                  secret_name:
+                    description: |-
+                      Kafka server requires authentication and uses SSL communications,
+                      the value of this parameter must provide the name of a Kubernetes secret that holds the following keys as base64-encoded strings:
+                      - kafka-username: Kafka username
+                      - kafka-password: Kafka password
+                      - kafka-server-certificate: server certificate for SSL communications
+                      This parameter is mandatory when enabling Kafka connection.
+                    type: string
+                  security_protocol:
+                    default: SASL_SSL
+                    type: string
+                  topic:
+                    default: icp4ba-bai-ingress
+                    description: The name of topic in Kafka cluster that IBM Business
+                      Automation Workflow server will send business event to. The
+                      default value is 'icp4ba-bai-ingress'.
+                    type: string
+                type: object
+              license:
+                description: Must exist to accept the IBM license.
+                properties:
+                  accept:
+                    type: boolean
+                required:
+                - accept
+                type: object
+              name:
+                description: The name from CP4BA baw_configuration.name. If it is
+                  not set, the default value is CR name.
+                type: string
+              process_federation_server:
+                description: Set PFS information if you have PFS installed and want
+                  to federate Workflow Server to it.
+                properties:
+                  context_root_prefix:
+                    type: string
+                  hostname:
+                    type: string
+                  port:
+                    format: int32
+                    type: integer
+                type: object
+              resource_registry_configuration:
+                description: |-
+                  Resource Registry configuration
+                  It is only for the external RR scenario.
+                properties:
+                  admin_secret_name:
+                    description: Resource Registry admin secret name
+                    type: string
+                  hostname:
+                    description: Resource Registry hostname
+                    type: string
+                  port:
+                    description: Resource Registry port
+                    format: int32
+                    type: integer
+                  tls:
+                    description: Resource Registry tls setting
+                    properties:
+                      internal_tls_secret:
+                        type: string
+                    type: object
+                type: object
+              restricted_internet_access:
+                default: false
+                description: |-
+                  ! From ICP4ACluster shared_configuration.sc_egress_configuration.restricted_internet_access
+                  Enable or disable egress access to external systems. Default will be false if not defined.
+                  true: CP4A pods will not have access to any external systems unless a custom, curated egress network policy or multiple network policies with specific 'matchLabels' are created. Please refer to documentation for more detail.
+                  false: All CP4A pods will have unrestricted network access to external systems.
+                type: boolean
+              runtime_configuration:
+                description: Workflow runtime server configurations.
+                properties:
+                  admin_secret_name:
+                    description: |-
+                      The name of Workflow Server admin secret.
+                      This secret name is optional, if the secret name is null, default secret named {{ meta.name }}-<instance-name>-baw-admin-secret will be generated.
+                    type: string
+                  admin_user:
+                    description: Designate an existing LDAP user for the Workflow
+                      Server admin user.
+                    type: string
+                  audit_log:
+                    description: audit log setting, disabled by default.
+                    properties:
+                      enable:
+                        default: false
+                        description: Enable/disable audit log, default is 'false'
+                        type: boolean
+                      file_name:
+                        default: bawaudit.log
+                        type: string
+                      max_historical_files:
+                        default: 5
+                        format: int32
+                        type: integer
+                      pvc_name:
+                        default: ""
+                        description: If pvc_name is empty, audit log reuse log pvc.
+                          Otherwise, audit log uses the specified PVC.
+                        type: string
+                      pvc_size:
+                        default: 2Gi
+                        type: string
+                      rollover_size:
+                        default: 100
+                        format: int32
+                        type: integer
+                      verbose:
+                        default: true
+                        type: boolean
+                    type: object
+                  autoscaling:
+                    default:
+                      enabled: false
+                      max_replicas: 3
+                      min_replicas: 2
+                      target_cpu_utilization_percentage: 80
+                    description: Using HorizontalPodAutoscaler to automatically scales
+                      the number of Pods based on observed CPU utilization for server
+                      deployment
+                    properties:
+                      enabled:
+                        default: false
+                        description: If true, pods are automatically scaled within
+                          the specified range
+                        type: boolean
+                      max_replicas:
+                        default: 3
+                        description: Maximum pods that can be scaled up to (must be
+                          greater than MinReplicas) by horizontal pod auto scaler.
+                        format: int32
+                        type: integer
+                      min_replicas:
+                        default: 2
+                        description: Minimum pods that can be scaled down to by horizontal
+                          pod auto scaler.
+                        format: int32
+                        type: integer
+                      target_cpu_utilization_percentage:
+                        default: 80
+                        description: Percent threshold on average CPU usage by pods
+                          for triggering horizontal scaling
+                        format: int32
+                        type: integer
+                    type: object
+                  capabilities:
+                    description: Workflow Server capability.
+                    enum:
+                    - workflow
+                    - workstreams
+                    - workflow,workstreams
+                    - workstreams,workflow
+                    type: string
+                  context_root_prefix:
+                    description: Workflow Server context root prefix.
+                    type: string
+                  custom_annotations:
+                    additionalProperties:
+                      type: string
+                    description: Values in this field will be used as annotations
+                      in all generated pods
+                    type: object
+                  custom_labels:
+                    additionalProperties:
+                      type: string
+                    description: Values in this field will be used as labels in all
+                      generated pods
+                    type: object
+                  customize:
+                    description: JVM/Liberty/Lombardi customize configurations
+                    properties:
+                      always_run_task_prioritization_service:
+                        default: false
+                        description: |-
+                          Whether to display the Intelligent Task Prioritization service toggle button.
+                          If this parameter is set to true, the previous parameter is ignored.
+                          This parameter is valid only for the first Workflow instance.
+                        type: boolean
+                      jvm_customize_options:
+                        default: ""
+                        description: 'JVM options separated with spaces, for example:
+                          -Dtest1=test -Dtest2=test2.'
+                        type: string
+                      liberty_custom_xml:
+                        default: ""
+                        description: |-
+                          Workflow Server custom plain XML snippet.
+                          liberty_custom_xml: |+
+                            <server>
+                              <!-- custom properties here -->
+                            </server>
+                        type: string
+                      liberty_custom_xml_secret_name:
+                        default: ""
+                        description: |-
+                          Workflow Server custom XML secret name that contains custom configuration in Liberty server.xml,
+                          put the custom.xml in secret with key "sensitiveCustomConfig"
+                        type: string
+                      lombardi_custom_xml:
+                        default: ""
+                        description: Server Lombardi custom XML contains custom configuration
+                          usually in 100Custom.xml
+                        type: string
+                      lombardi_custom_xml_secret_name:
+                        default: ""
+                        description: |-
+                          Workflow Server Lombardi custom XML secret name that contains custom configuration in 100Custom.xml
+                          put the 100Custom.xml in secret with key "sensitiveCustomConfig"
+                        type: string
+                      show_task_prioritization_service_toggle:
+                        default: false
+                        description: |-
+                          Whether to show the Intelligent Task Prioritization service toggle button in the web user interface to allow the user to enable or disable this service.
+                          This parameter is valid only for the first Workflow instance.
+                        type: boolean
+                      skip_selinux_label:
+                        default: false
+                        description: |-
+                          This is a issue brought by upgrading OCP 4.7 to 4.8, see https://access.redhat.com/solutions/6906261
+                          Workarounds to skip SELinux relabelling in Openshift Data Foundation / Openshift Container Storage
+                          Set var_skip_selinux_label to true, will add annotation io.kubernetes.cri-o.TrySkipVolumeSELinuxLabel: "true" and configure the runtimeclass for pods.
+                        type: boolean
+                      timezone:
+                        default: Etc/UTC
+                        description: Timezone of Workflow Server, default value is
+                          Etc/UTC.
+                        type: string
+                    type: object
+                  customized_portal_endpoint:
+                    default: ""
+                    description: Required if you implemented your own portal. For
+                      example, https://portal.mycompany.com.
+                    type: string
+                  env_type:
+                    default: Production
+                    description: Workflow Server environment type. Possible values
+                      are Development, Test, Staging, Production.
+                    enum:
+                    - Development
+                    - Test
+                    - Staging
+                    - Production
+                    - Playback
+                    type: string
+                  external_connection_timeout:
+                    default: 60s
+                    description: |-
+                      Configure the default timeouts for workflow server route.
+                      Supported time units are microseconds (us), milliseconds (ms), seconds (s), minutes (m), hours (h), or days (d).
+                      Default value is 60s
+                    type: string
+                  host_federated_portal:
+                    default: false
+                    description: Whether the Business Automation Workflow instance
+                      hosts federated Process Portal and integrates with Intelligent
+                      Task Prioritization.
+                    type: boolean
+                  hostname:
+                    description: Workflow Server hostname.
+                    type: string
+                  logging_to_elasticsearch:
+                    description: Configure the log storage to Elasticsearch capability.
+                    properties:
+                      admin_secret_name:
+                        description: Elasticsearch connection admin secret name
+                        type: string
+                      enable:
+                        default: false
+                        description: Enable/disable logging where logs can be sent
+                          to Elasticsearch, default is 'false'
+                        type: boolean
+                      endpoint:
+                        description: Elasticsearch connection endpoint
+                        type: string
+                      mon_elastic_search_index_prefix:
+                        description: Name prefix of elasticsearch index where server
+                          logs are stored, default is server deployment name
+                        type: string
+                    type: object
+                  logs:
+                    default:
+                      console_format: json
+                      console_log_level: INFO
+                      console_source: message,trace,accessLog,ffdc,audit
+                      max_files: 10
+                      max_filesize: 50
+                      message_format: SIMPLE
+                      trace_format: ENHANCED
+                      trace_specification: '*=info'
+                    description: Log trace configuration
+                    properties:
+                      console_format:
+                        default: json
+                        description: Format for printing logs on the console.
+                        type: string
+                      console_log_level:
+                        default: INFO
+                        description: Log level for printing logs on the console.
+                        type: string
+                      console_source:
+                        default: message,trace,accessLog,ffdc,audit
+                        description: Source of the logs for printing on the console.
+                        type: string
+                      max_files:
+                        default: 10
+                        description: Maximum number of log files that are kept before
+                          the oldest file is removed.
+                        format: int32
+                        type: integer
+                      max_filesize:
+                        default: 50
+                        description: The maximum size (in MB) that a log file can
+                          reach before it is rolled.
+                        format: int32
+                        type: integer
+                      message_format:
+                        default: SIMPLE
+                        description: Required format for the messages.log file. Valid
+                          values are SIMPLE and JSON.
+                        enum:
+                        - SIMPLE
+                        - JSON
+                        type: string
+                      trace_format:
+                        default: ENHANCED
+                        description: 'Format of the trace log. Options values are:
+                          BASIC, ADVANCED, and ENHANCED.'
+                        enum:
+                        - BASIC
+                        - ADVANCED
+                        - ENHANCED
+                        type: string
+                      trace_specification:
+                        default: '*=info'
+                        description: Specification for printing trace logs.
+                        type: string
+                    type: object
+                  monitor_enabled:
+                    default: false
+                    description: Whether to use the built-in monitoring capability.
+                    type: boolean
+                  node_affinity:
+                    description: Node affinity configurations
+                    properties:
+                      custom_node_selector_match_expression:
+                        description: Added in node selector match expressions. It
+                          accepts array list inputs. You can assign multiple selector
+                          match expressions except (kubernetes.io/arch).
+                        items:
+                          description: |-
+                            A node selector requirement is a selector that contains values, a key, and an operator
+                            that relates the key and values.
+                          properties:
+                            key:
+                              description: The label key that the selector applies
+                                to.
+                              type: string
+                            operator:
+                              description: |-
+                                Represents a key's relationship to a set of values.
+                                Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
+                              type: string
+                            values:
+                              description: |-
+                                An array of string values. If the operator is In or NotIn,
+                                the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                the values array must be empty. If the operator is Gt or Lt, the values
+                                array must have a single element, which will be interpreted as an integer.
+                                This array is replaced during a strategic merge patch.
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                      deploy_arch:
+                        default:
+                        - amd64
+                        - s390x
+                        - ppc64le
+                        description: Values in this field will be used as kubernetes.io/arch
+                          selector values. Default values are ['amd64','s390x','ppc64le']
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  nodeport:
+                    default: 30026
+                    description: Workflow Server node port.
+                    format: int32
+                    type: integer
+                  port:
+                    default: 443
+                    description: Workflow Server port.
+                    format: int32
+                    type: integer
+                  probe:
+                    default:
+                      liveness_probe:
+                        failure_threshold: 3
+                        initial_delay_seconds: 300
+                        period_seconds: 10
+                        success_threshold: 1
+                        timeout_seconds: 10
+                      readiness_probe:
+                        failure_threshold: 6
+                        initial_delay_seconds: 240
+                        period_seconds: 5
+                        success_threshold: 1
+                        timeout_seconds: 5
+                      startup_probe:
+                        failure_threshold: 80
+                        period_seconds: 5
+                        success_threshold: 1
+                        timeout_seconds: 10
+                    description: Resource configuration for heavy init job such as
+                      database init job
+                    properties:
+                      liveness_probe:
+                        description: Liveness probe setting definition
+                        properties:
+                          failure_threshold:
+                            default: 3
+                            description: Minimum consecutive failures for the probe
+                              to be considered failed after having succeeded.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          initial_delay_seconds:
+                            default: 300
+                            description: Number of seconds after the container has
+                              started before liveness probes are initiated.
+                            format: int32
+                            type: integer
+                          period_seconds:
+                            default: 10
+                            description: How often (in seconds) to perform the probe.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          success_threshold:
+                            default: 1
+                            description: Minimum consecutive successes for the probe
+                              to be considered successful after it failed.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          timeout_seconds:
+                            default: 10
+                            description: Number of seconds after which the probe times
+                              out.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                        type: object
+                      readiness_probe:
+                        description: Readiness probe setting definition
+                        properties:
+                          failure_threshold:
+                            default: 6
+                            description: Minimum consecutive failures for the probe
+                              to be considered failed after having succeeded.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          initial_delay_seconds:
+                            default: 240
+                            description: Number of seconds after the container has
+                              started before liveness probes are initiated.
+                            format: int32
+                            type: integer
+                          period_seconds:
+                            default: 5
+                            description: How often (in seconds) to perform the probe.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          success_threshold:
+                            default: 1
+                            description: Minimum consecutive successes for the probe
+                              to be considered successful after it failed.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          timeout_seconds:
+                            default: 5
+                            description: Number of seconds after which the probe times
+                              out.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                        type: object
+                      startup_probe:
+                        description: Startup probe setting definition
+                        properties:
+                          failure_threshold:
+                            default: 80
+                            description: Minimum consecutive failures for the probe
+                              to be considered failed after having succeeded.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          period_seconds:
+                            default: 5
+                            description: How often (in seconds) to perform the probe.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          success_threshold:
+                            default: 1
+                            description: Minimum consecutive successes for the probe
+                              to be considered successful after it failed.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          timeout_seconds:
+                            default: 10
+                            description: Number of seconds after which the probe times
+                              out.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                        type: object
+                    type: object
+                  replicas:
+                    description: Workflow Server replica count.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  resources:
+                    description: Resource configuration
+                    properties:
+                      claims:
+                        description: |-
+                          Claims lists the names of resources, defined in spec.resourceClaims,
+                          that are used by this container.
+
+
+                          This is an alpha field and requires enabling the
+                          DynamicResourceAllocation feature gate.
+
+
+                          This field is immutable. It can only be set for containers.
+                        items:
+                          description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                          properties:
+                            name:
+                              description: |-
+                                Name must match the name of one entry in pod.spec.resourceClaims of
+                                the Pod where this field is used. It makes that resource available
+                                inside a container.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Limits describes the maximum amount of compute resources allowed.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Requests describes the minimum amount of compute resources required.
+                          If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                          otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                    type: object
+                  resources_init:
+                    default:
+                      limits:
+                        cpu: 500m
+                        memory: 512Mi
+                      requests:
+                        cpu: 200m
+                        memory: 128Mi
+                    description: Resource configuration for init job
+                    properties:
+                      claims:
+                        description: |-
+                          Claims lists the names of resources, defined in spec.resourceClaims,
+                          that are used by this container.
+
+
+                          This is an alpha field and requires enabling the
+                          DynamicResourceAllocation feature gate.
+
+
+                          This field is immutable. It can only be set for containers.
+                        items:
+                          description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                          properties:
+                            name:
+                              description: |-
+                                Name must match the name of one entry in pod.spec.resourceClaims of
+                                the Pod where this field is used. It makes that resource available
+                                inside a container.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Limits describes the maximum amount of compute resources allowed.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Requests describes the minimum amount of compute resources required.
+                          If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                          otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                    type: object
+                  resources_init_heavy_job:
+                    default:
+                      limits:
+                        cpu: "1"
+                        memory: 2048Mi
+                      requests:
+                        cpu: 500m
+                        memory: 512Mi
+                    description: Resource configuration for heavy init job such as
+                      database init job
+                    properties:
+                      claims:
+                        description: |-
+                          Claims lists the names of resources, defined in spec.resourceClaims,
+                          that are used by this container.
+
+
+                          This is an alpha field and requires enabling the
+                          DynamicResourceAllocation feature gate.
+
+
+                          This field is immutable. It can only be set for containers.
+                        items:
+                          description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                          properties:
+                            name:
+                              description: |-
+                                Name must match the name of one entry in pod.spec.resourceClaims of
+                                the Pod where this field is used. It makes that resource available
+                                inside a container.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Limits describes the maximum amount of compute resources allowed.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Requests describes the minimum amount of compute resources required.
+                          If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                          otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                    type: object
+                  security_config:
+                    description: Security configurations
+                    properties:
+                      content_security_policy_additional_connect_src:
+                        description: Content security policy additional directive
+                          for connect-src , e.g. ["https://hostname1","https://hostname2"]
+                        items:
+                          type: string
+                        type: array
+                      content_security_policy_additional_default_src:
+                        description: Content security policy additional directive
+                          for default-src , e.g. ["https://hostname1","https://hostname2"]
+                        items:
+                          type: string
+                        type: array
+                      content_security_policy_additional_font_src:
+                        description: Content security policy additional directive
+                          for font-src, e.g. ["https://hostname1","https://hostname2"]
+                        items:
+                          type: string
+                        type: array
+                      content_security_policy_additional_frame_ancestor:
+                        description: Content security policy additional directive
+                          for frame-ancestor, e.g. ["https://hostname1","https://hostname2"]
+                        items:
+                          type: string
+                        type: array
+                      content_security_policy_additional_frame_src:
+                        description: Content security policy additional directive
+                          for frame-src , e.g. ["https://hostname1","https://hostname2"]
+                        items:
+                          type: string
+                        type: array
+                      content_security_policy_additional_img_src:
+                        description: Content security policy additional directive
+                          for img-src, e.g. ["https://hostname1","https://hostname2"]
+                        items:
+                          type: string
+                        type: array
+                      content_security_policy_additional_object_src:
+                        description: Content security policy additional directive
+                          for object-src , e.g. ["https://hostname1","https://hostname2"]
+                        items:
+                          type: string
+                        type: array
+                      content_security_policy_additional_origins:
+                        description: Content security policy additional origins for
+                          federating BAW systems. E.g ["https://on-prem-baw1","https://on-prem-baw2"]
+                        items:
+                          type: string
+                        type: array
+                      content_security_policy_additional_script_src:
+                        description: Content security policy additional directive
+                          for script-src , e.g. ["https://hostname1","https://hostname2"]
+                        items:
+                          type: string
+                        type: array
+                      content_security_policy_additional_style_src:
+                        description: Content security policy additional directive
+                          for style-src, e.g. ["https://hostname1","https://hostname2"]
+                        items:
+                          type: string
+                        type: array
+                      csrf:
+                        description: Cross-Site Request Forgery (CSRF) configuration
+                        properties:
+                          check_xsrf_for_old_restapi:
+                            default: true
+                            description: Whether to validate the cookie "XSRF-TOKEN"
+                              against incoming REST API requests (POST/PUT/DELETE)
+                              with the path pattern "/rest/bpm/wle/v1/*". The value
+                              must be "true" or "false".
+                            type: boolean
+                          origin_allowlist:
+                            default: ""
+                            description: Acceptable values in the Origin header field.
+                              The value of this property must be a comma-separated
+                              list of prefixes in the format protocol://host:port,
+                              e.g "https://example.com, http://example2.com:8080".
+                            type: string
+                          referer_allowlist:
+                            default: ""
+                            description: Acceptable values in the Referer header field.
+                              The value of this property must be a comma-separated
+                              list of fully qualified host names, e.g "example1.com,
+                              example2.com".
+                            type: string
+                          user_agent_keyword_allow_list_for_old_restapi_csrf_check:
+                            default: java,wink client,httpclient,curl,jersey,httpurlconnection
+                            description: |-
+                              Comma-separated list of user agents.
+                              For the REST API requests with the path pattern "/rest/bpm/wle/v1/*" that is sent by the agents in the list, the server will not validate the "XSRF-TOKEN" cookie.
+                              The value of this property must be a comma-separated list, e.g "agentkeyworkd1, agentkeyworkd2".
+                            type: string
+                        type: object
+                    type: object
+                  security_context:
+                    description: Set securityContext for BAW deployment to skip SELinux
+                      relabeling.
+                    properties:
+                      fs_groupchangepolicy:
+                        description: |-
+                          pod-level security attribute
+                          Defines behavior for changing ownership and permission of the volume before being exposed inside a Pod. This field has two possible values (Always,OnRootMismatch)
+                        enum:
+                        - Always
+                        - OnRootMismatch
+                        type: string
+                      run_as_user:
+                        description: |-
+                          ! From ICP4ACluster shared_configuration.run_as_user - (Be consistent with the top operator)
+                          For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is optional.
+                          It is not supported on OCP and ROKS.
+                          The UID to run the entrypoint of the container process.
+                          Defaults to user specified in image metadata if unspecified.
+                          May also be set in PodSecurityContext.  If set in both, the value specified in this field takes precedence.
+                        format: int64
+                        type: integer
+                      seccomp_profile:
+                        description: Optional setting for secure computing mode (seccomp)
+                          profile for BAW containers.
+                        properties:
+                          localhost_profile:
+                            description: The custom profile of secure computing mode.
+                            type: string
+                          type:
+                            description: The type of secure computing mode.
+                            enum:
+                            - RuntimeDefault
+                            - Unconfined
+                            - Localhost
+                            type: string
+                        type: object
+                      selinux_options:
+                        description: SELinuxOptions are the labels to be applied to
+                          the container
+                        properties:
+                          level:
+                            description: Level is SELinux level label that applies
+                              to the container.
+                            type: string
+                          role:
+                            description: Role is a SELinux role label that applies
+                              to the container.
+                            type: string
+                          type:
+                            description: Type is a SELinux type label that applies
+                              to the container.
+                            type: string
+                          user:
+                            description: User is a SELinux user label that applies
+                              to the container.
+                            type: string
+                        type: object
+                    type: object
+                  service_type:
+                    default: Route
+                    description: Workflow Server service type.
+                    type: string
+                  storage:
+                    description: Storage configuration
+                    properties:
+                      existing_pvc_for_dumpstore:
+                        default: ""
+                        description: Persistent volume claim (PVC) for dump files.
+                        type: string
+                      existing_pvc_for_filestore:
+                        default: ""
+                        description: Persistent volume claim (PVC) for generic files.
+                        type: string
+                      existing_pvc_for_logstore:
+                        default: ""
+                        description: Persistent volume claim (PVC) for logs.
+                        type: string
+                      size_for_dumpstore:
+                        default: 5Gi
+                        description: Minimum size of the persistent volume (PV) that
+                          is mounted as the dump store.
+                        type: string
+                      size_for_filestore:
+                        default: 1Gi
+                        description: Minimum size of the persistent volume (PV) that
+                          is mounted as the generic file store.
+                        type: string
+                      size_for_logstore:
+                        default: 1Gi
+                        description: Minimum size of the persistent volume (PV) that
+                          is mounted as the log store.
+                        type: string
+                      use_dynamic_provisioning:
+                        default: true
+                        description: Set to true to use dynamic storage provisioning.
+                          If set to false, you must set existing_pvc_for_logstore
+                          and existing_pvc_for_dumpstore.
+                        type: boolean
+                    type: object
+                  workplace_url:
+                    description: workplace url
+                    type: string
+                type: object
+              storage_configuration:
+                description: |-
+                  ! From ICP4ACluster shared_configuration
+                  Specify the storage class name for different storage types.
+                properties:
+                  dynamic_storage_classname:
+                    type: string
+                  fast_file_storage_classname:
+                    type: string
+                  medium_file_storage_classname:
+                    type: string
+                  slow_file_storage_classname:
+                    type: string
+                type: object
+              tls:
+                description: TLS configurations
+                properties:
+                  external_tls_ca_secret:
+                    default: ""
+                    description: |-
+                      Certificate authority (CA) used to sign the external TLS secret. It is stored in the secret with the TLS key and certificate. You can enter the secret name here.
+                      If you don't want to use a customized CA to sign the external TLS certificate, leave it empty.
+                    type: string
+                  external_tls_secret:
+                    default: ""
+                    description: |-
+                      The secret that contains the Transport Layer Security (TLS) key and certificate for external https visits. You can enter the secret name here.
+                      If you do not want to use a customized external TLS certificate, leave it empty.
+                    type: string
+                  root_ca_secret:
+                    default: icp4a-root-ca
+                    description: '! From ICP4ACluster shared_configuration.root_ca_secret'
+                    type: string
+                  tls_secret_name:
+                    default: ""
+                    description: |-
+                      Workflow Server TLS secret that contains tls.key and tls.crt.
+                      If you want to use a customized Workflow Server TLS certificate, ensure it is signed by the CA in shared_configuration.root_ca_secret.
+                      If you do not want to use a customized Workflow Server TLS certificate, leave it empty
+                    type: string
+                  tls_trust_list:
+                    description: |-
+                      ! Combine ICP4ACluster shared_configuration.trusted_certificate_list
+                      Workflow Server TLS trust list.
+                      You might specify a list of secrets, every secret stores a trusted CA
+                      Use command `kubectl create secret generic baw_custom_trust_ca_secret1 --from-file=tls.crt=./ca1.crt` to generate the secret.
+                    items:
+                      type: string
+                    type: array
+                  tls_trust_store:
+                    description: |-
+                      Secret to store your custom trusted keystore (optional). The type for the keystore must be JKS or PKCS12. All certificates from the keystore are imported into the trust keystore of the Workflow Server.
+                      When FIPS mode is enabled, you cannot use this parameter, and external sourced trust stores are not supported.
+                      You might run the following sample command to create the secret:
+                      kubectl create secret generic baw_custom_trusted_keystore_secret --from-file=truststorefile=./trust.p12 --from-literal=type=PKCS12  --from-literal=password=WebAS`
+                    type: string
+                type: object
+              workflow_center:
+                description: Workflow Center configuration
+                properties:
+                  heartbeat_interval:
+                    default: 30
+                    description: Heartbeat interval (seconds) to connect to Workflow
+                      Center.
+                    format: int32
+                    type: integer
+                  secret_name:
+                    description: The secret name of workflow center that contains
+                      username and password.
+                    type: string
+                  url:
+                    description: The URL of workflow Center
+                    type: string
+                  user_internal_url:
+                    default: false
+                    description: The flag to indicate if the internal url is used
+                      for the heart beat
+                    type: boolean
+                  webpd_url:
+                    description: URL that is used by Workflow Center to link to the
+                      web Process Designer. For example, https://hostname:port/WebPD
+                    type: string
+                type: object
+            required:
+            - app_version
+            - database
+            - license
+            type: object
+          status:
+            description: WorkflowRuntimeStatus defines the observed state of WorkflowRuntime
+            properties:
+              components:
+                description: status->component
+                properties:
+                  baw:
+                    description: status->component->bawcomponent
+                    properties:
+                      bawDeployment:
+                        type: string
+                      bawService:
+                        type: string
+                      zenIntegration:
+                        type: string
+                    type: object
+                type: object
+              conditions:
+                items:
+                  description: "Condition contains details for one aspect of the current
+                    state of this API Resource.\n---\nThis struct is intended for
+                    direct use as an array at the field path .status.conditions.  For
+                    example,\n\n\n\ttype FooStatus struct{\n\t    // Represents the
+                    observations of a foo's current state.\n\t    // Known .status.conditions.type
+                    are: \"Available\", \"Progressing\", and \"Degraded\"\n\t    //
+                    +patchMergeKey=type\n\t    // +patchStrategy=merge\n\t    // +listType=map\n\t
+                    \   // +listMapKey=type\n\t    Conditions []metav1.Condition `json:\"conditions,omitempty\"
+                    patchStrategy:\"merge\" patchMergeKey:\"type\" protobuf:\"bytes,1,rep,name=conditions\"`\n\n\n\t
+                    \   // other fields\n\t}"
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: |-
+                        type of condition in CamelCase or in foo.example.com/CamelCase.
+                        ---
+                        Many .condition.type values are consistent across resources like Available, but because arbitrary conditions can be
+                        useful (see .node.status.conditions), the ability to deconflict is important.
+                        The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              endpoints:
+                items:
+                  description: status->endpoint
+                  properties:
+                    name:
+                      type: string
+                    scope:
+                      type: string
+                    type:
+                      type: string
+                    uri:
+                      type: string
+                  type: object
+                type: array
+              managedResources:
+                items:
+                  type: string
+                type: array
+            type: object
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+    served: true
+    storage: true
+    subresources:
+      status: {}

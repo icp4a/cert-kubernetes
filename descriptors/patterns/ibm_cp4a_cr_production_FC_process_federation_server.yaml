@@ -1,0 +1,572 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2022, 2023. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ProcessFederationServer
+metadata:
+  name: pfs
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 24.0.0
+spec:
+  appVersion: 24.0.0
+
+  ## MUST exist, used to accept ibm license, valid value only can be "true"
+  license:
+    accept:
+
+  ##########################################################################
+  ## This section contains the shared configuration for all CP4A components #
+  ##########################################################################
+  shared_configuration:
+    ## Use this parameter to specify the license for the CP4A deployment and
+    ## the possible values are: non-production and production and if not set, the license will
+    ## be defaulted to production.  This value could be different from the other licenses in the CR.
+    sc_deployment_license: "<Required>"
+    
+    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or
+    ## know the reason to change this value, please leave the default value.
+    sc_deployment_context: CP4A
+
+    ## All CP4A components must use/share the same docker image repository.  For example, if IBM Entitled Registry is used, then
+    ## it should be "cp.icr.io".  Otherwise, it will be a local docker registry.
+    sc_image_repository: cp.icr.io
+
+    ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower. 
+    ## For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
+    ## NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start.  This custom profile should be created at the worker nodes.
+    sc_seccomp_profile:
+    #  type: # RuntimeDefault, Localhost, Unconfined
+    #  localhost_profile: # Local path of custom seccomp profile when type `Localhost` is used. The custom profile must be accessible by the pod and must exist locally on all worker nodes.  For example: `/profiles/fine-grained.json`.
+    
+    images:
+      keytool_init_container:
+        repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
+        tag: "24.0.0"
+        pull_policy: IfNotPresent
+        # The pull secret list
+        # Examples:
+        # pull_secrets:
+        # - pullsecret1
+        # - pullsecret2
+        pull_secrets: []
+      umsregistration_initjob:
+        repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
+        tag: "24.0.0"
+        pull_policy: IfNotPresent
+        # The pull secret list
+        # Examples:
+        # pull_secrets:
+        # - pullsecret1
+        # - pullsecret2
+        pull_secrets: []
+
+    ## The platform to be deployed specified by the user.  Possible values are: OCP and other.  This is normally populated by the User script
+    ## based on input from the user.
+    sc_deployment_platform:
+
+    ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
+    sc_ingress_enable: false
+
+    ## For ROKS Ingress, provide TLS secret name for Ingress controller. If you are not using ROKS, comment out this line.
+    sc_ingress_tls_secret_name: <Required>
+
+    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers, 
+    ## all the files must be compressed in a single file.
+    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or 
+    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed 
+    ## file should have the following structure and content:
+    ##   /jdbc/db2/db2jcc4.jar
+    ##   /jdbc/db2/db2jcc_license_cu.jar
+    ##   /jdbc/oracle/ojdbc8.jar
+    ##   /saplibs/libicudata.so.50
+    ##   /saplibs/...
+    ## Then you need to put the compressed package on an anonymously accessible web server and provide the link here.
+    ## The CR can handle .zip files using unzip as well as .tar, .tar.gz, .tar.bz2, .tar.xz. Does not handle .gz files, .bz2 files, .xz, or .zst files that do not contain a .tar archive.
+    sc_drivers_url:
+    
+    ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
+    ## This secret is also used by Workflow and BAStudio to store AES encryption key.
+    encryption_key_secret: ibm-iaws-shared-key-secret
+    
+    ## On OCP 3.x and 4.x, the User script will populate these three (3) parameters based on your input for "production" deployment.
+    ## If you manually deploying without using the User script, then you would provide the different storage classes for the slow, medium
+    ## and fast storage parameters below.  If you only have 1 storage class defined, then you can use that 1 storage class for all 3 parameters.
+    ## sc_block_storage_classname is for Zen, Zen requires/recommends block storage (RWO) for metastoreDB
+    storage_configuration:
+      sc_slow_file_storage_classname: "<Required>"
+      sc_medium_file_storage_classname: "<Required>"
+      sc_fast_file_storage_classname: "<Required>"
+
+    sc_egress_configuration:
+      ## Enable or disable egress access to external systems.  Default will be true if not defined.
+      ## true: PFS Pods will not be able to access any external systems other than known targets (e.g. workflow database, federated systems).
+      ## A custom, curated egress network policy or multiple network policies with specific 'matchLabels' can be created for your custom external system access.
+      ## Please refer to documentation for more detail.
+      ## false: All PFS pods will have unrestricted network access to external systems.
+      ## In the case of upgrade, the existing CR will not have sc_restricted_internet_access, then "sc_restricted_internet_access" will be "true".
+      sc_restricted_internet_access: true
+  ########################################################################
+  ########   IBM Process Federation Server configuration          ########
+  ########################################################################
+  pfs_configuration:
+    ## If you input hostname and port here, they will always be used.
+    ## If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value),
+    ## you don't need to fill in the hostname and port: the shared_configuration.sc_deployment_hostname_suffix will be used to generate them.
+    ## But if you didn't input a suffix, and no hostname port is assigned, an error will be reported in the operator log during deployment.
+    ## For non pattern mode you must assign a valid hostname and port here.
+    ## Process Federation Server hostname
+    hostname: ""
+    ## Process Federation Server port
+    port: 443
+    ## How the HTTPS endpoint service should be published. Possible values are ClusterIP, NodePort, Route
+    service_type: Route
+    ## Timezone of Process Federation Server, default value is Etc/UTC.
+    timezone: "Etc/UTC"
+
+    # Optional: You can specify a profile size for BAW Server if different from BAW (see shared_configuration.sc_deployment_profile_size).  In other words,
+    # you can override "shared_configuration.sc_deployment_profile_size" with "deployment_profile_size" defined here.
+    # The valid values are small, medium, large - default is small.  The resources in this file are reflecting a "small" profile.
+    #deployment_profile_size: "small"
+
+    ## The elasticsearch settings which will be used by PFS
+    elasticsearch:
+      ## Required only when using external elasticsearch. Endpoint of external elasticsearch, such as: https://<external_es_host>:<external_es_port>.
+      endpoint: ""
+      ## Required only when using external elasticsearch. The external elasticsearch administrative secret that contains the keys: username and password.
+      admin_secret_name: ""
+      ## The number of seconds for elasticsearch connection timeout setting.
+      connect_timeout: 10s
+      ## The number of seconds for elasticsearch read timeout setting.
+      read_timeout: 30s
+      ## elasticsearch thread count setting
+      thread_count: 0
+      ## The maximum number of connections allowed across all routes when PFS connects to the elasticsearch cluster to call its REST API.
+      ## Specify a positive integer. If the provided value is less than or equal to 0, then the default Elasticsearch High Level REST Client value will be used.
+      max_connection_total: -1
+      ## The maximum number of connections allowed for a route when PFS connects to the elasticsearch cluster to call its REST API.
+      ## Specify a positive integer. If the provided value is less than or equal to 0, then the default Elasticsearch High Level REST Client value will be used.
+      max_connection_per_route: -1
+
+    ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+    image:
+      ## Process Federation Server image
+      ## The default repository is the IBM Entitled Registry.
+      repository: cp.icr.io/cp/cp4a/baw/pfs-prod
+      ## Process Federation Server image tag
+      tag: "24.0.0"
+      ## Process Federation Server image pull policy. This will override the image pull policy in the shared_configuration.
+      pull_policy: IfNotPresent
+      # The pull secret list
+      # Examples:
+      # pull_secrets:
+      # - pullsecret1
+      # - pullsecret2
+      pull_secrets: []
+
+    ## The number of initial Process Federation Server pods. In the Production Deployment cluster, it is recommended to set a value of 2 or higher.
+    replicas: 1
+    ## Service account name for Process Federation Server pod. If not set, the default service account named "{{ meta.name }}-pfs-service-account" will be created.
+    service_account:
+    ## Whether Kubernetes can (soft) or must not (hard) deploy Process Federation Server pods onto the same node. Possible values are "soft" and "hard".
+    anti_affinity: hard
+
+    ## Whether to enable notification server. Possible values are: true and false
+    enable_notification_server: true
+    ## Whether to enable default security roles. Possible values are: true and false
+    enable_default_security_roles: true
+    ## Designate a list of users mapped to the 'administrator', 'adminSavedSearch' and 'adminSharedSavedSearch' security roles of Process Federation Server
+    ## If you are installing IBM Cloud Pak for Automation, enter the names for the IBM Cloud Pak Platform UI (Zen) users to map.
+    ## If you are installing stand-alone IBM Business Automation Workflow on containers, enter the distinguished names of the LDAP users to map, e.g "uid=cp4baAdminUser,ou=cp4ba,dc=company,dc=com".
+    ## This parameter is only used when you set enable_default_security_roles to true.
+    admin_user_id:
+    
+    ## Designate a list of groups mapped to the 'administrator', 'adminSavedSearch' and 'adminSharedSavedSearch' security roles of Process Federation Server
+    ## If you are installing IBM Cloud Pak for Automation, enter the names for the IBM Cloud Pak Platform UI (Zen) permissions to map.
+    ## If you are installing stand-alone IBM Business Automation Workflow on containers, enter the distinguished names of the LDAP groups to map, e.g "CN=cp4baAdminGroup,ou=cp4ba,dc=company,dc=com".
+    ## This parameter is only used when you set enable_default_security_roles to true.
+    admin_group_id:
+
+    ## Name of the secret containing the Process Federation Server administration passwords, such as ltpaPassword, oidcClientPassword, sslKeyPassword
+    admin_secret_name: ibm-pfs-admin-secret
+    ## Name of the secret containing the files that will be mounted in the /config/configDropins/overrides folder
+    config_dropins_overrides_secret: ""
+    ## Name of the secret containing the files that will be mounted in the /config/resources/security folder
+    resources_security_secret: ""
+    ## Name of the custom libraries containing the files that will be mounted in the /config/resources/libs folder
+    custom_libs_pvc: ""
+
+    ## The secret that contains the Transport Layer Security (TLS) key and certificate for external https visits. You can enter the secret name here.
+    ## If you do not want to use a customized external TLS certificate, leave it empty.
+    external_tls_secret:
+    ## Certificate authority (CA) used to sign the external TLS secret. It is stored in the secret with the TLS key and certificate. You can enter the secret name here.
+    ## If you don't want to use a customized CA to sign the external TLS certificate, leave it empty.
+    external_tls_ca_secret:
+
+    ## Whether to use the built-in monitoring capability.
+    monitor_enabled: false
+    ## Enable/disable logging where logs can be sent to Elasticsearch, default is 'false'
+    logging_enabled: false
+    ## Name prefix of elasticsearch index where server logs are stored, default is server deployment name
+    mon_elastic_search_index_prefix: ""
+
+    tls:
+      ## Existing TLS secret containing keys tls.key and tls.crt. The certificate should be signed by the CA in shared_configuration.root_ca_secret.
+      ## If you do not want to use a customized TLS certificate, leave it empty.
+      tls_secret_name:
+       ## Existing TLS trust secret list
+      ## You might specify a list of secrets like the external Elasticsearch applied , every secret stores a trusted CA
+      ## kubectl create secret generic pfs-custom-trust-ca-secret1 --from-file=tls.crt=./ca1.crt
+      tls_trust_list:
+      ## The parameter is optional, if you want PFS server to trust your custom trusted CAs, you can add them to a keystore and then create a secret to store the trusted keystore.
+      ## The keystore type must be JKS or PKCS12.
+      ## kubectl create secret generic pfs-custom-trusted-keystore-secret --from-file=truststorefile=./trust.p12 --from-literal=type=PKCS12  --from-literal=password=WebAS
+      tls_trust_store:
+
+    ## The initial resources (CPU, memory) requests and limits.
+    ## If more resources are needed, make the changes here to meet your requirement.
+    ## If your Openshift cluster is configured for Hugepages and you want the applicable deployment resources to consume Hugepages.
+    ## You must set in the cp4a CR within the same namespace, see ibm_cp4a_cr_production_FC_workflow.yaml
+    ## You must set the sc_hugepages section in the cp4a CR which is deployed in the same namespace, see ibm_cp4a_cr_production_FC_workflow.yaml.
+    ## You must set type for "Hugepages" like hugepages-2Mi or hugepages-1Gi. Default is "hugepages-2Mi".
+    ## You must set size for value which is suitable for Openshift cluster.
+    ## Process Federation Server operator will apply the hugepage setting from the cp4ba CR which is deployed in the same namespace.
+    resources:
+      requests:
+        ## The minimum amount of CPU required to start a PFS pod.
+        cpu: 200m
+        ## The minimum memory required (including JVM heap and file system cache) to start a PFS pod.
+        memory: 512Mi
+      limits:
+        ## The maximum amount of CPU to allocate to each PFS pod.
+        cpu: 1
+        ## The maximum memory (including JVM heap and file system cache) to allocate to each PFS pod.
+        memory: 1024Mi
+
+    ## Default values for liveness probes. Modify these values to meet your requirements.
+    liveness_probe:
+      ## Number of seconds after Process Federation Server container starts before the liveness probe is initiated
+      initial_delay_seconds: 300
+
+    ## Default values for readiness probes. Modify these values to meet your requirements.
+    readiness_probe:
+      ## Number of seconds after Process Federation Server container starts before the readiness probe is initiated
+      initial_delay_seconds: 240
+
+    ## Configurations for saved searches
+    saved_searches:
+      ## Name of the Elasticsearch index used to store saved searches.
+      index_name: ibmpfssavedsearches
+      ## Number of shards of the Elasticsearch index used to store saved searches.
+      index_number_of_shards: 3
+      ## Number of replicas (pods) of the Elasticsearch index used to store saved searches.
+      index_number_of_replicas: 1
+      ## Batch size used when retrieving saved searches.
+      index_batch_size: 100
+      ## Amount of time before considering an update lock as expired. Valid values are numbers with a trailing 'm' or 's' for minutes or seconds.
+      update_lock_expiration: 5m
+      ## Amount of time before considering a unique constraint as expired. Valid values are numbers with a trailing 'm' or 's' for minutes or seconds.
+      unique_constraint_expiration: 5m
+
+    security:
+      sso:
+        ## The ssoDomainNames property of the <webAppSecurity> tag.
+        domain_name:
+        ## The ssoCookieName property of the <webAppSecurity> tag.
+        cookie_name: "ltpatoken2"
+        ltpa:
+          ## The keysFileName property of the <ltpa> tag.
+          filename: "ltpa.keys"
+          ## The expiration property of the <ltpa> tag.
+          expiration: "120m"
+          ## The monitorInterval property of the <ltpa> tag.
+          monitor_interval: "60s"
+      ## The sslProtocol property of the <ssl> tag used as default SSL config.
+      ssl_protocol: TLSv1.2
+
+    executor:
+      ## Value of the maxThreads property of the <executor> tag.
+      max_threads: 80
+      ## Value of the coreThreads property of the <executor> tag.
+      core_threads: 40
+
+    rest:
+      ## Value of the userGroupCheckInterval property of the <ibmPfs_restConfig> tag.
+      user_group_check_interval: "300s"
+      ## Value of the systemStatusCheckInterval property of the <ibmPfs_restConfig> tag.
+      system_status_check_interval: "60s"
+      ## Value of the bdFieldsCheckInterval property of the <ibmPfs_restConfig> tag.
+      bd_fields_check_interval: "300s"
+
+    custom_env_variables:
+      ## Names of the custom environment variables defined in the secret referenced in pfs.customEnvVariables.secret
+      names:
+      # - name: MY_CUSTOM_ENVIRONMENT_VARIABLE
+      ## Secret holding custom environment variables
+      secret:
+
+    ## Log trace configuration.
+    logs:
+      ## Format for printing logs on the console.
+      console_format: "JSON"
+      ## Log level for printing logs on the console.
+      console_log_level: "INFO"
+      ## Source of the logs for printing on the console.
+      console_source: "message,trace,accessLog,ffdc,audit"
+      ## The required format for the messages.log file. Valid values are SIMPLE or JSON format.
+      message_format: "SIMPLE"
+      ## Format for printing trace logs on the console.
+      trace_format: "ENHANCED"
+      ## Specification for printing trace logs.
+      trace_specification: "*=info"
+      storage:
+        ## Use dynamic provisioning for PFS logs data storage.
+        use_dynamic_provisioning: true
+        ## The minimum size of the persistent volume used mounted as PFS Liberty server /logs folder.
+        size: 1Gi
+        ## Storage class of the persistent volume used mounted as PFS Liberty server /logs folder.
+        storage_class: "{{ shared_configuration.storage_configuration.sc_medium_file_storage_classname }}"
+        ## The persistent volume claim for log data storage if dynamic provisioning is not used (use_dynamic_provisioning is false).
+        existing_pvc_name: ""
+
+    ## Dump configuration.
+    dump:
+      ## Whether to persist dump files. Possible values are: true and false.
+      persistent: false      
+      storage:
+        ## Whether to use dynamic provisioning for PFS dump storage. Possible values are: true and false.
+        use_dynamic_provisioning: true
+        ## Minimum size of the persistent volume (PV) that is mounted as the dump store.
+        size: 5Gi
+        ## Storage class if using dynamic provisioning for PFS dump storage
+        storage_class: "{{ shared_configuration.storage_configuration.sc_slow_file_storage_classname }}"
+        ## The persistent volume claim for dump files if not using dynamic provisioning.
+        existing_pvc_name:
+
+    # ----------------------------------------------------------------------------------
+    # Integration settings with Application Engine
+    # ----------------------------------------------------------------------------------
+    application_engine:
+      workplace_image:
+        repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
+        tag: "24.0.0"
+        pull_policy: IfNotPresent
+        # The pull secret list
+        # Examples:
+        # pull_secrets:
+        # - pullsecret1
+        # - pullsecret2
+        pull_secrets: []
+
+    ## When PFS is deployed in an environment that includes the Resource Registry,
+    ## the following additional parameters can be used to configure the integration between PFS and the Resource Registry.
+    dba_resource_registry:
+      # Resource Registry client connection url, eg: https://<base operator cr name>-dba-rr-client:2379
+      endpoint: ""
+      # secret should contains readUser,readPassword
+      # E.g. kubectl create secret generic rr-admin-secret --from-literal=readUser=reader --from-literal=readPassword=password
+      secret_name: "resource-registry-admin-secret"
+      ## The key under which PFS should be registered in the DBA Service Registry when running.
+      pfs_registration_key: /dba/appresources/IBM_PFS/PFS_SYSTEM
+    node_affinity:
+      # Values in this field will be used as kubernetes.io/arch selector values. Default values are ['amd64','s390x','ppc64le']
+      deploy_arch: []
+      #-------------------------------------
+      # custom_node_selector_match_expression will be added in node selector match expressions.
+      # It accepts array list inputs. You can assign multiple selector match expressions except (kubernetes.io/arch)
+      # Example input:
+      # - key: kubernetes.io/hostname
+      #   operator: In
+      #   values:
+      #     - worker0
+      #     - worker1
+      #     - worker3
+      #-------------------------------------
+      custom_node_selector_match_expression: []
+    # Values in this field will be used as annotations in all generated pods.
+    # They must be valid annotation key-value pairs.
+    # Example:
+    # custom_annotations:
+    #   key1: value1
+    #   key2: value2
+    custom_annotations: {}
+    # Values in this field will be used as labels in all generated pods
+    # It must be valid label key value pairs
+    # Example:
+    # custom_labels:
+    #   key1: value1
+    #   key2: value2
+    custom_labels: {}
+    ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower.
+    ## For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
+    ## NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start.  This custom profile should be created at the worker nodes.
+    ## If it is not set, it will fall back to shared_configuration.sc_seccomp_profile
+    seccomp_profile:
+    #  type: # RuntimeDefault, Localhost, Unconfined
+    #  localhost_profile: # Local path of custom seccomp profile when type `Localhost` is used. The custom profile must be accessible by the pod and must exist locally on all worker nodes.  For example: `/profiles/fine-grained.json`.
+
+    ## Optional performance tuning for Zen NGINX server.
+    ## For more information, please refer to https://www.nginx.com/blog/tuning-nginx/#keepalive_requests and https://nginx.org/en/docs/http/ngx_http_proxy_module.html.
+    # zen_performance:
+    #   # Optional: the number of idle keepalive connections to an upstream server that remain open for each worker process. The default vaue is 512.
+    #   keepalive: 
+    #   # Optional: how long an idle keepalive connection remains open. The default value is 30s.
+    #   keepalive_timeout:
+    #   # Optional: the number of requests a client can make over a single keepalive connection. The default is 500.
+    #   keepalive_requests: 
+    #   # Optional: sets the size of the buffer used for reading the first part of the response received from the proxied server. The default value is 256k.
+    #   proxy_buffer_size: 
+    #   # Optional: sets the number and size of the buffers used for reading a response from the proxied server, for a single connection. The default value is 8 512k.
+    #   proxy_buffers: 
+    #   # Optional: when buffering of responses from the proxied server is enabled, limits the total size of buffers that can be busy sending a response to the client while the response is not yet fully read. 
+    #   # The default value is 512k.
+    #   proxy_busy_buffers_size: 
+    #   # Optional: Defines a timeout for establishing a connection with a proxied server. The default value is 300s.
+    #   proxy_connect_timeout: 
+    #   # Optional: Sets a timeout for transmitting a request to the proxied server. The timeout is set only between two successive write operations, not for the transmission of the whole request.
+    #   # If the proxied server does not receive anything within this time, the connection is closed. The default value is 300s.
+    #   proxy_send_timeout: 
+    #   # Optional: Defines a timeout for reading a response from the proxied server. The timeout is set only between two successive read operations, not for the transmission of the whole response.
+    #   # If the proxied server does not transmit anything within this time, the connection is closed. The default value is 300s.
+    #   proxy_read_timeout: 
+ 
+  ########################################################################
+  ########   Embedded Elasticsearch configuration                 ########
+  ########################################################################
+  ## If the deployment platform is OpenShift Container Platform (OCP) or Red Hat OpenShift Kubernetes Service (ROKS),
+  ## or an external Elasticsearch server is used, you must remove all lines, including the header (elasticsearch_configuration) in the elasticsearch_configuration section.
+  ## If the deployment platform is not OCP or ROKS and no external Elasticsearch server is used, you must configure Elasticsearch.
+  elasticsearch_configuration:
+    es_image:
+      ## Elasticsearch image
+      repository: cp.icr.io/cp/cp4a/baw/pfs-elasticsearch-prod
+      ## Elasticsearch image tag
+      tag: "24.0.0"
+      ## Elasticsearch image pull policy
+      pull_policy: IfNotPresent
+      # The pull secret list
+      # Examples:
+      # pull_secrets:
+      # - pullsecret1
+      # - pullsecret2
+      pull_secrets: []
+
+    ## Number of initial Elasticsearch pods. In the Production Deployment cluster, it is recommended to set a value of 3 or higher.
+    replicas: 1
+    ## How the HTTPS endpoint service should be published. The possible values are ClusterIP and NodePort
+    service_type: ClusterIP
+    ## The port to which the Elasticsearch server HTTPS endpoint will be exposed externally.
+    ## This parameter is relevant only if elasticsearch_configuration.service_type is set to NodePort
+    external_port:
+    ## The elasticsearch admin secret that contains the username, password and .htpasswd.
+    ## If not provided, the default admin secret named "{{ meta.name }}-elasticsearch-admin-secret" is used.
+    admin_secret_name:
+    ## Whether Kubernetes "may" (soft) or "must not" (hard) deploy Elasticsearch pods onto the same node
+    ## The possible values are "soft" and "hard"
+    anti_affinity: hard
+    ## The Elasticsearch pods require the hosting worker nodes to be configured to:
+    ## - disable memory swapping by setting the sysctl value vm.swappiness to 1.
+    ## - increase the limit on the number of open files descriptors for the user running Elasticsearch by setting sysctl value vm.max_map_count to 65,536 or higher.
+    ## When set to true, a privileged init container will execute the appropriate sysctl commands to update the worker node configuration to match Elasticsearch requirements.
+    ## When set to false, you must ask the cluster administrator to change the memory swapping and descriptor properties on each worker node.
+    privileged: false
+    ## If elasticsearch_configuration.privileged is set to true, you must create a service account that has the privileged SecurityContextConstraint to allow running privileged containers. See "Preparing SecurityContextConstraints (SCC) requirements" for instructions.
+    ## If elasticsearch_configuration.service_account not set, default service account "{{ meta.name }}-elasticsearch-service-account" will be used.
+    ## If elasticsearch_configuration.privileged is set to false, see "Preparing SecurityContextConstraints (SCC) requirements" for instructions.
+    service_account: "<Required>"
+    ## Initial delay for liveness and readiness probes of Elasticsearch pods
+    probe_initial_delay: 90
+    ## The JVM heap size to allocate to each Elasticsearch pod
+    heap_size: "1024m"
+    ## Whether to use the built-in monitoring capability.
+    monitor_enabled: false
+    ## Specify the group which Kubernetes will change the permissions of all files in volumes to when volumes are mounted by a pod, which is specified on the pod level. With scc(on OCP) or psp(on Kubernetes), you need to map the service account to proper scc or psp, for example on OCP, use command line: `oc adm policy add-scc-to-user anyuid -z wfps-instance1-sa -n NAMESPACE`
+    fs_group: ""
+
+    ## The initial resources (CPU, memory) requests and limits.
+    ## If more resources are needed, make the changes here to meet your requirement.
+    ## If your Openshift cluster is configured for Hugepages and you want the applicable deployment resources to consume Hugepages.
+    ## You must set in the cp4a CR within the same namespace, see ibm_cp4a_cr_production_FC_workflow.yaml
+    ## You must set the sc_hugepages section in the cp4a CR which is deployed in the same namespace, see ibm_cp4a_cr_production_FC_workflow.yaml.
+    ## You must set type for "Hugepages" like hugepages-2Mi or hugepages-1Gi. Default is "hugepages-2Mi".
+    ## You must set size for value which is suitable for Openshift cluster.
+    ## Process Federation Server operator will apply the hugepage setting from the cp4ba CR which is deployed in the same namespace.
+    resources:
+      requests:
+        ## The minimum amount of CPU required to start a Elasticsearch pod.
+        cpu: "100m"
+        ## The minimum memory required (including JVM heap and file system cache) to start a Elasticsearch pod.
+        memory: "2Gi"
+      limits:
+        ## The maximum amount of CPU to allocate to each Elasticsearch pod.
+        cpu: "1000m"
+        ## The maximum memory (including JVM heap and file system cache) to allocate to each Elasticsearch pod.
+        memory: "2Gi"
+
+    storage:
+      ## If persistent the elasticsearch data. Set to false for non-production or trial-only deployment.
+      persistent: true
+      ## Set to true to use dynamic storage provisioner
+      use_dynamic_provisioning: true
+      ## The minimum size of the persistent volume
+      size: 10Gi
+      ## Storage class name for Elasticsearch persistent storage
+      storage_class: "{{ shared_configuration.storage_configuration.sc_fast_file_storage_classname }}"
+
+    snapshot_storage:
+      ## If persistent the elasticsearch snapshot storage. Set to true for production deployment.
+      enabled: false
+      ## Set to true to use dynamic storage provisioner
+      use_dynamic_provisioning: true
+      ## The minimum size of the persistent volume
+      size: 30Gi
+      ## Storage class name for Elasticsearch persistent snapshot storage
+      storage_class_name: ""
+      ## By default, a new persistent volume claim is be created. Specify an existing claim here if one is available.
+      existing_claim_name: ""
+    node_affinity:
+      # Values in this field will be used as kubernetes.io/arch selector values. Default values are ['amd64']
+      deploy_arch: []
+      #-------------------------------------
+      # custom_node_selector_match_expression will be added in node selector match expressions.
+      # It accepts array list inputs. You can assign multiple selector match expressions except (kubernetes.io/arch)
+      # Example input:
+      # - key: kubernetes.io/hostname
+      #   operator: In
+      #   values:
+      #     - worker0
+      #     - worker1
+      #     - worker3
+      #-------------------------------------
+      custom_node_selector_match_expression: []
+    # Values in this field will be used as annotations in all generated pods.
+    # They must be valid annotation key-value pairs.
+    # Example:
+    # custom_annotations:
+    #   key1: value1
+    #   key2: value2
+    custom_annotations: {}
+    # Values in this field will be used as labels in all generated pods
+    # It must be valid label key value pairs
+    # Example:
+    # custom_labels:
+    #   key1: value1
+    #   key2: value2
+    custom_labels: {}
+    ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower.
+    ## For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
+    ## NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start.  This custom profile should be created at the worker nodes.
+    ## If it is not set, it will fall back to shared_configuration.sc_seccomp_profile
+    seccomp_profile:
+    #  type: # RuntimeDefault, Localhost, Unconfined
+    #  localhost_profile: # Local path of custom seccomp profile when type `Localhost` is used. The custom profile must be accessible by the pod and must exist locally on all worker nodes.  For example: `/profiles/fine-grained.json`
+  

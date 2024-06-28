@@ -1,0 +1,76 @@
+## Sample script for running the Postgres scripts non-interactively by providing the needed env vars
+## To use:  Make a copy and name it "common_for_PG.sh", update the needed variables.
+
+## -- Database host and port (for the script to connect to Postgres)
+db_server=mypostgreshost.mycompany.com
+db_port=5432
+
+## -- Database host and port (for the ADP/DPE to connect to Postgres) (this can be the same as the "db_server")
+db_server_for_ca=mypostgreshost.mycompany.com
+db_port_for_ca=5432
+
+## -- Database admin user and password:
+db_adm_username=postgres
+# db_adm_pwd_skip=true    # uncomment line if running as DB admin pwd is not required
+db_adm_pwd=P@ssw0rd!
+db_adm_pwd_b64_encoded=0  # set to 1 if "db_adm_pwd" is base64 encoded
+
+## -- Database tablespace name and location
+table_space_already_defined=1  # set to 1 if use existing tablespace
+tablespace_name=pg_default
+tablespace_location=/var/lib/postgresql/pg_tblspc
+
+## --- For Base BACA DB:
+## update these variables for the BACA Base database
+base_db_name=basedb
+base_db_user=baseuser
+base_db_pwd=xyz123
+base_db_pwd_b64_encoded=0  # set to 1 if "base_db_pwd" is base64 encoded
+
+## Set to "1" to skip creating base database user
+## This means that the Postgres user (from var "base_db_user") must already exist.
+base_user_already_defined=0
+
+## Set variables below to "1" to skip asking for base DB user name and pwd.
+base_valid_user=1
+base_pwdconfirmed=1
+
+## --- For adding tenant:
+## update these variables
+tenant_type=0   # Allowed values: 0 for Enterprise, 1 for Trial, 2 for Internal
+tenant_id=t4910
+tenant_db_name=t4910
+tenant_dsn_name=t4910
+tenant_db_user=t4910user
+
+## Set to "1" to skip creating Project DB user.
+## Prereq is that the Postgres user (from var "tenant_db_user") must already be created.
+user_already_defined=0
+
+## Set to "1" to skip asking for Project DB user pwd.
+tenant_pwdconfirmed=1
+
+## Update these variables
+tenant_db_pwd=xyz123
+tenant_db_pwd_b64_encoded=0  # set to 1 if "tenant_db_pwd" is base64 encoded
+tenant_ontology=default
+
+## --- For adding ontology to existing tenant
+## uncomment this below to add ontology, and comment out "tenant_ontology" line above in this file
+#use_existing_tenant=1
+#tenant_ontology=ONT2
+
+## Set to "y" to skip confirmation interactive prompts.
+confirmation=y
+
+## --- SSL settings ---
+ssl=No  # Changes to "Yes" if SSL should be enabled (only "Yes" or "No" values are accepted)
+
+## If "ssl=Yes", uncomment settings below and specify the FULL paths to your SSL certificate files, or specify "skip" if the cert is not required
+#client_cert_path=/home/certs/pg-client-cert.crt # or specify "skip" if not needed
+#client_key_path=/home/certs/pg-client-key.key  # or specify "skip" if not needed
+#root_cert_path=/home/certs/pg-root-cert.crt  # or specify "skip" if not needed
+
+## If "ssl=Yes", uncomment setting below and specify your desired value for PG client "sslmode" flag, or specify "skip" if you do not want to set the flag
+## "client_ssl_mode" corresponds to the PG client "sslmode" flag (see: https://www.postgresql.org/docs/current/libpq-ssl.html#LIBPQ-SSL-SSLMODE-STATEMENTS)
+#client_ssl_mode=require  # or specify "skip" if not needed

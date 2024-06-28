@@ -1,0 +1,167 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2021. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ibm-cp4a-operator
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 24.0.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: ibm-cp4a-operator
+  template:
+    metadata:
+      labels:
+        name: ibm-cp4a-operator
+        app.kubernetes.io/instance: ibm-dba
+        app.kubernetes.io/managed-by: ibm-dba
+        app.kubernetes.io/name: ibm-dba
+        com.ibm.cp4a.networking/egress-deny-all: "true"
+        com.ibm.cp4a.networking/egress-allow-same-namespace: "true"
+        com.ibm.cp4a.networking/egress-allow-k8s-services: "true"
+        com.ibm.cp4a.networking/egress-allow-cpfs: "true"
+        com.ibm.cp4a.networking/egress-allow-all: "true"
+        com.ibm.cp4a.networking/egress-allow-ldap: "true"
+        com.ibm.cp4a.ecm.networking/egress-allow-db: "true"
+        release: 24.0.0
+      annotations:
+        productID: "5737-I23"
+        productName: "IBM Cloud Pak for Business Automation"
+        productVersion: "24.0.0"
+        productChargedContainers: ""
+        productMetric: "VIRTUAL_PROCESSOR_CORE"
+        cloudpakId: "94a9c8c358bb43ba8fbdea62e7e166a5"
+        cloudpakName: "IBM Cloud Pak for Business Automation"
+        cloudpakVersion: "24.0.0"
+    spec:
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
+      securityContext:
+        runAsNonRoot: true
+      serviceAccountName: ibm-cp4a-operator
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+                      - s390x
+                      - ppc64le
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 3
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+                      - s390x
+                      - ppc64le
+      initContainers:
+        - name: folder-prepare-container
+          image: icr.io/cpopen/icp4a-operator@sha256:5ae8086d8ccf30ec56a31edabc07565a14b489326efcebb48790c8f02744ca70
+          securityContext:
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: license-folder-pvc
+              mountPath: /license-folder
+            - name: ansible-folder-pvc
+              mountPath: /ansible-folder
+            - name: tmp-folder-pvc
+              mountPath: /tmp-folder        
+            - name: log-folder-pvc
+              mountPath: /log-folder
+            - name: ibm-folder-pvc
+              mountPath: /ibm-folder
+          command:
+            - "/bin/sh"
+            - "-ecx"
+            - >
+              rm -rf /license-folder/* && rm -rf /tmp-folder/* && rm -rf /ansible-folder/* && rm -rf /log-folder/* && rm -rf /ibm-folder/* &&
+              cp -rp /licenses/* /license-folder && 
+              mkdir -p /ansible-folder/.ansible &&
+              cp -rp /opt/ansible/* /ansible-folder &&
+              cp -rp /opt/ansible/.ansible/* /ansible-folder/.ansible &&
+              cp -rp /opt/ibm/* /ibm-folder 
+      containers:
+        - name: operator
+          # Replace this with the built image name
+          image: icr.io/cpopen/icp4a-operator@sha256:5ae8086d8ccf30ec56a31edabc07565a14b489326efcebb48790c8f02744ca70
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            # Uncomment below for OCP 3.11
+            # runAsUser: 1001
+            capabilities:
+              drop:
+              - ALL
+          resources:
+            limits:
+              cpu: '1'
+              memory: 2Gi
+            requests:
+              cpu: 500m
+              memory: 256Mi
+          args:
+          - '--zap-encoder=console'
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "ibm-cp4a-operator"
+            - name: MAX_CONCURRENT_RECONCILES_ICP4ACLUSTER_ICP4A_IBM_COM
+              value: "10"
+            - name: ANSIBLE_GATHERING
+              value: smart
+            # MUST exist, used to accept dba license, valid value only can be "accept"
+            - name: dba_license
+              value: "accept"
+          volumeMounts:
+            - name: license-folder-pvc
+              mountPath: /licenses
+            - name: ansible-folder-pvc
+              mountPath: /opt/ansible
+            - name: tmp-folder-pvc
+              mountPath: /tmp        
+            - name: log-folder-pvc
+              mountPath: /logs
+            - name: ibm-folder-pvc
+              mountPath: /opt/ibm
+      imagePullSecrets:
+      - name: "ibm-entitlement-key"
+      volumes:
+        - name: license-folder-pvc
+          emptyDir: {}
+        - name: tmp-folder-pvc
+          emptyDir: {}
+        - name: ansible-folder-pvc
+          emptyDir: {}
+        - name: log-folder-pvc
+          emptyDir: {}
+        - name: ibm-folder-pvc
+          emptyDir: {}

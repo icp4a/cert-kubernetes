@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lsr-backup-pvc
+  namespace: <lsr namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: lsr-data
+spec:
+  storageClassName: <storage class>
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  volumeMode: Filesystem

@@ -1,0 +1,89 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2024. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ibm-workflow-operator
+  labels:
+    app.kubernetes.io/instance: ibm-dba-workflow
+    app.kubernetes.io/managed-by: ibm-dba-workflow
+    app.kubernetes.io/name: ibm-dba-workflow
+    release: 24.0.0
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: ibm-dba-workflow
+      app.kubernetes.io/managed-by: ibm-dba-workflow
+      app.kubernetes.io/name: ibm-dba-workflow
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        cloudpakId: "94a9c8c358bb43ba8fbdea62e7e166a5"
+        cloudpakName: "IBM Cloud Pak for Business Automation"
+        cloudpakVersion: "24.0.0"
+        productChargedContainers: ""
+        productCloudpakRatio: '1:1'
+        productID: 94a9c8c358bb43ba8fbdea62e7e166a5
+        productMetric: "VIRTUAL_PROCESSOR_CORE"
+        productName: "Business Workflow Runtime Server - CP4BA"
+        productVersion: "24.0.0"
+      labels:
+        app.kubernetes.io/instance: ibm-dba-workflow
+        app.kubernetes.io/managed-by: ibm-dba-workflow
+        app.kubernetes.io/name: ibm-dba-workflow
+        name: ibm-workflow-operator
+        release: 24.0.0
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+      - command:
+        - /baw-operator
+        args:
+        - --leader-elect
+        image: icr.io/cpopen/icp4a-workflow-operator:24.0.0
+        imagePullPolicy: Always
+        name: operator
+        securityContext:
+          allowPrivilegeEscalation: false
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1024Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
+        env:
+          - name: WATCH_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: OPERATOR_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+      imagePullSecrets:
+      - name: "ibm-entitlement-key"                           
+      serviceAccountName: ibm-workflow-operator-sa
+      terminationGracePeriodSeconds: 10

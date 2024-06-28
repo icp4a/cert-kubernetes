@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lsr-br-configmap
+  namespace: <lsr namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: lsr-data
+data:
+  br_lsr.sh: |
+    #!/usr/bin/env bash
+
+    # Licensed Materials - Property of IBM
+    # Copyright IBM Corporation 2023. All Rights Reserved
+    # US Government Users Restricted Rights -
+    # Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+    #
+    # This is an internal component, bundled with an official IBM product.
+    # Please refer to that particular license for additional information.
+
+    # ---------- Command arguments ----------
+
+    set -o errtrace
+    set -o errexit
+
+    LSR_NAMESPACE=$1
+    MODE=$2
+
+    BACKUP_DIR=/lsr/lsr-backup
+
+    function main {
+        if [[ $MODE == "backup" ]]; then
+            info "Mode set to backup, beginning backup process."
+            backup
+            success "Backup completed successfully."
+        else if [[ $MODE == "restore" ]]
+            info "Mode is set to restore, beginning restore process."
+            restore
+            success "Restore completed successfully."
+        else
+            error "Invalid mode entered. Please specify \"backup\" or \"restore\"."
+        fi
+    }
+
+    function backup {
+        mkdir -p $BACKUP_DIR/database
+        CNPG_PRIMARY_POD=`oc get pods -n $LSR_NAMESPACE | grep ibm-license-service-reporter-instance | awk '{print $1}'` && \
+        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- rm -rf /run/lsr_backup && \
+        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- mkdir -p /run/lsr_backup && \
+        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- pg_dump -v --username=postgres --dbname=postgres -f /run/lsr_backup/lsr_db_backup.dump --format=c
+
+        #Move backup to backup location
+        oc cp $LSR_NAMESPACE/$CNPG_PRIMARY_POD:/run/lsr_backup/lsr_db_backup.dump $BACKUP_DIR/database/lsr_db_backup.dump
+    }
+
+    function restore {
+        CNPG_PRIMARY_POD=`oc get pods -n $LSR_NAMESPACE | grep ibm-license-service-reporter-instance | awk '{print $1}'`
+        oc exec $CNPG_PRIMARY_POD -n $LSR_NAMESPACE -- mkdir -p /run/lsr_backup
+        oc cp $BACKUP_DIR/database/lsr_db_backup.dump $LSR_NAMESPACE/$CNPG_PRIMARY_POD:/run/lsr_backup/lsr_db_backup.dump
+        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- pg_restore -U postgres --dbname postgres --format=c --clean -v /run/lsr_backup/lsr_db_backup.dump
+        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+    }
+
+    function msg() {
+        printf '%b\n' "$1"
+    }
+
+    function success() {
+        msg "\33[32m[✔] ${1}\33[0m"
+    }
+
+    function warning() {
+        msg "\33[33m[✗] ${1}\33[0m"
+    }
+
+    function error() {
+        msg "\33[31m[✘] ${1}\33[0m"
+        exit 1
+    }
+
+    function title() {
+        msg "\33[34m# ${1}\33[0m"
+    }
+
+    function info() {
+        msg "[INFO] ${1}"
+    }
+
+    main $*

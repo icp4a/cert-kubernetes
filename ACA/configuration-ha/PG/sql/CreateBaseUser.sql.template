@@ -1,0 +1,2 @@
+CREATE USER "$base_db_user" with encrypted password '$base_db_pwd';
+

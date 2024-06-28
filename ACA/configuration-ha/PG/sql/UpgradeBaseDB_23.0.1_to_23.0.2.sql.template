@@ -1,0 +1,24 @@
+alter table tenantinfo add column project_type smallint NULL;
+
+CREATE TABLE project_usage
+      (project_guid VARCHAR(256),
+      num_docs  integer,
+      num_pages integer,
+      year smallint,
+      month smallint,
+      day_of_month smallint,
+      day_of_week smallint,
+      status smallint,
+      created_ts timestamp default CURRENT_TIMESTAMP
+      );
+
+
+create index ix_project_usage_year_mon ON project_usage(year,month);
+
+CREATE TABLE base_options
+(
+      schema_version  varchar(255),
+      flags bigint not null default 0
+);
+
+INSERT INTO base_options(schema_version) values('23.0.2');

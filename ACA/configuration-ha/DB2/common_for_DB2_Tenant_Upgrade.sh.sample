@@ -1,0 +1,20 @@
+# Sample env var script for running the DB2 scripts non-interactively by providing the needed env vars
+# To use:  Make a copy and name it "common_for_DB2_Tenant_Upgrade.sh", update the needed variables.
+
+# --- For upgrading CA/DPE project/tenant CA/DPE database:
+
+tenant_db_name=
+
+tenant_ontology=
+
+tenant_db_user=
+
+tenant_id=
+
+base_db_name=
+
+base_db_user=
+
+# skip confirmation prompts:
+confirmation=y
+

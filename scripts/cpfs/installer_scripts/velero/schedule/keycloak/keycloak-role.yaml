@@ -1,0 +1,42 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: keycloak-backup-role
+  namespace: <keycloak namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: keycloak-data
+rules:
+  - verbs:
+      - create
+      - get
+      - delete
+      - watch
+      - update
+      - list
+      - patch
+    apiGroups:
+      - ''
+      - batch
+      - extensions
+      - apps
+      - policy
+    resources:
+      - pods
+      - pods/log
+      - deployments
+      - deployments/scale
+      - statefulsets
+      - statefulsets/scale
+      - pods/exec
+      - pods/portforward
+      - endpoints
+      - pods/status
+      - jobs
+      - secrets
+  - verbs:
+      - get
+      - list
+    apiGroups:
+      - postgresql.k8s.enterprisedb.io
+    resources:
+      - clusters

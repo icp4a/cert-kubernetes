@@ -1,0 +1,48 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zen5-backup-role
+  namespace: <zenservice namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: zen5-data
+rules:
+  - verbs:
+      - create
+      - get
+      - delete
+      - watch
+      - update
+      - list
+      - patch
+    apiGroups:
+      - ''
+      - batch
+      - extensions
+      - apps
+      - policy
+    resources:
+      - pods
+      - secrets
+      - configmaps
+      - deployments
+      - deployments/scale
+      - cronjobs
+      - pods/exec
+      - cronjob
+  - verbs:
+      - get
+      - list
+      - patch
+    apiGroups:
+      - zen.cpd.ibm.com
+      - postgresql.k8s.enterprisedb.io
+    resources:
+      - zenservices
+      - zenextensions
+      - clusters
+  - verbs:
+      - get
+    apiGroups:
+      - ""
+    resources:
+      - configmaps

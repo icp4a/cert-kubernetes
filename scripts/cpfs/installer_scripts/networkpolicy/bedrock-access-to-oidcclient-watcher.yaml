@@ -1,0 +1,15 @@
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: access-to-oidcclient-watcher
+  namespace: "csNamespace"
+  labels:
+    component: cpfs
+spec:
+  podSelector:
+    matchLabels:
+      app: oidcclient-watcher
+  ingress:
+  - {}
+  policyTypes:
+  - Ingress

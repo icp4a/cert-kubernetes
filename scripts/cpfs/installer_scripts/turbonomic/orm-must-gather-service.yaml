@@ -1,0 +1,15 @@
+apiVersion: turbonomic.com/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: mustgatherservices.operator.ibm.com
+  labels:
+    component: cpfs
+spec:
+  resourceMappings:
+    - srcResourceSpec:
+        kind: StatefulSet
+        componentNames:
+          - must-gather-service
+      resourceMappingTemplates:
+        - srcPath: .spec.template.spec.containers[?(@.name=="must-gather-service")].resources
+          destPath: .spec.mustGather.resources

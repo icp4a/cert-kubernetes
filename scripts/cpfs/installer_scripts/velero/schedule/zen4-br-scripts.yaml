@@ -1,0 +1,417 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zen4-br-configmap
+  namespace: <zenservice namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: zen-data
+data:
+  zen4-br.sh: |
+    #!/usr/bin/env bash
+    #
+    # Copyright 2023 IBM Corporation
+    #
+    # Licensed under the Apache License, Version 2.0 (the "License");
+    # you may not use this file except in compliance with the License.
+    # You may obtain a copy of the License at
+    #
+    # http://www.apache.org/licenses/LICENSE-2.0
+    #
+    # Unless required by applicable law or agreed to in writing, software
+    # distributed under the License is distributed on an "AS IS" BASIS,
+    # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    # See the License for the specific language governing permissions and
+    # limitations under the License.
+    #
+    set -o errexit
+
+    ZEN_NAMESPACE=$1
+    BACKUP=$2
+
+    BACKUP_ROOT_DIR="/user-home/zen-metastoredb-backup"
+
+    function main() {
+        if [[ $BACKUP == "true" ]]; then
+            backup
+        else
+            restore
+        fi
+
+    #run prereqs and common code
+    #differentiate between backup and restore
+    #run either backup or restore
+    #cleanup
+    }
+
+    function backup() {
+        title "Backing up zen in namespace $ZEN_NAMESPACE"
+        #Backup Steps
+            # 1. run backup script
+            # 2. move backup files to velero specific deployment
+            # 3. Backup secret/zen-secrets-aes-key (do we need to include metastore secret as well?)
+            # 4. Backup JWT configuration
+        # Scale down zen-metastoredb statefulset to 0
+        # Backup all zen-metastoredb volumes (all of them)
+        info "Clean up prior run"
+        rm -rf $BACKUP_ROOT_DIR/jwt
+        rm -rf $BACKUP_ROOT_DIR/branding
+        rm -rf $BACKUP_ROOT_DIR/oidc
+        rm -rf $BACKUP_ROOT_DIR/saml
+        rm -rf $BACKUP_ROOT_DIR/tmp/
+        rm -f $BACKUP_ROOT_DIR/zen_backup.sql
+        rm -f $BACKUP_ROOT_DIR/zen-secrets-aes-key.bkup.yaml
+        
+        # 1. run backup script
+        info "Running metastoredb backup script in namespace $ZEN_NAMESPACE."
+        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -c zen-metastoredb ./../tmp/backup/backup_script.sh regular zen-operator
+        
+        # 2. move backup files to velero specific deployment
+        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/zen-metastoredb-backup/zen_backup.sql $BACKUP_ROOT_DIR/zen_backup.sql
+        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/zen-metastoredb-backup/spark_backup.sql $BACKUP_ROOT_DIR/tmp/spark_backup.sql 
+        
+        # 3. Backup secret/zen-secrets-aes-key
+        # Backup secret/metastore-secret, secret/zen-secrets-aes-key
+        oc -n $ZEN_NAMESPACE extract secret/zen-secrets-aes-key --to=.$BACKUP_ROOT_DIR/ --confirm
+        info "Secret aes-key backed up."
+        
+        # 4. Backup JWT configuration
+        # Backup JWT configuration /user-home/_global_/config/jwt
+        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/jwt .$BACKUP_ROOT_DIR/jwt
+        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/jwt $BACKUP_ROOT_DIR/jwt
+        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/branding $BACKUP_ROOT_DIR/branding
+        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/oidc $BACKUP_ROOT_DIR/oidc
+        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/saml $BACKUP_ROOT_DIR/saml
+        info "JWT config backed up."
+
+        #need steps for extensions and custom route
+            #cross check against zen 5 script to see if any other customizations are necessary
+        #store list of extensions from source cluster to be restored later
+        info "Backing up extensions in namespace $ZEN_NAMESPACE."
+        ./zen4/customize-zen-extensions.sh $ZEN_NAMESPACE true
+
+        success "Backup completed in namespace $ZEN_NAMESPACE."
+    }
+
+    function restore() {
+        title "Restoring zen in namespace $ZEN_NAMESPACE"
+        #restore steps
+            # 1. Copy JWT and key files to target cluster (we already do that)
+            # 2. Backup current configuration on target cluster
+            # 3. Record the number of replicas for zen components
+            # 4. Scale down zen components
+            # 5. Reset DB
+            # 6. Restore secret/zen-secrets-aes-key
+            # 7. Restore JWT configuration
+            # 8. Restore metadata
+            # 9. Scale up zen components and wait for ready
+            # 10. Restart zen-watcher after zen-watcher is up
+        
+        # 2. Backup current configuration on target cluster
+        info "Backing up current config."
+        oc -n $ZEN_NAMESPACE get secret/zen-secrets-aes-key -o yaml > $BACKUP_ROOT_DIR/zen-secrets-aes-key.bkup.yaml
+        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/jwt $BACKUP_ROOT_DIR/jwt-backup
+
+        #copy over previous backup files to metastoredb pod
+        if ! oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 bash -c zen-metastoredb -- test -d /user-home/zen-metastoredb-backup; then
+            oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 bash -c zen-metastoredb -- mkdir /user-home/zen-metastoredb-backup
+        fi
+        if [[ -f $BACKUP_ROOT_DIR/tmp/spark_backup.sql ]]; then
+            oc cp $BACKUP_ROOT_DIR/tmp/spark_backup.sql $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/zen-metastoredb-backup/spark_backup.sql 
+        else
+            info "spark_backup.sql file not found in backup, skipping."
+        fi
+        if [[ -f $BACKUP_ROOT_DIR/zen_backup.sql ]]; then
+            oc cp $BACKUP_ROOT_DIR/zen_backup.sql $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/zen-metastoredb-backup/zen_backup.sql
+        else
+            error "zen_backup.sql file not found in backup. Please run the backup before proceeding. Exiting."
+        fi
+        
+        # Restore zen-metastoredb volumes
+        # 3. Getting the replica count before scaling down the required pods
+        IBM_NGINX_RC=$(oc get deploy ibm-nginx -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
+        ZEN_CORE_RC=$(oc get deploy zen-core -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found )
+        USERMGMT_RC=$(oc get deploy usermgmt -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
+        ZEN_CORE_API_RC=$(oc get deploy zen-core-api -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
+        ZEN_WATCHER_RC=$(oc get deploy zen-watcher -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
+
+        oc get deploy ibm-nginx zen-core usermgmt zen-watcher zen-core-api -n ${ZEN_NAMESPACE} --ignore-not-found
+        
+        # 4. scale down deployments
+        oc scale deploy ibm-nginx zen-core usermgmt zen-watcher zen-core-api --replicas=0 -n ${ZEN_NAMESPACE}
+        # zen-watchdog is applicable only for CloudPak for Data 
+        zen_watchdog_present=$(oc get deploy -n ${ZEN_NAMESPACE} | grep zen-watchdog || echo "fail")
+        if [[ $zen_watchdog_present != "fail" ]]; then
+            info "Zen watchdog present, scaling down."
+            oc scale deploy zen-watchdog --replicas=0 -n ${ZEN_NAMESPACE}
+        fi
+        
+        sleep 15
+
+        #waiting for deployments to be cleaned up after scaling down
+        deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" | awk '{print $4}' | grep -v 0 || echo clear)
+        while [[ $deployments_clear != "clear" ]];
+        do
+            sleep 10
+            if [[ $deployments_clear != "clear" ]]; then
+                info "Waiting on deployments ibm-nginx zen-core usermgmt zen-watcher zen-core-api to clean up..."
+            else
+                info "Deployments ibm-nginx zen-core usermgmt zen-watcher zen-core-api successfully scaled down. Moving on..."
+            fi
+            deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" | awk '{print $4}' | grep -v 0 || echo clear)
+        done
+
+        # 5. Reset DB (WARNING - THIS WILL DELETE DATABASE and ITS DATA.)
+        cockroach_output=$(oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- /bin/bash -c "./cockroach version")
+        cockroach_version=$(echo $cockroach_output | grep "Build Tag" | awk '{print $3}')
+        higher=""
+        if [ $(version "${cockroach_version//v}") -ge $(version "22.1.5") ]; then
+            # For version 22.1.5 and higher
+            info "Cockroach DB version >= 22.1.5. Version: $cockroach_version"
+            oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 bash  -c zen-metastoredb -- cp -r /certs/..data/ /tmp/certs
+            oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -c zen-metastoredb -- bash -c "cd ../tmp/ && chmod 0600 ./certs/*"
+            higher="true"
+        else
+            # For version below 22.1.5
+            info "Cockroach DB version < 22.1.5. Version: $cockroach_version"
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- cp -r /certs/ /tmp/
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- bash -c "cd /tmp/ && chmod -R  0700 certs/"
+            higher="false"
+        fi
+
+        oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cd  /cockroach
+        oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='drop database if exists zen cascade;'"
+        oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='drop database if exists spark cascade;'"
+
+        if [[ $higher == "false" ]]; then
+            # For version below 22.1.5
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='create database if not exists zen; create user if not exists zen_user; grant all on database zen to zen_user;'"
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='create database if not exists spark; create user if not exists spark_user; grant all on database spark to spark_user;'"
+        else
+            # For version 22.1.5 and higher
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='create database if not exists zen; create user if not exists zen_user; use zen; grant all on database zen to zen_user WITH GRANT OPTION; grant all PRIVILEGES on ALL TABLES in SCHEMA public to zen_user WITH GRANT OPTION;'"
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='create database if not exists spark; create user if not exists spark_user; use spark; grant all on database spark to spark_user WITH GRANT OPTION; grant all PRIVILEGES on ALL TABLES in SCHEMA public to spark_user WITH GRANT OPTION;'"
+        fi
+
+        # Restore secret/metastore-secret, secret/zen-secrets-aes-key
+        # 6. Restore secret/zen-secrets-aes-key
+        AES_KEY_B64=$(base64 < "${BACKUP_ROOT_DIR}/aes_key" | tr -d '\n')
+        oc patch secret \
+        zen-secrets-aes-key \
+        -p "{\"data\":{\"aes_key\":\"${AES_KEY_B64}\"}}"
+
+        # Restore /user-home/_global_/config/jwt
+        # 7. Restore JWT configuration
+        oc -n $ZEN_NAMESPACE cp $BACKUP_ROOT_DIR/jwt zen-metastoredb-0:/user-home/_global_/config/
+        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/jwt
+        oc -n $ZEN_NAMESPACE cp $BACKUP_ROOT_DIR/branding zen-metastoredb-0:/user-home/_global_/config/
+        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/branding
+        oc -n $ZEN_NAMESPACE cp $BACKUP_ROOT_DIR/oidc zen-metastoredb-0:/user-home/_global_/config/
+        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/oidc
+        oc -n $ZEN_NAMESPACE cp $BACKUP_ROOT_DIR/saml zen-metastoredb-0:/user-home/_global_/config/
+        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/saml 
+        
+        # 8. Restore metadata 
+        info "Running metastoredb restore script in namespace $ZEN_NAMESPACE."
+        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -c zen-metastoredb ./../tmp/backup/restore_script.sh regular zen-operator
+        
+        # 9. Scale up zen components and wait for ready
+        #Update zen extensions
+        if [[ $ZEN_CORE_RC == "0" ]]; then
+            info "zen-core deployment not scaled up before rerunning, setting replica value to 2"
+            ZEN_CORE_RC=2
+        fi
+        if [[ $USERMGMT_RC == "0" ]]; then
+            info "usermgmt deployment not scaled up before rerunning, setting replica value to 2"
+            USERMGMT_RC=2
+        fi
+        oc scale deploy zen-core-api --replicas=$ZEN_CORE_API_RC -n $ZEN_NAMESPACE
+        oc scale deploy usermgmt --replicas=$USERMGMT_RC -n $ZEN_NAMESPACE
+        sleep 15
+        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-core-api --timeout=180s -n ${ZEN_NAMESPACE}
+        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=usermgmt --timeout=180s -n ${ZEN_NAMESPACE}
+        
+        info "Restoring extensions in namespace $ZEN_NAMESPACE."
+        ./zen4/customize-zen-extensions.sh $ZEN_NAMESPACE false
+        
+        # Scale up the remaining deployments
+        info "Scale up deployments."
+        if [[ $IBM_NGINX_RC == "0" ]]; then
+            info "ibm-nginx deployment not scaled up before rerunning, setting replica value to 2"
+            IBM_NGINX_RC=2
+        fi
+        if [[ $ZEN_CORE_API_RC == "0" ]]; then
+            info "zen-core-api deployment not scaled up before rerunning, setting replica value to 2"
+            ZEN_CORE_API_RC=2
+        fi
+        if [[ $ZEN_WATCHER_RC == "0" ]]; then
+            info "zen-watcher deployment not scaled up before rerunning, setting replica value to 1"
+            ZEN_WATCHER_RC=1
+        fi
+        
+        oc scale deploy zen-watcher --replicas=$ZEN_WATCHER_RC -n $ZEN_NAMESPACE
+        oc scale deploy zen-core --replicas=$ZEN_CORE_RC -n $ZEN_NAMESPACE
+        oc scale deploy ibm-nginx --replicas=$IBM_NGINX_RC -n $ZEN_NAMESPACE
+        if [[ $zen_watchdog_present != "fail" ]]; then
+            oc scale deploy zen-watchdog --replicas=1 -n $ZEN_NAMESPACE # (Only for CloudPak for Data)
+        fi
+
+        # Wait for deployments
+        info "Wait for deployments to come ready again."
+        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=ibm-nginx --timeout=180s -n ${ZEN_NAMESPACE}
+        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-core --timeout=180s -n ${ZEN_NAMESPACE}
+        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-watcher --timeout=180s -n ${ZEN_NAMESPACE}
+        
+        if [[ $zen_watchdog_present != "fail" ]]; then # Only for CloudPak for Data
+            oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-watchdog --timeout=180s -n ${ZEN_NAMESPACE}
+        fi
+
+        # 10. Restart zen-watcher after zen-watcher is up
+        info "Restart zen-watcher."
+        oc delete pods -l component=zen-watcher -n ${ZEN_NAMESPACE} --ignore-not-found
+
+        success "Restore completed in namespace $ZEN_NAMESPACE."
+    }
+
+    function version { echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }'; }
+
+    function msg() {
+        printf '%b\n' "$1"
+    }
+
+    function success() {
+        msg "\33[32m[✔] ${1}\33[0m"
+    }
+
+    function warning() {
+        msg "\33[33m[✗] ${1}\33[0m"
+    }
+
+    function error() {
+        msg "\33[31m[✘] ${1}\33[0m"
+        exit 1
+    }
+
+    function title() {
+        msg "\33[34m# ${1}\33[0m"
+    }
+
+    function info() {
+        msg "[INFO] ${1}"
+    }
+
+    main $*
+  customize-zen-extensions.sh: |
+    #!/usr/bin/env bash
+    #
+    # Copyright 2023 IBM Corporation
+    #
+    # Licensed under the Apache License, Version 2.0 (the "License");
+    # you may not use this file except in compliance with the License.
+    # You may obtain a copy of the License at
+    #
+    # http://www.apache.org/licenses/LICENSE-2.0
+    #
+    # Unless required by applicable law or agreed to in writing, software
+    # distributed under the License is distributed on an "AS IS" BASIS,
+    # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    # See the License for the specific language governing permissions and
+    # limitations under the License.
+    #
+    set -o errexit
+
+    ZEN_NAMESPACE=$1
+    BACKUP=$2
+
+    function main(){
+
+        title "Begin zen extension cleanup process."
+        # Get broker secret value from secret zen-service-broker-secret
+        broker_secret=$(oc get secret zen-service-broker-secret -o yaml -n $ZEN_NAMESPACE | yq .data.token | base64 -d || echo "fail") 
+        if [[ $broker_secret == "fail" ]]; then
+            error "Failed to grab broker secret zen-service-broker-secret in namespace $ZEN_NAMESPACE, exiting."
+        else
+            info "Broker Secret obtained in namespace $ZEN_NAMESPACE"
+        fi
+        if [[ $BACKUP == "true" ]]; then
+            extension_check=$(oc get zenextension -n $ZEN_NAMESPACE -o name | grep -v "common-web-ui-zen-extension\|zen-watchdog-frontdoor-extension" || echo "empty")
+            if [[ $extension_check != "empty" ]]; then
+                extensions=""
+                for ext in $extension_check
+                do
+                    ext_name=$(oc get $ext -n $ZEN_NAMESPACE -o jsonpath={.spec.extensions} | grep extension_name | awk '{print $2}' | tr '\"\n' ' ' | tr "," " ")
+                    if [[ $extensions == "" ]]; then
+                        extensions="$ext_name,"
+                    else
+                        extensions="$extensions,$ext_name"
+                    fi
+                done
+                
+                extensions=$(echo $extensions | tr "," " ")
+                echo $extensions
+                
+                cat <<< $extensions > /zen4/extensions/extensions.txt
+                success "Extensions captured for backup:"
+                cat /zen4/extensions/extensions.txt
+            else
+                info "No extensions found in namespace $ZEN_NAMESPACE other than defaults, exiting."
+            fi
+        fi
+        
+        if [[ $BACKUP == "false" ]]; then
+            if [[ -f /zen4/extensions/extensions.txt ]]; then
+                extensions=$(cat /zen4/extensions/extensions.txt)
+                echo $extensions
+                extensions=$(echo $extensions | tr " " ",")
+                info "Extensions to cleanup in namespace $ZEN_NAMESPACE: $extensions"
+                # curl -H 'secret: <broker-secret>' -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=bawtest-bas-extension,ibm-bts-zen-frontdoor,icp4adeploy-ban-zen-extension,icp4adeploy-cp4ba-zen-extension,icp4adeploy-graphql-zen-extension,icp4adeploy-cmis-zen-extension,icp4adeploy-cpe-zen-extension,icp4adeploy-rr-bawtest-zen-ext
+                #curl_output=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions})
+
+                # Extract ID of each extension
+                id_list=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions} | yq eval '.data[] | select(.source == "*") | .source' | tr '\n' ' ') #space separated list of ids
+                info "id_list: $id_list bookend"
+                if [[ -z $id_list ]] || [[ $id_list == "" ]]; then
+                    warning "The list of extensions provided returned an empty ID list from the database. These extensions may not be present in this database."
+                else
+                    info "List of extension IDs populated, continuing with deletion."
+
+                    # Delete each extension using the ID
+                    # curl -H 'secret: <broker-secret>' -ks -X DELETE https://zen-core-api-svc:4444//v1/internal/extensions/{source_id}
+                    for id in $id_list; do
+                        info "Deleting extension with ID $id."
+                        curl -H "secret: ${broker_secret}" -ks -X DELETE https://zen-core-api-svc:4444/v1/internal/extensions/{$id}
+                    done
+
+                    success "Zen extension cleanup complete."
+                fi
+            else
+                info "File /zen4/extensions/extensions.txt not found, skipping zenextension cleanup."
+            fi
+        fi
+    }
+
+    function msg() {
+        printf '%b\n' "$1"
+    }
+
+    function success() {
+        msg "\33[32m[✔] ${1}\33[0m"
+    }
+
+    function warning() {
+        msg "\33[33m[✗] ${1}\33[0m"
+    }
+
+    function error() {
+        msg "\33[31m[✘] ${1}\33[0m"
+        exit 1
+    }
+
+    function title() {
+        msg "\33[34m# ${1}\33[0m"
+    }
+
+    function info() {
+        msg "[INFO] ${1}"
+    }
+
+    main $*

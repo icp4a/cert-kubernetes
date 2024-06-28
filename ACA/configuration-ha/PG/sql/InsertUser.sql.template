@@ -1,0 +1,6 @@
+\c "$tenant_db_name" ;
+
+set search_path to "$tenant_ontology" ;
+
+insert into user_detail (user_id,email,first_name,last_name,user_name,company,expire) values ('e5e1a924-cc27-4248-abbf-baedc9a3687b','$tenant_email','$tenant_first_name','$tenant_last_name','$tenant_user_name','$tenant_company',10080) ;
+insert into login_detail (user_id,role,status,logged_in) select user_id,'Admin','1',false from user_detail where email='$tenant_email' ;

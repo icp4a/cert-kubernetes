@@ -1,0 +1,438 @@
+
+###############################################################################
+##
+##Licensed Materials - Property of IBM
+##
+##(C) Copyright IBM Corp. 2022, 2023. All Rights Reserved.
+##
+##US Government Users Restricted Rights - Use, duplication or
+##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+##
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: icp4adeploy
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 24.0.0
+spec:
+  appVersion: 24.0.0
+
+  ## MUST exist, used to accept ibm license, valid value only can be "accept"
+  ibm_license: ""
+
+
+  #####################################################################################################################
+  ##  The contents of this template CR file reflect only the specific parameters and configuration
+  ##  settings applicable to the represented ICP4A capability.
+  ##
+  ##  These values/configuration sections are to be used when manually assembling or updating the main
+  ##  ICP4A CR that is being applied in order to install an ICP4A environment.
+  ##
+  ##  If you are in the process of preparing a new install of an ICP4A environment,
+  ##  you should merge the required values and configuration sections from this file into the
+  ##  starting point CR template: ibm_cp4a_cr_enterprise_foundation.yaml available in the
+  ##  same location as this template.
+  ##
+  ##  If you updating an existing ICP4A environment, you should merge the required values and configuration
+  ##  sections from this template in the main ICP4A CR file already applied in the environment.
+  ##
+  ######################################################################################################################
+  shared_configuration:
+    ## CP4A patterns or capabilities to be deployed.  This CR represents the "workflow" pattern, which includes the following
+    ## mandatory components: ban(Business Automation Navigator), ums (User Management Service), rr (Resource registry), app_engine( Application Engine) and optional components: bai,elasticsearch
+    sc_deployment_patterns: workflow
+
+    ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
+    ## The optional components are: bai,elasticsearch,kafka
+    ## To enable Kafka services in your workflow automations, add kafka to sc_optional_components.
+    sc_optional_components: 
+
+    ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
+    ## This secret is also used by Workflow and BAStudio to store AES encryption key.
+    encryption_key_secret: ibm-iaws-shared-key-secret
+
+    ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
+    ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
+    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true" (or the parameter doesn't exist), then the initialization will occur.  
+    ## However, if sc_content_initialization is set to "false", then the initialization will not occur (even with the "initialize_configuration" section defined)
+    ## For Workflow and Workstreams, by default sc_content_initialization is set to "true" with "initialize_configuration"section filled.
+    ## If you already initialized content or want to upgrade, please set sc_content_initialization to "false" before you apply the CR.
+    sc_content_initialization: true
+
+    sc_egress_configuration:
+      ## Required. Enable or disable egress access to external systems.
+      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true". 
+      ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
+      sc_restricted_internet_access: true
+      ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
+      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
+      ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
+      sc_api_namespace:
+      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Default are 443,6443 for OCP and ROKS
+      sc_api_port:
+      ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
+      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
+      ## Default is "openshift-dns" for OCP and ROKS
+      sc_dns_namespace:
+      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Default are 53,5353 for OCP and ROKS
+      sc_dns_port:
+    
+    ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
+    sc_ingress_enable: false
+
+  ## The beginning section of database configuration for CP4A
+  datasource_configuration:
+    ## The dc_ssl_enabled parameter is used to support database connection over SSL for DB2/Oracle/PostgreSQL.
+    dc_ssl_enabled: true
+    ## The database_precheck parameter is used to enable or disable CPE/Navigator database connection check.
+    ## If set to "true", then CPE/Navigator database connection check will be enabled.
+    ## if set to "false", then CPE/Navigator database connection check will not be enabled.
+   # database_precheck: true
+    ## The database configuration for the GCD datasource for CPE
+    dc_gcd_datasource:
+      ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
+      ## If you want PostgresDB to be created for a GCD database, set this parameter to true
+      dc_use_postgres: false
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".
+      dc_database_type: "<Required>"
+      ## The GCD non-XA datasource name.  The default value is "FNGCDDS".
+      dc_common_gcd_datasource_name: "FNGCDDS"
+      ## The GCD XA datasource name. The default value is "FNGCDDSXA".
+      dc_common_gcd_xa_datasource_name: "FNGCDDSXA"
+      ## Provide the database server name or IP address of the database server. As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_servername: "<Required>"
+      ## Provide the name of the database for the GCD for CPE.  For example: "GCDDB". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_name: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_port: "<Required>"
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      database_ssl_secret_name: "<Required>"
+      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      dc_oracle_gcd_jdbc_url: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+
+      ## If the database type is Db2 HADR, then complete the rest of the parameters below.
+      ## Provide the database server name or IP address of the standby database server.
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+    ## The database configuration for the document object store (DOCS) datasource for CPE
+    dc_os_datasources:
+    ## Object store for BAW DOCS. Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the GCD configuration above.
+    - dc_database_type: "<Required>"
+      ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
+      ## If you want PostgresDB to be created for an OS database, set this parameter to true
+      dc_use_postgres: false
+      ## Provide the object store label for the object store.  The default value is "os" or not defined.
+      ## This label must match the OS secret you define in ibm-fncm-secret.
+      ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
+      ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
+      ## If you don't define dc_os_label, then your secret will be defined as:
+      ## --from-literal=osDBUsername="<your os db username>" --from-literal=osDBPassword="<your os db password>".
+      ## If you have multiple object stores, then you need to define multiple datasource sections starting
+      ## at "dc_database_type" element.
+      ## If all the object store databases share the same username and password, then dc_os_label value should be the same
+      ## in all the datasource sections.
+      dc_os_label: "<Required>"
+      ## The DOCS non-XA datasource name.  The default value is "BAWINS1DOCS".
+      dc_common_os_datasource_name: "BAWINS1DOCS"
+      ## The DOCS XA datasource name.  The default value is "BAWINS1DOCSXA".
+      dc_common_os_xa_datasource_name: "BAWINS1DOCSXA"
+      ## Provide the database server name or IP address of the database server. As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter. This should be the same as the
+      ## GCD configuration above.
+      database_servername: "<Required>"
+      ## Provide the name of the database for the object store 1 for CPE.  For example: "OS1DB". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_name: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_port: "<Required>"
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      database_ssl_secret_name: "<Required>"
+      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      dc_oracle_os_jdbc_url: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+      ######################################################################################
+      ## If the database type is "Db2HADR", then complete the rest of the parameters below.
+      ## Otherwise, remove or comment out the rest of the parameters below.
+      ######################################################################################
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+    ## Design object store BAW DOS
+    - dc_database_type: "<Required>"
+      ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
+      ## If you want PostgresDB to be created for an OS database, set this parameter to true
+      dc_use_postgres: false
+      ## Provide the object store label for the object store.  The default value is "os" or not defined.
+      ## This label must match the OS secret you define in ibm-fncm-secret.
+      ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
+      ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
+      ## If you don't define dc_os_label, then your secret will be defined as:
+      ## --from-literal=osDBUsername="<your os db username>" --from-literal=osDBPassword="<your os db password>".
+      ## If you have multiple object stores, then you need to define multiple datasource sections starting
+      ## at "dc_database_type" element.
+      ## If all the object store databases share the same username and password, then dc_os_label value should be the same
+      ## in all the datasource sections.
+      dc_os_label: "<Required>"
+      ## The DOS non-XA datasource name.  The default value is "BAWINS1DOS".
+      dc_common_os_datasource_name: "BAWINS1DOS"
+      ## The DOS XA datasource name.  The default value is "BAWINS1DOSXA".
+      dc_common_os_xa_datasource_name: "BAWINS1DOSXA"
+      ## Provide the database server name or IP address of the database server. As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter. This should be the same as the
+      ## GCD configuration above.
+      database_servername: "<Required>"
+      ## Provide the name of the database for the object store 2 for CPE.  For example: "OS2DB". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_name: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_port: "<Required>"
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      database_ssl_secret_name: "<Required>"
+      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      dc_oracle_os_jdbc_url: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+      ######################################################################################
+      ## If the database type is "Db2HADR", then complete the rest of the parameters below.
+      ## Otherwise, remove or comment out the rest of the parameters below.
+      ######################################################################################
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+    ## Target object store BAW TOS
+    - dc_database_type: "<Required>"
+      ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
+      ## If you want PostgresDB to be created for an OS database, set this parameter to true
+      dc_use_postgres: false
+      ## Provide the object store label for the object store.  The default value is "os" or not defined.
+      ## This label must match the OS secret you define in ibm-fncm-secret.
+      ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
+      ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
+      ## If you don't define dc_os_label, then your secret will be defined as:
+      ## --from-literal=osDBUsername="<your os db username>" --from-literal=osDBPassword="<your os db password>".
+      ## If you have multiple object stores, then you need to define multiple datasource sections starting
+      ## at "dc_database_type" element.
+      ## If all the object store databases share the same username and password, then dc_os_label value should be the same
+      ## in all the datasource sections.
+      dc_os_label: "<Required>"
+      ## The TOS non-XA datasource name.  The default value is "BAWINS1TOS".
+      dc_common_os_datasource_name: "BAWINS1TOS"
+      ## The TOS XA datasource name.  The default value is "BAWINS1TOSXA".
+      dc_common_os_xa_datasource_name: "BAWINS1TOSXA"
+      ## Provide the database server name or IP address of the database server. As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter. This should be the same as the
+      ## GCD configuration above.
+      database_servername: "<Required>"
+      ## Provide the name of the database for the object store 3 for CPE.  For example: "OS3DB". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_name: "<Required>"
+      ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      database_port: "<Required>"
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      database_ssl_secret_name: "<Required>"
+      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+      dc_oracle_os_jdbc_url: "<Required>"
+      ## Provide the validation timeout.  If not preference, keep the default value.
+      dc_hadr_validation_timeout: 15
+      ######################################################################################
+      ## If the database type is "Db2HADR", then complete the rest of the parameters below.
+      ## Otherwise, remove or comment out the rest of the parameters below.
+      ######################################################################################
+      dc_hadr_standby_servername: "<Required>"
+      ## Provide the standby database server port.  For Db2, the default is "50000".
+      dc_hadr_standby_port: "<Required>"
+      ## Provide the retry internal.  If not preference, keep the default value.
+      dc_hadr_retry_interval_for_client_reroute: 15
+      ## Provide the max # of retries.  If not preference, keep the default value.
+      dc_hadr_max_retries_for_client_reroute: 3
+
+  ########################################################################
+  ########   IBM Business Automation Workflow configuration     ########
+  ########################################################################
+  baw_configuration:
+  ## The baw_configuration is a list. You can deploy multiple instances of Workflow Server and assign different configurations for each instance.
+  ## For each instance, baw_configuration.name and hostname must be assigned different values.
+  ## Case Manager section "case" can be configured only in one Workflow Server instance.
+  ## For each instance's database configuration, you can choose to use either different database instances, or one shared database instance. If you use a shared database instance, in Db2 or PostgreSQL, you must assign different database names (baw_configuration[x].database.database_name); in Oracle, you must assign different database users (the dbUser in the baw_configuration[x].database.secret_name).
+  ## Each baw_configuration.name can consist of lowercase alphanumeric characters or '-', and must start and end with an alphanumeric character. Keep the instance name as short as possible.
+  ## For baw_configuration.tls.tls_secret_name, if you choose to use a customized Workflow Server TLS certificate, ensure that each BAW instance has a different value.
+  - name: bawins1
+    ## Workflow Server capability.
+    capabilities: "workflow"
+    ## Designate an existing LDAP user for the Workflow Server admin user.
+    admin_user: "<Required>"
+    ## The database configuration for Workflow Server
+    database:
+      ##Whether to use EDB. If you set it to true, just set db_cert_secret_name, type, server_name, database_name, port and secret_name as "", and set enable_ssl to true.
+      dc_use_postgres: false         
+      ## Whether to enable Secure Sockets Layer (SSL) support for the Workflow Server database connection.
+      enable_ssl: true
+      ## Secret name for storing the database TLS certificate when an SSL connection is enabled, if it's client authentication for PostgreSQL DB,
+      ## The secret will store the database client key and client certificate and ca certification. 
+      ## Required only when enable_ssl is true. If enable_ssl is false, comment out this line.
+      db_cert_secret_name: "<Required>"
+      ## Workflow Server database type. Possible values are: db2, oracle, postgresql
+      type: "<Required>"
+      ## Workflow Server database server name. It must be an accessible address, such as IP, hostname, or Kubernetes service name.
+      ## This parameter is required.
+      server_name: "<Required>"
+      ## Workflow Server database name. This parameter is required.
+      database_name: "<Required>"
+      ## Workflow Server database port. This parameter is required. For DB2, the default value is "50000"
+      port: "<Required>"
+      ## Workflow Server database secret name. This parameter is required.
+      ## apiVersion: v1
+      ## kind: Secret
+      ## metadata:
+      ##   name: ibm-baw-wfs-server-db-secret
+      ## type: Opaque
+      ## data:
+      ##   dbUser: <DB_USER>
+      ##   password: <DB_USER_PASSWORD>
+      secret_name: "<Required>"
+      ## Oracle and PostgreSQL database connection string.
+      ## If the database type is Oracle, provide the Oracle database connection string. For example, jdbc:oracle:thin:@//<oracle_server>:1521/orcl.
+      ## If the database type is PostgreSQL, this parameter is optional, you can choose inputs server_name, database_name, and port with or without this parameter here. If you do not need this parameter when PostgreSQL, remove or comment this parameter.
+      ## In any other cases, remove or comment this parameter.
+      jdbc_url: "<Required>"
+      ## Oracle and PostgreSQL database connection string. 
+      ## If the database type is Oracle, provide the Oracle database connection string. For example, jdbc:oracle:thin:@//<oracle_server>:1521/orcl. 
+      ## If the database type is PostgreSQL, this parameter is optional, you can choose inputs server_name, database_name, and port with or without this parameter here. If you do not need this parameter when PostgreSQL, remove or comment this parameter.
+      ## In any other cases, remove or comment this parameter.
+      ## Whether to use custom JDBC drivers. set it as true if you don't want use embedded jdbc drivers and don't specify sc_drivers_url.
+      use_custom_jdbc_drivers: false
+      ## If use_custom_jdbc_drivers is set to true, input the name of the persistent volume claim (PVC) that binds to the persistent volume (PV) where the custom JDBC driver files are stored.
+      ## If use_custom_jdbc_drivers is set to false, remove or comments this parameter.
+      custom_jdbc_pvc: "" 
+      hadr:
+        ## Database standby host for high availability disaster recovery (HADR)
+        ## To enable database HADR, configure both standby host and port.
+        standbydb_host:
+        ## Database standby port for HADR. To enable database HADR, configure both standby host and port.
+        standbydb_port:
+
+    ## The configurations for content integration for attachment in process
+    content_integration:
+      ## Domain name for content integration. The value must be the same as initialize_configuration.ic_domain_creation.domain_name.
+      domain_name: "P8DOMAIN"
+      ## Object Store name for content integration.
+      ## The value must be an existing object store in CPE.
+      ## If use initialize_configuration for the object store initialization, the value must be one of initialize_configuration.ic_obj_store_creation.object_stores.
+      object_store_name: "BAWINS1DOCS"
+
+    ## The configuration for case
+    case:
+      ## Domain name for CASE. The value must be the same as initialize_configuration.ic_domain_creation.domain_name.
+      domain_name: "P8DOMAIN"
+      ## Design Object Store name of CASE.
+      ## The value must be the same as the oc_cpe_obj_store_symb_name value of one of the object stores defined in initialize_configuration.ic_obj_store_creation.object_stores.
+      object_store_name_dos: "BAWINS1DOS"
+      tos_list:
+      ## The tos_list is a list. You can deploy multiple Target Object Stores.
+      ## For each Target Object Store, the object_store_name value must be the same as the oc_cpe_obj_store_symb_name value of one of the object stores defined in initialize_configuration.ic_obj_store_creation.object_stores.
+      - object_store_name: "BAWINS1TOS" 
+     ## Set securityContext for BAW deployment to skip SELinux relabeling.
+    security_context:
+      ## This can take an array of key value pairs to assign SELinux labels to a Container, for example
+      ## selinux_options:
+        ## level: "s0:c123,c456"
+        ## type: "spc_t"
+      selinux_options:
+      # Defines behavior for changing ownership and permission of the volume before being exposed inside a Pod. This field has two possible values (Always,OnRootMismatch)
+      # For example fs_groupchangepolicy: "OnRootMismatch"
+      fs_groupchangepolicy:       
+      
+  ##################################################################################
+  ########   IBM Business Automation Machine Learning Server configuration  ########
+  ##################################################################################
+  baml_configuration:
+    ## Intelligent Task Prioritization configuration
+    ## if this configuration is enabled, setting bai_configuration.bpmn.install to true
+    intelligent_task_prioritization:
+    ## Workforce Insights configuration
+    ## if this configuration is enabled, setting bai_configuration.bpmn.install to true and bai_configuration.bpmn.force_elasticsearch_timeseries to true
+    workforce_insights:
+
+  ########################################################################
+  ########  IBM FileNet Content Manager initialize configuration  ########
+  ########################################################################
+  initialize_configuration:
+    ic_ldap_creation:
+      ## Administrator user
+      ic_ldap_admin_user_name:
+      - "<Required>" # user name for P8 domain admin, for example, "CEAdmin".  This parameter accepts a list of values.
+      ## Administrator group
+      ic_ldap_admins_groups_name:
+      - "<Required>" # group name for P8 domain admin, for example, "P8Administrators".  This parameter accepts a list of values.
+    ic_obj_store_creation:
+      object_stores:
+      ## Configuration for the document object store
+      ## Display name for the document object store to create
+      - oc_cpe_obj_store_display_name: "BAWINS1DOCS"
+        ## Symbolic name for the document object store to create
+        oc_cpe_obj_store_symb_name: "BAWINS1DOCS"
+        oc_cpe_obj_store_conn:
+          ## Object store connection name
+          name: "DOCS_connection" #database connection name
+          ## Specify the name of the non-XA datasource (from dc_common_os_datasource_name in the dc_os_datasources section above)
+          dc_os_datasource_name: "BAWINS1DOCS"
+          ## The XA datasource
+          dc_os_xa_datasource_name: "BAWINS1DOCSXA"
+        oc_cpe_obj_store_admin_user_groups:
+        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values.          
+
+      ## Configuration for the design object store
+      ## Display name for the design object store to create
+      - oc_cpe_obj_store_display_name: "BAWINS1DOS"
+        ## Symbolic name for the document object store to create
+        oc_cpe_obj_store_symb_name: "BAWINS1DOS"
+        oc_cpe_obj_store_conn:
+          ## Object store connection name
+          name: "DOS_connection"
+          ## Specify the name of the non-XA datasource (from dc_common_os_datasource_name in the dc_os_datasources section above)
+          dc_os_datasource_name: "BAWINS1DOS"
+          ## The XA datasource
+          dc_os_xa_datasource_name: "BAWINS1DOSXA"
+        oc_cpe_obj_store_admin_user_groups:
+        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values.          
+
+      ## Configuration for the target object store
+      ## Display name for the target object store to create
+      - oc_cpe_obj_store_display_name: "BAWINS1TOS"
+        ## Symbolic name for the document object store to create
+        oc_cpe_obj_store_symb_name: "BAWINS1TOS"
+        oc_cpe_obj_store_conn:
+          ## Object store connection name
+          name: "TOS_connection"
+          ## Specify the name of the non-XA datasource (from dc_common_os_datasource_name in the dc_os_datasources section above)
+          dc_os_datasource_name: "BAWINS1TOS"
+          ## The XA datasource
+          dc_os_xa_datasource_name: "BAWINS1TOSXA"
+        oc_cpe_obj_store_admin_user_groups:
+        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values.
+        ## Specify whether to enable workflow for the object store
+        oc_cpe_obj_store_enable_workflow: true
+        ## Specify a table space for the workflow data
+        oc_cpe_obj_store_workflow_data_tbl_space: "<Required>"
+        ## Designate an LDAP group for the workflow admin group.
+        oc_cpe_obj_store_workflow_admin_group: "<Required>"
+        ## Designate an LDAP group for the workflow config group
+        oc_cpe_obj_store_workflow_config_group: "<Required>"
+        ## Provide a name for the connection point
+        oc_cpe_obj_store_workflow_pe_conn_point_name: "<Required>"

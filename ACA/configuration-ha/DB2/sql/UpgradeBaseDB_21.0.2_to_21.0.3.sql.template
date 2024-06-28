@@ -1,0 +1,4 @@
+--base DB changes
+
+alter table tenantinfo add column opt_flags bigint with default 0;
+reorg table tenantinfo;

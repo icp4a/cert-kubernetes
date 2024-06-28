@@ -1,0 +1,22 @@
+apiVersion: turbonomic.com/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: healthservices.operator.ibm.com
+  labels:
+    component: cpfs
+spec:
+  resourceMappings:
+    - srcResourceSpec:
+        kind: Deployment
+        componentNames:
+          - system-healthcheck-service
+      resourceMappingTemplates:
+        - srcPath: .spec.template.spec.containers[?(@.name=="system-healthcheck-service")].resources
+          destPath: .spec.healthService.resources
+    - srcResourceSpec:
+        kind: Deployment
+        componentNames:
+          - icp-memcached
+      resourceMappingTemplates:
+        - srcPath: .spec.template.spec.containers[?(@.name=="icp-memcached")].resources
+          destPath: .spec.memcached.resources

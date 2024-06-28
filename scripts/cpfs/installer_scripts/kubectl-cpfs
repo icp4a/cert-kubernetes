@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+
+# Licensed Materials - Property of IBM
+# Copyright IBM Corporation 2023. All Rights Reserved
+# US Government Users Restricted Rights -
+# Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+# This is an internal component, bundled with an official IBM product.
+# Please refer to that particular license for additional information.
+
+BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+
+ARG=$1
+STATUS=0
+ARG_LIST="
+     Commands:
+        setup_tenant                                    Set up an advanced topology tenant for Cloud Pak 3.0 Foundational services.
+        setup_singleton                                 Install Cloud Pak 3 pre-reqs if they do not already exist: ibm-cert-manager-operator and optionally ibm-licensing-operator
+        isolate_tenant                                  Isolate and prepare Cloud Pak 2.0 Foundational Services for upgrade to or additional installation of Cloud Pak 3.0 Foundational Services
+        migrate_tenant                                  Migrate Cloud Pak 2.0 Foundational services to Cloud Pak 3.0 Foundational services
+        uninstall_tenant                                Uninstall Cloud Pak 3.0 Foundational services
+"
+
+if [[ $# -eq 0 ]] ; then
+    echo "Please specify one of: $ARG_LIST or a shell command"
+    echo "Further documentation can be found on IBM Knowledge Center"
+    exit 0
+fi
+
+case $ARG in
+    setup_singleton)
+        ${BASE_DIR}/cp3pt0-deployment/setup_singleton.sh "${@:2}"
+        STATUS=$?
+        echo
+        ;;
+    setup_tenant)
+        ${BASE_DIR}/cp3pt0-deployment/setup_tenant.sh "${@:2}"
+        STATUS=$?
+        echo
+        ;;
+    isolate_tenant)
+        ${BASE_DIR}/isolate.sh "${@:2}"
+        STATUS=$?
+        echo
+        ;;
+    migrate_tenant)
+        ${BASE_DIR}/cp3pt0-deployment/migrate_tenant.sh "${@:2}"
+        STATUS=$?
+        echo
+        ;;
+    uninstall_tenant)
+        ${BASE_DIR}/cp3pt0-deployment/uninstall_tenant.sh "${@:2}"
+        STATUS=$?
+        echo
+        ;;
+    help)
+        echo "Please specify one of: $ARG_LIST or a shell command"
+        echo "Further documentation can be found on IBM Docuementation https://ibm.biz/BdyGwb"
+        STATUS=0
+        ;;
+    *)
+        ${@}
+        ;;
+esac
+
+exit $STATUS

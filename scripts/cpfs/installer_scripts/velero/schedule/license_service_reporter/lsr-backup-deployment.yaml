@@ -1,0 +1,65 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: lsr-backup
+  namespace: <lsr namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: lsr-data
+spec:
+  selector:
+    matchLabels:
+      foundationservices.cloudpak.ibm.com: lsr-data
+  template:
+    metadata:
+      annotations:
+        backup.velero.io/backup-volumes: lsr-backup
+        pre.hook.backup.velero.io/command: '["sh", "-c", "rm -rf /lsr/lsr-backup/database; /lsr/br_lsr.sh <lsr namespace> backup"]'
+        pre.hook.backup.velero.io/timeout: 300s
+        post.hook.restore.velero.io/command: '["sh", "-c", "/lsr/br_lsr.sh <lsr namespace> restore"]'
+        post.hook.restore.velero.io/wait-timeout: 300s
+        post.hook.restore.velero.io/exec-timeout: 300s
+        post.hook.restore.velero.io/timeout: 600s
+      name: lsr-backup
+      namespace: <lsr namespace>
+      labels:
+        foundationservices.cloudpak.ibm.com: lsr-data
+    spec:
+        containers:
+        - command:
+          - sh
+          - -c
+          - sleep infinity
+          image: icr.io/cpopen/cpfs/cpfs-utils:4.3.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
+          imagePullPolicy: IfNotPresent
+          name: lsr-backup-job
+          resources:
+            limits:
+              cpu: 500m
+              ephemeral-storage: 512Mi
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              ephemeral-storage: 128Mi
+              memory: 256Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /lsr/lsr-backup/
+            name: lsr-backup-mount
+          - name: scripts
+            mountPath: "/lsr"
+        dnsPolicy: ClusterFirst
+        schedulerName: default-scheduler
+        securityContext:
+          runAsNonRoot: true
+        serviceAccount: lsr-backup-sa
+        serviceAccountName: lsr-backup-sa
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: lsr-backup-mount
+          persistentVolumeClaim:
+            claimName: lsr-backup-pvc
+        - name: scripts
+          configMap:
+            name: lsr-br-configmap
+            defaultMode: 0777

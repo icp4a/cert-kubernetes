@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zen-backup-pvc
+  labels:
+    foundationservices.cloudpak.ibm.com: data
+spec:
+  storageClassName: ibmc-block-retain-gold
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  volumeMode: Filesystem

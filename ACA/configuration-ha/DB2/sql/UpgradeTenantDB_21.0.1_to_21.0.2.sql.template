@@ -1,0 +1,37 @@
+
+alter table RUNTIME_DOC add column GROUND_TRUTH CLOB (100M);
+alter table RUNTIME_DOC add column GROUND_TRUTH_STATUS smallint default 0;
+alter table RUNTIME_PAGE add column pdf_content BLOB(250M);
+reorg table RUNTIME_DOC;
+reorg table RUNTIME_PAGE;
+
+alter table TRAINING_LOG add column MODEL_VERSION SMALLINT NOT NULL DEFAULT 1;
+reorg table TRAINING_LOG;
+
+create table models_testing_doc
+(
+  training_id VARCHAR (128) NOT NULL,
+  transaction_id VARCHAR (128) NOT NULL,
+  file_name varchar (1024) NOT NULL,
+  doc_class_id VARCHAR (128) NOT NULL,
+  num_pages  SMALLINT NOT NULL DEFAULT 0,
+  kvptable CLOB(100M),
+  ground_truth   CLOB(100M),
+
+  CONSTRAINT models_testing_doc_training_log_fkey FOREIGN KEY (training_id) REFERENCES training_log (id)
+    ON UPDATE RESTRICT ON DELETE CASCADE,
+
+  CONSTRAINT models_testing_doc_runtime_doc_fkey FOREIGN KEY (transaction_id) REFERENCES RUNTIME_DOC (transaction_id)
+          ON UPDATE RESTRICT ON DELETE CASCADE,
+
+  CONSTRAINT models_testing_doc_pkey PRIMARY KEY (training_id, transaction_id)
+);
+
+alter table MODELS alter column model_output SET DATA TYPE BLOB(1G);
+reorg table MODELS;
+
+alter table kvp_model_detail add column doc_level_check_sum VARCHAR(1024);
+alter table kvp_model_detail add column key_level_check_sum VARCHAR(1024);
+reorg table kvp_model_detail;
+
+UPDATE MODELS SET ALGORITHM = 0 WHERE ID = (SELECT m.ID FROM MODELS m INNER JOIN PUBLISHED_MODELS pm ON m.ID = pm.DEFAULT_MODEL_ID WHERE pm.NAME = 'DeepLearning' AND pm.PUBLISHED_STATUS = 1 AND m.ALGORITHM = '2001');

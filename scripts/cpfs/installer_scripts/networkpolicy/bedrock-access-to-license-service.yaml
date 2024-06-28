@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: access-to-ibm-licensing-service-instance
+  namespace: "csNamespace"
+  labels:
+    component: cpfs
+spec:
+  podSelector:
+    matchLabels:
+      app: ibm-licensing-service-instance
+  ingress:
+    - {}
+  policyTypes:
+    - Ingress

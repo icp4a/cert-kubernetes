@@ -1,0 +1,26 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2021. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: storage.k8s.io/v1beta1
+kind: StorageClass
+metadata:
+  name: cp4a-file-retain-gold-gid
+  labels:
+    kubernetes.io/cluster-service: "true"
+provisioner: ibm.io/ibmc-file
+parameters:
+  type: "Endurance"
+  iopsPerGB: "10"
+  sizeRange: "[20-4000]Gi"
+  billingType: "hourly"
+  classVersion: "2"
+  gidAllocate: "true"
+reclaimPolicy: Retain
+volumeBindingMode: Immediate

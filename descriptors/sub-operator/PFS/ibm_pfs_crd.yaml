@@ -1,0 +1,1683 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2024. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.14.0
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 24.0.0
+  name: processfederationservers.icp4a.ibm.com
+spec:
+  group: icp4a.ibm.com
+  names:
+    kind: ProcessFederationServer
+    listKind: ProcessFederationServerList
+    plural: processfederationservers
+    shortNames:
+    - pfs
+    singular: processfederationserver
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: ProcessFederationServer is the Schema for the processfederationservers
+          API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ProcessFederationServerSpec defines the desired state of
+              ProcessFederationServer
+            properties:
+              appVersion:
+                type: string
+              elasticsearch_configuration:
+                properties:
+                  admin_secret_name:
+                    default: ""
+                    description: |-
+                      The elasticsearch admin secret that contains the username, password and sensitive.
+                      If not provided, the defualt admin secret named "{{ meta.name }}-elasticsearch-admin-secret" is used.
+                    type: string
+                  anti_affinity:
+                    default: hard
+                    description: |-
+                      Whether Kubernetes "may" (soft) or "must not" (hard) deploy Elasticsearch pods onto the same node
+                      The possible values are "soft" and "hard"
+                    type: string
+                  custom_annotations:
+                    additionalProperties:
+                      type: string
+                    description: Values in this field will be used as annotations
+                      in all generated pods
+                    type: object
+                  custom_labels:
+                    additionalProperties:
+                      type: string
+                    description: Values in this field will be used as labels in all
+                      generated pods
+                    type: object
+                  deployment_profile_size:
+                    default: small
+                    description: The valid values are small, medium, large - default
+                      is small.
+                    enum:
+                    - small
+                    - medium
+                    - large
+                    type: string
+                  es_image:
+                    properties:
+                      pull_policy:
+                        default: IfNotPresent
+                        description: image pull policy, default is "IfNotPresent"
+                        type: string
+                      pull_secrets:
+                        description: image pull secrets
+                        items:
+                          type: string
+                        type: array
+                      repository:
+                        description: image repository URL
+                        type: string
+                      tag:
+                        description: image tag
+                        type: string
+                    type: object
+                  external_port:
+                    default: 443
+                    description: |-
+                      The port to which the Elasticsearch server HTTPS endpoint will be exposed externally.
+                      This parameter is relevant only if elasticsearch_configuration.service_type is set to NodePort
+                    format: int32
+                    type: integer
+                  fs_group:
+                    description: |-
+                      The group which Kubernetes will change the permissions of all files in volumes to when volumes are mounted by a pod
+                      supported from 22.0.1
+                    format: int64
+                    type: integer
+                  heap_size:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    default: 1024m
+                    description: The JVM heap size to allocate to each Elasticsearch
+                      pod
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  liveness_probe:
+                    default:
+                      failure_threshold: 5
+                      initial_delay_seconds: 90
+                      period_seconds: 20
+                      success_threshold: 1
+                      timeout_seconds: 15
+                    description: liveness probe setting
+                    properties:
+                      failure_threshold:
+                        description: When a probe fails, number of times that Kubernetes
+                          tries before it gives up and restarts the container.
+                        format: int32
+                        type: integer
+                      initial_delay_seconds:
+                        description: Number of seconds after the container starts
+                          before the liveness probe is initiated.
+                        format: int32
+                        type: integer
+                      period_seconds:
+                        description: Number of seconds to wait before the next probe.
+                        format: int32
+                        type: integer
+                      success_threshold:
+                        default: 1
+                        description: Minimum consecutive successes for the probe to
+                          be considered successful after it failed. The default value
+                          is 1.
+                        format: int32
+                        type: integer
+                      timeout_seconds:
+                        description: Number of seconds after which the probe times
+                          out.
+                        format: int32
+                        type: integer
+                    type: object
+                  monitor_enabled:
+                    default: false
+                    description: Whether to use the built-in monitoring capability.
+                    type: boolean
+                  node_affinity:
+                    default:
+                      deploy_arch:
+                      - amd64
+                    description: Node affinity
+                    properties:
+                      custom_node_selector_match_expression:
+                        description: Value of the custom node selector match expression
+                          except expression with key 'kubernetes.io/arch'
+                        items:
+                          description: |-
+                            A node selector requirement is a selector that contains values, a key, and an operator
+                            that relates the key and values.
+                          properties:
+                            key:
+                              description: The label key that the selector applies
+                                to.
+                              type: string
+                            operator:
+                              description: |-
+                                Represents a key's relationship to a set of values.
+                                Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
+                              type: string
+                            values:
+                              description: |-
+                                An array of string values. If the operator is In or NotIn,
+                                the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                the values array must be empty. If the operator is Gt or Lt, the values
+                                array must have a single element, which will be interpreted as an integer.
+                                This array is replaced during a strategic merge patch.
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                      deploy_arch:
+                        description: Value of the deployment OS architecture
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  privileged:
+                    default: false
+                    description: |-
+                      The Elasticsearch pods require the hosting worker nodes to be configured to:
+                      - disable memory swapping by setting the sysctl value vm.swappiness to 1.
+                      - increase the limit on the number of open files descriptors for the user running Elasticsearch by setting sysctl value vm.max_map_count to 65,536 or higher.
+                      When set to true, a privileged init container will execute the appropriate sysctl commands to update the worker node configuration to match Elasticsearch requirements.
+                      When set to false, you must ask the cluster administrator to change the memory swapping and descriptor properties on each worker node.
+                    type: boolean
+                  probe_initial_delay:
+                    default: 90
+                    description: Initial delay for liveness and readiness probes of
+                      Elasticsearch pods
+                    format: int32
+                    type: integer
+                  readiness_probe:
+                    default:
+                      failure_threshold: 3
+                      initial_delay_seconds: 90
+                      period_seconds: 20
+                      success_threshold: 1
+                      timeout_seconds: 15
+                    description: readiness probe setting
+                    properties:
+                      failure_threshold:
+                        description: When a probe fails, number of times that Kubernetes
+                          tries before it gives up and restarts the container.
+                        format: int32
+                        type: integer
+                      initial_delay_seconds:
+                        default: -1
+                        description: Number of seconds after the container starts
+                          before the readiness probe is initiated.
+                        format: int32
+                        type: integer
+                      period_seconds:
+                        default: -1
+                        description: Number of seconds to wait before the next probe.
+                        format: int32
+                        type: integer
+                      success_threshold:
+                        default: 1
+                        description: Minimum consecutive successes for the probe to
+                          be considered successful after it failed. The default value
+                          is 1.
+                        format: int32
+                        type: integer
+                      timeout_seconds:
+                        description: Number of seconds after which the probe times
+                          out.
+                        format: int32
+                        type: integer
+                    type: object
+                  replicas:
+                    description: Number of initial Elasticsearch server pods
+                    format: int32
+                    type: integer
+                  resources:
+                    description: resources
+                    properties:
+                      claims:
+                        description: |-
+                          Claims lists the names of resources, defined in spec.resourceClaims,
+                          that are used by this container.
+
+
+                          This is an alpha field and requires enabling the
+                          DynamicResourceAllocation feature gate.
+
+
+                          This field is immutable. It can only be set for containers.
+                        items:
+                          description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                          properties:
+                            name:
+                              description: |-
+                                Name must match the name of one entry in pod.spec.resourceClaims of
+                                the Pod where this field is used. It makes that resource available
+                                inside a container.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Limits describes the maximum amount of compute resources allowed.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Requests describes the minimum amount of compute resources required.
+                          If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                          otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                    type: object
+                  seccomp_profile:
+                    properties:
+                      localhost_profile:
+                        description: The custom profile of secure computing mode.
+                        type: string
+                      type:
+                        description: The type of secure computing mode.
+                        enum:
+                        - RuntimeDefault
+                        - Unconfined
+                        - Localhost
+                        type: string
+                    type: object
+                  service_account:
+                    description: |-
+                      If elasticsearch_configuration.privileged is set to true, you must create a service account that has the privileged SecurityContextConstraint to allow running privileged containers. See "Preparing SecurityContextConstraints (SCC) requirements" for instructions.
+                      If elasticsearch_configuration.service_account not set, default service account "{{ meta.name }}-elasticsearch-service-account" will be used.
+                      If elasticsearch_configuration.privileged is set to false, see "Preparing SecurityContextConstraints (SCC) requirements" for instructions.
+                    type: string
+                  service_type:
+                    default: Route
+                    description: How the HTTPS endpoint service should be published.
+                      The possible values are 'ClusterIP' and 'NodePort'
+                    type: string
+                  snapshot_storage:
+                    default:
+                      enabled: false
+                      existing_claim_name: ""
+                      size: 30Gi
+                      storage_class_name: ""
+                      use_dynamic_provisioning: true
+                    description: elasticsearch snapshot storage
+                    properties:
+                      enabled:
+                        default: false
+                        description: If persistent the elasticsearch snapshot storage.
+                          Set to true for production deployment.
+                        type: boolean
+                      existing_claim_name:
+                        description: By default, a new persistent volume claim is
+                          be created. Specify an existing claim here if one is available.
+                        type: string
+                      size:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: The minimum size of the persistent volume
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      storage_class_name:
+                        description: Storage class name for Elasticsearch persistent
+                          snapshot storage
+                        type: string
+                      use_dynamic_provisioning:
+                        default: true
+                        description: Set to true to use dynamic storage provisioner
+                        type: boolean
+                    type: object
+                  storage:
+                    default:
+                      persistent: true
+                      size: 10Gi
+                      storage_class: ""
+                      use_dynamic_provisioning: true
+                    description: elasticsearch storage
+                    properties:
+                      persistent:
+                        default: true
+                        description: If persistent the elasticsearch data. Set to
+                          false for non-production or trial-only deployment.
+                        type: boolean
+                      size:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: The minimum size of the persistent volume
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      storage_class:
+                        description: Storage class name for Elasticsearch persistent
+                          storage
+                        type: string
+                      use_dynamic_provisioning:
+                        default: true
+                        description: Set to true to use dynamic storage provisioner
+                        type: boolean
+                    required:
+                    - storage_class
+                    type: object
+                  timezone:
+                    default: Etc/UTC
+                    type: string
+                type: object
+              license:
+                description: |-
+                  INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+                  Important: Run "make" to regenerate code after modifying this file
+                properties:
+                  accept:
+                    type: boolean
+                required:
+                - accept
+                type: object
+              logging_configuration:
+                properties:
+                  mon_elastic_search_credentials_secret_name:
+                    type: string
+                  mon_elastic_search_password:
+                    type: string
+                  mon_elastic_search_user_id:
+                    type: string
+                  mon_log_service_endpoint:
+                    description: elasticsearch endpoint urls used by filebeat to connect
+                      to, it's urls separated by ','
+                    type: string
+                type: object
+              pfs_configuration:
+                properties:
+                  admin_group_id:
+                    items:
+                      type: string
+                    type: array
+                  admin_secret_name:
+                    description: Name of the secret containing the Process Federation
+                      Server administration passwords, such as ltpaPassword, oidcClientPassword,
+                      sslKeyPassword. If it is not set, a default secret with name
+                      ibm-pfs-admin-secret will be created
+                    type: string
+                  admin_user_id:
+                    items:
+                      type: string
+                    type: array
+                  anti_affinity:
+                    default: hard
+                    description: Whether Kubernetes can (soft) or must not (hard)
+                      deploy Process Federation Server pods onto the same node. Possible
+                      values are "soft" and "hard".
+                    type: string
+                  application_engine:
+                    default:
+                      disable_basicauth: true
+                    properties:
+                      admin_secret_name:
+                        type: string
+                      context_root_prefix:
+                        type: string
+                      disable_basicauth:
+                        default: true
+                        description: Whether to disable the basic auth for Workplace
+                          job, default is true
+                        type: boolean
+                      hostname:
+                        type: string
+                      workplace_image:
+                        properties:
+                          pull_policy:
+                            default: IfNotPresent
+                            description: image pull policy, default is "IfNotPresent"
+                            type: string
+                          pull_secrets:
+                            description: image pull secrets
+                            items:
+                              type: string
+                            type: array
+                          repository:
+                            description: image repository URL
+                            type: string
+                          tag:
+                            description: image tag
+                            type: string
+                        type: object
+                    type: object
+                  authentication_server:
+                    properties:
+                      hostname:
+                        description: UMS issuer name for BAW standalone delivery
+                        type: string
+                      is_ums:
+                        default: false
+                        type: boolean
+                      port:
+                        default: 443
+                        type: integer
+                      service_name:
+                        type: string
+                      service_port:
+                        type: integer
+                      ums_admin_secret:
+                        type: string
+                      ums_scim_url:
+                        default: ""
+                        type: string
+                      ums_sso_url:
+                        default: ""
+                        type: string
+                    type: object
+                  config_dropins_overrides_secret:
+                    description: Name of the secret containing the files that will
+                      be mounted in the /config/configDropins/overrides folder
+                    type: string
+                  context_root_prefix:
+                    default: /pfs
+                    type: string
+                  custom_annotations:
+                    additionalProperties:
+                      type: string
+                    description: Values in this field will be used as annotations
+                      in all generated pods
+                    type: object
+                  custom_env_variables:
+                    description: Custom environment variables setting
+                    properties:
+                      names:
+                        description: 'Names of the custom environment variables defined
+                          in the secret referenced in pfs.customEnvVariables.secret.
+                          You can set it like this: - name: MYENV1'
+                        items:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        type: array
+                      secret:
+                        description: Secret holding custom environment variables,
+                          you can create it using command e.g. kubectl create secret
+                          generic pfs-custom-env MYENV1=VALUE1 MYENV2=VALUE2
+                        type: string
+                    type: object
+                  custom_jdbc_pvc:
+                    description: Name of the custom libraries containing the JDBC
+                      drivers that will be mounted in the /shared/resources folder
+                    type: string
+                  custom_labels:
+                    additionalProperties:
+                      type: string
+                    description: Values in this field will be used as labels in all
+                      generated pods
+                    type: object
+                  custom_libs_pvc:
+                    description: Name of the custom libraries containing the files
+                      that will be mounted in the /config/resources/libs folder
+                    type: string
+                  dba_resource_registry:
+                    default:
+                      pfs_registration_key: /dba/appresources/IBM_PFS/PFS_SYSTEM
+                    properties:
+                      endpoint:
+                        description: The endpoint of Resource Registry
+                        type: string
+                      pfs_registration_key:
+                        default: /dba/appresources/IBM_PFS/PFS_SYSTEM
+                        description: The key under which PFS should be registered
+                          in the DBA Service Registry when running.
+                        type: string
+                      secret_name:
+                        description: The Secret name of Resource Registry server which
+                          contains readerName and readerPassword
+                        type: string
+                    type: object
+                  deployment_profile_size:
+                    description: The valid values are small, medium, large - default
+                      is small.
+                    enum:
+                    - small
+                    - medium
+                    - large
+                    type: string
+                  dump:
+                    description: Dump configuration
+                    properties:
+                      persistent:
+                        default: false
+                        description: 'Whether to persist dump files. Possible values
+                          are: true and false.'
+                        type: boolean
+                      storage:
+                        default:
+                          existing_pvc_name: ""
+                          size: 5Gi
+                          storage_class: ""
+                          use_dynamic_provisioning: true
+                        properties:
+                          existing_pvc_name:
+                            description: The persistent volume claim for log data
+                              storage if dynamic provisioning is not used (use_dynamic_provisioning
+                              is false).
+                            type: string
+                          size:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: The minimum size of the persistent volume
+                              used mounted as PFS Liberty server /logs folder.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          storage_class:
+                            description: Storage class of the persistent volume used
+                              mounted as PFS Liberty server /logs folder, default
+                              to shared_configuration.storage_configuration.
+                            type: string
+                          use_dynamic_provisioning:
+                            default: true
+                            description: Use dynamic provisioning for PFS logs data
+                              storage.
+                            type: boolean
+                        type: object
+                    type: object
+                  elasticsearch:
+                    default:
+                      connect_timeout: 10s
+                      max_connection_per_route: -1
+                      max_connection_total: -1
+                      read_timeout: 30s
+                      thread_count: 0
+                    properties:
+                      admin_secret_name:
+                        type: string
+                      connect_timeout:
+                        default: 10s
+                        type: string
+                      endpoint:
+                        type: string
+                      max_connection_per_route:
+                        default: -1
+                        format: int32
+                        type: integer
+                      max_connection_total:
+                        default: -1
+                        format: int32
+                        type: integer
+                      read_timeout:
+                        default: 30s
+                        type: string
+                      thread_count:
+                        default: 0
+                        format: int32
+                        type: integer
+                    type: object
+                  enable_default_security_roles:
+                    default: true
+                    description: 'Whether to enable default security roles. Possible
+                      values are: true and false'
+                    type: boolean
+                  enable_notification_server:
+                    default: true
+                    description: 'Whether to enable notification server. Possible
+                      values are: true and false'
+                    type: boolean
+                  executor:
+                    default:
+                      core_threads: 40
+                      max_threads: 80
+                    properties:
+                      core_threads:
+                        default: 40
+                        description: Value of the coreThreads property of the <executor>
+                          tag.
+                        format: int32
+                        type: integer
+                      max_threads:
+                        default: 80
+                        description: Value of the maxThreads property of the <executor>
+                          tag.
+                        format: int32
+                        type: integer
+                    type: object
+                  federation_source:
+                    default: CR
+                    type: string
+                  hostname:
+                    type: string
+                  image:
+                    properties:
+                      pull_policy:
+                        default: IfNotPresent
+                        description: image pull policy, default is "IfNotPresent"
+                        type: string
+                      pull_secrets:
+                        description: image pull secrets
+                        items:
+                          type: string
+                        type: array
+                      repository:
+                        description: image repository URL
+                        type: string
+                      tag:
+                        description: image tag
+                        type: string
+                    type: object
+                  liveness_probe:
+                    default:
+                      failure_threshold: 6
+                      initial_delay_seconds: 5
+                      period_seconds: 10
+                      success_threshold: 1
+                      timeout_seconds: 10
+                    description: Liveness Probe setting
+                    properties:
+                      failure_threshold:
+                        description: When a probe fails, number of times that Kubernetes
+                          tries before it gives up and restarts the container.
+                        format: int32
+                        type: integer
+                      initial_delay_seconds:
+                        description: Number of seconds after the container starts
+                          before the liveness probe is initiated.
+                        format: int32
+                        type: integer
+                      period_seconds:
+                        description: Number of seconds to wait before the next probe.
+                        format: int32
+                        type: integer
+                      success_threshold:
+                        default: 1
+                        description: Minimum consecutive successes for the probe to
+                          be considered successful after it failed. The default value
+                          is 1.
+                        format: int32
+                        type: integer
+                      timeout_seconds:
+                        description: Number of seconds after which the probe times
+                          out.
+                        format: int32
+                        type: integer
+                    type: object
+                  logging_enabled:
+                    default: false
+                    description: Whether to use the built-in filebeat logging capability.
+                    type: boolean
+                  logs:
+                    default:
+                      console_format: JSON
+                      console_log_level: INFO
+                      console_source: message,trace,accessLog,ffdc,audit
+                      max_files: 10
+                      max_filesize: 50
+                      message_format: SIMPLE
+                      trace_format: ENHANCED
+                      trace_specification: '*=info'
+                    description: |-
+                      logging settings,
+                      update this values can be dynamically reflected at the container
+                    properties:
+                      console_format:
+                        default: JSON
+                        description: Format for printing logs on the console, default
+                          is 'JSON'
+                        enum:
+                        - DEV
+                        - SIMPLE
+                        - JSON
+                        - dev
+                        - simple
+                        - json
+                        type: string
+                      console_log_level:
+                        default: INFO
+                        description: Log level for printing logs on the console
+                        enum:
+                        - INFO
+                        - AUDIT
+                        - WARNING
+                        - ERROR
+                        - "OFF"
+                        type: string
+                      console_source:
+                        default: message,trace,accessLog,ffdc,audit
+                        description: Source of the logs for printing on the console
+                        type: string
+                      max_files:
+                        default: 10
+                        description: Maximum number of log files that are kept before
+                          the oldest file is removed
+                        type: integer
+                      max_filesize:
+                        default: 50
+                        description: The maximum size (in MB) that a log file can
+                          reach before it is rolled
+                        type: integer
+                      message_format:
+                        default: SIMPLE
+                        description: Format for printing trace logs on the console
+                        enum:
+                        - SIMPLE
+                        - JSON
+                        - simple
+                        - json
+                        type: string
+                      persistent:
+                        default: true
+                        description: 'Whether to persist logs. Possible values are:
+                          true and false.'
+                        type: boolean
+                      storage:
+                        default:
+                          existing_pvc_name: ""
+                          size: 1Gi
+                          storage_class: ""
+                          use_dynamic_provisioning: true
+                        properties:
+                          existing_pvc_name:
+                            description: The persistent volume claim for log data
+                              storage if dynamic provisioning is not used (use_dynamic_provisioning
+                              is false).
+                            type: string
+                          size:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: The minimum size of the persistent volume
+                              used mounted as PFS Liberty server /logs folder.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          storage_class:
+                            description: Storage class of the persistent volume used
+                              mounted as PFS Liberty server /logs folder, default
+                              to shared_configuration.storage_configuration.
+                            type: string
+                          use_dynamic_provisioning:
+                            default: true
+                            description: Use dynamic provisioning for PFS logs data
+                              storage.
+                            type: boolean
+                        type: object
+                      trace_format:
+                        default: ENHANCED
+                        description: Format for printing trace logs on the console
+                        enum:
+                        - ENHANCED
+                        - BASIC
+                        - ADVANCED
+                        type: string
+                      trace_specification:
+                        default: '*=info'
+                        description: Specification for printing trace logs
+                        type: string
+                    required:
+                    - message_format
+                    - trace_specification
+                    type: object
+                  mon_elastic_search_index_prefix:
+                    description: What Elasticsearch index will be used to store log
+                      messages, default is Process Federation Server customer resource
+                      name.
+                    type: string
+                  monitor_enabled:
+                    default: false
+                    description: Whether to use the built-in monitoring capability.
+                    type: boolean
+                  node_affinity:
+                    description: Node affinity
+                    properties:
+                      custom_node_selector_match_expression:
+                        description: Value of the custom node selector match expression
+                          except expression with key 'kubernetes.io/arch'
+                        items:
+                          description: |-
+                            A node selector requirement is a selector that contains values, a key, and an operator
+                            that relates the key and values.
+                          properties:
+                            key:
+                              description: The label key that the selector applies
+                                to.
+                              type: string
+                            operator:
+                              description: |-
+                                Represents a key's relationship to a set of values.
+                                Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
+                              type: string
+                            values:
+                              description: |-
+                                An array of string values. If the operator is In or NotIn,
+                                the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                the values array must be empty. If the operator is Gt or Lt, the values
+                                array must have a single element, which will be interpreted as an integer.
+                                This array is replaced during a strategic merge patch.
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                      deploy_arch:
+                        description: Value of the deployment OS architecture
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  port:
+                    default: 443
+                    format: int32
+                    type: integer
+                  readiness_probe:
+                    default:
+                      failure_threshold: 6
+                      initial_delay_seconds: 5
+                      period_seconds: 5
+                      success_threshold: 1
+                      timeout_seconds: 5
+                    description: Readiness Probe setting
+                    properties:
+                      failure_threshold:
+                        description: When a probe fails, number of times that Kubernetes
+                          tries before it gives up and restarts the container.
+                        format: int32
+                        type: integer
+                      initial_delay_seconds:
+                        default: -1
+                        description: Number of seconds after the container starts
+                          before the readiness probe is initiated.
+                        format: int32
+                        type: integer
+                      period_seconds:
+                        default: -1
+                        description: Number of seconds to wait before the next probe.
+                        format: int32
+                        type: integer
+                      success_threshold:
+                        default: 1
+                        description: Minimum consecutive successes for the probe to
+                          be considered successful after it failed. The default value
+                          is 1.
+                        format: int32
+                        type: integer
+                      timeout_seconds:
+                        description: Number of seconds after which the probe times
+                          out.
+                        format: int32
+                        type: integer
+                    type: object
+                  replicas:
+                    format: int32
+                    type: integer
+                  resources:
+                    description: resources
+                    properties:
+                      claims:
+                        description: |-
+                          Claims lists the names of resources, defined in spec.resourceClaims,
+                          that are used by this container.
+
+
+                          This is an alpha field and requires enabling the
+                          DynamicResourceAllocation feature gate.
+
+
+                          This field is immutable. It can only be set for containers.
+                        items:
+                          description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                          properties:
+                            name:
+                              description: |-
+                                Name must match the name of one entry in pod.spec.resourceClaims of
+                                the Pod where this field is used. It makes that resource available
+                                inside a container.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Limits describes the maximum amount of compute resources allowed.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Requests describes the minimum amount of compute resources required.
+                          If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                          otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                    type: object
+                  resources_security_secret:
+                    description: Name of the secret containing the files that will
+                      be mounted in the /config/resources/security folder
+                    type: string
+                  rest:
+                    default:
+                      bd_fields_check_interval: 300s
+                      system_status_check_interval: 60s
+                      user_group_check_interval: 300s
+                    properties:
+                      bd_fields_check_interval:
+                        default: 300s
+                        description: Value of the bdFieldsCheckInterval property of
+                          the <ibmPfs_restConfig> tag.
+                        type: string
+                      system_status_check_interval:
+                        default: 60s
+                        description: Value of the systemStatusCheckInterval property
+                          of the <ibmPfs_restConfig> tag.
+                        type: string
+                      user_group_check_interval:
+                        default: 300s
+                        description: Value of the userGroupCheckInterval property
+                          of the <ibmPfs_restConfig> tag.
+                        type: string
+                    type: object
+                  saved_searches:
+                    default:
+                      index_batch_size: 100
+                      index_name: ibmpfssavedsearches
+                      index_number_of_replicas: 2
+                      index_number_of_shards: 3
+                      unique_constraint_expiration: 5m
+                      update_lock_expiration: 5m
+                    properties:
+                      index_batch_size:
+                        default: 100
+                        format: int32
+                        type: integer
+                      index_name:
+                        default: '''ibmpfssavedsearches'''
+                        type: string
+                      index_number_of_replicas:
+                        default: 2
+                        format: int32
+                        type: integer
+                      index_number_of_shards:
+                        default: 3
+                        format: int32
+                        type: integer
+                      unique_constraint_expiration:
+                        default: '''5m'''
+                        type: string
+                      update_lock_expiration:
+                        default: '''5m'''
+                        type: string
+                    type: object
+                  seccomp_profile:
+                    properties:
+                      localhost_profile:
+                        description: The custom profile of secure computing mode.
+                        type: string
+                      type:
+                        description: The type of secure computing mode.
+                        enum:
+                        - RuntimeDefault
+                        - Unconfined
+                        - Localhost
+                        type: string
+                    type: object
+                  security:
+                    default:
+                      ssl_protocol: TLSv1.2
+                      sso:
+                        cookie_name: ltpatoken2
+                        domain_name: ""
+                        ltpa:
+                          expiration: 120m
+                          filename: ltpa.keys
+                          monitor_interval: 60s
+                    description: Security settings
+                    properties:
+                      ssl_protocol:
+                        default: TLSv1.2
+                        description: The sslProtocol property of the <ssl> tag used
+                          as default SSL config.
+                        type: string
+                      sso:
+                        default:
+                          cookie_name: ltpatoken2
+                          domain_name: ""
+                          ltpa:
+                            expiration: 120m
+                            filename: ltpa.keys
+                            monitor_interval: 60s
+                        properties:
+                          cookie_name:
+                            default: ltpatoken2
+                            description: The ssoCookieName property of the <webAppSecurity>
+                              tag.
+                            type: string
+                          domain_name:
+                            default: ""
+                            description: The ssoDomainNames property of the <webAppSecurity>
+                              tag.
+                            type: string
+                          ltpa:
+                            default:
+                              expiration: 120m
+                              filename: ltpa.keys
+                              monitor_interval: 60s
+                            properties:
+                              expiration:
+                                default: 120m
+                                description: The expiration property of the <ltpa>
+                                  tag.
+                                type: string
+                              filename:
+                                default: ltpa.keys
+                                description: The keysFileName property of the <ltpa>
+                                  tag.
+                                type: string
+                              monitor_interval:
+                                default: 60s
+                                description: The monitorInterval property of the <ltpa>
+                                  tag.
+                                type: string
+                            type: object
+                        type: object
+                    type: object
+                  service_account:
+                    description: Service account name for Process Federation Server
+                      pod. If not set, the default service account named "{{ meta.name
+                      }}-pfs-service-account" will be created.
+                    type: string
+                  service_type:
+                    default: Route
+                    description: How the HTTPS endpoint service should be published.
+                      Possible values are ClusterIP, NodePort, Route
+                    type: string
+                  startup_probe:
+                    default:
+                      failure_threshold: 30
+                      period_seconds: 20
+                      success_threshold: 1
+                      timeout_seconds: 10
+                    description: Startup Probe setting
+                    properties:
+                      failure_threshold:
+                        description: When a probe fails, number of times that Kubernetes
+                          tries before it gives up and restarts the container.
+                        format: int32
+                        type: integer
+                      period_seconds:
+                        description: Number of seconds to wait before the next probe.
+                        format: int32
+                        type: integer
+                      success_threshold:
+                        default: 1
+                        description: Minimum consecutive successes for the probe to
+                          be considered successful after it failed. The default value
+                          is 1.
+                        format: int32
+                        type: integer
+                      timeout_seconds:
+                        description: Number of seconds after which the probe times
+                          out.
+                        format: int32
+                        type: integer
+                    type: object
+                  timezone:
+                    default: Etc/UTC
+                    type: string
+                  tls:
+                    properties:
+                      external_tls_ca_secret:
+                        description: |-
+                          Certificate authority (CA) used to sign the external TLS secret. It is stored in the secret with the TLS key and certificate. You can enter the secret name here.
+                          If you don't want to use a customized CA to sign the external TLS certificate, leave it empty.
+                        type: string
+                      external_tls_secret:
+                        description: |-
+                          The secret that contains the Transport Layer Security (TLS) key and certificate for external https visits. You can enter the secret name here.
+                          If you do not want to use a customized external TLS certificate, leave it empty.
+                        type: string
+                      rootca:
+                        description: The root ca. If it is not specified, it is created
+                          automatically.
+                        type: string
+                      tls_secret_name:
+                        description: |-
+                          PFS server TLS secret that contains tls.crt
+                          Existing TLS secret containing keys tls.key and tls.crt. The certificate should be signed by the CA in shared_configuration.root_ca_secret.
+                          If you do not want to use a customized TLS certificate, leave it empty.
+                        type: string
+                      tls_trust_list:
+                        description: |-
+                          Server TLS trust list, accept a list of secrets, every secret stores a trusted certificate.
+                          You might run the following sample command to create each secret:
+                          "kubectl create secret generic tls-secret --from-file=tls.crt=./cert.crt"
+                        items:
+                          type: string
+                        type: array
+                      tls_trust_store:
+                        description: |-
+                          Secret to store your custom trusted keystore (optional). The type for the keystore must be JKS or PKCS12.
+                          All certificates from the keystore are imported into the trust keystore of the Workflow Process Service server.
+                          You might run the following sample command to create the secret:
+                          "kubectl create secret generic pfs_custom_trust_keystore_secret --from-file=truststorefile=./trust.jks --from-literal=type=JKS --from-literal=password=WebAS"
+                        type: string
+                    type: object
+                  zen_performance:
+                    default:
+                      keepalive: "512"
+                      keepalive_requests: "500"
+                      keepalive_timeout: 30s
+                      proxy_buffer_size: 256k
+                      proxy_buffers: 8 512k
+                      proxy_busy_buffers_size: 512k
+                      proxy_connect_timeout: "300"
+                      proxy_read_timeout: "300"
+                      proxy_send_timeout: "300"
+                    properties:
+                      keepalive:
+                        default: "512"
+                        type: string
+                      keepalive_requests:
+                        default: "500"
+                        type: string
+                      keepalive_timeout:
+                        default: 30s
+                        type: string
+                      proxy_buffer_size:
+                        default: 256k
+                        type: string
+                      proxy_buffers:
+                        default: 8 512k
+                        type: string
+                      proxy_busy_buffers_size:
+                        default: 512k
+                        type: string
+                      proxy_connect_timeout:
+                        default: "300"
+                        type: string
+                      proxy_read_timeout:
+                        default: "300"
+                        type: string
+                      proxy_send_timeout:
+                        default: "300"
+                        type: string
+                    type: object
+                type: object
+              shared_configuration:
+                properties:
+                  encryption_key_secret:
+                    description: The encryption key secret name that is used for Process
+                      Federation Server integration. If it is not specified, it will
+                      be created automatically.
+                    type: string
+                  images:
+                    properties:
+                      keytool_init_container:
+                        description: image repository URL
+                        properties:
+                          pull_policy:
+                            default: IfNotPresent
+                            description: image pull policy, default is "IfNotPresent"
+                            type: string
+                          pull_secrets:
+                            description: image pull secrets
+                            items:
+                              type: string
+                            type: array
+                          repository:
+                            description: image repository URL
+                            type: string
+                          tag:
+                            description: image tag
+                            type: string
+                        type: object
+                      umsregistration_initjob:
+                        properties:
+                          pull_policy:
+                            default: IfNotPresent
+                            description: image pull policy, default is "IfNotPresent"
+                            type: string
+                          pull_secrets:
+                            description: image pull secrets
+                            items:
+                              type: string
+                            type: array
+                          repository:
+                            description: image repository URL
+                            type: string
+                          tag:
+                            description: image tag
+                            type: string
+                        type: object
+                    type: object
+                  sc_deployment_context:
+                    default: CP4A
+                    description: Provide deployment context for your deployment. Default
+                      is CP4A.
+                    type: string
+                  sc_deployment_hostname_suffix:
+                    type: string
+                  sc_deployment_license:
+                    default: production
+                    description: |-
+                      The license for the CP4A deployment and the possible values are: non-production and production.
+                      If it is not set, the license will be defaulted to production.
+                      This value could be different from the other licenses in the CR.
+                    enum:
+                    - production
+                    - non-production
+                    type: string
+                  sc_deployment_platform:
+                    default: OCP
+                    description: 'The platform to be deployed specified by the user.  Possible
+                      values are: "OCP", "ROKS" and "other".'
+                    type: string
+                  sc_drivers_url:
+                    description: |-
+                      This is necessary if you want to use your own JDBC drivers by a web url.
+                      If you are providing multiple JDBC drivers, all the files must be compressed in a single file.
+                      First you need to package your drivers into a compressed package in the format of
+                      "jdbc/db2|oracle|postgresql|sqlserver/driver_files".
+                      For example, if you are provding your own DB2 and Oracle JDBC drivers,
+                      then the compressed file should have the following structure and content:
+                        /jdbc/db2/db2jcc4.jar
+                        /jdbc/db2/db2jcc_license_cu.jar
+                        /jdbc/oracle/ojdbc8.jar
+                      Then you need to put the compressed package on an anonymously accessible web server and provide the link here.
+                      The CR can handle .zip files using unzip as well as .tar, .tar.gz, .tar.bz2, .tar.xz.
+                      Does not handle .gz files, .bz2 files, .xz, or .zst files that do not contain a .tar archive.
+                    type: string
+                  sc_egress_configuration:
+                    default:
+                      sc_restricted_internet_access: true
+                    description: |-
+                      Enable or disable egress access to external systems. Default will be true if not defined.
+                      true: PFS pods will not have access to any external systems except for the known host list, for example the federated systems. You can create custom, curated egress netwwork policy or polices with specific 'matchLabels' to allow the specific access. Please refer to documentation for more detail.
+                      false: All PFS pods will have access any external systems with no restriction.
+                      The federated systems are added to the allowlist automatically when you enable this option.
+                    properties:
+                      sc_restricted_internet_access:
+                        type: boolean
+                    type: object
+                  sc_image_repository:
+                    type: string
+                  sc_image_tag:
+                    type: string
+                  sc_ingress_enable:
+                    default: false
+                    description: For ROKS, this is used to enable the creation of
+                      ingresses. The default value is "false", which routes will be
+                      created.
+                    type: boolean
+                  sc_ingress_tls_secret_name:
+                    description: For ROKS Ingress, provide TLS secret name for Ingress
+                      controller. If you are not using ROKS, comment out this line.
+                    type: string
+                  sc_seccomp_profile:
+                    properties:
+                      localhost_profile:
+                        description: The custom profile of secure computing mode.
+                        type: string
+                      type:
+                        description: The type of secure computing mode.
+                        enum:
+                        - RuntimeDefault
+                        - Unconfined
+                        - Localhost
+                        type: string
+                    type: object
+                  storage_configuration:
+                    properties:
+                      sc_fast_file_storage_classname:
+                        type: string
+                      sc_medium_file_storage_classname:
+                        type: string
+                      sc_slow_file_storage_classname:
+                        type: string
+                    type: object
+                required:
+                - storage_configuration
+                type: object
+            required:
+            - license
+            type: object
+          status:
+            description: ProcessFederationServerStatus defines the observed state
+              of ProcessFederationServer
+            properties:
+              components:
+                description: status->component
+                properties:
+                  pfs:
+                    description: status->component->pfscomponent
+                    properties:
+                      pfsDeployment:
+                        type: string
+                      pfsService:
+                        type: string
+                      pfsZenIntegration:
+                        type: string
+                    type: object
+                  prereq:
+                    description: status->components->prereq
+                    properties:
+                      encryptionKeySecret:
+                        type: string
+                    type: object
+                type: object
+              conditions:
+                items:
+                  description: "Condition contains details for one aspect of the current
+                    state of this API Resource.\n---\nThis struct is intended for
+                    direct use as an array at the field path .status.conditions.  For
+                    example,\n\n\n\ttype FooStatus struct{\n\t    // Represents the
+                    observations of a foo's current state.\n\t    // Known .status.conditions.type
+                    are: \"Available\", \"Progressing\", and \"Degraded\"\n\t    //
+                    +patchMergeKey=type\n\t    // +patchStrategy=merge\n\t    // +listType=map\n\t
+                    \   // +listMapKey=type\n\t    Conditions []metav1.Condition `json:\"conditions,omitempty\"
+                    patchStrategy:\"merge\" patchMergeKey:\"type\" protobuf:\"bytes,1,rep,name=conditions\"`\n\n\n\t
+                    \   // other fields\n\t}"
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: |-
+                        type of condition in CamelCase or in foo.example.com/CamelCase.
+                        ---
+                        Many .condition.type values are consistent across resources like Available, but because arbitrary conditions can be
+                        useful (see .node.status.conditions), the ability to deconflict is important.
+                        The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              endpoints:
+                items:
+                  description: status->endpoint
+                  properties:
+                    name:
+                      type: string
+                    scope:
+                      type: string
+                    type:
+                      type: string
+                    uri:
+                      type: string
+                  type: object
+                type: array
+              managedResources:
+                items:
+                  type: string
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 24.0.0
+  name: federatedsystems.icp4a.ibm.com
+spec:
+  group: icp4a.ibm.com
+  names:
+    kind: FederatedSystem
+    listKind: FederatedSystemList
+    plural: federatedsystems
+    shortNames:
+    - federatedsystem
+    singular: federatedsystem
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: FederatedSystem is the Schema for the FederatedSystem API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: FederatedSystemSpec defines the desired state of FederatedSystem
+            properties:
+              additionalHeaders:
+                type: string
+              advancedConfig:
+                type: string
+              allowedOrigins:
+                type: string
+              certificates:
+                properties:
+                  secrets:
+                    items:
+                      type: string
+                    type: array
+                type: object
+              credentialSecret:
+                type: string
+              db2Indexer:
+                properties:
+                  credentialSecret:
+                    type: string
+                  current_schema:
+                    type: string
+                  databaseName:
+                    type: string
+                  portNumber:
+                    default: 50000
+                    format: int32
+                    type: integer
+                  serverName:
+                    type: string
+                  ssl:
+                    type: boolean
+                  sslCertSecret:
+                    type: string
+                type: object
+              deploymentType:
+                description: 'Possible values: baw_on_premise, baw_on_containers,
+                  cp4ba_baw_runtime, cp4ba_baw_runtime_on_saas and cp4ba_wfps_runtime'
+                type: string
+              internalUrl:
+                type: string
+              notifications:
+                properties:
+                  jmsCredentialSecret:
+                    type: string
+                  jmsPort:
+                    format: int32
+                    type: integer
+                  jmsServer:
+                    type: string
+                type: object
+              oracleIndexer:
+                properties:
+                  credentialSecret:
+                    type: string
+                  ssl:
+                    type: boolean
+                  sslCertSecret:
+                    type: string
+                  url:
+                    type: string
+                type: object
+              postgresqlIndexer:
+                properties:
+                  credentialSecret:
+                    type: string
+                  current_schema:
+                    type: string
+                  ssl:
+                    type: boolean
+                  sslCertSecret:
+                    type: string
+                  url:
+                    type: string
+                type: object
+              sqlserverIndexer:
+                properties:
+                  credentialSecret:
+                    type: string
+                  databaseName:
+                    type: string
+                  portNumber:
+                    default: 1433
+                    format: int32
+                    type: integer
+                  serverName:
+                    type: string
+                  ssl:
+                    type: boolean
+                  sslCertSecret:
+                    type: string
+                type: object
+              systemTypes:
+                description: Comma-separated list of system types that will be federated,
+                  e.g. "BPD,CASE"
+                type: string
+              url:
+                type: string
+            type: object
+          status:
+            description: FederatedSystemStatus defines the observed state of FederatedSystem
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

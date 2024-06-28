@@ -1,0 +1,24 @@
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: egress-ibm-zen-setup-job
+  namespace: "opNamespace"
+  labels:
+    component: cpfs3
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: "ibm-zen-setup-job"
+  egress:
+    - ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+      to:
+        - podSelector:
+            matchLabels:
+              apiserver: 'true'
+          namespaceSelector: {}
+  policyTypes:
+    - Egress

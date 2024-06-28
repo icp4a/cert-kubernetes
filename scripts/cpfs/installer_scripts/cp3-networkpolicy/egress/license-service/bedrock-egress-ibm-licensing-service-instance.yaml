@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-ibm-licensing-service-instance
+  namespace: "licNamespace"
+  labels:
+    component: cpfs3
+spec:
+  podSelector:
+    matchLabels:
+      app: ibm-licensing-service-instance
+  policyTypes:
+  - Egress
+  egress:
+    - ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+      to:
+        - podSelector:
+            matchLabels:
+              apiserver: 'true'
+          namespaceSelector: {}

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: lsr-backup-sa
+  namespace: <lsr instance namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: lsr-data

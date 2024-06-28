@@ -1,0 +1,51 @@
+<!-- The following webSecurity.xml file defines an ODM super user,
+create groups in the basic registry and add all the users to them,
+then add the LDAP connection information to restrict access to authorized LDAP users.
+Useful if you are not allowed to create groups in your LDAP registry-->
+<server>
+   <!-- Define the basic registry -->
+   <basicRegistry id="basic" realm="customRealm">
+
+      <!-- Define users -->
+      <!-- ODM super user -->
+      <user name="odmAdmin" password="odmAdmin"/>
+
+      <!-- Users for Decision Server -->
+      <user name="resDeployer" password="resDeployer"/>
+      <user name="resMonitor" password="resMonitor"/>
+      <user name="resExecutor" password="resExecutor" />
+
+      <!-- Assign users to groups -->
+      <group name="rtsAdministrators">
+         <member name="odmAdmin"/>
+      </group>
+      <group name="resAdministrators">
+         <member name="odmAdmin" />
+      </group>
+      <group name="resDeployers">
+         <member name="resDeployer" />
+      </group>
+      <group name="resMonitors">
+         <member name="resMonitor" />
+      </group>
+      <group name="resExecutors">
+         <member name="odmAdmin" />
+         <member name="resDeployer" />
+         <member name="resMonitor" />
+         <member name="resExecutor" />
+      </group>
+   </basicRegistry>
+
+   <!-- Define the LDAP registry -->
+   <ldapRegistry id="ldap" realm="OpenLdapRealm"
+    host="openldap" port="636" sslEnabled="true" sslRef="odmDefaultSSLConfig" ldapType="Custom" ignoreCase="true" recursiveSearch="true"
+    baseDN="dc=example,dc=org" bindDN="cn=admin,dc=example,dc=org" bindPassword="admin">
+      <customFilters
+         userFilter="(uid=%v)"
+         groupFilter="(cn=%v)"
+         userIdMap="*:uid"
+         groupIdMap="*:cn"
+         groupMemberIdMap="groupOfNames:member">
+      </customFilters>
+   </ldapRegistry>
+</server>
