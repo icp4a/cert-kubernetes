@@ -30,6 +30,8 @@ data:
 
     #Setup backup location
     function main {
+        save_log "logs" "backup_log"
+        trap cleanup_log EXIT
         title "Beginning zen 5 backup process in namespace $ZEN_NAMESPACE."
         info "Creating necessary directories"
         mkdir -p $BACKUP_DIR/workspace
@@ -89,6 +91,35 @@ data:
         success "Backup completed."
     }
 
+    function save_log(){
+        local LOG_DIR="$BACKUP_DIR/$1"
+        LOG_FILE="$LOG_DIR/$2_$(date +'%Y%m%d%H%M%S').log"
+
+        if [[ ! -d $LOG_DIR ]]; then
+            mkdir -p "$LOG_DIR"
+        fi
+
+        # Create a named pipe
+        PIPE=$(mktemp -u)
+        mkfifo "$PIPE"
+
+        # Tee the output to both the log file and the terminal
+        tee "$LOG_FILE" < "$PIPE" &
+
+        # Redirect stdout and stderr to the named pipe
+        exec > "$PIPE" 2>&1
+
+        # Remove the named pipe
+        rm "$PIPE"
+    }
+
+    function cleanup_log() {
+        # Check if the log file already exists
+        if [[ -e $LOG_FILE ]]; then
+            # Remove ANSI escape sequences from log file
+            sed -E 's/\x1B\[[0-9;]+[A-Za-z]//g' "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
+        fi
+    }
 
     function msg() {
         printf '%b\n' "$1"
@@ -138,7 +169,11 @@ data:
     BACKUP_DIR=/zen5/zen-backup
 
     function main {
+        save_log "logs" "restore_log"
+        trap cleanup_log EXIT
         title "Beginning restore process for zenservice $ZENSERVICE_NAME in namespace $ZEN_NAMESPACE."
+        info "Wait for zenservice $ZENSERVICE_NAME to be ready..."
+        wait_for_zenservice
         info "Enabling Zen operator maintenance mode and scale down deployments"
         #[2.2.2] Enable Zen operator maintenance mode and scale down deployments
         oc patch zenservice ${ZENSERVICE_NAME} --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"ignoreForMaintenance": true}}'
@@ -286,6 +321,60 @@ data:
         success "Restore complete for zenservice $ZENSERVICE_NAME in namespace $ZEN_NAMESPACE."
     }
 
+    function wait_for_zenservice {
+        info "Waiting for zenservice $ZENSERVICE_NAME to complete in namespace $ZEN_NAMESPACE."
+        zenservice_exists=$(oc get zenservice $ZENSERVICE_NAME -n $ZEN_NAMESPACE --no-headers || echo fail)
+        if [[ $zenservice_exists != "fail" ]]; then
+            completed=$(oc get zenservice --no-headers $ZENSERVICE_NAME -n $ZEN_NAMESPACE | awk '{print $2}')
+            retry_count=60
+            while [[ $completed != "Completed" ]] && [[ $retry_count > 0 ]]
+            do
+                info "Wait for zenservice $ZENSERVICE_NAME to complete. Try again in 60s."
+                sleep 60
+                completed=$(oc get zenservice --no-headers $ZENSERVICE_NAME -n $ZEN_NAMESPACE | awk '{print $2}')
+                retry_count=$retry_count-1
+            done
+
+            if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
+                error "Timed out waiting for zenservice $ZENSERVICE_NAME."
+            else
+                info "Zenservice $ZENSERVICE_NAME ready."
+            fi
+        else
+            error "Zenservice $ZENSERVICE_NAME not present."
+        fi
+    }
+
+    function save_log(){
+        local LOG_DIR="$BACKUP_DIR/$1"
+        LOG_FILE="$LOG_DIR/$2_$(date +'%Y%m%d%H%M%S').log"
+
+        if [[ ! -d $LOG_DIR ]]; then
+            mkdir -p "$LOG_DIR"
+        fi
+
+        # Create a named pipe
+        PIPE=$(mktemp -u)
+        mkfifo "$PIPE"
+
+        # Tee the output to both the log file and the terminal
+        tee "$LOG_FILE" < "$PIPE" &
+
+        # Redirect stdout and stderr to the named pipe
+        exec > "$PIPE" 2>&1
+
+        # Remove the named pipe
+        rm "$PIPE"
+    }
+
+    function cleanup_log() {
+        # Check if the log file already exists
+        if [[ -e $LOG_FILE ]]; then
+            # Remove ANSI escape sequences from log file
+            sed -E 's/\x1B\[[0-9;]+[A-Za-z]//g' "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
+        fi
+    }
+
     function msg() {
         printf '%b\n' "$1"
     }
@@ -361,17 +450,17 @@ data:
                 extensions=$(echo $extensions | tr "," " ")
                 echo $extensions
                 
-                cat <<< $extensions > /zen5/extensions/extensions.txt
+                cat <<< $extensions > /zen5/zen-backup/extensions.txt
                 success "Extensions captured for backup:"
-                cat /zen5/extensions/extensions.txt
+                cat /zen5/zen-backup/extensions.txt
             else
                 info "No extensions found in namespace $ZEN_NAMESPACE other than defaults, exiting."
             fi
         fi
         
         if [[ $BACKUP == "false" ]]; then
-            if [[ -f /zen5/extensions/extensions.txt ]]; then
-                extensions=$(cat /zen5/extensions/extensions.txt)
+            if [[ -f /zen5/zen-backup/extensions.txt ]]; then
+                extensions=$(cat /zen5/zen-backup/extensions.txt)
                 echo $extensions
                 extensions=$(echo $extensions | tr " " ",")
                 info "Extensions to cleanup in namespace $ZEN_NAMESPACE: $extensions"
@@ -398,7 +487,7 @@ data:
                     success "Zen extension cleanup complete."
                 fi
             else
-                info "File /zen5/extensions/extensions.txt not found, skipping zenextension cleanup."
+                info "File /zen5/zen-backup/extensions.txt not found, skipping zenextension cleanup."
             fi
         fi
     }

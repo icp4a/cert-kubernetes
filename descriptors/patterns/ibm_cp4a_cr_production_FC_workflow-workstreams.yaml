@@ -40,10 +40,10 @@ spec:
     ## the possible values are: non-production and production and if not set, the license will
     ## be defaulted to production.  This value could be different from the other licenses in the CR.
     sc_deployment_license: "<Required>"
-  
-    
-   
-    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or 
+
+
+
+    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or
     ## know the reason to change this value, please leave the default value.
     sc_deployment_context: "CP4A"
 
@@ -66,8 +66,8 @@ spec:
     sc_hugepages:
       enabled: false
       type: ""
-      value: "" 
-      
+      value: ""
+
     ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower.
     ## For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
     ## NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start.  This custom profile should be created at the worker nodes.
@@ -78,16 +78,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -98,8 +98,8 @@ spec:
 
     ## Shared secret containing a wildcard certificate (and concatenated signers) to be used by all routes, unless overwritten for a specific component route.
     ## If this is not defined, all external routes will be signed with root_ca_secret.
-    ## Starting with CP4BA 21.0.3 release, this parameter only applies to non-OCP deployments. For OCP, all external traffic is routed via a 
-    ## common front door in Platform UI so custom TLS certificates must be configured in AutomationUIConfig. Please refer 
+    ## Starting with CP4BA 21.0.3 release, this parameter only applies to non-OCP deployments. For OCP, all external traffic is routed via a
+    ## common front door in Platform UI so custom TLS certificates must be configured in AutomationUIConfig. Please refer
     ## to https://www.ibm.com/docs/en/cloud-paks/1.0?topic=foundation-custom-resources#automationuiconfig for more information.
     external_tls_certificate_secret:
 
@@ -110,7 +110,7 @@ spec:
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
     ## The optional components are: bai,elasticsearch,kafka
     ## To enable Kafka services in your workflow automations, add kafka to sc_optional_components.
-    sc_optional_components: 
+    sc_optional_components:
 
     ## The deployment type as selected by the user.  Possible values are: Starter and Production.
     sc_deployment_type: Production
@@ -121,21 +121,21 @@ spec:
 
     sc_egress_configuration:
       ## Required. Enable or disable egress access to external systems.
-      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true". 
+      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true".
       ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
       sc_restricted_internet_access: true
       ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
       ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
       sc_api_namespace:
-      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## Default are 443,6443 for OCP and ROKS
       sc_api_port:
       ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
       ## Default is "openshift-dns" for OCP and ROKS
       sc_dns_namespace:
-      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## Default are 53,5353 for OCP and ROKS
       sc_dns_port:
 
@@ -153,10 +153,10 @@ spec:
     trusted_certificate_list: []
 
 
-    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers, 
+    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers,
     ## all the files must be compressed in a single file.
-    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or 
-    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed 
+    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or
+    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed
     ## file should have the following structure and content:
     ##   /jdbc/db2/db2jcc4.jar
     ##   /jdbc/db2/db2jcc_license_cu.jar
@@ -166,14 +166,14 @@ spec:
     ## Then you need to put the compressed package on an anonymously accessible web server and provide the link here.
     ## The CR can handle .zip files using unzip as well as .tar, .tar.gz, .tar.bz2, .tar.xz. Does not handle .gz files, .bz2 files, .xz, or .zst files that do not contain a .tar archive.
     sc_drivers_url:
-    
+
     ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
     ## This secret is also used by Workflow and BAStudio to store AES encryption key.
     encryption_key_secret: ibm-iaws-shared-key-secret
 
     ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
-    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true" (or the parameter doesn't exist), then the initialization will occur.  
+    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true" (or the parameter doesn't exist), then the initialization will occur.
     ## However, if sc_content_initialization is set to "false", then the initialization will not occur (even with the "initialize_configuration" section defined)
     ## For Workflow and Workstreams, by default sc_content_initialization is set to "true" with "initialize_configuration"section filled.
     ## If you already initialized content or want to upgrade, please set sc_content_initialization to "false" before you apply the CR.
@@ -195,19 +195,24 @@ spec:
       sc_fast_file_storage_classname: "<Required>"
       sc_block_storage_classname: "<Required>"
 
-    ## The CPE container and other components that use HTTP Basic Authentication are configured to use the OAuth JaaS loginModule         
-    ## to remove all remaining LDAP dependencies by allowing username/password credentials to be converted into an OAuth token for        
+    ## The CPE container and other components that use HTTP Basic Authentication are configured to use the OAuth JaaS loginModule
+    ## to remove all remaining LDAP dependencies by allowing username/password credentials to be converted into an OAuth token for
     ## authentication. When you are upgrading from a release prior to CP4BA 22.0.2 to 22.0.2 or later, or when
-    ## you are migrating FileNet Content Manager on-prem or standalone deployment to IBM Cloud Pak for Business Automation (CP4BA), 
-    ## you must set "sc_skip_ldap_config: false".  If you are performing fresh install using 23.0.2-IF004 or later, you can also set     
+    ## you are migrating FileNet Content Manager on-prem or standalone deployment to IBM Cloud Pak for Business Automation (CP4BA),
+    ## you must set "sc_skip_ldap_config: false".  If you are performing fresh install using 23.0.2-IF004 or later, you can also set
     ## "sc_skip_ldap_config: false" in order to have the FileNet Content Manager P8 domain to be configured with direct LDAP bind
     ## as opposed to the default SCIM configuration.
-    # sc_skip_ldap_config: true    
+    # sc_skip_ldap_config: true
 
     ## Enable/disable FIPS mode for the deployment (default value is "false")
     ## Note: If set as "true", in order to complete enablement of FIPS for CP4BA, please refer to "FIPS wall" configuration in IBM documentation.. This parameter only applies to OpenShift Container Platform deployments on Red Hat Enterprise Linux (RHEL) Server - x86
     enable_fips: false
-    
+
+    ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
+    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
+    sc_is_multiple_az: false
+
   ## The beginning section of LDAP configuration for CP4A
   ldap_configuration:
     ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory" or "Custom"
@@ -258,7 +263,7 @@ spec:
 
     ## The maximum search results. Specify a higher value if you expect more search results.
     lc_ldap_max_search_results: 4500
- 
+
     ## The lc_ldap_precheck parameter is used to enable or disable LDAP connection check.
     ## If set to "true", then LDAP connection check will be enabled.
     ## if set to "false", then LDAP connection check will not be enabled.
@@ -448,8 +453,8 @@ spec:
   ## email or upn short name is not used to login
   #idp_iam_configuration:
   #  - idp_id: <idp_name>
-  #    idp_type: okta (or azuread) 
-  #    idp_allow_email_or_upn_short_names: true (optional - default value is true) 
+  #    idp_type: okta (or azuread)
+  #    idp_allow_email_or_upn_short_names: true (optional - default value is true)
 
   ## The beginning section of database configuration for CP4A
   datasource_configuration:
@@ -501,7 +506,7 @@ spec:
         ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
         max_idle_time: 1m
         ## Amount of time between runs of the pool maintenance thread.
-        reap_time: 2m 
+        reap_time: 2m
         ## Specifies which connections to destroy when a stale connection is detected in a pool.
         purge_policy: EntirePool
 
@@ -511,7 +516,7 @@ spec:
     - dc_database_type: "<Required>"
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
-      dc_use_postgres: false     
+      dc_use_postgres: false
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
@@ -560,7 +565,7 @@ spec:
         ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
         max_idle_time: 1m
         ## Amount of time between runs of the pool maintenance thread.
-        reap_time: 2m 
+        reap_time: 2m
         ## Specifies which connections to destroy when a stale connection is detected in a pool.
         purge_policy: EntirePool
 
@@ -568,7 +573,7 @@ spec:
     - dc_database_type: "<Required>"
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
-      dc_use_postgres: false  
+      dc_use_postgres: false
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
@@ -617,7 +622,7 @@ spec:
         ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
         max_idle_time: 1m
         ## Amount of time between runs of the pool maintenance thread.
-        reap_time: 2m 
+        reap_time: 2m
         ## Specifies which connections to destroy when a stale connection is detected in a pool.
         purge_policy: EntirePool
 
@@ -625,7 +630,7 @@ spec:
     - dc_database_type: "<Required>"
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
-      dc_use_postgres: false  
+      dc_use_postgres: false
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
@@ -672,7 +677,7 @@ spec:
         ## Amount of time a connection can be unused or idle until it can be discarded during pool maintenance, if doing so does not reduce the pool below the minimum size.
         max_idle_time: 1m
         ## Amount of time between runs of the pool maintenance thread.
-        reap_time: 2m 
+        reap_time: 2m
         ## Specifies which connections to destroy when a stale connection is detected in a pool.
         purge_policy: EntirePool
 
@@ -797,7 +802,7 @@ spec:
       selinux_options:
       # Defines behavior for changing ownership and permission of the volume before being exposed inside a Pod. This field has two possible values (Always,OnRootMismatch)
       # For example fs_groupchangepolicy: "OnRootMismatch"
-      fs_groupchangepolicy:    
+      fs_groupchangepolicy:
 
     # Optional: You can specify a profile size for BAW Server if different from BAW (see shared_configuration.sc_deployment_profile_size).  In other words,
     # you can override "shared_configuration.sc_deployment_profile_size" with "deployment_profile_size" defined here.
@@ -833,14 +838,14 @@ spec:
       ## Workflow Server (Process Server) image repository URL.
       repository: cp.icr.io/cp/cp4a/baw/workflow-server
       ## Image tag for Workflow Server container.
-      tag: "24.0.0"
+      tag: "24.0.0-IF001"
       ## Pull policy for Workflow Server container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pull_policy: IfNotPresent
     upgrade_job:
       ## Workflow Server database handling image repository URL.
       repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
       ## Workflow Server database handling image repository tag.
-      tag: "24.0.0"
+      tag: "24.0.0-IF001"
       ## Pull policy for database handling. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pull_policy: IfNotPresent
       ## The trace Specification for database handling job, the trace is disabled by default, you can enable it when the job fails, the sample trace specification is WLE.*=all:com.ibm.bpm.*=all:com.ibm.workflow.*=all
@@ -849,11 +854,11 @@ spec:
     ## The database configuration for Workflow Server
     database:
       ##Whether to use EDB. If you set it to true, just set db_cert_secret_name, type, server_name, database_name, port and secret_name as "", and set enable_ssl to true.
-      dc_use_postgres: false    
+      dc_use_postgres: false
       ## Whether to enable Secure Sockets Layer (SSL) support for the Workflow Server database connection.
       enable_ssl: true
       ## Secret name for storing the database TLS certificate when an SSL connection is enabled, if it's client authentication for PostgreSQL DB,
-      # The secret will store the database client key and client certificate and ca certification. 
+      # The secret will store the database client key and client certificate and ca certification.
       ## Required only when enable_ssl is true. If enable_ssl is false, comment out this line.
       db_cert_secret_name: "<Required>"
       ## Workflow Server database type. Possible values are: db2, oracle, postgresql
@@ -880,16 +885,16 @@ spec:
       ## If the database type is PostgreSQL, this parameter is optional, you can choose inputs server_name, database_name, and port with or without this parameter here. If you do not need this parameter when PostgreSQL, remove or comment this parameter.
       ## In any other cases, remove or comment this parameter.
       jdbc_url: "<Required>"
-      ## Workflow Server database schema name. This parameter is optional. If not set, the schema name is the same as database user name. 
+      ## Workflow Server database schema name. This parameter is optional. If not set, the schema name is the same as database user name.
       ## This parameter is only supported by DB2 and PostgreSQL. For DB2, the schema name is case-sensitive, and must be specified in uppercase characters.
       current_schema: ""
       ## Whether to use custom JDBC drivers. set it as true if you don't want use embedded jdbc drivers and don't specify sc_drivers_url.
       use_custom_jdbc_drivers: false
       ## If use_custom_jdbc_drivers is set to true, input the name of the persistent volume claim (PVC) that binds to the persistent volume (PV) where the custom JDBC driver files are stored.
       ## If use_custom_jdbc_drivers is set to false, remove or comments this parameter.
-      custom_jdbc_pvc: "" 
+      custom_jdbc_pvc: ""
       ## The comma or space separated list of custom JDBC driver files. If the custom JDBC driver files are not specified, all files under custom_jdbc_pvc will be loaded.
-      jdbc_driver_files: "" 
+      jdbc_driver_files: ""
       ## Workflow Server database connect pool maximum number of physical connections.
       cm_max_pool_size: 200
       dbcheck:
@@ -933,7 +938,7 @@ spec:
         ## Image name for content integration container.
         repository: cp.icr.io/cp/cp4a/baw/iaws-ps-content-integration
         ## Image tag for content integration container.
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
         ## Pull policy for content integration container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
         pull_policy: IfNotPresent
       ## Domain name for content integration. The value must be the same as initialize_configuration.ic_domain_creation.domain_name.
@@ -952,7 +957,7 @@ spec:
         ## Image name for CASE init job container.
         repository: cp.icr.io/cp/cp4a/baw/workflow-server-case-initialization
         ## Image tag for CASE init job container.
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
         ## Pull policy for CASE init job container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
         pull_policy: IfNotPresent
 
@@ -965,7 +970,7 @@ spec:
       tos_list:
       ## The tos_list is a list. You can deploy multiple Target Object Stores.
       ## For each Target Object Store, the object_store_name value must be the same as the oc_cpe_obj_store_symb_name value of one of the object stores defined in initialize_configuration.ic_obj_store_creation.object_stores.
-      - object_store_name: "TOS"        
+      - object_store_name: "TOS"
         ## Connection point name for Target Object Store.
         ## See initialize_configuration.ic_obj_store_creation.object_stores[x].oc_cpe_obj_store_workflow_pe_conn_point_name.
         ## If oc_cpe_obj_store_workflow_pe_conn_point_name is not specified explicitly, the default value is pe_conn_<TOS_OS_DB_NAME>.
@@ -982,17 +987,17 @@ spec:
       ## This parameter must be set to the same value as the Business Automation Navigator pvc_for_icn_pluginstore parameter.
       ## If navigator_configuration.datavolume.existing_pvc_for_icn_pluginstore is not specified explicitly, the default value is icn-pluginstore.
       network_shared_directory_pvc: "{{ navigator_configuration.datavolume.existing_pvc_for_icn_pluginstore.name | default('icn-pluginstore', true) }}"
-      
+
       ## Custom package names for installing custom packages, where the value format is similar to package1.zip, package2.zip.
       custom_package_names: ""
-      
+
       ## Custom extension names for installing custom packages, where the value format is similar to extension1.zip, extension2.zip.
       custom_extension_names: ""
-      
+
       ## Number of seconds before a newly added or modified asset will take effect in the Case Client. The value must be an integer, e.g. "100."
       ## The default value will be used if it is not set.
       cpe_metadata_cache_time_to_live: ""
-      
+
       ## JVM options separated with spaces for case init job, for example: -Dtest1=test -Dtest2=test2.
       jvm_customize_options: ""
 
@@ -1054,7 +1059,7 @@ spec:
       port: "443"
       ## App Engine admin secret name
       admin_secret_name: ""
-      ## App Engine context root. 
+      ## App Engine context root.
       ## The application default context root will be /{{ meta.name}}-{{ application engine instance name }}-aae
       ## Please adjust this value according to the App Engine instance you selected. Don't miss the slash in front of value
       context_root: ""
@@ -1229,7 +1234,7 @@ spec:
         user_agent_keyword_allow_list_for_old_restapi_csrf_check: "java,wink client,httpclient,curl,jersey,httpurlconnection"
         ## Whether to validate the cookie "XSRF-TOKEN" against incoming REST API requests (POST/PUT/DELETE) with the path pattern "/rest/bpm/wle/v1/*". The value must be "true" or "false".
         check_xsrf_for_old_restapi: "true"
-      
+
       ## Content security policy additional origins. E.g ["https://hostname1","https://hostname2"]
       content_security_policy_additional_origins: []
       ## Content security policy additional directive for default-src , e.g. ["https://hostname1","https://hostname2"]
@@ -1250,7 +1255,7 @@ spec:
       content_security_policy_additional_font_src: []
       ## Content security policy additional directive for style-src, e.g. ["https://hostname1","https://hostname2"]
       content_security_policy_additional_style_src: []
-      
+
     ## federation config
     federation_config:
       workflow_server:
@@ -1285,7 +1290,7 @@ spec:
     ##    <server>
     ##      <!-- custom propeties here -->
     ##    </server>
-    ##  </properties> 
+    ##  </properties>
     ## kubectl create secret generic wfs-custom-xml-secret --from-file=sensitiveCustomConfig=./custom.xml
     ## The liberty_custom_xml property is also used for Workflow Server customization. Ensure the configuration value exists either in liberty_custom_xml or custom_xml_secret_name.
     ## Do not set the configuration value in both places
@@ -1360,26 +1365,26 @@ spec:
     ## For more information, please refer to https://www.nginx.com/blog/tuning-nginx/#keepalive_requests and https://nginx.org/en/docs/http/ngx_http_proxy_module.html.
     #zen_performance:
       # Optional: the number of idle keepalive connections to an upstream server that remain open for each worker process. The default vaue is 512.
-      #keepalive: 
+      #keepalive:
       # Optional: how long an idle keepalive connection remains open. The default value is 30s.
       #keepalive_timeout:
       # Optional: the number of requests a client can make over a single keepalive connection. The default is 500.
-      #keepalive_requests: 
+      #keepalive_requests:
       # Optional: sets the size of the buffer used for reading the first part of the response received from the proxied server. The default value is 256k.
-      #proxy_buffer_size: 
+      #proxy_buffer_size:
       # Optional: sets the number and size of the buffers used for reading a response from the proxied server, for a single connection. The default value is 8 512k.
-      # proxy_buffers: 
-      # Optional: when buffering of responses from the proxied server is enabled, limits the total size of buffers that can be busy sending a response to the client while the response is not yet fully read. 
+      # proxy_buffers:
+      # Optional: when buffering of responses from the proxied server is enabled, limits the total size of buffers that can be busy sending a response to the client while the response is not yet fully read.
       # The default value is 512k.
-      #proxy_busy_buffers_size: 
+      #proxy_busy_buffers_size:
       # Optional: Defines a timeout for establishing a connection with a proxied server. The default value is 300s.
-      #proxy_connect_timeout: 
+      #proxy_connect_timeout:
       # Optional: Sets a timeout for transmitting a request to the proxied server. The timeout is set only between two successive write operations, not for the transmission of the whole request.
       # If the proxied server does not receive anything within this time, the connection is closed. The default value is 300s.
-      #proxy_send_timeout: 
+      #proxy_send_timeout:
       # Optional: Defines a timeout for reading a response from the proxied server. The timeout is set only between two successive read operations, not for the transmission of the whole response.
       # If the proxied server does not transmit anything within this time, the connection is closed. The default value is 300s.
-      #proxy_read_timeout: 
+      #proxy_read_timeout:
     ## Before you can use Kafka services in your workflow automations, you must enable the Kafka services capability.
     ## To enable Kafka, add kafka to sc_optional_components in the ICP4A Cluster custom resource.
     ## If you do not want to enable Kafka services on all of your runtime instances, you need to disable it on those instances by setting kafka_services.enable to false.
@@ -1408,7 +1413,7 @@ spec:
       image:
         repository: cp.icr.io/cp/cp4a/baw/bui-task-prioritization
         ## Image tag for Intelligent Task Prioritization container
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
         pull_policy: IfNotPresent
       ## Resource configuration
       resources:
@@ -1481,7 +1486,7 @@ spec:
           initial_delay_seconds: 40
       image:
         repository: cp.icr.io/cp/cp4a/baw/workforce-insights
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
         pull_policy: IfNotPresent
       ## Resource configuration
       resources:
@@ -1543,9 +1548,9 @@ spec:
   ########################################################################
   navigator_configuration:
 
-    ## Enable/disable basic auth. 
+    ## Enable/disable basic auth.
     ## From 22.0.2 this by default is true to use jaaslogin module
-    ## Set this to false let FNCM component to use basic auth 
+    ## Set this to false let FNCM component to use basic auth
     # disable_basic_auth: true
 
     ## Navigator secret that contains user credentials for LDAP and database
@@ -1564,7 +1569,7 @@ spec:
 
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: "24.0.0"
+      tag: "24.0.0-IF001"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -1657,7 +1662,7 @@ spec:
       ## Each WalkMe Editor account has a unique snippet code that can be accessed inside the Editor.
       #  walkme_url: https://cdn.walkme.com/users/4e7c687193414395aa0411837a9eee4b/test/walkme_4e7c687193414395aa0411837a9eee4b_https.js
 
-      # This section is optional and it takes a list of configmaps. 
+      # This section is optional and it takes a list of configmaps.
       # A configmap can hold files or environment data but it cannot a mix of both.
       # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
       # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
@@ -1680,23 +1685,23 @@ spec:
 
     ## Persistent Volume Claims for Navigator.  The Operator will create the PVC using the names below by default.
     datavolume:
-      existing_pvc_for_icn_cfgstore: 
+      existing_pvc_for_icn_cfgstore:
         name: "icn-cfgstore"
         size: 1Gi
-      existing_pvc_for_icn_logstore: 
+      existing_pvc_for_icn_logstore:
         name: "icn-logstore"
         size: 1Gi
-      existing_pvc_for_icn_pluginstore: 
+      existing_pvc_for_icn_pluginstore:
         name: "icn-pluginstore"
         size: 1Gi
-      existing_pvc_for_icnvw_cachestore: 
+      existing_pvc_for_icnvw_cachestore:
         name: "icn-vw-cachestore"
         size: 1Gi
-      existing_pvc_for_icnvw_logstore: 
+      existing_pvc_for_icnvw_logstore:
         name: "icn-vw-logstore"
         size: 1Gi
-      existing_pvc_for_icn_aspera: 
-        name: "icn-asperastore" 
+      existing_pvc_for_icn_aspera:
+        name: "icn-asperastore"
         size: 1Gi
 
     ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
@@ -1785,7 +1790,7 @@ spec:
     # Optional performance tuning for Zen NGINX server.
     # For more information, please refer to https://www.nginx.com/blog/tuning-nginx/#keepalive_requests and https://nginx.org/en/docs/http/ngx_http_proxy_module.html.
     # This can be overwritten by componenent level definition for example ecm_configuration.graphql.zen_performance.
-    # For CPE we allow more granular setting like below and they take precedence over ecm_configuration.cpe.zen_performance. 
+    # For CPE we allow more granular setting like below and they take precedence over ecm_configuration.cpe.zen_performance.
     # cpe.zen_performance.acce
     # cpe.zen_performance.fncews40mtom
     # cpe.zen_performance.pewsi
@@ -1798,12 +1803,12 @@ spec:
       proxy_send_timeout: 300
       # Timeout for reading a response from the proxy server. The timeout is set only between two successive read operations, not for the transmission of the whole response. If the proxy server does not transmit anything within this time, the connection is closed. This parameter is optional. The default value is 300s.
       proxy_read_timeout: 300
-      
-    ## Enable/disable basic auth. 
+
+    ## Enable/disable basic auth.
     ## From 22.0.2 this by default is true to use jaaslogin module
-    ## Set this to false let FNCM component to use basic auth 
+    ## Set this to false let FNCM component to use basic auth
     # disable_basic_auth: true
-    
+
     ####################################
     ## Start of configuration for CPE ##
     ####################################
@@ -1820,7 +1825,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1841,7 +1846,7 @@ spec:
         # Defines behavior for changing ownership and permission of the volume before being exposed inside a Pod. This field has two possible values (Always,OnRootMismatch)
         # For example fs_groupchangepolicy: "OnRootMismatch"
         fs_groupchangepolicy:
-      
+
       ## The initial resources (CPU, memory) requests and limits.  If more resources are needed,
       ## make the changes here to meet your requirement.
       resources:
@@ -1891,7 +1896,7 @@ spec:
         # The license must be set to "accept" in order for the component to install.  This is the default value.
         license: accept
 
-        # This section is optional and it takes a list of configmaps. 
+        # This section is optional and it takes a list of configmaps.
         # A configmap can hold files or environment data but it cannot a mix of both.
         # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
         # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
@@ -1918,25 +1923,25 @@ spec:
       ## Persistent Volume Claims for CPE.  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
-        existing_pvc_for_cpe_cfgstore: 
+        existing_pvc_for_cpe_cfgstore:
           name: "cpe-cfgstore"
           size: 1Gi
-        existing_pvc_for_cpe_logstore: 
+        existing_pvc_for_cpe_logstore:
           name: "cpe-logstore"
           size: 1Gi
-        existing_pvc_for_cpe_filestore: 
+        existing_pvc_for_cpe_filestore:
           name: "cpe-filestore"
           size: 1Gi
-        existing_pvc_for_cpe_icmrulestore: 
+        existing_pvc_for_cpe_icmrulestore:
           name: "cpe-icmrulesstore"
           size: 1Gi
-        existing_pvc_for_cpe_textextstore: 
+        existing_pvc_for_cpe_textextstore:
           name: "cpe-textextstore"
           size: 3Gi
-        existing_pvc_for_cpe_bootstrapstore: 
+        existing_pvc_for_cpe_bootstrapstore:
           name: "cpe-bootstrapstore"
           size: 1Gi
-        existing_pvc_for_cpe_fnlogstore: 
+        existing_pvc_for_cpe_fnlogstore:
           name: "cpe-fnlogstore"
           size: 1Gi
 
@@ -1959,7 +1964,7 @@ spec:
       #aws_iam:
       #  aws_iam_enable: true
       #  audience: "sts.amazonaws.com"
-      #  expirationSeconds: 7200 
+      #  expirationSeconds: 7200
     #####################################
     ## Start of configuration for CMIS ##
     #####################################
@@ -1976,7 +1981,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -2065,7 +2070,7 @@ spec:
         # The license must be set to "accept" in order for the component to install.  This is the default value.
         license: accept
 
-        # This section is optional and it takes a list of configmaps. 
+        # This section is optional and it takes a list of configmaps.
         # A configmap can hold files or environment data but it cannot a mix of both.
         # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
         # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
@@ -2088,10 +2093,10 @@ spec:
       ## Persistent Volume Claims for CMIS.  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
-        existing_pvc_for_cmis_cfgstore: 
+        existing_pvc_for_cmis_cfgstore:
           name: "cmis-cfgstore"
           size: 1Gi
-        existing_pvc_for_cmis_logstore: 
+        existing_pvc_for_cmis_logstore:
           name: "cmis-logstore"
           size: 1Gi
 
@@ -2132,7 +2137,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -2186,7 +2191,7 @@ spec:
 
         enable_graph_iql: false
 
-        # This section is optional and it takes a list of configmaps. 
+        # This section is optional and it takes a list of configmaps.
         # A configmap can hold files or environment data but it cannot a mix of both.
         # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
         # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
@@ -2209,10 +2214,10 @@ spec:
       ## Persistent Volume Claims for GraphQL.  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
-        existing_pvc_for_graphql_cfgstore: 
+        existing_pvc_for_graphql_cfgstore:
           name: "graphql-cfgstore"
           size: 1Gi
-        existing_pvc_for_graphql_logstore: 
+        existing_pvc_for_graphql_logstore:
           name: "graphql-logstore"
           size: 1Gi
 
@@ -2281,7 +2286,7 @@ spec:
           dc_os_xa_datasource_name: "FNDSDOCSXA"
         ## Admin user group
         oc_cpe_obj_store_admin_user_groups:
-        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values. 
+        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values.
         ## An array of users with access to the object store
         oc_cpe_obj_store_basic_user_groups:
         ## Specify whether to enable add-ons
@@ -2329,7 +2334,7 @@ spec:
           dc_os_xa_datasource_name: "FNDSDOSXA"
         ## Admin user group
         oc_cpe_obj_store_admin_user_groups:
-        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values. 
+        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values.
         ## An array of users with access to the object store
         oc_cpe_obj_store_basic_user_groups:
         ## Specify whether to enable add-ons
@@ -2377,7 +2382,7 @@ spec:
           dc_os_xa_datasource_name: "FNDSTOSXA"
         ## Admin user group
         oc_cpe_obj_store_admin_user_groups:
-        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values. 
+        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values.
         ## An array of users with access to the object store
         oc_cpe_obj_store_basic_user_groups:
         ## Specify whether to enable add-ons
@@ -2408,7 +2413,7 @@ spec:
         ## Specify the number of the workflow region
         oc_cpe_obj_store_workflow_region_number: 3
         ## Specify a table space for the workflow data.
-        oc_cpe_obj_store_workflow_data_tbl_space: "<Required>" 
+        oc_cpe_obj_store_workflow_data_tbl_space: "<Required>"
         ## Optionally specify a table space for the workflow index.
         oc_cpe_obj_store_workflow_index_tbl_space: ""
         ## Optionally specify a table space for the workflow blob.

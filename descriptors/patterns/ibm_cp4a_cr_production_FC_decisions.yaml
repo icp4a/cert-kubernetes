@@ -70,7 +70,7 @@ spec:
     sc_hugepages:
       enabled: false
       type: ""
-      value: "" 
+      value: ""
 
     ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
     ## based on input from the user.
@@ -89,15 +89,20 @@ spec:
     ## Enable/disable FIPS mode for the deployment (default value is "false")
     ## Note: If set as "true", in order to complete enablement of FIPS for CP4BA, please refer to "FIPS wall" configuration in IBM documentation.
     enable_fips: false
-    
-    ## Optional Define how IP families (IPv4 and IPv6) are handled for the Service. 
-    ## This setting becomes particularly relevant in dual-stack environments where both IPv4 and IPv6 are enabled. 
-    ## Here are the options you can specify for ipFamilyPolicy: SingleStack , PreferDualStack , RequireDualStack
-    sc_service_ip_family_policy: 
 
-    ## Optional Specify which IP families (IPv4 or IPv6) a Service should use. 
+    ## Optional Define how IP families (IPv4 and IPv6) are handled for the Service.
+    ## This setting becomes particularly relevant in dual-stack environments where both IPv4 and IPv6 are enabled.
+    ## Here are the options you can specify for ipFamilyPolicy: SingleStack , PreferDualStack , RequireDualStack
+    sc_service_ip_family_policy:
+
+    ## Optional Specify which IP families (IPv4 or IPv6) a Service should use.
     ## This parameter works in conjunction with the ipFamilyPolicy to define the IP addressing behaviors for the Service.
-    sc_service_ip_families: 
+    sc_service_ip_families:
+
+    ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
+    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
+    sc_is_multiple_az: false
 
   ## The beginning section of database configuration for CP4A
   datasource_configuration:
@@ -172,7 +177,7 @@ spec:
       ssl_secret_name: "<Required>"
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for a GCD database, set this parameter to true
-      # dc_use_postgres: false      
+      # dc_use_postgres: false
 
   ########################################################################
   ########     IBM Operational Decision Manager Configuration     ########
@@ -193,7 +198,7 @@ spec:
 
     image:
       # Specify to override the tag docker images in case of an interim fix.
-      tag: "24.0.0"
+      tag: "24.0.0-IF001"
       # Specify the pull policy for the Docker images. See Kuberntes documentation for more inforations.
       # Possible values : IfNotPresent, Always, Never
       pullPolicy: IfNotPresent
@@ -223,13 +228,13 @@ spec:
           # Specify the requested CPU.
           cpu: 500m
           # Specify the requested memory.
-          memory: 512Mi
+          memory: 2Gi
           ephemeral-storage: 50Mi
         limits:
           # Specify the CPU limit.
-          cpu: 2
+          cpu: 1
           # Specify the memory limit.
-          memory: 4096Mi
+          memory: 2Gi
           ephemeral-storage: 500Mi
       # Specify the node selector term match expression list to manage node affinity.
       nodeAffinity:
@@ -237,7 +242,7 @@ spec:
       autoscaling:
         enabled: false
         # Specify the minimum number of replicas.
-        minReplicas: 2
+        minReplicas: 1
         # Specify the maximum number of replicas.
         maxReplicas: 3
         # Specify the target average utilization (in percentage of cpu utilization).
@@ -267,13 +272,13 @@ spec:
           # Specify the requested CPU.
           cpu: 500m
           # Specify the requested memory.
-          memory: 512Mi
+          memory: 1Gi
           ephemeral-storage: 50Mi
         limits:
           # Specify the CPU limit.
-          cpu: 2
+          cpu: 500m
           # Specify the memory limit.
-          memory: 1024Mi
+          memory: 1Gi
           ephemeral-storage: 500Mi
       # Specify the node selector term match expression list to manage node affinity.
       nodeAffinity:
@@ -314,15 +319,15 @@ spec:
       resources:
         requests:
           # Specify the requested CPU.
-          cpu: 500m
+          cpu: 1
           # Specify the requested memory.
-          memory: 1500Mi
+          memory: 4Gi
           ephemeral-storage: 50Mi
         limits:
           # Specify the CPU limit.
-          cpu: 2
+          cpu: 1
           # Specify the memory limit.
-          memory: 4096Mi
+          memory: 4Gi
           ephemeral-storage: 500Mi
       # Specify the node selector term match expression list to manage node affinity.
       nodeAffinity:
@@ -330,7 +335,7 @@ spec:
       autoscaling:
         enabled: false
         # Specify the minimum number of replicas.
-        minReplicas: 2
+        minReplicas: 1
         # Specify the maximum number of replicas.
         maxReplicas: 3
         # Specify the target average utilization (in percentage of cpu utilization).
@@ -361,13 +366,13 @@ spec:
           # Specify the requested CPU.
           cpu: 500m
           # Specify the requested memory.
-          memory: 512Mi
+          memory: 2Gi
           ephemeral-storage: 50Mi
         limits:
           # Specify the CPU limit.
-          cpu: 2
+          cpu: 500m
           # Specify the memory limit.
-          memory: 4096Mi
+          memory: 2Gi
           ephemeral-storage: 500Mi
       # Specify the node selector term match expression list to manage node affinity.
       nodeAffinity:
@@ -375,7 +380,7 @@ spec:
       autoscaling:
         enabled: false
         # Specify the minimum number of replicas.
-        minReplicas: 2
+        minReplicas: 1
         # Specify the maximum number of replicas.
         maxReplicas: 3
         # Specify the target average utilization (in percentage of cpu utilization).

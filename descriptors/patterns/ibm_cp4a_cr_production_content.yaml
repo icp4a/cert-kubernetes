@@ -151,6 +151,11 @@ spec:
       sc_fast_file_storage_classname: "<Required>"
       sc_block_storage_classname: "<Required>"
 
+    ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
+    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
+    sc_is_multiple_az: false
+
   ## The beginning section of LDAP configuration for CP4A
   ldap_configuration:
     ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory"

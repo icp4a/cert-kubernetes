@@ -1,0 +1,13 @@
+apiVersion: data-protection.isf.ibm.com/v1alpha1
+kind: BackupPolicy
+metadata:
+  name: cs-backup-policy
+spec:
+  backupStorageLocation: <storage_location>
+  provider: isf-backup-restore
+  retention:
+    number: 5
+    unit: days
+  schedule:
+    cron: '00 0  * * * '
+    timezone: America/New_York

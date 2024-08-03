@@ -90,7 +90,7 @@ spec:
     sc_deployment_license: "<Required>"
 
 
-    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or 
+    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or
     ## know the reason to change this value, please leave the default value.
     sc_deployment_context: "CP4A"
 
@@ -126,14 +126,14 @@ spec:
     sc_deployment_profile_size: "small"
 
     ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-    # sc_deployment_hostname_suffix: "{{ meta.namespace }}.<Required>" 
+    # sc_deployment_hostname_suffix: "{{ meta.namespace }}.<Required>"
 
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false
 
     ## For ROKS Ingress, provide TLS secret name for Ingress controller. If you are not using ROKS, comment out this line.
     sc_ingress_tls_secret_name: <Required>
-    
+
     ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
     ## the external service to the component's truststore.
     trusted_certificate_list: []
@@ -156,7 +156,13 @@ spec:
     ## Enable/disable FIPS mode for the deployment (default value is "false")
     ## Note: If set as "true", in order to complete enablement of FIPS for CP4BA, please refer to "FIPS wall" configuration in IBM documentation.
     enable_fips: false
-    
+
+    ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
+    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
+    sc_is_multiple_az: false
+
+
   ## The beginning section of LDAP configuration for CP4A
   ldap_configuration:
     ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory"
@@ -317,8 +323,8 @@ spec:
       # name: "<Required>"
       # ## Provide the database server port for BAStudio use
       # port: "<Required>"
-      # Provide the database connection URL if you don't provide database host, port and name. 
-      # jdbc_url: 
+      # Provide the database connection URL if you don't provide database host, port and name.
+      # jdbc_url:
       # ## Input your PostgreSQL JDBC jar files here. Like: postgresql-42.2.16.jar
       # jdbc_driver_files: <Required>
       # ## If you want to enable PostgreSQL Connection Fail-over, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
@@ -336,8 +342,8 @@ spec:
       # name: "<Required>"
       # ## Provide the database server port for BAStudio use
       # port: "<Required>"
-      # Provide the database connection URL if you don't provide database host, port and name. 
-      # jdbc_url: 
+      # Provide the database connection URL if you don't provide database host, port and name.
+      # jdbc_url:
       # ## Input your SQLServer JDBC jar files here. Like: mssql-jdbc-8.2.0.jre8.jar
       # jdbc_driver_files: <Required>
       # ## If you want to enable SQLServer Connection Fail-over, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
@@ -369,9 +375,9 @@ spec:
       # type: Opaque
       #-----------------------------------------------------------------------
       # Designate an existing LDAP user for the Playback Application Engine admin user.
-      # This user ID should be in the IBM Business Automation Navigator administrator role, as specified as appLoginUsername in the Navigator secret. 
+      # This user ID should be in the IBM Business Automation Navigator administrator role, as specified as appLoginUsername in the Navigator secret.
       # Required only when User Management Service (UMS) is configured: This user should also belong to UMS Teams admin group or the UMS Teams Administrators team.
-      # If not, follow the instructions in "Completing post-deployment tasks for Business Automation Studio and Application Engine" in the IBM Documentation to add it to the Navigator Administrator role and UMS team server admin group. 
+      # If not, follow the instructions in "Completing post-deployment tasks for Business Automation Studio and Application Engine" in the IBM Documentation to add it to the Navigator Administrator role and UMS team server admin group.
       admin_user: "<Required>"
       database:
         #-----------------------------------------------------------------------
@@ -437,7 +443,7 @@ spec:
         enable_ssl: true
         db_cert_secret_name: <Required>
       #-----------------------------------------------------------------------
-      # If you want better HA experience. 
+      # If you want better HA experience.
       # - Set the session.use_external_store to true
       # - Fill in your redis server information
       #-----------------------------------------------------------------------
@@ -454,7 +460,7 @@ spec:
         # If you are using Redis V6 and above with username fill in this field.
         # Otherwise leave this field as empty
         username:
-        
+
   ########################################################################
   ########      IBM Business Automation Insights configuration    ########
   ########################################################################
@@ -491,9 +497,9 @@ spec:
     # type: Opaque
     #-----------------------------------------------------------------------
     # Designate an existing LDAP user for the Application Engine admin user.
-    # This user ID should be in the IBM Business Automation Navigator administrator role, as specified as appLoginUsername in the Navigator secret. 
+    # This user ID should be in the IBM Business Automation Navigator administrator role, as specified as appLoginUsername in the Navigator secret.
     # Required only when User Management Service (UMS) is configured: This user should also belong to UMS Teams admin group or the UMS Teams Administrators team.
-    # If not, follow the instructions in "Completing post-deployment tasks for Business Automation Studio and Application Engine" in the IBM Documentation to add it to the Navigator Administrator role and UMS team server admin group. 
+    # If not, follow the instructions in "Completing post-deployment tasks for Business Automation Studio and Application Engine" in the IBM Documentation to add it to the Navigator Administrator role and UMS team server admin group.
     admin_user: "<Required>"
     database:
       #-----------------------------------------------------------------------
@@ -565,7 +571,7 @@ spec:
       enable_ssl: true
       db_cert_secret_name: <Required>
     #-----------------------------------------------------------------------
-    # If you want better HA experience. 
+    # If you want better HA experience.
     # - Set the session.use_external_store to true
     # - Fill in your redis server information
     #-----------------------------------------------------------------------

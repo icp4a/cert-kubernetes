@@ -300,7 +300,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: cp4ba-fips-status
-  namespace: $cp4ba_namespace
+  namespace: "$cp4ba_namespace"
 data:
   all-fips-enabled: "$ALL_FIPS_ENABLED"
 EOF
@@ -582,14 +582,15 @@ function select_project(){
         create_project "$LICENSE_MANAGER_PROJECT"
         if [[ $? -eq 0 ]]; then
             success "Created project \"$LICENSE_MANAGER_PROJECT\" for IBM Licensing operator catalog."
+            printf "\n"
         fi
         sed "s/REPLACE_CATALOG_SOURCE_NAMESPACE/$CATALOG_NAMESPACE/g" ${OLM_CATALOG} > ${OLM_CATALOG_TMP}
         # replace all other catalogs with <CP4BA NS> namespaces 
         ${SED_COMMAND} "s|namespace: .*|namespace: \"$project_name\"|g" ${OLM_CATALOG_TMP}
         # replace openshift-marketplace for ibm-cert-manager-catalog with ibm-cert-manager
-        ${SED_COMMAND} "/name: ibm-cert-manager-catalog/{n;s/namespace: .*/namespace: ibm-cert-manager/;}" ${OLM_CATALOG_TMP}
+        ${SED_COMMAND} "/name: ibm-cert-manager-catalog/{n;s/namespace: .*/namespace: $CERT_MANAGER_PROJECT/;}" ${OLM_CATALOG_TMP}
         # replace openshift-marketplace for ibm-licensing-catalog with ibm-licensing
-        ${SED_COMMAND} "/name: ibm-licensing-catalog/{n;s/namespace: .*/namespace: ibm-licensing/;}" ${OLM_CATALOG_TMP}
+        ${SED_COMMAND} "/name: ibm-licensing-catalog/{n;s/namespace: .*/namespace: $LICENSE_MANAGER_PROJECT/;}" ${OLM_CATALOG_TMP}
     fi    
 }
 
@@ -642,14 +643,15 @@ function set_separate_operator_project(){
         create_project "$LICENSE_MANAGER_PROJECT"
         if [[ $? -eq 0 ]]; then
             success "Created project \"$LICENSE_MANAGER_PROJECT\" for IBM Licensing operator catalog."
+            printf "\n"
         fi
         sed "s/REPLACE_CATALOG_SOURCE_NAMESPACE/$CATALOG_NAMESPACE/g" ${OLM_CATALOG} > ${OLM_CATALOG_TMP}
         # replace all other catalogs with <CP4BA NS> namespaces 
         ${SED_COMMAND} "s|namespace: .*|namespace: \"$project_name_operator\"|g" ${OLM_CATALOG_TMP}
         # replace openshift-marketplace for ibm-cert-manager-catalog with ibm-cert-manager
-        ${SED_COMMAND} "/name: ibm-cert-manager-catalog/{n;s/namespace: .*/namespace: ibm-cert-manager/;}" ${OLM_CATALOG_TMP}
+        ${SED_COMMAND} "/name: ibm-cert-manager-catalog/{n;s/namespace: .*/namespace: $CERT_MANAGER_PROJECT/;}" ${OLM_CATALOG_TMP}
         # replace openshift-marketplace for ibm-licensing-catalog with ibm-licensing
-        ${SED_COMMAND} "/name: ibm-licensing-catalog/{n;s/namespace: .*/namespace: ibm-licensing/;}" ${OLM_CATALOG_TMP}
+        ${SED_COMMAND} "/name: ibm-licensing-catalog/{n;s/namespace: .*/namespace: $LICENSE_MANAGER_PROJECT/;}" ${OLM_CATALOG_TMP}
     fi
     project_name=$project_name_operator
 }
@@ -772,7 +774,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: ibm-cp4ba-common-config
-  namespace: $project_name_cs_service
+  namespace: "$project_name_cs_service"
 data:
   operators_namespace: "$project_name_operator"
   services_namespace: "$project_name_cs_service"
@@ -1454,7 +1456,7 @@ function prepare_olm_install() {
         echo "Found operator group"
         ${CLI_CMD} get og -n "${temp_project_name}"
     else
-      sed "s/REPLACE_NAMESPACE/$temp_project_name/g" ${OLM_OPT_GROUP} > ${OLM_OPT_GROUP_TMP}
+      sed "s/REPLACE_NAMESPACE/\"$temp_project_name\"/g" ${OLM_OPT_GROUP} > ${OLM_OPT_GROUP_TMP}
       ${CLI_CMD} apply -f ${OLM_OPT_GROUP_TMP}
       if [ $? -eq 0 ]
          then
@@ -1464,10 +1466,11 @@ function prepare_olm_install() {
        fi
     fi
 
-    sed "s/REPLACE_NAMESPACE/$temp_project_name/g" ${OLM_SUBSCRIPTION} > ${OLM_SUBSCRIPTION_TMP}
+    sed "s/REPLACE_NAMESPACE/\"$temp_project_name\"/g" ${OLM_SUBSCRIPTION} > ${OLM_SUBSCRIPTION_TMP}
 
     if [[ $PRIVATE_CATALOG == "Yes" ]]; then
-        sed -i "s/sourceNamespace: .*/sourceNamespace: $temp_project_name/g" ${OLM_SUBSCRIPTION_TMP}
+
+        ${SED_COMMAND} "s/sourceNamespace: .*/sourceNamespace: \"$temp_project_name\"/g" ${OLM_SUBSCRIPTION_TMP}
     fi
 
     if [[ "$RUNTIME_MODE" == "process-flow" || $RUNTIME_MODE == "process-flow-dev" ]]; then
@@ -2361,7 +2364,7 @@ function clean_up(){
 function check_airgap_mode(){
     printf "\n"
     # clear
-    if [ -z "$CP4BA_AUTO_AIGRAP_MODE" ]; then
+    if [ -z "$CP4BA_AUTO_AIRGAP_MODE" ]; then
         COLUMNS=12
         echo -e "\x1B[1mDo you wish setup your cluster for a online based CP4BA deployment or for a airgap/offline based CP4BA deployment : \x1B[0m"
 
@@ -2392,8 +2395,8 @@ function check_airgap_mode(){
             esac
         done
     else
-        AIRGAP_INSTALL=$CP4BA_AUTO_AIGRAP_MODE
-        echo -e "\x1B[1mDo you wish setup your cluster for a airgap/offline based CP4BA deployment :\x1B[0m $CP4BA_AUTO_AIGRAP_MODE"
+        AIRGAP_INSTALL=$CP4BA_AUTO_AIRGAP_MODE
+        echo -e "\x1B[1mDo you wish setup your cluster for a airgap/offline based CP4BA deployment :\x1B[0m $CP4BA_AUTO_AIRGAP_MODE"
     fi
 }
 

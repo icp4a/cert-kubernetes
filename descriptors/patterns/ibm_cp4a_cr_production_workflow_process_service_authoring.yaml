@@ -31,7 +31,7 @@ spec:
     sc_deployment_license: "<Required>"
 
 
-    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or 
+    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or
     ## know the reason to change this value, please leave the default value.
     sc_deployment_context: "CP4A"
 
@@ -57,7 +57,7 @@ spec:
     sc_deployment_profile_size: "small"
 
     ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-    # sc_deployment_hostname_suffix: "{{ meta.namespace }}.<Required>" 
+    # sc_deployment_hostname_suffix: "{{ meta.namespace }}.<Required>"
 
     ## CP4A patterns or capabilities to be deployed.  This CR represents the "workflow-process-service" pattern, which includes the following
     ## mandatory components: bas(Business Automation Studio) and optional components: bai
@@ -65,7 +65,7 @@ spec:
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
     ## The optional components are: bai,pfs. Please do not delete wfps_authoring, because it determines that this is an Authoring environment.
-    ## pfs will bring advanced full text search function to workplace. And the external workplace can be enabled only when pfs is enabled.       
+    ## pfs will bring advanced full text search function to workplace. And the external workplace can be enabled only when pfs is enabled.
     sc_optional_components: wfps_authoring
 
     ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
@@ -74,27 +74,27 @@ spec:
 
     sc_egress_configuration:
       ## Required. Enable or disable egress access to external systems.
-      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true". 
+      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true".
       ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
       sc_restricted_internet_access: true
       ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
       ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
       sc_api_namespace:
-      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## Default are 443,6443 for OCP and ROKS
       sc_api_port:
       ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
       ## Default is "openshift-dns" for OCP and ROKS
       sc_dns_namespace:
-      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## Default are 53,5353 for OCP and ROKS
       sc_dns_port:
 
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false
-    
+
     ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
     ## the external service to the component's truststore.
     trusted_certificate_list: []
@@ -109,11 +109,16 @@ spec:
       sc_fast_file_storage_classname: "<Required>"
       sc_block_storage_classname: "<Required>"
 
+    ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
+    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
+    sc_is_multiple_az: false
+
   ## The beginning section of LDAP configuration for CP4A
   ## LDAP configuration is not required. But if you want to login with LDAP user. Then you can
   ## 1. Uncomment following configurations and apply this file to make operator configure the LDAP settings for you. Or
   ## 2. Do post actions with https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/22.0.1?topic=tasks-business-automation-studio to add the LDAP connection manually after install
-  
+
   ldap_configuration:
     ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory"
     lc_selected_ldap_type: "<Required>"
@@ -210,7 +215,7 @@ spec:
     #   alternative_host:
     #   alternative_port:
     #   # ssl_enabled: <true/false>
-    #   # # After enabled the database SSL connection with true. Please save the TLS certificate used by database in a secret 
+    #   # # After enabled the database SSL connection with true. Please save the TLS certificate used by database in a secret
     #   # # and put the name here. The secret can be create with command:
     #   # # kubectl create secret generic <db-certificate-secret-name> --from-file=tls.crt=<certificate-pem-file-location>
     #   # certificate_secret_name: <db-certificate-secret-name>

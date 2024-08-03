@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cpfs-util-backup-pvc
+  namespace: <operator namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: cpfs-util-backup
+spec:
+  storageClassName: rook-cephfs
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  volumeMode: Filesystem

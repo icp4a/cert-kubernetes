@@ -21,28 +21,28 @@ metadata:
 spec:
   appVersion: 24.0.0
 
-  ## MUST exist, used to accept ibm license, valid value only can be "accept" 
+  ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
 
   #####################################################################################################################
-  ##  The contents of this template CR file reflect only the specific parameters and configuration 
-  ##  settings applicable to the represented ICP4A capability. 
-  ##   
-  ##  These values/configuration sections are to be used when manually assembling or updating the main 
-  ##  ICP4A CR that is being applied in order to install an ICP4A environment. 
-  ##  
-  ##  If you are in the process of preparing a new install of an ICP4A environment, 
-  ##  you should merge the required values and configuration sections from this file into the   
+  ##  The contents of this template CR file reflect only the specific parameters and configuration
+  ##  settings applicable to the represented ICP4A capability.
+  ##
+  ##  These values/configuration sections are to be used when manually assembling or updating the main
+  ##  ICP4A CR that is being applied in order to install an ICP4A environment.
+  ##
+  ##  If you are in the process of preparing a new install of an ICP4A environment,
+  ##  you should merge the required values and configuration sections from this file into the
   ##  starting point CR template: ibm_cp4a_cr_enterprise_foundation.yaml available in the
-  ##  same location as this template. 
-  ##  
+  ##  same location as this template.
+  ##
   ##  If you updating an existing ICP4A environment, you should merge the required values and configuration
-  ##  sections from this template in the main ICP4A CR file already applied in the environment.  
-  ##  
+  ##  sections from this template in the main ICP4A CR file already applied in the environment.
+  ##
   ######################################################################################################################
   shared_configuration:
 
-    ## CP4A patterns or capabilities to be deployed.  This CR represents the "application" pattern (aka Business Automation Manager), which includes the following 
+    ## CP4A patterns or capabilities to be deployed.  This CR represents the "application" pattern (aka Business Automation Manager), which includes the following
     ## mandatory components: ban(Business Automation Navigator), ums (User Management Service), app_engine( Application Engine) and optional components: app_designer, ae_data_persistence
     sc_deployment_patterns: application
 
@@ -52,27 +52,32 @@ spec:
 
     ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
-    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true" (or the parameter doesn't exist), then the initialization will occur.  
+    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true" (or the parameter doesn't exist), then the initialization will occur.
     ## However, if sc_content_initialization is set to "false", then the initialization will not occur (even with the "initialize_configuration" section defined)
     sc_content_initialization: false
 
+    ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
+    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
+    sc_is_multiple_az: false
+
     sc_egress_configuration:
       ## Required. Enable or disable egress access to external systems.
-      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true". 
+      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true".
       ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
       sc_restricted_internet_access: true
       ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
       ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
       sc_api_namespace:
-      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## Default are 443,6443 for OCP and ROKS
       sc_api_port:
       ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
       ## Default is "openshift-dns" for OCP and ROKS
       sc_dns_namespace:
-      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## Default are 53,5353 for OCP and ROKS
       sc_dns_port:
 
@@ -207,5 +212,4 @@ spec:
   #         ## The XA datasource
   #         dc_os_xa_datasource_name: "AEOSXA"
   #       oc_cpe_obj_store_admin_user_groups:
-  #       - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values.          
-
+  #       - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values.

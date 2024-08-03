@@ -1,0 +1,16 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cpfs-util-rolebinding
+  namespace: <services or tethered namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: cpfs-util-backup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cpfs-util-role
+  namespace: <services or tethered namespace> #should match value above
+subjects:
+- kind: ServiceAccount
+  name: cpfs-util-sa
+  namespace: <operator namespace>

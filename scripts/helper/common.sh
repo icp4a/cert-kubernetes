@@ -24,9 +24,11 @@ OPENSEARCH_MIGRATION_SCRIPT=${CUR_DIR}/cpfs/migration/es-os-migration-script.sh
 
 COMMON_SERVICES_SCRIPT_YQ_FOLDER=${CUR_DIR}/cpfs/yq
 ALL_NAMESPACE_NAME="openshift-operators"
+CP4BA_SERVICES_NS=""
+CP4BA_OPERATORS_NS=""
 
-PREREQUISITES_FOLDER=${CUR_DIR}/cp4ba-prerequisites
-PREREQUISITES_FOLDER_BAK=${CUR_DIR}/cp4ba-prerequisites-backup
+PREREQUISITES_FOLDER=${CUR_DIR}/cp4ba-prerequisites/project/$1
+PREREQUISITES_FOLDER_BAK=${CUR_DIR}/cp4ba-prerequisites-backup/project/$1
 PROPERTY_FILE_FOLDER=${PREREQUISITES_FOLDER}/propertyfile
 PROPERTY_FILE_FOLDER_BAK=${PREREQUISITES_FOLDER_BAK}/propertyfile
 CREATE_SECRET_SCRIPT_FILE=$PREREQUISITES_FOLDER/create_secret.sh
@@ -150,23 +152,23 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 # Release/Patch version for CP4BA
 # CP4BA_RELEASE_BASE is for fetch content/foundation operator pod, only need to change for major release.
 CP4BA_RELEASE_BASE="24.0.0"
-CP4BA_PATCH_VERSION="GA"
+CP4BA_PATCH_VERSION="IF001"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v24.0.0"
+CP4BA_CSV_VERSION="v24.0.1"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
 CP4BA_CHANNEL_VERSION="v24.0"
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.6.2"
+CS_OPERATOR_VERSION="v4.6.4"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
 CS_CHANNEL_VERSION="v4.6"
 # CERT_LICENSE_OPERATOR_VERSION is for checking IBM cert-manager/licensing operator upgrade status, need to update for each IFIX
-CERT_LICENSE_OPERATOR_VERSION="v4.2.4"
+CERT_LICENSE_OPERATOR_VERSION="v4.2.6"
 # CERT_LICENSE_CHANNEL_VERSION is for for IBM cert-manager/licensing script -c option, need to update for each IFIX
 CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
-CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-6-2"
+CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-6-4"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v5.1.4"
+ZEN_OPERATOR_VERSION="v5.1.6"
 # REQUIREDVER_BTS is for checking bts operator upgrade status before run removal_iaf.sh, need to update for each IFIX
 REQUIREDVER_BTS="3.33.1"
 # REQUIREDVER_POSTGRESQL is for checking postgresql operator upgrade status before run removal_iaf.sh, need to update for each IFIX
@@ -177,6 +179,7 @@ EVENTS_OPERATOR_VERSION="v5.0.1"
 
 CERT_MANAGER_PROJECT="ibm-cert-manager"
 LICENSE_MANAGER_PROJECT="ibm-licensing"
+DEDICATED_CS_PROJECT="cs-control"
 # Directory for upgrade operator and prerequisites
 UPGRADE_TEMP_FOLDER=${TEMP_FOLDER}/upgrade
 UPGRADE_PREREQUISITE_FOLDER=${UPGRADE_TEMP_FOLDER}/prerequisites
@@ -193,6 +196,16 @@ COMMON_SERVICES_CM_DEDICATE_FILE_NAME_UPDATE="common-service-maps-update.yaml"
 COMMON_SERVICES_CM_DEDICATE_FILE_NAME="common-service-maps.yaml"
 COMMON_SERVICES_CM_DEDICATE_FILE="${PARENT_DIR}/descriptors/${COMMON_SERVICES_CM_DEDICATE_FILE_NAME}"
 COMMON_SERVICES_CM_DEDICATE_FILE_UPDATE="${PARENT_DIR}/descriptors/${COMMON_SERVICES_CM_DEDICATE_FILE_NAME_UPDATE}"
+
+# set CLI_CMD var
+if which oc >/dev/null 2>&1; then
+    CLI_CMD=oc
+elif which kubectl >/dev/null 2>&1; then
+    CLI_CMD=kubectl
+else
+    echo -e  "\x1B[1;31mUnable to locate Kubernetes CLI or OpenShift CLI. You must install it to run this script.\x1B[0m" && \
+    exit 1
+fi
 
 function prop_upgrade_property_file() {
     grep "^${1}=" ${UPGRADE_DEPLOYMENT_PROPERTY_FILE}|cut -d'=' -f2
@@ -236,11 +249,11 @@ function prop_db_oracle_server_property_file() {
 
 
 function set_global_env_vars() {
-    readonly unameOut="$(uname -s)"
+    unameOut="$(uname -s)"
     case "${unameOut}" in
-        Linux*)     readonly machine="Linux";;
-        Darwin*)    readonly machine="Mac";;
-        *)          readonly machine="UNKNOWN:${unameOut}"
+        Linux*)     machine="Linux";;
+        Darwin*)    machine="Mac";;
+        *)          machine="UNKNOWN:${unameOut}"
     esac
 
     if [[ "$machine" == "Mac" ]]; then
@@ -340,7 +353,9 @@ function install_ibm_jre(){
             mkdir -p /opt/ibm/java
             tar -xzf $tmp_file --strip-components=1 -C /opt/ibm/java
             #  add keytool to system PATH.
-            echo -n "Add keytool to system environment variable PATH..."; sudo -s export PATH="/opt/ibm/java/jre/bin/:$PATH"; export PATH="/opt/ibm/java/jre/bin/:$PATH"; echo "PATH=$PATH:/opt/ibm/java/jre/bin/" >> ~/.bashrc; source ~/.bashrc;echo "done."
+            echo -n "Add keytool to system environment variable PATH..."; sudo -s export PATH="/opt/ibm/java/jre/bin/:$PATH"; export PATH="/opt/ibm/java/jre/bin/:$PATH"; echo "PATH=$PATH:/opt/ibm/java/jre/bin/" >> ~/.bashrc;echo "done."
+            info "IBM JRE has been installed and system enviroment variable PATH was configured. Please run command \"source ~/.bashrc\" before running the validate command again. Exiting this script."
+            exit 1
         fi
     elif [[ ${machine} = "Mac" ]]; then
         echo -n "IBM's Java JRE is not available for Mac OS X. Install valid JRE for Mac OS X manually refer to MacOS document"; echo "done.";

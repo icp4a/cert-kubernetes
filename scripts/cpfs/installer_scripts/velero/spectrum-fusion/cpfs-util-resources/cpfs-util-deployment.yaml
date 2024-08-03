@@ -1,0 +1,44 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: cpfs-util
+  namespace: <operator namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: cpfs-util-backup
+spec:
+  selector:
+    matchLabels:
+      foundationservices.cloudpak.ibm.com: cpfs-util-backup
+  template:
+    metadata:
+      name: cpfs-util
+      namespace: <operator namespace>
+      labels:
+        foundationservices.cloudpak.ibm.com: cpfs-util-backup
+    spec:
+        containers:
+        - command:
+          - sh
+          - -c
+          - sleep infinity
+          image: icr.io/cpopen/cpfs/cpfs-utils:4.6.0
+          imagePullPolicy: IfNotPresent
+          name: cpfs-util
+          resources:
+            limits:
+              cpu: 500m
+              ephemeral-storage: 512Mi
+              memory: 1024Mi
+            requests:
+              cpu: 200m
+              ephemeral-storage: 128Mi
+              memory: 512Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        schedulerName: default-scheduler
+        securityContext:
+          runAsNonRoot: true
+        serviceAccount: cpfs-util-sa
+        serviceAccountName: cpfs-util-sa
+        terminationGracePeriodSeconds: 30

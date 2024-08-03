@@ -20,28 +20,28 @@ metadata:
 spec:
   appVersion: 24.0.0
 
-  ## MUST exist, used to accept ibm license, valid value only can be "accept" 
+  ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
 
   #################################################################################################################
-  ##  The contents of this template CR file reflect only the specific parameters and configuration 
-  ##  settings applicable to the represented ICP4A capability. 
-  ##   
-  ##  These values/configuration sections are to be used when manually assembling or updating the main 
-  ##  ICP4A CR that is being applied in order to install an ICP4A environment. 
-  ##  
-  ##  If you are in the process of preparing a new install of an ICP4A environment, 
-  ##  you should merge the required values and configuration sections from this file into the   
+  ##  The contents of this template CR file reflect only the specific parameters and configuration
+  ##  settings applicable to the represented ICP4A capability.
+  ##
+  ##  These values/configuration sections are to be used when manually assembling or updating the main
+  ##  ICP4A CR that is being applied in order to install an ICP4A environment.
+  ##
+  ##  If you are in the process of preparing a new install of an ICP4A environment,
+  ##  you should merge the required values and configuration sections from this file into the
   ##  starting point CR template: ibm_cp4a_cr_enterprise_foundation.yaml available in the
-  ##  same location as this template. 
-  ##  
+  ##  same location as this template.
+  ##
   ##  If you updating an existing ICP4A environment, you should merge the required values and configuration
-  ##  sections from this template in the main ICP4A CR file already applied in the environment.  
-  ##  
+  ##  sections from this template in the main ICP4A CR file already applied in the environment.
+  ##
   ######################################################################################################################
-  
+
   shared_configuration:
-    
+
 
     ## CP4A patterns or capabilities to be deployed. This CR represents the "decisions_ads" pattern that brings ADS Designer and ADS Runtime.
     sc_deployment_patterns: decisions_ads
@@ -56,26 +56,31 @@ spec:
 
     sc_egress_configuration:
       ## Required. Enable or disable egress access to external systems.
-      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true". 
+      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true".
       ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
       sc_restricted_internet_access: true
       ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
       ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
       sc_api_namespace:
-      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## Default are 443,6443 for OCP and ROKS
       sc_api_port:
       ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
       ## Default is "openshift-dns" for OCP and ROKS
       sc_dns_namespace:
-      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## Default are 53,5353 for OCP and ROKS
       sc_dns_port:
-    
+
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false
+
+    ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
+    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
+    sc_is_multiple_az: false
 
 
   ########################################################################

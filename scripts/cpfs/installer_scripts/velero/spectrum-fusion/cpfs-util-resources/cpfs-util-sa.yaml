@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cpfs-util-sa
+  namespace: <operator namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: cpfs-util-backup

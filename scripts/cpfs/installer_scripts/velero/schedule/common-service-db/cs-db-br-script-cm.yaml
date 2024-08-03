@@ -24,15 +24,20 @@ data:
 
     MODE=$1
     CSDB_NAMESPACE=$2
+    CLUSTER_CR=common-service-db
 
     BACKUP_DIR=/cs-db/cs-db-backup
 
     function main {
         if [[ $MODE == "backup" ]]; then
+            save_log "logs" "backup_log"
+            trap cleanup_log EXIT
             info "Mode set to backup, beginning backup process."
             backup
             success "Backup completed successfully."
         elif [[ $MODE == "restore" ]]; then
+            save_log "logs" "restore_log"
+            trap cleanup_log EXIT
             info "Mode is set to restore, beginning restore process."
             restore
             success "Restore completed successfully."
@@ -63,6 +68,7 @@ data:
     
     function restore {
 
+        wait_for_cluster_cr
         CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` 
         oc exec $CNPG_PRIMARY_POD -n $CSDB_NAMESPACE -- mkdir -p /run/cs-db_backup
         oc cp $BACKUP_DIR/database/cs-db_cloudpak_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_cloudpak_backup.dump
@@ -111,6 +117,60 @@ data:
             fi
         else
             error "Job $job_name not present."
+        fi
+    }
+
+    function wait_for_cluster_cr {
+        info "Waiting for EDB Cluster CR $CLUSTER_CR to complete in namespace $CSDB_NAMESPACE."
+        cluster_cr_exists=$(oc get clusters.postgresql.k8s.enterprisedb.io $CLUSTER_CR -n $CSDB_NAMESPACE --no-headers || echo fail)
+        if [[ $cluster_cr_exists != "fail" ]]; then
+            completed=$(oc get clusters.postgresql.k8s.enterprisedb.io $CLUSTER_CR -n $CSDB_NAMESPACE -o=jsonpath='{.status.phase}')
+            retry_count=40
+            while [[ $completed != "Cluster in healthy state" ]] && [[ $retry_count > 0 ]]
+            do
+                info "Wait for cluster $CLUSTER_CR to complete. Try again in 15s."
+                sleep 15
+                completed=$(oc get clusters.postgresql.k8s.enterprisedb.io $CLUSTER_CR -n $CSDB_NAMESPACE -o=jsonpath='{.status.phase}')
+                retry_count=$retry_count-1
+            done
+
+            if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
+                error "Timed out waiting for cluster $CLUSTER_CR."
+            else
+                info "EDB cluster $CLUSTER_CR ready."
+            fi
+        else
+            error "EDB cluster $CLUSTER_CR not present."
+        fi
+    }
+
+    function save_log(){
+        local LOG_DIR="$BACKUP_DIR/$1"
+        LOG_FILE="$LOG_DIR/$2_$(date +'%Y%m%d%H%M%S').log"
+
+        if [[ ! -d $LOG_DIR ]]; then
+            mkdir -p "$LOG_DIR"
+        fi
+
+        # Create a named pipe
+        PIPE=$(mktemp -u)
+        mkfifo "$PIPE"
+
+        # Tee the output to both the log file and the terminal
+        tee "$LOG_FILE" < "$PIPE" &
+
+        # Redirect stdout and stderr to the named pipe
+        exec > "$PIPE" 2>&1
+
+        # Remove the named pipe
+        rm "$PIPE"
+    }
+
+    function cleanup_log() {
+        # Check if the log file already exists
+        if [[ -e $LOG_FILE ]]; then
+            # Remove ANSI escape sequences from log file
+            sed -E 's/\x1B\[[0-9;]+[A-Za-z]//g' "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
         fi
     }
 

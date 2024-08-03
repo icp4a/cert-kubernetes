@@ -349,17 +349,17 @@ data:
                 extensions=$(echo $extensions | tr "," " ")
                 echo $extensions
                 
-                cat <<< $extensions > /zen4/extensions/extensions.txt
+                cat <<< $extensions > /user-home/extensions.txt
                 success "Extensions captured for backup:"
-                cat /zen4/extensions/extensions.txt
+                cat /user-home/extensions.txt
             else
                 info "No extensions found in namespace $ZEN_NAMESPACE other than defaults, exiting."
             fi
         fi
         
         if [[ $BACKUP == "false" ]]; then
-            if [[ -f /zen4/extensions/extensions.txt ]]; then
-                extensions=$(cat /zen4/extensions/extensions.txt)
+            if [[ -f /user-home/extensions.txt ]]; then
+                extensions=$(cat /user-home/extensions.txt)
                 echo $extensions
                 extensions=$(echo $extensions | tr " " ",")
                 info "Extensions to cleanup in namespace $ZEN_NAMESPACE: $extensions"
@@ -373,9 +373,11 @@ data:
                     warning "The list of extensions provided returned an empty ID list from the database. These extensions may not be present in this database."
                 else
                     info "List of extension IDs populated, continuing with deletion."
+                    id_list=${id_list//\//%2F}
+                    info "id_list with / replaced: $id_list"
 
                     # Delete each extension using the ID
-                    # curl -H 'secret: <broker-secret>' -ks -X DELETE https://zen-core-api-svc:4444//v1/internal/extensions/{source_id}
+                    # curl -H 'secret: <broker-secret>' -ks -X DELETE https://zen-core-api-svc:4444/v1/internal/extensions/{source_id}
                     for id in $id_list; do
                         info "Deleting extension with ID $id."
                         curl -H "secret: ${broker_secret}" -ks -X DELETE https://zen-core-api-svc:4444/v1/internal/extensions/{$id}
@@ -384,7 +386,7 @@ data:
                     success "Zen extension cleanup complete."
                 fi
             else
-                info "File /zen4/extensions/extensions.txt not found, skipping zenextension cleanup."
+                info "File /user-home/extensions.txt not found, skipping zenextension cleanup."
             fi
         fi
     }

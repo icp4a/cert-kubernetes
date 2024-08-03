@@ -49,7 +49,7 @@ spec:
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
     ## The optional components are: bai,elasticsearch,kafka
     ## To enable Kafka services in your workflow automations, add kafka to sc_optional_components.
-    sc_optional_components: 
+    sc_optional_components:
 
     ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
     ## This secret is also used by Workflow and BAStudio to store AES encryption key.
@@ -57,7 +57,7 @@ spec:
 
     ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
-    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true" (or the parameter doesn't exist), then the initialization will occur.  
+    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true" (or the parameter doesn't exist), then the initialization will occur.
     ## However, if sc_content_initialization is set to "false", then the initialization will not occur (even with the "initialize_configuration" section defined)
     ## For Workflow and Workstreams, by default sc_content_initialization is set to "true" with "initialize_configuration"section filled.
     ## If you already initialized content or want to upgrade, please set sc_content_initialization to "false" before you apply the CR.
@@ -65,26 +65,32 @@ spec:
 
     sc_egress_configuration:
       ## Required. Enable or disable egress access to external systems.
-      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true". 
+      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true".
       ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
       sc_restricted_internet_access: true
       ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
       ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
       sc_api_namespace:
-      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## Default are 443,6443 for OCP and ROKS
       sc_api_port:
       ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
       ## Default is "openshift-dns" for OCP and ROKS
       sc_dns_namespace:
-      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## Default are 53,5353 for OCP and ROKS
       sc_dns_port:
-    
+
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false
+
+    ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
+    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
+    sc_is_multiple_az: false
+
 
   ## The beginning section of database configuration for CP4A
   datasource_configuration:
@@ -280,11 +286,11 @@ spec:
     ## The database configuration for Workflow Server
     database:
       ##Whether to use EDB. If you set it to true, just set db_cert_secret_name, type, server_name, database_name, port and secret_name as "", and set enable_ssl to true.
-      dc_use_postgres: false         
+      dc_use_postgres: false
       ## Whether to enable Secure Sockets Layer (SSL) support for the Workflow Server database connection.
       enable_ssl: true
       ## Secret name for storing the database TLS certificate when an SSL connection is enabled, if it's client authentication for PostgreSQL DB,
-      ## The secret will store the database client key and client certificate and ca certification. 
+      ## The secret will store the database client key and client certificate and ca certification.
       ## Required only when enable_ssl is true. If enable_ssl is false, comment out this line.
       db_cert_secret_name: "<Required>"
       ## Workflow Server database type. Possible values are: db2, oracle, postgresql
@@ -311,15 +317,15 @@ spec:
       ## If the database type is PostgreSQL, this parameter is optional, you can choose inputs server_name, database_name, and port with or without this parameter here. If you do not need this parameter when PostgreSQL, remove or comment this parameter.
       ## In any other cases, remove or comment this parameter.
       jdbc_url: "<Required>"
-      ## Oracle and PostgreSQL database connection string. 
-      ## If the database type is Oracle, provide the Oracle database connection string. For example, jdbc:oracle:thin:@//<oracle_server>:1521/orcl. 
+      ## Oracle and PostgreSQL database connection string.
+      ## If the database type is Oracle, provide the Oracle database connection string. For example, jdbc:oracle:thin:@//<oracle_server>:1521/orcl.
       ## If the database type is PostgreSQL, this parameter is optional, you can choose inputs server_name, database_name, and port with or without this parameter here. If you do not need this parameter when PostgreSQL, remove or comment this parameter.
       ## In any other cases, remove or comment this parameter.
       ## Whether to use custom JDBC drivers. set it as true if you don't want use embedded jdbc drivers and don't specify sc_drivers_url.
       use_custom_jdbc_drivers: false
       ## If use_custom_jdbc_drivers is set to true, input the name of the persistent volume claim (PVC) that binds to the persistent volume (PV) where the custom JDBC driver files are stored.
       ## If use_custom_jdbc_drivers is set to false, remove or comments this parameter.
-      custom_jdbc_pvc: "" 
+      custom_jdbc_pvc: ""
       hadr:
         ## Database standby host for high availability disaster recovery (HADR)
         ## To enable database HADR, configure both standby host and port.
@@ -346,7 +352,7 @@ spec:
       tos_list:
       ## The tos_list is a list. You can deploy multiple Target Object Stores.
       ## For each Target Object Store, the object_store_name value must be the same as the oc_cpe_obj_store_symb_name value of one of the object stores defined in initialize_configuration.ic_obj_store_creation.object_stores.
-      - object_store_name: "BAWINS1TOS" 
+      - object_store_name: "BAWINS1TOS"
      ## Set securityContext for BAW deployment to skip SELinux relabeling.
     security_context:
       ## This can take an array of key value pairs to assign SELinux labels to a Container, for example
@@ -356,8 +362,8 @@ spec:
       selinux_options:
       # Defines behavior for changing ownership and permission of the volume before being exposed inside a Pod. This field has two possible values (Always,OnRootMismatch)
       # For example fs_groupchangepolicy: "OnRootMismatch"
-      fs_groupchangepolicy:       
-      
+      fs_groupchangepolicy:
+
   ##################################################################################
   ########   IBM Business Automation Machine Learning Server configuration  ########
   ##################################################################################
@@ -395,7 +401,7 @@ spec:
           ## The XA datasource
           dc_os_xa_datasource_name: "BAWINS1DOCSXA"
         oc_cpe_obj_store_admin_user_groups:
-        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values.          
+        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values.
 
       ## Configuration for the design object store
       ## Display name for the design object store to create
@@ -410,7 +416,7 @@ spec:
           ## The XA datasource
           dc_os_xa_datasource_name: "BAWINS1DOSXA"
         oc_cpe_obj_store_admin_user_groups:
-        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values.          
+        - "<Required>" # user name and group name for object store admin, for example, "CEAdmin" or "P8Administrators".  This parameter accepts a list of values.
 
       ## Configuration for the target object store
       ## Display name for the target object store to create

@@ -32,6 +32,7 @@ map_to_cs_ns=
 master_ns=$1
 control_ns=
 cm_name="common-service-maps"
+control_ns=""
     
 function main() {
     msg "Conversion Script Version v1.0.0"
@@ -129,9 +130,9 @@ function prepare_cluster() {
     # reason for checking again instead of simply deleting the CR when checking
     # for LSR is to avoid deleting anything until the last possible moment.
     # This makes recovery from simple pre-requisite errors easier.
+    migrate_lic_cms $master_ns
     return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
     if [[ $return_value == "exists" ]]; then
-        migrate_lic_cms $master_ns $control_ns
         "${OC}" delete -n "${master_ns}" --ignore-not-found ibmlicensing instance
     fi
     return_value="reset"
@@ -158,8 +159,7 @@ function migrate_lic_cms() {
     title "Copying over Licensing Configmaps"
     msg "-----------------------------------------------------------------------"
     local namespace=$1
-    local controlNs=$2
-    POSSIBLE_CONFIGMAPS=("ibm-licensing-config"
+    local possible_cms=("ibm-licensing-config"
 "ibm-licensing-annotations"
 "ibm-licensing-products"
 "ibm-licensing-products-vpc-hour"
@@ -173,30 +173,16 @@ function migrate_lic_cms() {
 "ibm-licensing-services"
 )
 
-    for cm in ${POSSIBLE_CONFIGMAPS[@]}
-    do
-        return_value=$(${OC} get cm -n $namespace --ignore-not-found | (grep $cm || echo "fail") | awk '{print $1}')
-        if [[ $return_value != "fail" ]]; then
-            if [[ $return_value == $cm ]]; then
-                ${OC} get cm -n $namespace $cm -o yaml --ignore-not-found > tmp.yaml
-                #edit the file to change the namespace to controlNs
-                yq -i '.metadata.namespace = "'${controlNs}'"' tmp.yaml
+    local cm_list=$("${OC}" get cm -n $namespace "${possible_cms[@]}" -o yaml --ignore-not-found)
+    if [ -z "$cm_list" ]; then
+        info "No licensing configmaps to migrate"
+        return
+    fi
 
-                # apply updated ConfigMap back to cluster
-                ${OC} apply -f tmp.yaml
-                if [[ $? -eq 0 ]]; then
-                    info "Licensing Services ConfigMap $cm copied from $namespace to $controlNs"
-                    # delete the original in cs namespace
-                    ${OC} delete cm -n $namespace $cm --ignore-not-found
-                else
-                    error "Failed to move Licensing Services ConfigMap $cm to $controlNs"
-                fi
-            fi
-        fi
-    done
-    
-    rm tmp.yaml -f
-    success "Licensing configmaps copied from $namespace to $control_ns"
+    local cleaned_cm_list=$(export_k8s_list_yaml "$cm_list")
+    echo "$cleaned_cm_list" | "${OC}" apply -n "$CONTROL_NS" -f -
+    success "Licensing configmaps copied from $namespace to $CONTROL_NS"
+    "${OC}" delete cm --ignore-not-found -n "${namespace}" "${possible_cms[@]}"
 }
 
 # scale back cs pod 

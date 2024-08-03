@@ -205,3 +205,37 @@ if [[ $zen_serviceid_apikey_secret_namespace_list != "none" ]]; then
 else
     echo "[INFO] Secret zen-serviceid-apikey-secret not present in namespace $zen_serviceid_namespace. Skipping..."
 fi
+
+#add labels to iaf-system-automation-aui-zen-cert elasticsearch cert/secret
+auto_zen_cert_ns_list=$(oc get certificate -A --no-headers | grep iaf-system-automationui-aui-zen-cert | awk '{print $1}' | tr "\n" " " || echo "none")
+if [[ $auto_zen_cert_ns_list != "none" ]]; then
+    for ns in $auto_zen_cert_ns_list
+    do
+        secret_name=$(oc get certificate -n $ns iaf-system-automationui-aui-zen-cert -o jsonpath='{.spec.secretName}')
+        oc label secret $secret_name -n $ns foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+        oc label certificate iaf-system-automationui-aui-zen-cert -n $ns foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+    done
+fi
+
+#add labels to elasticsearch cert/secret
+elasticsearch_cert_ns_list=$(oc get certificate -A --no-headers | grep iaf-system-elasticsearch-es-client-cert | awk '{print $1}' | tr "\n" " " || echo "none")
+if [[ $elasticsearch_cert_ns_list != "none" ]]; then
+    for ns in $elasticsearch_cert_ns_list
+    do
+        oc label certificate iaf-system-elasticsearch-es-client-cert -n $ns foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+        oc label secret iaf-system-elasticsearch-es-client-cert-kp -n $ns foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+    done
+fi
+
+#remove label from metastore-edb certificate and secret
+metastore_secret_ns_list=$(oc get secret -A --no-headers | grep  ibm-zen-metastore-edb-secret | awk '{print $1}' | tr "\n" " " || echo "none")
+if [[ $metastore_secret_ns_list != "none" ]]; then
+    echo "[INFO] removing label from zen-metastore-edb-secret and certificate."
+    for ns in $metastore_secret_ns_list
+    do
+        oc label secret ibm-zen-metastore-edb-secret -n $ns foundationservices.cloudpak.ibm.com-
+        oc label certificate ibm-zen-metastore-edb-certificate -n $ns foundationservices.cloudpak.ibm.com-
+    done
+fi
+
+echo "[SUCCESS] Certificates and secrets successfully labeled."

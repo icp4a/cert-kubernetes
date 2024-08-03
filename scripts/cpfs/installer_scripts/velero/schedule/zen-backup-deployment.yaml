@@ -52,8 +52,6 @@ spec:
             name: zen-metastoredb-backup-scripts
           - name: scripts
             mountPath: "/zen4"
-          - name: ext
-            mountPath: /zen4/extensions
         dnsPolicy: ClusterFirst
         schedulerName: default-scheduler
         securityContext:
@@ -77,5 +75,3 @@ spec:
           configMap:
             name: zen4-br-configmap
             defaultMode: 0777
-        - emptyDir: {}
-          name: ext

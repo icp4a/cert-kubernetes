@@ -32,7 +32,7 @@ spec:
     ## This value could be different from the other licenses in the CR.
     sc_deployment_fncm_license: "<Required>"
 
-   
+
     ## Use this parameter to specify the license for the CP4A deployment and
     ## the possible values are: non-production and production and if not set, the license will
     ## be defaulted to production.  This value could be different from the other licenses in the CR.
@@ -56,24 +56,24 @@ spec:
       value: ""
 
     ## This optional property is a string value corresponding to the “ipFamilyPolicy” property of the Kubernetes “service” object.
-    ## This setting becomes particularly relevant in dual-stack environments where both IPv4 and IPv6 are enabled. 
+    ## This setting becomes particularly relevant in dual-stack environments where both IPv4 and IPv6 are enabled.
     ## Here are the options you can specify for ipFamilyPolicy: SingleStack , PreferDualStack , RequireDualStack
-    ## Only set this property if you want the “ipFamilyPolicy” property of the services created for CP4BA to be configured differently from the cluster-level settings. 
+    ## Only set this property if you want the “ipFamilyPolicy” property of the services created for CP4BA to be configured differently from the cluster-level settings.
     ## Warning: Setting this property to a value not supported by your cluster will cause CP4BA deployment to fail.
-    sc_service_ip_family_policy: 
+    sc_service_ip_family_policy:
 
     ## This optional property is a list value corresponding to the “ipFamilies” property of the Kubernetes “service” object.
     ## This parameter works in conjunction with the ipFamilyPolicy to define the IP addressing behaviors for the Service.
     ## You can set it to any of the following array values: ["IPv4"],["IPv6"],["IPv4","IPv6"] (dual-stack environment)
-    ## Only set this property if you want the “ipFamilies” property of the services created for CP4BA to be configured differently from the cluster-level settings. 
+    ## Only set this property if you want the “ipFamilies” property of the services created for CP4BA to be configured differently from the cluster-level settings.
     ## Warning: Setting this property to a value not supported by your cluster will cause CP4BA deployment to fail.
-    sc_service_ip_families:  
+    sc_service_ip_families:
 
     ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that corresponds to a user ID.
     ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is optional. It is not supported on OCP and ROKS.
     sc_run_as_user:
 
-    ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower. 
+    ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower.
     ## For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
     ## NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start.  This custom profile should be created at the worker nodes.
     sc_seccomp_profile:
@@ -83,16 +83,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -117,7 +117,7 @@ spec:
     ## The deployment type as selected by the user.  Possible values are: Starter and Production.
     sc_deployment_type: Production
 
-    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or 
+    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or
     ## know the reason to change this value, please leave the default value.
     sc_deployment_context: "CP4A"
 
@@ -127,26 +127,26 @@ spec:
 
     sc_egress_configuration:
       ## Required. Enable or disable egress access to external systems.
-      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true". 
+      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true".
       ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
       sc_restricted_internet_access: true
       ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
       ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
       sc_api_namespace:
-      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## Default are 443,6443 for OCP and ROKS
       sc_api_port:
       ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
       ## Default is "openshift-dns" for OCP and ROKS
       sc_dns_namespace:
-      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## Default are 53,5353 for OCP and ROKS
       sc_dns_port:
 
     ## For OCP, this is used to create route, you should input a valid hostname in the required field.
-     
+
 
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false
@@ -158,10 +158,10 @@ spec:
     ## the external service to the component's truststore.
     trusted_certificate_list: []
 
-    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers, 
+    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers,
     ## all the files must be compressed in a single file.
-    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or 
-    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed 
+    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or
+    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed
     ## file should have the following structure and content:
     ##   /jdbc/db2/db2jcc4.jar
     ##   /jdbc/db2/db2jcc_license_cu.jar
@@ -169,7 +169,7 @@ spec:
     ##   /saplibs/libicudata.so.50
     ##   /saplibs/...
     ## Then you need to put the compressed package on an anonymously accessible web server and provide the link here.
-    ## The CR can handle .zip files using unzip as well as .tar, .tar.gz, .tar.bz2, .tar.xz. Does not handle .gz files, .bz2 files, .xz, or .zst files that do not contain a .tar archive.    
+    ## The CR can handle .zip files using unzip as well as .tar, .tar.gz, .tar.bz2, .tar.xz. Does not handle .gz files, .bz2 files, .xz, or .zst files that do not contain a .tar archive.
     sc_drivers_url:
 
     ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
@@ -178,7 +178,7 @@ spec:
 
     ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
-    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true" (or the parameter doesn't exist), then the initialization will occur.  
+    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true" (or the parameter doesn't exist), then the initialization will occur.
     ## However, if sc_content_initialization is set to "false", then the initialization will not occur (even with the "initialize_configuration" section defined)
     ## For Workflow Authoring, by default sc_content_initialization is set to "true" with "initialize_configuration"section filled.
     ## If you already initialized content or want to upgrade, please set sc_content_initialization to "false" before you apply the CR.
@@ -203,6 +203,11 @@ spec:
     ## Enable/disable FIPS mode for the deployment (default value is "false")
     ## Note: If set as "true", in order to complete enablement of FIPS for CP4BA, please refer to "FIPS wall" configuration in IBM documentation.
     enable_fips: false
+
+    ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
+    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
+    sc_is_multiple_az: false
 
   ## The beginning section of LDAP configuration for CP4A
   ldap_configuration:
@@ -250,21 +255,21 @@ spec:
     lc_ldap_group_member_id_map: "<Required>"
 
     ## Set to true if you want to enable LDAP nested search in IAM, by default it is false
-    lc_ldap_recursive_search: false 
+    lc_ldap_recursive_search: false
 
     ## Set to true if you want to enable LDAP pagination in IAM, by default it is false
     lc_enable_pagination: false
 
     ## If lc_enable_pagination is set to true, then specify the pagination size. If not specified, the following default values will be used:
     ## IBM Tivoli Directory Server: 20000; Microsoft Active Directory:1000, and Custom: 4500
-    lc_pagination_size: 1000 
+    lc_pagination_size: 1000
 
     ## add custom group search bases to IAM
     lc_group_searchbase_list: []
 
     ## add custom user search bases to IAM
     lc_user_searchbase_list: []
-  
+
     ## The lc_ldap_precheck parameter is used to enable or disable LDAP connection check.
     ## If set to "true", then LDAP connection check will be enabled.
     ## if set to "false", then LDAP connection check will not be enabled.
@@ -445,7 +450,7 @@ spec:
     #     # <scim_attr_name> : <ldap attr name>
     #     # like below
     #     # ibmentryuuid : ibm-entryuuid
-  
+
   ########################################################################
   ########   IBM Business Automation Workflow Authoring configuration     ########
   ########################################################################
@@ -455,7 +460,7 @@ spec:
       ## Workflow Authoring IBM Workplace deployment job image repository URL
       repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
       ## Workflow Authoring IBM Workplace deployment job image repository tag.
-      tag: "24.0.0"
+      tag: "24.0.0-IF001"
       ## Pull policy for Workflow Authoring IBM Workplace deployment job image. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pull_policy: IfNotPresent
 
@@ -572,7 +577,7 @@ spec:
   bastudio_configuration:
     # For most cases, you don't need to input hostname and port here. They can be calculated with your environment informations
     # And all the endpoints can be visit through unified external URL
-    # With none zen mode. If you want to customize external hostname and port. Update values here. They will be used as BA Studio external visit hostname and port. 
+    # With none zen mode. If you want to customize external hostname and port. Update values here. They will be used as BA Studio external visit hostname and port.
     # Invalid value will cause BA Studio not working and cannot be visited
     hostname:
     port:
@@ -580,7 +585,7 @@ spec:
       pull_policy: IfNotPresent
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
     #Adjust this one if you created the secret with name other than the default
     admin_secret_name: "{{ meta.name }}-bas-admin-secret"
     #-----------------------------------------------------------------------
@@ -735,7 +740,7 @@ spec:
       # storage class name used for the PVC when not availble
       storage_class: "{{ shared_configuration.storage_configuration.sc_fast_file_storage_classname }}"
       # Size of the PV to store the BAStudio server index files. Used when creating the PVC
-      size_for_index: "10Gi" 
+      size_for_index: "10Gi"
       # storage class name used for the BAStudio server index PVC
       block_storage_class: "{{ shared_configuration.storage_configuration.sc_block_storage_classname }}"
     jms_server:

@@ -17,10 +17,17 @@ function check_cp4ba_operator_version(){
     local ALL_NAMESPACE_NAME="openshift-operators"
     local maxRetry=5
     info "Checking the version of IBM Cloud Pak for Business Automation Operator"
+
+    cp4a_operator_csv_name_target_ns=$(kubectl get csv -n $project_name --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
+    cp4a_operator_csv_name_allnamespace_ns=$(kubectl get csv -n $ALL_NAMESPACE_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
+
+    if [[ -z $cp4a_operator_csv_name_allnamespace_ns && -z $cp4a_operator_csv_name_target_ns ]]; then
+        fail "No found IBM Cloud Pak for Business Automation Operator in both \"$project_name\" and \"$ALL_NAMESPACE_NAME\" project."
+        warning "Please input correct project name for CP4BA."
+        exit 1
+    fi
     for ((retry=0;retry<=${maxRetry};retry++)); do
-        cp4a_operator_csv_name_target_ns=$(kubectl get csv -n $project_name --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
-        cp4a_operator_csv_name_allnamespace_ns=$(kubectl get csv -n $ALL_NAMESPACE_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
-        
+       
         if [[ -z $cp4a_operator_csv_name_allnamespace_ns && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
             success "Found IBM Cloud Pak for Business Automation Operator deployed in the project \"$project_name\"."
             ALL_NAMESPACE_FLAG="No"
@@ -44,6 +51,9 @@ function check_cp4ba_operator_version(){
             success "The current IBM Cloud Pak for Business Automation Operator is already ${CP4BA_CSV_VERSION//v/}"
             break
             # exit 1
+        elif [[ "$cp4a_operator_csv_version" == "24.0."* ]]; then
+            info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
+            break
         elif [[ "$cp4a_operator_csv_version" == "21.3."* ]]; then
             # cp4a_operator_csv=$(kubectl get csv $cp4a_operator_csv_name_target_ns -n $project_name -o 'jsonpath={.spec.version}')
             # cp4a_operator_csv="22.2.2"
@@ -831,8 +841,8 @@ function check_cp4ba_deployment_status(){
     UPGRADE_STATUS_CONTENT_FILE=${UPGRADE_STATUS_CONTENT_FOLDER}/.content_status.yaml
     UPGRADE_STATUS_CP4BA_FILE=${UPGRADE_STATUS_CP4BA_FOLDER}/.icp4acluster_status.yaml
 
-    UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_BAK=${CUR_DIR}/cp4ba-upgrade/project/$TARGET_PROJECT_NAME/custom_resource/backup/icp4acluster_cr_backup.yaml
-    UPGRADE_DEPLOYMENT_CONTENT_CR_BAK=${CUR_DIR}/cp4ba-upgrade/project/$TARGET_PROJECT_NAME/custom_resource/backup/content_cr_backup.yaml
+    UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_BAK=${CUR_DIR}/cp4ba-upgrade/project/$project_name/custom_resource/backup/icp4acluster_cr_backup.yaml
+    UPGRADE_DEPLOYMENT_CONTENT_CR_BAK=${CUR_DIR}/cp4ba-upgrade/project/$project_name/custom_resource/backup/content_cr_backup.yaml
 
     cp4ba_cr_name=$(kubectl get icp4acluster -n $project_name --no-headers --ignore-not-found | awk '{print $1}')
     if [ ! -z "$cp4ba_cr_name" ]; then
@@ -1001,52 +1011,152 @@ function check_cp4ba_deployment_status(){
 function show_cp4ba_upgrade_status() {
     printf '%s %s\n' "$(date)" "[refresh interval: 30s]"
     echo -en "[Press Ctrl+C to exit] \t\t"
-    check_cp4ba_deployment_status "${TARGET_PROJECT_NAME}"
-    printf "\n"
-    step_num=1
-    echo "${YELLOW_TEXT}[NEXT ACTION]${RESET_TEXT}:"
-    echo "${YELLOW_TEXT}  * After the status of upgrade for CP4BA components showing as ${RESET_TEXT}${GREEN_TEXT}\"Done\"${RESET_TEXT}${YELLOW_TEXT}, and then you need to execute follow steps${RESET_TEXT}:"
-    if [[ $CONTENT_CR_EXIST == "Yes" || (" ${EXISTING_PATTERN_ARR[@]} " =~ "content") || ((" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow") && (! " ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-process-service")) || (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "baw_authoring") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "ae_data_persistence") ]]; then
-        echo -e "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Run ${GREEN_TEXT}\"./cp4a-pre-upgrade-and-post-upgrade-optional.sh post-upgrade\"${RESET_TEXT} ${YELLOW_TEXT}(NOTES: AFTER UPGRADING IBM CLOUD PAK FOR BUSINESS AUTOMATION (CP4BA) DEPLOYMENT SUCCESSFULLY, YOU NEED TO RUN \"./cp4a-pre-upgrade-and-post-upgrade-optional.sh post-upgrade\", AND THEN CLEAN BROWSER COOKIE BEFORE LOGIN.${RESET_TEXT}"
-        echo -e "    ${YELLOW_TEXT}[ATTENTION]${RESET_TEXT}: ${RED_TEXT}DO NOT need to run it when upgrade CP4BA from 23.0.2.X to 24.0.0 (migration IBM Cloud Pak foundational services from Cluster-scoped -> Cluster-scoped or Namespace-scoped -> Namespace-scoped).${RESET_TEXT}"
-        echo -e "    ${YELLOW_TEXT}[NOTES]${RESET_TEXT}: After running ${GREEN_TEXT}\"./cp4a-pre-upgrade-and-post-upgrade-optional.sh post-upgrade\"${RESET_TEXT}, you can access the Administration Console for Content Platform Engine after next reconcile finishing for new custom resource."
+    check_cp4ba_deployment_status "${CP4BA_SERVICES_NS}"
+
+    if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "24.0."*) ]]; then
+        printf "\n"
+        step_num=1
+        echo "${YELLOW_TEXT}[NEXT ACTION]${RESET_TEXT}:"
+        echo "${YELLOW_TEXT}  * After the status of upgrade for CP4BA components showing as ${RESET_TEXT}${GREEN_TEXT}\"Done\"${RESET_TEXT}${YELLOW_TEXT}, and then you need to execute follow steps${RESET_TEXT}:"
+        if [[ $CONTENT_CR_EXIST == "Yes" || (" ${EXISTING_PATTERN_ARR[@]} " =~ "content") || ((" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow") && (! " ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-process-service")) || (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "baw_authoring") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "ae_data_persistence") ]]; then
+            echo -e "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Run ${GREEN_TEXT}\"./cp4a-pre-upgrade-and-post-upgrade-optional.sh post-upgrade\"${RESET_TEXT} ${YELLOW_TEXT}(NOTES: AFTER UPGRADING IBM CLOUD PAK FOR BUSINESS AUTOMATION (CP4BA) DEPLOYMENT SUCCESSFULLY, YOU NEED TO RUN \"./cp4a-pre-upgrade-and-post-upgrade-optional.sh post-upgrade\", AND THEN CLEAN BROWSER COOKIE BEFORE LOGIN.${RESET_TEXT}"
+            echo -e "    ${YELLOW_TEXT}[ATTENTION]${RESET_TEXT}: ${RED_TEXT}DO NOT need to run it when upgrade CP4BA from 23.0.2.X to 24.0.0 (migration IBM Cloud Pak foundational services from Cluster-scoped -> Cluster-scoped or Namespace-scoped -> Namespace-scoped).${RESET_TEXT}"
+            echo -e "    ${YELLOW_TEXT}[NOTES]${RESET_TEXT}: After running ${GREEN_TEXT}\"./cp4a-pre-upgrade-and-post-upgrade-optional.sh post-upgrade\"${RESET_TEXT}, you can access the Administration Console for Content Platform Engine after next reconcile finishing for new custom resource."
+
+            printf "\n"
+            step_num=$((step_num + 1))
+        fi
+            # echo "${YELLOW_TEXT}[ATTENTION] ${RESET_TEXT}${RED_TEXT}(REQUIRED)${RESET_TEXT}:"
+        if [[ $CONTENT_CR_EXIST == "Yes" || (" ${EXISTING_PATTERN_ARR[@]} " =~ "content") || ((" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow") && (! " ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-process-service")) || (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "baw_authoring") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "ae_data_persistence") ]]; then
+            echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: ${YELLOW_TEXT}After completion of upgrade of IBM Cloud Pak for Business Automation deployment, enable the Content Event Emitter if it is configured on an object store for Content Platform Engine.${RESET_TEXT}"
+            echo "    1. Log in to the Administration Console for Content Platform Engine."
+            echo "    2. Go to Object Stores > object store name > Events, Actions, Processes > Subscriptions."
+            echo "    3. Click ContentEventEmitterSubscription or the name of the existing subscription used by the Content event emitter."
+            echo "    4. Clicked the Properties tab."
+            echo "    5. For the row with the Property Name of Is Enabled, click the Property Value dropdown and select ${GREEN_TEXT}True${RESET_TEXT}."
+            echo "    6. Click Save."
+            printf "\n"
+            step_num=$((step_num + 1))
+        fi
+
+        if [[ $css_flag == "true" || " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "css" ]]; then
+            echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You have Content Search Services (CSS) installed. Make sure you start the IBM Content Search Services index dispatcher. Refer to the FileNet P8 Platform Documentation for more details."
+            echo "    ${YELLOW_TEXT}* Starting the IBM Content Search Services index dispatcher.${RESET_TEXT}"
+            echo "      1. Log in to the Administration Console for Content Platform Engine."
+            echo "      2. In the navigation pane, select the domain icon."
+            echo "      3. In the edit pane, click the Text Search Subsystem tab and select the Enable indexing check box."
+            echo "      4. Click Save to save your changes."
+            printf "\n"
+            step_num=$((step_num + 1))
+        fi
+
+        # echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Run ${GREEN_TEXT}\"./cp4a-deployment.sh -m upgradePostconfig -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to show any action required post CP4BA upgrade."
+        # step_num=$((step_num + 1))
+
+        if [[  " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "bai" || "${bai_flag}" == "true" ]]; then
+            printf "\n"
+            echo "${YELLOW_TEXT}[ATTENTION] ${RESET_TEXT}${RED_TEXT}(REQUIRED)${RESET_TEXT}:"
+            echo -e "  ${YELLOW_TEXT}-  AFTER UPGRADING IBM CLOUD PAK FOR BUSINESS AUTOMATION (CP4BA) DEPLOYMENT SUCCESSFULLY, YOU NEED TO REMOVE${RESET_TEXT} ${RED_TEXT}\"recovery_path\"${RESET_TEXT} ${YELLOW_TEXT}FROM CUSTOM RESOURCE UNDER${RESET_TEXT} ${RED_TEXT}\"bai_configuration\"${RESET_TEXT} ${YELLOW_TEXT}MANUALLY IF EXISTING.${RESET_TEXT}"
+        fi
 
         printf "\n"
-        step_num=$((step_num + 1))
-    fi
-        # echo "${YELLOW_TEXT}[ATTENTION] ${RESET_TEXT}${RED_TEXT}(REQUIRED)${RESET_TEXT}:"
-    if [[ $CONTENT_CR_EXIST == "Yes" || (" ${EXISTING_PATTERN_ARR[@]} " =~ "content") || ((" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow") && (! " ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-process-service")) || (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "baw_authoring") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "ae_data_persistence") ]]; then
-        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: ${YELLOW_TEXT}After completion of upgrade of IBM Cloud Pak for Business Automation deployment, enable the Content Event Emitter if it is configured on an object store for Content Platform Engine.${RESET_TEXT}"
-        echo "    1. Log in to the Administration Console for Content Platform Engine."
-        echo "    2. Go to Object Stores > object store name > Events, Actions, Processes > Subscriptions."
-        echo "    3. Click ContentEventEmitterSubscription or the name of the existing subscription used by the Content event emitter."
-        echo "    4. Clicked the Properties tab."
-        echo "    5. For the row with the Property Name of Is Enabled, click the Property Value dropdown and select ${GREEN_TEXT}True${RESET_TEXT}."
-        echo "    6. Click Save."
+        echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}PLEASE DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} AS ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA 23.0.2.X)${RESET_TEXT}"
+    else
         printf "\n"
-        step_num=$((step_num + 1))
+        step_num=1
+        echo "${YELLOW_TEXT}[NEXT ACTION]${RESET_TEXT}:"
+        echo "${YELLOW_TEXT}  * After the status of upgrade for CP4BA components showing as ${RESET_TEXT}${GREEN_TEXT}\"Done\"${RESET_TEXT}${YELLOW_TEXT}, and then you can exit the script.${RESET_TEXT}"
+
     fi
+}
 
-    if [[ $css_flag == "true" || " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "css" ]]; then
-        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You have Content Search Services (CSS) installed. Make sure you start the IBM Content Search Services index dispatcher. Refer to the FileNet P8 Platform Documentation for more details."
-        echo "    ${YELLOW_TEXT}* Starting the IBM Content Search Services index dispatcher.${RESET_TEXT}"
-        echo "      1. Log in to the Administration Console for Content Platform Engine."
-        echo "      2. In the navigation pane, select the domain icon."
-        echo "      3. In the edit pane, click the Text Search Subsystem tab and select the Enable indexing check box."
-        echo "      4. Click Save to save your changes."
-        printf "\n"
-        step_num=$((step_num + 1))
+function check_cp4ba_separate_operand(){
+    local project=$1
+    # Check whether the CP4BA is is separation of operators and operands.
+    # also need to consider upgrade to 24.0.0 eGA 
+    # operators_namespace: openshift-operators
+    # services_namespace: ibm-common-services
+
+    # operators_namespace: ibm-common-services
+    # services_namespace: ibm-common-services
+
+    # operators_namespace: cp4a-ns
+    # services_namespace: cp4a-ns
+
+    if ${CLI_CMD} get configMap ibm-cp4ba-common-config -n $project >/dev/null 2>&1; then
+        success "Found \"ibm-cp4ba-common-config\" configMap in the project \"$project\"."
+    else
+        warning "Not found \"ibm-cp4ba-common-config\" configMap in the project \"$project\"."
+        while [[ $CP4BA_SERVICES_NS == "" ]];
+        do
+            printf "\n"
+            if [[ ($SCRIPT_MODE == "" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "dev" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "review" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "baw-dev" && $RUNTIME_MODE == "") ]]; then
+                echo -e "\x1B[1mWhere (namespace) do you want to deploy CP4BA operands (i.e., runtime pods)? \x1B[0m"
+            else
+                echo -e "\x1B[1mWhere (namespace) did you deploy CP4BA operands (i.e., runtime pods)? \x1B[0m"
+            fi
+            read -p "Enter the name for an existing project (namespace): " CP4BA_SERVICES_NS
+            if [ -z "$CP4BA_SERVICES_NS" ]; then
+                echo -e "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
+            elif [[ "$CP4BA_SERVICES_NS" == openshift* ]]; then
+                echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
+                CP4BA_SERVICES_NS=""
+            elif [[ "$CP4BA_SERVICES_NS" == kube* ]]; then
+                echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+                CP4BA_SERVICES_NS=""
+            else
+                isProjExists=`${CLI_CMD} get project $CP4BA_SERVICES_NS --ignore-not-found | wc -l`  >/dev/null 2>&1
+
+                if [ "$isProjExists" -ne 2 ] ; then
+                    echo -e "\x1B[1;31mInvalid project name, please enter a existing project name ...\x1B[0m"
+                    CP4BA_SERVICES_NS=""
+                else
+                    echo -e "\x1B[1mUsing project ${CP4BA_SERVICES_NS}...\x1B[0m"
+                    if ${CLI_CMD} get configMap ibm-cp4ba-common-config -n $CP4BA_SERVICES_NS >/dev/null 2>&1; then
+                        success "Found \"ibm-cp4ba-common-config\" configMap in the project \"$CP4BA_SERVICES_NS\"."
+                    else
+                        warning "Not found \"ibm-cp4ba-common-config\" configMap in the project \"$CP4BA_SERVICES_NS\"."
+                        CP4BA_SERVICES_NS=""
+                        if [[ ($SCRIPT_MODE == "" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "dev" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "review" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "baw-dev" && $RUNTIME_MODE == "") ]]; then
+                            fail "You NEED to create \"ibm-cp4ba-common-config\" configMap first in the project (namespace) where you want to deploy CP4BA operands (i.e., runtime pods)."
+                            exit 1
+                        fi
+                    fi
+                fi
+            fi
+        done
     fi
-
-    # echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Run ${GREEN_TEXT}\"./cp4a-deployment.sh -m upgradePostconfig -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to show any action required post CP4BA upgrade."
-    # step_num=$((step_num + 1))
-
-    if [[  " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "bai" || "${bai_flag}" == "true" ]]; then
-        printf "\n"
-        echo "${YELLOW_TEXT}[ATTENTION] ${RESET_TEXT}${RED_TEXT}(REQUIRED)${RESET_TEXT}:"
-        echo -e "  ${YELLOW_TEXT}-  AFTER UPGRADING IBM CLOUD PAK FOR BUSINESS AUTOMATION (CP4BA) DEPLOYMENT SUCCESSFULLY, YOU NEED TO REMOVE${RESET_TEXT} ${RED_TEXT}\"recovery_path\"${RESET_TEXT} ${YELLOW_TEXT}FROM CUSTOM RESOURCE UNDER${RESET_TEXT} ${RED_TEXT}\"bai_configuration\"${RESET_TEXT} ${YELLOW_TEXT}MANUALLY IF EXISTING.${RESET_TEXT}"
+    tmp_namespace_val=""
+    if [[ $CP4BA_SERVICES_NS != "" ]]; then
+        tmp_namespace_val=$CP4BA_SERVICES_NS
+    else
+        tmp_namespace_val=$project
     fi
-
-    printf "\n"
-    echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}PLEASE DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} AS ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA 23.0.2.X)${RESET_TEXT}"
+    cp4ba_services_namespace=$(${CLI_CMD} get configMap ibm-cp4ba-common-config -n $tmp_namespace_val --no-headers --ignore-not-found -o jsonpath='{.data.services_namespace}')
+    cp4ba_operators_namespace=$(${CLI_CMD} get configMap ibm-cp4ba-common-config -n $tmp_namespace_val --no-headers --ignore-not-found -o jsonpath='{.data.operators_namespace}')
+    if [[ (! -z $CP4BA_SERVICES_NS) ]]; then
+        if [[ $cp4ba_services_namespace != $CP4BA_SERVICES_NS ]]; then
+            fail "Your input value for CP4BA operands (i.e., runtime pods) is NOT equal to the value of \"services_namespace\" in \"ibm-cp4ba-common-config\" configMap under the project \"$CP4BA_SERVICES_NS\"."
+            exit 1
+        fi
+    fi
+    
+    if [[ (! -z $cp4ba_services_namespace) && (! -z $cp4ba_operators_namespace) ]]; then
+        # The IF condition below checks for separation of duties scenario (note: all-ns and shared CPfs are not considered separation of duties):
+        #  - ($cp4ba_services_namespace != $cp4ba_operators_namespace) -> confirms that operator and services ns are different
+        #  - ($cp4ba_operators_namespace != "openshift-operators") -> confirms that scenario is NOT all-ns
+        #  - ($cp4ba_operators_namespace != "ibm-common-services") -> confirms that scenario is NOT shared/cluster-scoped CPfs scenario
+        if [[ ($cp4ba_services_namespace != $cp4ba_operators_namespace) && ($cp4ba_operators_namespace != "openshift-operators" && $cp4ba_operators_namespace != "ibm-common-services") ]]; then
+            info "This CP4BA deployment is separation of operators and operands"
+            SEPARATE_OPERAND_FLAG="Yes"
+            CP4BA_SERVICES_NS=$cp4ba_services_namespace
+        else
+            SEPARATE_OPERAND_FLAG="No"
+            CP4BA_SERVICES_NS=$TARGET_PROJECT_NAME
+        fi
+    else
+        warning "Not found \"operator_namespace\\services_namespace\" in \"ibm-cp4ba-common-config\" configMap under the project \"$tmp_namespace_val\""
+        fail "You need to set correct value(s) in \"ibm-cp4ba-common-config\" configMap for CP4BA seperate of operand under the project \"$tmp_namespace_val\""
+        exit 1
+    fi
 }

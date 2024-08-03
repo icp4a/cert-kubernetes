@@ -1,0 +1,13 @@
+apiVersion: data-protection.isf.ibm.com/v1alpha1
+kind: PolicyAssignment
+metadata:
+  name: cs-policy-assignment
+  namespace: ibm-spectrum-fusion-ns
+spec:
+  application: cs-application
+  backupPolicy: cs-backup-policy
+  runNow: false
+  recipe:
+    apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+    name: cs-recipe
+    namespace: ibm-spectrum-fusion-ns

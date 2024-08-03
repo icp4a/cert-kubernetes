@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: setup-tenant-job
+  namespace: <operator namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: setup-tenant-job
+spec:
+  template:
+    metadata:
+      name: setup-tenant-job
+      namespace: <operator namespace>
+      labels:
+        foundationservices.cloudpak.ibm.com: setup-tenant-job
+    spec:
+      suspend: true
+      restartPolicy: OnFailure
+      containers:
+      - command: ["/bin/bash", "-c", "/cs-br/setup_tenant.sh --operator-namespace <operator namespace> --services-namespace <services namespace> --tethered-namespaces <comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance> --license-accept -c v<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc> -p <.spec.size value from commonservice cr> -i <install mode, either Manual or Automatic>"]
+        image: icr.io/cpopen/cpfs/cpfs-utils:4.6.0
+        imagePullPolicy: IfNotPresent
+        name: cpfs-util
+        resources:
+          limits:
+            cpu: 500m
+            ephemeral-storage: 512Mi
+            memory: 1024Mi
+          requests:
+            cpu: 200m
+            ephemeral-storage: 128Mi
+            memory: 512Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /cs-br/cpfs-util-backups
+          name: cpfs-util-mount
+        - name: scripts
+          mountPath: "/cs-br"
+        - name: logs
+          mountPath: /scripts/logs
+      dnsPolicy: ClusterFirst
+      schedulerName: default-scheduler
+      securityContext:
+        runAsNonRoot: true
+      serviceAccount: setup-tenant-job-sa
+      serviceAccountName: setup-tenant-job-sa
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: cpfs-util-mount
+        persistentVolumeClaim:
+          claimName: setup-tenant-job-pvc
+      - name: scripts
+        configMap:
+          name: setup-tenant-job-configmap
+          defaultMode: 0777
+      - emptyDir: {}
+        name: logs

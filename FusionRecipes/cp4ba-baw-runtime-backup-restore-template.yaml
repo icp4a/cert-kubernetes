@@ -1,0 +1,720 @@
+#### label the resouces using the labels.sh script before running this recipe
+## change  db-name=ICNDB ,db-name=BAWDB-2 denpends on DB name 
+
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  name: cp4ba-baw-runtime-backup-restore-recipe
+  namespace: ibm-spectrum-fusion-ns
+spec:
+  appType: cp4ba-clusters
+  groups:
+    - name: catalogsource-group
+      type: resource
+      includedNamespaces:
+        - openshift-marketplace
+      includedResourceTypes:
+        - catalogSource 
+    - name: cp4ba-secrets-openshift-config
+      type: resource
+      includedNamespaces:
+        - openshift-config    
+      includedResourceTypes:
+        - secrets
+      labelSelector: custom-label=cp4ba  
+    - name: cp4ba-oauth
+      type: resource
+      includedResourceTypes:
+        - oauth
+      includeClusterResources: true  
+    - name: cp4ba-configmap-fips-status
+      type: resource
+      includedResourceTypes:
+        - configmap
+      labelSelector: custom-label=cp4ba
+    - name: cp4ba-users
+      type: resource 
+      includedResourceTypes:
+        - user
+      includeClusterResources: true    
+    - name: cp4ba-ibm-entitlement-key
+      type: resource 
+      includedResourceTypes:
+        - secret
+      labelSelector: custom-label=cp4ba-ibm-entitlement-key             
+    - name: cp4ba-operatorgroup
+      type: resource
+      includedResourceTypes:
+        - operatorgroup
+    - name: cp4ba-subscription
+      type: resource 
+      includedResourceTypes:
+        - subscription     
+      labelSelector: operators.coreos.com/ibm-cp4a-operator.$REPLACE_NAMESPACE=                   
+    - name: cp4ba-resources
+      type: resource  
+      includedResourceTypes:
+        - role
+        - rolebinding 
+        - serviceaccount          
+    - name: cp4ba-cluster-role-and-rolebinding
+      type: resource   
+      includedResourceTypes:
+        - clusterrole
+        - clusterrolebinding
+      labelSelector: olm.owner.namespace=$REPLACE_NAMESPACE  
+      includeClusterResources: true      
+    - name: cs-postgres-volumes
+      type: volume
+      labelSelector: k8s.enterprisedb.io/instanceName=common-service-db-1,role=primary                 
+    - name: icn-cfgstore-volumes
+      type: volume
+      labelSelector: app.kubernetes.io/name=icn-cfgstore,app=icn-cfgstore
+    - name: cpe-filestore-volumes
+      type: volume
+      labelSelector: app.kubernetes.io/name=cpe-filestore,app=cpe-filestore      
+    - name: zen-backup-volumes
+      type: volume
+      labelSelector: foundationservices.cloudpak.ibm.com=zen5-data         
+    - name: zen-backup-resources
+      type: resource
+      labelSelector: foundationservices.cloudpak.ibm.com=zen5-data   
+      includedResourceTypes:
+        - configmap
+        - deployment                  
+    - name: cp4ba-secrets
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: custom-label=cpe-oidc-secret    
+    - name: cp4ba-admin-user-details-secrets
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: app.kubernetes.io/instance=admin-user-details,app.kubernetes.io/name=admin-user-details
+    - name: cp4ba-entitlement-key-sslsecret
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: custom-label=cp4ba-ibm-entitlement-key      
+    - name: cp4ba-ldap-bind-secret-secret
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: name=ldap-bind-secret     
+    - name: cp4ba-content-rr-admin-secret
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: app.kubernetes.io/component=admin-secret,app.kubernetes.io/name=resource-registry  
+    - name: cp4ba-ssl-secret
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: custom-label=cp4ba-ssl-secret    
+    - name: cp4ba-ibm-ban-secret
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: db-name=ICNDB2 
+    - name: cp4ba-ibm-baw-secret
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: db-name=BAWDB2           
+    - name: cp4ba-iaws-shared-key-secret
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: custom-label=cp4ba-ibm-iaws-shared-key-secret  
+    - name: cp4ba-cs-db-secret 
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: foundationservices.cloudpak.ibm.com=cs-db                    
+    - name: cp4ba-platform-auth-ldaps-ca-cert
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: custom-label=cp4ba-platform-auth-ldaps-ca-cert              
+    - name: cp4ba-ibm-fncm-secret
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: db-name=ibm-fncm-secret   
+    - name: cp4ba-global-function-id-secret
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: app.kubernetes.io/component=global-function-id     
+    - name: cp4ba-baw-admin-secret
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: component=admin-secret                
+    - name: cp4ba-icp4aclusters-resource
+      type: resource
+      includedResourceTypes:
+        - icp4aclusters.icp4a.ibm.com     
+  hooks:     
+  - name: ibm-cert-operator-operator-check
+    type: check
+    namespace: ibm-cert-manager
+    selectResource: deployment
+    labelSelector: app.kubernetes.io/name=cert-manager
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"  
+  - name: ibm-licensing-operator-operator-check
+    type: check
+    namespace: ibm-licensing
+    selectResource: deployment
+    labelSelector: operators.coreos.com/ibm-licensing-operator-app.ibm-licensing=
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"        
+  - name: cp4a-foundation-operator-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: operators.coreos.com/icp4a-foundation-operator.$REPLACE_NAMESPACE=
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"
+  - name: cp4a-dpe-operator-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: operators.coreos.com/ibm-dpe-operator.$REPLACE_NAMESPACE=
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"  
+  - name: cp4a-ads-operator-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: operators.coreos.com/ibm-ads-operator.$REPLACE_NAMESPACE=
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"  
+  - name: cp4a-content-operator-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: operators.coreos.com/ibm-content-operator.$REPLACE_NAMESPACE=
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"       
+  - name: cp4a-common-service-operator-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: operators.coreos.com/ibm-common-service-operator.$REPLACE_NAMESPACE=
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"  
+  - name: cp4a-pfs-operator-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: operators.coreos.com/ibm-pfs-operator.$REPLACE_NAMESPACE=
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"  
+  - name: cp4a-operator-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: operators.coreos.com/ibm-cp4a-operator.$REPLACE_NAMESPACE=
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"       
+  - name: cp4a-odm-operator-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: operators.coreos.com/ibm-odm-operator.$REPLACE_NAMESPACE=
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"    
+  - name: insights-engine-operator-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: operators.coreos.com/ibm-insights-engine-operator.$REPLACE_NAMESPACE=
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"   
+  - name: cp4a-wfps-operator-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: operators.coreos.com/ibm-cp4a-wfps-operator.$REPLACE_NAMESPACE=
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"   
+  - name: odlm-operator-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: operators.coreos.com/ibm-odlm.$REPLACE_NAMESPACE=
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"     
+  - name: cs-postgres-exec
+    type: exec
+    namespace: $REPLACE_NAMESPACE
+    labelSelector: k8s.enterprisedb.io/instanceName=common-service-db-1,role=primary
+    timeout: 3600
+    onError: fail
+    ops:
+    - name: checkpoint
+      command: >
+        ["/bin/bash", "-c", "psql -U postgres -c CHECKPOINT"]
+      container: postgres
+      timeout: 3600                                                                  
+  - name: zen-backup-pod-exec
+    type: exec
+    namespace: $REPLACE_NAMESPACE
+    labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
+    timeout: 3600
+    onError: fail
+    ops:
+    - name: backup
+      command: >
+        ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh $REPLACE_NAMESPACE"]
+      container: zen5-backup-job
+      timeout: 3600
+    - name: restore
+      command: >
+        ["/bin/bash", "-c", "/zen5/restore_zen5.sh $REPLACE_NAMESPACE iaf-zen-cpdservice"]
+      container: zen5-backup-job
+      timeout: 3600             
+  - name: icp4aclusters-pod-exec
+    type: exec
+    namespace: $REPLACE_NAMESPACE
+    labelSelector: name=ibm-cp4a-operator
+    singlePodOnly: true
+    ops:    
+    - name: update-sc-content-initialization-to-false
+      command: >
+        ["/bin/bash", "-c","curl -X PATCH -H \"Authorization: Bearer `cat /var/run/secrets/kubernetes.io/serviceaccount/token`\" -H 'Content-Type: application/merge-patch+json' -H 'Accept: application/json' -k https://kubernetes.default.svc/apis/icp4a.ibm.com/v1/namespaces/$REPLACE_NAMESPACE/icp4aclusters/icp4adeploy -d '{\"spec\":{\"shared_configuration\":{\"sc_content_initialization\":false}}}'"]
+      container: operator
+    - name: clear-annotation-last-applied-config
+      command: >
+        ["/bin/bash", "-c","curl -X PATCH -H \"Authorization: Bearer `cat /var/run/secrets/kubernetes.io/serviceaccount/token`\" -H 'Content-Type: application/merge-patch+json' -H 'Accept: application/json' -k https://kubernetes.default.svc/apis/icp4a.ibm.com/v1/namespaces/$REPLACE_NAMESPACE/icp4aclusters/icp4adeploy?fieldManager=kubectl-annotate -d '{\"metadata\":{\"annotations\":{\"kubectl.kubernetes.io/last-applied-configuration\":null}}}'"]
+      container: operator 
+    - name: add-connection-point-name
+      command: >
+        ["/bin/bash", "-c","export connection_point_name=$(curl -X GET  -k https://kubernetes.default.svc/apis/icp4a.ibm.com/v1/namespaces/$REPLACE_NAMESPACE/icp4aclusters/icp4adeploy -H \"Authorization: Bearer `cat /var/run/secrets/kubernetes.io/serviceaccount/token`\" -H 'Content-Type: application/json' | grep -o '\"oc_cpe_obj_store_workflow_pe_conn_point_name\": \"[^\"]*\"' | awk -F ': \"' '{print $2}' | awk -F '\"' '{print $1}') ; curl -X PATCH -H \"Authorization: Bearer `cat /var/run/secrets/kubernetes.io/serviceaccount/token`\" -H 'Content-Type: application/merge-patch+json' -H 'Accept: application/json' -k https://kubernetes.default.svc/apis/icp4a.ibm.com/v1/namespaces/$REPLACE_NAMESPACE/icp4aclusters/icp4adeploy -d '{\"spec\":{\"workflow_authoring_configuration\":{\"case\":{\"tos_list\":[{\"connection_point_name\":\"'\"$connection_point_name\"'\", \"object_store_name\": \"BAWTOS\"}]}}}}' "]
+      container: operator       
+  - name: ibm-zen-operator-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: operators.coreos.com/ibm-zen-operator.$REPLACE_NAMESPACE=
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"        
+  - name: ibm-iam-operator-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: operators.coreos.com/ibm-iam-operator.$REPLACE_NAMESPACE=
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"
+  - name: ibm-zen-meta-api-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: app.kubernetes.io/name=ibm-zen-meta-api
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"  
+  - name: platform-auth-service-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: app=platform-auth-service
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"  
+  - name: platform-identity-provider-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: app=platform-identity-provider
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"       
+  - name: platform-identity-management-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: app=platform-identity-management
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"  
+  - name: ibm-commonui-operator-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: operators.coreos.com/ibm-commonui-operator-app.$REPLACE_NAMESPACE=
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"       
+  - name: common-web-ui-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: app.kubernetes.io/name=common-web-ui
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"    
+  - name: postgresql-operator-controller-manager-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: operators.coreos.com/cloud-native-postgresql.$REPLACE_NAMESPACE=
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"   
+  - name: usermgmt-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: component=usermgmt
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"   
+  - name: zen-audit-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: app.kubernetes.io/component=zen-audit
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"                                                             
+  - name: zen-core-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: component=zen-core
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"    
+  - name: zen-core-api-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: component=zen-core-api
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"      
+  - name: zen-watcher-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: component=zen-watcher
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}" 
+  - name: ibm-nginx-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: component=ibm-nginx
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"       
+  - name: ibm-nginx-tester-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    labelSelector: component=ibm-nginx-tester
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"       
+  - name: content-cpe-deploy-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    nameSelector: .*-cpe-deploy
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"       
+  - name: content-graphql-deploy-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    nameSelector: .*-graphql-deploy
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"       
+  - name: content-navigator-deploy
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    nameSelector: .*-navigator-deploy
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"       
+  - name: content-navigator-watcher-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: deployment
+    nameSelector: .*-navigator-watcher
+    timeout: 3600
+    onError: fail
+    chks:
+    - name: replicasReady
+      timeout: 3600
+      onError: fail
+      condition: "{$.spec.replicas} == {$.status.readyReplicas}"     
+  - name: cp4ba-instance-check
+    type: check
+    namespace: $REPLACE_NAMESPACE
+    selectResource: icp4a.ibm.com/v1/icp4aclusters
+    nameSelector: icp4adeploy
+    timeout: 600
+    onError: fail
+    chks:
+    - name: readyStatus
+      timeout: 600
+      onError: fail
+      condition: "{$.status.conditions[?(@.type==\"Ready\")].reason} == {\"Successful\"}"                        
+  workflows:
+  - name: backup
+    sequence:
+    - group: catalogsource-group
+    - group: cp4ba-secrets-openshift-config
+    - group: cp4ba-oauth
+    - group: cp4ba-configmap-fips-status
+    - group: cp4ba-users
+    - group: cp4ba-ibm-entitlement-key
+    - group: cp4ba-operatorgroup
+    - group: cp4ba-subscription   
+    - group: cp4ba-resources      
+    - group: cp4ba-cluster-role-and-rolebinding
+    - hook: cs-postgres-exec/checkpoint
+    - group: cs-postgres-volumes           
+    - hook: zen-backup-pod-exec/backup    
+    - group: zen-backup-volumes
+    - group: icn-cfgstore-volumes    
+    - group: cpe-filestore-volumes 
+    - group: zen-backup-resources       
+    - group: cp4ba-secrets
+    - group: cp4ba-admin-user-details-secrets
+    - group: cp4ba-entitlement-key-sslsecret
+    - group: cp4ba-ldap-bind-secret-secret    
+    - group: cp4ba-content-rr-admin-secret      
+    - group: cp4ba-ssl-secret
+    - group: cp4ba-ibm-ban-secret
+    - group: cp4ba-ibm-baw-secret
+    - group: cp4ba-iaws-shared-key-secret
+    - group: cp4ba-platform-auth-ldaps-ca-cert
+    - group: cp4ba-ibm-fncm-secret
+    - group: cp4ba-cs-db-secret
+    - group: cp4ba-global-function-id-secret
+    - group: cp4ba-baw-admin-secret      
+    - group: cp4ba-icp4aclusters-resource
+  - name: restore
+    sequence:
+    - group: catalogsource-group
+    - group: cp4ba-secrets-openshift-config   
+    - group: cp4ba-oauth
+    - group: cp4ba-configmap-fips-status
+    - group: cp4ba-users
+    - group: cp4ba-ibm-entitlement-key
+    - group: cp4ba-operatorgroup
+    - group: cp4ba-subscription    
+    - group: cp4ba-resources  
+    - group: cp4ba-cluster-role-and-rolebinding                
+    - hook: cp4a-foundation-operator-check/replicasReady  
+    - hook: cp4a-dpe-operator-check/replicasReady  
+    - hook: cp4a-ads-operator-check/replicasReady  
+    - hook: cp4a-content-operator-check/replicasReady  
+    - hook: cp4a-common-service-operator-check/replicasReady  
+    - hook: cp4a-pfs-operator-check/replicasReady  
+    - hook: cp4a-operator-check/replicasReady  
+    - hook: cp4a-odm-operator-check/replicasReady  
+    - hook: insights-engine-operator-check/replicasReady  
+    - hook: cp4a-wfps-operator-check/replicasReady  
+    - hook: odlm-operator-check/replicasReady     
+    - group: icn-cfgstore-volumes
+    - group: cpe-filestore-volumes
+    - group: zen-backup-volumes
+    - group: cs-postgres-volumes         
+    - group: zen-backup-resources          
+    - group: cp4ba-secrets
+    - group: cp4ba-admin-user-details-secrets
+    - group: cp4ba-entitlement-key-sslsecret
+    - group: cp4ba-ldap-bind-secret-secret   
+    - group: cp4ba-content-rr-admin-secret       
+    - group: cp4ba-ssl-secret
+    - group: cp4ba-ibm-ban-secret
+    - group: cp4ba-ibm-baw-secret
+    - group: cp4ba-iaws-shared-key-secret
+    - group: cp4ba-platform-auth-ldaps-ca-cert
+    - group: cp4ba-ibm-fncm-secret
+    - group: cp4ba-cs-db-secret
+    - group: cp4ba-global-function-id-secret 
+    - group: cp4ba-baw-admin-secret     
+    - group: cp4ba-icp4aclusters-resource    
+    - hook: icp4aclusters-pod-exec/update-sc-content-initialization-to-false
+    - hook: icp4aclusters-pod-exec/clear-annotation-last-applied-config 
+    - hook: icp4aclusters-pod-exec/add-connection-point-name
+    - hook: ibm-zen-operator-check/replicasReady 
+    - hook: ibm-iam-operator-check/replicasReady 
+    - hook: ibm-zen-meta-api-check/replicasReady 
+    - hook: platform-auth-service-check/replicasReady 
+    - hook: platform-identity-provider-check/replicasReady     
+    - hook: platform-identity-management-check/replicasReady 
+    - hook: ibm-commonui-operator-check/replicasReady 
+    - hook: common-web-ui-check/replicasReady 
+    - hook: postgresql-operator-controller-manager-check/replicasReady 
+    - hook: usermgmt-check/replicasReady 
+    - hook: zen-audit-check/replicasReady 
+    - hook: zen-core-check/replicasReady 
+    - hook: zen-core-api-check/replicasReady 
+    - hook: zen-watcher-check/replicasReady 
+    - hook: ibm-nginx-check/replicasReady 
+    - hook: ibm-nginx-tester-check/replicasReady 
+    - hook: content-cpe-deploy-check/replicasReady 
+    - hook: content-cpe-deploy-check/replicasReady 
+    - hook: content-graphql-deploy-check/replicasReady 
+    - hook: content-navigator-deploy/replicasReady 
+    - hook: content-navigator-watcher-check/replicasReady    
+    - hook: cp4ba-instance-check/readyStatus
+    - hook: zen-backup-pod-exec/restore    
+                                       
+                                    

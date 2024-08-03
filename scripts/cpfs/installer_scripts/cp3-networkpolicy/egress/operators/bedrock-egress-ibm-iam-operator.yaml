@@ -18,6 +18,11 @@ spec:
       podSelector:
         matchLabels:
           k8s-app: "platform-identity-provider"
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          app: icp-mongodb
   - ports:
     - port: 443
       protocol: TCP
@@ -28,6 +33,20 @@ spec:
       podSelector:
         matchLabels:
           apiserver: "true"
+  - ports:
+      - port: 53
+        protocol: UDP
+      - port: 53
+        protocol: TCP
+      - port: 5353
+        protocol: UDP
+      - port: 5353
+        protocol: TCP
+    to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          dns.operator.openshift.io/daemonset-dns: default  
   podSelector:
     matchLabels:
       name: "ibm-iam-operator"

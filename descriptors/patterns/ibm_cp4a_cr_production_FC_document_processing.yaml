@@ -38,9 +38,9 @@ spec:
     ## be defaulted to production.  This value could be different from the other licenses in the CR.
     sc_deployment_license: "<Required>"
 
-    
-   
-    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or 
+
+
+    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or
     ## know the reason to change this value, please leave the default value.
     sc_deployment_context: "CP4A"
 
@@ -51,7 +51,7 @@ spec:
     ## All CP4A components must use/share the same docker image repository.  For example, if IBM Entitled Registry is used, then
     ## it should be "cp.icr.io".  Otherwise, it will be a local docker registry.
     sc_image_repository: cp.icr.io
-    
+
     ## Used to sign all CP4A internal certificates for internal services communications. In most cases, this value should not be changed.
     ## All CP4A components must use/share the root_ca_secret in order for integration.
     root_ca_secret: icp4a-root-ca
@@ -66,12 +66,12 @@ spec:
     sc_hugepages:
       enabled: false
       type: ""
-      value: "" 
+      value: ""
 
     ## Shared custom TLS secret which will be used to sign all external routes if defined.
     ## If this is not defined, all external routes will be signed with `root_ca_secret`
-    ## Starting with CP4BA 21.0.3 release, this parameter only applies to non-OCP deployments. For OCP, all external traffic is routed via a 
-    ## common front door in Platform UI so custom TLS certificates must be configured in AutomationUIConfig. Please refer 
+    ## Starting with CP4BA 21.0.3 release, this parameter only applies to non-OCP deployments. For OCP, all external traffic is routed via a
+    ## common front door in Platform UI so custom TLS certificates must be configured in AutomationUIConfig. Please refer
     ## to https://www.ibm.com/docs/en/cloud-paks/1.0?topic=foundation-custom-resources#automationuiconfig for more information.
     external_tls_certificate_secret:
 
@@ -116,7 +116,7 @@ spec:
     ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is optional. It is not supported on OCP and ROKS.
     sc_run_as_user:
 
-    ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower. 
+    ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower.
     ## For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
     ## NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start.  This custom profile should be created at the worker nodes.
     sc_seccomp_profile:
@@ -128,21 +128,21 @@ spec:
 
     sc_egress_configuration:
       ## Required. Enable or disable egress access to external systems.
-      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true". 
+      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true".
       ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
       sc_restricted_internet_access: true
       ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
       ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
       sc_api_namespace:
-      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## Default are 443,6443 for OCP and ROKS
       sc_api_port:
       ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
       ## Default is "openshift-dns" for OCP and ROKS
       sc_dns_namespace:
-      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## Default are 53,5353 for OCP and ROKS
       sc_dns_port:
 
@@ -156,10 +156,10 @@ spec:
     ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
     ## the external service to the component's truststore.
     trusted_certificate_list: []
-    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers, 
+    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers,
     ## all the files must be compressed in a single file.
-    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or 
-    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed 
+    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or
+    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed
     ## file should have the following structure and content:
     ##   /jdbc/db2/db2jcc4.jar
     ##   /jdbc/db2/db2jcc_license_cu.jar
@@ -212,11 +212,11 @@ spec:
       sc_fast_file_storage_classname: "<Required>"
       sc_block_storage_classname: "<Required>"
 
-    ## The CPE container and other components that use HTTP Basic Authentication are configured to use the OAuth JaaS loginModule         
-    ## to remove all remaining LDAP dependencies by allowing username/password credentials to be converted into an OAuth token for        
+    ## The CPE container and other components that use HTTP Basic Authentication are configured to use the OAuth JaaS loginModule
+    ## to remove all remaining LDAP dependencies by allowing username/password credentials to be converted into an OAuth token for
     ## authentication. When you are upgrading from a release prior to CP4BA 22.0.2 to 22.0.2 or later, or when
-    ## you are migrating FileNet Content Manager on-prem or standalone deployment to IBM Cloud Pak for Business Automation (CP4BA), 
-    ## you must set "sc_skip_ldap_config: false".  If you are performing fresh install using 23.0.2-IF004 or later, you can also set     
+    ## you are migrating FileNet Content Manager on-prem or standalone deployment to IBM Cloud Pak for Business Automation (CP4BA),
+    ## you must set "sc_skip_ldap_config: false".  If you are performing fresh install using 23.0.2-IF004 or later, you can also set
     ## "sc_skip_ldap_config: false" in order to have the FileNet Content Manager P8 domain to be configured with direct LDAP bind
     ## as opposed to the default SCIM configuration.
     sc_skip_ldap_config: true
@@ -227,12 +227,12 @@ spec:
 
     ## This optional property is a string value corresponding to the "ipFamilyPolicy" property of Kubernetes "service" objects.
     ## Ref: https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
-    ## This setting is only applicable in dual-stack clusters where both IPv4 and IPv6 are enabled. 
-    ## If not set, then the "ipFamilyPolicy" property of the services will default to the cluster-level settings. 
+    ## This setting is only applicable in dual-stack clusters where both IPv4 and IPv6 are enabled.
+    ## If not set, then the "ipFamilyPolicy" property of the services will default to the cluster-level settings.
     ## ALLOWED VALUES (case-sensitive): "PreferDualStack", "RequireDualStack"
-    ## WARNING: Setting this property to a value not supported by your cluster will cause CP4BA deployment to fail. 
+    ## WARNING: Setting this property to a value not supported by your cluster will cause CP4BA deployment to fail.
     ## For example, if your cluster only supports one IP family, using "RequireDualStack" will cause deployment to fail.
-    sc_service_ip_family_policy: 
+    sc_service_ip_family_policy:
 
     ## This optional property is a list value corresponding to the "ipFamilies" property of Kubernetes "service" objects.
     ## Ref: https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
@@ -244,7 +244,12 @@ spec:
     ## For example, if your cluster does not support "IPv6" family, then including "IPv6" in this property will cause deployment to fail.
     ## IMPORTANT: This setting is only supported for initial deployment. Updating this property after deployment has completed may
     ## cause system instability and require some pods (such as "ibm-nginx", "cdra-deploy", "cds-deploy") to be manually restarted.
-    sc_service_ip_families: 
+    sc_service_ip_families:
+
+    ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
+    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
+    sc_is_multiple_az: false
 
   ## The beginning section of LDAP configuration for CP4A
   ldap_configuration:
@@ -292,21 +297,21 @@ spec:
     lc_ldap_group_member_id_map: "<Required>"
 
     ## Set to true if you want to enable LDAP nested search in IAM, by default it is false
-    lc_ldap_recursive_search: false 
+    lc_ldap_recursive_search: false
 
     ## Set to true if you want to enable LDAP pagination in IAM, by default it is false
     lc_enable_pagination: false
 
     ## If lc_enable_pagination is set to true, then specify the pagination size. If not specified, the following default values will be used:
     ## IBM Tivoli Directory Server: 20000; Microsoft Active Directory:1000, and Custom: 4500
-    lc_pagination_size: 1000 
+    lc_pagination_size: 1000
 
     ## add custom group search bases to IAM
     lc_group_searchbase_list: []
 
     ## add custom user search bases to IAM
     lc_user_searchbase_list: []
-    
+
     ## The lc_ldap_precheck parameter is used to enable or disable LDAP connection check.
     ## If set to "true", then LDAP connection check will be enabled.
     ## if set to "false", then LDAP connection check will not be enabled.
@@ -436,7 +441,7 @@ spec:
 
     ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
     #lc_ldap_group_member_id_map: "<Required>"
-    
+
     ## The lc_ldap_precheck parameter is used to enable or disable LDAP connection check.
     ## If set to "true", then LDAP connection check will be enabled.
     ## if set to "false", then LDAP connection check will not be enabled.
@@ -487,7 +492,7 @@ spec:
     #     # <scim_attr_name> : <ldap attr name>
     #     # like below
     #     # ibmentryuuid : ibm-entryuuid
-      
+
   ## User script should only uncomment this section if External Share if selected as an optional component.
   ## If you are deploying without the User script, uncomment the necessary section (depending
   ## if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
@@ -765,7 +770,7 @@ spec:
 
     ## The database configuration for ICN (Navigator) - aka BAN (Business Automation Navigator)
     dc_icn_datasource:
-      ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment      
+      ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
       dc_use_postgres: false
       ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
@@ -816,8 +821,8 @@ spec:
       dc_use_postgres: false
       ## Provide names of the Project databases (Required for any database type, including EDB Postgres). For example: "proj01db".
       tenant_databases:
-      - "<Required>"      
-      ## Provide the database type from your infrastructure.  The possible values are "db2", "db2HADR", or "postgresql". 
+      - "<Required>"
+      ## Provide the database type from your infrastructure.  The possible values are "db2", "db2HADR", or "postgresql".
       ## (Only required if you do not plan to use the provisioned EDB Postgres instance.)
       dc_database_type: "<Required>"
       ## Provide the hostname of the primary DB2 server in this variable
@@ -832,7 +837,7 @@ spec:
       database_port: "<Required>"
       ## Enable SSL/TLS for database communication. Refer to Knowledge Center for more info.
       dc_database_ssl_enabled: true
-      ## Only applicable if 'dc_database_type: "postgresql"' and 'dc_database_ssl_enabled: true'. 
+      ## Only applicable if 'dc_database_type: "postgresql"' and 'dc_database_ssl_enabled: true'.
       ## This optional variable corresponds to "sslmode" argument for Postgres client
       ## For reference, see https://www.postgresql.org/docs/current/libpq-ssl.html#LIBPQ-SSL-SSLMODE-STATEMENTS
       dc_database_ssl_mode: "require"  # default value is "require" if not given
@@ -842,7 +847,7 @@ spec:
       ## Otherwise, remove or comment out the rest of the parameters below.
       ######################################################################################
       ## The `database_servername` field above must be in the form of fully qualify DNS name if DB2 HADR is used.
-      ## Provide the standby database server name and if your standby database server name cannot be resolvable by DNS, 
+      ## Provide the standby database server name and if your standby database server name cannot be resolvable by DNS,
       ## then provide the corresponding IP address for the `dc_hadr_standby_ip` parameter below.
       ## (Only required if "dc_database_type" is "db2HADR", otherwise comment this out.)
       dc_hadr_standby_servername: "<Required>"
@@ -854,7 +859,7 @@ spec:
       ## Provide the max # of retries.  If not preference, keep the default value.
       dc_hadr_max_retries_for_client_reroute: 3
       ## Provide the validation timeout.  If not preference, keep the default value.
-      dc_hadr_validation_timeout: 15      
+      dc_hadr_validation_timeout: 15
       ## Provide the primary database server IP address if database_servername cannot be resolved by DNS.
       database_ip: ""
       ## Provide the standby database server IP address if dc_hadr_standby_servername cannot be resolved by DNS.
@@ -940,7 +945,7 @@ spec:
     # Optional performance tuning for Zen NGINX server.
     # For more information, please refer to https://www.nginx.com/blog/tuning-nginx/#keepalive_requests and https://nginx.org/en/docs/http/ngx_http_proxy_module.html.
     # This can be overwritten by componenent level definition for example ecm_configuration.graphql.zen_performance.
-    # For CPE we allow more granular setting like below and they take precedence over ecm_configuration.cpe.zen_performance. 
+    # For CPE we allow more granular setting like below and they take precedence over ecm_configuration.cpe.zen_performance.
     # cpe.zen_performance.acce
     # cpe.zen_performance.fncews40mtom
     # cpe.zen_performance.pewsi
@@ -953,7 +958,7 @@ spec:
       proxy_send_timeout: 300
       # Timeout for reading a response from the proxy server. The timeout is set only between two successive read operations, not for the transmission of the whole response. If the proxy server does not transmit anything within this time, the connection is closed. This parameter is optional. The default value is 300s.
       proxy_read_timeout: 300
-      
+
     ####################################
     ## Start of configuration for CPE ##
     ####################################
@@ -970,7 +975,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -992,7 +997,7 @@ spec:
         # Defines behavior for changing ownership and permission of the volume before being exposed inside a Pod. This field has two possible values (Always,OnRootMismatch)
         # For example fs_groupchangepolicy: "OnRootMismatch"
         fs_groupchangepolicy:
-      
+
       ## The initial resources (CPU, memory) requests and limits.  If more resources are needed,
       ## make the changes here to meet your requirement.
       resources:
@@ -1005,7 +1010,7 @@ spec:
           memory: 3072Mi
           ephemeral_storage: 4Gi
 
-      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
       ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
       auto_scaling:
         enabled: false
@@ -1041,11 +1046,11 @@ spec:
 
         ## GCD schema name - uncomment below code and update it's value with your custom GCD Schema name
         # gcd_schema:
-        
+
         # The license must be set to "accept" in order for the component to install.  This is the default value.
         license: accept
 
-        # This section is optional and it takes a list of configmaps. 
+        # This section is optional and it takes a list of configmaps.
         # A configmap can hold files or environment data but it cannot a mix of both.
         # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
         # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
@@ -1072,25 +1077,25 @@ spec:
       ## Persistent Volume Claims for CPE.  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
-        existing_pvc_for_cpe_cfgstore: 
+        existing_pvc_for_cpe_cfgstore:
           name: "cpe-cfgstore"
           size: 1Gi
-        existing_pvc_for_cpe_logstore: 
+        existing_pvc_for_cpe_logstore:
           name: "cpe-logstore"
           size: 1Gi
-        existing_pvc_for_cpe_filestore: 
+        existing_pvc_for_cpe_filestore:
           name: "cpe-filestore"
           size: 1Gi
-        existing_pvc_for_cpe_icmrulestore: 
+        existing_pvc_for_cpe_icmrulestore:
           name: "cpe-icmrulesstore"
           size: 1Gi
-        existing_pvc_for_cpe_textextstore: 
+        existing_pvc_for_cpe_textextstore:
           name: "cpe-textextstore"
           size: 3Gi
-        existing_pvc_for_cpe_bootstrapstore: 
+        existing_pvc_for_cpe_bootstrapstore:
           name: "cpe-bootstrapstore"
           size: 1Gi
-        existing_pvc_for_cpe_fnlogstore: 
+        existing_pvc_for_cpe_fnlogstore:
           name: "cpe-fnlogstore"
           size: 1Gi
 
@@ -1125,7 +1130,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1171,19 +1176,19 @@ spec:
       ## Persistent Volume Claims for CSS.  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
-        existing_pvc_for_css_cfgstore: 
+        existing_pvc_for_css_cfgstore:
           name: "css-cfgstore"
           size: 1Gi
-        existing_pvc_for_css_logstore: 
+        existing_pvc_for_css_logstore:
           name: "css-logstore"
           size: 1Gi
-        existing_pvc_for_css_tmpstore: 
+        existing_pvc_for_css_tmpstore:
           name: "css-tempstore"
           size: 1Gi
-        existing_pvc_for_index: 
+        existing_pvc_for_index:
           name: "css-indexstore"
           size: 1Gi
-        existing_pvc_for_css_customstore: 
+        existing_pvc_for_css_customstore:
           name: "css-customstore"
           size: 1Gi
 
@@ -1222,7 +1227,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1243,7 +1248,7 @@ spec:
           memory: 1536Mi
           ephemeral_storage: 1Gi
 
-      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
       ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
       auto_scaling:
         enabled: false
@@ -1313,7 +1318,7 @@ spec:
         # The license must be set to "accept" in order for the component to install.  This is the default value.
         license: accept
 
-        # This section is optional and it takes a list of configmaps. 
+        # This section is optional and it takes a list of configmaps.
         # A configmap can hold files or environment data but it cannot a mix of both.
         # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
         # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
@@ -1336,10 +1341,10 @@ spec:
       ## Persistent Volume Claims for CMIS.  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
-        existing_pvc_for_cmis_cfgstore: 
+        existing_pvc_for_cmis_cfgstore:
           name: "cmis-cfgstore"
           size: 1Gi
-        existing_pvc_for_cmis_logstore: 
+        existing_pvc_for_cmis_logstore:
           name: "cmis-logstore"
           size: 1Gi
 
@@ -1380,7 +1385,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1401,7 +1406,7 @@ spec:
           memory: 1536Mi
           ephemeral_storage: 1Gi
 
-      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
       ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
       auto_scaling:
         enabled: false
@@ -1436,7 +1441,7 @@ spec:
 
         enable_graph_iql: false
 
-        # This section is optional and it takes a list of configmaps. 
+        # This section is optional and it takes a list of configmaps.
         # A configmap can hold files or environment data but it cannot a mix of both.
         # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
         # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
@@ -1463,10 +1468,10 @@ spec:
       ## Persistent Volume Claims for GraphQL.  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
-        existing_pvc_for_graphql_cfgstore: 
+        existing_pvc_for_graphql_cfgstore:
           name: "graphql-cfgstore"
           size: 1Gi
-        existing_pvc_for_graphql_logstore: 
+        existing_pvc_for_graphql_logstore:
           name: "graphql-logstore"
           size: 1Gi
 
@@ -1505,7 +1510,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1522,7 +1527,7 @@ spec:
           memory: 1536Mi
           ephemeral_storage: 1Gi
 
-      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
       ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
       auto_scaling:
         enabled: false
@@ -1547,7 +1552,7 @@ spec:
         license: accept
         allowed_origins:
 
-        # This section is optional and it takes a list of configmaps. 
+        # This section is optional and it takes a list of configmaps.
         # A configmap can hold files or environment data but it cannot a mix of both.
         # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
         # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
@@ -1571,10 +1576,10 @@ spec:
       ## Persistent Volume Claims for External Share.  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
-        existing_pvc_for_es_cfgstore: 
+        existing_pvc_for_es_cfgstore:
           name: "es-cfgstore"
           size: 1Gi
-        existing_pvc_for_es_logstore: 
+        existing_pvc_for_es_logstore:
           name: "es-logstore"
           size: 1Gi
 
@@ -1612,7 +1617,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1629,7 +1634,7 @@ spec:
           memory: 1536Mi
           ephemeral_storage: 1Gi
 
-      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
       ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
       auto_scaling:
         enabled: false
@@ -1658,7 +1663,7 @@ spec:
         jvm_customize_options: "-Dcom.ibm.ecm.task.StartUpListener.defaultLogLevel=FINE"
         license: accept
 
-        # This section is optional and it takes a list of configmaps. 
+        # This section is optional and it takes a list of configmaps.
         # A configmap can hold files or environment data but it cannot a mix of both.
         # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
         # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
@@ -1669,7 +1674,7 @@ spec:
         #    volume_path:  # optional
         #  - name: <name of configmap>
         #    is_env: # required if the configmap holds environment variables.
-        
+
         ## All users/groups belong to one of three roles (Admin, User, or Auditor) that are specific to Task Manager.
         ## Each role takes a list of users/groups (e.g., groups: [taskAdmins, taskAdmins2]).  Refer to Knowledge Center documentation for details.
         # security_roles_to_group_mapping:
@@ -1694,13 +1699,13 @@ spec:
       ## Persistent Volume Claims for Task Manager (TM).  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
-        existing_pvc_for_tm_cfgstore: 
+        existing_pvc_for_tm_cfgstore:
           name: "tm-cfgstore"
           size: 1Gi
-        existing_pvc_for_tm_logstore: 
+        existing_pvc_for_tm_logstore:
           name: "tm-logstore"
           size: 1Gi
-        existing_pvc_for_tm_pluginstore: 
+        existing_pvc_for_tm_pluginstore:
           name: "tm-pluginstore"
           size: 1Gi
 
@@ -1737,9 +1742,10 @@ spec:
       ##############################################################
       ## Start of configuration for Mongo DB      ##
       ##############################################################
-      ## Set this parameter to false if you don't want Operator to deploy Mongo DB, and you want to use your own existing Mongo DB
+      ## Set this parameter to true if you want Operator to deploy an embedded Mongo DB.  If you want to use your own existing Mongo DB, set this parameter to false
+      ## Note that embedded Mongo DB is not recommended in Production.
 
-      deploy_mongo: true
+      deploy_mongo: false
       mongo:
         ## By default, Mongodb is SSL/TLS enabled.  If you want to disable SSL/TLS, set this parameter to false
         tls: true
@@ -1753,7 +1759,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/mongo_adp
-          tag: 6.0.15
+          tag: 6.0.16
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1804,7 +1810,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/gitgateway
-          tag: "24.0.0"
+          tag: "24.0.0-IF001"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1819,7 +1825,7 @@ spec:
             cpu: 1
             memory: 1536Mi
             ephemeral_storage: 750Mi
-        ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+        ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
         ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
         auto_scaling:
           enabled: false
@@ -1867,7 +1873,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cds
-          tag: "24.0.0"
+          tag: "24.0.0-IF001"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1883,7 +1889,7 @@ spec:
             memory: 3072Mi
             ephemeral_storage: 2Gi
 
-        ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+        ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
         ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
         auto_scaling:
           enabled: false
@@ -1937,7 +1943,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cdra
-          tag: "24.0.0"
+          tag: "24.0.0-IF001"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1954,7 +1960,7 @@ spec:
             memory: 3072Mi
             ephemeral_storage: 1Gi
 
-        ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+        ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
         ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
         auto_scaling:
           enabled: false
@@ -2029,7 +2035,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cpds
-          tag: "24.0.0"
+          tag: "24.0.0-IF001"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2046,7 +2052,7 @@ spec:
             memory: 3072Mi
             ephemeral_storage: 1Gi
 
-        ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+        ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
         ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
         auto_scaling:
           enabled: false
@@ -2126,7 +2132,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/viewone
-          tag: "24.0.0"
+          tag: "24.0.0-IF001"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2143,7 +2149,7 @@ spec:
             memory: 3072Mi
             ephemeral_storage: 1Gi
 
-        ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+        ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
         ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
         auto_scaling:
           enabled: false
@@ -2247,7 +2253,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "24.0.0"
+      tag: "24.0.0-IF001"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2267,8 +2273,8 @@ spec:
         cpu: 1
         memory: 3027Mi
         ephemeral_storage: 2.5Gi
-        
-    ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+
+    ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
     ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
     auto_scaling:
       enabled: false
@@ -2330,7 +2336,7 @@ spec:
         ## level: "s0:c123,c456"
         ## type: "spc_t
       selinux_options:
-      
+
     ## Below are the default ICN Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
     icn_production_setting:
       timezone: Etc/UTC
@@ -2362,7 +2368,7 @@ spec:
       ## Each WalkMe Editor account has a unique snippet code that can be accessed inside the Editor.
       #  walkme_url: https://cdn.walkme.com/users/4e7c687193414395aa0411837a9eee4b/test/walkme_4e7c687193414395aa0411837a9eee4b_https.js
 
-      # This section is optional and it takes a list of configmaps. 
+      # This section is optional and it takes a list of configmaps.
       # A configmap can hold files or environment data but it cannot a mix of both.
       # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
       # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
@@ -2386,23 +2392,23 @@ spec:
     ## Persistent Volume Claims for ICN.  If the storage_configuration in the shared_configuration is configured,
     ## the Operator will create the PVC using the names below.
     datavolume:
-      existing_pvc_for_icn_cfgstore: 
+      existing_pvc_for_icn_cfgstore:
         name: "icn-cfgstore"
         size: 1Gi
-      existing_pvc_for_icn_logstore: 
+      existing_pvc_for_icn_logstore:
         name: "icn-logstore"
         size: 1Gi
-      existing_pvc_for_icn_pluginstore: 
+      existing_pvc_for_icn_pluginstore:
         name: "icn-pluginstore"
         size: 1Gi
-      existing_pvc_for_icnvw_cachestore: 
+      existing_pvc_for_icnvw_cachestore:
         name: "icn-vw-cachestore"
         size: 1Gi
-      existing_pvc_for_icnvw_logstore: 
+      existing_pvc_for_icnvw_logstore:
         name: "icn-vw-logstore"
         size: 1Gi
-      existing_pvc_for_icn_aspera: 
-        name: "icn-asperastore" 
+      existing_pvc_for_icn_aspera:
+        name: "icn-asperastore"
         size: 1Gi
 
     ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
@@ -2442,13 +2448,13 @@ spec:
       ## Optional setting for custom labels.  These are the key/value pair that you can set for all Document Processing engine objects. Below are an example:
       # custom_labels:
       #   myLabel: "My test label"
-      
+
       ## Optional settings for custom annotations. These are the key/value pair that you can set for all Document Processing engine objects. Below are an example:
       # custom_annotations:
       #   myAnnotation: "My test annotation"
 
-      ## Optional settings for custom node affinity.  These are node affinity setting you can set so that Document Processing engine pods will be assigned to specific nodes based on the defined constrain.  It will be part of the `requiredDuringSchedulingIgnoredDuringExecution`.  
-      # Refer to https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity for more details.  See below 
+      ## Optional settings for custom node affinity.  These are node affinity setting you can set so that Document Processing engine pods will be assigned to specific nodes based on the defined constrain.  It will be part of the `requiredDuringSchedulingIgnoredDuringExecution`.
+      # Refer to https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity for more details.  See below
 
       # node_affinity:
       #   custom_node_selector_match_expression:
@@ -2460,7 +2466,7 @@ spec:
       #       operator: In
       #       values:
       #       - rhcos
-      
+
       ## Optional setting for the deployment profile size for Document Processing engine.
       # Allowed values: "entry", "small", "medium", "large".  NOTE: The "entry" profile is ONLY applicabile for "document_processing" pattern which means it should only be explicitly set under "ca_configuration" section.  It should not be used in "shared_configuration.sc_deployment_profile_size"
       # If set, this setting overrides the equivalent setting "shared_configuration.sc_deployment_profile_size".
@@ -2499,11 +2505,11 @@ spec:
       arch: "amd64"
       # The database secret name created as part of the pre-req.  Default will be "aca-basedb" if blank.
       db_secret:
-      # The custom service account for DPE. Default will be "<meta.name>-aca-service-account" if blank. 
-      # If global.service_account is configured then you have to create appropriate Role and RoleBinding as well. 
-      # Sample rules below that represent a set of permissions on the Role. 
+      # The custom service account for DPE. Default will be "<meta.name>-aca-service-account" if blank.
+      # If global.service_account is configured then you have to create appropriate Role and RoleBinding as well.
+      # Sample rules below that represent a set of permissions on the Role.
       # Use these rules in your Role YAML file to create the Role.
-      
+
       # rules:
       # - apiGroups: [""] # "" indicates the core API group
       #   resources: ["pods"]
@@ -2527,7 +2533,7 @@ spec:
         max_replicas: "<Required>"  # Required if enable set to "true"
       image:
         repository: "cp.icr.io/cp/cp4a/iadp"
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
         pull_policy: "IfNotPresent"
 ## Overwrite the default SHA digest for Document Processing engine containers by providing the SHA for each containers below.  To use SHA digest, you must comment out the `tag` parameter or leave it blank and you must use entilement registry as the repository.
         doc_processing_digest:
@@ -2560,7 +2566,7 @@ spec:
           limits:
             memory: "1024Mi"
             cpu: "1"
-        # Set 'replica_count' below to override the default number of pods (the default is based on the 'deployment_profile_size' parameter)    
+        # Set 'replica_count' below to override the default number of pods (the default is based on the 'deployment_profile_size' parameter)
         #replica_count: 2
     # Document Processing engine cron jobs to delete documents.
     jobs:
@@ -2569,12 +2575,12 @@ spec:
         schedule: "0 * * * *"
       daily_cleanup:
         # Allow to change the retention days for all documents before they are being deleted by the cron job.
-        # It can be expressed in several ways: 
+        # It can be expressed in several ways:
         # - Number in seconds such as `3600`.
         # - Duration-like strings in minutes, hours and days such as `30m`, `1hr`, `2days`, `1d`
         runtime_doc_retention: "1d"
         # Allow to change the daily cronjob schedule if desired.  It must be in Unix cron format. Default will be "30 1 * * *"
-        schedule: "30 1 * * *"  
+        schedule: "30 1 * * *"
     # Backend configuration
     spbackend:
       # Allow to specify a specific port (nodePort) for backend.  The port number must be between 30000-32767.  A random port will be generated if blank.
@@ -2639,10 +2645,10 @@ spec:
       # Set the replica_count below to override the default number of pods
       #replica_count: 5
       # Tech-Preview (23.0.1): When use_iocr is set to `auto` or `all`, enable support for low quality document and Handwriting recognition.
-      use_iocr: none #auto,all,none. Default is none 
+      use_iocr: none #auto,all,none. Default is none
       # HPA auto scaling configuration for ocrextraction.
       # These parameters will take priority over all parameters that defined under ca_configuration.global.auto_scaling section. The min_replicas and max_replicas will be used if auto_scaling.enabled is true. And the value of min_replicas will instead of replica_count.
-      # The auto_scaling section should be commented out or removed if you plan to use the ca_configuration.global.auto_scaling section. 
+      # The auto_scaling section should be commented out or removed if you plan to use the ca_configuration.global.auto_scaling section.
       auto_scaling:
         enabled: false
         target_cpu_utilization_percentage: 90
@@ -2691,7 +2697,7 @@ spec:
           cpu: "1"
     #Natural language extraction
     naturallanguageextractor:
-      # This parameter indicates how many NLE models will be loaded into cache. By loading models into cache, the NLE document processing task will be improved. Default is `20`.  
+      # This parameter indicates how many NLE models will be loaded into cache. By loading models into cache, the NLE document processing task will be improved. Default is `20`.
       # NOTE: Increasing this number may cause the NLE's pod to run out of memory. You need to monitor the NLE's pod and increase the RAM limit appropriately.
       model_cache_size: 20
       process_timeout: 300

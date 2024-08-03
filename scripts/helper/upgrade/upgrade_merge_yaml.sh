@@ -247,10 +247,10 @@ metadata:
       name: <cr_metaname>
       uid: <cr_uid>
 data:
-  ads_operator_of_last_reconcile: <cr_version>
-  cp4ba_operator_of_last_reconcile: <cr_version>
-  odm_operator_of_last_reconcile: <cr_version>
-  baw_operator_of_last_reconcile: <cr_version>
+  ads_operator_of_last_reconcile: <csv_version>
+  cp4ba_operator_of_last_reconcile: <csv_version>
+  odm_operator_of_last_reconcile: <csv_version>
+  baw_operator_of_last_reconcile: <csv_version>
 EOF
 }
 
@@ -273,7 +273,7 @@ metadata:
       name: <cr_metaname>
       uid: <cr_uid>
 data:
-  content_operator_of_last_reconcile: <cr_version>
+  content_operator_of_last_reconcile: <csv_version>
 EOF
 }
 
@@ -374,19 +374,20 @@ function upgrade_deployment(){
 
                 ${SED_COMMAND} "s/route_reencrypt: .*/route_reencrypt: $ZEN_ROUTE_REENCRYPT/g" ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
 
-                # Merge BAI save point into content cr
-                bai_flag=`cat $UPGRADE_DEPLOYMENT_CONTENT_CR_TMP | ${YQ_CMD} r - spec.content_optional_components.bai`
-                bai_flag=$(echo $bai_flag | tr '[:upper:]' '[:lower:]')
-                if [[ $bai_flag == "true" ]]; then
-                    info "Merging Flink job savepoint from \"${UPGRADE_DEPLOYMENT_BAI_TMP}\" into new version of custom resource \"${UPGRADE_DEPLOYMENT_CONTENT_CR}\"."
-                    if [ -s ${UPGRADE_DEPLOYMENT_BAI_TMP} ]; then
-                        ${YQ_CMD} m -i -a -M --overwrite ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} ${UPGRADE_DEPLOYMENT_BAI_TMP}
-                        success "Merged Flink job savepoint into new version of custom resource."
-                    else
-                       warning "Not found file ${UPGRADE_DEPLOYMENT_BAI_TMP}."
+                if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "24.0."*) ]]; then
+                    # Merge BAI save point into content cr
+                    bai_flag=`cat $UPGRADE_DEPLOYMENT_CONTENT_CR_TMP | ${YQ_CMD} r - spec.content_optional_components.bai`
+                    bai_flag=$(echo $bai_flag | tr '[:upper:]' '[:lower:]')
+                    if [[ $bai_flag == "true" ]]; then
+                        info "Merging Flink job savepoint from \"${UPGRADE_DEPLOYMENT_BAI_TMP}\" into new version of custom resource \"${UPGRADE_DEPLOYMENT_CONTENT_CR}\"."
+                        if [ -s ${UPGRADE_DEPLOYMENT_BAI_TMP} ]; then
+                            ${YQ_CMD} m -i -a -M --overwrite ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} ${UPGRADE_DEPLOYMENT_BAI_TMP}
+                            success "Merged Flink job savepoint into new version of custom resource."
+                        else
+                        warning "Not found file ${UPGRADE_DEPLOYMENT_BAI_TMP}."
+                        fi
                     fi
                 fi
-
                 # Disable sc_content_initialization/sc_content_verification
                 if [[ $olm_cr_flag == "No" ]]; then
                     ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} spec.shared_configuration.sc_content_initialization "false"
@@ -510,9 +511,9 @@ function upgrade_deployment(){
                     printf "\n"
 
                     echo "${YELLOW_TEXT}- Refer to the Knowledge Center: \"Updating the custom resource for each capability in your deployment\" topic to complete REQUIRED steps for the installed pattern(s)."
-                    echo "  - if upgrading from 21.0.3: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment]"
-                    echo "  - if upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment-1] ${RESET_TEXT}"
-                    echo "${YELLOW_TEXT}- After review or modify the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\", and then you need to follow below steps to upgrade this CP4BA deployment.${RESET_TEXT}"
+                    echo "  - if upgrading from 21.0.3 or 22.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpd-updating-custom-resource-each-capability-in-your-deployment]"
+                    echo "  - if upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment] ${RESET_TEXT}"
+                    echo "${YELLOW_TEXT}- After reviewing or modifying the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\", you need to follow the steps below to upgrade this CP4BA deployment.${RESET_TEXT}"
 
                     if [[ $initialize_cfg_flag != "" && $verify_cfg_flag != "" ]]; then
                         echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} patch content $content_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/initialize_configuration"}]'${RESET_TEXT}" && step_num=$((step_num + 1))
@@ -538,7 +539,7 @@ function upgrade_deployment(){
                     echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: ${GREEN_TEXT}# ./cp4a-deployment.sh -m upgradeDeploymentStatus -n $TARGET_PROJECT_NAME${RESET_TEXT}"
                 fi
                 printf "\n"
-                echo "${YELLOW_TEXT}[ATTENTION]: The zenService will be ready in about 120 minutes after the new version ($CP4BA_RELEASE_BASE) of CP4BA custom resource was applied.${RESET_TEXT}"
+                echo "${YELLOW_TEXT}[ATTENTION]: The zenService will be ready in about 120 minutes after the new version ($CP4BA_RELEASE_BASE) of the CP4BA custom resource was applied.${RESET_TEXT}"
 
                 # if [ $? -ne 0 ]; then
                 #     fail "IBM Cloud Pak for Business Automation Content custom resource update failed"
@@ -742,16 +743,16 @@ function upgrade_deployment(){
                 if [[ $baw_auth_db_secret_name == *"meta.name"* ]]; then
                     baw_auth_db_secret_name=$(echo "$baw_auth_db_secret_name" | sed "s/{{\s*meta\.name\s*}}/${cr_metaname}/g")
                 fi
-                baw_auth_db_user_name=$(${CLI_CMD} get secret $baw_auth_db_secret_name --no-headers --ignore-not-found -n $TARGET_PROJECT_NAME -o jsonpath='{.data.dbUser}' | base64 -d)
+                baw_auth_db_user_name=$(${CLI_CMD} get secret $baw_auth_db_secret_name --no-headers --ignore-not-found -n $deployment_project_name -o jsonpath='{.data.dbUser}' | base64 -d)
 
                 if [[ -z $baw_auth_db_user_name ]]; then
-                    baw_auth_db_user_name=$(${CLI_CMD} get secret $baw_auth_db_secret_name --no-headers --ignore-not-found -n $TARGET_PROJECT_NAME -o jsonpath='{.stringData.dbUser}' | base64 -d)
+                    baw_auth_db_user_name=$(${CLI_CMD} get secret $baw_auth_db_secret_name --no-headers --ignore-not-found -n $deployment_project_name -o jsonpath='{.stringData.dbUser}' | base64 -d)
                 fi
 
-                baw_auth_db_user_pwd=$(${CLI_CMD} get secret $baw_auth_db_secret_name --no-headers --ignore-not-found -n $TARGET_PROJECT_NAME -o jsonpath='{.data.password}' | base64 -d)
+                baw_auth_db_user_pwd=$(${CLI_CMD} get secret $baw_auth_db_secret_name --no-headers --ignore-not-found -n $deployment_project_name -o jsonpath='{.data.password}' | base64 -d)
 
                 if [[ -z $baw_auth_db_user_pwd ]]; then
-                    baw_auth_db_user_pwd=$(${CLI_CMD} get secret $baw_auth_db_secret_name --no-headers --ignore-not-found -n $TARGET_PROJECT_NAME -o jsonpath='{.stringData.password}' | base64 -d)
+                    baw_auth_db_user_pwd=$(${CLI_CMD} get secret $baw_auth_db_secret_name --no-headers --ignore-not-found -n $deployment_project_name -o jsonpath='{.stringData.password}' | base64 -d)
                 fi
 
                 bas_db_secret_name=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.bastudio_configuration.admin_secret_name`
@@ -761,29 +762,29 @@ function upgrade_deployment(){
                     fi
 
                     # Update User Name
-                    bas_db_user_name=$(${CLI_CMD} get secret $bas_db_secret_name --no-headers --ignore-not-found -n $TARGET_PROJECT_NAME -o jsonpath='{.data.dbUsername}' | base64 -d)
+                    bas_db_user_name=$(${CLI_CMD} get secret $bas_db_secret_name --no-headers --ignore-not-found -n $deployment_project_name -o jsonpath='{.data.dbUsername}' | base64 -d)
                     if [[ -z $bas_db_user_name ]]; then
-                        bas_db_user_name=$(${CLI_CMD} get secret $bas_db_secret_name --no-headers --ignore-not-found -n $TARGET_PROJECT_NAME -o jsonpath='{.stringData.dbUsername}' | base64 -d)
+                        bas_db_user_name=$(${CLI_CMD} get secret $bas_db_secret_name --no-headers --ignore-not-found -n $deployment_project_name -o jsonpath='{.stringData.dbUsername}' | base64 -d)
                         if [[ ! -z $bas_db_user_name ]]; then
-                            ${CLI_CMD} patch secret $bas_db_secret_name -n $TARGET_PROJECT_NAME -p '{"stringData":{"dbUsername":"'$(echo -n "$baw_auth_db_user_name" | base64)'"}}' >/dev/null 2>&1
+                            ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"stringData":{"dbUsername":"'$(echo -n "$baw_auth_db_user_name" | base64)'"}}' >/dev/null 2>&1
                         else
-                            warning "Not found the value of \"dbUsername\" from secret $bas_db_secret_name in the project \"$TARGET_PROJECT_NAME\"."
+                            warning "Not found the value of \"dbUsername\" from secret $bas_db_secret_name in the project \"$deployment_project_name\"."
                         fi
                     else
-                        ${CLI_CMD} patch secret $bas_db_secret_name -n $TARGET_PROJECT_NAME -p '{"data":{"dbUsername":"'$(echo -n "$baw_auth_db_user_name" | base64)'"}}' >/dev/null 2>&1
+                        ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"data":{"dbUsername":"'$(echo -n "$baw_auth_db_user_name" | base64)'"}}' >/dev/null 2>&1
                     fi
 
                     # Update User Password
-                    bas_db_user_pwd=$(${CLI_CMD} get secret $bas_db_secret_name --no-headers --ignore-not-found -n $TARGET_PROJECT_NAME -o jsonpath='{.data.dbPassword}' | base64 -d)
+                    bas_db_user_pwd=$(${CLI_CMD} get secret $bas_db_secret_name --no-headers --ignore-not-found -n $deployment_project_name -o jsonpath='{.data.dbPassword}' | base64 -d)
                     if [[ -z $bas_db_user_pwd ]]; then
-                        bas_db_user_pwd=$(${CLI_CMD} get secret $bas_db_secret_name --no-headers --ignore-not-found -n $TARGET_PROJECT_NAME -o jsonpath='{.stringData.dbPassword}' | base64 -d)
+                        bas_db_user_pwd=$(${CLI_CMD} get secret $bas_db_secret_name --no-headers --ignore-not-found -n $deployment_project_name -o jsonpath='{.stringData.dbPassword}' | base64 -d)
                         if [[ ! -z $bas_db_user_pwd ]]; then
-                            ${CLI_CMD} patch secret $bas_db_secret_name -n $TARGET_PROJECT_NAME -p '{"stringData":{"dbPassword":"'$(echo -n "$baw_auth_db_user_pwd" | base64)'"}}' >/dev/null 2>&1
+                            ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"stringData":{"dbPassword":"'$(echo -n "$baw_auth_db_user_pwd" | base64)'"}}' >/dev/null 2>&1
                         else
-                            warning "Not found the value of \"dbPassword\" from secret $bas_db_secret_name in the project \"$TARGET_PROJECT_NAME\"."
+                            warning "Not found the value of \"dbPassword\" from secret $bas_db_secret_name in the project \"$deployment_project_name\"."
                         fi
                     else
-                        ${CLI_CMD} patch secret $bas_db_secret_name -n $TARGET_PROJECT_NAME -p '{"data":{"dbPassword":"'$(echo -n "$baw_auth_db_user_pwd" | base64)'"}}' >/dev/null 2>&1
+                        ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"data":{"dbPassword":"'$(echo -n "$baw_auth_db_user_pwd" | base64)'"}}' >/dev/null 2>&1
                     fi
                 else
                     warning "Not found the value of \"spec.bastudio_configuration.admin_secret_name\" from ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}"
@@ -844,14 +845,16 @@ function upgrade_deployment(){
         ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.shared_configuration.sc_common_service
         ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.shared_configuration.sc_common_service
 
-        # Merge BAI save point into content cr
-        if [[ (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "bai") ]]; then
-            info "Merging Flink job savepoint from \"${UPGRADE_DEPLOYMENT_BAI_TMP}\" into new version of custom resource \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\"."
-            if [ -s ${UPGRADE_DEPLOYMENT_BAI_TMP} ]; then
-                ${YQ_CMD} m -i -a -M --overwrite ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} ${UPGRADE_DEPLOYMENT_BAI_TMP}
-                success "Merged Flink job savepoint into new version of custom resource."
-            else
-                warning "Not found file ${UPGRADE_DEPLOYMENT_BAI_TMP}."
+        if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "24.0."*) ]]; then
+            # Merge BAI save point into content cr
+            if [[ (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "bai") ]]; then
+                info "Merging Flink job savepoint from \"${UPGRADE_DEPLOYMENT_BAI_TMP}\" into new version of custom resource \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\"."
+                if [ -s ${UPGRADE_DEPLOYMENT_BAI_TMP} ]; then
+                    ${YQ_CMD} m -i -a -M --overwrite ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} ${UPGRADE_DEPLOYMENT_BAI_TMP}
+                    success "Merged Flink job savepoint into new version of custom resource."
+                else
+                    warning "Not found file ${UPGRADE_DEPLOYMENT_BAI_TMP}."
+                fi
             fi
         fi
 
@@ -1504,7 +1507,7 @@ function upgrade_deployment(){
                 if [[ "$element" != "decisions" && "$element" == "decisions_ads" ]]; then
                     echo -e "\x1B[33;5m- Automation Decision Services capability is installed in this CP4BA deployment: \x1B[0m"
                     echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Please refer to the Knowledge Center: \"Upgrading IBM Automation Decision Services\" topic:"
-                    echo "    - if upgrading from 21.0.3: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=deployment-upgrading-automation-decision-services]"
+                    echo "    - if upgrading from 21.0.3 or 22.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=deployment-upgrading-automation-decision-services]"
                     echo "    - if upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=ucreciyd-upgrading-automation-decision-services]"
                     echo "  - Add the storage_configuration.sc_block_storage_classname property in the CR file if it is not already included."
                     # echo "  - Optional: If the decision runtime secret was manually created, add the following properties:"
@@ -1521,7 +1524,7 @@ function upgrade_deployment(){
             if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") ]]; then
                     echo -e "\x1B[33;5m- Automation Document Processing capability is installed in this CP4BA deployment: \x1B[0m"
                     echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Upgrade the Automation Document Processing databases"
-                    echo "    - If you are upgrading from 21.0.3, please refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=2103-upgrading-your-automation-document-processing-databases"
+                    echo "    - If you are upgrading from 21.0.3 or 22.0.2, please refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-your-automation-document-processing-databases"
                     echo "    - If you are upgrading from 23.0.2, please refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=2302-upgrading-your-automation-document-processing-databases"
                     step_num=$((step_num + 1))
 
@@ -1567,9 +1570,9 @@ function upgrade_deployment(){
                     printf "\n"
             fi
             echo "${YELLOW_TEXT}- Refer to the Knowledge Center: \"Updating the custom resource for each capability in your deployment\" topic to complete REQUIRED steps for the installed pattern(s)."
-            echo "  - if upgrading from 21.0.3: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment]"
-            echo "  - if upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment-1]${RESET_TEXT}"
-            echo "${YELLOW_TEXT}- After review or modify the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\", and then you need to follow below steps to upgrade this CP4BA deployment.${RESET_TEXT}"
+            echo "  - if upgrading from 21.0.3 or 22.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpd-updating-custom-resource-each-capability-in-your-deployment]"
+            echo "  - if upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment]${RESET_TEXT}"
+            echo "${YELLOW_TEXT}- After reviewing or modifying the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\", you need to follow the steps below to upgrade this CP4BA deployment.${RESET_TEXT}"
             if [[ $initialize_cfg_flag != "" && $verify_cfg_flag != "" ]]; then
                 echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} patch icp4acluster $icp4acluster_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/initialize_configuration"}]'${RESET_TEXT}" && step_num=$((step_num + 1))
                 echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} patch icp4acluster $icp4acluster_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/verify_configuration"}]'${RESET_TEXT}"  && step_num=$((step_num + 1))

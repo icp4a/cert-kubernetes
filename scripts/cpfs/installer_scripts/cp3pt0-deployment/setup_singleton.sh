@@ -250,6 +250,9 @@ function is_migrate_licensing() {
             error "An ibm-licensing-operator already installed in namespace: $ns, please do not set parameter '-licensingNs $LICENSING_NAMESPACE"
         fi
         LICENSING_NAMESPACE="$ns"
+        if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
+            LIS_SOURCE_NS="$ns" 
+        fi
         return 0
     fi
 
@@ -259,6 +262,9 @@ function is_migrate_licensing() {
             error "An ibm-license-service-reporter-operator already installed in namespace: $lsr_ns, expected namespace is: $LSR_NAMESPACE"
         fi
         LSR_NAMESPACE="$lsr_ns"
+        if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
+            LSR_SOURCE_NS="$lsr_ns" 
+        fi
     fi
 
     get_and_validate_arguments
@@ -270,7 +276,11 @@ function is_migrate_licensing() {
     if [[ "$CUSTOMIZED_LICENSING_NAMESPACE" -eq 1 ]] && [[ "$CONTROL_NS" != "$LICENSING_NAMESPACE" ]]; then
         error "Licensing Migration could only be done in $CONTROL_NS, please do not set parameter '-licensingNs $LICENSING_NAMESPACE'"
     fi
+
     LICENSING_NAMESPACE="$CONTROL_NS"
+    if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
+        LIS_SOURCE_NS="$ns" 
+    fi
 }
 
 function cert_manager_deployment_check(){
@@ -327,6 +337,9 @@ function install_cert_manager() {
                 error "An ibm-cert-manager-operator already installed in namespace: $webhook_ns, please do not set parameter '-cmNs $CERT_MANAGER_NAMESPACE"
             fi
             CERT_MANAGER_NAMESPACE="$webhook_ns"
+            if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
+                CM_SOURCE_NS="$webhook_ns" 
+            fi
         else
             warning "Cluster has a RedHat cert-manager or Helm cert-manager, skipping"
             return 0
@@ -570,6 +583,7 @@ function pre_req() {
 
     # Using private catalog
     if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
+        warning "Flag --enable-private-catalog is enabled, please make sure the CatalogSource is deployed in the same namespace as operator"
         CM_SOURCE_NS="${CERT_MANAGER_NAMESPACE}"
         LIS_SOURCE_NS="${LICENSING_NAMESPACE}"
         LSR_SOURCE_NS="${LSR_NAMESPACE}"

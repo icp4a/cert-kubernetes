@@ -13,6 +13,18 @@ rules:
       - update
       - watch
     apiGroups:
+      - apps
+    resources:
+      - deployments/status
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    apiGroups:
       - ''
     resources:
       - configmaps
@@ -679,25 +691,8 @@ rules:
       - ibmevents.ibm.com
     resources:
       - kafkatopics
-  - verbs:
-      - get
-      - list
-      - watch
-      - create
-      - patch
-      - update
-    apiGroups:
-      - ibmevents.ibm.com
-    resources:
-      - kafkausers
-  - verbs:
-      - get
-      - patch
-      - update
-    apiGroups:
-      - ibmevents.ibm.com
-    resources:
       - kafkatopics/status
+      - kafkausers
       - kafkausers/status
   - verbs:
       - create
@@ -748,33 +743,27 @@ rules:
       - list
       - watch
       - create
+      - delete
       - patch
       - update
     apiGroups:
       - ibmevents.ibm.com
     resources:
       - kafkas
-      - kafkanodepools
-      - kafkaconnects
-      - kafkaconnectors
-      - kafkamirrormakers
-      - kafkabridges
-      - kafkamirrormaker2s
-      - kafkarebalances
-  - verbs:
-      - get
-      - patch
-      - update
-    apiGroups:
-      - ibmevents.ibm.com
-    resources:
       - kafkas/status
+      - kafkanodepools
       - kafkanodepools/status
+      - kafkaconnects
       - kafkaconnects/status
+      - kafkaconnectors
       - kafkaconnectors/status
+      - kafkamirrormakers
       - kafkamirrormakers/status
+      - kafkabridges
       - kafkabridges/status
+      - kafkamirrormaker2s
       - kafkamirrormaker2s/status
+      - kafkarebalances
       - kafkarebalances/status
   - verbs:
       - get
@@ -792,6 +781,10 @@ rules:
       - get
       - patch
       - update
+      - create
+      - delete
+      - list
+      - watch
     apiGroups:
       - core.ibmevents.ibm.com
     resources:

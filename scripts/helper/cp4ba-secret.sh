@@ -25,6 +25,7 @@ apiVersion: v1
 type: Opaque
 metadata:
   name: ldap-bind-secret
+  namespace: "$CP4BA_SERVICES_NS"
   # DO NOT change the content of metadata.labels
   labels:
     name: ldap-bind-secret
@@ -50,6 +51,7 @@ apiVersion: v1
 type: Opaque
 metadata:
   name: ext-ldap-bind-secret
+  namespace: "$CP4BA_SERVICES_NS"
   # DO NOT change the content of metadata.labels
   labels:
     name: ext-ldap-bind-secret
@@ -70,8 +72,8 @@ cat << EOF > ${CP4A_LDAP_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-cp4a-ldap-ssl-cert-secret.sh 
 if [[ -f "<cp4a-ldap-crt-file-in-local>/ldap-cert.crt" ]]; then
-  kubectl delete secret generic "<cp4a-ldap_ssl_secret_name>" >/dev/null 2>&1
-  kubectl create secret generic "<cp4a-ldap_ssl_secret_name>" --from-file=tls.crt="<cp4a-ldap-crt-file-in-local>/ldap-cert.crt"
+  kubectl delete secret generic "<cp4a-ldap_ssl_secret_name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  kubectl create secret generic "<cp4a-ldap_ssl_secret_name>" --from-file=tls.crt="<cp4a-ldap-crt-file-in-local>/ldap-cert.crt" -n "$CP4BA_SERVICES_NS"
 else
   echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"ldap-cert.crt\" into \"<cp4a-ldap-crt-file-in-local>\" first."
   exit 1
@@ -91,8 +93,8 @@ cat << EOF > ${CP4A_EXT_LDAP_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-cp4ba-external-ldap-ssl-cert-secret.sh
 if [[ -f "<cp4a-ldap-crt-file-in-local>/external-ldap-cert.crt" ]]; then
-  kubectl delete secret generic "<cp4a-ldap_ssl_secret_name>" >/dev/null 2>&1
-  kubectl create secret generic "<cp4a-ldap_ssl_secret_name>" --from-file=tls.crt="<cp4a-ldap-crt-file-in-local>/external-ldap-cert.crt"
+  kubectl delete secret generic "<cp4a-ldap_ssl_secret_name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  kubectl create secret generic "<cp4a-ldap_ssl_secret_name>" --from-file=tls.crt="<cp4a-ldap-crt-file-in-local>/external-ldap-cert.crt" -n "$CP4BA_SERVICES_NS"
 else
   echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"external-ldap-cert.crt\" into \"<cp4a-ldap-crt-file-in-local>\" first."
   exit 1
@@ -111,8 +113,8 @@ cat << EOF > ${CP4A_AE_REDIS_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-cp4a-redis-ssl-cert-secret.sh 
 if [[ -f "<cp4a-redis-crt-file-in-local>/redis.pem" ]]; then
-  kubectl delete secret generic "<cp4a-redis_ssl_secret_name>" >/dev/null 2>&1
-  kubectl create secret generic "<cp4a-redis_ssl_secret_name>" --from-file=tls.crt="<cp4a-redis-crt-file-in-local>/redis.pem"
+  kubectl delete secret generic "<cp4a-redis_ssl_secret_name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  kubectl create secret generic "<cp4a-redis_ssl_secret_name>" --from-file=tls.crt="<cp4a-redis-crt-file-in-local>/redis.pem" -n "$CP4BA_SERVICES_NS"
 else
   echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"redis.pem\" into \"<cp4a-redis-crt-file-in-local>\" first."
   exit 1
@@ -132,8 +134,8 @@ cat << EOF > ${CP4A_PLAYBACK_REDIS_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-cp4a-redis-ssl-cert-secret.sh 
 if [[ -f "<cp4a-redis-crt-file-in-local>/redis.pem" ]]; then
-  kubectl delete secret generic "<cp4a-redis_ssl_secret_name>" >/dev/null 2>&1
-  kubectl create secret generic "<cp4a-redis_ssl_secret_name>" --from-file=tls.crt="<cp4a-redis-crt-file-in-local>/redis.pem"
+  kubectl delete secret generic "<cp4a-redis_ssl_secret_name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  kubectl create secret generic "<cp4a-redis_ssl_secret_name>" --from-file=tls.crt="<cp4a-redis-crt-file-in-local>/redis.pem" -n "$CP4BA_SERVICES_NS"
 else
   echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"redis.pem\" into \"<cp4a-redis-crt-file-in-local>\" first."
   exit 1
@@ -160,6 +162,7 @@ apiVersion: v1
 type: Opaque
 metadata:
   name: ibm-fncm-secret
+  namespace: "$CP4BA_SERVICES_NS"
   # DO NOT change the content of metadata.labels
   labels:
     gcd-db-server: $gcddbserver
@@ -190,8 +193,8 @@ cat << EOF > ${CP4A_DB_SSL_SECRET_FILE}
 # Shell template for ibm-cp4a-db-ssl-cert-secret
 
 if [[ -f "<cp4a-db-crt-file-in-local>/db-cert.crt" ]]; then
-  kubectl delete secret generic "<cp4a-db-ssl-secret-name>" >/dev/null 2>&1
-  kubectl create secret generic "<cp4a-db-ssl-secret-name>" --from-file=tls.crt="<cp4a-db-crt-file-in-local>/db-cert.crt"
+  kubectl delete secret generic "<cp4a-db-ssl-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  kubectl create secret generic "<cp4a-db-ssl-secret-name>" --from-file=tls.crt="<cp4a-db-crt-file-in-local>/db-cert.crt" -n "$CP4BA_SERVICES_NS"
 else
   echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
@@ -203,10 +206,10 @@ cat << \EOF > ${CP4A_DB_SSL_SECRET_FILE}
 # Shell template for ibm-cp4a-db-ssl-cert-secret
 
 if [[ -f "<cp4a-db-crt-file-in-local>/db-cert.crt" ]]; then
-  kubectl delete secret generic "<cp4a-db-ssl-secret-name>" >/dev/null 2>&1
+  kubectl delete secret generic "<cp4a-db-ssl-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
   kubectl create secret generic "<cp4a-db-ssl-secret-name>" \
   --from-file=tls.crt="<cp4a-db-crt-file-in-local>/db-cert.crt" \
-  --from-file=serverca.pem="<cp4a-db-crt-file-in-local>/db-cert.crt"
+  --from-file=serverca.pem="<cp4a-db-crt-file-in-local>/db-cert.crt" -n "$CP4BA_SERVICES_NS"
 else
   echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
@@ -233,12 +236,12 @@ if [ $value_empty -ne 0 ] ; then
 fi
 
 if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-local>/client.crt" && -f "<cp4a-db-crt-file-in-local>/client.key" ]]; then
-  kubectl delete secret generic "<cp4a-db-ssl-secret-name>" >/dev/null 2>&1
+  kubectl delete secret generic "<cp4a-db-ssl-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
   kubectl create secret generic "<cp4a-db-ssl-secret-name>" \
   --from-file=tls.crt="<cp4a-db-crt-file-in-local>/client.crt" \
   --from-file=ca.crt="<cp4a-db-crt-file-in-local>/root.crt" \
   --from-file=tls.key="<cp4a-db-crt-file-in-local>/client.key" \
-  --from-literal=sslmode=[require|verify-ca|verify-full]
+  --from-literal=sslmode=[require|verify-ca|verify-full] -n "$CP4BA_SERVICES_NS"
   # If DATABASE_SSL_ENABLE="True" and POSTGRESQL_SSL_CLIENT_SERVER="False"
   # set '--from-literal=sslmode=require'
   # If DATABASE_SSL_ENABLE="True" and POSTGRESQL_SSL_CLIENT_SERVER="True"
@@ -267,6 +270,7 @@ apiVersion: v1
 type: Opaque
 metadata:
   name: ibm-icc-secret
+  namespace: "$CP4BA_SERVICES_NS"
 stringData:
   archiveUserId: "<ARCHIVE_USERID>"
   archivePassword: "<ARCHIVE_PASSWORD>"
@@ -284,6 +288,7 @@ apiVersion: v1
 type: Opaque
 metadata:
   name: ibm-iccsap-secret
+  namespace: "$CP4BA_SERVICES_NS"
 stringData:
   keystorePassword: "changeit"
 EOF
@@ -300,6 +305,7 @@ apiVersion: v1
 type: Opaque
 metadata:
   name: ibm-ier-secret
+  namespace: "$CP4BA_SERVICES_NS"
 stringData:
   keystorePassword: "changeit"
 EOF
@@ -320,6 +326,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: ibm-odm-db-secret
+  namespace: "$CP4BA_SERVICES_NS"
   # DO NOT change the content of metadata.labels
   labels:
     db-server: $dbserver
@@ -348,6 +355,7 @@ apiVersion: v1
 type: Opaque
 metadata:
   name: ibm-ban-secret
+  namespace: "$CP4BA_SERVICES_NS"
   # DO NOT change the content of metadata.labels
   labels:
     db-server: $dbserver
@@ -373,8 +381,8 @@ cat << EOF > ${BAN_DB_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-ban-db-ssl-cert-secret
 if [[ -f "<ban-crt-file-in-local>/db-cert.crt" ]]; then
-  kubectl delete secret generic "<ban-db-ssl-secret-name>" >/dev/null 2>&1
-  kubectl create secret generic "<ban-db-ssl-secret-name>" --from-file=tls.crt="<ban-crt-file-in-local>"
+  kubectl delete secret generic "<ban-db-ssl-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  kubectl create secret generic "<ban-db-ssl-secret-name>" --from-file=tls.crt="<ban-crt-file-in-local>" -n "$CP4BA_SERVICES_NS"
 else
   echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt"\" into \"<ban-crt-file-in-local>\" first."
   exit 1
@@ -414,8 +422,8 @@ EOF
 
   # Start kubectl command
   echo "" >> ${ADP_BASE_DB_SECRET_FILE}
-  echo "kubectl delete secret generic \"aca-basedb\" >/dev/null 2>&1" >> ${ADP_BASE_DB_SECRET_FILE}
-  echo "kubectl create secret generic \"aca-basedb\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
+  echo "kubectl delete secret generic \"aca-basedb\" -n \"$CP4BA_SERVICES_NS\" >/dev/null 2>&1" >> ${ADP_BASE_DB_SECRET_FILE}
+  echo "kubectl create secret generic \"aca-basedb\" -n \"$CP4BA_SERVICES_NS\"\\" >> ${ADP_BASE_DB_SECRET_FILE}
 
   #  Add basedb user
   local tmp_dbuser="$(prop_db_name_user_property_file ADP_BASE_DB_USER_NAME)"
@@ -467,9 +475,16 @@ EOF
         ssl_folder_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$ssl_folder_path") 
 
         if [[ "$DB_TYPE" == "postgresql" ]]; then                  
-          echo " --from-file=CERT=\"${ssl_folder_path}/client.crt\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
-          echo " --from-file=KEY=\"${ssl_folder_path}/client.key\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
-          echo " --from-file=ROOTCERT=\"${ssl_folder_path}/root.crt\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
+          local tmp_postgresql_client_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
+          tmp_postgresql_client_flag=$(echo $tmp_postgresql_client_flag | tr '[:upper:]' '[:lower:]') 
+          if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then    
+            echo " --from-file=CERT=\"${ssl_folder_path}/client.crt\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
+            echo " --from-file=KEY=\"${ssl_folder_path}/client.key\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
+            echo " --from-file=ROOTCERT=\"${ssl_folder_path}/root.crt\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
+          else
+            # when POSTGRESQL_SSL_CLIENT_SERVER=false, only root cert is needed.  in this situation the scripts seem to expect "db-cert.crt" as the filename
+            echo " --from-file=ROOTCERT=\"${ssl_folder_path}/db-cert.crt\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
+          fi
         else 
           echo " --from-file=CERT=\"${ssl_folder_path}/db-cert.crt\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
         fi
@@ -539,6 +554,7 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: ibm-adp-secret
+  namespace: "$CP4BA_SERVICES_NS"
 type: Opaque
 stringData:
   serviceUser: "<SERVICE_USER>"
@@ -566,8 +582,8 @@ cat << EOF > ${ADP_GIT_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-adp-git-tls-secret
 if [[ -f "<adp-git-crt-file-in-local>/git-cert.crt" ]]; then
-  kubectl delete secret generic "<adp-git-ssl-secret-name>" >/dev/null 2>&1
-  kubectl create secret generic "<adp-git-ssl-secret-name>" --from-file=tls.crt="<adp-git-crt-file-in-local>/git-cert.crt"
+  kubectl delete secret generic "<adp-git-ssl-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  kubectl create secret generic "<adp-git-ssl-secret-name>" --from-file=tls.crt="<adp-git-crt-file-in-local>/git-cert.crt" -n "$CP4BA_SERVICES_NS"
 else
   echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"git-cert.crt\" into \"<adp-git-crt-file-in-local>\" first."
   exit 1
@@ -585,8 +601,8 @@ cat << EOF > ${ADP_CDRA_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-adp-cdra-tls-secret
 if [[ -f "<adp-cdra-crt-file-in-local>/cdra_tls_cert.crt" ]]; then
-  kubectl delete secret generic "<adp-cdra-ssl-secret-name>" >/dev/null 2>&1
-  kubectl create secret generic "<adp-cdra-ssl-secret-name>" --from-file=tls.crt="<adp-cdra-crt-file-in-local>/cdra_tls_cert.crt"
+  kubectl delete secret generic "<adp-cdra-ssl-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  kubectl create secret generic "<adp-cdra-ssl-secret-name>" --from-file=tls.crt="<adp-cdra-crt-file-in-local>/cdra_tls_cert.crt" -n "$CP4BA_SERVICES_NS"
 else
   echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"cdra_tls_cert.crt\" into \"<adp-cdra-crt-file-in-local>\" first."
   exit 1
@@ -603,9 +619,9 @@ function create_aca_design_api_key_template(){
 cat << EOF > ${ADP_ACA_DESIGN_API_KEY_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-adp-cdra-tls-secret
-  kubectl delete secret generic "<cp4a-aca-design-api-key-secret-name>" >/dev/null 2>&1
+  kubectl delete secret generic "<cp4a-aca-design-api-key-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
   kubectl create secret generic "<cp4a-aca-design-api-key-secret-name>" \
-  --from-literal=ZenApiKey=<cp4a-aca-design-api-user>:<cp4a-aca-design-zen-api-key>
+  --from-literal=ZenApiKey=<cp4a-aca-design-api-user>:<cp4a-aca-design-zen-api-key> -n "$CP4BA_SERVICES_NS"
 EOF
   success "Creating ADP ACA design api key secret YAML template\n"
   chmod 755 ${ADP_ACA_DESIGN_API_KEY_SECRET_FILE}
@@ -654,8 +670,8 @@ cat << EOF > ${APP_ORACLE_SSO_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for storing wallet SSO binary file when an SSL connection is enabled and Oracle database is selected for Application Engine/Playback server.
 if [[ -f "<your-oracle-sso-wallet-file-path>/cwallet.sso" ]]; then
-  kubectl delete secret generic "<your-oracle-sso-secret-name>" >/dev/null 2>&1
-  kubectl create secret generic "<your-oracle-sso-secret-name>" --from-file=cwallet.sso="<your-oracle-sso-wallet-file-path>/cwallet.sso"
+  kubectl delete secret generic "<your-oracle-sso-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  kubectl create secret generic "<your-oracle-sso-secret-name>" --from-file=cwallet.sso="<your-oracle-sso-wallet-file-path>/cwallet.sso" -n "$CP4BA_SERVICES_NS"
 else
   echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"cwallet.sso\" into \"<your-oracle-sso-wallet-file-path>\" first."
   exit 1
@@ -710,6 +726,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: playback-server-admin-secret
+  namespace: "$CP4BA_SERVICES_NS"
   # DO NOT change the content of metadata.labels
   labels:
     db-server: $dbserver
@@ -740,6 +757,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: ibm-baw-wfs-server-db-secret
+  namespace: "$CP4BA_SERVICES_NS"
   # DO NOT change the content of metadata.labels
   labels:
     db-server: $dbserver
@@ -768,6 +786,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: ibm-dba-ums-secret
+  namespace: "$CP4BA_SERVICES_NS"
   # DO NOT change the content of metadata.labels
   labels:
     db-server: $dbserver
@@ -800,6 +819,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: ibm-aws-wfs-server-db-secret
+  namespace: "$CP4BA_SERVICES_NS"
   # DO NOT change the content of metadata.labels
   labels:
     db-server: $dbserver
@@ -829,6 +849,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: ibm-baw-wfs-server-db-secret
+  namespace: "$CP4BA_SERVICES_NS"
   # DO NOT change the content of metadata.labels
   labels:
     db-server: $dbserver
@@ -853,6 +874,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: icp4a-shared-encryption-key
+  namespace: "$CP4BA_SERVICES_NS"
 type: Opaque
 stringData:
   encryptionKey: <ENCRYPTION_KEY>
@@ -872,6 +894,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: icp4adeploy-dba-ads-mongo-secret
+  namespace: "$CP4BA_SERVICES_NS"
   # DO NOT change the content of metadata.labels
   labels:
     db-name: ads-mongo
@@ -903,11 +926,11 @@ if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-loca
 
   openssl x509 -in <cp4a-db-crt-file-in-local>/root.crt -outform PEM -out <cp4a-db-crt-file-in-local>/root.pem >/dev/null 2>&1
 
-  kubectl delete secret generic "ibm-zen-metastore-edb-secret" >/dev/null 2>&1
+  kubectl delete secret generic "ibm-zen-metastore-edb-secret" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
   kubectl create secret generic "ibm-zen-metastore-edb-secret" --from-file=ca.crt="<cp4a-db-crt-file-in-local>/root.pem"\
   --from-file=tls.crt="<cp4a-db-crt-file-in-local>/client.pem"\
   --from-file=tls.key="<cp4a-db-crt-file-in-local>/client_key.pem"\
-  --type=kubernetes.io/tls
+  --type=kubernetes.io/tls -n "$CP4BA_SERVICES_NS"
 else
   echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
@@ -927,6 +950,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: ibm-zen-metastore-edb-cm
+  namespace: "$CP4BA_SERVICES_NS"
 data:
   IS_EMBEDDED: "false"
   DATABASE_CA_CERT: ca.crt
@@ -956,11 +980,11 @@ if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-loca
   openssl rsa -in <cp4a-db-crt-file-in-local>/client.key -outform PEM -out <cp4a-db-crt-file-in-local>/client_key.pem >/dev/null 2>&1
   openssl x509 -in <cp4a-db-crt-file-in-local>/client.crt -outform PEM -out <cp4a-db-crt-file-in-local>/client.pem >/dev/null 2>&1
   openssl x509 -in <cp4a-db-crt-file-in-local>/root.crt -outform PEM -out <cp4a-db-crt-file-in-local>/root.pem >/dev/null 2>&1
-  kubectl delete secret generic "im-datastore-edb-secret" >/dev/null 2>&1
+  kubectl delete secret generic "im-datastore-edb-secret" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
   kubectl create secret generic "im-datastore-edb-secret" --from-file=ca.crt="<cp4a-db-crt-file-in-local>/root.pem"\
   --from-file=tls.crt="<cp4a-db-crt-file-in-local>/client.pem"\
   --from-file=tls.key="<cp4a-db-crt-file-in-local>/client_key.pem"\
-  --type=kubernetes.io/tls
+  --type=kubernetes.io/tls -n "$CP4BA_SERVICES_NS"
 else
   echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
@@ -980,6 +1004,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: im-datastore-edb-cm
+  namespace: "$CP4BA_SERVICES_NS"
 data:
   IS_EMBEDDED: "false"
   DATABASE_PORT: "<DatabasePort>"
@@ -1008,10 +1033,10 @@ if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-loca
   openssl x509 -in <cp4a-db-crt-file-in-local>/client.crt -outform PEM -out <cp4a-db-crt-file-in-local>/client.pem >/dev/null 2>&1
   openssl x509 -in <cp4a-db-crt-file-in-local>/root.crt -outform PEM -out <cp4a-db-crt-file-in-local>/root.pem >/dev/null 2>&1
   openssl pkcs8 -topk8 -inform PEM -in <cp4a-db-crt-file-in-local>/client_key.pem -outform DER -nocrypt -out <cp4a-db-crt-file-in-local>/tls_key.pk8
-  kubectl delete secret generic "bts-datastore-edb-secret" >/dev/null 2>&1
+  kubectl delete secret generic "bts-datastore-edb-secret" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
   kubectl create secret generic "bts-datastore-edb-secret" --from-file=ca.crt="<cp4a-db-crt-file-in-local>/root.pem"\
   --from-file=tls.crt="<cp4a-db-crt-file-in-local>/client.pem"\
-  --from-file=tls.key="<cp4a-db-crt-file-in-local>/tls_key.pk8"
+  --from-file=tls.key="<cp4a-db-crt-file-in-local>/tls_key.pk8" -n "$CP4BA_SERVICES_NS"
 else
   echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
@@ -1019,25 +1044,6 @@ fi
 EOF
   success "Created bts-datastore-edb-secret secret YAML template for BTS metastore external Postgres DB\n"
   chmod 755 ${BTS_SSL_SECRET_FILE}
-
-  wait_msg "Creating bts-datastore-edb-user secret YAML template for BTS metastore external Postgres DB"
-  mkdir -p $BTS_SECRET_FOLDER >/dev/null 2>&1
-
-cat << EOF > ${BTS_SECRET_FILE}
-# YAML template for ldap-bind-secret secret
----
-kind: Secret
-apiVersion: v1
-type: Opaque
-metadata:
-  name: bts-datastore-edb-user
-stringData:
-  username: "<USERNAME>"
-  password: '<PASSWORD>'
-EOF
-
-  success "Created bts-datastore-edb-user secret YAML template for BTS metastore external Postgres DB\n"
-
 }
 
 function create_bts_external_db_configmap_template(){
@@ -1050,6 +1056,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: ibm-bts-config-extension
+  namespace: "$CP4BA_SERVICES_NS"
 data:
   serverName: "<DatabaseHostName>"
   portNumber: "<DatabasePort>"
@@ -1057,9 +1064,10 @@ data:
   ssl: "true"
   sslMode: verify-ca
   sslSecretName: bts-datastore-edb-secret
-  userSecretName: bts-datastore-edb-user
   customPropertyName1: sslKey
   customPropertyValue1: "/opt/ibm/wlp/usr/shared/resources/security/db/tls.key"
+  customPropertyName2: user
+  customPropertyValue2: "postgres"
 EOF
   success "Created bts-datastore-edb-cm configMap YAML template for BTS metastore external Postgres DB\n"
 }
@@ -1076,10 +1084,10 @@ if [[ -f "<cp4a-issuer-tls-crt-file-in-local>/tls.crt" && -f "<cp4a-issuer-tls-c
   openssl rsa -in <cp4a-issuer-tls-crt-file-in-local>/tls.key -outform PEM -out <cp4a-issuer-tls-crt-file-in-local>/tls_key.pem >/dev/null 2>&1
   openssl x509 -in <cp4a-issuer-tls-crt-file-in-local>/tls.crt -outform PEM -out <cp4a-issuer-tls-crt-file-in-local>/tls.pem >/dev/null 2>&1
   
-  kubectl delete secret generic "ibm-cp4ba-tls-issuer-secret" >/dev/null 2>&1
+  kubectl delete secret generic "ibm-cp4ba-tls-issuer-secret" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
   kubectl create secret generic "ibm-cp4ba-tls-issuer-secret" --from-file=tls.crt="<cp4a-issuer-tls-crt-file-in-local>/tls.pem"\
   --from-file=tls.key="<cp4a-issuer-tls-crt-file-in-local>/tls_key.pem"\
-  --type=kubernetes.io/tls
+  --type=kubernetes.io/tls -n "$CP4BA_SERVICES_NS"
 else
   echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"tls.crt\" and \"tls.key\" into \"<cp4a-issuer-tls-crt-file-in-local>\" first."
   exit 1
@@ -1098,6 +1106,7 @@ apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: cp4ba-tls-issuer
+  namespace: "$CP4BA_SERVICES_NS"
 spec:
   ca:
     secretName: ibm-cp4ba-tls-issuer-secret

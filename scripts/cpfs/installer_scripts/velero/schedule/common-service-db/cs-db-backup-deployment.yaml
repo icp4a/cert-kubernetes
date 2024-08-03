@@ -3,6 +3,8 @@ apiVersion: apps/v1
 metadata:
   name: cs-db-backup
   namespace: <cs-db namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: cs-db-data
 spec:
   selector:
     matchLabels:
@@ -28,7 +30,7 @@ spec:
           - sh
           - -c
           - sleep infinity
-          image: icr.io/cpopen/cpfs/cpfs-utils:4.3.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
+          image: icr.io/cpopen/cpfs/cpfs-utils:4.6.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
           imagePullPolicy: IfNotPresent
           name: cs-db-br
           resources:
@@ -47,6 +49,8 @@ spec:
             name: cs-db-backup-mount
           - name: scripts
             mountPath: "/cs-db"
+          - mountPath: /cs-db/cs-db-backup/logs
+            name: logs
         dnsPolicy: ClusterFirst
         schedulerName: default-scheduler
         securityContext:
@@ -62,3 +66,5 @@ spec:
           configMap:
             name: cs-db-br-configmap
             defaultMode: 0777
+        - emptyDir: {}
+          name: logs

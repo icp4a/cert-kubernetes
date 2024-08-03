@@ -16,6 +16,7 @@ OC=oc
 YQ=yq
 TENANT_NAMESPACES=""
 OPERATOR_NS_LIST=""
+CONTROL_NS=""
 FORCE_DELETE=0
 DEBUG=0
 
@@ -369,24 +370,28 @@ function cleanup_cs_control() {
         title "Clean up control namespace"
         msg "-----------------------------------------------------------------------"
         get_control_namespace
-        # cleanup namespaceScope in Control namespace
-        cleanup_NamespaceScope $CONTROL_NS
-        # cleanup webhook
-        cleanup_webhook $CONTROL_NS ""
-        # cleanup secretshare
-        cleanup_secretshare $CONTROL_NS ""
-        # cleanup crossplane    
-        cleanup_crossplane
-        # delete common-service-maps 
-        ${OC} delete configmap common-service-maps -n kube-public
-        # delete namespace
-        ${OC} delete --ignore-not-found ns "$CONTROL_NS" --timeout=30s
-        if [ $? -ne 0 ] || [ $FORCE_DELETE -eq 1 ]; then
-            warning "Failed to delete namespace $CONTROL_NS, force deleting remaining resources..."
-            remove_all_finalizers $ns && success "Namespace $CONTROL_NS is deleted successfully."
-        fi
+        if [[ "${CONTROL_NS}" == "null" ]] || [[ "${CONTROL_NS}" == "" ]]; then
+            info "control_namespace not found"
+        else
+            # cleanup namespaceScope in Control namespace
+            cleanup_NamespaceScope $CONTROL_NS
+            # cleanup webhook
+            cleanup_webhook $CONTROL_NS ""
+            # cleanup secretshare
+            cleanup_secretshare $CONTROL_NS ""
+            # cleanup crossplane    
+            cleanup_crossplane
+            # delete common-service-maps 
+            ${OC} delete configmap common-service-maps -n kube-public
+            # delete namespace
+            ${OC} delete --ignore-not-found ns "$CONTROL_NS" --timeout=30s
+            if [ $? -ne 0 ] || [ $FORCE_DELETE -eq 1 ]; then
+                warning "Failed to delete namespace $CONTROL_NS, force deleting remaining resources..."
+                remove_all_finalizers $ns && success "Namespace $CONTROL_NS is deleted successfully."
+            fi
 
-        success "Control namespace: ${CONTROL_NS} is cleanup"
+            success "Control namespace: ${CONTROL_NS} is cleanup"
+        fi
     fi
 
 }

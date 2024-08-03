@@ -22,3 +22,17 @@ spec:
             matchLabels:
               apiserver: 'true'
           namespaceSelector: {}
+    - ports:
+      - port: 53
+        protocol: UDP
+      - port: 53
+        protocol: TCP
+      - port: 5353
+        protocol: UDP
+      - port: 5353
+        protocol: TCP
+      to:
+      - namespaceSelector: {}
+        podSelector:
+          matchLabels:
+            dns.operator.openshift.io/daemonset-dns: default

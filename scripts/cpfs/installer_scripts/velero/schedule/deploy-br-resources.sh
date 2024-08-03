@@ -20,6 +20,7 @@ ZEN4="false"
 IM="false"
 KEYCLOAK="false"
 MONGO="false"
+UTIL="false"
 SELECTED="false"
 
 function main() {
@@ -27,6 +28,7 @@ function main() {
   if [[ $CLEANUP == "true" ]]; then
     cleanup
   else
+    mkdir tmp
     deploy_resources
   fi
 }
@@ -35,9 +37,17 @@ function parse_arguments() {
   # process options
   while [[ "$@" != "" ]]; do
     case "$1" in
-    --target-ns)
+    --services-ns)
       shift
       TARGET_NAMESPACE=$1
+      ;;
+    --operator-ns)
+      shift
+      OPERATOR_NAMESPACE=$1
+      ;;
+    --tethered-ns)
+      shift
+      TETHERED_NS=$1
       ;;
     --zen)
       ZEN="true"
@@ -59,6 +69,10 @@ function parse_arguments() {
       MONGO="true"
       SELECTED="true"
       ;;
+    --util)
+      UTIL="true"
+      SELECTED="true"
+      ;;
     --storage-class)
       shift
       STORAGE_CLASS=$1
@@ -71,7 +85,7 @@ function parse_arguments() {
       exit 1
       ;;
     *) 
-      warning "$1 not a supported parameter for keycloak-deploy.sh"
+      warning "$1 not a supported parameter for deploy-br-resoruces.sh"
       ;;
     esac
     shift
@@ -79,24 +93,32 @@ function parse_arguments() {
   if [[ $SELECTED == "false" ]]; then
     error "No component selected. Please use a combination of --im, --mongo, --keycloak, --zen, or --zen4 to select components to deploy resources for."
   fi
-  if [[ $TARGET_NAMESPACE == "" ]]; then
-    error "No namespace selected. Please re-run script with --target-ns parameter defined."
+  if [[ $TARGET_NAMESPACE == "" ]] && [[ $OPERATOR_NAMESPACE == "" ]]; then
+    error "No namespace selected. Please re-run script with --services-ns and/or --operator-ns parameter defined."
+  fi
+  if [[ $UTIL == "true" ]] && [[ $OPERATOR_NAMESPACE == "" ]]; then
+    error "CPFS Util selected but no operator namespace provided. Please re-run script with --operator-ns parameter defined."
   fi
   if [[ $ZEN == "true" && $ZEN4 == "true" ]]; then
     error "Cannot select --zen and --zen4 on the same run of the script. Please verify zen version in the namespace $TARGET_NAMESPACE and select the appropriate option."
   fi
+  if [[ $OPERATOR_NAMESPACE != "" ]] && [[ $TARGET_NAMESPACE == "" ]]; then
+    warning "No services namespace specified, using operator namespace $OPERATOR_NAMESPACE instead. If using SOD topology, please re-run with both --operator-ns and --services-ns defined."
+    TARGET_NAMESPACE=$OPERATOR_NAMESPACE
+  fi
 }
 
 function print_usage() {
-  echo "Usage: ${script_name} --keycloak-ns <Namespace where keycloak is installed> [OPTIONS]..."
+  echo "Usage: ${script_name} --<service> --operator-ns --services-ns [OPTIONS]..."
   echo ""
   echo "Deploy the necessary resources for Backup of Keycloak."
-  #TODO change below to point to correct docs
-  #echo "See step 4 here https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-isolated-migration for more information."
   echo ""
   echo "Options:"
-  echo "   --target-ns string                             Required. Namespace where IM EDB, IM Mongo, Zen, or Keycloak are installed. If installed in different namespaces, script will need to be run separately."
+  echo "   --operator-ns string                           Optional. Operator namespace for a given CPFS installation. Only required if --util specified"
+  echo "   --services-ns string                           Required. Namespace where IM EDB, IM Mongo, Zen, or Keycloak operands are installed. If installed in different namespaces, script will need to be run separately. Optional if it is the same as --operator-ns."
+  echo "   --tethered-ns string                           Optional. Comma-delimited list of namespaces attached to a given CPFS install. Should include any namespace from a given tenant in the common-service-maps cm that are not the --operator-ns or the --services-ns. Only required when --util specified."
   echo "   --im, --mongo, --keycloak, --zen, --zen4       Required. Choose which component(s) to deploy backup/restore resources for to the target namespace. At least one is required. Multiple can be specified but only one of --zen or --zen4 can be chosen."
+  echo "   --util                                         Optional. Deploy the CPFS Util job for use in SOD topologies. If this option is selected, --operator-ns and --services-ns are both required."
   echo "   --storage-class string                         Optional. Storage class to use for backup/restore resources. Default value is cluster's default storage class."
   echo "   -c, --cleanup                                  Optional. Automated cleanup of backup/restore resources. Will run cleanup instead of deployment logic."
   echo "   -h, --help                                     Print usage information"
@@ -114,38 +136,64 @@ function deploy_resources(){
   #deploy IM EDB resources
   if [[ $IM == "true" ]]; then
     info "Creating IM Backup/Restore resources in namespace $TARGET_NAMESPACE."
-    sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" common-service-db/cs-db-backup-deployment.yaml
-    sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" common-service-db/cs-db-backup-pvc.yaml
-    sed -i -E "s/<storage class>/$STORAGE_CLASS/" common-service-db/cs-db-backup-pvc.yaml
-    sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" common-service-db/cs-db-role.yaml
-    sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" common-service-db/cs-db-rolebinding.yaml
-    sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" common-service-db/cs-db-sa.yaml
-    sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" common-service-db/cs-db-br-script-cm.yaml
-    oc apply -f ./common-service-db -n $TARGET_NAMESPACE || error "Unable to deploy resources for IM."
+    
+    rm -rf tmp/common-service-db/
+    mkdir tmp/common-service-db
+    cp common-service-db/cs-db-backup-deployment.yaml tmp/common-service-db/cs-db-backup-deployment.yaml
+    cp common-service-db/cs-db-backup-pvc.yaml tmp/common-service-db/cs-db-backup-pvc.yaml
+    cp common-service-db/cs-db-role.yaml tmp/common-service-db/cs-db-role.yaml
+    cp common-service-db/cs-db-rolebinding.yaml tmp/common-service-db/cs-db-rolebinding.yaml
+    cp common-service-db/cs-db-sa.yaml tmp/common-service-db/cs-db-sa.yaml
+    cp common-service-db/cs-db-br-script-cm.yaml tmp/common-service-db/cs-db-br-script-cm.yaml
+
+    sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" tmp/common-service-db/cs-db-backup-deployment.yaml
+    sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" tmp/common-service-db/cs-db-backup-pvc.yaml
+    sed -i -E "s/<storage class>/$STORAGE_CLASS/" tmp/common-service-db/cs-db-backup-pvc.yaml
+    sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" tmp/common-service-db/cs-db-role.yaml
+    sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" tmp/common-service-db/cs-db-rolebinding.yaml
+    sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" tmp/common-service-db/cs-db-sa.yaml
+    sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" tmp/common-service-db/cs-db-br-script-cm.yaml
+    oc apply -f tmp/common-service-db -n $TARGET_NAMESPACE || error "Unable to deploy resources for IM."
     success "Resources to backup IM deployed in namespace $TARGET_NAMESPACE."
   fi
 
   #Deploy IM Mongo resources
   if [[ $MONGO == "true" ]]; then
     info "Creating IM Mongo Backup/Restore resources in namespace $TARGET_NAMESPACE."
-    sed -i -E "s~<mongo namespace>~$TARGET_NAMESPACE~g" mongodb-backup-deployment.yaml
-    sed -i -E "s/<mongo namespace>/$TARGET_NAMESPACE/" mongodb-backup-pvc.yaml
-    sed -i -E "s/<storage class>/$STORAGE_CLASS/" mongodb-backup-pvc.yaml
-    oc apply -f mongodb-backup-deployment.yaml -f mongodb-backup-pvc.yaml -n $TARGET_NAMESPACE || error "Unable to deploy resources for IM Mongo."
+    
+    rm -rf tmp/mongo
+    mkdir tmp/mongo
+    cp mongodb-backup-deployment.yaml tmp/mongo/mongodb-backup-deployment.yaml
+    cp mongodb-backup-pvc.yaml tmp/mongo/mongodb-backup-pvc.yaml
+
+    sed -i -E "s~<mongo namespace>~$TARGET_NAMESPACE~g" tmp/mongo/mongodb-backup-deployment.yaml
+    sed -i -E "s/<mongo namespace>/$TARGET_NAMESPACE/" tmp/mongo/mongodb-backup-pvc.yaml
+    sed -i -E "s/<storage class>/$STORAGE_CLASS/" tmp/mongo/mongodb-backup-pvc.yaml
+    oc apply -f tmp/mongo/mongodb-backup-deployment.yaml -f tmp/mongo/mongodb-backup-pvc.yaml -n $TARGET_NAMESPACE || error "Unable to deploy resources for IM Mongo."
     success "Resources to backup IM Mongo deployed in namespace $TARGET_NAMESPACE."
   fi
 
   #Deploy Keycloak resources
   if [[ $KEYCLOAK == "true" ]]; then 
     info "Creating Keycloak Backup/Restore resources in namespace $TARGET_NAMESPACE."
-    sed -i -E "s/<keycloak namespace>/$TARGET_NAMESPACE/" keycloak/keycloak-backup-deployment.yaml
-    sed -i -E "s/<keycloak namespace>/$TARGET_NAMESPACE/" keycloak/keycloak-backup-pvc.yaml
-    sed -i -E "s/<storage class>/$STORAGE_CLASS/" keycloak/keycloak-backup-pvc.yaml
-    sed -i -E "s/<keycloak namespace>/$TARGET_NAMESPACE/" keycloak/keycloak-role.yaml
-    sed -i -E "s/<keycloak namespace>/$TARGET_NAMESPACE/" keycloak/keycloak-rolebinding.yaml
-    sed -i -E "s/<keycloak namespace>/$TARGET_NAMESPACE/" keycloak/keycloak-sa.yaml
-    sed -i -E "s/<keycloak namespace>/$TARGET_NAMESPACE/" keycloak/keycloak-br-script-cm.yaml
-    oc apply -f ./keycloak -n $TARGET_NAMESPACE || error "Unable to deploy resources for Keycloak."
+    
+    rm -rf tmp/keycloak/
+    mkdir tmp/keycloak
+    cp keycloak/keycloak-backup-deployment.yaml tmp/keycloak/keycloak-backup-deployment.yaml
+    cp keycloak/keycloak-backup-pvc.yaml tmp/keycloak/keycloak-backup-pvc.yaml
+    cp keycloak/keycloak-role.yaml tmp/keycloak/keycloak-role.yaml
+    cp keycloak/keycloak-rolebinding.yaml tmp/keycloak/keycloak-rolebinding.yaml
+    cp keycloak/keycloak-sa.yaml tmp/keycloak/keycloak-sa.yaml
+    cp keycloak/keycloak-br-script-cm.yaml tmp/keycloak/keycloak-br-script-cm.yaml
+    
+    sed -i -E "s/<keycloak namespace>/$TARGET_NAMESPACE/" tmp/keycloak/keycloak-backup-deployment.yaml
+    sed -i -E "s/<keycloak namespace>/$TARGET_NAMESPACE/" tmp/keycloak/keycloak-backup-pvc.yaml
+    sed -i -E "s/<storage class>/$STORAGE_CLASS/" tmp/keycloak/keycloak-backup-pvc.yaml
+    sed -i -E "s/<keycloak namespace>/$TARGET_NAMESPACE/" tmp/keycloak/keycloak-role.yaml
+    sed -i -E "s/<keycloak namespace>/$TARGET_NAMESPACE/" tmp/keycloak/keycloak-rolebinding.yaml
+    sed -i -E "s/<keycloak namespace>/$TARGET_NAMESPACE/" tmp/keycloak/keycloak-sa.yaml
+    sed -i -E "s/<keycloak namespace>/$TARGET_NAMESPACE/" tmp/keycloak/keycloak-br-script-cm.yaml
+    oc apply -f tmp/keycloak -n $TARGET_NAMESPACE || error "Unable to deploy resources for Keycloak."
     success "Resources to backup Keycloak deployed in namespace $TARGET_NAMESPACE."
   fi
 
@@ -157,21 +205,33 @@ function deploy_resources(){
     if [[ $ZENSERVICE != "" ]]; then
       exists=$(oc get zenservice $ZENSERVICE -n $TARGET_NAMESPACE --no-headers --ignore-not-found)
       if [[ $exists == "" ]]; then
-        error "Zenservice $ZENSERVICE not found in namespace $TARGET_NAMESPACE. Make sure the zenservice is deployed to the target namespace $TARGET_NAMESPACE or change the namespace used."
+        warning "Zenservice $ZENSERVICE not found in namespace $TARGET_NAMESPACE. Make sure the zenservice is deployed to the target namespace $TARGET_NAMESPACE or change the namespace used."
       else
         info "Creating Zen Backup/Restore resources in namespace $TARGET_NAMESPACE."
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen5-backup-deployment.yaml
-        sed -i -E "s/<zenservice name>/$ZENSERVICE/" zen5-backup-deployment.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen5-backup-pvc.yaml
-        sed -i -E "s/<storage class>/$STORAGE_CLASS/" zen5-backup-pvc.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen5-role.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen5-rolebinding.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen5-sa.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen5-br-scripts-cm.yaml
-        oc apply -f zen5-backup-deployment.yaml -f zen5-backup-pvc.yaml -f zen5-role.yaml -f zen5-rolebinding.yaml -f zen5-sa.yaml -f zen5-br-scripts-cm.yaml -n $TARGET_NAMESPACE || error "Unable to deploy resources for Zen 5."      
+        
+        rm -rf tmp/zen/
+        mkdir tmp/zen
+        cp zen5-backup-deployment.yaml tmp/zen/zen5-backup-deployment.yaml
+        cp zen5-backup-pvc.yaml tmp/zen/zen5-backup-pvc.yaml
+        cp zen5-role.yaml tmp/zen/zen5-role.yaml
+        cp zen5-rolebinding.yaml tmp/zen/zen5-rolebinding.yaml
+        cp zen5-sa.yaml tmp/zen/zen5-sa.yaml
+        cp zen5-br-scripts-cm.yaml tmp/zen/zen5-br-scripts-cm.yaml
+
+        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen/zen5-backup-deployment.yaml
+        sed -i -E "s/<zenservice name>/$ZENSERVICE/" tmp/zen/zen5-backup-deployment.yaml
+        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen/zen5-backup-pvc.yaml
+        sed -i -E "s/<storage class>/$STORAGE_CLASS/" tmp/zen/zen5-backup-pvc.yaml
+        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen/zen5-role.yaml
+        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen/zen5-rolebinding.yaml
+        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen/zen5-sa.yaml
+        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen/zen5-br-scripts-cm.yaml
+        oc apply -f tmp/zen -n $TARGET_NAMESPACE || error "Unable to deploy resources for Zen 5."   
+        success "Resources to backup Zen deployed in namespace $TARGET_NAMESPACE."
       fi
+    else
+      warning "No zenservice found in namespace $TARGET_NAMESPACE. Skipping."
     fi
-    success "Resources to backup Zen deployed in namespace $TARGET_NAMESPACE."
   fi
 
   #deploy zen 4 resources
@@ -185,19 +245,80 @@ function deploy_resources(){
         error "Zenservice $ZENSERVICE not found in namespace $TARGET_NAMESPACE. Make sure the zenservice is deployed to the target namespace $TARGET_NAMESPACE or change the namespace used."
       else
         info "Creating Zen Backup/Restore resources in namespace $TARGET_NAMESPACE."
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen-backup-deployment.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen-backup-pvc.yaml
-        sed -i -E "s/<storage class>/$STORAGE_CLASS/" zen-backup-pvc.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen4-role.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen4-rolebinding.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen4-sa.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen4-br-scripts.yaml
-        oc apply -f zen4-backup-deployment.yaml -f zen4-backup-pvc.yaml -f zen4-role.yaml -f zen4-rolebinding.yaml -f zen4-sa.yaml -f zen4-br-scripts-cm.yaml -n $TARGET_NAMESPACE || error "Unable to deploy resources for Zen 4."
+        
+        rm -rf tmp/zen4
+        mkdir tmp/zen4
+        cp zen-backup-deployment.yaml tmp/zen4/zen-backup-deployment.yaml
+        cp zen-backup-pvc.yaml tmp/zen4/zen-backup-pvc.yaml
+        cp zen4-role.yaml tmp/zen4/zen4-role.yaml
+        cp zen4-rolebinding.yaml tmp/zen4/zen4-rolebinding.yaml
+        cp zen4-sa.yaml tmp/zen4/zen4-sa.yaml
+        cp zen4-br-scripts.yaml tmp/zen4/zen4-br-scripts.yaml
+        
+        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen4/zen-backup-deployment.yaml
+        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen4/zen-backup-pvc.yaml
+        sed -i -E "s/<storage class>/$STORAGE_CLASS/" tmp/zen4/zen-backup-pvc.yaml
+        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen4/zen4-role.yaml
+        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen4/zen4-rolebinding.yaml
+        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen4/zen4-sa.yaml
+        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen4/zen4-br-scripts.yaml
+        oc apply -f tmp/zen4/ -n $TARGET_NAMESPACE || error "Unable to deploy resources for Zen 4."
       fi        
     fi
     success "Resources to backup Zen 4 deployed in namespace $TARGET_NAMESPACE."
   fi
+  
   success "Backup/Restore resources created in namespace $TARGET_NAMESPACE."
+
+  #Deploy cpfs-util resources
+  if [[ $UTIL == "true" ]]; then
+    info "Creating CPFS Util Backup/Restore resources in namespace $OPERATOR_NAMESPACE."
+    
+    rm -rf tmp/cpfs-util-resources
+    mkdir tmp/cpfs-util-resources
+    cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-deployment.yaml tmp/cpfs-util-resources/cpfs-util-deployment.yaml
+    cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-role.yaml tmp/cpfs-util-resources/cpfs-util-role.yaml
+    cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-rolebinding.yaml tmp/cpfs-util-resources/cpfs-util-rolebinding.yaml
+    cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-sa.yaml tmp/cpfs-util-resources/cpfs-util-sa.yaml
+
+    cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job.yaml tmp/cpfs-util-resources/setup-tenant-job.yaml
+    cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-configmap.yaml tmp/cpfs-util-resources/setup-tenant-job-configmap.yaml
+    cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-pvc.yaml tmp/cpfs-util-resources/setup-tenant-job-pvc.yaml
+    cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-role.yaml tmp/cpfs-util-resources/setup-tenant-job-role.yaml
+    cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-rolebinding.yaml tmp/cpfs-util-resources/setup-tenant-job-rolebinding.yaml
+    cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-sa.yaml tmp/cpfs-util-resources/setup-tenant-job-sa.yaml
+    cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml
+    cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
+
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-deployment.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-role.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-rolebinding.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-sa.yaml
+    
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-configmap.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-pvc.yaml
+    sed -i -E "s/<storage class>/$STORAGE_CLASS/" tmp/cpfs-util-resources/setup-tenant-job-pvc.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-role.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-rolebinding.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-sa.yaml
+    sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml
+    sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+
+    if [[ $TETHERED_NS != "" ]]; then
+      for ns in ${TETHERED_NS//,/ }; do
+        cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role-$ns.yaml
+        cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding-$ns.yaml
+        sed -i -E "s/<services or tethered namespace>/$ns/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role-$ns.yaml
+        sed -i -E "s/<services or tethered namespace>/$ns/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding-$ns.yaml
+      done
+    fi
+    oc apply -f tmp/cpfs-util-resources || error "Unable to deploy resources for CPFS Util."
+    oc patch job setup-tenant-job -n $OPERATOR_NAMESPACE -p '{"spec": { "suspend" : true }}'
+    success "CPFS Util resources deployed in namespace $OPERATOR_NAMESPACE."
+  fi
+
 }
 
 function cleanup() {
@@ -211,6 +332,7 @@ function cleanup() {
       oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "IM backup pod not found, moving on."
     fi
     oc delete pvc cs-db-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found
+    oc delete cm cs-db-br-configmap -n $TARGET_NAMESPACE --ignore-not-found
     success "IM BR resources cleaned up."
   fi
 
@@ -222,7 +344,7 @@ function cleanup() {
     if [[ $pod != "" ]]; then
       oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "IM backup pod not found, moving on."
     fi
-    oc delete pvc cs-db-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found
+    oc delete pvc cs-mongodump -n $TARGET_NAMESPACE --ignore-not-found
     success "IM BR resources cleaned up."
   fi
 
@@ -235,6 +357,7 @@ function cleanup() {
       oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "Keycloak backup pod not found, moving on."
     fi
     oc delete pvc keycloak-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found
+    oc delete cm keycloak-br-configmap -n $TARGET_NAMESPACE --ignore-not-found
     success "IM Mongo BR resources cleaned up."
   fi
 
@@ -247,6 +370,7 @@ function cleanup() {
       oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "Zen backup pod not found, moving on."
     fi
     oc delete pvc zen5-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found
+    oc delete cm zen5-br-configmap -n $TARGET_NAMESPACE --ignore-not-found
     success "Zen BR resources cleaned up."
   fi
 
@@ -259,8 +383,23 @@ function cleanup() {
       oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "Zen 4 backup pod not found, moving on."
     fi
     oc delete pvc zen4-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found
+    oc delete cm zen4-br-configmap -n $TARGET_NAMESPACE --ignore-not-found
     success "Zen 4 BR resources cleaned up."
   fi
+
+  #clean up util resources
+  if [[ $UTIL == "true" ]]; then
+    info "Clean up Utility BR resources..."
+    oc delete deploy cpfs-util -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete role cpfs-util-role -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete rolebinding cpfs-util-rolebinding -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete sa cpfs-util-sa -n $OPERATOR_NAMESPACE --ignore-not-found
+    oc delete clusterrole cpfs-util-cluster-role --ignore-not-found && oc delete clusterrolebinding cpfs-util-cluster-rolebinding --ignore-not-found
+    oc delete cm setup-tenant-job-configmap -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete role setup-tenant-job-role -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete rolebinding setup-tenant-job-rolebinding -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete sa setup-tenant-job-sa -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete job setup-tenant-job -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete pvc setup-tenant-job-pvc -n $OPERATOR_NAMESPACE --ignore-not-found
+    if [[ $TETHERED_NS != "" ]]; then
+      for ns in ${TETHERED_NS//,/ }; do
+        oc delete role setup-tenant-job-role -n $ns --ignore-not-found && oc delete rolebinding setup-tenant-job-rolebinding -n $ns --ignore-not-found
+      done
+    fi
+  fi
+
   
   success "BR resources succesfully removed from namespace $TARGET_NAMESPACE."
 }

@@ -156,7 +156,7 @@ function prereq() {
         error "Namespace $TO_NAMESPACE does not exist (or oc command line is not logged in)"
         exit 1
     fi
-    mongo_node=$(${OC} get pods -n $FROM_NAMESPACE -o wide | grep icp-mongodb-0 | awk '{print $7}')
+    mongo_node=$(${OC} get pods icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{.spec.nodeName}')
     architecture=$(${OC} describe node $mongo_node | grep "Architecture:" | awk '{print $2}')
     if [[ $architecture == "s390x" ]] || [[ $architecture == "ppc64le" ]]; then
       z_or_power_ENV="true"
@@ -355,6 +355,7 @@ function dumpmongo() {
   fi
 
   ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+
   if [[ $z_or_power_ENV == "false" ]]; then
     cat <<EOF >$TEMPFILE
 apiVersion: batch/v1
@@ -411,6 +412,7 @@ spec:
         secret:
           secretName: mongodb-root-ca-cert
       restartPolicy: OnFailure
+      serviceAccountName: ibm-mongodb-operand
 EOF
   else #s390x environments do not recognize --ssl options
     info "Z or Power cluster detected"
@@ -513,6 +515,7 @@ spec:
         secret:
           secretName: mongodb-root-ca-cert
       restartPolicy: OnFailure
+      serviceAccountName: ibm-mongodb-operand
 EOF
   fi
 
@@ -682,6 +685,7 @@ spec:
         secret:
           secretName: mongodb-root-ca-cert
       restartPolicy: Never
+      serviceAccountName: ibm-mongodb-operand
 EOF
   else
     debug1 "Applying z/power restore job"
@@ -741,6 +745,7 @@ spec:
         secret:
           secretName: mongodb-root-ca-cert
       restartPolicy: Never
+      serviceAccountName: ibm-mongodb-operand
 EOF
   fi
 

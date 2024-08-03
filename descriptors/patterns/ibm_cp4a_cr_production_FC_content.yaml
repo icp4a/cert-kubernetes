@@ -38,9 +38,9 @@ spec:
     ## be defaulted to production.  This value could be different from the other licenses in the CR.
     sc_deployment_license: "<Required>"
 
-    
-   
-    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or 
+
+
+    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or
     ## know the reason to change this value, please leave the default value.
     sc_deployment_context: "CP4A"
 
@@ -66,12 +66,12 @@ spec:
     sc_hugepages:
       enabled: false
       type: ""
-      value: "" 
+      value: ""
 
     ## Shared custom TLS secret which will be used to sign all external routes if defined.
     ## If this is not defined, all external routes will be signed with `root_ca_secret`
-    ## Starting with CP4BA 21.0.3 release, this parameter only applies to non-OCP deployments. For OCP, all external traffic is routed via a 
-    ## common front door in Platform UI so custom TLS certificates must be configured in AutomationUIConfig. Please refer 
+    ## Starting with CP4BA 21.0.3 release, this parameter only applies to non-OCP deployments. For OCP, all external traffic is routed via a
+    ## common front door in Platform UI so custom TLS certificates must be configured in AutomationUIConfig. Please refer
     ## to https://www.ibm.com/docs/en/cloud-paks/1.0?topic=foundation-custom-resources#automationuiconfig for more information.
     external_tls_certificate_secret:
 
@@ -93,7 +93,7 @@ spec:
     ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is optional. It is not supported on OCP and ROKS.
     sc_run_as_user:
 
-    ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower. 
+    ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower.
     ## For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
     ## NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start.  This custom profile should be created at the worker nodes.
     sc_seccomp_profile:
@@ -103,7 +103,7 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/common/dba-keytool-initcontainer
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
     ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
     ## based on input from the user.
@@ -111,21 +111,21 @@ spec:
 
     sc_egress_configuration:
       ## Required. Enable or disable egress access to external systems.
-      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true". 
+      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true".
       ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
       sc_restricted_internet_access: true
       ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
       ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
       sc_api_namespace:
-      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## Default are 443,6443 for OCP and ROKS
       sc_api_port:
       ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
       ## Default is "openshift-dns" for OCP and ROKS
       sc_dns_namespace:
-      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`. 
+      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
       ## Default are 53,5353 for OCP and ROKS
       sc_dns_port:
 
@@ -143,10 +143,10 @@ spec:
     trusted_certificate_list: []
 
 
-    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers, 
+    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers,
     ## all the files must be compressed in a single file.
-    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or 
-    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed 
+    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or
+    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed
     ## file should have the following structure and content:
     ##   /jdbc/db2/db2jcc4.jar
     ##   /jdbc/db2/db2jcc_license_cu.jar
@@ -154,7 +154,7 @@ spec:
     ##   /saplibs/libicudata.so.50
     ##   /saplibs/...
     ## Then you need to put the compressed package on an anonymously accessible web server and provide the link here.
-    ## The CR can handle .zip files using unzip as well as .tar, .tar.gz, .tar.bz2, .tar.xz. Does not handle .gz files, .bz2 files, .xz, or .zst files that do not contain a .tar archive.    
+    ## The CR can handle .zip files using unzip as well as .tar, .tar.gz, .tar.bz2, .tar.xz. Does not handle .gz files, .bz2 files, .xz, or .zst files that do not contain a .tar archive.
     sc_drivers_url:
 
     ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
@@ -195,11 +195,11 @@ spec:
       sc_fast_file_storage_classname: "<Required>"
       sc_block_storage_classname: "<Required>"
 
-    ## The CPE container and other components that use HTTP Basic Authentication are configured to use the OAuth JaaS loginModule         
-    ## to remove all remaining LDAP dependencies by allowing username/password credentials to be converted into an OAuth token for        
+    ## The CPE container and other components that use HTTP Basic Authentication are configured to use the OAuth JaaS loginModule
+    ## to remove all remaining LDAP dependencies by allowing username/password credentials to be converted into an OAuth token for
     ## authentication. When you are upgrading from a release prior to CP4BA 22.0.2 to 22.0.2 or later, or when
-    ## you are migrating FileNet Content Manager on-prem or standalone deployment to IBM Cloud Pak for Business Automation (CP4BA), 
-    ## you must set "sc_skip_ldap_config: false".  If you are performing fresh install using 23.0.2-IF004 or later, you can also set     
+    ## you are migrating FileNet Content Manager on-prem or standalone deployment to IBM Cloud Pak for Business Automation (CP4BA),
+    ## you must set "sc_skip_ldap_config: false".  If you are performing fresh install using 23.0.2-IF004 or later, you can also set
     ## "sc_skip_ldap_config: false" in order to have the FileNet Content Manager P8 domain to be configured with direct LDAP bind
     ## as opposed to the default SCIM configuration.
     sc_skip_ldap_config: true
@@ -210,12 +210,12 @@ spec:
 
     ## This optional property is a string value corresponding to the "ipFamilyPolicy" property of Kubernetes "service" objects.
     ## Ref: https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
-    ## This setting is only applicable in dual-stack clusters where both IPv4 and IPv6 are enabled. 
-    ## If not set, then the "ipFamilyPolicy" property of the services will default to the cluster-level settings. 
+    ## This setting is only applicable in dual-stack clusters where both IPv4 and IPv6 are enabled.
+    ## If not set, then the "ipFamilyPolicy" property of the services will default to the cluster-level settings.
     ## ALLOWED VALUES (case-sensitive): "PreferDualStack", "RequireDualStack"
-    ## WARNING: Setting this property to a value not supported by your cluster will cause CP4BA deployment to fail. 
+    ## WARNING: Setting this property to a value not supported by your cluster will cause CP4BA deployment to fail.
     ## For example, if your cluster only supports one IP family, using "RequireDualStack" will cause deployment to fail.
-    sc_service_ip_family_policy: 
+    sc_service_ip_family_policy:
 
     ## This optional property is a list value corresponding to the "ipFamilies" property of Kubernetes "service" objects.
     ## Ref: https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
@@ -227,7 +227,12 @@ spec:
     ## For example, if your cluster does not support "IPv6" family, then including "IPv6" in this property will cause deployment to fail.
     ## IMPORTANT: This setting is only supported for initial deployment. Updating this property after deployment has completed may
     ## cause system instability and require some pods (such as "ibm-nginx") to be manually restarted.
-    sc_service_ip_families: 
+    sc_service_ip_families:
+
+    ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
+    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
+    sc_is_multiple_az: false
 
   ## The beginning section of LDAP configuration for CP4A
   ldap_configuration:
@@ -275,21 +280,21 @@ spec:
     lc_ldap_group_member_id_map: "<Required>"
 
     ## Set to true if you want to enable LDAP nested search in IAM, by default it is false
-    lc_ldap_recursive_search: false 
+    lc_ldap_recursive_search: false
 
     ## Set to true if you want to enable LDAP pagination in IAM, by default it is false
     lc_enable_pagination: false
 
     ## If lc_enable_pagination is set to true, then specify the pagination size. If not specified, the following default values will be used:
     ## IBM Tivoli Directory Server: 20000; Microsoft Active Directory:1000, and Custom: 4500
-    lc_pagination_size: 1000 
+    lc_pagination_size: 1000
 
     ## add custom group search bases to IAM
     lc_group_searchbase_list: []
 
     ## add custom user search bases to IAM
     lc_user_searchbase_list: []
-    
+
     ## The lc_ldap_precheck parameter is used to enable or disable LDAP connection check.
     ## If set to "true", then LDAP connection check will be enabled.
     ## if set to "false", then LDAP connection check will not be enabled.
@@ -470,7 +475,7 @@ spec:
     #     # <scim_attr_name> : <ldap attr name>
     #     # like below
     #     # ibmentryuuid : ibm-entryuuid
-      
+
 
   ## User script should only uncomment this section if External Share if selected as an optional component.
   ## If you are deploying without the User script, uncomment the necessary section (depending
@@ -576,8 +581,8 @@ spec:
   ## email or upn short name is not used to login
   #idp_iam_configuration:
   #  - idp_id: <idp_name>
-  #    idp_type: okta (or azuread) 
-  #    idp_allow_email_or_upn_short_names: true (optional - default value is true) 
+  #    idp_type: okta (or azuread)
+  #    idp_allow_email_or_upn_short_names: true (optional - default value is true)
 
   ## The beginning section of database configuration for CP4A
   datasource_configuration:
@@ -639,7 +644,7 @@ spec:
     - dc_database_type: "<Required>"
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for a GCD database, set this parameter to true
-      dc_use_postgres: false      
+      dc_use_postgres: false
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
@@ -691,7 +696,7 @@ spec:
         reap_time: 2m
         ## Specifies which connections to destroy when a stale connection is detected in a pool.
         purge_policy: EntirePool
-    
+
     ## The database configuration for CPE, Operator will only add them as data source for CPE, won't create Object Store for these database connection.
     dc_cpe_datasources:
     ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
@@ -705,9 +710,9 @@ spec:
       ## --from-literal=osDBUsername="<your os db username>" --from-literal=osDBPassword="<your os db password>".
       ## If all the CPE datasource databases share the same username and password, then dc_os_label value should be the same in all the datasource sections.
       dc_os_label: "os"
-      ## The XA datasource name. 
+      ## The XA datasource name.
       dc_common_cpe_xa_datasource_name: CASEHISTORYDSXA
-      ## The non-XA datasource name. 
+      ## The non-XA datasource name.
       dc_common_cpe_datasource_name: CASEHISTORYDS
       ## Provide the database server name or IP address of the database server
       database_servername: "<Required>"
@@ -836,7 +841,7 @@ spec:
     ## Optional. The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes.
     ## Set this key if you have a CA to sign the external TLS certificate, leave this parameter empty if you don't have the CA of your external TLS certificate.
     fncm_auth_ca_secret_name:
- 
+
     ## This can be overwritten by componenent level definition for example ecm_configuration.cpe.node_affinity.
     node_affinity:
       # Value in this field will be used as kubernetes.io/arch selector values. By default all support arch will be included
@@ -878,7 +883,7 @@ spec:
     # Optional performance tuning for Zen NGINX server.
     # For more information, please refer to https://www.nginx.com/blog/tuning-nginx/#keepalive_requests and https://nginx.org/en/docs/http/ngx_http_proxy_module.html.
     # This can be overwritten by componenent level definition for example ecm_configuration.graphql.zen_performance.
-    # For CPE we allow more granular setting like below and they take precedence over ecm_configuration.cpe.zen_performance. 
+    # For CPE we allow more granular setting like below and they take precedence over ecm_configuration.cpe.zen_performance.
     # cpe.zen_performance.acce
     # cpe.zen_performance.fncews40mtom
     # cpe.zen_performance.pewsi
@@ -892,9 +897,9 @@ spec:
       # Timeout for reading a response from the proxy server. The timeout is set only between two successive read operations, not for the transmission of the whole response. If the proxy server does not transmit anything within this time, the connection is closed. This parameter is optional. The default value is 300s.
       proxy_read_timeout: 300
 
-    ## Enable/disable basic auth. 
+    ## Enable/disable basic auth.
     ## From 22.0.2 this by default is true to use jaaslogin module
-    ## Set this to false let FNCM component to use basic auth 
+    ## Set this to false let FNCM component to use basic auth
     disable_basic_auth: true
     ####################################
     ## Start of configuration for CPE ##
@@ -912,7 +917,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -946,7 +951,7 @@ spec:
           memory: 3072Mi
           ephemeral_storage: 4Gi
 
-      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
       ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
       auto_scaling:
         enabled: false
@@ -987,7 +992,7 @@ spec:
         # The license must be set to "accept" in order for the component to install.  This is the default value.
         license: accept
 
-        # This section is optional and it takes a list of configmaps. 
+        # This section is optional and it takes a list of configmaps.
         # A configmap can hold files or environment data but it cannot a mix of both.
         # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
         # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
@@ -1014,25 +1019,25 @@ spec:
       ## Persistent Volume Claims for CPE.  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
-        existing_pvc_for_cpe_cfgstore: 
+        existing_pvc_for_cpe_cfgstore:
           name: "cpe-cfgstore"
           size: 1Gi
-        existing_pvc_for_cpe_logstore: 
+        existing_pvc_for_cpe_logstore:
           name: "cpe-logstore"
           size: 1Gi
-        existing_pvc_for_cpe_filestore: 
+        existing_pvc_for_cpe_filestore:
           name: "cpe-filestore"
           size: 1Gi
-        existing_pvc_for_cpe_icmrulestore: 
+        existing_pvc_for_cpe_icmrulestore:
           name: "cpe-icmrulesstore"
           size: 1Gi
-        existing_pvc_for_cpe_textextstore: 
+        existing_pvc_for_cpe_textextstore:
           name: "cpe-textextstore"
           size: 3Gi
-        existing_pvc_for_cpe_bootstrapstore: 
+        existing_pvc_for_cpe_bootstrapstore:
           name: "cpe-bootstrapstore"
           size: 1Gi
-        existing_pvc_for_cpe_fnlogstore: 
+        existing_pvc_for_cpe_fnlogstore:
           name: "cpe-fnlogstore"
           size: 1Gi
 
@@ -1056,7 +1061,7 @@ spec:
       #aws_iam:
       #  aws_iam_enable: true
       #  audience: "sts.amazonaws.com"
-      #  expirationSeconds: 7200 
+      #  expirationSeconds: 7200
     ####################################
     ## Start of configuration for CSS ##
     ####################################
@@ -1073,7 +1078,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1119,19 +1124,19 @@ spec:
       ## Persistent Volume Claims for CSS.  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
-        existing_pvc_for_css_cfgstore: 
+        existing_pvc_for_css_cfgstore:
           name: "css-cfgstore"
           size: 1Gi
-        existing_pvc_for_css_logstore: 
+        existing_pvc_for_css_logstore:
           name: "css-logstore"
           size: 1Gi
-        existing_pvc_for_css_tmpstore: 
+        existing_pvc_for_css_tmpstore:
           name: "css-tempstore"
           size: 1Gi
-        existing_pvc_for_index: 
+        existing_pvc_for_index:
           name: "css-indexstore"
           size: 1Gi
-        existing_pvc_for_css_customstore: 
+        existing_pvc_for_css_customstore:
           name: "css-customstore"
           size: 1Gi
 
@@ -1170,7 +1175,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1191,7 +1196,7 @@ spec:
           memory: 1536Mi
           ephemeral_storage: 1Gi
 
-      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
       ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
       auto_scaling:
         enabled: false
@@ -1266,7 +1271,7 @@ spec:
         # The license must be set to "accept" in order for the component to install.  This is the default value.
         license: accept
 
-        # This section is optional and it takes a list of configmaps. 
+        # This section is optional and it takes a list of configmaps.
         # A configmap can hold files or environment data but it cannot a mix of both.
         # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
         # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
@@ -1289,10 +1294,10 @@ spec:
       ## Persistent Volume Claims for CMIS.  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
-        existing_pvc_for_cmis_cfgstore: 
+        existing_pvc_for_cmis_cfgstore:
           name: "cmis-cfgstore"
           size: 1Gi
-        existing_pvc_for_cmis_logstore: 
+        existing_pvc_for_cmis_logstore:
           name: "cmis-logstore"
           size: 1Gi
 
@@ -1332,7 +1337,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1353,7 +1358,7 @@ spec:
           memory: 1536Mi
           ephemeral_storage: 1Gi
 
-      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
       ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
       auto_scaling:
         enabled: false
@@ -1387,7 +1392,7 @@ spec:
         license: accept
 
         enable_graph_iql: false
-        # This section is optional and it takes a list of configmaps. 
+        # This section is optional and it takes a list of configmaps.
         # A configmap can hold files or environment data but it cannot a mix of both.
         # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
         # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
@@ -1411,10 +1416,10 @@ spec:
       ## Persistent Volume Claims for GraphQL.  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
-        existing_pvc_for_graphql_cfgstore: 
+        existing_pvc_for_graphql_cfgstore:
           name: "graphql-cfgstore"
           size: 1Gi
-        existing_pvc_for_graphql_logstore: 
+        existing_pvc_for_graphql_logstore:
           name: "graphql-logstore"
           size: 1Gi
       ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
@@ -1452,7 +1457,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1469,7 +1474,7 @@ spec:
           memory: 1536Mi
           ephemeral_storage: 1Gi
 
-      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
       ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
       auto_scaling:
         enabled: false
@@ -1494,7 +1499,7 @@ spec:
         license: accept
         allowed_origins:
 
-        # This section is optional and it takes a list of configmaps. 
+        # This section is optional and it takes a list of configmaps.
         # A configmap can hold files or environment data but it cannot a mix of both.
         # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
         # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
@@ -1518,10 +1523,10 @@ spec:
       ## Persistent Volume Claims for External Share.  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
-        existing_pvc_for_es_cfgstore: 
+        existing_pvc_for_es_cfgstore:
           name: "es-cfgstore"
           size: 1Gi
-        existing_pvc_for_es_logstore: 
+        existing_pvc_for_es_logstore:
           name: "es-logstore"
           size: 1Gi
 
@@ -1560,7 +1565,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1577,7 +1582,7 @@ spec:
           memory: 1536Mi
           ephemeral_storage: 1Gi
 
-      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
       ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
       auto_scaling:
         enabled: false
@@ -1606,7 +1611,7 @@ spec:
         jvm_customize_options: "-Dcom.ibm.ecm.task.StartUpListener.defaultLogLevel=FINE"
         license: accept
 
-        # This section is optional and it takes a list of configmaps. 
+        # This section is optional and it takes a list of configmaps.
         # A configmap can hold files or environment data but it cannot a mix of both.
         # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
         # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
@@ -1642,13 +1647,13 @@ spec:
       ## Persistent Volume Claims for Task Manager (TM).  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
-        existing_pvc_for_tm_cfgstore: 
+        existing_pvc_for_tm_cfgstore:
           name: "tm-cfgstore"
           size: 1Gi
-        existing_pvc_for_tm_logstore: 
+        existing_pvc_for_tm_logstore:
           name: "tm-logstore"
           size: 1Gi
-        existing_pvc_for_tm_pluginstore: 
+        existing_pvc_for_tm_pluginstore:
           name: "tm-pluginstore"
           size: 1Gi
 
@@ -1708,7 +1713,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "24.0.0"
+      tag: "24.0.0-IF001"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -1729,7 +1734,7 @@ spec:
         memory: 3072Mi
         ephemeral_storage: 2.5Gi
 
-    ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+    ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
     ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
     auto_scaling:
       enabled: false
@@ -1791,9 +1796,9 @@ spec:
       # Timeout for reading a response from the proxy server. The timeout is set only between two successive read operations, not for the transmission of the whole response. If the proxy server does not transmit anything within this time, the connection is closed. This parameter is optional. The default value is 300s.
       proxy_read_timeout: 300
 
-    ## Enable/disable basic auth. 
+    ## Enable/disable basic auth.
     ## From 22.0.2 this by default is true to use jaaslogin module
-    ## Set this to false let Navigator component to use basic auth 
+    ## Set this to false let Navigator component to use basic auth
     disable_basic_auth: true
 
     ## Set securityContext for Navigator deployment.
@@ -1809,7 +1814,7 @@ spec:
     icn_production_setting:
       timezone: Etc/UTC
 
-      ## Customized font path for multi language support, put ALL used font files into this path, "/opt/ibm/wlp/usr/servers/defaultServer/configDropins/overrides/fonts" is suggested so the value can be persisted after pod restart. 
+      ## Customized font path for multi language support, put ALL used font files into this path, "/opt/ibm/wlp/usr/servers/defaultServer/configDropins/overrides/fonts" is suggested so the value can be persisted after pod restart.
       ## By default Navigator will load fonts from "/opt/ibm/java/jre/lib/fonts"
       gdfontpath: "/opt/ibm/java/jre/lib/fonts"
 
@@ -1840,7 +1845,7 @@ spec:
       ## Each WalkMe Editor account has a unique snippet code that can be accessed inside the Editor.
       #  walkme_url: https://cdn.walkme.com/users/4e7c687193414395aa0411837a9eee4b/test/walkme_4e7c687193414395aa0411837a9eee4b_https.js
 
-      # This section is optional and it takes a list of configmaps. 
+      # This section is optional and it takes a list of configmaps.
       # A configmap can hold files or environment data but it cannot a mix of both.
       # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
       # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
@@ -1864,23 +1869,23 @@ spec:
     ## Persistent Volume Claims for ICN.  If the storage_configuration in the shared_configuration is configured,
     ## the Operator will create the PVC using the names below.
     datavolume:
-      existing_pvc_for_icn_cfgstore: 
+      existing_pvc_for_icn_cfgstore:
         name: "icn-cfgstore"
         size: 1Gi
-      existing_pvc_for_icn_logstore: 
+      existing_pvc_for_icn_logstore:
         name: "icn-logstore"
         size: 1Gi
-      existing_pvc_for_icn_pluginstore: 
+      existing_pvc_for_icn_pluginstore:
         name: "icn-pluginstore"
         size: 1Gi
-      existing_pvc_for_icnvw_cachestore: 
+      existing_pvc_for_icnvw_cachestore:
         name: "icn-vw-cachestore"
         size: 1Gi
-      existing_pvc_for_icnvw_logstore: 
+      existing_pvc_for_icnvw_logstore:
         name: "icn-vw-logstore"
         size: 1Gi
-      existing_pvc_for_icn_aspera: 
-        name: "icn-asperastore" 
+      existing_pvc_for_icn_aspera:
+        name: "icn-asperastore"
         size: 1Gi
 
     ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
@@ -2099,7 +2104,7 @@ spec:
 
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: "24.0.0"
+        tag: "24.0.0-IF001"
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -2122,7 +2127,7 @@ spec:
         max_replicas: 3
         min_replicas: 1
         target_cpu_utilization_percentage: 80
-      
+
       node_affinity:
         #-------------------------------------
         # custom_node_selector_match_expression will be added in node selector match expressions.
@@ -2164,7 +2169,7 @@ spec:
         ## If your JVM option contains comma then you have to include 'DELIM=;' to use a different separator, for example jvm_customize_options="DELIM=;-Dmy.test.jvm.arg1=123;-Dcom.filenet.authentication.wsi.AuthTokenOrder=oauth,oidc,ltpa". Semicolon can be replaced with any other char.
         ## If your JVM option contains double quotes then you need to escape it like this: jvm_customize_options="-Dsettings.navigator.default=logging.level={\"_value\":\"4\",\"_mergeOption\":\"replace\"}"
         jvm_customize_options:
-        
+
         license: accept
 
       run_as_user:
@@ -2176,7 +2181,7 @@ spec:
 
       ## By default, the plugin for Graphite is enabled to emit container metrics.
       collectd_enable_plugin_write_graphite: false
-      
+
       # Specify the names of existing persistent volume claims to be used by your application.
       # Specify an empty string if you don't have existing persistent volume claim.
       datavolume:
@@ -2219,7 +2224,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: "24.0.0"
+      tag: "24.0.0-IF001"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent

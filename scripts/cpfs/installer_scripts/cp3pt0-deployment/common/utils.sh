@@ -117,6 +117,7 @@ function wait_for_condition() {
     local wait_message=$4
     local success_message=$5
     local error_message=$6
+    local debug_condition=${7:-}
 
     info "${wait_message}"
     while true; do
@@ -130,6 +131,10 @@ function wait_for_condition() {
         result=$(eval "${condition}")
 
         if [[ -z "${result}" ]]; then
+            if [[ ! -z "${debug_condition}" ]]; then
+                debug "${debug_condition} -> \n$(eval "${debug_condition}")\n"
+            fi
+
             info "RETRYING: ${wait_message} (${retries} left)"
             retries=$(( retries - 1 ))
         else
@@ -275,14 +280,16 @@ function wait_for_csv() {
     local namespace=$1
     local package_name=$2
     local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}'"
-    local retries=60
+    local debug_condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o jsonpath='{.items[*].status.conditions}'"
+    
+    local retries=180
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for operator ${package_name} CSV in namespace ${namespace} to be bound to Subscription"
     local success_message="Operator ${package_name} CSV in namespace ${namespace} is bound to Subscription"
     local error_message="Timeout after ${total_time_mins} minutes waiting for ${package_name} CSV in namespace ${namespace} to be bound to Subscription"
 
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}" "${debug_condition}"
 }
 
 function wait_for_service_account() {
@@ -482,9 +489,10 @@ function wait_for_operator_upgrade() {
     local channel=$3
     local install_mode=$4
     local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}' | grep -w $channel"
+    local debug_condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o jsonpath='{.items[*].status.conditions}'"
 
-    local retries=20
-    local sleep_time=30
+    local retries=120
+    local sleep_time=20
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for operator ${package_name} to be upgraded"
     local success_message="Operator ${package_name} is upgraded to latest version in channel ${channel}"
@@ -503,7 +511,7 @@ function wait_for_operator_upgrade() {
         error_message="Timeout after ${total_time_mins} minutes waiting for operator ${package_name} to be upgraded \nInstallPlan is not manually approved yet"
     fi
 
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}" "${debug_condition}"
 }
 
 function wait_for_cs_webhook() {
@@ -638,8 +646,7 @@ function validate_operator_catalogsource(){
     if [[ $return_value -eq 0 ]]; then
         success "CatalogSource $source from $source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
     elif [[ $return_value -eq 1 ]]; then
-        warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
-        error "Multiple CatalogSource are available for $pm in $operator_ns namespace, please specify the correct CatalogSource name and namespace"
+        error "The expected CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace. Also there are multiple CatalogSources for $pm available in the cluster, please create the expected CatalogSource, or specify the correct CatalogSource name and namespace and re-run the script again."
     elif [[ $return_value -eq 2 ]]; then
         warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
         

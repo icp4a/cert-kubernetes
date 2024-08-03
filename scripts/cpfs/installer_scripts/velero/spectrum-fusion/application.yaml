@@ -1,0 +1,17 @@
+apiVersion: application.isf.ibm.com/v1alpha1
+kind: Application
+metadata:
+  name: cs-application
+  namespace: ibm-spectrum-fusion-ns
+spec:
+  enableDR: false
+  includedNamespaces:
+    - <operator namespace>
+    - <service namespace>
+    - <tenant namespace 1>
+    - <tenant namespace 2>
+    - <cert manager namespace>
+    - <licensing namespace>
+    - openshift-marketplace    
+    - openshift-config
+    - kube-public
