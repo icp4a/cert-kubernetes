@@ -23,6 +23,83 @@ UPGRADE_DEPLOYMENT_BAI_TMP=${UPGRADE_DEPLOYMENT_CR}/.bai_tmp.yaml
 UPGRADE_ICP4A_SHARED_INFO_CM_FILE=${UPGRADE_DEPLOYMENT_CR}/.ibm_cp4ba_shared_info.yaml
 UPGRADE_ICP4A_CONTENT_SHARED_INFO_CM_FILE=${UPGRADE_DEPLOYMENT_CR}/.ibm_cp4ba_content_shared_info.yaml
 
+# This is a function to remove all image tags from a CR
+# Called during the upgradeDeployment mode
+function remove_image_tags(){
+    local CR_FILE=$1
+    TAGS_REMOVED="false"
+    ## remove all image tags
+    # jq -r paths generates all possible paths in a json/yaml as comma seperated lists
+    # select(.[-1] == "tag" selects all the paths ending with tag 
+    # the map(tostring) | join("/") joins the list into the full path and stores it in the list tag_paths
+    # the reason there are two different arrays is because to display the values from the yaml , yq needs the yaml path to be seperated by . but the oc patch command needs the path seperated by /
+    tag_paths_display=$(${YQ_CMD} r -j ${CR_FILE} | jq -r 'paths | select(.[-1] == "tag") | map(tostring) | join(".")')
+    tag_paths_patch=$(${YQ_CMD} r -j ${CR_FILE} | jq -r 'paths | select(.[-1] == "tag") | map(tostring) | join("/")')
+    # Removing tags only if the list is populated
+    if [[ -n "$tag_paths_display" ]]; then
+        echo "${YELLOW_TEXT}[ATTENTION]: The script detects image tags set in the current version of the Custom Resource file.\n[ATTENTION]: The script will remove the tags in the new version of the Custom Resource file and patch the current Custom Resource by removing those image tags since the tags are old and prevent the operator from deploying the updated software."
+        info "The list of image tags that will be removed are listed below :"
+        for path in $tag_paths_display; do
+            tag_value=$(${YQ_CMD} r ${CR_FILE} "$path")
+            # Extract the parent path (all parts except the last)
+            parent_path=$(echo "$path" | awk -F'.' '{print substr($0, 1, length($0)-length($NF)-1)}')
+            repository_value=$(${YQ_CMD} r ${CR_FILE} "$parent_path.repository")
+            info "$repository_value:$tag_value"
+        done
+        printf "\n"
+        read -rsn1 -p "Press any key to continue to remove the defined image tags from the Custom Resource file...";echo
+        printf "\n"
+        # To remove the tags and prevent them from being added back by the last-applied-configuration annotation we need to 
+        # 1. Remove it from the CR file that will be applied
+        ${SED_COMMAND} "/tag: .*/d" ${CR_FILE}
+        TAGS_REMOVED="true"
+    fi         
+}
+
+# This is a Validation Function to do a dry run of applying the CR and if there are any errors it will prompt remediation steps and exit out
+function dryrun(){
+    FILE=$1
+    projectname=$2
+    # Run kubectl apply with dry-run
+    output=$(kubectl apply -f "$FILE" --dry-run=server 2>&1)
+    exit_code=$?
+    info "Validating the CP4BA Custom Resource file by executing a dry run..."
+    printf "\n"
+    # Check the exit code and output to handle different cases
+    if [ $exit_code -eq 0 ]; then
+        info "${GREEN_TEXT} The Custom Resource file does not contain any errors.${RESET_TEXT}"
+        echo "Done!"
+    else
+        # Handle specific errors
+        if echo "$output" | grep -q "unknown field"; then
+            # The sample output of the dry run when there is an unknown/invalid field ends with "strict decoding error: unknown field \"<field_name>\""
+            # The sed command first removes the entire output string before and including unknown_field " and then removes everything the next quote it finds,keep only <field_name> to be assigned to the unknownfield variable
+            unknownfield=$(echo "$output" | sed 's/.*unknown field "//;s/".*//')
+            error "ERROR: Unknown field \"$unknownfield\" found in ${FILE}. Please check the field names and values."
+        elif echo "$output" | grep -q "error parsing"; then
+            error "Error: Error parsing ${FILE}. Please fix the YAML syntax for this custom resource file."
+        else
+            # Handle other errors
+            error "Unknown Error found while applying the Custom Resource file."
+        fi
+        # Display next steps when an error is encountered
+        echo "${YELLOW_TEXT}[NEXT ACTIONS]:${RESET_TEXT}"
+        step_num=1
+        printf "\n"
+        echo "${YELLOW_TEXT}- Resolve the errors that were discovered earlier by modifying the Custom Resource file \"${FILE}\" .${RESET_TEXT}"
+        echo "${YELLOW_TEXT}- If the error is related to an unknown field, please remove the unknown field from the Custom Resource file \"${FILE}\" .${RESET_TEXT}"
+        echo "${YELLOW_TEXT}- If the error is due to YAML parsing, fix the YAML syntax or indentation of the Custom Resource file \"${FILE}\" .${RESET_TEXT}"
+        echo "${YELLOW_TEXT}[NOTE]:${RESET_TEXT} This step will fix the custom resource file errors that were found in the previous executed of the upgradeDeployment mode."
+        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${FILE} -n $projectname${RESET_TEXT}" && step_num=$((step_num + 1))
+        printf "\n"
+        echo "${YELLOW_TEXT}[NOTE]:${RESET_TEXT} Rerun the script cp4ba-deployent.sh in upgradeDeployment mode to continue with the upgrade of IBM Cloud Pak for Business Automation deployment."
+        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: ${GREEN_TEXT}# ./cp4a-deployment.sh -m upgradeDeployment -n $projectname${RESET_TEXT}"
+
+        printf "\n"
+        exit
+    fi
+}
+
 function convert_olm_cr(){
     local cr_file=$1
     EXISTING_PATTERN_ARR=()
@@ -357,11 +434,16 @@ function upgrade_deployment(){
                 info "Merging existing CP4BA Content Custom Resource with new version ($CP4BA_RELEASE_BASE)"
                 # Delete unnecessary section in CR
                 ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} status
-                ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} metadata.annotations
+                #${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} metadata.annotations
                 ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} metadata.creationTimestamp
                 ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} metadata.generation
                 ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} metadata.resourceVersion
                 ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} metadata.uid
+
+                #Validate the CR by performing a dry run
+                dryrun $UPGRADE_DEPLOYMENT_CONTENT_CR_TMP $deployment_project_name
+                #applying the latest tmp CR so that we can update the kubectl.kubernetes.io/last-applied-configuration section to include any potential user edits
+                kubectl apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
 
                 # replace release/appVersion
                 ${SED_COMMAND} "s|release: .*|release: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
@@ -467,11 +549,14 @@ function upgrade_deployment(){
                 # ${CLI_CMD} patch content $content_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/verify_configuration"}]' >/dev/null 2>&1
                 info "The new version ($CP4BA_RELEASE_BASE) of CP4BA Content Custom Resource is created ${UPGRADE_DEPLOYMENT_CONTENT_CR}"
 
-                ## remove all image tags
-                ${SED_COMMAND} "/tag: .*/d" ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
+                #Function to remove the image tags from the CR if present
+                remove_image_tags $UPGRADE_DEPLOYMENT_CONTENT_CR_TMP
                 ${COPY_CMD} -rf ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} ${UPGRADE_DEPLOYMENT_CONTENT_CR}
-                info "IMAGE TAGS ARE REMOVED FROM THE NEW VERSION OF THE CUSTOM RESOURCE \"${UPGRADE_DEPLOYMENT_CONTENT_CR}\"."
-                printf "\n"
+
+                if [[ $TAGS_REMOVED == "true" ]]; then
+                    info "IMAGE TAGS ARE REMOVED FROM THE NEW VERSION OF THE CUSTOM RESOURCE \"${UPGRADE_DEPLOYMENT_CONTENT_CR}\"."
+                    printf "\n"
+                fi
 
                 echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}PLEASE DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} AS ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA 23.0.2.X)${RESET_TEXT}"
                 read -rsn1 -p"Press any key to continue ...";echo
@@ -514,23 +599,8 @@ function upgrade_deployment(){
                     echo "  - if upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment-1] ${RESET_TEXT}"
                     echo "${YELLOW_TEXT}- After review or modify the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\", and then you need to follow below steps to upgrade this CP4BA deployment.${RESET_TEXT}"
 
-                    if [[ $initialize_cfg_flag != "" && $verify_cfg_flag != "" ]]; then
-                        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} patch content $content_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/initialize_configuration"}]'${RESET_TEXT}" && step_num=$((step_num + 1))
-                        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} patch content $content_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/verify_configuration"}]'${RESET_TEXT}" && step_num=$((step_num + 1))
-                        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} annotate content $content_cr_name kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name${RESET_TEXT}" && step_num=$((step_num + 1))
-                        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR} -n $deployment_project_name${RESET_TEXT}" && step_num=$((step_num + 1))
-                    elif [[ $initialize_cfg_flag == "" && $verify_cfg_flag != "" ]]; then
-                        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} patch content $content_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/verify_configuration"}]'${RESET_TEXT}" && step_num=$((step_num + 1))
-                        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} annotate content $content_cr_name kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name${RESET_TEXT}" && step_num=$((step_num + 1))
-                        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR} -n $deployment_project_name${RESET_TEXT}" && step_num=$((step_num + 1))
-                    elif [[ $initialize_cfg_flag != "" && $verify_cfg_flag == "" ]]; then
-                        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} patch content $content_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/initialize_configuration"}]'${RESET_TEXT}" && step_num=$((step_num + 1))
-                        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} annotate content $content_cr_name kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name${RESET_TEXT}" && step_num=$((step_num + 1))
-                        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR} -n $deployment_project_name${RESET_TEXT}" && step_num=$((step_num + 1))
-                    elif [[ $initialize_cfg_flag == "" && $verify_cfg_flag == "" ]]; then
-                        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} annotate content $content_cr_name kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name${RESET_TEXT}" && step_num=$((step_num + 1))
-                        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR} -n $deployment_project_name${RESET_TEXT}" && step_num=$((step_num + 1))
-                    fi
+                    # As a part of DBACLD-149126 solution we no longer needed the user to patch or annotate the custom resource file
+                    echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR} -n $deployment_project_name${RESET_TEXT}" && step_num=$((step_num + 1))
 
                     printf "\n"
                     echo "${YELLOW_TEXT}- How to check the overall upgrade status for CP4BA/zenService/IM.${RESET_TEXT}"
@@ -575,11 +645,15 @@ function upgrade_deployment(){
             info "Merging existing IBM CP4BA Workflow Process Service custom resource: \"${item}\" with new version ($CP4BA_RELEASE_BASE)"
             # Delete unnecessary section in CR
             ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} status
-            ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} metadata.annotations
+            #${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} metadata.annotations
             ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} metadata.creationTimestamp
             ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} metadata.generation
             ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} metadata.resourceVersion
             ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} metadata.uid
+            #Validate the CR by performing a dry run
+            dryrun $UPGRADE_DEPLOYMENT_WFPS_CR_TMP $deployment_project_name
+            #applying the latest tmp CR so that we can update the kubectl.kubernetes.io/last-applied-configuration section to include any potential user edits
+            kubectl apply -f ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
 
             # replace release/appVersion
             # ${SED_COMMAND} "s|release: .*|release: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_PFS_CR_TMP}
@@ -652,7 +726,7 @@ function upgrade_deployment(){
 
 
             info "Apply the new version ($CP4BA_RELEASE_BASE) of IBM CP4BA Workflow Process Service custom resource"
-            kubectl annotate WfPSRuntime ${item} kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name >/dev/null 2>&1
+            #kubectl annotate WfPSRuntime ${item} kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name >/dev/null 2>&1
             kubectl apply -f ${UPGRADE_DEPLOYMENT_WFPS_CR} -n $deployment_project_name >/dev/null 2>&1
             if [ $? -ne 0 ]; then
                 fail "IBM CP4BA Workflow Process Service custom resource update failed"
@@ -711,11 +785,16 @@ function upgrade_deployment(){
         info "Merging existing CP4BA Custom Resource with new version ($CP4BA_RELEASE_BASE)"
         # Delete unnecessary section in CR
         ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} status
-        ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} metadata.annotations
+        #${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} metadata.annotations
         ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} metadata.creationTimestamp
         ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} metadata.generation
         ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} metadata.resourceVersion
         ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} metadata.uid
+
+        #Validate the CR by performing a dry run
+        dryrun $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP $deployment_project_name
+        #applying the latest tmp CR so that we can update the kubectl.kubernetes.io/last-applied-configuration section to include any potential user edits
+        kubectl apply -f ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
 
         # replace release/appVersion
         ${SED_COMMAND} "s|release: .*|release: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
@@ -1463,11 +1542,14 @@ function upgrade_deployment(){
 
         info "The new version ($CP4BA_RELEASE_BASE) of CP4BA Custom Resource is created ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}"
 
-        ## remove all image tags
-        ${SED_COMMAND} "/tag: .*/d" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
+        #Function to remove the image tags from the CR if present
+        remove_image_tags $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP
         ${COPY_CMD} -rf ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}
-        info "IMAGE TAGS ARE REMOVED FROM THE NEW VERSION OF THE CUSTOM RESOURCE \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\"."
-        printf "\n"
+
+        if [[ $TAGS_REMOVED == "true" ]]; then
+            info "IMAGE TAGS ARE REMOVED FROM THE NEW VERSION OF THE CUSTOM RESOURCE \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\"."
+            printf "\n"
+        fi
 
         echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}PLEASE DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} AS ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA 23.0.2.X)${RESET_TEXT}"
         read -rsn1 -p"Press any key to continue ...";echo
@@ -1570,23 +1652,8 @@ function upgrade_deployment(){
             echo "  - if upgrading from 21.0.3: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment]"
             echo "  - if upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment-1]${RESET_TEXT}"
             echo "${YELLOW_TEXT}- After review or modify the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\", and then you need to follow below steps to upgrade this CP4BA deployment.${RESET_TEXT}"
-            if [[ $initialize_cfg_flag != "" && $verify_cfg_flag != "" ]]; then
-                echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} patch icp4acluster $icp4acluster_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/initialize_configuration"}]'${RESET_TEXT}" && step_num=$((step_num + 1))
-                echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} patch icp4acluster $icp4acluster_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/verify_configuration"}]'${RESET_TEXT}"  && step_num=$((step_num + 1))
-                echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} annotate icp4acluster $icp4acluster_cr_name kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name${RESET_TEXT}"  && step_num=$((step_num + 1))
-                echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR} -n $deployment_project_name${RESET_TEXT}"  && step_num=$((step_num + 1))
-            elif [[ $initialize_cfg_flag == "" && $verify_cfg_flag != "" ]]; then
-                echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} patch icp4acluster $icp4acluster_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/verify_configuration"}]'${RESET_TEXT}"  && step_num=$((step_num + 1))
-                echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} annotate icp4acluster $icp4acluster_cr_name kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name${RESET_TEXT}"  && step_num=$((step_num + 1))
-                echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR} -n $deployment_project_name${RESET_TEXT}"  && step_num=$((step_num + 1))
-            elif [[ $initialize_cfg_flag != "" && $verify_cfg_flag == "" ]]; then
-                echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} patch icp4acluster $icp4acluster_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/initialize_configuration"}]'${RESET_TEXT}"  && step_num=$((step_num + 1))
-                echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} annotate icp4acluster $icp4acluster_cr_name kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name${RESET_TEXT}"  && step_num=$((step_num + 1))
-                echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR} -n $deployment_project_name${RESET_TEXT}"  && step_num=$((step_num + 1))
-            elif [[ $initialize_cfg_flag == "" && $verify_cfg_flag == "" ]]; then
-                echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} annotate icp4acluster $icp4acluster_cr_name kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name${RESET_TEXT}"  && step_num=$((step_num + 1))
-                echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR} -n $deployment_project_name${RESET_TEXT}"  && step_num=$((step_num + 1))
-            fi
+            # As a part of DBACLD-149126 solution we no longer needed the user to patch or annotate the custom resource file
+            echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR} -n $deployment_project_name${RESET_TEXT}"  && step_num=$((step_num + 1))
 
             printf "\n"
             echo "${YELLOW_TEXT}- How to check the overall upgrade status for CP4BA/zenService/IM.${RESET_TEXT}"
