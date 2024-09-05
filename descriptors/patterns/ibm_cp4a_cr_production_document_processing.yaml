@@ -284,7 +284,7 @@ spec:
       database_name: "<Required>"
       ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
       database_port: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_gcd_jdbc_url: "<Required>"
@@ -328,7 +328,7 @@ spec:
       database_name: "<Required>"
       ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
       database_port: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_os_jdbc_url: "<Required>"
@@ -378,7 +378,7 @@ spec:
       database_name: "<Required>"
       ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
       database_port: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_os_jdbc_url: "<Required>"
@@ -426,7 +426,7 @@ spec:
       database_name: "<Required>"
       ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
       database_port: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_os_jdbc_url: "<Required>"
@@ -458,7 +458,7 @@ spec:
       database_port: "<Required>"
       ## Provide the name of the database for ICN (Navigator).  For example: "ICNDB". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
       database_name: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_icn_jdbc_url: "<Required>"

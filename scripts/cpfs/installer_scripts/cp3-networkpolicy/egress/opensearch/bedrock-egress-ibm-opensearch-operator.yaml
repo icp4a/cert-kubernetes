@@ -1,0 +1,45 @@
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: egress-ibm-opensearch-operator
+  namespace: "opNamespace"
+spec:
+  podSelector: 
+    matchLabels:
+      name: ibm-cloudpakopen-elasticsearch-operator
+  egress:
+    - ports:
+      - protocol: TCP
+        port: 443
+      - protocol: TCP
+        port: 6443
+      to:
+      - podSelector:
+          matchLabels:
+            apiserver: 'true'
+        namespaceSelector: {}
+    - ports:
+      - port: 53
+        protocol: UDP
+      - port: 53
+        protocol: TCP
+      - port: 5353
+        protocol: UDP
+      - port: 5353
+        protocol: TCP
+      to:
+      - namespaceSelector: {}
+        podSelector:
+          matchLabels:
+            dns.operator.openshift.io/daemonset-dns: default
+    - ports:
+      - protocol: TCP
+        port: 443
+      - protocol: TCP
+        port: 8081
+      - protocol: TCP
+        port: 9081
+      to:
+      - podSelector: {}
+  policyTypes:
+    - Egress

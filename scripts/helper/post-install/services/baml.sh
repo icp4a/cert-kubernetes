@@ -24,17 +24,11 @@ cp4baBAMLStatus()
 #   if [ $DEPLOYMENT_TYPE_TO_LOWER == "production" ]; then
 #   fi
 
-    CP4BA_BAML_DEPLOYMENT_STATUS=`cat ${LOG_DIR}/baml-status.log| grep bamlDeployStatus | awk '{print $2}'`
-    if [ -z "${CP4BA_BAML_DEPLOYMENT_STATUS}"  ]; then
-      CP4BA_BAML_DEPLOYMENT_STATUS="NotInstalled"
+    CP4BA_BAML_CR_STATUS=`cat ${LOG_DIR}/baml-status.log | grep bamlCustomResource | awk '{print $2}'`
+    if [ -z "${CP4BA_BAML_CR_STATUS}"  ]; then
+      CP4BA_BAML_CR_STATUS="NotInstalled"
     fi
-    echo "bamlDeployStatus                            :  ${CP4BA_BAML_DEPLOYMENT_STATUS}"
-
-    bamlServiceStatus_STATUS=`cat ${LOG_DIR}/baml-status.log | grep bamlServiceStatus | awk '{print $2}'`
-    if [ -z "${bamlServiceStatus_STATUS}"  ]; then
-      bamlServiceStatus_STATUS="NotInstalled"
-    fi
-    echo "bamlServiceStatus                           :  ${bamlServiceStatus_STATUS}"
+    echo "bamlCustomResource                          :  ${CP4BA_BAML_CR_STATUS}"
 }
 
 cp4baBAMLConsole()

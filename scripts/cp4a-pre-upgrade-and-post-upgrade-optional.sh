@@ -229,7 +229,7 @@ function validate_new_routes() {
   local app_login_pwd=$( $CLI_CMD get secret $IBM_FNCM_SECRET_NAME -n $TARGET_PROJECT_NAME -o jsonpath='{ .data.appLoginPassword }' | base64 -d )
 
 
-  local json=$( curl -k -X POST -s -H 'Content-type: application/x-www-form-urlencoded;charset=UTF-8' "https://$ID_PROVIDER_CP_CONSOLE/idprovider/v1/auth/identitytoken"  -d "grant_type=password&scope=openid&username=$app_login_user&password=$app_login_pwd"  )
+  local json=$( curl -k -X POST -s -H 'Content-Type: application/x-www-form-urlencoded;charset=UTF-8' "https://$ID_PROVIDER_CP_CONSOLE/idprovider/v1/auth/identitytoken" --data-urlencode "grant_type=password" --data-urlencode "scope=openid" --data-urlencode "username=$app_login_user" --data-urlencode "password=$app_login_pwd" )
 
   local access_token=$(echo $json |  ${YQ_CMD} r -P - 'access_token')
 
@@ -484,6 +484,10 @@ function retrieve_dependencies(){
       $CLI_CMD cp $cpe_pod:${POST_UPGRADE_CPE_TRUSTSTORE_PATH} ${TEMP_FOLDER}/${POST_UPGRADE_TRUSTSTORE_NAME} -n $TARGET_PROJECT_NAME  >/dev/null 2>&1
     fi
   else
+    echo -e "${RED}We were unable to retrieve the required dependecies.${COLOR_OFF}"
+    echo -e "${RED}Please verify that your Content Process Engine deployment is not scaled down to 0 when executing this script.${COLOR_OFF}"
+    echo -e "${RED}If your Content Process Engine deployment is scaled down to 0, please scale the deployment up to at least 1 replica.${COLOR_OFF}"
+    echo -e "${RED}Once Content Process Engine is in a ready state, please rerun the script $SCRIPT_NAME.${COLOR_OFF}"
     return 1
   fi
 
@@ -506,9 +510,14 @@ function retrieve_dependencies(){
     $CLI_CMD cp ${CUR_DIR}/helper/$RUNNABLE_JAR_NAME  $cp4a_operator:/tmp/${RUNNABLE_JAR_NAME} -n $OPERATOR_PROJECT_NAME   >/dev/null 2>&1
     if [[ $option == "POSTUPGRADE" || $OLD_TRUSTSTORE_EXISTS == "no" ]]; then
      $CLI_CMD cp ${TEMP_FOLDER}/${POST_UPGRADE_TRUSTSTORE_NAME} $cp4a_operator:/tmp/${POST_UPGRADE_TRUSTSTORE_NAME} -n $OPERATOR_PROJECT_NAME >/dev/null 2>&1
-   fi
+    fi
 
   else
+    echo -e "${RED}We were unable to retrieve the required dependecies.${COLOR_OFF}"
+    echo -e "${RED}Please verify that your IBM Cloud Pak for Business Automation operator is not scaled to 0 before running this script.${COLOR_OFF}"
+    echo -e "${RED}Please verify that your IBM CP4BA FileNet Content Manager operator is not scaled to 0 before running this script.${COLOR_OFF}"
+    echo -e "${RED}If your operators deployments are scaled down to 0, please scale the deployments up to 1 replica.${COLOR_OFF}"
+    echo -e "${RED}Once these operators are in a ready state, please rerun the script $SCRIPT_NAME.${COLOR_OFF}"
     return 1
   fi
 

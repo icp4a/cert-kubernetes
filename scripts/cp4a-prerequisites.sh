@@ -1811,7 +1811,9 @@ function check_property_file(){
     if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
         im_external_db_cert_folder="$(prop_user_profile_property_file CP4BA.IM_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER)"
         im_external_db_cert_folder=$(sed -e 's/^"//' -e 's/"$//' <<<"$im_external_db_cert_folder")
-        cert_dir_array=( "${cert_dir_array[@]}" "${im_external_db_cert_folder}" )
+        if [[ ! -z $im_external_db_cert_folder ]]; then
+            cert_dir_array=( "${cert_dir_array[@]}" "${im_external_db_cert_folder}" )
+        fi
     fi
 
     # Zen metastore external Postgres DB
@@ -1820,7 +1822,9 @@ function check_property_file(){
     if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
         zen_external_db_cert_folder="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER)"
         zen_external_db_cert_folder=$(sed -e 's/^"//' -e 's/"$//' <<<"$zen_external_db_cert_folder")
-        cert_dir_array=( "${cert_dir_array[@]}" "${zen_external_db_cert_folder}" )
+        if [[ ! -z $zen_external_db_cert_folder ]]; then
+            cert_dir_array=( "${cert_dir_array[@]}" "${zen_external_db_cert_folder}" )
+        fi
     fi
 
     # BTS metastore external Postgres DB
@@ -1829,7 +1833,9 @@ function check_property_file(){
     if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
         bts_external_db_cert_folder="$(prop_user_profile_property_file CP4BA.BTS_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER)"
         bts_external_db_cert_folder=$(sed -e 's/^"//' -e 's/"$//' <<<"$bts_external_db_cert_folder")
-        cert_dir_array=( "${cert_dir_array[@]}" "${bts_external_db_cert_folder}" )
+        if [[ ! -z $bts_external_db_cert_folder ]]; then
+            cert_dir_array=( "${cert_dir_array[@]}" "${bts_external_db_cert_folder}" )
+        fi
     fi
     # Issuer to make Opensearch/Kafka use external certificate
     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_CERT_OPENSEARCH_KAFKA_FLAG)")
@@ -1837,42 +1843,46 @@ function check_property_file(){
     if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
         external_cert_issuer_folder="$(prop_user_profile_property_file CP4BA.EXTERNAL_ROOT_CA_FOR_OPENSEARCH_KAFKA_FOLDER)"
         external_cert_issuer_folder=$(sed -e 's/^"//' -e 's/"$//' <<<"$external_cert_issuer_folder")
-        cert_dir_array=( "${cert_dir_array[@]}" "${external_cert_issuer_folder}" )
+        if [[ ! -z $external_cert_issuer_folder ]]; then
+            cert_dir_array=( "${cert_dir_array[@]}" "${external_cert_issuer_folder}" )
+        fi
     fi
 
-    declare -A dir_count
-    for element in "${cert_dir_array[@]}"; do
-        if [[ -n "${dir_count[$element]}" ]]; then
-            dir_count[$element]=$((dir_count[$element] + 1))
-        else
-            dir_count[$element]=1
-        fi
-    done
+    if [ ${#cert_dir_array[@]} -ne 0 ]; then
+        declare -A dir_count
+        for element in "${cert_dir_array[@]}"; do
+            if [[ -n "${dir_count[$element]}" ]]; then
+                dir_count[$element]=$((dir_count[$element] + 1))
+            else
+                dir_count[$element]=1
+            fi
+        done
 
-    duplicates_dir_found="No"
-    for element in "${!dir_count[@]}"; do
-        if [[ ${dir_count[$element]} -gt 1 ]]; then
-            duplicates_dir_found="Yes"
-        fi
-    done
+        duplicates_dir_found="No"
+        for element in "${!dir_count[@]}"; do
+            if [[ ${dir_count[$element]} -gt 1 ]]; then
+                duplicates_dir_found="Yes"
+            fi
+        done
 
-    if [[ $duplicates_dir_found == "Yes" ]]; then
-        error_value_tag=1
-        error "Found the same directory is used for below certificate folder's property."
-        if [[ ! -z $im_external_db_cert_folder ]]; then
-            msg "CP4BA.IM_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER: \"$im_external_db_cert_folder\""
-        fi
-        if [[ ! -z $im_external_db_cert_folder ]]; then
-            msg "CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER: \"$zen_external_db_cert_folder\""
-        fi
-        if [[ ! -z $im_external_db_cert_folder ]]; then
-            msg "CP4BA.BTS_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER: \"$bts_external_db_cert_folder\""
-        fi
-        if [[ ! -z $im_external_db_cert_folder ]]; then
-            msg "CP4BA.EXTERNAL_ROOT_CA_FOR_OPENSEARCH_KAFKA_FOLDER: \"$external_cert_issuer_folder\""
-        fi
-        warning "You need to use different directory for above certificate folder's property."
+        if [[ $duplicates_dir_found == "Yes" ]]; then
+            error_value_tag=1
+            error "Found the same directory is used for below certificate folder's property."
+            if [[ ! -z $im_external_db_cert_folder ]]; then
+                msg "CP4BA.IM_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER: \"$im_external_db_cert_folder\""
+            fi
+            if [[ ! -z $im_external_db_cert_folder ]]; then
+                msg "CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER: \"$zen_external_db_cert_folder\""
+            fi
+            if [[ ! -z $im_external_db_cert_folder ]]; then
+                msg "CP4BA.BTS_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER: \"$bts_external_db_cert_folder\""
+            fi
+            if [[ ! -z $im_external_db_cert_folder ]]; then
+                msg "CP4BA.EXTERNAL_ROOT_CA_FOR_OPENSEARCH_KAFKA_FOLDER: \"$external_cert_issuer_folder\""
+            fi
+            warning "You need to use different directory for above certificate folder's property."
 
+        fi
     fi
 
     if [[ "$error_value_tag" == "1" ]]; then
@@ -2594,23 +2604,27 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
         fi
  
         # Applying user profile for ibm-adp-secret
-        # Must provide an external MongoDB for production deployments.
-        # replace mongoUri/mongoUser/mongoPwd for ADP
-        tmp_mongo_uri="$(prop_user_profile_property_file ADP.EXTERNAL_MONGO_URI)"
-        tmp_username="$(prop_user_profile_property_file ADP.MONGO_USER_NAME)"
-        tmp_userpwd="$(prop_user_profile_property_file ADP.MONGO_USER_PASSWORD)"
-        ${YQ_CMD} w -i ${ADP_SECRET_FILE} stringData.mongoUri "\"$tmp_mongo_uri\""
-        # ${SED_COMMAND} "s|# mongoUri:.*|mongoUri: \"$tmp_mongo_uri\"|g" ${ADP_SECRET_FILE}
-        ${SED_COMMAND} "s|# mongoUser:.*|mongoUser: \"$tmp_username\"|g" ${ADP_SECRET_FILE}
-        if [[ "${tmp_userpwd:0:8}" == "{Base64}"  ]]; then
-            temp_val=$(echo "$tmp_userpwd" | sed -e "s/^{Base64}//" | base64 --decode)  
-            check_single_quotes_password $temp_val "ADP.MONGO_USER_PASSWORD"
-            ${SED_COMMAND} "s|# mongoPwd:.*|mongoPwd: '$(printf '%q' $temp_val)'|g" ${ADP_SECRET_FILE}
-        else
-            ${SED_COMMAND} "s|# mongoPwd:.*|mongoPwd: \"$tmp_userpwd\"|g" ${ADP_SECRET_FILE}
-        fi            
-        ${SED_COMMAND} "s|'\"|\"|g" ${ADP_SECRET_FILE}
-        ${SED_COMMAND} "s|\"'|\"|g" ${ADP_SECRET_FILE}
+        tmp_mongo_flag="$(prop_user_profile_property_file ADP.USE_EXTERNAL_MONGODB)"
+        tmp_mongo_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_mongo_flag")        
+
+        if [[ $tmp_mongo_flag == "Yes" || $tmp_mongo_flag == "YES" || $tmp_mongo_flag == "Y" || $tmp_mongo_flag == "True" || $tmp_mongo_flag == "true" ]]; then
+            # replace mongoUri/mongoUser/mongoPwd for ADP
+            tmp_mongo_uri="$(prop_user_profile_property_file ADP.EXTERNAL_MONGO_URI)"
+            tmp_username="$(prop_user_profile_property_file ADP.MONGO_USER_NAME)"
+            tmp_userpwd="$(prop_user_profile_property_file ADP.MONGO_USER_PASSWORD)"
+            ${YQ_CMD} w -i ${ADP_SECRET_FILE} stringData.mongoUri "\"$tmp_mongo_uri\""
+            # ${SED_COMMAND} "s|# mongoUri:.*|mongoUri: \"$tmp_mongo_uri\"|g" ${ADP_SECRET_FILE}
+            ${SED_COMMAND} "s|# mongoUser:.*|mongoUser: \"$tmp_username\"|g" ${ADP_SECRET_FILE}
+            if [[ "${tmp_userpwd:0:8}" == "{Base64}"  ]]; then
+                temp_val=$(echo "$tmp_userpwd" | sed -e "s/^{Base64}//" | base64 --decode)  
+                check_single_quotes_password $temp_val "ADP.MONGO_USER_PASSWORD"
+                ${SED_COMMAND} "s|# mongoPwd:.*|mongoPwd: '$(printf '%q' $temp_val)'|g" ${ADP_SECRET_FILE}
+            else
+                ${SED_COMMAND} "s|# mongoPwd:.*|mongoPwd: \"$tmp_userpwd\"|g" ${ADP_SECRET_FILE}
+            fi            
+            ${SED_COMMAND} "s|'\"|\"|g" ${ADP_SECRET_FILE}
+            ${SED_COMMAND} "s|\"'|\"|g" ${ADP_SECRET_FILE}
+        fi
 
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing_designer" ]]; then
             # create SSL secret for Git connection
@@ -3143,6 +3157,17 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
                         tmp_name=$DB_SSL_CERT_FOLDER/$item
                     fi
                     ${SED_COMMAND} "s|<cp4a-db-crt-file-in-local>|$tmp_name|g" ${CP4A_DB_SSL_SECRET_FILE}
+
+                    #  replace sslMode for postgresql
+                    if [[ $DB_TYPE == "postgresql" ]]; then
+                        ssl_tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.POSTGRESQL_SSL_CLIENT_SERVER)")
+                        ssl_tmp_flag=$(echo $ssl_tmp_flag | tr '[:upper:]' '[:lower:]')
+                        if [[ $ssl_tmp_flag == "yes" || $ssl_tmp_flag == "true" ]]; then
+                            tmp_name="$(prop_db_server_property_file $item.POSTGRESQL_SSL_MODE)"
+                            tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
+                            ${SED_COMMAND} "s/--from-literal=sslmode=\[require|verify-ca|verify-full\]/--from-literal=sslmode=$tmp_name/" ${CP4A_DB_SSL_SECRET_FILE}
+                        fi
+                    fi
                     
                     # create oracle-wallet-sso-secret-for-$item for AE/APP
                     if [[ $DB_TYPE == "oracle" && (" ${pattern_cr_arr[@]}" =~ "workflow-authoring" || " ${pattern_cr_arr[@]}" =~ "application" || " ${pattern_cr_arr[@]}" =~ "workflow-workstreams" || " ${optional_component_cr_arr[@]}" =~ "app_designer" || " ${optional_component_cr_arr[@]}" =~ "ads_designer") ]]; then
@@ -3345,10 +3370,6 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
         fi
         ${SED_COMMAND} "s|<cp4a-db-crt-file-in-local>|$bts_external_db_cert_folder|g" ${BTS_SSL_SECRET_FILE}
 
-        # #  replace <DatabaseUser>
-        # tmp_name="$(prop_user_profile_property_file CP4BA.BTS_EXTERNAL_POSTGRES_DATABASE_USER_NAME)"
-        # tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
-        # ${SED_COMMAND} "s|<USERNAME>|$tmp_name|g" ${BTS_SECRET_FILE}
 
         # #  replace <DatabaseUser_password>
         # tmp_name="$(prop_user_profile_property_file CP4BA.BTS_EXTERNAL_POSTGRES_DATABASE_USER_PASSWORD)"
@@ -3371,6 +3392,10 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
         tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
         ${SED_COMMAND} "s|<DatabaseName>|$tmp_name|g" ${BTS_CONFIGMAP_FILE}
 
+        # #  replace <DatabaseUserName>
+        tmp_name="$(prop_user_profile_property_file CP4BA.BTS_EXTERNAL_POSTGRES_DATABASE_USER_NAME)"
+        tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
+        ${SED_COMMAND} "s|<DatabaseUserName>|$tmp_name|g" ${BTS_CONFIGMAP_FILE}
     fi
 
     # Create Issuer to make Opensearch/Kafka use external certificate
@@ -3803,6 +3828,28 @@ element_val.POSTGRESQL_SSL_CLIENT_SERVER=\"True\"\\${nl}" ${DB_SERVER_INFO_PROPE
             fi
             ${SED_COMMAND} "s|element_val|$item|g" ${DB_SERVER_INFO_PROPERTY_FILE}
         fi
+
+        # Add sslmode [require|verify-ca|verify-full] for postgresql
+        if [[ $DB_TYPE == "postgresql" ]]; then
+            nl=$'\n' # fix sed issue on Mac, DO NOT change the script format
+            if [[ "$machine" == "Mac" ]]; then
+                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\ 
+element_val.POSTGRESQL_SSL_MODE=\"require\"\\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
+                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\ 
+## There are three modes [require|verify-ca|verify-full].\\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
+                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\ 
+## The value for the sslmode which determines whether or with what priority a secure SSL TCP/IP connection will be negotiated with the PostgreSQL database server.\\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
+                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\ 
+\\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
+            else
+                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\element_val.POSTGRESQL_SSL_MODE=\"require\"" ${DB_SERVER_INFO_PROPERTY_FILE}
+                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\## There are three modes [require|verify-ca|verify-full]." ${DB_SERVER_INFO_PROPERTY_FILE}
+                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\## The value for the sslmode which determines whether or with what priority a secure SSL TCP/IP connection will be negotiated with the PostgreSQL database server." ${DB_SERVER_INFO_PROPERTY_FILE}
+                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\ " ${DB_SERVER_INFO_PROPERTY_FILE}
+            fi
+            ${SED_COMMAND} "s|element_val|$item|g" ${DB_SERVER_INFO_PROPERTY_FILE}
+        fi
+
         # insert comment for DATABASE_SSL_CERT_FILE_FOLDER when POSTGRESQL_SSL_CLIENT_SERVER=Yes
         if [[ $DB_TYPE == "postgresql" ]]; then
             # fix sed issue on Mac, DO NOT format code
@@ -4182,6 +4229,10 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         echo "## Database port number. The default value is \"5432\"." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "CP4BA.BTS_EXTERNAL_POSTGRES_DATABASE_PORT=\"5432\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+        echo "## Name of the database user. The default value is \"btscnp_user\"." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "CP4BA.BTS_EXTERNAL_POSTGRES_DATABASE_USER_NAME=\"btscnp_user\"" >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
     fi
 
     if [[ $EXTERNAL_CERT_OPENSEARCH_KAFKA == "true" ]]; then
@@ -4325,7 +4376,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
 
         if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring" ]]; then
             # property for oc_cpe_obj_store_enable_workflow
-            echo "## Specify whether to enable workflow for the object store, the default vaule is \"Yes\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## Specify whether to enable workflow for the object store, The default value is \"Yes\"" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "CONTENT_INITIALIZATION.CPE_OBJ_STORE_ENABLE_WORKFLOW=\"Yes\"" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
@@ -4960,7 +5011,11 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         echo "ADP.ENV_OWNER_USER_PASSWORD=\"{Base64}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
-        # Must provide an external MongoDB for production deployments.
+        # Recommend to provide an external MongoDB for production deployments.
+        echo "## IMPORTANT: It is recommended to use an external Enterprise MongoDB instance in a production environment. The embedded MongoDB is provided for demo purposes only when set this value as \"No\". The default value is \"Yes\"." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "ADP.USE_EXTERNAL_MONGODB=\"Yes\"" >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
         # mongoUri/mongoUser/mongoPwd for ADP
         echo "## Provide the mongoURI, for example: \"mongodb://mongo:<mongoPwd>@<mongo_database_hostname>:<mongo_database_port>/<mongo_database_name>?authSource=admin&connectTimeoutMS=3000\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "ADP.EXTERNAL_MONGO_URI=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5532,9 +5587,9 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
         if [[ $LDAP_TYPE == "AD" ]]; then
-            tmp_val="dn"
+            tmp_val="sAMAccountName"
         elif [[ $LDAP_TYPE == "TDS" ]]; then
-            tmp_val="dn"
+            tmp_val="ibm-entryuuid"
         fi
 
         echo "## Provide the user unique id attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5634,9 +5689,9 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
 
         # user profile SCMI Group section
         if [[ $LDAP_TYPE == "AD" ]]; then
-            tmp_val="dn"
+            tmp_val="sAMAccountName"
         elif [[ $LDAP_TYPE == "TDS" ]]; then
-            tmp_val="dn"
+            tmp_val="ibm-entryuuid"
         fi
 
         echo "## Provide the group unique id attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -7091,7 +7146,7 @@ function select_external_postgresdb_for_im(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m${RED_TEXT}[YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLY CP4BA CUSTOM RESOURCE]${RESET_TEXT} \x1B[1mas IM metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: IM service can use an external Postgres DB to store IM data. If select \"Yes\", IM service uses an external Postgres DB as IM metastore DB. If select \"No\", IM service uses an embedded cloud native postgresql DB as IM metastore DB.)${RESET_TEXT} (Yes/No, default: No): "
+        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLY CP4BA CUSTOM RESOURCE${RESET_TEXT}. ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.6?topic=im-setting-up-external-postgresql-database-server#dbcreate${RESET_TEXT}] \x1B[1mas IM metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: IM service can use an external Postgres DB to store IM data. If select \"Yes\", IM service uses an external Postgres DB as IM metastore DB. If select \"No\", IM service uses an embedded cloud native postgresql DB as IM metastore DB.)${RESET_TEXT} (Yes/No, default: No): "
         read -rp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -7113,7 +7168,7 @@ function select_external_postgresdb_for_zen(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m${RED_TEXT}[YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLY CP4BA CUSTOM RESOURCE]${RESET_TEXT}\x1B[1m as Zen metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Zen stores all metadata such as users, groups, service instances, vault integration, secret references in metastore DB. If select \"Yes\", Zen service uses an external Postgres DB as Zen metastore DB. If select \"No\", Zen service uses an embedded cloud native postgresql DB as Zen metastore DB )${RESET_TEXT} (Yes/No, default: No): "
+        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLY CP4BA CUSTOM RESOURCE${RESET_TEXT}. ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.6?topic=im-setting-up-external-postgresql-database-server#dbcreate${RESET_TEXT}]\x1B[1m as Zen metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Zen stores all metadata such as users, groups, service instances, vault integration, secret references in metastore DB. If select \"Yes\", Zen service uses an external Postgres DB as Zen metastore DB. If select \"No\", Zen service uses an embedded cloud native postgresql DB as Zen metastore DB )${RESET_TEXT} (Yes/No, default: No): "
         read -rp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -7135,7 +7190,7 @@ function select_external_postgresdb_for_bts(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m${RED_TEXT}[YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLY CP4BA CUSTOM RESOURCE]${RESET_TEXT}\x1B[1m as BTS metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: BTS service can use an external Postgres DB to store meta data. If select \"Yes\", BTS service uses an external Postgres DB as BTS metastore DB. If select \"No\", BTS service uses an embedded cloud native postgresql DB as BTS metastore DB )${RESET_TEXT} (Yes/No, default: No): "
+        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLY CP4BA CUSTOM RESOURCE${RESET_TEXT}, ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.6?topic=service-external-database#configuring-an-external-database-with-the-bts-custom-resource${RESET_TEXT}]\x1B[1m as BTS metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: BTS service can use an external Postgres DB to store meta data. If select \"Yes\", BTS service uses an external Postgres DB as BTS metastore DB. If select \"No\", BTS service uses an embedded cloud native postgresql DB as BTS metastore DB )${RESET_TEXT} (Yes/No, default: No): "
         read -rp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -7157,7 +7212,7 @@ function select_external_cert_opensearch_kafka(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to use an external certificate (root CA) for this Opensearch/Kafka deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Opensearch/Kafka operator can consume external tls certificate. If select \"No\", CP4BA operator will creates leaf certificates based CP4BA's root CA )${RESET_TEXT} (Yes/No, default: No): "
+        printf "\x1B[1mDo you want to use an external certificate (root CA) for this Opensearch/Kafka deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Opensearch/Kafka operator can consume external tls certificate. If select \"No\", CP4BA operator will create leaf certificates based CP4BA's root CA )${RESET_TEXT} (Yes/No, default: No): "
         read -rp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -7866,13 +7921,8 @@ function validate_secret_in_cluster(){
                 secret_name_tmp=`grep ' create secret generic' $item | tail -1 | cut -d'"' -f2`
             fi
         else
-            secret_name_tmp=`cat $item | grep -oP '(?<=generic ).*?(?= --from-file)'`
-
-            # for DPE secret format specially
-            if [ -z "$secret_name_tmp" ]; then
-                secret_name_tmp=`cat $item | grep -oP '(?<=generic ).*?(?= \\\\)' | tail -1`
-            fi
-
+            # extract secret name by grabbing string btw "create secret generic" and the next whitespace
+            secret_name_tmp=`cat $item | grep -oP '(?<=create secret generic ).*?(?=\s)' | tail -1`
         fi
         if [ -z "$secret_name_tmp" ]; then
             error "Not found secret name in shell script file: \"$item\"! Please check and fix it"
@@ -8267,10 +8317,10 @@ function validate_prerequisites(){
             
                 for num in "${!db_name_array[@]}"; do
                     tmp_dbname=${db_name_array[num]}
-                    tmp_dbname=$(echo $tmp_dbname | tr '[:lower:]' '[:upper:]')
                     tmp_dbusername=${db_user_array[num]}
                     # tmp_dbuserpassword=${db_userpwd_array[num]}
-                    tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l base-db-name=${tmp_base_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_dbname}_DB_CONFIG | base64 --decode`
+                    tmp_dbname_caps=$(echo $tmp_dbname | tr '[:lower:]' '[:upper:]')
+                    tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l base-db-name=${tmp_base_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_dbname_caps}_DB_CONFIG | base64 --decode`
                     tmp_dbserver=${db_server_array[num]}
 
                     # Check DB non-SSL and SSL and SSL

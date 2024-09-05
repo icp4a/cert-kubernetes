@@ -148,10 +148,22 @@ function verify_db_connection(){
     local dbuser=$2
     local dbuserpwd=$3
     local db_server_list_element=$4
+    local base_dbname=$(prop_db_name_user_property_file ADP_BASE_DB_NAME)
+    local proj_dbname=$(prop_db_name_user_property_file ADP_PROJECT_DB_NAME)
+    IFS=',' read -ra proj_dbname_array <<< "$proj_dbname"
     # postgresql only support lower-case db name
-    if [[ $DB_TYPE == "postgresql" ]]; then
-      dbname=$(echo $dbname | tr '[:upper:]' '[:lower:]')
-    fi
+    if [[ "$DB_TYPE" == "postgresql" && "$dbname" != "$base_dbname" ]]; then
+      match_found=false
+      for proj_dbname in "${proj_dbname_array[@]}"; do
+        if [[ "$dbname" == "$proj_dbname" ]]; then
+          match_found=true
+          break
+        fi
+      done
+      if [[ "$match_found" == false ]]; then
+        dbname=$(echo "$dbname" | tr '[:upper:]' '[:lower:]')
+      fi
+    fi  
   fi
   
   retVal_verify_db=0

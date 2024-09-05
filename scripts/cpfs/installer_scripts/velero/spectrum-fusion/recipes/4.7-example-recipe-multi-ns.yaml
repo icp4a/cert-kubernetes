@@ -227,6 +227,7 @@ spec:
       name: zen-crd
       type: resource
     - backupRef: zen-br-resources
+      labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       includeClusterResources: true
       includedResourceTypes:
         - serviceaccount
@@ -237,6 +238,7 @@ spec:
       type: resource
     - backupRef: zen-br-resources
       includeClusterResources: true
+      labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       includedResourceTypes:
         - deployments
       name: zen-deployment
@@ -256,6 +258,7 @@ spec:
       type: resource
     - backupRef: cs-db-br-resources
       includeClusterResources: true
+      labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
       includedResourceTypes:
         - serviceaccount
         - role
@@ -265,6 +268,7 @@ spec:
       type: resource
     - backupRef: cs-db-br-resources
       includeClusterResources: true
+      labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
       includedResourceTypes:
         - deployments
       name: cs-db-deployment
@@ -382,18 +386,6 @@ spec:
       onError: fail
       selectResource: pod
       timeout: 1200
-      type: check
-    - chks:
-        - condition: '{$.status.zenStatus} == {"Completed"}'
-          name: zenserviceReady
-          onError: fail
-          timeout: 1800
-      name: zen-check
-      nameSelector: test-zen
-      namespace: <service namespace>
-      onError: fail
-      selectResource: zen.cpd.ibm.com/v1/zenservice
-      timeout: 1800
       type: check
     - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
       name: setup-tenant
@@ -618,3 +610,16 @@ spec:
         - group: zen-deployment
         - hook: zen5-deployment/podReady
         - hook: zen5-data/restore
+    - failOn: any-error
+      name: restore-cs-db
+      sequence:
+        - hook: common-service-db-check/podReady
+        - group: cs-db-pre-deploy
+        - group: cs-db-volume
+        - group: cs-db-deployment
+        - hook: cs-db-deployment/podReady
+        - hook: platform-identity-management/podReady
+        - hook: platform-auth-service/podReady
+        - hook: platform-identity-provider/podReady
+        - hook: cs-db-data/restore
+    

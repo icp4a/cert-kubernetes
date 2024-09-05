@@ -1,4 +1,4 @@
-﻿The translated license terms can be viewed here: https://www.ibm.com/support/customer/csol/terms/?id=L-VRAK-GTYAQ4&lc=en
+The translated license terms can be viewed here: https://www.ibm.com/support/customer/csol/terms/?id=L-KLBJ-GE8K2U&lc=en
 
 IMPORTANT: READ CAREFULLY
 
@@ -24,7 +24,7 @@ LICENSE INFORMATION
 The Programs listed below are licensed under the following License Information terms and conditions in addition to the Program license terms previously agreed to by Client and IBM. If Client does not have previously agreed to license terms in effect for the Program, the International License Agreement for Evaluation of Programs (i125-5543-06) applies.
 
 Program Name (Program Number):
-IBM Cloud Pak for Business Automation Reserved 24.0.0 (Evaluation)
+IBM Cloud Pak for Business Automation Reserved 24.0.0 SR2 (Evaluation)
 
 The following standard terms apply to Licensee's use of the Program.
 
@@ -65,6 +65,9 @@ IBM Enterprise Records
 Process Mining
 IBM Robotic Process Automation
 IBM FileNet Content Manager Connector for Salesforce
+IBM Business Automation Insights 
+IBM Automation Decision Services 
+
 
 Supporting Programs
 
@@ -75,6 +78,9 @@ IBM Db2 Standard Edition
 IBM WebSphere Application Server Liberty
 IBM WebSphere Application Server Network Deployment
 IBM Storage Fusion
+
+
+
 
 Permitted Components
 
@@ -89,6 +95,7 @@ IBM WebSphere Application Server Network Deployment only for use in support of t
 - IBM Business Automation Workflow Enterprise for Non-Production Environment
 - IBM Operational Decision Manager Server
 - IBM Operational Decision Manager Server for Non-Production Environment
+
 
 Prohibited Components
 
@@ -141,7 +148,7 @@ LICENSE INFORMATION
 The Programs listed below are licensed under the following License Information terms and conditions in addition to the Program license terms previously agreed to by Client and IBM. If Client does not have previously agreed to license terms in effect for the Program, the International Program License Agreement (i125-3301-15) applies.
 
 Program Name (Program Number):
-IBM Cloud Pak for Business Automation Reserved 24.0.0 (5737-I23)
+IBM Cloud Pak for Business Automation Reserved 24.0.0 SR2 (5737-I23)
 
 The following standard terms apply to Licensee's use of the Program.
 
@@ -178,6 +185,9 @@ IBM Enterprise Records
 Process Mining
 IBM Robotic Process Automation
 IBM FileNet Content Manager Connector for Salesforce
+IBM Business Automation Insights 
+IBM Automation Decision Services 
+
 
 Supporting Programs
 
@@ -188,6 +198,9 @@ IBM Db2 Standard Edition
 IBM WebSphere Application Server Liberty
 IBM WebSphere Application Server Network Deployment
 IBM Storage Fusion
+
+
+
 
 Permitted Components
 
@@ -202,6 +215,7 @@ IBM WebSphere Application Server Network Deployment only for use in support of t
 - IBM Business Automation Workflow Enterprise for Non-Production Environment
 - IBM Operational Decision Manager Server
 - IBM Operational Decision Manager Server for Non-Production Environment
+
 
 Prohibited Components
 
@@ -246,7 +260,7 @@ Licensee may install and use the following Program components, under the license
 - IBM Content Collector for SAP for Non-Production Environment when Authorized, Infrequent, External, Employee User Conversion Entitlement Ratio is used.
 - IBM FileNet Content Manager Connector for Salesforce
 - IBM Content Navigator (Component of IBM FileNet Content Manager) when the container is used
-- IBM Datacap, All Components Except Rulerunner
+- IBM Datacap, All Components Except Rulerunner 
 
 Modifiable Third Party Code
 
@@ -315,14 +329,14 @@ A Million Event is a unit of measure by which the Program can be licensed. A Mil
 
 Entitlement Values 
 
-IBM Automation Decision Services Version:1.0
+IBM Automation Decision Services Version:1.0 
 - Conversion Entitlement Ratio: 1 VPC/ 4 VPCs
 - Conversion Entitlement Ratio for Non-Production: 1 VPC/ 2 VPCs
 
 Business Automation Application Engine (Component of the Program) 
 - Conversion Entitlement Ratio: 1 VPC/ 1 VPC
 
-Business Automation Insights  
+Business Automation Insights 
 - Conversion Entitlement Ratio: 1 VPC/ 1 VPC
 
 IBM FileNet Content Manager
@@ -336,17 +350,15 @@ IBM FileNet Content Manager
 (1) Storage of documents up to 30 days for use with Automation Document Processing
 (2) Storage of persisted data (AbstractPersistable objects) for use with Business Automation Application Designer and Business Automation Application Engine
 (3) Storage of data and documents for development use with Workflow Authoring (a component of IBM Business Automation Studio) 
-- IBM Enterprise Records is a component of IBM
-FileNet Content Manager which, when deployed in conjunction with IBM FileNet Content Manager, requires an additional 25% of VPCs sized for IBM FileNet
-Content Manager (rounded up to whole numbers).
+- IBM Enterprise Records is a component of IBM FileNet Content Manager which, when deployed in conjunction with IBM FileNet Content Manager, requires an additional 25% of VPCs sized for IBM FileNet Content Manager (rounded up to whole numbers).
 
 IBM Business Automation Workflow Enterprise
 - Conversion Entitlement Ratio: 1 VPC/ 5 VPCs
 - Conversion Entitlement Ratio for Non-Production Environment: 2 VPCs/ 5 VPCs
- 
+
 IBM Automation Workstream Services 
 - Conversion Entitlement Ratio: 1 VPC/ 5 VPCs
- 
+
 IBM Operational Decision Manager Server
 - Conversion Entitlement Ratio: 1 VPC/ 5 VPCs
 - Conversion Entitlement Ratio for Non-Production Environment: 2 VPCs/ 5 VPCs
@@ -359,7 +371,7 @@ IBM Datacap
 - Conversion Entitlement Ratio: 1 VPC/ 2 VPC
 - Conversion Entitlement Ratio for Non-Production Environment: 1 VPC/ 1 VPC
 
- IBM Content Collector for Email, Files & Sharepoint
+IBM Content Collector for Email, Files & Sharepoint
 - Conversion Entitlement Ratio: 1 VPC/ 3 VPCs
 - Conversion Entitlement Ratio for Non-Production: 2 VPC/ 3 VPC
 
@@ -370,8 +382,7 @@ IBM Content Collector for SAP
 IBM Robotic Process Automation Platform
 - Conversion Entitlement Ratio: 1 Install/ 2 VPCs
 - Licensee may convert 2 VPCs of the Program to use 1 Install of the listed program. Regardless of the number of entitlements obtained to the Program, Licensee is limited to a one-time conversion for a maximum of 1 Install of the listed program.
-- With each Install of the listed program, Licensee is entitled to use 2 Robotic Process Automation Environments, 2 Attended Bot Agents, 1 Unattended Bot Agent, and unlimited Robotic Process
-Automation Studio.
+- With each Install of the listed program, Licensee is entitled to use 2 Robotic Process Automation Environments, 2 Attended Bot Agents, 1 Unattended Bot Agent, and unlimited Robotic Process Automation Studio.
 
 IBM Robotic Process Automation Environment add-on
 - Conversion Entitlement Ratio: 1 Virtual Server/ 1 VPC
@@ -408,50 +419,48 @@ IBM Workflow Process Service - Single Process App (Component of the Program)
 - If Licensee purchased VPC entitlements prior to June 30, 2024, Licensee may install and use the following Program components, under the license terms, but these components are not used to determine the number of entitlements required for the Program:
 - IBM Workflow Process Service when used in Non-Production
 - If Licensee purchased VPC entitlements prior to Mar 30, 2023, Licensee may continue to convert such VPC entitlements with the following ratio:
-	- Conversion Entitlement Ratio: 1 VPC/ 1 VPC
-	- Use Limitation: 1 TWX file (not including different versions of the same TWX file) per IBM Workflow Process Service instance
+- Conversion Entitlement Ratio: 1 VPC/ 1 VPC
+- Use Limitation: 1 TWX file (not including different versions of the same TWX file) per IBM Workflow Process Service instance
 
-If Licensee purchased VPC entitlements prior to December 15, 2023, Licensee may continue to measure
-such VPC entitlements for the following products, with the user-based ratios detailed below:
+If Licensee purchased VPC entitlements prior to December 15, 2023, Licensee may continue to measure such VPC entitlements for the following products, with the user-based ratios detailed below:
 - IBM FileNet Content Manager
-	- Conversion Entitlement Ratio: 10 Concurrent User/ 1 VPC
-	OR
-	- Conversion Entitlement Ratio: 18 Authorized User/ 1 VPC
-	- Conversion Entitlement Ratio: 180 Infrequent User/ 1 VPC, where Licensee measures entitlement by Authorized User
-	OR
-	- Conversion Entitlement Ratio: 36 Employee User/ 1 VPC
-	- Conversion Entitlement Ratio: 3579 External User/ 1 VPC, where Licensee measures entitlement by Authorized or Employee User
+- Conversion Entitlement Ratio: 10 Concurrent User/ 1 VPC
+OR
+- Conversion Entitlement Ratio: 18 Authorized User/ 1 VPC
+- Conversion Entitlement Ratio: 180 Infrequent User/ 1 VPC, where Licensee measures entitlement by Authorized User
+OR
+- Conversion Entitlement Ratio: 36 Employee User/ 1 VPC
+- Conversion Entitlement Ratio: 3579 External User/ 1 VPC, where Licensee measures entitlement by Authorized or Employee User
 - IBM Business Automation Workflow Enterprise
-	- Conversion Entitlement Ratio: 5 Concurrent User/ 1 VPC
-	OR
-	- Conversion Entitlement Ratio: 9 Authorized User/ 1 VPC
-	- Conversion Entitlement Ratio: 90 Infrequent User/ 1 VPC, where Licensee measures entitlement by Authorized User
-	OR
-	- Conversion Entitlement Ratio: 18 Employee User/ 1 VPC
-	- Conversion Entitlement Ratio: 1782 External User/ 1 VPC, where Licensee measures entitlement by Authorized or Employee User
+- Conversion Entitlement Ratio: 5 Concurrent User/ 1 VPC
+OR
+- Conversion Entitlement Ratio: 9 Authorized User/ 1 VPC
+- Conversion Entitlement Ratio: 90 Infrequent User/ 1 VPC, where Licensee measures entitlement by Authorized User
+OR
+- Conversion Entitlement Ratio: 18 Employee User/ 1 VPC
+- Conversion Entitlement Ratio: 1782 External User/ 1 VPC, where Licensee measures entitlement by Authorized or Employee User
 - IBM Content Collector for Email, Files & Sharepoint
-	- Conversion Entitlement Ratio: 200 Authorized User/ 1 VPC
-	- Conversion Entitlement Ratio: 2000 Infrequent User/ 1 VPC, where Licensee measures entitlement by Authorized User
-	OR
-	- Conversion Entitlement Ratio: 499 Employee User/ 1 VPC
-	- Conversion Entitlement Ratio: 40900 External User/ 1 VPC, where Licensee measures entitlement by Authorized or Employee User
+- Conversion Entitlement Ratio: 200 Authorized User/ 1 VPC
+- Conversion Entitlement Ratio: 2000 Infrequent User/ 1 VPC, where Licensee measures entitlement by Authorized User
+OR
+- Conversion Entitlement Ratio: 499 Employee User/ 1 VPC
+- Conversion Entitlement Ratio: 40900 External User/ 1 VPC, where Licensee measures entitlement by Authorized or Employee User
 - IBM Content Collector for SAP
-	- Conversion Entitlement Ratio: 36 Authorized User/ 1 VPC
-	- Conversion Entitlement Ratio: 360 Infrequent User/ 1 VPC, where Licensee measures entitlement by Authorized User
-	OR
-	- Conversion Entitlement Ratio: 72 Employee User/ 1 VPC
-	- Conversion Entitlement Ratio: 6860 External User/ 1 VPC, where Licensee measures entitlement by Authorized or Employee User
+- Conversion Entitlement Ratio: 36 Authorized User/ 1 VPC
+- Conversion Entitlement Ratio: 360 Infrequent User/ 1 VPC, where Licensee measures entitlement by Authorized User
+OR
+- Conversion Entitlement Ratio: 72 Employee User/ 1 VPC
+- Conversion Entitlement Ratio: 6860 External User/ 1 VPC, where Licensee measures entitlement by Authorized or Employee User
 
-If the Client measures entitlement for IBM FileNet Content Manager, IBM Business Automation Workflow Enterprise, IBM Content Collector for Email, Files & Sharepoint, or IBM
-Content Collector for SAP from one of the User-Based ratios above, then those programs must be measured in one of the User-Based ratios enterprise wide.
+If the Client measures entitlement for IBM FileNet Content Manager, IBM Business Automation Workflow Enterprise, IBM Content Collector for Email, Files & Sharepoint, or IBM Content Collector for SAP from one of the User-Based ratios above, then those programs must be measured in one of the User-Based ratios enterprise wide.
 If the Client has acquired the Program as a result of agreeing to the terms of the addendum titled "IBM Cloud Pak for Business Automation and IBM Business Automation Workflow User-Based Trade Up and Subscription License Upgrade Restriction," (the "Subscription License Upgrade Restriction"), then the Client must measure deployment for the trade up and subscription license upgrade on the user-based metrics of Authorized User, Employee User, External User, Concurrent User, and/or Infrequent User. No other metric shall be used for deployment measurement for license trade up and subscription license upgrade and subsequent additional license to this Program if the trade up or upgrade was subject to the Subscription License Upgrade Restriction.
 
 "Conversion Entitlement Ratio n/m" means that Licensee can convert some number ('n') entitlements of the indicated metric for the listed program for every specified number ('m') entitlements of the specified metric for the Program. Once converted, Licensee may only use such converted entitlements for the listed program. The specified conversion does not apply to any entitlements for the Program that are not of the required metric type.
 
-"Additional Entitlement Ratio n/m" means that Licensee receives some number ('n') entitlements of the indicated metric for the identified program for every specified number ('m') entitlements of the specified metric for the Program as a whole. The specified ratio does not apply to any entitlements for the Program that are not of the required metric type. The number of entitlements for the identified program is rounded up to a multiple of 'n'.
-﻿
-Use of Usage Metering Data 
+Use of Usage Metering Data
+ 
 The Program enables use of a usage metering dashboard (the "Dashboard") that enables the display and monitoring of certain data and metrics regarding Licensee's deployment and usage of IBM and non-IBM software programs, as well as the computing environment on which they are deployed ("Usage Metering Data"). Usage of the Dashboard requires registration on either the Red Hat Marketplace or IBM Software Central. Licensee's usage of the Dashboard and IBM's use and sharing of Usage Metering Data are governed by the terms of the Service Description for the Red Hat Marketplace, Operated by IBM, available here: https://www.ibm.com/support/customer/csol/terms?id=i126-8719, and if Licensee enables or uses the Dashboard, Licensee agrees to those terms.
+
 
 Infrequent User
 
@@ -466,6 +475,8 @@ Employee User is a unit of measure by which the Program can be licensed. An Empl
 External User
 
 External User is a unit of measure by which the Program can be licensed. An External User is a unique person, not employed in, paid by, or acting on behalf of Licensee's Enterprise, who is given access to the Program in any manner directly or indirectly (for example: via a multiplexing program, device, or application server) through any means. A person who is employed in or paid by Licensee's Enterprise, but is not accessing the Program within the scope of that relationship may be an External User. An entitlement for an External User is unique to that External User and may not be shared, nor may it be reassigned other than for the permanent transfer of the entitlement to another person.
+
+The Principal Program, when purchased from a hyperscaler marketplace is supported for deployment on the cloud service of the hyperscaler on which the purchase is made. For example, the license entitlements purchased from Amazon Web Services (AWS) marketplace are only supported for the deployment on AWS.
 
 Additional IBM DB2 Standard Edition Details
 
@@ -485,9 +496,6 @@ Terabyte is a unit of measure by which the Program can be licensed. A Terabyte i
 Instead of the entitlements required for the Program directly, Licensee must obtain Terabyte entitlements for this Program sufficient to cover the Terabytes managed by the Program.
 
 
-L/N: L-VRAK-GTYAQ4
-D/N: L-VRAK-GTYAQ4
-P/N: L-VRAK-GTYAQ4
-
-
-
+L/N: L-ANSP-6F8T5J
+D/N: L-ANSP-6F8T5J
+P/N: L-ANSP-6F8T5J

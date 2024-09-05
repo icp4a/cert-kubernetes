@@ -310,7 +310,7 @@ function func_sync_ums_ds_property_into_cr(){
     fi
 }
 
- # Applying value in LDAP property file into final CR
+# Applying value in LDAP property file into final CR
 function func_sync_ldap_property_into_cr(){
     for i in "${!LDAP_COMMON_CR_MAPPING[@]}"; do
         ${YQ_CMD} w -i ${BAW_STD_PATTERN_FILE_TMP} "${LDAP_COMMON_CR_MAPPING[i]}" "\"$(prop_ldap_property_file ${LDAP_COMMON_PROPERTY[i]})\""
@@ -327,7 +327,7 @@ function func_sync_ldap_property_into_cr(){
     fi
 }
 
- # Applying value in BAW runtime property file into final CR
+# Applying value in BAW runtime property file into final CR
 function func_sync_baw_std_property_file_into_cr(){
     tmp_baw_runtime_db_servername="$(prop_db_name_user_property_file_for_server_name BAW_RUNTIME_DB_USER_NAME)"
     tmp_baw_runtime_db_servername=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_baw_runtime_db_servername")
@@ -342,6 +342,13 @@ function func_sync_baw_std_property_file_into_cr(){
     for i in "${!BAW_RUNTIME_CR_MAPPING[@]}"; do
         ${YQ_CMD} w -i ${BAW_STD_PATTERN_FILE_TMP} "${BAW_RUNTIME_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_baw_runtime_db_servername.${BAW_RUNTIME_COMMON_PROPERTY[i]})\""
     done
+
+    # if DB ssl enabled is false, set db_cert_secret_name value to empty
+    db_ssl_enable=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_baw_runtime_db_servername.DATABASE_SSL_ENABLE)")
+    tmp_db_ssl_flag=$(echo $db_ssl_enable | tr '[:upper:]' '[:lower:]')
+    if [[ $tmp_db_ssl_flag == "no" || $tmp_db_ssl_flag == "false" || $tmp_db_ssl_flag == "" || -z $tmp_db_ssl_flag ]]; then
+        ${YQ_CMD} w -i ${BAW_STD_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.db_cert_secret_name "\"\""
+    fi
 
     #tmp_secret_name=`kubectl get secret -l db-name=${tmp_baw_runtime_db_name} -o yaml | ${YQ_CMD} r - items.[0].metadata.name`
 

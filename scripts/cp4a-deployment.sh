@@ -850,7 +850,9 @@ apiVersion: elasticsearch.opencontent.ibm.com/v1
 kind: ElasticsearchCluster
 metadata:
   annotations:
-    productName: CloudpakOpen Elasticsearch
+    productID: 068a62892a1e4db39641342e592daa25
+    productMetric: FREE
+    productName: IBM Cloud Platform Common Services
   name: opensearch
   namespace: "$CP4BA_SERVICES_NS"
 spec:
@@ -6292,6 +6294,11 @@ function sync_property_into_final_cr(){
         if [[ $DB_TYPE == "postgresql-edb" ]]; then
             ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_odm_datasource.dc_database_type "postgresql"
             ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_odm_datasource.dc_use_postgres "true"
+            # set dc_common_ssl_enabled always true for postgresql-edb
+            ds_cfg_val=`cat $CP4A_PATTERN_FILE_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_odm_datasource`
+            if [[ ! -z "$ds_cfg_val" ]]; then
+                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_odm_datasource.dc_common_ssl_enabled "true"
+            fi
         fi
         # For ODM, set dc_ssl_secret_name only when db is db2/oracle/postgresql with clientAuth
         if [[ $DB_TYPE == "postgresql" ]]; then
@@ -6746,8 +6753,15 @@ function sync_property_into_final_cr(){
             fi
         fi
 
-        # Must provide an external MongoDB for production deployments.
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration.document_processing.deploy_mongo "false"
+        # Recommend to provide an external MongoDB for production deployments.
+        tmp_mongo_flag="$(prop_user_profile_property_file ADP.USE_EXTERNAL_MONGODB)"
+        tmp_mongo_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_mongo_flag")        
+
+        if [[ $tmp_mongo_flag == "Yes" || $tmp_mongo_flag == "YES" || $tmp_mongo_flag == "Y" || $tmp_mongo_flag == "True" || $tmp_mongo_flag == "true" ]]; then
+            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration.document_processing.deploy_mongo "false"
+        elif [[ $tmp_mongo_flag == "No" || $tmp_mongo_flag == "NO" || $tmp_mongo_flag == "N" || $tmp_mongo_flag == "False" || $tmp_mongo_flag == "false" ]]; then
+            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration.document_processing.deploy_mongo "true"
+        fi
 
         # Apply git connection secret if true when ADP designer
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing_designer" ]]; then
@@ -8605,7 +8619,7 @@ then
 
     input_information
 
-    # Check whether the CP4BA is is separation of operators and operands.
+    # Check whether the CP4BA is separation of operators and operands.
     check_cp4ba_separate_operand $TARGET_PROJECT_NAME
 
     show_summary
@@ -8797,11 +8811,34 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     # check current cp4ba version
     check_cp4ba_operator_version $TARGET_PROJECT_NAME
 
-    # Check whether the CP4BA is is separation of operators and operands.
+    # Detech all namespace or not
+    cp4a_operator_csv_name_target_ns=$(${CLI_CMD} get csv -n $TARGET_PROJECT_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
+    cp4a_operator_csv_name_allnamespace_ns=$(${CLI_CMD} get csv -n $ALL_NAMESPACE_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
+
+    if [[ -z $cp4a_operator_csv_name_allnamespace_ns && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
+        success "Found IBM Cloud Pak for Business Automation Operator deployed in the project \"$TARGET_PROJECT_NAME\"."
+        ALL_NAMESPACE_FLAG="No"
+        TEMP_OPERATOR_PROJECT_NAME=$TARGET_PROJECT_NAME
+    elif [[ (! -z $cp4a_operator_csv_name_allnamespace_ns) && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
+        success "Found IBM Cloud Pak for Business Automation Operator deployed as AllNamespace mode in the project \"$ALL_NAMESPACE_NAME\"."
+        ALL_NAMESPACE_FLAG="Yes"
+        upgrade_operator_project_name="openshift-operators"
+        TEMP_OPERATOR_PROJECT_NAME="openshift-operators"
+    fi
+
+    # Check whether the CP4BA is separation of operators and operands.
     if [[ "$cp4a_operator_csv_version" == "24.0."* ]]; then
-        check_cp4ba_separate_operand $TARGET_PROJECT_NAME
+        if [[ $ALL_NAMESPACE_FLAG != "Yes" ]]; then
+            check_cp4ba_separate_operand $TARGET_PROJECT_NAME
+        else
+            CP4BA_SERVICES_NS=$TARGET_PROJECT_NAME
+            cp4ba_services_namespace=$TARGET_PROJECT_NAME
+            cp4ba_operators_namespace="openshift-operators"
+        fi
     else
         CP4BA_SERVICES_NS=$TARGET_PROJECT_NAME
+        cp4ba_services_namespace=$TARGET_PROJECT_NAME
+        cp4ba_operators_namespace=$TARGET_PROJECT_NAME
     fi
 
     UPGRADE_DEPLOYMENT_FOLDER=${CUR_DIR}/cp4ba-upgrade/project/$CP4BA_SERVICES_NS
@@ -8831,29 +8868,14 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     #    exit 1
     #fi
 
-    # As workaround for https://github.ibm.com/IBMPrivateCloud/roadmap/issues/64207
-    # update secret postgresql-operator-controller-manager-config in <cp4ba> namespace and/or ibm-common-services namespace and add this annotation ibm-bts/skip-updates: "true"
-    if ${CLI_CMD} get secret -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | grep postgresql-operator-controller-manager-config >/dev/null 2>&1; then
-        ${CLI_CMD} patch secret postgresql-operator-controller-manager-config -n $CP4BA_SERVICES_NS -p '{"metadata": {"annotations": {"ibm-bts/skip-updates": "true"}}}' >/dev/null 2>&1
-    fi
-    if ${CLI_CMD} get secret -n ibm-common-services --no-headers --ignore-not-found | grep postgresql-operator-controller-manager-config >/dev/null 2>&1; then
-        ${CLI_CMD} patch secret postgresql-operator-controller-manager-config -n ibm-common-services -p '{"metadata": {"annotations": {"ibm-bts/skip-updates": "true"}}}' >/dev/null 2>&1
-    fi
-
-    # Detech all namespace or not
-    cp4a_operator_csv_name_target_ns=$(${CLI_CMD} get csv -n $TARGET_PROJECT_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
-    cp4a_operator_csv_name_allnamespace_ns=$(${CLI_CMD} get csv -n $ALL_NAMESPACE_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
-
-    if [[ -z $cp4a_operator_csv_name_allnamespace_ns && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
-        success "Found IBM Cloud Pak for Business Automation Operator deployed in the project \"$TARGET_PROJECT_NAME\"."
-        ALL_NAMESPACE_FLAG="No"
-        TEMP_OPERATOR_PROJECT_NAME=$TARGET_PROJECT_NAME
-    elif [[ (! -z $cp4a_operator_csv_name_allnamespace_ns) && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
-        success "Found IBM Cloud Pak for Business Automation Operator deployed as AllNamespace mode in the project \"$ALL_NAMESPACE_NAME\"."
-        ALL_NAMESPACE_FLAG="Yes"
-        upgrade_operator_project_name="openshift-operators"
-        TEMP_OPERATOR_PROJECT_NAME="openshift-operators"
-    fi
+    # # As workaround for https://github.ibm.com/IBMPrivateCloud/roadmap/issues/64207
+    # # update secret postgresql-operator-controller-manager-config in <cp4ba> namespace and/or ibm-common-services namespace and add this annotation ibm-bts/skip-updates: "true"
+    # if ${CLI_CMD} get secret -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | grep postgresql-operator-controller-manager-config >/dev/null 2>&1; then
+    #     ${CLI_CMD} patch secret postgresql-operator-controller-manager-config -n $CP4BA_SERVICES_NS -p '{"metadata": {"annotations": {"ibm-bts/skip-updates": "true"}}}' >/dev/null 2>&1
+    # fi
+    # if ${CLI_CMD} get secret -n ibm-common-services --no-headers --ignore-not-found | grep postgresql-operator-controller-manager-config >/dev/null 2>&1; then
+    #     ${CLI_CMD} patch secret postgresql-operator-controller-manager-config -n ibm-common-services -p '{"metadata": {"annotations": {"ibm-bts/skip-updates": "true"}}}' >/dev/null 2>&1
+    # fi
 
     if [[ $SEPARATE_OPERAND_FLAG == "Yes" ]]; then
         source ${CUR_DIR}/helper/upgrade/upgrade_merge_yaml.sh $CP4BA_SERVICES_NS
@@ -9088,65 +9110,23 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     fi
 
     # Checking the CPfs mode
+
+    # After direct upgrade to 24.0.0 or 24.0.0 IF001 complete as following migration mode.
+    # - Cluster-scoped => Namespace-scoped (mandatory)
+    # - Namespace-scoped => Namespace-scoped
+    # - Cluster-scoped => Cluster-scoped (All Namespace)
+    # so it is ok to use ALL_NAMESPACE_FLAG as condition to check which CPfs mode on 24.0.0 or 24.0.0 IF001
+    # - ALL_NAMESPACE_FLAG is "Yes": Cluster-scoped
+    # - ALL_NAMESPACE_FLAG is "No": Namespace-scoped
     if [[ -z $UPGRADE_MODE ]]; then
-        cs_dedicated=$(${CLI_CMD} get cm -n ${COMMON_SERVICES_CM_NAMESPACE}  | grep ${COMMON_SERVICES_CM_DEDICATED_NAME} | awk '{print $1}')
-
-        cs_shared=$(${CLI_CMD} get cm -n ${COMMON_SERVICES_CM_NAMESPACE}  | grep ${COMMON_SERVICES_CM_SHARED_NAME} | awk '{print $1}')
-
-        if [[ "$cs_dedicated" != "" || "$cs_shared" != ""  ]] ; then
-            control_namespace=$(${CLI_CMD} get cm ${COMMON_SERVICES_CM_DEDICATED_NAME} --no-headers --ignore-not-found -n ${COMMON_SERVICES_CM_NAMESPACE} -o jsonpath='{ .data.common-service-maps\.yaml }' | grep  'controlNamespace' | cut -d':' -f2 )
-            control_namespace=$(sed -e 's/^"//' -e 's/"$//' <<<"$control_namespace")
-            control_namespace=$(sed "s/ //g" <<< $control_namespace)
-        fi
-
-
         if [[ $ALL_NAMESPACE_FLAG == "Yes" ]]; then
             info "IBM Cloud Pak foundational services is working in \"Cluster-scoped\"."
             UPGRADE_MODE="shared2shared"
             ENABLE_PRIVATE_CATALOG=0
             info "Found the IBM Cloud Pak foundational services/IBM Cloud Pak for Business Automation are installed into all namespaces, IBM Cloud Pak foundational services only can be migrated from \"Cluster-scoped\" to \"Cluster-scoped\"!"
-        elif [[ "$cs_dedicated" != "" && "$cs_shared" == "" ]]; then
+        elif [[ $ALL_NAMESPACE_FLAG == "No" ]]; then
             info "IBM Cloud Pak foundational services is working in \"Namespace-scoped\"."
             UPGRADE_MODE="dedicated2dedicated"
-        elif [[ "$cs_dedicated" == "" && "$cs_shared" != "" && $ALL_NAMESPACE_FLAG == "No" ]]; then
-            info "IBM Cloud Pak foundational services is working in \"Cluster-scoped\"."
-            # select_upgrade_mode
-            UPGRADE_MODE="shared2dedicated"
-            info "IBM Cloud Pak foundational services will always migrate from \"Cluster-scoped\" to \"Namespace-scoped\"."
-            read -rsn1 -p"Press any key to continue";echo
-        elif [[ "$cs_dedicated" != "" && "$cs_shared" != "" && "$control_namespace" == "" ]]; then
-            info "IBM Cloud Pak foundational services is working in \"Cluster-scoped\"."
-            # select_upgrade_mode
-            UPGRADE_MODE="shared2dedicated"
-            info "IBM Cloud Pak foundational services will always migrate from \"Cluster-scoped\" to \"Namespace-scoped\"."
-            read -rsn1 -p"Press any key to continue";echo
-        elif [[ "$cs_dedicated" != "" && "$cs_shared" != "" && "$control_namespace" != "" ]]; then
-            ${CLI_CMD} get cm ${COMMON_SERVICES_CM_DEDICATED_NAME} --no-headers --ignore-not-found -n ${COMMON_SERVICES_CM_NAMESPACE} -o jsonpath='{ .data.common-service-maps\.yaml }' > /tmp/common-service-maps.yaml
-            index=0
-            common_service_namespace=`cat /tmp/common-service-maps.yaml | ${YQ_CMD} r - namespaceMapping.[$index].map-to-common-service-namespace`
-            while [[ ! -z $common_service_namespace ]]
-            do
-                if [[ $common_service_namespace == "ibm-common-services" ]]; then
-                    info "IBM Cloud Pak foundational services is working in \"Cluster-scoped\"."
-                    # select_upgrade_mode
-                    UPGRADE_MODE="shared2dedicated"
-                    info "IBM Cloud Pak foundational services will always migrate from \"Cluster-scoped\" to \"Namespace-scoped\"."
-                    read -rsn1 -p"Press any key to continue";echo
-                    break
-                fi
-                ((index++))
-                common_service_namespace=`cat /tmp/common-service-maps.yaml | ${YQ_CMD} r - namespaceMapping.[$index].map-to-common-service-namespace`
-                if [[ -z $common_service_namespace ]]; then
-                    info "IBM Cloud Pak foundational services is working in \"Namespace-scoped\"."
-                    UPGRADE_MODE="dedicated2dedicated"
-                fi
-            done
-        elif [[ $ALL_NAMESPACE_FLAG == "No" ]]; then
-            info "IBM Cloud Pak foundational services is working in \"Cluster-scoped\"."
-            # select_upgrade_mode
-            UPGRADE_MODE="shared2dedicated"
-            info "IBM Cloud Pak foundational services will always migrate from \"Cluster-scoped\" to \"Namespace-scoped\"."
-            read -rsn1 -p"Press any key to continue";echo
         fi
     fi
 
@@ -9217,17 +9197,22 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             if [[ $ALL_NAMESPACE_FLAG == "Yes" ]]; then
                 # ${SED_COMMAND} "s|CS_OPERATOR_NAMESPACE=\"\"|CS_OPERATOR_NAMESPACE=\"openshift-operators\"|g" ${UPGRADE_DEPLOYMENT_PROPERTY_FILE}
                 ${YQ_CMD} w -i ${UPGRADE_CS_ZEN_FILE} data.operators_namespace "\"openshift-operators\""
+                cp4ba_operators_namespace="openshift-operators"
             elif [[ $ALL_NAMESPACE_FLAG == "No" ]]; then
                 # ${SED_COMMAND} "s|CS_OPERATOR_NAMESPACE=\"\"|CS_OPERATOR_NAMESPACE=\"ibm-common-services\"|g" ${UPGRADE_DEPLOYMENT_PROPERTY_FILE}
                 ${YQ_CMD} w -i ${UPGRADE_CS_ZEN_FILE} data.operators_namespace "\"ibm-common-services\""
+                cp4ba_operators_namespace="ibm-common-services"
             fi
             # ${SED_COMMAND} "s|CS_SERVICES_NAMESPACE=\"\"|CS_SERVICES_NAMESPACE=\"ibm-common-services\"|g" ${UPGRADE_DEPLOYMENT_PROPERTY_FILE}
             ${YQ_CMD} w -i ${UPGRADE_CS_ZEN_FILE} data.services_namespace "\"ibm-common-services\""
+            cp4ba_services_namespace="ibm-common-services"
         elif [[ $UPGRADE_MODE == "shared2dedicated" || $UPGRADE_MODE == "dedicated2dedicated" ]]; then
             # ${SED_COMMAND} "s|CS_OPERATOR_NAMESPACE=\"\"|CS_OPERATOR_NAMESPACE=\"$CP4BA_SERVICES_NS\"|g" ${UPGRADE_DEPLOYMENT_PROPERTY_FILE}
             # ${SED_COMMAND} "s|CS_SERVICES_NAMESPACE=\"\"|CS_SERVICES_NAMESPACE=\"$CP4BA_SERVICES_NS\"|g" ${UPGRADE_DEPLOYMENT_PROPERTY_FILE}
             ${YQ_CMD} w -i ${UPGRADE_CS_ZEN_FILE} data.operators_namespace "\"$CP4BA_SERVICES_NS\""
             ${YQ_CMD} w -i ${UPGRADE_CS_ZEN_FILE} data.services_namespace "\"$CP4BA_SERVICES_NS\""
+            cp4ba_operators_namespace="$CP4BA_SERVICES_NS"
+            cp4ba_services_namespace="$CP4BA_SERVICES_NS"
         fi
 
         ${SED_COMMAND} "s|'\"|\"|g" ${UPGRADE_CS_ZEN_FILE}
@@ -9467,7 +9452,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     done
 
     # No need to create Flink job savepoint for upgrading from IFIX to IFIX
-    if [[ $cp4a_operator_csv_version != "$CP4BA_RELEASE_BASE" ]]; then
+    if [[ $cp4a_operator_csv_version != "$CP4BA_RELEASE_BASE" && $cp4a_operator_csv_version != "24.0."* ]]; then
         # In 24.0.0, only merge bai.json into yaml but not call savepoint RestAPI because that savepoint should be done during migration from ES to OS
         if [[ $RERUN_UPGRADE_DEPLOYMENT == "Yes" ]]; then
             RUN_BAI_SAVEPOINT="Yes"
@@ -10064,11 +10049,47 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                     exit 1
                 fi
             done
-
-            # switch CPfs for 24.0.0 IFIX
-
         fi
 
+        # From 24.0.0 IF002, swtich catalog source of ibm-bts-operator from bts-operator to bts-operator-v3-34-0
+        # the bts-operator is installed in project $cp4ba_operators_namespace (shared->shared/dedicated->dedicated)
+        if [[ ! -z $cp4ba_operators_namespace ]]; then
+            bts_sub_flag=$(${CLI_CMD} get subscriptions.operators.coreos.com --no-headers --ignore-not-found -n $cp4ba_operators_namespace|grep ibm-bts-operator|awk '{print $1}')
+            if [[ ! -z $bts_sub_flag ]]; then
+                info "Updating the catalog source of subscription 'ibm-bts-operator' to $BTS_CATALOG_VERSION"
+                if [[ $ENABLE_PRIVATE_CATALOG -eq 1 || $PRIVATE_CATALOG_FOUND == "Yes" ]]; then
+                    ${CLI_CMD} patch subscriptions.operators.coreos.com ibm-bts-operator -n $cp4ba_operators_namespace -p '{"spec":{"sourceNamespace":"'"$cp4ba_operators_namespace"'"}}' --type=merge >/dev/null 2>&1
+                    if [ $? -eq 0 ]
+                    then
+                        success "Switch the catalog source of subscription 'ibm-bts-operator' to $cp4ba_operators_namespace"
+                        printf "\n"
+                    else
+                        fail "Failed to switch the catalog source of subscription 'ibm-bts-operator' to $cp4ba_operators_namespace! exiting now..."
+                        exit 1
+                    fi
+                fi
+                ${CLI_CMD} patch subscriptions.operators.coreos.com ibm-bts-operator -n $cp4ba_operators_namespace -p '{"spec":{"source":"'"$BTS_CATALOG_VERSION"'"}}' --type=merge >/dev/null 2>&1
+                if [ $? -eq 0 ]
+                then
+                    success "Updated the catalog source of subscription 'ibm-bts-operator' to $BTS_CATALOG_VERSION"
+                    printf "\n"
+                else
+                    fail "Failed to update the catalog source of subscription 'ibm-bts-operator' to $BTS_CATALOG_VERSION! exiting now..."
+                    exit 1
+                fi
+                #  Swtich BTS channel to v3.34
+                info "Updating the channel of subscription 'ibm-bts-operator' to $BTS_CHANNEL_VERSION"
+                ${CLI_CMD} patch subscriptions.operators.coreos.com ibm-bts-operator -n $cp4ba_operators_namespace -p '{"spec":{"channel":"'"$BTS_CHANNEL_VERSION"'"}}' --type=merge >/dev/null 2>&1
+                if [ $? -eq 0 ]
+                then
+                    success "Updated the channel of subscription 'ibm-bts-operator' to $BTS_CHANNEL_VERSION"
+                    printf "\n"
+                else
+                    fail "Failed to update the channel of subscription 'ibm-bts-operator' to $BTS_CHANNEL_VERSION! exiting now..."
+                    exit 1
+                fi
+            fi
+        fi
         #  Patch CP4BA channel to latest version, wait for all the operators are upgraded before applying operandRequest.
         sub_inst_list=$(${CLI_CMD} get subscriptions.operators.coreos.com -n $TEMP_OPERATOR_PROJECT_NAME|grep ibm-cp4a-operator-catalog|awk '{if(NR>0){if(NR==1){ arr=$1; }else{ arr=arr" "$1; }} } END{ print arr }')
         if [[ -z $sub_inst_list ]]; then
@@ -11026,15 +11047,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         echo "           # ./cp4a-deployment.sh -m upgradeOperator -n $TARGET_PROJECT_NAME --cpfs-upgrade-mode dedicated2dedicated --original-cp4ba-csv-ver 21.3.31"
                         exit 1
                     fi
-                    # workaround for https://github.ibm.com/IBMPrivateCloud/roadmap/issues/63676
-                    cs_namespace="ibm-common-services"
-                    info "Removing ibm-events-operator from the project \"$cs_namespace\"."
-                    ${CLI_CMD} delete csv -l operators.coreos.com/ibm-events-operator.$cs_namespace='' -n $cs_namespace >/dev/null 2>&1
-                    if [ $? -eq 0 ]; then
-                        success "Removed ibm-events-operator from the project \"$cs_namespace\"."
-                    else
-                        fail "Faild to remove ibm-events-operator from the project \"$cs_namespace\"."
-                    fi
+                    # # workaround for https://github.ibm.com/IBMPrivateCloud/roadmap/issues/63676
+                    # cs_namespace="ibm-common-services"
+                    # info "Removing ibm-events-operator from the project \"$cs_namespace\"."
+                    # ${CLI_CMD} delete csv -l operators.coreos.com/ibm-events-operator.$cs_namespace='' -n $cs_namespace >/dev/null 2>&1
+                    # if [ $? -eq 0 ]; then
+                    #     success "Removed ibm-events-operator from the project \"$cs_namespace\"."
+                    # else
+                    #     fail "Faild to remove ibm-events-operator from the project \"$cs_namespace\"."
+                    # fi
                 elif [[ $UPGRADE_MODE == "shared2shared" && $ALL_NAMESPACE_FLAG == "No" ]]; then
                     # keep GCN catalog
                     msg "All arguments passed into the CPfs script: $COMMON_SERVICES_SCRIPT_FOLDER/migrate_tenant.sh --operator-namespace ibm-common-services --services-namespace ibm-common-services --cert-manager-source ibm-cert-manager-catalog --licensing-source ibm-licensing-catalog --enable-licensing --yq \"$CPFS_YQ_PATH\" -c $CS_CHANNEL_VERSION -s $CS_CATALOG_VERSION --license-accept"
@@ -11211,15 +11232,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         echo "           # ./cp4a-deployment.sh -m upgradeOperator -n $TARGET_PROJECT_NAME --cpfs-upgrade-mode dedicated2dedicated --original-cp4ba-csv-ver 21.3.31"
                         exit 1
                     fi
-                    # workaround for https://github.ibm.com/IBMPrivateCloud/roadmap/issues/63676
-                    cs_namespace="ibm-common-services"
-                    info "Removing ibm-events-operator from the project \"$cs_namespace\"."
-                    ${CLI_CMD} delete csv -l operators.coreos.com/ibm-events-operator.$cs_namespace='' -n $cs_namespace >/dev/null 2>&1
-                    if [ $? -eq 0 ]; then
-                        success "Removed ibm-events-operator from the project \"$cs_namespace\"."
-                    else
-                        fail "Faild to remove ibm-events-operator from the project \"$cs_namespace\"."
-                    fi
+                    # # workaround for https://github.ibm.com/IBMPrivateCloud/roadmap/issues/63676
+                    # cs_namespace="ibm-common-services"
+                    # info "Removing ibm-events-operator from the project \"$cs_namespace\"."
+                    # ${CLI_CMD} delete csv -l operators.coreos.com/ibm-events-operator.$cs_namespace='' -n $cs_namespace >/dev/null 2>&1
+                    # if [ $? -eq 0 ]; then
+                    #     success "Removed ibm-events-operator from the project \"$cs_namespace\"."
+                    # else
+                    #     fail "Faild to remove ibm-events-operator from the project \"$cs_namespace\"."
+                    # fi
                     # keep GCN catalog
                     msg "All arguments passed into the CPfs script: $COMMON_SERVICES_SCRIPT_FOLDER/setup_tenant.sh --license-accept --enable-licensing --operator-namespace openshift-operators --services-namespace ibm-common-services --yq \"$CPFS_YQ_PATH\" -c $CS_CHANNEL_VERSION -s $CS_CATALOG_VERSION -v 1"
                     $COMMON_SERVICES_SCRIPT_FOLDER/setup_tenant.sh --license-accept --enable-licensing --operator-namespace openshift-operators --services-namespace ibm-common-services --yq "$CPFS_YQ_PATH" -c $CS_CHANNEL_VERSION -s $CS_CATALOG_VERSION -v 1
@@ -11495,7 +11516,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperatorStatus" ]; then
     # check current cp4ba version
     check_cp4ba_operator_version $TARGET_PROJECT_NAME
 
-    # Check whether the CP4BA is is separation of operators and operands.
+    # Check whether the CP4BA is separation of operators and operands.
     if [[ "$cp4a_operator_csv_version" == "24.0."* ]]; then
         check_cp4ba_separate_operand $TARGET_PROJECT_NAME
     fi
@@ -11624,7 +11645,7 @@ fi
 if [ "$RUNTIME_MODE" == "upgradeDeployment" ]; then
     project_name=$TARGET_PROJECT_NAME
 
-    # Check whether the CP4BA is is separation of operators and operands.
+    # Check whether the CP4BA is separation of operators and operands.
     check_cp4ba_separate_operand $TARGET_PROJECT_NAME
 
     cp4a_operator_csv_name_target_ns=$(${CLI_CMD} get csv -n $TARGET_PROJECT_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
@@ -11964,7 +11985,7 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
     }
 
     project_name=$TARGET_PROJECT_NAME
-    # Check whether the CP4BA is is separation of operators and operands.
+    # Check whether the CP4BA is separation of operators and operands.
     check_cp4ba_separate_operand $TARGET_PROJECT_NAME
 
     cp4a_operator_csv_name_target_ns=$(${CLI_CMD} get csv -n $TARGET_PROJECT_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
@@ -12123,11 +12144,11 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
         clear
         maxRetry=360
         for ((retry=0;retry<=${maxRetry};retry++)); do
-            # As workaround for https://github.ibm.com/IBMPrivateCloud/roadmap/issues/64207
-            # update secret postgresql-operator-controller-manager-config in <cp4ba> namespace and/or ibm-common-services namespace and add this annotation ibm-bts/skip-updates: "true"
-            if ${CLI_CMD} get secret -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | grep postgresql-operator-controller-manager-config >/dev/null 2>&1; then
-                ${CLI_CMD} patch secret postgresql-operator-controller-manager-config -n $CP4BA_SERVICES_NS -p '{"metadata": {"annotations": {"ibm-bts/skip-updates": "true"}}}' >/dev/null 2>&1
-            fi
+            # # As workaround for https://github.ibm.com/IBMPrivateCloud/roadmap/issues/64207
+            # # update secret postgresql-operator-controller-manager-config in <cp4ba> namespace and/or ibm-common-services namespace and add this annotation ibm-bts/skip-updates: "true"
+            # if ${CLI_CMD} get secret -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | grep postgresql-operator-controller-manager-config >/dev/null 2>&1; then
+            #     ${CLI_CMD} patch secret postgresql-operator-controller-manager-config -n $CP4BA_SERVICES_NS -p '{"metadata": {"annotations": {"ibm-bts/skip-updates": "true"}}}' >/dev/null 2>&1
+            # fi
 
             zenservice_version=$(${CLI_CMD} get zenService $zen_service_name --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath='{.status.currentVersion}')
             isCompleted=$(${CLI_CMD} get zenService $zen_service_name --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath='{.status.zenStatus}')
@@ -12192,6 +12213,29 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
             echo "zenService Progress       : ${GREEN_TEXT}$isProgressDone${RESET_TEXT}"
         else
             echo "zenService Progress       : ${RED_TEXT}$isProgressDone${RESET_TEXT}"
+        fi
+
+        ## Apply workaround for https://jsw.ibm.com/browse/DBACLD-148543 for 24.0.0 IF002
+        if [[ "$cp4ba_original_csv_ver_for_upgrade_script" == "24.0."* ]]; then
+            tmp_val_result=$(${CLI_CMD} get job create-postgres-license-config -n $cp4ba_services_namespace --no-headers --ignore-not-found)
+            if [[ ! -z $tmp_val_result ]]; then
+                ${CLI_CMD} delete job create-postgres-license-config -n $cp4ba_services_namespace >/dev/null 2>&1
+            fi
+
+            tmp_val_result=$(${CLI_CMD} get pod -l name=operand-deployment-lifecycle-manager -n $cp4ba_services_namespace --no-headers --ignore-not-found)
+            if [[ ! -z $tmp_val_result ]]; then
+                ${CLI_CMD} delete pod -l name=operand-deployment-lifecycle-manager -n $cp4ba_services_namespace >/dev/null 2>&1
+            fi
+
+            tmp_val_result=$(${CLI_CMD} get job create-postgres-license-config -n $cp4ba_operators_namespace --no-headers --ignore-not-found)
+            if [[ ! -z $tmp_val_result ]]; then
+                ${CLI_CMD} delete job create-postgres-license-config -n $cp4ba_operators_namespace >/dev/null 2>&1
+            fi
+
+            tmp_val_result=$(${CLI_CMD} get pod -l name=operand-deployment-lifecycle-manager -n $cp4ba_operators_namespace --no-headers --ignore-not-found)
+            if [[ ! -z $tmp_val_result ]]; then
+                ${CLI_CMD} delete pod -l name=operand-deployment-lifecycle-manager -n $cp4ba_operators_namespace >/dev/null 2>&1
+            fi
         fi
 
         if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "24.0."*) ]]; then

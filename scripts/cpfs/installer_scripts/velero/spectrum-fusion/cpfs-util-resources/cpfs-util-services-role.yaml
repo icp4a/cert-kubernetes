@@ -1,0 +1,99 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cpfs-util-services-role
+  namespace: <services namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: cpfs-util-backup
+rules:
+  - verbs:
+      - get
+      - list
+      - create
+    apiGroups:
+      - ''
+    resources:
+      - namespaces
+  #cs db
+  - verbs:
+      - get
+      - delete
+      - list
+    apiGroups:
+      - ''
+      - batch
+      - extensions
+      - apps
+      - policy
+      - rbac.authorization.k8s.io
+    resources:
+      - pods
+      - pods/log
+      - deployments
+      - deployments/scale
+      - statefulsets
+      - statefulsets/scale
+      - pods/exec
+      - pods/portforward
+      - endpoints
+      - pods/status
+      - jobs
+      - secrets
+      - serviceaccounts
+      - roles
+      - rolebindings
+      - persistentvolumeclaims
+  - verbs:
+      - get
+      - list
+    apiGroups:
+      - postgresql.k8s.enterprisedb.io
+    resources:
+      - clusters
+  #zen 5 permissions
+  - verbs:
+      - get
+      - delete
+      - list
+    apiGroups:
+      - ''
+      - batch
+      - extensions
+      - apps
+      - policy
+    resources:
+      - pods
+      - secrets
+      - configmaps
+      - deployments
+      - deployments/scale
+      - cronjobs
+      - pods/exec
+      - cronjob
+      - persistentvolumeclaims
+  - verbs:
+      - get
+      - list
+      - delete
+      - patch
+    apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
+  - verbs:
+      - get
+      - list
+      - patch
+    apiGroups:
+      - zen.cpd.ibm.com
+      - postgresql.k8s.enterprisedb.io
+    resources:
+      - zenservices
+      - zenextensions
+      - clusters
+  - verbs:
+      - get
+    apiGroups:
+      - ""
+    resources:
+      - configmaps

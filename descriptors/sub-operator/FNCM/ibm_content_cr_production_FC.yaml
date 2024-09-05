@@ -105,7 +105,7 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/common/dba-keytool-initcontainer
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
         
     ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
     ## based on input from the user.
@@ -334,7 +334,7 @@ spec:
     ## This is to add customized IAM SCIM LDAP attributes for this LDAP configuration, If you only add 'scim_configuration_iam', we will create SCIM LDAP attributes mapping using default values and the default value meant for IBM Security Directory Server only. Comment the whole section if you don't want this to be configured.
     # scim_configuration_iam:
     #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
-    #   user_unique_id_attribute: dn
+    #   user_unique_id_attribute: ibm-entryuuid
     #   user_external_id_attribute: dn
     #   user_emails_attribute: mail
     #   user_name_attribute: uid
@@ -351,7 +351,7 @@ spec:
     #     # like below
     #     # ibmentryuuid : ibm-entryuuid
     #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
-    #   group_unique_id_attribute: dn
+    #   group_unique_id_attribute: ibm-entryuuid
     #   group_external_id_attribute: dn
     #   group_display_name_attribute : cn
     #   group_members_attribute: member
@@ -463,7 +463,7 @@ spec:
     ## This is to add customized IAM SCIM LDAP attributes for this LDAP configuration, If you only add 'scim_configuration_iam', we will create SCIM LDAP attributes mapping using default values and the default value meant for IBM Security Directory Server only. Comment the whole section if you don't want this to be configured.
     # scim_configuration_iam:
     #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
-    #   user_unique_id_attribute: dn
+    #   user_unique_id_attribute: ibm-entryuuid
     #   user_external_id_attribute: dn
     #   user_emails_attribute: mail
     #   user_name_attribute: uid
@@ -480,7 +480,7 @@ spec:
     #     # like below
     #     # ibmentryuuid : ibm-entryuuid
     #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
-    #   group_unique_id_attribute: dn
+    #   group_unique_id_attribute: ibm-entryuuid
     #   group_external_id_attribute: dn
     #   group_display_name_attribute : cn
     #   group_members_attribute: member
@@ -938,7 +938,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1099,7 +1099,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1196,7 +1196,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1358,7 +1358,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1478,7 +1478,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1586,7 +1586,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1734,7 +1734,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "24.0.0-IF001"
+      tag: "24.0.0-IF002"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2125,7 +2125,7 @@ spec:
 
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -2246,7 +2246,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: "24.0.0-IF001"
+      tag: "24.0.0-IF002"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent

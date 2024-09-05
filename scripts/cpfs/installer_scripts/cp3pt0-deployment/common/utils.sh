@@ -997,10 +997,14 @@ function cleanup_webhook() {
     local control_ns=$1
     local nss_list=${2:-""}
     local resource_types=("podpresets.operator.ibm.com")
-    for ns in ${nss_list//,/ }
-    do
-        delete_resources resource_types[@] $ns
-    done
+    if [[ "${nss_list}" == "" ]]; then
+        delete_resources resource_types[@]
+    else
+        for ns in ${nss_list//,/ }
+        do
+            delete_resources resource_types[@] $ns
+        done
+    fi
     msg ""
 
     cleanup_deployment "ibm-common-service-webhook" $control_ns
@@ -1020,10 +1024,14 @@ function cleanup_secretshare() {
     local control_ns=$1
     local nss_list=${2:-""}
     local resource_types=("secretshare")
-    for ns in ${nss_list//,/ }
-    do
-        delete_resources resource_types[@] $ns
-    done
+    if [[ "${nss_list}" == "" ]]; then
+        delete_resources resource_types[@]
+    else
+        for ns in ${nss_list//,/ }
+        do
+            delete_resources resource_types[@] $ns
+        done
+    fi
     msg ""
 
     cleanup_deployment "secretshare" "$control_ns"

@@ -10,6 +10,7 @@
 
 # ---------- Command arguments ----------
 OC=oc
+YQ=yq
 ENABLE_LICENSING=0
 
 
@@ -96,18 +97,22 @@ function pre_req() {
     fi
 
     get_control_namespace
+    if [[ $CONTROL_NS == "" ]]; then
+        error "Not found control namespace, skip cleaning"
+        exit 1
+    fi
 
     # checking if there is any CS operator is still in v3.x.x
     title "[Step 1] Checking ibm-common-service-operator channel ..."
     cs_namespace=$(${OC} -n kube-public get cm common-service-maps -o jsonpath='{.data.common-service-maps\.yaml}' | (grep 'map-to-common-service-namespace' || echo "fail") | awk '{print $3}')
-    if [[ $cs_namespace == "fail" ]]; then
-        info "It is not in multi-instance mode"
+    if [[ $cs_namespace == "" ]]; then
+        info "It is not in multi-instance mode or common-service-maps not found"
     else
         for ns in $cs_namespace
         do
             csv=$(${OC} get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.${ns}='' -n ${ns} -o yaml -o jsonpath='{.items[*].status.installedCSV}')
             if [[ "${csv}" != "null" ]] && [[ "${csv}" != "" ]]; then
-                info "found ibm-common-service-operator, checking the channel"
+                info "found ibm-common-service-operator in namespace $ns, checking the channel"
                 channel=$(echo ${csv} | cut -d "." -f 2 | awk '{print $1}')
                 if [[ "${channel}" == "v3" ]]; then
                     error "Found ibm-common-service-operator in v3.x version, user need to remove it before running this script"

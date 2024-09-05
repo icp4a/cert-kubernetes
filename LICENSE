@@ -1,4 +1,4 @@
-The translated license terms can be viewed here: https://www.ibm.com/support/customer/csol/terms/?id=L-FNHF-F9RU7N&lc=en
+The translated license terms can be viewed here: https://www.ibm.com/support/customer/csol/terms/?id=L-GTXR-M5Q3GW&lc=en
 
 IMPORTANT: READ CAREFULLY
 
@@ -24,7 +24,7 @@ LICENSE INFORMATION
 The Programs listed below are licensed under the following License Information terms and conditions in addition to the Program license terms previously agreed to by Client and IBM. If Client does not have previously agreed to license terms in effect for the Program, the International License Agreement for Evaluation of Programs (i125-5543-06) applies.
 
 Program Name (Program Number):
-IBM Cloud Pak for Business Automation 24.0.0 (Evaluation)
+IBM Cloud Pak for Business Automation 24.0.0 SR1 (Evaluation)
 
 The following standard terms apply to Licensee's use of the Program.
 
@@ -65,6 +65,9 @@ IBM Enterprise Records
 Process Mining
 IBM Robotic Process Automation
 IBM FileNet Content Manager Connector for Salesforce
+IBM Business Automation Insights 
+IBM Automation Decision Services 
+
 
 Supporting Programs
 
@@ -75,6 +78,9 @@ IBM Db2 Standard Edition
 IBM WebSphere Application Server Liberty
 IBM WebSphere Application Server Network Deployment
 IBM Storage Fusion
+
+
+
 
 Permitted Components
 
@@ -89,6 +95,7 @@ IBM WebSphere Application Server Network Deployment only for use in support of t
 - IBM Business Automation Workflow Enterprise for Non-Production Environment
 - IBM Operational Decision Manager Server
 - IBM Operational Decision Manager Server for Non-Production Environment
+
 
 Prohibited Components
 
@@ -141,7 +148,7 @@ LICENSE INFORMATION
 The Programs listed below are licensed under the following License Information terms and conditions in addition to the Program license terms previously agreed to by Client and IBM. If Client does not have previously agreed to license terms in effect for the Program, the International Program License Agreement (i125-3301-15) applies.
 
 Program Name (Program Number):
-IBM Cloud Pak for Business Automation 24.0.0 (5737-I23)
+IBM Cloud Pak for Business Automation 24.0.0 SR1 (5737-I23)
 
 The following standard terms apply to Licensee's use of the Program.
 
@@ -178,6 +185,9 @@ IBM Enterprise Records
 Process Mining
 IBM Robotic Process Automation
 IBM FileNet Content Manager Connector for Salesforce
+IBM Business Automation Insights 
+IBM Automation Decision Services 
+
 
 Supporting Programs
 
@@ -188,6 +198,9 @@ IBM Db2 Standard Edition
 IBM WebSphere Application Server Liberty
 IBM WebSphere Application Server Network Deployment
 IBM Storage Fusion
+
+
+
 
 Permitted Components
 
@@ -202,6 +215,7 @@ IBM WebSphere Application Server Network Deployment only for use in support of t
 - IBM Business Automation Workflow Enterprise for Non-Production Environment
 - IBM Operational Decision Manager Server
 - IBM Operational Decision Manager Server for Non-Production Environment
+
 
 Prohibited Components
 
@@ -246,7 +260,10 @@ Licensee may install and use the following Program components, under the license
 - IBM Content Collector for SAP for Non-Production Environment when Authorized, Infrequent, External, Employee User Conversion Entitlement Ratio is used.
 - IBM FileNet Content Manager Connector for Salesforce
 - IBM Content Navigator (Component of IBM FileNet Content Manager) when the container is used
-- IBM Datacap, All Components Except Rulerunner
+- IBM Datacap, All Components Except Rulerunner 
+
+
+
 
 Modifiable Third Party Code
 
@@ -491,6 +508,6 @@ Terabyte is a unit of measure by which the Program can be licensed. A Terabyte i
 Instead of the entitlements required for the Program directly, Licensee must obtain Terabyte entitlements for this Program sufficient to cover the Terabytes managed by the Program.
 
 
-L/N: L-FNHF-F9RU7N
-D/N: L-FNHF-F9RU7N
-P/N: L-FNHF-F9RU7N
+L/N: L-GTXR-M5Q3GW
+D/N: L-GTXR-M5Q3GW
+P/N: L-GTXR-M5Q3GW

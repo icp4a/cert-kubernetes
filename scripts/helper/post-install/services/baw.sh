@@ -31,23 +31,12 @@ cp4baBAWStatus()
 
         kubectl get ICP4ACluster ${CP4BA_DEPLOYMENT_NAME} -n ${CP4BA_AUTO_NAMESPACE} -o jsonpath='{.status.components.baw}' 2> /dev/null  | jq  . |  sed 's/\"//g' | sed 's/,//g'  | sed 's/://g' | sed 's/{//g' | sed 's/}//g'  &> ${LOG_DIR}/baw-status.log
 
-        CP4BA_BAW_DEPLOYMENT_STATUS=`cat ${LOG_DIR}/baw-status.log| grep bawDeployment |  awk 'NR==1' | awk '{print $2}'`
-        if [ -z "${CP4BA_BAW_DEPLOYMENT_STATUS}"  ]; then
+        CP4BA_BAW_CR_STATUS=`cat ${LOG_DIR}/baw-status.log| grep bawCustomResource |  awk 'NR==1' | awk '{print $2}'`
+        if [ -z "${CP4BA_BAW_CR_STATUS}"  ]; then
           CP4BA_BAW_DEPLOYMENT_STATUS="NotInstalled"
         fi
-        echo "bawDeployment                               :  ${CP4BA_BAW_DEPLOYMENT_STATUS}"
+        echo "bawCustomResource                           :  ${CP4BA_BAW_CR_STATUS}"
 
-        CP4BA_BAW_SERVICE_STATUS=`cat ${LOG_DIR}/baw-status.log| grep bawService |  awk 'NR==1' | awk '{print $2}'`
-        if [ -z "${CP4BA_BAW_SERVICE_STATUS}"  ]; then
-          CP4BA_BAW_SERVICE_STATUS="NotInstalled"
-        fi
-        echo "bawService                                  :  ${CP4BA_BAW_SERVICE_STATUS}"
-
-        CP4BA_BAW_ZEN_INTEGRATION_STATUS=`cat ${LOG_DIR}/baw-status.log| grep bawZenIntegration |  awk 'NR==1' | awk '{print $2}'`
-        if [ -z "${CP4BA_BAW_ZEN_INTEGRATION_STATUS}"  ]; then
-          CP4BA_BAW_ZEN_INTEGRATION_STATUS="NotInstalled"
-        fi
-        echo "bawZenIntegration                          :  ${CP4BA_BAW_ZEN_INTEGRATION_STATUS}"
      fi
 }
 

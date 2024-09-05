@@ -83,16 +83,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -292,7 +292,7 @@ spec:
     ## This is to add customized IAM SCIM LDAP attributes for this LDAP configuration, If you only add 'scim_configuration_iam', we will create SCIM LDAP attributes mapping using default values and the default value meant for IBM Security Directory Server only. Comment the whole section if you don't want this to be configured.
     # scim_configuration_iam:
     #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
-    #   user_unique_id_attribute: dn
+    #   user_unique_id_attribute: ibm-entryuuid
     #   user_external_id_attribute: dn
     #   user_emails_attribute: mail
     #   user_name_attribute: uid
@@ -309,7 +309,7 @@ spec:
     #     # like below
     #     # ibmentryuuid : ibm-entryuuid
     #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
-    #   group_unique_id_attribute: dn
+    #   group_unique_id_attribute: ibm-entryuuid
     #   group_external_id_attribute: dn
     #   group_display_name_attribute : cn
     #   group_members_attribute: member
@@ -421,7 +421,7 @@ spec:
     ## This is to add customized IAM SCIM LDAP attributes for this LDAP configuration, If you only add 'scim_configuration_iam', we will create SCIM LDAP attributes mapping using default values and the default value meant for IBM Security Directory Server only. Comment the whole section if you don't want this to be configured.
     # scim_configuration_iam:
     #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
-    #   user_unique_id_attribute: dn
+    #   user_unique_id_attribute: ibm-entryuuid
     #   user_external_id_attribute: dn
     #   user_emails_attribute: mail
     #   user_name_attribute: uid
@@ -438,7 +438,7 @@ spec:
     #     # like below
     #     # ibmentryuuid : ibm-entryuuid
     #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
-    #   group_unique_id_attribute: dn
+    #   group_unique_id_attribute: ibm-entryuuid
     #   group_external_id_attribute: dn
     #   group_display_name_attribute : cn
     #   group_members_attribute: member
@@ -460,7 +460,7 @@ spec:
       ## Workflow Authoring IBM Workplace deployment job image repository URL
       repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
       ## Workflow Authoring IBM Workplace deployment job image repository tag.
-      tag: "24.0.0-IF001"
+      tag: "24.0.0-IF002"
       ## Pull policy for Workflow Authoring IBM Workplace deployment job image. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pull_policy: IfNotPresent
 
@@ -585,7 +585,7 @@ spec:
       pull_policy: IfNotPresent
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
     #Adjust this one if you created the secret with name other than the default
     admin_secret_name: "{{ meta.name }}-bas-admin-secret"
     #-----------------------------------------------------------------------

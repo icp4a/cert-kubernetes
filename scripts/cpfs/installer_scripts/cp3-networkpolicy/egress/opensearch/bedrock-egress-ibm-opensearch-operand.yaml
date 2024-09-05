@@ -1,0 +1,31 @@
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: egress-ibm-opensearch-operand
+  namespace: "opensearchNamespace"
+spec:
+  podSelector: 
+    matchLabels:
+      type: ibm-elasticsearch
+  egress:
+    - ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 9443
+      to:
+        - podSelector:
+            matchLabels:
+              apiserver: 'true'
+          namespaceSelector: {}
+    - ports:
+      - protocol: TCP
+        port: 443
+      - protocol: TCP
+        port: 8081
+      - protocol: TCP
+        port: 9081
+      to:
+        - podSelector: {}
+  policyTypes:
+    - Egress

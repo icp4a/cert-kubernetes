@@ -1867,7 +1867,7 @@ function display_airgap_prerequisites(){
     printf "\n"
     printf "\x1B[1;31mFollow the instructions to complete the above steps if required \n\x1B[0m"
     printf "\n"
-    printf "\x1B[1;31mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/23.0.2?topic=icmppd-option-2-preparing-your-cluster-air-gapped-offline-deployment \n\x1B[0m"
+    printf "\x1B[1;31mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=icmppd-option-2-preparing-your-cluster-air-gapped-offline-deployment \n\x1B[0m"
     printf "\n"
     printf "\x1B[1mDo you want to proceed with the offline/airgap cluster setup (Yes/No, default: No): \x1B[0m"
     read -rp "" ans
@@ -1875,13 +1875,11 @@ function display_airgap_prerequisites(){
     case "$ans" in
     "y"|"Y"|"yes"|"Yes"|"YES")
         printf "Starting with the offline/airgap cluster setup process...."
-        break
         ;;
     "n"|"N"|"no"|"No"|"NO"|"")
         echo "Complete the offline/airgap prerequisite steps and re-run the script\n"
         echo "Exiting....."
         exit 1
-        break
         ;;
     *)
         echo -e "Answer must be \"Yes\" or \"No\"\n"

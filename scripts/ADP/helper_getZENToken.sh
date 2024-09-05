@@ -65,7 +65,7 @@ done
 
 #echo
 
-TOKEN=$(curl -k -X POST -d "grant_type=password&scope=openid&username=${USER}&password=${PWD}" "${IAM_URL}/idprovider/v1/auth/identitytoken" | grep -o "access_token\":[^}]*")
+TOKEN=$(curl -k -X POST --data-urlencode "grant_type=password" --data-urlencode "scope=openid" --data-urlencode "username=${USER}" --data-urlencode "password=${PWD}" "${IAM_URL}/idprovider/v1/auth/identitytoken" | grep -o "access_token\":[^}]*")
 #echo $TOKEN
 #strip prefix access_token out of TOKEN
 STRIPPED_IAM_TOKEN=$(echo "$TOKEN" | sed 's/.*access_token":"//g' | sed 's/".*//g')

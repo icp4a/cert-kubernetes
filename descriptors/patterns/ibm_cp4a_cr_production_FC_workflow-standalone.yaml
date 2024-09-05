@@ -78,16 +78,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -405,7 +405,7 @@ spec:
       database_name: "<Required>"
       ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
       database_port: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_gcd_jdbc_url: "<Required>"
@@ -451,7 +451,7 @@ spec:
       database_port: "<Required>"
       ## Provide the name of the database for ICN (Navigator).  For example: "ICNDB". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
       database_name: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_icn_jdbc_url: "<Required>"
@@ -567,7 +567,7 @@ spec:
       database_name: "<Required>"
       ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
       database_port: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_os_jdbc_url: "<Required>"
@@ -621,7 +621,7 @@ spec:
       database_name: "<Required>"
       ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
       database_port: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_os_jdbc_url: "<Required>"
@@ -675,7 +675,7 @@ spec:
       database_name: "<Required>"
       ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
       database_port: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_os_jdbc_url: "<Required>"
@@ -726,7 +726,7 @@ spec:
 
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: "24.0.0-IF001"
+      tag: "24.0.0-IF002"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -894,7 +894,7 @@ spec:
     images:
       ums:
         repository: cp.icr.io/cp/cp4a/ums/ums
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
     admin_secret_name: ibm-dba-ums-secret
     ## optional: create routes for backwards compatibility
     backwards_compatibility_routes:
@@ -1027,7 +1027,7 @@ spec:
       pull_policy: IfNotPresent
       resource_registry:
         repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
     admin_secret_name: resource-registry-admin-secret
     replica_size: 1
     probe:
@@ -1162,14 +1162,14 @@ spec:
       ## Workflow Server (Process Server) image repository URL.
       repository: cp.icr.io/cp/cp4a/baw/workflow-server
       ## Image tag for Workflow Server container.
-      tag: "24.0.0-IF001"
+      tag: "24.0.0-IF002"
       ## Pull policy for Workflow Server container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pull_policy: IfNotPresent
     upgrade_job:
       ## Workflow Server database handling image repository URL.
       repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
       ## Workflow Server database handling image repository tag.
-      tag: "24.0.0-IF001"
+      tag: "24.0.0-IF002"
       ## Pull policy for database handling. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pull_policy: IfNotPresent
       ## The trace Specification for database handling job, the trace is disabled by default, you can enable it when the job fails, the sample trace specification is WLE.*=all:com.ibm.bpm.*=all:com.ibm.workflow.*=all
@@ -1260,7 +1260,7 @@ spec:
         ## Image name for content integration container.
         repository: cp.icr.io/cp/cp4a/baw/iaws-ps-content-integration
         ## Image tag for content integration container.
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
         ## Pull policy for content integration container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
         pull_policy: IfNotPresent
       ## Domain name for content integration. The value must be the same as initialize_configuration.ic_domain_creation.domain_name.
@@ -1278,7 +1278,7 @@ spec:
         ## Image name for CASE init job container.
         repository: cp.icr.io/cp/cp4a/baw/workflow-server-case-initialization
         ## Image tag for CASE init job container.
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
         ## Pull policy for CASE init job container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
         pull_policy: IfNotPresent
 
@@ -1674,7 +1674,7 @@ spec:
   #    image:
   #      repository: cp.icr.io/cp/cp4a/baw/bui-task-prioritization
   #      ## Image tag for Intelligent Task Prioritization container
-  #      tag: "24.0.0-IF001"
+  #      tag: "24.0.0-IF002"
   #      pull_policy: IfNotPresent
   #    ## Resource configuration
   #    resources:
@@ -1831,7 +1831,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1989,7 +1989,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -2145,7 +2145,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent

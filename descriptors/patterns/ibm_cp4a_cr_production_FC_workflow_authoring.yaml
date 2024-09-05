@@ -84,16 +84,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -305,7 +305,7 @@ spec:
     ## This is to add customized IAM SCIM LDAP attributes for this LDAP configuration, If you only add 'scim_configuration_iam', we will create SCIM LDAP attributes mapping using default values and the default value meant for IBM Security Directory Server only. Comment the whole section if you don't want this to be configured.
     # scim_configuration_iam:
     #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
-    #   user_unique_id_attribute: dn
+    #   user_unique_id_attribute: ibm-entryuuid
     #   user_external_id_attribute: dn
     #   user_emails_attribute: mail
     #   user_name_attribute: uid
@@ -322,7 +322,7 @@ spec:
     #     # like below
     #     # ibmentryuuid : ibm-entryuuid
     #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
-    #   group_unique_id_attribute: dn
+    #   group_unique_id_attribute: ibm-entryuuid
     #   group_external_id_attribute: dn
     #   group_display_name_attribute : cn
     #   group_members_attribute: member
@@ -434,7 +434,7 @@ spec:
     ## This is to add customized IAM SCIM LDAP attributes for this LDAP configuration, If you only add 'scim_configuration_iam', we will create SCIM LDAP attributes mapping using default values and the default value meant for IBM Security Directory Server only. Comment the whole section if you don't want this to be configured.
     # scim_configuration_iam:
     #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
-    #   user_unique_id_attribute: dn
+    #   user_unique_id_attribute: ibm-entryuuid
     #   user_external_id_attribute: dn
     #   user_emails_attribute: mail
     #   user_name_attribute: uid
@@ -451,7 +451,7 @@ spec:
     #     # like below
     #     # ibmentryuuid : ibm-entryuuid
     #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
-    #   group_unique_id_attribute: dn
+    #   group_unique_id_attribute: ibm-entryuuid
     #   group_external_id_attribute: dn
     #   group_display_name_attribute : cn
     #   group_members_attribute: member
@@ -500,7 +500,7 @@ spec:
       database_name: "<Required>"
       ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
       database_port: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_gcd_jdbc_url: "<Required>"
@@ -558,7 +558,7 @@ spec:
       database_name: "<Required>"
       ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
       database_port: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_os_jdbc_url: "<Required>"
@@ -614,7 +614,7 @@ spec:
       database_name: "<Required>"
       ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
       database_port: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_os_jdbc_url: "<Required>"
@@ -670,7 +670,7 @@ spec:
       database_name: "<Required>"
       ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
       database_port: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
       ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
       dc_oracle_os_jdbc_url: "<Required>"
@@ -726,7 +726,7 @@ spec:
     #   database_name: "<Required>"
     #   ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
     #   database_port: "<Required>"
-    #   ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate.
+    #   ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
     #   database_ssl_secret_name: "<Required>"
     #   ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
     #   dc_oracle_os_jdbc_url: "<Required>"
@@ -766,28 +766,28 @@ spec:
       ## Workflow Authoring image repository URL.
       repository: cp.icr.io/cp/cp4a/bas/workflow-authoring
       ## Image tag for Workflow Authoring container.
-      tag: "24.0.0-IF001"
+      tag: "24.0.0-IF002"
       ## Pull policy for Workflow Authoring container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pullPolicy: IfNotPresent
     upgrade_job:
       ## Workflow Authoring database handling image repository URL.
       repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
       ## Workflow Authoring database handling image repository tag.
-      tag: "24.0.0-IF001"
+      tag: "24.0.0-IF002"
       ## Pull policy for database handling. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pullPolicy: IfNotPresent
     bas_auto_import_job:
       ## Workflow Authoring Business Automation Studio toolkit init image repository URL.
       repository: cp.icr.io/cp/cp4a/baw/toolkit-installer
       ## Workflow Authoring Business Automation Studio toolkit init image repository tag.
-      tag: "24.0.0-IF001"
+      tag: "24.0.0-IF002"
       ## Pull policy for Workflow Authoring Business Automation Studio toolkit init image. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pullPolicy: IfNotPresent
     ibm_workplace_job:
       ## Workflow Authoring IBM Workplace deployment job image repository URL
       repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
       ## Workflow Authoring IBM Workplace deployment job image repository tag.
-      tag: "24.0.0-IF001"
+      tag: "24.0.0-IF002"
       ## Pull policy for Workflow Authoring IBM Workplace deployment job image. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pull_policy: IfNotPresent
 
@@ -797,7 +797,7 @@ spec:
         ## Image name for content integration container.
         repository: cp.icr.io/cp/cp4a/baw/iaws-ps-content-integration
         ## Image tag for content integration container.
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
         ## Pull policy for content integration container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
         pull_policy: IfNotPresent
       ## Domain name for content integration. The value must be the same as initialize_configuration.ic_domain_creation.domain_name.
@@ -815,7 +815,7 @@ spec:
         ## Image name for CASE init job container.
         repository: cp.icr.io/cp/cp4a/baw/workflow-server-case-initialization
         ## Image tag for CASE init job container.
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
         ## Pull policy for CASE init job container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
         pull_policy: IfNotPresent
 
@@ -1059,7 +1059,7 @@ spec:
       image:
         repository: cp.icr.io/cp/cp4a/baw/bui-task-prioritization
         ## Image tag for Intelligent Task Prioritization container
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
         pull_policy: IfNotPresent
       ## Resource configuration
       resources:
@@ -1103,7 +1103,7 @@ spec:
           initial_delay_seconds: 40
       image:
         repository: cp.icr.io/cp/cp4a/baw/workforce-insights
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
         pull_policy: IfNotPresent
       ## Resource configuration
       resources:
@@ -1218,7 +1218,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1375,7 +1375,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.0-IF001"
+        tag: "24.0.0-IF002"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent

@@ -55,38 +55,48 @@ function check_cp4ba_operator_version(){
             info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
             break
         elif [[ "$cp4a_operator_csv_version" == "21.3."* ]]; then
+            fail "Please upgrade to CP4BA v24.0.0 IF001, then you can upgrade from IF001 to this iFix"
+            exit 1
             # cp4a_operator_csv=$(kubectl get csv $cp4a_operator_csv_name_target_ns -n $project_name -o 'jsonpath={.spec.version}')
             # cp4a_operator_csv="22.2.2"
-            requiredver="21.3.31"
-            if [ ! "$(printf '%s\n' "$requiredver" "$cp4a_operator_csv_version" | sort -V | head -n1)" = "$requiredver" ]; then
-                info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
-                fail "Please upgrade to CP4BA v21.0.3-IF031 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
-                exit 1
-            else
-                info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
-                break
-            fi
+            # requiredver="21.3.31"
+            # if [ ! "$(printf '%s\n' "$requiredver" "$cp4a_operator_csv_version" | sort -V | head -n1)" = "$requiredver" ]; then
+            #     info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
+            #     fail "Please upgrade to CP4BA v21.0.3-IF031 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
+            #     exit 1
+            # else
+            #     info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
+            #     break
+            # fi
         elif [[ "$cp4a_operator_csv_version" == "23.1."* ]]; then
-            info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
-            fail "Please upgrade to CP4BA v23.0.2-IF003 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
+            fail "Please upgrade to CP4BA v24.0.0 IF001, then you can upgrade from IF001 to this iFix"
             exit 1
+            # info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
+            # fail "Please upgrade to CP4BA v23.0.2-IF003 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
+            # exit 1
         elif [[ "$cp4a_operator_csv_version" == "22.1."* ]]; then
-            info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
-            fail "Please upgrade to CP4BA v22.0.2-IF006 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
+            fail "Please upgrade to CP4BA v24.0.0 IF001, then you can upgrade from IF001 to this iFix"
             exit 1
+            # info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
+            # fail "Please upgrade to CP4BA v22.0.2-IF006 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
+            # exit 1
         elif [[ "$cp4a_operator_csv_version" == "22.2."* ]]; then
-            requiredver="22.2.6"
-            if [ ! "$(printf '%s\n' "$requiredver" "$cp4a_operator_csv_version" | sort -V | head -n1)" = "$requiredver" ]; then
-                info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
-                fail "Please upgrade to CP4BA v22.0.2-IF006 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
-                exit 1
-            else
-                info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
-                break
-            fi
+            fail "Please upgrade to CP4BA v24.0.0 IF001, then you can upgrade from IF001 to this iFix"
+            exit 1
+            # requiredver="22.2.6"
+            # if [ ! "$(printf '%s\n' "$requiredver" "$cp4a_operator_csv_version" | sort -V | head -n1)" = "$requiredver" ]; then
+            #     info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
+            #     fail "Please upgrade to CP4BA v22.0.2-IF006 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
+            #     exit 1
+            # else
+            #     info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
+            #     break
+            # fi
         elif [[ "$cp4a_operator_csv_version" == "23.2."* ]]; then
+            #fail "Please upgrade to CP4BA v24.0.0 IF001, then you can upgrade from IF001 to this iFix"
+            #exit 1
             requiredver="23.2.3"
-            if [ ! "$(printf '%s\n' "$requiredver" "$cp4a_operator_csv_version" | sort -V | head -n1)" = "$requiredver" ]; then
+            if [[ ! "$(printf '%s\n' "$requiredver" "$cp4a_operator_csv_version" | sort -V | head -n1)" == "$requiredver" ]]; then
                 info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
                 fail "Please upgrade to CP4BA v23.0.2-IF003 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
                 exit 1
@@ -1072,7 +1082,7 @@ function show_cp4ba_upgrade_status() {
 
 function check_cp4ba_separate_operand(){
     local project=$1
-    # Check whether the CP4BA is is separation of operators and operands.
+    # Check whether the CP4BA is separation of operators and operands.
     # also need to consider upgrade to 24.0.0 eGA 
     # operators_namespace: openshift-operators
     # services_namespace: ibm-common-services

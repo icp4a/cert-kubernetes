@@ -68,7 +68,7 @@ spec:
         - deployments
       name: lsr-deployment
       type: resource
-  - includeClusterResources: true
+    - includeClusterResources: true
       includedResourceTypes:
         - secrets
         - ibmlicenseservicereporters.operator.ibm.com

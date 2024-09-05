@@ -152,7 +152,7 @@ function loginEntitlementRepo() {
 }
 
  prereqimages=("openldap:1.5.0.5"
-               "gitea:1.21.10")
+               "gitea:1.22.1")
 
 function getimagerepo(){
     if [[ $image == db2* ]]; then
