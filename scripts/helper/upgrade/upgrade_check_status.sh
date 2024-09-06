@@ -74,11 +74,12 @@ function check_cp4ba_operator_version(){
                 info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
                 break
             fi
+        #The latest policy states that upgrades from 23.0.2 IF006 are supported and not 23.0.2 IF003 or newer
         elif [[ "$cp4a_operator_csv_version" == "23.2."* ]]; then
-            requiredver="23.2.3"
+            requiredver="23.2.6"
             if [ ! "$(printf '%s\n' "$requiredver" "$cp4a_operator_csv_version" | sort -V | head -n1)" = "$requiredver" ]; then
                 info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
-                fail "Please upgrade to CP4BA v23.0.2-IF003 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
+                fail "Please upgrade to CP4BA v23.0.2-IF006 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
                 exit 1
             else
                 info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
