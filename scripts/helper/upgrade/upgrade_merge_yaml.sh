@@ -1028,7 +1028,9 @@ function upgrade_deployment(){
             if [[ $cr_verison != "${CP4BA_RELEASE_BASE}" && ($cr_verison == "21.0.3" || $cr_verison == "22.0.2") ]]; then
                 baw_instance_flag=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.workflow_authoring_configuration.case.event_emitter`
                 if [[ ! -z "$baw_instance_flag" ]]; then
-                    baw_event_emitter_tos_name=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.workflow_authoring_configuration.case.datasource_name_tos`
+                    ## https://jsw.ibm.com/browse/DBACLD-154386
+                    ## Referencing the object store name instead of datasource name
+                    baw_event_emitter_tos_name=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.workflow_authoring_configuration.case.object_store_name_tos`
                     baw_event_emitter_connection_point_name=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.workflow_authoring_configuration.case.connection_point_name_tos`
                     baw_event_emitter_date_sql=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.workflow_authoring_configuration.case.event_emitter.date_sql`
                     baw_event_emitter_logical_unique_id=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.workflow_authoring_configuration.case.event_emitter.logical_unique_id`
