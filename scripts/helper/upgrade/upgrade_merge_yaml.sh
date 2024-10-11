@@ -50,28 +50,28 @@ process_datavolumes() {
 
     # Iterate over each datavolume path found
     for path in $datavolume_paths; do
-    # Find all the key names inside the datavolume section
-    keys=($(${YQ_CMD} r "$input_yaml" "$path"  | grep -v '^\s'| awk -F ':' '{print $1}' | xargs -n 1))
+        # Find all the key names inside the datavolume section
+        keys=($(${YQ_CMD} r "$input_yaml" "$path"  | grep -v '^\s'| awk -F ':' '{print $1}' | xargs -n 1))
 
-    # Loop through the keys using the index
-    for i in "${!keys[@]}"; do
-        key="${keys[$i]}"
-        key_path="$path.$key"
-        # Check if 'name' and 'size' fields exist under this key
-        name_exists=$(${YQ_CMD} r "$input_yaml" "$path.$key.name" 2>/dev/null)
-        size_exists=$(${YQ_CMD} r "$input_yaml" "$path.$key.size" 2>/dev/null)
-        
-        # If the 'name' and 'size' field already exists, skip further processing for this key as it is in the right format already
-        if [[ ! -n "$name_exists" && ! -n "$size_exists" ]]; then
-            current_value=$(${YQ_CMD} r "$input_yaml" "$key_path")
-            pvc_size=$(get_pvc_size_from_cluster "$current_value" "$project_namespace")
-            # Write the name field with the key value
-            ${YQ_CMD} w -i "$input_yaml" "$path.${key}.name" "$current_value"
+        # Loop through the keys using the index
+        for i in "${!keys[@]}"; do
+            key="${keys[$i]}"
+            key_path="$path.$key"
+            # Check if 'name' and 'size' fields exist under this key
+            name_exists=$(${YQ_CMD} r "$input_yaml" "$path.$key.name" 2>/dev/null)
+            size_exists=$(${YQ_CMD} r "$input_yaml" "$path.$key.size" 2>/dev/null)
+            
+            # If the 'name' and 'size' field already exists, skip further processing for this key as it is in the right format already
+            if [[ ! -n "$name_exists" && ! -n "$size_exists" ]]; then
+                current_value=$(${YQ_CMD} r "$input_yaml" "$key_path")
+                pvc_size=$(get_pvc_size_from_cluster "$current_value" "$project_namespace")
+                # Write the name field with the key value
+                ${YQ_CMD} w -i "$input_yaml" "$path.${key}.name" "$current_value"
 
-            # Write the size field with the default size
-            ${YQ_CMD} w -i "$input_yaml" "$path.${key}.size" "$pvc_size"
-        fi
-    done
+                # Write the size field with the default size
+                ${YQ_CMD} w -i "$input_yaml" "$path.${key}.size" "$pvc_size"
+            fi
+        done
     done
     }
 
