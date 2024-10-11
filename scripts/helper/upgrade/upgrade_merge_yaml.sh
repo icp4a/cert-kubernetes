@@ -24,13 +24,13 @@ UPGRADE_ICP4A_SHARED_INFO_CM_FILE=${UPGRADE_DEPLOYMENT_CR}/.ibm_cp4ba_shared_inf
 UPGRADE_ICP4A_CONTENT_SHARED_INFO_CM_FILE=${UPGRADE_DEPLOYMENT_CR}/.ibm_cp4ba_content_shared_info.yaml
 
 # For jsw.ibm.com/browse/DBACLD-153103 where we need to update the datavolume section of the CR to be in the right format
-# Function to check PVC size in the cluster
+# Function to check PVC size for a given PVC
 get_pvc_size_from_cluster() {
     pvc_name=$1
-    project_namespace=$2
     DEFAULT_SIZE="1Gi"
+    project_namespace=$2
     size=$(kubectl get pvc "$pvc_name" -n $project_namespace -o=jsonpath='{.spec.resources.requests.storage}' 2>/dev/null)
-
+    
     # If the PVC doesn't exist or kubectl fails, return the default size
     if [ -z "$size" ]; then
         echo "$DEFAULT_SIZE"
@@ -38,12 +38,12 @@ get_pvc_size_from_cluster() {
         echo "$size"
     fi
 }
-
 # For jsw.ibm.com/browse/DBACLD-153103 where we need to update the datavolume section of the CR to be in the right format
-# Function to process all datavolume fields in the YAML file
+# Function to process all datavolume fields in the YAML file and update the formatting to the current CR format
 process_datavolumes() {
     local input_yaml="$1"
     project_namespace="$2"
+
 
     # Find all paths that have a datavolume section
     datavolume_paths=$(${YQ_CMD} r "$input_yaml" --printMode p '**.datavolume')
@@ -60,21 +60,23 @@ process_datavolumes() {
             # Check if 'name' and 'size' fields exist under this key
             name_exists=$(${YQ_CMD} r "$input_yaml" "$path.$key.name" 2>/dev/null)
             size_exists=$(${YQ_CMD} r "$input_yaml" "$path.$key.size" 2>/dev/null)
-
-            # If the 'name' and 'size' field already exists, skip further processing for this key as it is in the right format already
+            
+            # If the 'name' and 'size' field already exists, skip further processing for this key as it is in the right format already, otherwise the script makes changes
             if [[ ! -n "$name_exists" && ! -n "$size_exists" ]]; then
+                #retrieve the current pvc name 
                 current_value=$(${YQ_CMD} r "$input_yaml" "$key_path")
+                # retrieve the current PVC size, default is 1Gi
                 pvc_size=$(get_pvc_size_from_cluster "$current_value" "$project_namespace")
-                # Write the name field with the key value
+
+                # Write the name field with the name of the PVC
                 ${YQ_CMD} w -i "$input_yaml" "$path.${key}.name" "$current_value"
 
-                # Write the size field with the default size
+                # Write the size field with the pvc size
                 ${YQ_CMD} w -i "$input_yaml" "$path.${key}.size" "$pvc_size"
             fi
         done
     done
-    }
-
+}
 
 # This is a function to remove all image tags from a CR
 # Called during the upgradeDeployment mode
@@ -599,7 +601,7 @@ function upgrade_deployment(){
                 ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-navigator-deploy -n $deployment_project_name >/dev/null 2>&1
                 echo "Done!"
 
-                # For jsw.ibm.com/browse/DBACLD-153103 where we need to update the datavolume section of the CR to be in the right format 
+                # For jsw.ibm.com/browse/DBACLD-153103 where we need to update the datavolume section of the CR to be in the right format
                 if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && ($cr_version == "21.0.3") ]]; then
                     #function to update datastore section to the current format if required
                     process_datavolumes ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} $deployment_project_name
@@ -1126,7 +1128,9 @@ function upgrade_deployment(){
                 while true; do
                     baw_instance_flag=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.baw_configuration.[${baw_instance_index}].case.event_emitter`
                     if [[ ! -z "$baw_instance_flag" ]]; then
-                        baw_event_emitter_tos_name=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.baw_configuration.[${baw_instance_index}].case.datasource_name_tos`
+                        ## https://jsw.ibm.com/browse/DBACLD-154386
+                        ## Referencing the object store name instead of datasource name
+                        baw_event_emitter_tos_name=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.baw_configuration.[${baw_instance_index}].case.object_store_name_tos`
                         baw_event_emitter_connection_point_name=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.baw_configuration.[${baw_instance_index}].case.connection_point_name_tos`
                         baw_event_emitter_date_sql=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.baw_configuration.[${baw_instance_index}].case.event_emitter.date_sql`
                         baw_event_emitter_logical_unique_id=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.baw_configuration.[${baw_instance_index}].case.event_emitter.logical_unique_id`
@@ -1515,7 +1519,7 @@ function upgrade_deployment(){
             info "${YELLOW_TEXT}Setting \"shared_configuration.sc_skip_ldap_config\" as \"false\" when upgrade CP4BA deployment from version \"$cr_version\".${RESET_TEXT}"
             ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.shared_configuration.sc_skip_ldap_config "false"
         fi
-
+        
         # For jsw.ibm.com/browse/DBACLD-153103 where we need to update the datavolume section of the CR to be in the right format
         if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && ($cr_version == "21.0.3") ]]; then
             #function to update datastore section to the current format if required
