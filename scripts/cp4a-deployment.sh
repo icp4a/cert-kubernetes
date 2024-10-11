@@ -8962,7 +8962,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     # Create ibm-cp4ba-shared-info configMap if not exist
     icp4acluster_cr_name=$(${CLI_CMD} get icp4acluster -n $TARGET_PROJECT_NAME --no-headers --ignore-not-found | awk '{print $1}')
     if [ ! -z $icp4acluster_cr_name ]; then
-        cr_verison=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - spec.appVersion)
+        cr_version=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - spec.appVersion)
         cr_metaname=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - metadata.name)
         cr_uid=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - metadata.uid)
         if [[ -z $ibm_cp4ba_shared_info_cm ]]; then
@@ -8992,7 +8992,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - metadata.name)
             owner_ref=$(${CLI_CMD} get content $content_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - metadata.ownerReferences.[0].kind)
             if [[ ${owner_ref} != "ICP4ACluster" ]]; then
-                cr_verison=$(${CLI_CMD} get content $content_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - spec.appVersion)
+                cr_version=$(${CLI_CMD} get content $content_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - spec.appVersion)
                 cr_uid=$(${CLI_CMD} get content $content_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - metadata.uid)
                 if [[ -z $ibm_cp4ba_content_shared_info_cm ]]; then
                     info "Not found ibm-cp4ba-content-shared-info configMap,creating it."
@@ -11332,9 +11332,9 @@ if [ "$RUNTIME_MODE" == "upgradeDeployment" ]; then
             cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - metadata.name)
             owner_ref=$(${CLI_CMD} get content $content_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - metadata.ownerReferences.[0].kind)
             if [[ ${owner_ref} != "ICP4ACluster" ]]; then
-                cr_verison=$(${CLI_CMD} get content $content_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - spec.appVersion)
-                if [[ $cr_verison == "${CP4BA_RELEASE_BASE}" ]]; then
-                    warning "The release version of content custom resource \"$content_cr_name\" is already \"$cr_verison\". Exit..."
+                cr_version=$(${CLI_CMD} get content $content_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - spec.appVersion)
+                if [[ $cr_version == "${CP4BA_RELEASE_BASE}" ]]; then
+                    warning "The release version of content custom resource \"$content_cr_name\" is already \"$cr_version\". Exit..."
                     printf "\n"
                     while true; do
                         printf "\x1B[1mDo you want to continue run upgrade? (Yes/No, default: No): \x1B[0m"
@@ -11360,9 +11360,9 @@ if [ "$RUNTIME_MODE" == "upgradeDeployment" ]; then
 
     icp4acluster_cr_name=$(${CLI_CMD} get icp4acluster -n $TARGET_PROJECT_NAME --no-headers --ignore-not-found | awk '{print $1}')
     if [ ! -z $icp4acluster_cr_name ]; then
-        cr_verison=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - spec.appVersion)
-        if [[ $cr_verison == "${CP4BA_RELEASE_BASE}" ]]; then
-            warning "The release version of icp4acluster custom resource \"$icp4acluster_cr_name\" is already \"$cr_verison\"."
+        cr_version=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - spec.appVersion)
+        if [[ $cr_version == "${CP4BA_RELEASE_BASE}" ]]; then
+            warning "The release version of icp4acluster custom resource \"$icp4acluster_cr_name\" is already \"$cr_version\"."
             printf "\n"
             while true; do
                 printf "\x1B[1mDo you want to continue run upgrade? (Yes/No, default: No): \x1B[0m"
@@ -11656,9 +11656,9 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
                 else
                     fail "Failed to scale up \"IBM CP4BA Foundation\" operator"
                 fi
-                cr_verison=$(${CLI_CMD} get content $content_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - spec.appVersion)
-                if [[ $cr_verison != "${CP4BA_RELEASE_BASE}" ]]; then
-                    fail "The release version: \"$cr_verison\" in content custom resource \"$content_cr_name\" is not correct, please apply new version of CR first."
+                cr_version=$(${CLI_CMD} get content $content_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - spec.appVersion)
+                if [[ $cr_version != "${CP4BA_RELEASE_BASE}" ]]; then
+                    fail "The release version: \"$cr_version\" in content custom resource \"$content_cr_name\" is not correct, please apply new version of CR first."
                     exit 1
                 fi
             else
@@ -11693,9 +11693,9 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
             fail "Failed to scale up \"IBM CP4BA Foundation\" operator"
         fi
 
-        cr_verison=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - spec.appVersion)
-        if [[ $cr_verison != "${CP4BA_RELEASE_BASE}" ]]; then
-            fail "The release version: \"$cr_verison\" in icp4acluster custom resource \"$icp4acluster_cr_name\" is not correct, please apply new version of CR first."
+        cr_version=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $TARGET_PROJECT_NAME -o yaml | ${YQ_CMD} r - spec.appVersion)
+        if [[ $cr_version != "${CP4BA_RELEASE_BASE}" ]]; then
+            fail "The release version: \"$cr_version\" in icp4acluster custom resource \"$icp4acluster_cr_name\" is not correct, please apply new version of CR first."
             exit 1
         fi
     fi
