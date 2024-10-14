@@ -27,6 +27,7 @@ checkEnvVars() {
     else
         echo "Error: $var should not be empty."
         usage
+        return 1
     fi
     done
     # quick test *-search servers and jq
