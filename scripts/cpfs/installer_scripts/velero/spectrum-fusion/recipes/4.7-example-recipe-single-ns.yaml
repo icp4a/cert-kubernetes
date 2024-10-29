@@ -11,22 +11,11 @@ spec:
         - secrets
         - certificates.cert-manager.io
         - issuers.cert-manager.io
-        - clusterissuers.cert-manager.io
-        - certmanagerconfigs.operator.ibm.com
+        # - clusterissuers.cert-manager.io
+        # - certmanagerconfigs.operator.ibm.com
         - customresourcedefinitions.apiextensions.k8s.io
       labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
       name: cert-manager-resources
-      type: resource
-    - backupRef: cert-manager-resources
-      includeClusterResources: true
-      includedResourceTypes:
-        - secrets
-        - certificates.cert-manager.io
-        - issuers.cert-manager.io
-        - clusterissuers.cert-manager.io
-        - certmanagerconfigs.operator.ibm.com
-      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
-      name: cert-manager-workload-resources
       type: resource
     - backupRef: cert-manager-resources
       includeClusterResources: true
@@ -37,8 +26,23 @@ spec:
     - includeClusterResources: true
       includedResourceTypes:
         - customresourcedefinitions.apiextensions.k8s.io
+        - secrets
+        - ibmlicenseservicereporters.operator.ibm.com
       labelSelector: foundationservices.cloudpak.ibm.com=lsr
+      name: license-service-reporter-parent
+      type: resource
+    - backupRef: license-service-reporter-parent
+      includeClusterResources: true
+      includedResourceTypes:
+        - customresourcedefinitions.apiextensions.k8s.io
       name: license-service-reporter-crd
+      type: resource
+    - backupRef: license-service-reporter-parent
+      includeClusterResources: true
+      includedResourceTypes:
+        - secrets
+        - ibmlicenseservicereporters.operator.ibm.com
+      name: license-service-reporter-instances
       type: resource
     - labelSelector: foundationservices.cloudpak.ibm.com=licensing
       name: licensing-resources
@@ -67,13 +71,6 @@ spec:
       includedResourceTypes:
         - deployments
       name: lsr-deployment
-      type: resource
-    - includeClusterResources: true
-      includedResourceTypes:
-        - secrets
-        - ibmlicenseservicereporters.operator.ibm.com
-      labelSelector: foundationservices.cloudpak.ibm.com=lsr
-      name: license-service-reporter-instances
       type: resource
     - labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
       name: lsr-volume
@@ -199,20 +196,7 @@ spec:
         - zenservices.zen.cpd.ibm.com
         - customresourcedefinitions.apiextensions.k8s.io
       labelSelector: foundationservices.cloudpak.ibm.com=zen
-      name: zen
-      type: resource
-    - backupRef: zen
-      includeClusterResources: true
-      includedResourceTypes:
-        - zenservices.zen.cpd.ibm.com
-      labelSelector: foundationservices.cloudpak.ibm.com=zen
-      name: zen-instance
-      type: resource
-    - backupRef: zen
-      includeClusterResources: true
-      includedResourceTypes:
-        - customresourcedefinitions.apiextensions.k8s.io
-      name: zen-crd
+      name: zenservice
       type: resource
     - backupRef: zen-br-resources
       includeClusterResources: true
@@ -432,11 +416,11 @@ spec:
         - hook: cs-db-data/cs-db-backup-post
         - hook: lsr-data/backup
         - group: lsr-volume
-        - group: license-service-reporter-instances
+        - group: license-service-reporter-parent
         - group: license-service-reporter-resources
         - hook: zen5-data/backup
         - group: zen-volume
-        - group: zen
+        - group: zenservice
         - group: zen-br-resources
         - group: common-services-namespace
         - group: pull-secret
@@ -446,14 +430,12 @@ spec:
         - group: license-service-reporter-crd
         - group: commonservice-crd
         - group: commonservice-cr
-        - group: cs-operator-permissions
         - group: setup-tenant-resources
         - group: singleton-subscriptions
         - group: cert-manager-resources
         - group: licensing-resources
         - group: license-service-reporter-subscriptions
         - group: common-services-subscriptions
-        - group: cert-manager-workload-resources
         - group: odlm-resources
         - group: operand-resources
     - failOn: any-error
@@ -472,7 +454,7 @@ spec:
         - group: commonservice-cr
         - hook: cert-manager-operator-check/podReady
         - hook: cert-manager-webhook-check/podReady
-        - group: cert-manager-workload-resources
+        - group: cert-manager-resources
         - group: licensing-resources
         - group: license-service-reporter-subscriptions
         - hook: license-service-reporter-check/podReady
@@ -487,7 +469,7 @@ spec:
         - group: odlm-resources
         - group: operand-resources
         - hook: common-service-db-check/podReady
-        - group: zen-instance
+        - group: zenservice
         - group: cs-db-pre-deploy
         - group: cs-db-volume
         - group: cs-db-deployment

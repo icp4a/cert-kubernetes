@@ -975,7 +975,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.0-IF002"
+        tag: "24.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1130,7 +1130,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "24.0.0-IF002"
+        tag: "24.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1227,7 +1227,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.0-IF002"
+        tag: "24.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1385,7 +1385,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.0-IF002"
+        tag: "24.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1510,7 +1510,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "24.0.0-IF002"
+        tag: "24.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1617,7 +1617,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "24.0.0-IF002"
+        tag: "24.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1759,7 +1759,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/mongo_adp
-          tag: 6.0.16
+          tag: 6.0.17
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1810,7 +1810,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/gitgateway
-          tag: "24.0.0-IF002"
+          tag: "24.0.0-IF003"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1873,7 +1873,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cds
-          tag: "24.0.0-IF002"
+          tag: "24.0.0-IF003"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1943,7 +1943,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cdra
-          tag: "24.0.0-IF002"
+          tag: "24.0.0-IF003"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2035,7 +2035,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cpds
-          tag: "24.0.0-IF002"
+          tag: "24.0.0-IF003"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2132,7 +2132,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/viewone
-          tag: "24.0.0-IF002"
+          tag: "24.0.0-IF003"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2253,7 +2253,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "24.0.0-IF002"
+      tag: "24.0.0-IF003"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2533,7 +2533,7 @@ spec:
         max_replicas: "<Required>"  # Required if enable set to "true"
       image:
         repository: "cp.icr.io/cp/cp4a/iadp"
-        tag: "24.0.0-IF002"
+        tag: "24.0.0-IF003"
         pull_policy: "IfNotPresent"
 ## Overwrite the default SHA digest for Document Processing engine containers by providing the SHA for each containers below.  To use SHA digest, you must comment out the `tag` parameter or leave it blank and you must use entilement registry as the repository.
         doc_processing_digest:
@@ -2888,6 +2888,12 @@ spec:
         # any other object stores (e.g., OS1, etc) and wish to enable for publishing of
         # document processing application, then set oc_cpe_obj_store_enable_document_processing to "true"
         oc_cpe_obj_store_enable_document_processing: true
+        ## Optional, provide lob storage location for object store
+        oc_cpe_obj_store_lob_storage_location: ""
+        ## Optional, provide table storage location for object store
+        oc_cpe_obj_store_table_storage_location: ""
+        ## Optional, provide index storage location for object store
+        oc_cpe_obj_store_index_storage_location: ""
 
       ## Configuration for the application engine object store
       ## Display name for the application engine object store to create
@@ -2974,6 +2980,12 @@ spec:
         oc_cpe_obj_store_workflow_locale: "en"
         ## Provide a name for the connection point
         oc_cpe_obj_store_workflow_pe_conn_point_name: ""
+        ## Optional, provide lob storage location for object store
+        oc_cpe_obj_store_lob_storage_location: ""
+        ## Optional, provide table storage location for object store
+        oc_cpe_obj_store_table_storage_location: ""
+        ## Optional, provide index storage location for object store
+        oc_cpe_obj_store_index_storage_location: ""
     ic_css_creation:
       - css_site_name: "Initial Site"
         css_text_search_server_name: "{{ meta.name }}-css-1"

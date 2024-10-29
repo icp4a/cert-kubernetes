@@ -50,23 +50,11 @@ spec:
         - /baw-operator
         args:
         - --leader-elect
-        image: icr.io/cpopen/icp4a-workflow-operator:24.0.0
-        imagePullPolicy: Always
+        image: icr.io/cpopen/icp4a-workflow-operator@sha256:a1ded4e8f21fa333565734aa43293c1d6367c7bc4b9ff26f350af20c8e94a5c6
+        imagePullPolicy: IfNotPresent
         name: operator
         securityContext:
           allowPrivilegeEscalation: false
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8081
-          initialDelaySeconds: 15
-          periodSeconds: 20
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: 8081
-          initialDelaySeconds: 5
-          periodSeconds: 10
         resources:
           limits:
             cpu: 500m
@@ -84,6 +72,6 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
       imagePullSecrets:
-      - name: "ibm-entitlement-key"                           
+      - name: "ibm-entitlement-key"
       serviceAccountName: ibm-workflow-operator-sa
       terminationGracePeriodSeconds: 10

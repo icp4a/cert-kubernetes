@@ -103,7 +103,7 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/common/dba-keytool-initcontainer
-        tag: "24.0.0-IF002"
+        tag: "24.0.0-IF003"
 
     ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
     ## based on input from the user.
@@ -917,7 +917,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.0-IF002"
+        tag: "24.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1078,7 +1078,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "24.0.0-IF002"
+        tag: "24.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1175,7 +1175,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.0-IF002"
+        tag: "24.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1337,7 +1337,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.0-IF002"
+        tag: "24.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1457,7 +1457,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "24.0.0-IF002"
+        tag: "24.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1565,7 +1565,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "24.0.0-IF002"
+        tag: "24.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1713,7 +1713,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "24.0.0-IF002"
+      tag: "24.0.0-IF003"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2013,6 +2013,12 @@ spec:
         oc_cpe_obj_store_enable_content_event_emitter: false
         # Enable/disable object store database compression.  Default is false.
         oc_cpe_obj_store_enable_compression: false
+        ## Optional, provide lob storage location for object store
+        oc_cpe_obj_store_lob_storage_location: ""
+        ## Optional, provide table storage location for object store
+        oc_cpe_obj_store_table_storage_location: ""
+        ## Optional, provide index storage location for object store
+        oc_cpe_obj_store_index_storage_location: ""
     ic_css_creation:
       - css_site_name: "Initial Site"
         css_text_search_server_name: "{{ meta.name }}-css-1"
@@ -2104,7 +2110,7 @@ spec:
 
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: "24.0.0-IF002"
+        tag: "24.0.0-IF003"
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -2224,7 +2230,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: "24.0.0-IF002"
+      tag: "24.0.0-IF003"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent

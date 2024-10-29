@@ -91,8 +91,15 @@
         oc apply -f yamls/zen/zen5-sa.yaml -n $NAMESPACE
         oc apply -f yamls/zen/zen5-rolebinding.yaml -n $NAMESPACE
         ```
-    f. Update the labels in the recipe in case you updated the database name during installation i.e. `db-name=ICNDBf, db-name=BASDBf, db-name=BAWDBf`
-    
+    f. Update the labels in the recipe in case you updated the database name during installation i.e. `db-name={ICN_DB_NAME}, db-name={BAW_DB_NAME}, db-name={BAS_DB_NAME}`
+    	
+	```sh
+	chmod +x ./scripts/update_labels.sh
+	```
+	```sh
+	./scripts/update_labels.sh
+	```
+        
     g. Update the CP4BA namespace in the following recipes and then apply.
     **Note**: If you want to use the postgres based common services recipes then use `-v1` files.
     - If FNCM is installed.

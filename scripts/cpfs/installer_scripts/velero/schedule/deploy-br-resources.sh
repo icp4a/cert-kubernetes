@@ -24,6 +24,8 @@ UTIL="false"
 LSR="false"
 SELECTED="false"
 
+BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+
 function main() {
   parse_arguments "$@"
   if [ ! -d "tmp" ]; then
@@ -158,12 +160,12 @@ function deploy_resources(){
     
     rm -rf tmp/common-service-db/
     mkdir tmp/common-service-db
-    cp common-service-db/cs-db-backup-deployment.yaml tmp/common-service-db/cs-db-backup-deployment.yaml
-    cp common-service-db/cs-db-backup-pvc.yaml tmp/common-service-db/cs-db-backup-pvc.yaml
-    cp common-service-db/cs-db-role.yaml tmp/common-service-db/cs-db-role.yaml
-    cp common-service-db/cs-db-rolebinding.yaml tmp/common-service-db/cs-db-rolebinding.yaml
-    cp common-service-db/cs-db-sa.yaml tmp/common-service-db/cs-db-sa.yaml
-    cp common-service-db/cs-db-br-script-cm.yaml tmp/common-service-db/cs-db-br-script-cm.yaml
+    cp ${BASE_DIR}/common-service-db/cs-db-backup-deployment.yaml tmp/common-service-db/cs-db-backup-deployment.yaml
+    cp ${BASE_DIR}/common-service-db/cs-db-backup-pvc.yaml tmp/common-service-db/cs-db-backup-pvc.yaml
+    cp ${BASE_DIR}/common-service-db/cs-db-role.yaml tmp/common-service-db/cs-db-role.yaml
+    cp ${BASE_DIR}/common-service-db/cs-db-rolebinding.yaml tmp/common-service-db/cs-db-rolebinding.yaml
+    cp ${BASE_DIR}/common-service-db/cs-db-sa.yaml tmp/common-service-db/cs-db-sa.yaml
+    cp ${BASE_DIR}/common-service-db/cs-db-br-script-cm.yaml tmp/common-service-db/cs-db-br-script-cm.yaml
 
     sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" tmp/common-service-db/cs-db-backup-deployment.yaml
     sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" tmp/common-service-db/cs-db-backup-pvc.yaml
@@ -182,8 +184,8 @@ function deploy_resources(){
     
     rm -rf tmp/mongo
     mkdir tmp/mongo
-    cp mongodb-backup-deployment.yaml tmp/mongo/mongodb-backup-deployment.yaml
-    cp mongodb-backup-pvc.yaml tmp/mongo/mongodb-backup-pvc.yaml
+    cp ${BASE_DIR}/mongodb-backup-deployment.yaml tmp/mongo/mongodb-backup-deployment.yaml
+    cp ${BASE_DIR}/mongodb-backup-pvc.yaml tmp/mongo/mongodb-backup-pvc.yaml
 
     sed -i -E "s~<mongo namespace>~$TARGET_NAMESPACE~g" tmp/mongo/mongodb-backup-deployment.yaml
     sed -i -E "s/<mongo namespace>/$TARGET_NAMESPACE/" tmp/mongo/mongodb-backup-pvc.yaml
@@ -198,12 +200,12 @@ function deploy_resources(){
     
     rm -rf tmp/keycloak/
     mkdir tmp/keycloak
-    cp keycloak/keycloak-backup-deployment.yaml tmp/keycloak/keycloak-backup-deployment.yaml
-    cp keycloak/keycloak-backup-pvc.yaml tmp/keycloak/keycloak-backup-pvc.yaml
-    cp keycloak/keycloak-role.yaml tmp/keycloak/keycloak-role.yaml
-    cp keycloak/keycloak-rolebinding.yaml tmp/keycloak/keycloak-rolebinding.yaml
-    cp keycloak/keycloak-sa.yaml tmp/keycloak/keycloak-sa.yaml
-    cp keycloak/keycloak-br-script-cm.yaml tmp/keycloak/keycloak-br-script-cm.yaml
+    cp ${BASE_DIR}/keycloak/keycloak-backup-deployment.yaml tmp/keycloak/keycloak-backup-deployment.yaml
+    cp ${BASE_DIR}/keycloak/keycloak-backup-pvc.yaml tmp/keycloak/keycloak-backup-pvc.yaml
+    cp ${BASE_DIR}/keycloak/keycloak-role.yaml tmp/keycloak/keycloak-role.yaml
+    cp ${BASE_DIR}/keycloak/keycloak-rolebinding.yaml tmp/keycloak/keycloak-rolebinding.yaml
+    cp ${BASE_DIR}/keycloak/keycloak-sa.yaml tmp/keycloak/keycloak-sa.yaml
+    cp ${BASE_DIR}/keycloak/keycloak-br-script-cm.yaml tmp/keycloak/keycloak-br-script-cm.yaml
     
     sed -i -E "s/<keycloak namespace>/$TARGET_NAMESPACE/" tmp/keycloak/keycloak-backup-deployment.yaml
     sed -i -E "s/<keycloak namespace>/$TARGET_NAMESPACE/" tmp/keycloak/keycloak-backup-pvc.yaml
@@ -230,12 +232,12 @@ function deploy_resources(){
         
         rm -rf tmp/zen/
         mkdir tmp/zen
-        cp zen5-backup-deployment.yaml tmp/zen/zen5-backup-deployment.yaml
-        cp zen5-backup-pvc.yaml tmp/zen/zen5-backup-pvc.yaml
-        cp zen5-role.yaml tmp/zen/zen5-role.yaml
-        cp zen5-rolebinding.yaml tmp/zen/zen5-rolebinding.yaml
-        cp zen5-sa.yaml tmp/zen/zen5-sa.yaml
-        cp zen5-br-scripts-cm.yaml tmp/zen/zen5-br-scripts-cm.yaml
+        cp ${BASE_DIR}/zen5-backup-deployment.yaml tmp/zen/zen5-backup-deployment.yaml
+        cp ${BASE_DIR}/zen5-backup-pvc.yaml tmp/zen/zen5-backup-pvc.yaml
+        cp ${BASE_DIR}/zen5-role.yaml tmp/zen/zen5-role.yaml
+        cp ${BASE_DIR}/zen5-rolebinding.yaml tmp/zen/zen5-rolebinding.yaml
+        cp ${BASE_DIR}/zen5-sa.yaml tmp/zen/zen5-sa.yaml
+        cp ${BASE_DIR}/zen5-br-scripts-cm.yaml tmp/zen/zen5-br-scripts-cm.yaml
 
         sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen/zen5-backup-deployment.yaml
         sed -i -E "s/<zenservice name>/$ZENSERVICE/" tmp/zen/zen5-backup-deployment.yaml
@@ -267,12 +269,12 @@ function deploy_resources(){
         
         rm -rf tmp/zen4
         mkdir tmp/zen4
-        cp zen-backup-deployment.yaml tmp/zen4/zen-backup-deployment.yaml
-        cp zen-backup-pvc.yaml tmp/zen4/zen-backup-pvc.yaml
-        cp zen4-role.yaml tmp/zen4/zen4-role.yaml
-        cp zen4-rolebinding.yaml tmp/zen4/zen4-rolebinding.yaml
-        cp zen4-sa.yaml tmp/zen4/zen4-sa.yaml
-        cp zen4-br-scripts.yaml tmp/zen4/zen4-br-scripts.yaml
+        cp ${BASE_DIR}/zen-backup-deployment.yaml tmp/zen4/zen-backup-deployment.yaml
+        cp ${BASE_DIR}/zen-backup-pvc.yaml tmp/zen4/zen-backup-pvc.yaml
+        cp ${BASE_DIR}/zen4-role.yaml tmp/zen4/zen4-role.yaml
+        cp ${BASE_DIR}/zen4-rolebinding.yaml tmp/zen4/zen4-rolebinding.yaml
+        cp ${BASE_DIR}/zen4-sa.yaml tmp/zen4/zen4-sa.yaml
+        cp ${BASE_DIR}/zen4-br-scripts.yaml tmp/zen4/zen4-br-scripts.yaml
         
         sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen4/zen-backup-deployment.yaml
         sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen4/zen-backup-pvc.yaml
@@ -295,22 +297,22 @@ function deploy_resources(){
     
     rm -rf tmp/cpfs-util-resources
     mkdir tmp/cpfs-util-resources
-    cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-deployment.yaml tmp/cpfs-util-resources/cpfs-util-deployment.yaml
-    cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-role.yaml tmp/cpfs-util-resources/cpfs-util-role.yaml
-    cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-rolebinding.yaml tmp/cpfs-util-resources/cpfs-util-rolebinding.yaml
-    cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-sa.yaml tmp/cpfs-util-resources/cpfs-util-sa.yaml
-    cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-services-role.yaml tmp/cpfs-util-resources/cpfs-util-services-role.yaml
-    cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-services-rolebinding.yaml tmp/cpfs-util-resources/cpfs-util-services-rolebinding.yaml
+    cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/cpfs-util-deployment.yaml tmp/cpfs-util-resources/cpfs-util-deployment.yaml
+    cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/cpfs-util-role.yaml tmp/cpfs-util-resources/cpfs-util-role.yaml
+    cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/cpfs-util-rolebinding.yaml tmp/cpfs-util-resources/cpfs-util-rolebinding.yaml
+    cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/cpfs-util-sa.yaml tmp/cpfs-util-resources/cpfs-util-sa.yaml
+    cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/cpfs-util-services-role.yaml tmp/cpfs-util-resources/cpfs-util-services-role.yaml
+    cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/cpfs-util-services-rolebinding.yaml tmp/cpfs-util-resources/cpfs-util-services-rolebinding.yaml
     
 
-    cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job.yaml tmp/cpfs-util-resources/setup-tenant-job.yaml
-    cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-configmap.yaml tmp/cpfs-util-resources/setup-tenant-job-configmap.yaml
-    cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-pvc.yaml tmp/cpfs-util-resources/setup-tenant-job-pvc.yaml
-    cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-role.yaml tmp/cpfs-util-resources/setup-tenant-job-role.yaml
-    cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-rolebinding.yaml tmp/cpfs-util-resources/setup-tenant-job-rolebinding.yaml
-    cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-sa.yaml tmp/cpfs-util-resources/setup-tenant-job-sa.yaml
-    cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml
-    cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
+    cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/setup-tenant-job.yaml tmp/cpfs-util-resources/setup-tenant-job.yaml
+    cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/setup-tenant-job-configmap.yaml tmp/cpfs-util-resources/setup-tenant-job-configmap.yaml
+    cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/setup-tenant-job-pvc.yaml tmp/cpfs-util-resources/setup-tenant-job-pvc.yaml
+    cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/setup-tenant-job-role.yaml tmp/cpfs-util-resources/setup-tenant-job-role.yaml
+    cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/setup-tenant-job-rolebinding.yaml tmp/cpfs-util-resources/setup-tenant-job-rolebinding.yaml
+    cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/setup-tenant-job-sa.yaml tmp/cpfs-util-resources/setup-tenant-job-sa.yaml
+    cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml
+    cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
 
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-deployment.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-role.yaml
@@ -329,16 +331,47 @@ function deploy_resources(){
     sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml
     sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
+    
+    #setup tenant job
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    sed -i -E "s/<services namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    size=$(oc get commonservice common-service -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.size}')
+    sed -i -E "s/<.spec.size value from commonservice cr>/$size/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    sed -i -E "s/<install mode, either Manual or Automatic>/Automatic/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    if [[ ! -z $CPFS_VERSION ]]; then
+      sed -i -E "s/<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc>/$CPFS_VERSION/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    else
+      sub_name=$(oc get subscription -n $OPERATOR_NAMESPACE | grep common-service-operator | awk '{print $1}')
+      channel=$(oc get subscription $sub_name -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.channel}' | tr -d "v")
+      sed -i -E "s/<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc>/$channel/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    fi
+    if [[ ! -z $CATALOG_SOURCE ]]; then
+      sed -i -E "s/<catalog source name>/$CATALOG_SOURCE/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    else
+      sub_name=$(oc get subscription -n $OPERATOR_NAMESPACE | grep common-service-operator | awk '{print $1}')
+      source=$(oc get subscription $sub_name -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.source}')
+      sed -i -E "s/<catalog source name>/$source/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    fi
+    if [[ ! -z $CAT_SRC_NS ]]; then  
+      sed -i -E "s/<catalog source namespace>/$CAT_SRC_NS/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    else
+      sub_name=$(oc get subscription -n $OPERATOR_NAMESPACE | grep common-service-operator | awk '{print $1}')
+      source_ns=$(oc get subscription $sub_name -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.sourceNamespace}')
+      sed -i -E "s/<catalog source namespace>/$source_ns/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    fi
 
-    if [[ $TETHERED_NS != "" ]]; then
+    if [[ ! -z $TETHERED_NS ]]; then
+      sed -i -E "s/<comma delimited \(no spaces\) list of Cloud Pak workload namespaces that use this foundational services instance>/$TETHERED_NS/" tmp/cpfs-util-resources/setup-tenant-job.yaml
       for ns in ${TETHERED_NS//,/ }; do
-        cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role-$ns.yaml
-        cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding-$ns.yaml
+        cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role-$ns.yaml
+        cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding-$ns.yaml
         sed -i -E "s/<services or tethered namespace>/$ns/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role-$ns.yaml
         sed -i -E "s/<services or tethered namespace>/$ns/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding-$ns.yaml
         sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding-$ns.yaml
       done
+    else
+      dummy_ns="$OPERATOR_NAMESPACE,$TARGET_NAMESPACE"
+      sed -i -E "s/<comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance>/$dummy_ns/" tmp/cpfs-util-resources/setup-tenant-job.yaml
     fi
     oc apply -f tmp/cpfs-util-resources || error "Unable to deploy resources for CPFS Util."
     oc patch job setup-tenant-job -n $OPERATOR_NAMESPACE -p '{"spec": { "suspend" : true }}'
@@ -350,12 +383,12 @@ function deploy_resources(){
     info "Creating License Service Reporter Backup/Restore resources in namespace $LSR_NAMESPACE."
     rm -rf tmp/license_service_reporter/
     mkdir tmp/license_service_reporter
-    cp license_service_reporter/lsr-backup-deployment.yaml tmp/license_service_reporter/lsr-backup-deployment.yaml
-    cp license_service_reporter/lsr-backup-pvc.yaml tmp/license_service_reporter/lsr-backup-pvc.yaml
-    cp license_service_reporter/lsr-role.yaml tmp/license_service_reporter/lsr-role.yaml
-    cp license_service_reporter/lsr-rolebinding.yaml tmp/license_service_reporter/lsr-rolebinding.yaml
-    cp license_service_reporter/lsr-sa.yaml tmp/license_service_reporter/lsr-sa.yaml
-    cp license_service_reporter/lsr-br-scripts-cm.yaml tmp/license_service_reporter/lsr-br-scripts-cm.yaml
+    cp ${BASE_DIR}/license_service_reporter/lsr-backup-deployment.yaml tmp/license_service_reporter/lsr-backup-deployment.yaml
+    cp ${BASE_DIR}/license_service_reporter/lsr-backup-pvc.yaml tmp/license_service_reporter/lsr-backup-pvc.yaml
+    cp ${BASE_DIR}/license_service_reporter/lsr-role.yaml tmp/license_service_reporter/lsr-role.yaml
+    cp ${BASE_DIR}/license_service_reporter/lsr-rolebinding.yaml tmp/license_service_reporter/lsr-rolebinding.yaml
+    cp ${BASE_DIR}/license_service_reporter/lsr-sa.yaml tmp/license_service_reporter/lsr-sa.yaml
+    cp ${BASE_DIR}/license_service_reporter/lsr-br-scripts-cm.yaml tmp/license_service_reporter/lsr-br-scripts-cm.yaml
     
     sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" tmp/license_service_reporter/lsr-backup-deployment.yaml
     sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" tmp/license_service_reporter/lsr-backup-pvc.yaml

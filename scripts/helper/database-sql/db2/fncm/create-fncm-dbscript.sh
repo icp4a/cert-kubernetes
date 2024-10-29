@@ -25,7 +25,7 @@ function create_fncm_gcddb_db2_sql_file(){
 
     # use dbuser as schema when schema is empty
     if [[ $dbschema == "" ]]; then
-       dbschema=$dbuser 
+       dbschema=$dbuser
     fi
 
     mkdir -p $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
@@ -79,31 +79,53 @@ function create_fncm_osdb_db2_sql_file(){
     osdb_num=$4
     tablespace=$5
     dbschema=$6
-    
+    tablespace_table=$7
+    tablespace_index=$8
+    tablespace_lob=$9
+
     # remove quotes from beginning and end of string
     dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbname")
     dbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuser")
     dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
     tablespace=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace")
     dbschema=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbschema")
+    tablespace_table=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace_table")
+    tablespace_index=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace_index")
+    tablespace_lob=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace_lob")
 
     # use dbuser as schema when schema is empty
     if [[ $dbschema == "" ]]; then
-       dbschema=$dbuser 
+       dbschema=$dbuser
     fi
 
-if [ -z $4 ]; then
-    FNCM_OSDB_SCRIPT_FILE=$FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/create$dbname.sql
-else
-    FNCM_OSDB_SCRIPT_FILE=$FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createOS${osdb_num}DB.sql
-fi
+    if [ -z $4 ]; then
+        FNCM_OSDB_SCRIPT_FILE=$FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/create$dbname.sql
+    else
+        FNCM_OSDB_SCRIPT_FILE=$FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createOS${osdb_num}DB.sql
+    fi
 
-if [ -z $5 ]; then
-    tablespace="VWDATA_TS"
-fi
+    if [ -z $5 ]; then
+        tablespace="VWDATA_TS"
+    fi
+    if [[ $tablespace_table != "" ]]; then
+       tablespace_table_bufferpool="CREATE BUFFERPOOL ${dbname}_4_32K IMMEDIATE SIZE 1024 PAGESIZE 32K;"
+       tablespace_table_create="CREATE LARGE TABLESPACE ${tablespace_table} PAGESIZE 32 K MANAGED BY AUTOMATIC STORAGE BUFFERPOOL ${dbname}_4_32K;"
+       tablespace_table_grant="GRANT USE OF TABLESPACE ${tablespace_table} TO USER ${dbuser};"
+    fi
+    if [[ $tablespace_index != "" ]]; then
+       tablespace_index_bufferpool="CREATE BUFFERPOOL ${dbname}_5_32K IMMEDIATE SIZE 1024 PAGESIZE 32K;"
+       tablespace_index_create="CREATE LARGE TABLESPACE ${tablespace_index} PAGESIZE 32 K MANAGED BY AUTOMATIC STORAGE BUFFERPOOL ${dbname}_5_32K;"
+       tablespace_index_grant="GRANT USE OF TABLESPACE ${tablespace_index} TO USER ${dbuser};"
+    fi
+    if [[ $tablespace_lob != "" ]]; then
+       tablespace_lob_bufferpool="CREATE BUFFERPOOL ${dbname}_6_32K IMMEDIATE SIZE 1024 PAGESIZE 32K;"
+       tablespace_lob_create="CREATE LARGE TABLESPACE ${tablespace_lob} PAGESIZE 32 K MANAGED BY AUTOMATIC STORAGE BUFFERPOOL ${dbname}_6_32K;"
+       tablespace_lob_grant="GRANT USE OF TABLESPACE ${tablespace_lob} TO USER ${dbuser};"
+    fi
 
-mkdir -p $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
-rm -rf $FNCM_OSDB_SCRIPT_FILE
+    mkdir -p $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
+    rm -rf $FNCM_OSDB_SCRIPT_FILE
+
 cat << EOF > $FNCM_OSDB_SCRIPT_FILE
 -- Creating DB named: $dbname
 CREATE DATABASE ${dbname} AUTOMATIC STORAGE YES USING CODESET UTF-8 TERRITORY US PAGESIZE 32 K;
@@ -114,15 +136,24 @@ CONNECT TO ${dbname};
 CREATE BUFFERPOOL ${dbname}_1_32K IMMEDIATE SIZE 1024 PAGESIZE 32K;
 CREATE BUFFERPOOL ${dbname}_2_32K IMMEDIATE SIZE 1024 PAGESIZE 32K;
 CREATE BUFFERPOOL ${dbname}_3_32K IMMEDIATE SIZE 1024 PAGESIZE 32K;
+${tablespace_table_bufferpool}
+${tablespace_index_bufferpool}
+${tablespace_lob_bufferpool}
 
 -- Create table spaces
 CREATE LARGE TABLESPACE OSDATA_TS PAGESIZE 32 K MANAGED BY AUTOMATIC STORAGE BUFFERPOOL ${dbname}_1_32K;
 CREATE LARGE TABLESPACE ${tablespace} PAGESIZE 32 K MANAGED BY AUTOMATIC STORAGE BUFFERPOOL ${dbname}_2_32K;
 CREATE USER TEMPORARY TABLESPACE ${dbname}_TMP_TBS PAGESIZE 32 K MANAGED BY AUTOMATIC STORAGE BUFFERPOOL ${dbname}_3_32K;
+${tablespace_table_create}
+${tablespace_index_create}
+${tablespace_lob_create}
 
 -- Grant permissions to DB user
 GRANT CREATETAB,CONNECT ON DATABASE TO USER ${dbuser};
 GRANT USE OF TABLESPACE OSDATA_TS TO USER ${dbuser};
+${tablespace_table_grant}
+${tablespace_index_grant}
+${tablespace_lob_grant}
 GRANT USE OF TABLESPACE ${tablespace} TO USER ${dbuser};
 GRANT USE OF TABLESPACE ${dbname}_TMP_TBS TO USER ${dbuser};
 GRANT SELECT ON SYSIBM.SYSVERSIONS TO USER ${dbuser};

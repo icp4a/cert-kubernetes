@@ -2538,6 +2538,7 @@ function validate_secret_in_cluster(){
     for item in ${files[*]}
     do
         secret_name_tmp=`cat $item | grep -oP '(?<=generic ).*?(?= --from-file)'`
+        secret_name_tmp=$(echo ${secret_name_tmp%% })
 
         # for ACA secret format specially
         if [ -z "$secret_name_tmp" ]; then

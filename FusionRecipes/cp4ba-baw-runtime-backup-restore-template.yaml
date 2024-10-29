@@ -116,12 +116,12 @@ spec:
       type: resource
       includedResourceTypes:
         - secret 
-      labelSelector: db-name=ICNDB2 
+      labelSelector: db-name=${ICN_DB_NAME} 
     - name: cp4ba-ibm-baw-secret
       type: resource
       includedResourceTypes:
         - secret 
-      labelSelector: db-name=BAWDB2           
+      labelSelector: db-name=${BAW_DB_NAME}           
     - name: cp4ba-iaws-shared-key-secret
       type: resource
       includedResourceTypes:

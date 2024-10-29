@@ -1266,7 +1266,10 @@ function update_operator() {
     # something (either Open Shift or OLM), so need to use patch
     # "~1" is the escape sequence for "/" character
     if [ ! -z "$remove_opreq_label" ]; then
-        ${OC} patch subscription.operators.coreos.com ${sub_name} -n ${ns} --type='json' -p='[{"op": "remove", "path": "/metadata/labels/operator.ibm.com~1opreq-control"}]' || warning "Could not patch Subscription ${sub_name} in ${ns} to remove label"
+        label_exist=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o=jsonpath='{.metadata.labels}' | grep operator.ibm.com/opreq-control || echo false)
+        if [[ $label_exist != "false" ]]; then
+            ${OC} patch subscription.operators.coreos.com ${sub_name} -n ${ns} --type='json' -p='[{"op": "remove", "path": "/metadata/labels/operator.ibm.com~1opreq-control"}]' || warning "Could not patch Subscription ${sub_name} in ${ns} to remove label"
+        fi
     fi
 
     while [ $retries -gt 0 ]; do
@@ -1301,7 +1304,7 @@ function update_operator() {
         ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"installPlanApproval": "'${install_mode}'"}' /tmp/sub.yaml
 
         # Apply the patch
-        ${OC} apply -f /tmp/sub.yaml
+        ${OC} apply -f /tmp/sub.yaml 2>/dev/null
 
         # Check if the patch was successful
         if [[ $? -eq 0 ]]; then

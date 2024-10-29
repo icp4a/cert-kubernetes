@@ -1,4 +1,4 @@
-The translated license terms can be viewed here: https://www.ibm.com/support/customer/csol/terms/?id=L-KLBJ-GE8K2U&lc=en
+The translated license terms can be viewed here: https://www.ibm.com/support/customer/csol/terms/?id=L-ANSP-6F8T5J&lc=en
 
 IMPORTANT: READ CAREFULLY
 
@@ -325,11 +325,12 @@ Virtual Server is a unit of measure by which the Program can be licensed. A serv
 In addition to the above, the following terms apply to Licensee's use of the Program.
 
 Million Event
+
 A Million Event is a unit of measure by which the Program can be licensed. A Million Event is a log event generated from a server, application or device that can be processed for a specific purpose, rounded up to the nearest million. Sufficient entitlements must be obtained to cover the maximum number of Million Events to be collected and processed by the Program at any time.
 
 Entitlement Values 
 
-IBM Automation Decision Services Version:1.0 
+IBM Automation Decision Services Version:1.0
 - Conversion Entitlement Ratio: 1 VPC/ 4 VPCs
 - Conversion Entitlement Ratio for Non-Production: 1 VPC/ 2 VPCs
 
@@ -350,7 +351,8 @@ IBM FileNet Content Manager
 (1) Storage of documents up to 30 days for use with Automation Document Processing
 (2) Storage of persisted data (AbstractPersistable objects) for use with Business Automation Application Designer and Business Automation Application Engine
 (3) Storage of data and documents for development use with Workflow Authoring (a component of IBM Business Automation Studio) 
-- IBM Enterprise Records is a component of IBM FileNet Content Manager which, when deployed in conjunction with IBM FileNet Content Manager, requires an additional 25% of VPCs sized for IBM FileNet Content Manager (rounded up to whole numbers).
+- IBM Enterprise Records is a component of IBM 
+FileNet Content Manager which, when deployed in conjunction with IBM FileNet Content Manager, requires an additional 25% of VPCs sized for IBM FileNet Content Manager (rounded up to whole numbers).
 
 IBM Business Automation Workflow Enterprise
 - Conversion Entitlement Ratio: 1 VPC/ 5 VPCs
@@ -415,8 +417,7 @@ Task Mining Agent add-on
 
 IBM Workflow Process Service - Single Process App (Component of the Program)
 - Conversion Entitlement Ratio: 1 VPC/ 5 VPCs 
-- Conversion Entitlement Ratio for Non-Production Environment: 2 VPCs/ 5 VPCs
-- If Licensee purchased VPC entitlements prior to June 30, 2024, Licensee may install and use the following Program components, under the license terms, but these components are not used to determine the number of entitlements required for the Program:
+- Conversion Entitlement Ratio for Non-Production Environment: 2 VPCs/ 5 VPCs- If Licensee purchased VPC entitlements prior to June 30, 2024, Licensee may install and use the following Program components, under the license terms, but these components are not used to determine the number of entitlements required for the Program:
 - IBM Workflow Process Service when used in Non-Production
 - If Licensee purchased VPC entitlements prior to Mar 30, 2023, Licensee may continue to convert such VPC entitlements with the following ratio:
 - Conversion Entitlement Ratio: 1 VPC/ 1 VPC
@@ -453,14 +454,18 @@ OR
 - Conversion Entitlement Ratio: 6860 External User/ 1 VPC, where Licensee measures entitlement by Authorized or Employee User
 
 If the Client measures entitlement for IBM FileNet Content Manager, IBM Business Automation Workflow Enterprise, IBM Content Collector for Email, Files & Sharepoint, or IBM Content Collector for SAP from one of the User-Based ratios above, then those programs must be measured in one of the User-Based ratios enterprise wide.
+
 If the Client has acquired the Program as a result of agreeing to the terms of the addendum titled "IBM Cloud Pak for Business Automation and IBM Business Automation Workflow User-Based Trade Up and Subscription License Upgrade Restriction," (the "Subscription License Upgrade Restriction"), then the Client must measure deployment for the trade up and subscription license upgrade on the user-based metrics of Authorized User, Employee User, External User, Concurrent User, and/or Infrequent User. No other metric shall be used for deployment measurement for license trade up and subscription license upgrade and subsequent additional license to this Program if the trade up or upgrade was subject to the Subscription License Upgrade Restriction.
 
 "Conversion Entitlement Ratio n/m" means that Licensee can convert some number ('n') entitlements of the indicated metric for the listed program for every specified number ('m') entitlements of the specified metric for the Program. Once converted, Licensee may only use such converted entitlements for the listed program. The specified conversion does not apply to any entitlements for the Program that are not of the required metric type.
 
-Use of Usage Metering Data
- 
-The Program enables use of a usage metering dashboard (the "Dashboard") that enables the display and monitoring of certain data and metrics regarding Licensee's deployment and usage of IBM and non-IBM software programs, as well as the computing environment on which they are deployed ("Usage Metering Data"). Usage of the Dashboard requires registration on either the Red Hat Marketplace or IBM Software Central. Licensee's usage of the Dashboard and IBM's use and sharing of Usage Metering Data are governed by the terms of the Service Description for the Red Hat Marketplace, Operated by IBM, available here: https://www.ibm.com/support/customer/csol/terms?id=i126-8719, and if Licensee enables or uses the Dashboard, Licensee agrees to those terms.
+The Principal Program, when purchased from a hyperscaler marketplace is supported for deployment on the cloud service of the hyperscaler on which the purchase is made. For example, the license entitlements purchased from Amazon Web Services (AWS) marketplace are only supported for the deployment on AWS.
 
+"Additional Entitlement Ratio n/m" means that Licensee receives some number ('n') entitlements of the indicated metric for the identified program for every specified number ('m') entitlements of the specified metric for the Program as a whole. The specified ratio does not apply to any entitlements for the Program that are not of the required metric type. The number of entitlements for the identified program is rounded up to a multiple of 'n'.
+
+Use of Usage Metering Data 
+
+The Program enables use of a usage metering dashboard (the "Dashboard") that enables the display and monitoring of certain data and metrics regarding Licensee's deployment and usage of IBM and non-IBM software programs, as well as the computing environment on which they are deployed ("Usage Metering Data"). Usage of the Dashboard requires registration on either the Red Hat Marketplace or IBM Software Central. Licensee's usage of the Dashboard and IBM's use and sharing of Usage Metering Data are governed by the terms of the Service Description for the Red Hat Marketplace, Operated by IBM, available here: https://www.ibm.com/support/customer/csol/terms?id=i126-8719, and if Licensee enables or uses the Dashboard, Licensee agrees to those terms.
 
 Infrequent User
 
@@ -475,8 +480,6 @@ Employee User is a unit of measure by which the Program can be licensed. An Empl
 External User
 
 External User is a unit of measure by which the Program can be licensed. An External User is a unique person, not employed in, paid by, or acting on behalf of Licensee's Enterprise, who is given access to the Program in any manner directly or indirectly (for example: via a multiplexing program, device, or application server) through any means. A person who is employed in or paid by Licensee's Enterprise, but is not accessing the Program within the scope of that relationship may be an External User. An entitlement for an External User is unique to that External User and may not be shared, nor may it be reassigned other than for the permanent transfer of the entitlement to another person.
-
-The Principal Program, when purchased from a hyperscaler marketplace is supported for deployment on the cloud service of the hyperscaler on which the purchase is made. For example, the license entitlements purchased from Amazon Web Services (AWS) marketplace are only supported for the deployment on AWS.
 
 Additional IBM DB2 Standard Edition Details
 

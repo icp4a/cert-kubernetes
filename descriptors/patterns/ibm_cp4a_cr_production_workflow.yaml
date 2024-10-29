@@ -442,3 +442,9 @@ spec:
         oc_cpe_obj_store_workflow_config_group: "<Required>"
         ## Provide a name for the connection point
         oc_cpe_obj_store_workflow_pe_conn_point_name: "<Required>"
+        ## Optional, provide lob storage location for object store
+        oc_cpe_obj_store_lob_storage_location: ""
+        ## Optional, provide table storage location for object store
+        oc_cpe_obj_store_table_storage_location: ""
+        ## Optional, provide index storage location for object store
+        oc_cpe_obj_store_index_storage_location: ""
