@@ -152,23 +152,23 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 # Release/Patch version for CP4BA
 # CP4BA_RELEASE_BASE is for fetch content/foundation operator pod, only need to change for major release.
 CP4BA_RELEASE_BASE="24.0.0"
-CP4BA_PATCH_VERSION="IF002"
+CP4BA_PATCH_VERSION="IF003"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v24.0.2"
+CP4BA_CSV_VERSION="v24.0.3"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
 CP4BA_CHANNEL_VERSION="v24.0"
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.6.5"
+CS_OPERATOR_VERSION="v4.6.6"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
 CS_CHANNEL_VERSION="v4.6"
 # CERT_LICENSE_OPERATOR_VERSION is for checking IBM cert-manager/licensing operator upgrade status, need to update for each IFIX
-CERT_LICENSE_OPERATOR_VERSION="v4.2.7"
+CERT_LICENSE_OPERATOR_VERSION="v4.2.8"
 # CERT_LICENSE_CHANNEL_VERSION is for for IBM cert-manager/licensing script -c option, need to update for each IFIX
 CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
-CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-6-5"
+CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-6-6"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v5.1.7"
+ZEN_OPERATOR_VERSION="v5.1.8"
 # BTS_CHANNEL_VERSION is for for BTS, need to update for each IFIX
 BTS_CHANNEL_VERSION="v3.34"
 # BTS_CATALOG_VERSION is for BTS 3.34.0.
@@ -632,4 +632,154 @@ function decode_xor_password() {
   else
     echo $encoded
   fi
+}
+# function to create a userpassword dictionary string to pass to the ldap validation jar
+# Sample format - username:testuser,password:testpassword;username:testuser2,password:;
+# All values are base64 encoded so that all special characters are parsed correctly
+function create_user_password_dictionary_string(){
+    usernames=("${!1}")
+    passwords=("${!2}")
+    #echo "here-${usernames[@]}\n"
+    output=""
+    # Loop through the arrays
+    for i in "${!usernames[@]}"; do
+        username="${usernames[$i]}"
+        password="${passwords[$i]}"
+
+        # Base64 encode the username
+        encoded_username=$(printf "$username" | base64)
+
+        # Check if the password is empty or not
+        if [ -n "$password" ]; then
+            encoded_password=$(printf "$password" | base64)
+        else
+            encoded_password=""
+        fi
+
+        # Append to the output string
+        output="${output}username:${encoded_username},password:${encoded_password};"
+    done
+
+    # Print the final output
+    echo "$output"
+}
+
+# certain fields have the full bind dn , and i am extracting it to just get the username
+function extract_user_from_ldap_bind() {
+  local ldap_bind_dn="$1"
+  local display_name_attr="$2"  # LDAP_USER_DISPLAY_NAME_ATTR (e.g., cn or CN)
+
+  # Use sed to dynamically extract the value based on the attribute name (case-insensitive)
+  user=$(echo "$ldap_bind_dn" | sed -n "s/^${display_name_attr}=\([^,]*\).*/\1/ip")
+
+  echo "$user"
+}
+
+# function that processes all properties from the property files that are associated with an LDAP value
+# The function returns values that are passed in the appropriate format to the LDAPTest.jar for additional validation
+function ldap_validation_parameter_generator(){
+    ldap_group_basedn="$(prop_ldap_property_file LDAP_GROUP_BASE_DN)"
+    ldap_user_filter="$(prop_ldap_property_file LC_USER_FILTER)"
+    ldap_user_attribute="$(prop_ldap_property_file LDAP_USER_DISPLAY_NAME_ATTR)"
+    ldap_group_filter="$(prop_ldap_property_file LC_GROUP_FILTER)"
+    if [ -f "${USER_PROFILE_PROPERTY_FILE}" ]; then
+        ldap_admins_group_name="$(prop_user_profile_property_file CONTENT_INITIALIZATION.LDAP_ADMINS_GROUPS_NAME)"
+        cpe_obj_store_group_name="$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_ADMIN_USER_GROUPS)"
+        adp_service_user_name="$(extract_user_from_ldap_bind "$(prop_user_profile_property_file ADP.SERVICE_USER_NAME)" "$ldap_user_attribute")"
+        adp_service_user_name_base="$(extract_user_from_ldap_bind "$(prop_user_profile_property_file ADP.SERVICE_USER_NAME_BASE)" "$ldap_user_attribute")"
+        adp_service_user_name_ca="$(extract_user_from_ldap_bind "$(prop_user_profile_property_file ADP.SERVICE_USER_NAME_CA)" "$ldap_user_attribute")"
+        adp_env_owner_user_name="$(extract_user_from_ldap_bind "$(prop_user_profile_property_file ADP.ENV_OWNER_USER_NAME)" "$ldap_user_attribute")"
+    else
+        ldap_admins_group_name=""
+        cpe_obj_store_group_name=""
+        adp_service_user_name=""
+        adp_service_user_name_ca=""
+        adp_service_user_name_base=""
+        adp_env_owner_user_name=""
+    fi
+    ldap_user_list=()
+    ldap_password_list=()
+    ldap_group_list=()
+    ldap_user_password_list=()
+    # Function to add a string if it's not in the list
+    # if the value is null that means that the property is not in the property file and the functions skips that value
+    add_to_list() {
+        local value="$1"
+        local found=0
+        if [ "$value" ]; then
+            # Loop through the array to check if the value already exists
+            for user in "${ldap_user_list[@]}"; do
+                if [[ "$user" == "$value" ]]; then
+                found=1
+                break
+                fi
+            done
+
+            # If the value was not found, add it to the list
+            if [[ $found -eq 0 ]]; then
+                ldap_user_list+=("$value")
+                return 0  # Indicates the value was added
+            fi
+        fi
+        return 1
+    }
+    # If a user processed is not a duplicate found, then for values that we have a password field we append it, else we append an empty string
+    if [ -f "${USER_PROFILE_PROPERTY_FILE}" ]; then
+        if add_to_list "$(prop_user_profile_property_file CONTENT.APPLOGIN_USER)"; then
+            ldap_password_list+=("$(prop_user_profile_property_file CONTENT.APPLOGIN_PASSWORD)")
+        fi
+        if add_to_list "$(prop_user_profile_property_file BAN.APPLOGIN_USER)"; then
+            ldap_password_list+=("$(prop_user_profile_property_file BAN.APPLOGIN_PASSWORD)")
+        fi
+        if add_to_list "$(prop_user_profile_property_file CONTENT_INITIALIZATION.LDAP_ADMIN_USER_NAME)"; then
+            ldap_password_list+=("")
+        fi
+        if add_to_list "$(prop_user_profile_property_file APP_ENGINE.ADMIN_USER)"; then
+            ldap_password_list+=("")
+        fi
+        if add_to_list "$(prop_user_profile_property_file APP_PLAYBACK.ADMIN_USER)"; then
+            ldap_password_list+=("")
+        fi
+        if add_to_list "$(prop_user_profile_property_file BASTUDIO.ADMIN_USER)"; then
+            ldap_password_list+=("")
+        fi
+        if add_to_list "$(prop_user_profile_property_file BAW_RUNTIME.ADMIN_USER)"; then
+            ldap_password_list+=("")
+        fi
+        if add_to_list "$adp_service_user_name"; then
+            ldap_password_list+=("")
+        fi
+        if add_to_list "$adp_service_user_name_ca"; then
+            ldap_password_list+=("")
+        fi
+        if add_to_list "$adp_service_user_name_base"; then
+            ldap_password_list+=("")
+        fi
+        if add_to_list "$adp_env_owner_user_name"; then
+            ldap_password_list+=("")
+        fi
+    fi
+    # collecting groups for the ldap group list
+    if [[ -n "$ldap_admins_group_name" ]]; then
+        # Convert the comma-separated values to an array
+        IFS=',' read -r -a values_array <<< "$ldap_admins_group_name"
+        for value in "${values_array[@]}"; do
+            ldap_group_list+=("$value")
+        done
+    fi
+    if [[ -n "$cpe_obj_store_group_name" ]]; then
+        # Convert the comma-separated values to an array
+        IFS=',' read -r -a values_array <<< "$cpe_obj_store_group_name"
+        for value in "${values_array[@]}"; do
+            ldap_group_list+=("$value")
+        done
+    fi
+
+    # Convert the space-separated list to a comma-separated string with unique values
+    final_ldap_group_list=$(echo "${ldap_group_list[@]}" | tr ' ' '\n' | sort -u | tr '\n' ',' | sed 's/,$//')
+
+    # creating the user password dictionary string
+    ldap_user_password_list=$(create_user_password_dictionary_string ldap_user_list[@] ldap_password_list[@])
+
+    echo "$ldap_group_basedn $ldap_user_filter $ldap_group_filter $ldap_user_password_list $final_ldap_group_list"
 }

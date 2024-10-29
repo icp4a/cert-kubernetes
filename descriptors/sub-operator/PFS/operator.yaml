@@ -21,7 +21,7 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      name: ibm-cp4a-pfs-operator  
+      name: ibm-cp4a-pfs-operator
   template:
     metadata:
       labels:
@@ -71,22 +71,10 @@ spec:
       containers:
         - name: operator
           # Replace this with the built image name
-          image: icr.io/cpopen/icp4a-pfs-operator:24.0.0
-          imagePullPolicy: Always
+          image: icr.io/cpopen/icp4a-pfs-operator@sha256:15e2aa525ba0401cd6ab77d04a1ab242fc6abe1365b0b6c4427fd7721730f789
+          imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: 8081
-            initialDelaySeconds: 15
-            periodSeconds: 20
-          readinessProbe:
-            httpGet:
-              path: /readyz
-              port: 8081
-            initialDelaySeconds: 5
-            periodSeconds: 10
           resources:
             limits:
               cpu: 500m

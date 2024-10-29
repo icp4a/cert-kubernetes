@@ -68,12 +68,20 @@ function create_fncm_osdb_oracle_sql_file(){
     dbserver=$3
     osdb_num=$4
     tablespace=$5
+    tablespace_table=$6
+    tablespace_index=$7
+    tablespace_lob=$8
+
     # remove quotes from beginning and end of string
     dbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuser")
     dbuser=$(echo $dbuser | tr '[:lower:]' '[:upper:]')
     dbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuserpwd")
     dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
     tablespace=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace")
+    tablespace_table=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace_table")
+    tablespace_index=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace_index")
+    tablespace_lob=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace_lob")
+
     mkdir -p $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
     if [ -z $4 ]; then
         FNCM_OSDB_SCRIPT_FILE=$FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/create$dbuser.sql
@@ -85,6 +93,19 @@ function create_fncm_osdb_oracle_sql_file(){
         tablespace="${dbuser}DATATS"
     fi
 
+    if [[ $tablespace_table != "" ]]; then
+       tablespace_table_create="CREATE TABLESPACE ${tablespace_table} DATAFILE '/home/oracle/orcl/${tablespace_table}.dbf' SIZE 400M REUSE AUTOEXTEND ON NEXT 20M EXTENT MANAGEMENT LOCAL SEGMENT SPACE MANAGEMENT AUTO ONLINE PERMANENT;"
+       tablespace_table_alter="ALTER USER ${dbuser} QUOTA UNLIMITED ON ${tablespace_table};"
+    fi
+    if [[ $tablespace_index != "" ]]; then
+       tablespace_index_create="CREATE TABLESPACE ${tablespace_index} DATAFILE '/home/oracle/orcl/${tablespace_index}.dbf' SIZE 300M REUSE AUTOEXTEND ON NEXT 20M EXTENT MANAGEMENT LOCAL SEGMENT SPACE MANAGEMENT AUTO ONLINE PERMANENT;"
+       tablespace_index_alter="ALTER USER ${dbuser} QUOTA UNLIMITED ON ${tablespace_index};"
+    fi
+    if [[ $tablespace_lob != "" ]]; then
+       tablespace_lob_create="CREATE TABLESPACE ${tablespace_lob} DATAFILE '/home/oracle/orcl/${tablespace_lob}.dbf' SIZE 300M REUSE AUTOEXTEND ON NEXT 20M EXTENT MANAGEMENT LOCAL SEGMENT SPACE MANAGEMENT AUTO ONLINE PERMANENT;"
+       tablespace_lob_alter="ALTER USER ${dbuser} QUOTA UNLIMITED ON ${tablespace_lob};"
+    fi
+
     rm -rf $FNCM_OSDB_SCRIPT_FILE
 cat << EOF > $FNCM_OSDB_SCRIPT_FILE
 -- Please ensure you already have existing oracle instance or pluggable database (PDB). If not, please create one first
@@ -93,6 +114,9 @@ cat << EOF > $FNCM_OSDB_SCRIPT_FILE
 -- Change DATAFILE/TEMPFILE as required by your configuration
 CREATE TABLESPACE ${tablespace} DATAFILE '/home/oracle/orcl/${tablespace}.dbf' SIZE 200M REUSE AUTOEXTEND ON NEXT 20M EXTENT MANAGEMENT LOCAL SEGMENT SPACE MANAGEMENT AUTO ONLINE PERMANENT;
 CREATE TEMPORARY TABLESPACE ${dbuser}DATATSTEMP TEMPFILE '/home/oracle/orcl/${dbuser}DATATSTEMP.dbf' SIZE 200M REUSE AUTOEXTEND ON NEXT 20M EXTENT MANAGEMENT LOCAL;
+${tablespace_table_create}
+${tablespace_index_create}
+${tablespace_lob_create}
 
 -- create a new user for ${dbuser}
 CREATE USER ${dbuser} PROFILE DEFAULT IDENTIFIED BY "${dbuserpwd}" DEFAULT TABLESPACE ${tablespace} TEMPORARY TABLESPACE ${dbuser}DATATSTEMP ACCOUNT UNLOCK;
@@ -101,6 +125,9 @@ CREATE USER ${dbuser} PROFILE DEFAULT IDENTIFIED BY "${dbuserpwd}" DEFAULT TABLE
 ALTER USER ${dbuser} QUOTA UNLIMITED ON ${tablespace};
 ALTER USER ${dbuser} DEFAULT TABLESPACE ${tablespace};
 ALTER USER ${dbuser} TEMPORARY TABLESPACE ${dbuser}DATATSTEMP;
+${tablespace_table_alter}
+${tablespace_index_alter}
+${tablespace_lob_alter}
 
 -- allow the user to connect to the database
 GRANT CONNECT TO ${dbuser};

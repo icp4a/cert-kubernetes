@@ -30,6 +30,8 @@ TEMPFILE="_TMP.yaml"
 DEBUG=0
 z_or_power_ENV="false"
 RERUN="false"
+CLEANUP="false"
+ARGUMENTS=""
 
 # ---------- Command variables ----------
 
@@ -46,29 +48,35 @@ LOG_FILE="preload_data_log_$(date +'%Y%m%d%H%M%S').log"
 trap 'error "Error occurred in function $FUNCNAME at line $LINENO"' ERR
 
 function main() {
+    ARGUMENTS="$@"
     parse_arguments "$@"
     save_log "cp3pt0-deployment/logs" "preload_data_log" "$DEBUG"
     trap cleanup_log EXIT
     prereq
-    if [[ $RERUN == "true" ]]; then
-      info "Rerun specified..."
+    if [[ $CLEANUP == "false" ]]; then
+      if [[ $RERUN == "true" ]]; then
+        info "Rerun specified..."
+        deletemongocopy
+      fi
+      # run backup preload
+      backup_preload_mongo
+      # copy im credentials
+      copy_resource "secret" "platform-auth-idp-credentials"
+      copy_resource "secret" "platform-auth-ldaps-ca-cert"
+      copy_resource "secret" "platform-oidc-credentials"
+      copy_resource "secret" "oauth-client-secret"
+      copy_resource "configmap" "ibm-cpp-config"
+      copy_resource "configmap" "common-web-ui-config"
+      copy_resource "configmap" "platform-auth-idp"
+      copy_resource "commonservice" "common-service" "preload-common-service-from-$FROM_NAMESPACE"
+      copy_resource "secret" "icp-mongodb-client-cert"
+      copy_resource "secret" "mongodb-root-ca-cert"
+      copy_resource "secret" "icp-mongodb-admin"
+      # any extra config
+    else
+      info "Cleanup selected. Cleaning MongoDB in services namespace $TO_NAMESPACE"
       deletemongocopy
     fi
-    # run backup preload
-    backup_preload_mongo
-    # copy im credentials
-    copy_resource "secret" "platform-auth-idp-credentials"
-    copy_resource "secret" "platform-auth-ldaps-ca-cert"
-    copy_resource "secret" "platform-oidc-credentials"
-    copy_resource "secret" "oauth-client-secret"
-    copy_resource "configmap" "ibm-cpp-config"
-    copy_resource "configmap" "common-web-ui-config"
-    copy_resource "configmap" "platform-auth-idp"
-    copy_resource "commonservice" "common-service" "preload-common-service-from-$FROM_NAMESPACE"
-    copy_resource "secret" "icp-mongodb-client-cert"
-    copy_resource "secret" "mongodb-root-ca-cert"
-    copy_resource "secret" "icp-mongodb-admin"
-    # any extra config
 }
 
 function parse_arguments() {
@@ -95,6 +103,9 @@ function parse_arguments() {
             ;;
         --rerun)
             RERUN="true"
+            ;;
+        --cleanup)
+            CLEANUP="true"
             ;;
         -v | --debug)
             shift
@@ -125,6 +136,7 @@ function print_usage() {
     echo "   --original-cs-ns string                        Required. Namespace to migrate Cloud Pak 2 Foundational services data from."
     echo "   --services-ns string                           Required. Namespace to migrate Cloud Pak 2 Foundational services data too"
     echo "   --rerun                                        Optional. If specified, will cleanup the previous attempt's mongo copy installed in specified services namespace before executing script."
+    echo "   --cleanup                                      Optional. Overrides --rerun. If specified, will cleanup the previous attempt's mongo copy installed in specified services namespace without executing the rest of the script."
     echo "   -v, --debug integer                            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                                     Print usage information"
     echo ""
@@ -579,27 +591,8 @@ function swapmongopvc() {
     if [[ -z $stgclass ]]; then
       error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
     fi
-  else
-    debug1 "Preload run on ROKS, not setting storageclass name"
-    stgclass=""
-    deprecated_region='{.metadata.labels.failure-domain\.beta\.kubernetes\.io\/region}'
-    deprecated_zone='{.metadata.labels.failure-domain\.beta\.kubernetes\.io\/zone}'
-
-    deprecated_region_label='failure-domain.beta.kubernetes.io/region'
-    not_deprecated_region_label='topology.kubernetes.io/region'
-    deprecated_zone_label='failure-domain.beta.kubernetes.io/zone'
-    not_deprecated_zone_label='topology.kubernetes.io/zone'
-
-    region=$("${OC}" get pv $VOL -o=jsonpath=$deprecated_region)
-    zone=$("${OC}" get pv $VOL -o=jsonpath=$deprecated_zone)
-
-    if [[ $region != "" ]]; then
-        debug1 "Replacing depracated PV labels"
-        "${OC}" label pv $VOL $not_deprecated_region_label=$region $deprecated_region_label- $not_deprecated_zone_label=$zone $deprecated_zone_label- --overwrite 
-    fi
-  fi
-
-  cat <<EOF >$TEMPFILE
+    
+    cat <<EOF >$TEMPFILE
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -615,6 +608,42 @@ spec:
   volumeMode: Filesystem
   volumeName: $VOL
 EOF
+
+  else
+    debug1 "Preload run on ROKS, not setting storageclass name"
+    deprecated_region='{.metadata.labels.failure-domain\.beta\.kubernetes\.io\/region}'
+    deprecated_zone='{.metadata.labels.failure-domain\.beta\.kubernetes\.io\/zone}'
+
+    deprecated_region_label='failure-domain.beta.kubernetes.io/region'
+    not_deprecated_region_label='topology.kubernetes.io/region'
+    deprecated_zone_label='failure-domain.beta.kubernetes.io/zone'
+    not_deprecated_zone_label='topology.kubernetes.io/zone'
+
+    region=$("${OC}" get pv $VOL -o=jsonpath=$deprecated_region)
+    zone=$("${OC}" get pv $VOL -o=jsonpath=$deprecated_zone)
+
+    if [[ $region != "" ]]; then
+        debug1 "Replacing depracated PV labels"
+        "${OC}" label pv $VOL $not_deprecated_region_label=$region $deprecated_region_label- $not_deprecated_zone_label=$zone $deprecated_zone_label- --overwrite 
+    fi
+
+    cat <<EOF >$TEMPFILE
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cs-mongodump
+  namespace: $TO_NAMESPACE
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  volumeMode: Filesystem
+  volumeName: $VOL
+EOF
+  fi
+
 
   ${OC} create -f $TEMPFILE
 
@@ -2051,6 +2080,10 @@ function success() {
 
 function error() {
     msg "\33[31m[✘] ${1}\33[0m"
+    echo "The script can be re-run using one of the following commands:"
+    echo "For simple cleanup to prepare another run: ./preload_data.sh --cleanup $ARGUMENTS"
+    echo "For an immediate re-run of preload_data: ./preload_data.sh --rerun $ARGUMENTS"
+    echo "Run ./preload_data.sh --help to see usage."
     exit 1
 }
 

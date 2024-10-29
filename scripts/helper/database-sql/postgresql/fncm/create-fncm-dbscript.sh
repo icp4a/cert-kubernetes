@@ -32,7 +32,7 @@ function create_fncm_gcddb_postgresql_sql_file(){
 
     # use dbuser as schema when schema is empty
     if [[ $dbschema == "" ]]; then
-       dbschema=$dbuser 
+       dbschema=$dbuser
     fi
 
     mkdir -p $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
@@ -69,6 +69,10 @@ function create_fncm_osdb_postgresql_sql_file(){
     osdb_num=$5
     tablespace=$6
     dbschema=$7
+    tablespace_table=$8
+    tablespace_index=$9
+    tablespace_lob=${10}
+
     # remove quotes from beginning and end of string
     dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbname")
     dbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuser")
@@ -76,6 +80,9 @@ function create_fncm_osdb_postgresql_sql_file(){
     dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
     tablespace=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace")
     dbschema=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbschema")
+    tablespace_table=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace_table")
+    tablespace_index=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace_index")
+    tablespace_lob=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace_lob")
 
     # convert to lowercase for postgreSQL dbname
     dbfile_name=$dbname
@@ -84,7 +91,7 @@ function create_fncm_osdb_postgresql_sql_file(){
 
     # use dbuser as schema when schema is empty
     if [[ $dbschema == "" ]]; then
-       dbschema=$dbuser 
+       dbschema=$dbuser
     fi
 
     mkdir -p $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
@@ -98,6 +105,23 @@ function create_fncm_osdb_postgresql_sql_file(){
     else
         tablespace=$(echo $tablespace | tr '[:upper:]' '[:lower:]')
     fi
+
+    if [[ $tablespace_table != "" ]]; then
+       tablespace_table=$(echo $tablespace_table | tr '[:upper:]' '[:lower:]')
+       tablespace_table_create="create tablespace ${tablespace_table} owner ${dbuser} location '/pgsqldata/${dbname}/${tablespace_table}';"
+       tablespace_table_grant="grant create on tablespace ${tablespace_table} to ${dbuser};"
+    fi
+    if [[ $tablespace_index != "" ]]; then
+       tablespace_index=$(echo $tablespace_index | tr '[:upper:]' '[:lower:]')
+       tablespace_index_create="create tablespace ${tablespace_index} owner ${dbuser} location '/pgsqldata/${dbname}/${tablespace_index}';"
+       tablespace_index_grant="grant create on tablespace ${tablespace_index} to ${dbuser};"
+    fi
+    if [[ $tablespace_lob != "" ]]; then
+       tablespace_lob=$(echo $tablespace_lob | tr '[:upper:]' '[:lower:]')
+       tablespace_lob_create="create tablespace ${tablespace_lob} owner ${dbuser} location '/pgsqldata/${dbname}/${tablespace_lob}';"
+       tablespace_lob_grant="grant create on tablespace ${tablespace_lob} to ${dbuser};"
+    fi
+
     rm -rf $FNCM_OSDB_SCRIPT_FILE
 cat << EOF > $FNCM_OSDB_SCRIPT_FILE
 -- create user ${dbuser}
@@ -105,7 +129,15 @@ CREATE ROLE ${dbuser} WITH INHERIT LOGIN ENCRYPTED PASSWORD '${dbuserpwd}';
 
 -- please modify location follow your requirement
 create tablespace ${tablespace} owner ${dbuser} location '/pgsqldata/${dbname}';
+${tablespace_table_create}
+${tablespace_index_create}
+${tablespace_lob_create}
+
 grant create on tablespace ${tablespace} to ${dbuser};  
+
+${tablespace_table_grant}
+${tablespace_index_grant}
+${tablespace_lob_grant}
 
 -- create database ${dbname}
 create database ${dbname} owner ${dbuser} tablespace ${tablespace} template template0 encoding UTF8 ;

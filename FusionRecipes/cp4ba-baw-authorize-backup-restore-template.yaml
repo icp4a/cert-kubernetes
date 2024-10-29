@@ -121,12 +121,12 @@ spec:
       type: resource
       includedResourceTypes:
         - secret 
-      labelSelector: db-name=ICNDB   
+      labelSelector: db-name=${ICN_DB_NAME}   
     - name: cp4ba-bas-admin-secret
       type: resource
       includedResourceTypes:
         - secret 
-      labelSelector: db-name=BASDB   
+      labelSelector: db-name=${BAS_DB_NAME}   
     # - name: cp4ba-bts-app-secret
     #   type: resource
     #   includedResourceTypes:

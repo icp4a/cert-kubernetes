@@ -84,6 +84,10 @@ spec:
     ## This value could be different from the other licenses in the CR.
     sc_deployment_fncm_license: "<Required>"
 
+    ## Business Automation Workflow (BAW) license and possible values are: user, non-production, and production.
+    ## This value could be different from the other licenses in the CR.
+    sc_deployment_baw_license: "<Required>"
+
     ## Use this parameter to specify the license for the CP4A deployment and
     ## the possible values are: non-production and production and if not set, the license will
     ## be defaulted to production.  This value could be different from the other licenses in the CR.

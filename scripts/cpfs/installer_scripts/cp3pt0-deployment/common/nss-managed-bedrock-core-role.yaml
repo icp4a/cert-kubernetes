@@ -1388,6 +1388,8 @@ rules:
       - zenextensions
       - zenextension/status
       - zenextensions/status
+      - zenextension/finalizers
+      - zenextensions/finalizers
   - verbs:
       - get
       - list

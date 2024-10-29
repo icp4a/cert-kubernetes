@@ -75,6 +75,11 @@ function verify_ldap_connection(){
   local ldap_binddn=$4
   local ldap_binddn_pwd=$5
   local ldap_ssl=$6
+  local ldap_group_basedn=$7
+  local ldap_user_filter=$8
+  local ldap_group_filter=$9
+  local ldap_user_password_list=${10}
+  local ldap_group_list=${11}
 
   if [[ $ldap_ssl == "true" || $ldap_ssl == "yes" || $ldap_ssl == "y" ]]; then
     tmp_cert_folder="$(prop_ldap_property_file LDAP_SSL_CERT_FILE_FOLDER)"
@@ -91,7 +96,7 @@ function verify_ldap_connection(){
     openssl x509 -outform der -in $tmp_cert_folder/ldap-cert.crt -out /tmp/ldap.der 2>&1 </dev/null
     keytool -import -alias cp4baLdapCerts -keystore /tmp/ldap-truststore.jks -file /tmp/ldap.der -storepass changeit -storetype JKS -noprompt 2>&1 </dev/null
     msg "Checking connection for LDAP server \"$ldap_server\" using Bind DN \"$ldap_binddn\".."
-    output=$(java -Dsemeru.fips=$fips_flag -Djavax.net.ssl.trustStore=/tmp/ldap-truststore.jks -Djavax.net.ssl.trustStorePassword=changeit -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u "ldaps://$ldap_server:$ldap_port" -b "$ldap_basedn" -D "$ldap_binddn" -w "$ldap_binddn_pwd" 2>&1)
+    output=$(java -Dsemeru.fips=$fips_flag -Djavax.net.ssl.trustStore=/tmp/ldap-truststore.jks -Djavax.net.ssl.trustStorePassword=changeit -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u "ldaps://$ldap_server:$ldap_port" -b "$ldap_basedn" -D "$ldap_binddn" -w "$ldap_binddn_pwd" -additionalvalidation -gdn "$ldap_group_basedn" -upl "$ldap_user_password_list" -gl "$ldap_group_list" -uf "$ldap_user_filter" -gf "$ldap_group_filter" 2>&1)
     retVal_verify_ldap_tmp=$?
     connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
     echo "Latency: $connection_time ms"
@@ -109,9 +114,17 @@ function verify_ldap_connection(){
     fail "Unable to connect to LDAP server \"$ldap_server\" using Bind DN \"$ldap_binddn\", please check configuration in ldap property again."
     [[ retVal_verify_ldap_tmp -eq 0 ]] && \
     success "Connected to LDAP \"$ldap_server\" using BindDN:\"$ldap_binddn\" successfuly, PASSED!"
+    echo "\n"
+    info "Review the additional LDAP Validation checks performed on LDAP server \"$ldap_server\" ."
+    echo "\n"
+    # Extract everything from "LDAP Users Summary" until "Total time taken"
+    # /LDAP Users Summary/ {flag=1} starts printing everything from LDAP Users Summary and /Total time taken/ {flag=0} stops printing when Total time taken is found
+    ldap_validation_table=$(echo "$output" | awk '/LDAP Users Summary/ {flag=1} /Total time taken/ {flag=0} flag')
+    echo "$ldap_validation_table"
+    echo "\n"
   else
     msg "Checking connection for LDAP server \"$ldap_server\" using Bind DN \"$ldap_binddn\".."
-    output=$(java -Dsemeru.fips=$fips_flag -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u "ldap://$ldap_server:$ldap_port" -b "$ldap_basedn" -D "$ldap_binddn" -w "$ldap_binddn_pwd" 2>&1)
+    output=$(java -Dsemeru.fips=$fips_flag -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u "ldap://$ldap_server:$ldap_port" -b "$ldap_basedn" -D "$ldap_binddn" -w "$ldap_binddn_pwd" -additionalvalidation -gdn "$ldap_group_basedn" -upl "$ldap_user_password_list" -gl "$ldap_group_list" -uf "$ldap_user_filter" -gf "$ldap_group_filter" 2>&1)
     retVal_verify_ldap_tmp=$?
     connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
     echo "Latency: $connection_time ms"
@@ -129,6 +142,14 @@ function verify_ldap_connection(){
     fail "Unable to connect to LDAP server \"$ldap_server\" using Bind DN \"$ldap_binddn\", please check configuration in ldap property again."
     [[ retVal_verify_ldap_tmp -eq 0 ]] && \
     success "Connected to LDAP \"$ldap_server\" using BindDN:\"$ldap_binddn\" successfuly, PASSED!"
+    echo "\n"
+    info "Review the additional LDAP Validation checks performed for LDAP server \"$ldap_server\" ."
+    echo "\n"
+    # Extract everything from "LDAP Users Summary" until "Total time taken"
+    # /LDAP Users Summary/ {flag=1} starts printing everything from LDAP Users Summary and /Total time taken/ {flag=0} stops printing when Total time taken is found
+    ldap_validation_table=$(echo "$output" | awk '/LDAP Users Summary/ {flag=1} /Total time taken/ {flag=0} flag')
+    echo "$ldap_validation_table"
+    echo "\n"
   fi 
 }
 

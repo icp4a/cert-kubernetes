@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    component: cpfs3
+  name: egress-zen-remote-svc-inst-status-cron-job
+  namespace: "zenNamespace"
+spec:
+  egress:
+  - {}
+  podSelector:
+    matchLabels:
+      component: zen-remote-svc-inst-status-cron-job
+  policyTypes:
+  - Egress

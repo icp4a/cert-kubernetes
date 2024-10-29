@@ -16,7 +16,7 @@ spec:
       suspend: true
       restartPolicy: OnFailure
       containers:
-      - command: ["/bin/bash", "-c", "/cs-br/setup_tenant.sh --operator-namespace <operator namespace> --services-namespace <services namespace> --tethered-namespaces <comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance> --license-accept -c v<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc> -p <.spec.size value from commonservice cr> -i <install mode, either Manual or Automatic>"]
+      - command: ["/bin/bash", "-c", "/cs-br/setup_tenant.sh --operator-namespace <operator namespace> --services-namespace <services namespace> --tethered-namespaces <comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance> --license-accept -c v<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc> -p <.spec.size value from commonservice cr> -i <install mode, either Manual or Automatic> -s <catalog source name> -n <catalog source namespace>"]
         image: icr.io/cpopen/cpfs/cpfs-utils:4.6.0
         imagePullPolicy: IfNotPresent
         name: cpfs-util
@@ -24,7 +24,7 @@ spec:
           limits:
             cpu: 500m
             ephemeral-storage: 512Mi
-            memory: 1024Mi
+            memory: 1536Mi
           requests:
             cpu: 200m
             ephemeral-storage: 128Mi

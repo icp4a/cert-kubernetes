@@ -1,5 +1,9 @@
 ##!/usr/bin/env bash
 
+#CRDS
+oc label crd certificates.cert-manager.io foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+oc label crd issuers.cert-manager.io foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+
 # Get all issuers in all namespaces and add foundationservices.cloudpak.ibm.com=cert-manager
 CURRENT_ISSUERS=($(oc get Issuers --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
 i=0

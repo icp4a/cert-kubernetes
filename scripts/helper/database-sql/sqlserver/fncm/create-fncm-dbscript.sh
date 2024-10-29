@@ -101,12 +101,19 @@ function create_fncm_osdb_sqlserver_sql_file(){
     dbserver=$4
     osdb_num=$5
     tablespace=$6
+    tablespace_table=$7
+    tablespace_index=$8
+    tablespace_lob=$9
+
     # remove quotes from beginning and end of string
     dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbname")
     dbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuser")
     dbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuserpwd")
     dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
     tablespace=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace")
+    tablespace_table=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace_table")
+    tablespace_index=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace_index")
+    tablespace_lob=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace_lob")
 
     mkdir -p $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
 
@@ -121,6 +128,39 @@ function create_fncm_osdb_sqlserver_sql_file(){
     else
         tablespace=$(echo $tablespace | tr '[:lower:]' '[:upper:]')
     fi
+
+    if [[ $tablespace_table != "" ]]; then
+       tablespace_table=$(echo $tablespace_table | tr '[:lower:]' '[:upper:]')
+       tablespace_table_filegroup="
+FILEGROUP $tablespace_table
+(  NAME = ${tablespace_table},
+   FILENAME = 'C:\MSSQL_DATABASE\\${tablespace_table}.ndf',
+   SIZE = 400MB,
+   FILEGROWTH = 128MB),
+"
+    fi
+    if [[ $tablespace_index != "" ]]; then
+       tablespace_index=$(echo $tablespace_index | tr '[:lower:]' '[:upper:]')
+       tablespace_index_filegroup="
+FILEGROUP $tablespace_index
+(  NAME = ${tablespace_index},
+   FILENAME = 'C:\MSSQL_DATABASE\\${tablespace_index}.ndf',
+   SIZE = 300MB,
+   FILEGROWTH = 128MB),
+"
+    fi
+    if [[ $tablespace_lob != "" ]]; then
+       tablespace_lob=$(echo $tablespace_lob | tr '[:lower:]' '[:upper:]')
+       tablespace_lob_filegroup="
+FILEGROUP $tablespace_lob
+(  NAME = ${tablespace_lob},
+   FILENAME = 'C:\MSSQL_DATABASE\\${tablespace_lob}.ndf',
+   SIZE = 300MB,
+   FILEGROWTH = 128MB),
+"
+    fi
+
+
     rm -rf $FNCM_OSDB_SCRIPT_FILE
 cat << EOF > $FNCM_OSDB_SCRIPT_FILE
 -- create ${dbname} object store database, you could update FILENAME as your requirement.
@@ -137,7 +177,9 @@ FILEGROUP ${dbname}SA_DATA_FG
    FILENAME = 'C:\MSSQL_DATABASE\\${dbname}SA_DATA.ndf',
    SIZE = 300MB,
    FILEGROWTH = 128MB),
-
+${tablespace_table_filegroup}
+${tablespace_index_filegroup}
+${tablespace_lob_filegroup}
 FILEGROUP ${dbname}SA_IDX_FG
 (  NAME = ${dbname}SA_IDX,
    FILENAME = 'C:\MSSQL_DATABASE\\${dbname}SA_IDX.ndf',

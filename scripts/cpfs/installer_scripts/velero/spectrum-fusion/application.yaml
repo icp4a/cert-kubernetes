@@ -12,6 +12,7 @@ spec:
     - <tenant namespace 2>
     - <cert manager namespace>
     - <licensing namespace>
+    - <lsr namespace>
     - openshift-marketplace    
     - openshift-config
     - kube-public

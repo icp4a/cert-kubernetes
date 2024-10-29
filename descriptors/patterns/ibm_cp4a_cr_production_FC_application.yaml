@@ -199,7 +199,7 @@ spec:
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/cpe
-  #       tag: "24.0.0-IF002"
+  #       tag: "24.0.0-IF003"
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
@@ -349,7 +349,7 @@ spec:
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/graphql
-  #       tag: "24.0.0-IF002"
+  #       tag: "24.0.0-IF003"
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
@@ -632,3 +632,9 @@ spec:
   #       oc_cpe_obj_store_workflow_locale: "en"
   #       ## Provide a name for the connection point
   #       oc_cpe_obj_store_workflow_pe_conn_point_name: ""
+  #       ## Optional, provide lob storage location for object store
+  #       oc_cpe_obj_store_lob_storage_location: ""
+  #       ## Optional, provide table storage location for object store
+  #       oc_cpe_obj_store_table_storage_location: ""
+  #       ## Optional, provide index storage location for object store
+  #       oc_cpe_obj_store_index_storage_location: ""
