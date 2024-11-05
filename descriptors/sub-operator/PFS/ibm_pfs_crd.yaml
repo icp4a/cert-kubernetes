@@ -250,13 +250,11 @@ spec:
                         format: int32
                         type: integer
                       initial_delay_seconds:
-                        default: -1
                         description: Number of seconds after the container starts
                           before the readiness probe is initiated.
                         format: int32
                         type: integer
                       period_seconds:
-                        default: -1
                         description: Number of seconds to wait before the next probe.
                         format: int32
                         type: integer
@@ -356,6 +354,11 @@ spec:
                     description: How the HTTPS endpoint service should be published.
                       The possible values are 'ClusterIP' and 'NodePort'
                     type: string
+                  use_headless_transport_service:
+                    default: false
+                    description: The transport endpoint service used for inter-pods communication 
+                      can be defined as a headless service instead of a ClusterIP service.
+                    type: boolean
                   snapshot_storage:
                     default:
                       enabled: false
@@ -941,13 +944,11 @@ spec:
                         format: int32
                         type: integer
                       initial_delay_seconds:
-                        default: -1
                         description: Number of seconds after the container starts
                           before the readiness probe is initiated.
                         format: int32
                         type: integer
                       period_seconds:
-                        default: -1
                         description: Number of seconds to wait before the next probe.
                         format: int32
                         type: integer
