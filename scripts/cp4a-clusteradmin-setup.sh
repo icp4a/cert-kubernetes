@@ -3167,20 +3167,126 @@ function replace_name_for_process_flow(){
     fi
 }
 
+# For DBACLD-156657 where we want to add logic to recreate the ibm-cp4ba-common-config configmap if it was deleted
+# function to get the variables required for to create the ibm-cp4ba-common-config configmap
+function fetch_cp4ba_common_configmap_details(){
+    current_namespace=$1
+    # Fetch the operatorNamespace and serviceNamespace values from the CommonService resource
+    operator_namespace=$(oc get CommonService common-service -n "$current_namespace" -o yaml | grep 'operatorNamespace:' | head -n 1 | awk '{print $2}')
+    service_namespace=$(oc get CommonService common-service -n "$current_namespace" -o yaml | grep 'servicesNamespace:' | head -n 1 | awk '{print $2}')
+    
+    # If there's no operatorNamespace and serviceNamespace value in the current context , then display some remediation steps
+    if [[ -z "$operator_namespace" || -z "$service_namespace" ]]; then
+        error "Could not find a IBM Cloud Pak foundational services Custom Resource file in the namespace $current_namespace ."
+        exit 0
+    fi
+
+    create_common_service_configmap $operator_namespace $service_namespace
+}
+
+# For DBACLD-156657 where we want to add logic to recreate the ibm-cp4ba-common-config configmap if it was deleted
+# Function to detect where the ibm_cp4ba_common_config configmap should be created
+function recreate_cp4ba_common_configmap() {
+    # Get namespaces where CommonService 'common-service' exists
+    namespaces=$(oc get CommonService -A -o jsonpath='{range .items[?(@.metadata.name=="common-service")]}{.metadata.namespace}{"\n"}{end}')
+    if [[ -z "$namespaces" ]]; then
+        error "Could not find a IBM Cloud Pak foundational services Custom Resource file in any namespaces ."
+        exit 0
+    fi
+    configmap_missing=false
+    for ns in $namespaces; do
+        # Check if ConfigMap 'ibm-cp4ba-common-config' exists in the namespace
+        if [[ $(oc get configmap ibm-cp4ba-common-config -n "$ns" &>/dev/null; echo $?) -ne 0 ]]; then
+            configmap_missing=true
+            info "ConfigMap 'ibm-cp4ba-common-config' is not found in namespace $ns."
+            
+            # Prompt user if they want to create the ConfigMap
+            read -r -p "Do you want to create the ibm-cp4ba-common-config ConfigMap in namespace $ns ? (Yes/No, default: No) " answer
+            # Check if the answer is empty and set it to "No" as default
+            if [[ -z "$answer" ]]; then
+                answer="No"
+            fi
+            answer=$(echo "$answer" | tr '[:upper:]' '[:lower:]')
+            case "$answer" in
+                yes|y) 
+                    info "Creating ibm-cp4ba-common-config configMap in namespace $ns..."
+                    fetch_cp4ba_common_configmap_details $ns
+                    ;;
+                
+                no)
+                    info "Skipping ibm-cp4ba-common-config configMap creation in namespace $ns."
+                    ;;
+                
+                *)
+                    echo "Invalid input. Please enter 'yes' or 'no'."
+                    ;;
+            esac
+        fi
+    done
+    # Determine CS_INSTALL based on arguments passed
+    if [[ $configmap_missing == "false" ]]; then
+        info "ibm-cp4ba-common-config configMap is found in all namespaces where IBM Cloud Pak foundational services/CP4BA Operators has been installed."
+    fi
+
+}
+
 ################################################
 #### Begin - Main step for install operator ####
 ################################################
 save_log "cp4a-script-logs" "cp4a-clusteradmin-setup-log"
 trap cleanup_log EXIT
 replace_name_for_process_flow
+clear
 
-if [[ $1 == "dev" || $1 == "baw-dev" ]]
-then
+# Function to display script usage
+show_help() {
+    echo "Usage: $0 [OPTIONS]"
+    echo
+    echo "Options:"
+    echo "  -fix_configmap         The script will Fix/recreate the ibm-cp4ba-common-config configmap. Example : cp4a-clusteradmin-setup.sh -fix_configmap "
+    echo "  --help                  Display the usage and options available while executing $0"
+    echo
+    echo
+    echo "When no arguments are provided, the script will start setting up the cluster for IBM Cloud Pak for Business Automation"
+}
+
+# Check for help flag
+for arg in "$@"; do
+    if [[ "$arg" == "--help" ]]; then
+        show_help
+        exit 0
+    fi
+done
+
+# For DBACLD-156657 where we want to add logic to recreate the ibm-cp4ba-common-config configmap if it was deleted
+# Code to check if the script should only recreate the ibm-cp4ba-common-config configmap
+FIX_CONFIGMAP=false
+
+
+# Check for the --fix flag
+for arg in "$@"; do
+    if [[ $arg == "-fix_configmap" ]]; then
+        FIX_CONFIGMAP=true
+    elif [[ $arg == "dev" || $arg == "baw-dev" ]]; then
+        ENVIRONMENT=$arg
+    else
+        error "Invalid argument $arg passed to the script"
+        exit 1
+    fi
+done
+
+# Determine CS_INSTALL based on arguments passed
+if [[ $ENVIRONMENT == "dev" || $ENVIRONMENT == "baw-dev" ]]; then
     CS_INSTALL="YES"
-
 else
     CS_INSTALL="NO"
+fi
 
+# For DBACLD-156657 where we want to add logic to recreate the ibm-cp4ba-common-config configmap if it was deleted
+# IF fix flag is passed while running the script then we call the function to recreate the configmap
+if [[ $FIX_CONFIGMAP == "true" ]]; then
+    recreate_cp4ba_common_configmap
+    exit 0
 fi
 
 clear
