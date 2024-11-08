@@ -639,25 +639,30 @@ function decode_xor_password() {
 function create_user_password_dictionary_string(){
     usernames=("${!1}")
     passwords=("${!2}")
-    #echo "here-${usernames[@]}\n"
     output=""
     # Loop through the arrays
     for i in "${!usernames[@]}"; do
+        # Username is already encoded in the add_to_list function
         username="${usernames[$i]}"
         password="${passwords[$i]}"
-
-        # Base64 encode the username
-        encoded_username=$(printf "$username" | base64)
-
+        
+        
         # Check if the password is empty or not
         if [ -n "$password" ]; then
-            encoded_password=$(printf "$password" | base64)
+            # For https://jsw.ibm.com/browse/DBACLD-157019 where we want to make sure we consider if passwords are encoded
+            # If the value provided is base64 already we take the base64 value else we convert it to base64
+            # Check if the password starts with {Base64}
+            if [[ $password == "{Base64}"* ]]; then
+                encoded_password="${password#'{Base64}'}"
+            else
+                encoded_password=$(printf "$password" | base64)
+            fi
         else
             encoded_password=""
         fi
-
+        
         # Append to the output string
-        output="${output}username:${encoded_username},password:${encoded_password};"
+        output="${output}username:${username},password:${encoded_password};"
     done
 
     # Print the final output
@@ -707,9 +712,17 @@ function ldap_validation_parameter_generator(){
         local value="$1"
         local found=0
         if [ "$value" ]; then
+            # Check if the user starts with {Base64}
+            # For https://jsw.ibm.com/browse/DBACLD-157019 where we want to make sure we consider if passwords are encoded
+            # If the value provided is base64 already we take the base64 value else we convert it to base64
+            if [[ $value == "{Base64}"* ]]; then
+                encoded_value="${value#'{Base64}'}"
+            else
+                encoded_value=$(printf "$value" | base64)
+            fi
             # Loop through the array to check if the value already exists
             for user in "${ldap_user_list[@]}"; do
-                if [[ "$user" == "$value" ]]; then
+                if [[ "$user" == "$encoded_value" ]]; then
                 found=1
                 break
                 fi
@@ -717,7 +730,7 @@ function ldap_validation_parameter_generator(){
 
             # If the value was not found, add it to the list
             if [[ $found -eq 0 ]]; then
-                ldap_user_list+=("$value")
+                ldap_user_list+=("$encoded_value")
                 return 0  # Indicates the value was added
             fi
         fi
