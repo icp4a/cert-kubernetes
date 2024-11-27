@@ -3267,7 +3267,9 @@ FIX_CONFIGMAP=false
 for arg in "$@"; do
     if [[ $arg == "-fix_configmap" ]]; then
         FIX_CONFIGMAP=true
-    elif [[ $arg == "dev" || $arg == "baw-dev" ]]; then
+    # For https://jsw.ibm.com/browse/DBACLD-159714
+    # Updating list of valid arguments passed
+    elif [[ $arg == "dev" || $arg == "baw" || $arg == "baw-dev" || $arg == "process-flow-dev" || $arg == "process-flow" ]]; then
         ENVIRONMENT=$arg
     else
         error "Invalid argument $arg passed to the script"
