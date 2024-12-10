@@ -53,6 +53,7 @@ fi
 checkPGClientCommand
 
 DB_BASE_NAME_STR="dbname=${base_db_name}"
+PG_SYSTEM_DB_STR="dbname=${PG_SYSTEM_DB:-postgres}"
 
 
 # as needed, prompt user for script to setup postgres env
@@ -123,9 +124,9 @@ if [[ $base_user_already_defined -ne 1 ]]; then
     sed -i.bak s/\$base_db_pwd/"$base_db_pwd"/ sql/CreateBaseUser.sql
 
     if [[ ! -z $DEV_MODE && $DEV_MODE == "true" ]]; then
-      echo "Running cmd: psql \"${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}\" --set ON_ERROR_STOP=on -f sql/CreateBaseUser.sql"
+      echo "Running cmd: psql \"${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${PG_SYSTEM_DB_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}\" --set ON_ERROR_STOP=on -f sql/CreateBaseUser.sql"
     fi
-    psql "${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}" --set ON_ERROR_STOP=on -f sql/CreateBaseUser.sql
+    psql "${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${PG_SYSTEM_DB_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}" --set ON_ERROR_STOP=on -f sql/CreateBaseUser.sql
 
     if [[ $? -eq 0 ]]; then
       echo "User $base_db_user has been added to system!" 
@@ -157,9 +158,9 @@ if [[ -z "$base_db_exists" ||  $base_db_exists == "false" ]]; then
 
    # If in Dev mode, output command for debugging purposes
    if [[ ! -z $DEV_MODE && $DEV_MODE == "true" ]]; then
-     echo "Running cmd: psql \"${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}\" --set ON_ERROR_STOP=on -f sql/CreateBaseDB.sql"
+     echo "Running cmd: psql \"${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${PG_SYSTEM_DB_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}\" --set ON_ERROR_STOP=on -f sql/CreateBaseDB.sql"
    fi   
-   psql "${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}" --set ON_ERROR_STOP=on -f sql/CreateBaseDB.sql
+   psql "${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${PG_SYSTEM_DB_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}" --set ON_ERROR_STOP=on -f sql/CreateBaseDB.sql
    if [[ $? -eq 0 ]]; then
      echo "Base database $base_db_name has been added to system!" 
    else 
