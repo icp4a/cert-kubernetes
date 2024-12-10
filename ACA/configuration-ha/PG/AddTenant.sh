@@ -109,6 +109,8 @@ getTenantDBPwd
 # get the tablespace name and location
 getTableSpace
 
+PG_SYSTEM_DB_STR="dbname=${PG_SYSTEM_DB:-postgres}"
+
 default_ontology='default'
 if [[ -z "$tenant_ontology" ]]; then
   echo -e "\nEnter the project ontology name. If nothing is entered, the default name will be used: " $default_ontology
@@ -209,9 +211,9 @@ if [[ $user_already_defined -ne 1 ]]; then
     sed -i.bak s/\$tenant_db_pwd/"$tenant_db_pwd"/ sql/CreateTenantUser.sql
 
     if [[ ! -z $DEV_MODE && $DEV_MODE == "true" ]]; then
-      echo "Running cmd: psql \"${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}\" --set ON_ERROR_STOP=on -f sql/CreateTenantUser.sql"
+      echo "Running cmd: psql \"${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${PG_SYSTEM_DB_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}\" --set ON_ERROR_STOP=on -f sql/CreateTenantUser.sql"
     fi
-    psql "${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}" --set ON_ERROR_STOP=on -f sql/CreateTenantUser.sql
+    psql "${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${PG_SYSTEM_DB_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}" --set ON_ERROR_STOP=on -f sql/CreateTenantUser.sql
 
     if [[ $? -eq 0 ]]; then
       echo "User $tenant_db_user has been added to system!"
@@ -266,9 +268,9 @@ if [[ $use_existing_tenant -ne 1 ]]; then
       echo -e "\nRunning script: sql/CreateDB.sql"
       # If in Dev mode, output command for debugging purposes
       if [[ ! -z $DEV_MODE && $DEV_MODE == "true" ]]; then
-        echo "Running cmd: psql \"${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}\" --set ON_ERROR_STOP=on -f sql/CreateDB.sql"
+        echo "Running cmd: psql \"${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${PG_SYSTEM_DB_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}\" --set ON_ERROR_STOP=on -f sql/CreateDB.sql"
       fi   
-      psql "${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}" --set ON_ERROR_STOP=on -f sql/CreateDB.sql
+      psql "${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${PG_SYSTEM_DB_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}" --set ON_ERROR_STOP=on -f sql/CreateDB.sql
       if [[ $? -eq 0 ]]; then
         echo "Tenant database $tenant_db_name has been created!"
       else
