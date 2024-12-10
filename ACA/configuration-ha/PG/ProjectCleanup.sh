@@ -8,6 +8,8 @@
 ## Contract with IBM Corp.
 ##
 
+# set -x 
+
 . ./ScriptFunctions.sh
 
 echo
@@ -127,18 +129,18 @@ do
   sed -i.bak s/\$tenant_db_name/"$tenant_db_name"/ sql/DropBacaTables.sql
   sed -i.bak s/\$tenant_ontology/"$tenant_ontology"/ sql/DropBacaTables.sql
   echo -e "\nRunning script: sql/DropBacaTables.sql"
-  psql "${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}" -q -f sql/DropBacaTables.sql
+  psql "${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} dbname=${tenant_db_name} ${DB_HOST_CMD_STR} ${DB_SSL_STR}" -q -f sql/DropBacaTables.sql
   cp sql/CreateBacaTables.sql.template sql/CreateBacaTables.sql
   sed -i.bak s/\$tenant_db_name/"$tenant_db_name"/ sql/CreateBacaTables.sql
   sed -i.bak s/\$tenant_ontology/"$tenant_ontology"/ sql/CreateBacaTables.sql
   echo -e "\nRunning script: sql/CreateBacaTables.sql"
-  psql "${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}" -q -f sql/CreateBacaTables.sql
+  psql "${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} dbname=${tenant_db_name} ${DB_HOST_CMD_STR} ${DB_SSL_STR}" -q -f sql/CreateBacaTables.sql
   cp sql/TablePermissions.sql.template sql/TablePermissions.sql
   sed -i.bak s/\$tenant_db_name/"$tenant_db_name"/ sql/TablePermissions.sql
   sed -i.bak s/\$tenant_ontology/"$tenant_ontology"/ sql/TablePermissions.sql
   sed -i.bak s/\$tenant_user/"$tenant_user"/ sql/TablePermissions.sql
   echo -e "\nRunning script: sql/TablePermissions.sql"
-  psql "${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}" -q -f sql/TablePermissions.sql
+  psql "${DB_ADM_USER_STR} ${DB_ADM_PWD_STR} dbname=${tenant_db_name} ${DB_HOST_CMD_STR} ${DB_SSL_STR}" -q -f sql/TablePermissions.sql
 
   psql "${DB_BASE_USER_STR} ${DB_BASE_PWD_STR} ${DB_BASE_NAME_STR} ${DB_HOST_CMD_STR} ${DB_SSL_STR}" -q -c "SET search_path TO \"$base_db_user\"; update tenantinfo set dbstatus=0 where tenantid='$tenant_id' and ontology='$tenant_ontology';"
 

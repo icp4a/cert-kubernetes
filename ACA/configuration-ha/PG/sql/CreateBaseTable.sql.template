@@ -1,6 +1,6 @@
 \c "$base_db_name";
 
-CREATE SCHEMA "$base_db_user" ;
+CREATE SCHEMA IF NOT EXISTS "$base_db_user" ;
 
 set search_path to "$base_db_user" ;
 
