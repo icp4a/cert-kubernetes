@@ -1,0 +1,44 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2024. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+
+# This file contains all parameters required to execute the cp4a-airgap-mirroring-images.sh script in silent mode
+# Execute sh cp4a-airgap-mirroring-images.sh --help for more details"
+
+
+# ####################################################
+# ##            Registry Authentication             ##
+# ####################################################
+
+# Key used to authenticate with IBM Entitlement Registry
+# Check the link on how to obtain an IBM Entitlement key https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=deployment-getting-access-images-from-public-entitled-registry
+ENTITLEMENT_KEY="<REQUIRED>"
+
+# CNCF Only: Pull images from a pirvate registry
+# OCP deployment, use Airgap deployment method
+PRIVATE_REGISTRY_HOST="<REQUIRED>"
+
+PRIVATE_REGISTRY_PORT="<REQUIRED>"
+
+PRIVATE_REGISTRY_USERNAME="<REQUIRED>"
+
+PRIVATE_REGISTRY_PASSWORD="<REQUIRED>"
+
+# Is your private registry using SSL - Valid values: [true; false]
+PRIVATE_REGISTRY_SSL_ENABLED=false
+
+# File Path to the ssl cert of the private registry
+# Required Field only if PRIVATE_REGISTRY_SSL_ENABLED is true
+# Cerificates needs to in PEM format
+PRIVATE_REGISTRY_SSL_CRT_PATH="/path/to/crt/certificate.pem"
+
+# Storage path for the images to be copied to in the image registry
+# Leave the value empty if there is no requirement for a specific storage path
+PRIVATE_REGISTRY_IMAGE_STORAGE_PATH="<Optional>"

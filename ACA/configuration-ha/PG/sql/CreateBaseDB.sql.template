@@ -1,0 +1,11 @@
+-- Please review the tablespace values below to confirm they are accurate for your environment. 
+-- If you want to use the default tablespace for the database, remove the tablespace-related portions below.
+
+$create_table_space_stmt
+
+CREATE DATABASE "$base_db_name" owner "$base_db_user" template template0 encoding UTF8 tablespace "$tablespace_name";
+
+REVOKE CONNECT ON DATABASE "$base_db_name" FROM PUBLIC;
+
+GRANT ALL ON DATABASE "$base_db_name" TO "$base_db_user" ;
+

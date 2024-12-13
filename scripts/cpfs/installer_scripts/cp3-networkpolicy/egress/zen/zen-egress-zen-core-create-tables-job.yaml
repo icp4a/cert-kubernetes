@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-zen-core-create-tables-job
+  namespace: "zenNamespace"
+  labels:
+    component: cpfs3
+spec:
+  podSelector:
+    matchLabels:
+      component: "zen-core-create-tables-job"
+  policyTypes:
+  - Egress
+  egress:
+  - {}

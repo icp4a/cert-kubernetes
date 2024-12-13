@@ -1,0 +1,216 @@
+# Configuration file to define all env vars for DEPLOY 
+# Format: Define Key=Value  pairs, separated by '=' 
+# Restriction: that means you cannot use '=' in ANY Value
+# Key: is the same name as param passed in. 
+#
+#
+# For the UMS Environment :to find URL links use https://github.ibm.com/dba/cert-kubernetes/blob/master/scripts/cp4a-post-deployment.sh
+#   or from the openshift console Networking->Routes->Location for icp4adeploy-cpds-route and icp4adeploy-ums-sso-route external routes.
+#   To find the client id and client secret for the ums check the openshift console, Workloads->Secrets, use values found in
+#    the icp4adeploy-cpds-oidc-secret data values for client_id and client_secret.
+# For the Zen Environment, 
+#     For the runtimeZenIamUrl,go to the openshift console and select your project (ibm-common-services project) 
+#         Next navigate to Networking->Routes->Location and get the cp-console location
+#         Example:runtimeZenUrl=https://cp-console.apps.myserver.cp.ibm.com
+#     For the runtimeZenUrl,go to the openshift console and select your project (project namespace e.g. adp) 
+#         Next navigate to Networking->Routes->Location and get the cpd location
+#         Example:runtimeZenUrl=https://cpd-adp.apps.myserver.cp.ibm.com
+#     For a design/development environment is used the devZenIamUrl=<runtimeZenIamUrl value> and devZenUrl=<runtimeZenUrl value>
+#     For a runtime environment where the design/development environment is a separate environment find the devZenIamUrl and devZenUrl for that environment.
+#     To find the runtimeCpdsUrl url use the openshift console and select your project (project namespace e.g. adp)
+#         Next navigate to ConfigMaps and find the <cluster name>-cp4ba-access-info  Example: icp4adeploy-cpd4ba-access-info
+#         For the runtimeCpdsUrl, get the cpds-access-info and remove the "/ibm-dba-content-deployment/"
+#         Example: cpds-access-info: https://cpd-adp.apps.myserver.cp.ibm.com/adp/cpds/ibm-dba-content-deployment/
+#         runtimeCpdsUrl =  https://cpd-adp.apps.myserver.cp.ibm.com/adp/cpds
+# The ADP_DEPLOYMENT_ENV in the icp4adeploy-cpds-deploy environment value specifies DEV for Development and RUNTIME for runtime.
+#------------------------------------------------------------------------------
+# Information required for the runtime (Test/Staging/Prod) environment authentication
+# Note: If you are running the script from a Development environment,
+#       enter the development authentication information here.
+# Input:
+#     runtimeUmsUrl - The UMS-SSO URL associated with the runtime environment.
+#     runtimeUmsClientId - The value for this entry is the UMS-SSO Client Id located on the runtime environment.
+#	  runtimeUmsClientSecret - The value for this entry is the UMS-SSO Client Id 
+#                                and UMS-SSO Client Secret for the Content Project Deployment Service
+#                                located on the runtime environment. 
+#     runtimeUseZen - set the value for true if zen authenitication is required, set to false if UMS login is used for authentication.  
+#          If using Zen authentication, set parameter values: runtimeUseZen=true,runtimeZenIamUrl, and runtimeZenUrl
+#          If using UMS authentication, set parameter values: runtimeUseZen=false, runtimeUmsUrl, runtimeUmsClientId, runtimeUmsClientSecret
+#     runtimeZenIamUrl - Cloud Pak Console URL under the ibm-common-services for Access Management (IAM) service Test/Staging/Prod Environment.
+#     runtimeZenUrl- Cloud Pak for Data (CPD) URL under the adp project name for Zen authentication Test/Staging/Prod Environment.
+#	  runtimeUser=A user who is a member of the DocProcessingManagers UMS Team on the runtime Environment.  Note: For deployment the user must be a member 
+#                  of the DocProcessingManagers, DocProcessingAnalysis or the ProjectAdmin-<projectIdentifier> Team for a development environment.
+#     runtimePwd=The password for the runtime user
+#
+# UMS examples:
+#         runtimeUmsUrl=https://ums-sso.adp.ibm.com
+#         runtimeUmsClientId=XXXXXXXXXXXXX
+#         runtimeUmsClientSecret=XXXXXXXXXX
+#         runtimeUser=Admin
+#         runtimePwd=password
+#  or for Zen example:
+#         runtimeUseZen=true
+#         runtimeZenIamUrl=https://cp-console.apps.runtime.cp.ibm.com
+#         runtimeZenUrl=https://cpd-adp.apps.runtime.cp.ibm.com
+#         runtimeUser=Admin
+#         runtimePwd=password 
+#	  runtimeUser=A user who is a member of the DocProcessingManagers UMS Team on the runtime Environment.  Note: For deployment the user must be a member 
+#                  of the DocProcessingManagers or DocProcessingAnalysis UMS Team for a development environment.
+#     runtimePwd=The password for the runtime user
+#
+# UMS SSO Authentication examples:
+#         runtimeUmsUrl=https://ums-sso.adp.ibm.com
+#         runtimeUmsClientId=XXXXXXXXXXXXX
+#         runtimeUmsClientSecret=XXXXXXXXXX
+#         runtimeUser=Admin
+#         runtimePwd=password
+#  Zen SSO Authentication example:
+#         runtimeUseZen=true
+#         runtimeZenIamUrl=https://cp-console.apps.runtime.cp.ibm.com
+#         runtimeZenUrl=https://cpd-adp.apps.runtime.cp.ibm.com
+#         runtimeUser=Admin
+#         runtimePwd=password
+
+runtimeUseZen=<true or false to use Zen, if not specified assume UMS>
+runtimeZenIamUrl=<cp-console URL for IAM login Test/Staging/Prod Environment>
+runtimeZenUrl=<cpd URL for ZEN login Test/Staging/Prod Environment>
+#runtimeUmsUrl=<UMS-SSO URL Test/Staging/Prod Environment>
+#runtimeUmsClientId=<Client Id>
+#runtimeUmsClientSecret=<Client Secret>
+runtimeUser=<User Name  Test/Staging/Prod Environment>
+runtimePwd=<Password>
+
+
+#------------------------------------------------------------------------------
+# Authentication information for the Development Environment 
+# The information required is for the environment where the design repository is located 
+#        for the project and version/snapshot to be deployed.
+# Note: This entry is required for development and runtime environments 
+#        ONLY if using the project deployment or project precheck script,
+#        cpds_deployProj.sh and cpds_projectPrecheck.sh
+#          
+#
+# Input:
+#     devUmsUrl - The UMS-SSO URL associated with the Development Environment.
+#     devUmsClientId -The value for this entry is the UMS-SSO Client Id 
+#                                for the Content Project Deployment Service located on the Development Environment. 
+#     devUmsClientSecret - The value for this entry is the UMS-SSO Client Secret for the Content Project Deployment Service
+#                                located on the Development Environment. 
+#     devUseZen - set the value for true if zen authenitication is required, set to false if UMS login is used for authentication.  
+#          If using Zen authentication, set parameter values: runtimeUseZen=true,runtimeZenIamUrl, and runtimeZenUrl
+#          If using UMS authentication, set parameter values: runtimeUseZen=false, runtimeUmsUrl, runtimeUmsClientId, runtimeUmsClientSecret
+#     devZenIamUrl - Cloud Pak console URL under the ibm-common-services for Access Management (IAM) service Test/Staging/Prod Environment.
+#     devZenUrl- CloudPack for Data (CPD) URL under the adp project name for Zen authentication Test/Staging/Prod Environment.
+#	  devUser=A user who is a member of the DocProcessingManagers UMS Team on the runtime Environment.  Note: For deployment the user must be a member 
+#                  of the DocProcessingManagers, DocProcessingAnalysis or the ProjectAdmin-<projectIdentifier> Team for a development environment.
+#     devPwd=The password for the runtime user
+#
+# UMS SSO Authentication examples:
+#         devUrl=https://ums-sso.development.adp.ibm.com
+#         devUmsClientId=XXXXXXXXXX
+#         devUmsClientSecret=XXXXXXXXXX
+#         devUser=DevAdmin
+#         devPwd=password
+#  Zen SSO Authentication example:
+#         devUseZen=true
+#         devZenIamUrl=https://cp-console.apps.development.cp.ibm.com
+#         devZenUrl=https://cpd-adp.apps.development.cp.ibm.com
+#         devUser=DevAdmin
+#         devPwd=password
+#
+#
+devUseZen=<true or false to use Zen, if not specified assume UMS>
+devZenIamUrl=<cp-console URL for IAM login Test/Staging/Prod Environment>
+devZenUrl=<cpd URL for ZEN login Test/Staging/Prod Environment>
+#devUmsUrl=<UMS-SSO URL Test/Staging/Prod Environment>
+#devUmsClientId=<Client Id>
+#devUmsClientSecret=<Client Secret>
+devUser=<User Name Test/Staging/Prod Environment>
+devPwd=<Password>
+
+
+#------------------------------------------------------------------------------
+# Content Project Deployment Service Information for the runtime environment
+#
+#
+# Input:
+#	runtimeCpdsUrl - The URL of the Content Project Deployment Service in the runtime environment
+#                    NOTE: If the script is being run for the Development Environment, enter the 
+#                          Content Project Deployment Service URL for the environment where the Project will be deployed into. 
+#                    
+# examples:
+#   runtimeCpdsUrl=https://cpds.adps.ibm.com:443
+# Zen environment example:
+#	runtimeCpdsUrl =  https://cpd-adp.apps.runtime.cp.ibm.com/adp/cpds
+#
+
+runtimeCpdsUrl=<Content Project Deployment URL>
+#------------------------------------------------------------------------------
+# Project and Version Information for the Document Processing Designer Project
+#
+# Input:
+#    projectName - The Document Processing Designer project name
+#    snapshotVersion - The Document Processing Designer project version used for deployment
+#
+# examples:
+#   projectName=PRJ123
+#   snapshotVersion=v2-2020-10-13-1825 
+#
+
+projectName=<Project Name>
+snapshotVersion=<version>
+
+
+#------------------------------------------------------------------------------
+# Object Store Name for the runtime Content Platform Engine Object Store used for the runtime environment.
+# NOTE: If script used for Development environment, the Object Store Name is DEVOS1 but others may have been specified similar to the runtime environment. 
+#
+# 
+# Input:
+#    runtimeObjectStore - The symbolic name of the Object Store for the Content Process Engine used for deployment.
+#
+# examples:
+#   runtimeObjectStore=OS1
+#
+
+runtimeObjectStore=<Object Store SymbolicName>
+
+#------------------------------------------------------------------------------
+# Uncomment and assign a proper value to set the Accept-Language header for REST api. 
+# 
+# Input:
+#   languageSelected - Specify the language that client prefers to get back status response
+#		default to en_US if not specify
+# examples:
+#   acceptLanguage=en_US
+#
+acceptLanguage=en_US
+
+#------------------------------------------------------------------------------
+# CleanUpProject options. 
+# 
+# Input:
+#    cleanProjOptions   JSON string option passed in to clean project REST url.
+#						If not specified, default to " \"filterIncludeDocDetails\": false, \"timeOutInSecs\": 10, \"cleanPropertyTemplates\": false ")   
+#    	Description of sub-options in cleanProjOptions string:
+#    		filterIncludeDocDetails - boolean value with default is false.  If true, returns the details of each deleted document. 
+#    		timeOutInSecs -	integer value with default to 10 seconds.  This value limits the number of seconds to clean up the documents of a project. 
+#							If the time is too short, cleanup will not be complete and the API will return a status stating so. User can 
+#							continuously rerun the API until project is deleted. Default is 10 seconds
+#    		cleanPropertyTemplates -boolean value with default to false.  If true, removes the property templates associated with the project.  Note: Property templates may be share with 
+#                            other projects. Property templates can only be delete if NO other projects in that objectStore are using it, otherwise that property is skipped.
+#
+#cleanProjOptions=" \"filterIncludeDocDetails\": false, \"timeOutInSecs\": 10, \"cleanPropertyTemplates\": false "
+
+#------------------------------------------------------------------------------
+# CleanUpTeams options. 
+# 
+# Input:
+#    cleanTeamsOptions   JSON string option passed in to clean team REST url.
+#						If not specified, default to "\"cleanTeams\": true")   
+#    	Description of sub-options in cleanTeamsOptions string:
+#    		cleanTeams -boolean value with default to true.  If true, removes the teams that are NOT referenced in any projects in the Object Store.
+#
+#cleanTeamsOptions="\"cleanTeams\": true"
+
+

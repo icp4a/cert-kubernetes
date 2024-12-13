@@ -1,0 +1,60 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: zen-metastore-backup-job
+  namespace: ibm-common-services
+spec:
+  template:
+    spec:
+        containers:
+        - command:
+          - sh
+          - -c
+          - /tmp/backup/backup_script.sh regular cron-job
+          image: icr.io/cpopen/cpfs/zen-metastoredb@sha256:8dfa918ef9329316cf8e7ea06a277dc4021e217da59fceffabfd73c2b1f808ae
+          imagePullPolicy: IfNotPresent
+          name: zen-metastore-backup-job
+          resources:
+            limits:
+              cpu: 500m
+              ephemeral-storage: 512Mi
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              ephemeral-storage: 128Mi
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            runAsNonRoot: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /user-home
+            name: user-home-mount
+          - mountPath: /certs
+            name: metastore-secret
+          - mountPath: /tmp/backup
+            name: zen-metastoredb-backup-scripts
+        dnsPolicy: ClusterFirst
+        restartPolicy: OnFailure
+        schedulerName: default-scheduler
+        securityContext:
+          runAsNonRoot: true
+        serviceAccount: zen-norbac-sa
+        serviceAccountName: zen-norbac-sa
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: user-home-mount
+          persistentVolumeClaim:
+            claimName: zen-backup-pvc
+        - name: metastore-secret
+          secret:
+            defaultMode: 484
+            secretName: metastore-secret
+        - configMap:
+            defaultMode: 511
+            name: zen-metastoredb-backup-scripts
+          name: zen-metastoredb-backup-scripts

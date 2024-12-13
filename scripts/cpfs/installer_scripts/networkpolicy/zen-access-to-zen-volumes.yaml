@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: access-to-volumes
+  namespace: "zenNamespace"
+  labels:
+    component: cpfs
+spec:
+  podSelector:
+    matchLabels:
+      icpdsupport/app: volumes
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {} 

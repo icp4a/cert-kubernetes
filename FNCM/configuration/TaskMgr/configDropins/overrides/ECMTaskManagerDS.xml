@@ -1,0 +1,13 @@
+<server>
+  <dataSource id="ECMTaskManagerDS" jndiName="ECMTaskManagerDS"  isolationLevel="TRANSACTION_READ_COMMITTED"  type="javax.sql.DataSource">
+    <jdbcDriver libraryRef="DB2JCC4Lib"/>
+    <properties.db2.jcc
+      databaseName="<DB Name>"
+      serverName="<LDAP Server"
+      portNumber="50000"
+      user="db2inst1"
+      password="<password>"
+      resultSetHoldability="HOLD_CURSORS_OVER_COMMIT"
+    />
+  </dataSource>
+</server>

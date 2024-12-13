@@ -1,0 +1,7 @@
+\c "$base_db_name" ;
+
+set search_path to "$base_db_user" ;
+
+update tenantinfo set project_guid='$project_guid' where tenantid='$tenant_id';
+update tenantinfo set bas_id='$bas_id' where tenantid='$tenant_id';
+update tenantinfo set dbstatus='$dbstatus' where tenantid='$tenant_id';

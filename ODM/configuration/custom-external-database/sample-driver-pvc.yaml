@@ -1,0 +1,11 @@
+# Sample of Persistent Volume Claim configuration file
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: customdatasource-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

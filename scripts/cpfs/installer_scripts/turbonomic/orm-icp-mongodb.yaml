@@ -1,0 +1,16 @@
+# This is a sample ORM CR for MongoDB CRD.
+apiVersion: turbonomic.com/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: mongodbs.operator.ibm.com
+spec:
+  resourceMappings:
+  - srcResourceSpec:
+      kind: StatefulSet
+      componentNames:
+      - icp-mongodb
+    resourceMappingTemplates:
+    - srcPath: .spec.template.spec.containers[?(@.name=="{{.componentName}}")].resources
+      destPath: .spec.resources
+    # - srcPath: .spec.replicas
+    #   destPath: .spec.replicas

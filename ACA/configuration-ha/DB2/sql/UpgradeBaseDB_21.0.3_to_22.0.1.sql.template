@@ -1,0 +1,7 @@
+--base DB changes
+
+alter table tenantinfo 
+    drop column config
+    drop column opt_flags;
+
+reorg table tenantinfo;

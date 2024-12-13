@@ -1,0 +1,12 @@
+<server>
+<dataSource id="ECMClientDS" jndiName="ECMClientDS" isolationLevel="TRANSACTION_READ_COMMITTED" type="javax.sql.DataSource">
+<jdbcDriver libraryRef="OracleLib"/>
+<properties.oracle URL="jdbc:oracle:thin:@//<Hostname>:1521/orcl"
+user="ICNUser" 
+password="password"
+resultSetHoldability="HOLD_CURSORS_OVER_COMMIT"
+/>
+<!-- connectionManager globalConnectionTypeOverride="unshared" / -->
+</dataSource>
+</server>
+

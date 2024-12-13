@@ -1,0 +1,45 @@
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: commonservice-backup
+  namespace: velero
+spec:
+  schedule: 45 13 * * *
+  template:
+    ttl: 48h0m0s
+    defaultVolumesToRestic: true
+    storageLocation: bcdr-data-protection-app-1
+    includeClusterResources: true
+    includedNamespaces:
+    - '*'
+    includedResources:
+    - '*'
+    orLabelSelectors:
+    - matchExpressions:
+      - key: foundationservices.cloudpak.ibm.com
+        operator: In
+        values:
+        - catalog
+        - subscription
+        - singleton-subscription
+        - operand
+        - zen-data #zen 4 data
+        - mongo-data
+        - entitlementkey
+        - commonservice
+        - pull-secret
+        - operatorgroup
+        - zen #non-data zen 4 resources
+        - licensing
+        - cert-manager
+        - namespace
+        - configmap
+        - zen5 #non-data zen 5 resources
+        - zen5-data #zen 5 data
+        - crd
+        - lsr #non-data license service reporter resources
+        - lsr-data #license service reporter data
+        - cs-db-data #pgdump approach to BR IM EDB data
+        - cs-db #velero plugin approach to BR IM EDB data
+        - keycloak-data #pgdump approach to BR keycloak data
+        - keycloak #velero plugin approach to BR keycloak data

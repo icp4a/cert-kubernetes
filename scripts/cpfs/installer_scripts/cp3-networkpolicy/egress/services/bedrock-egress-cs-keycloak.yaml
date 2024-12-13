@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    component: cpfs3
+  name: egress-cs-keycloak
+  namespace: "csNamespace"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: "cs-keycloak"
+  policyTypes:
+  - Egress
+  egress:
+  - {}

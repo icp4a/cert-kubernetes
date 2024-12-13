@@ -1,0 +1,22 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2022. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: common-service-maps
+  namespace: kube-public
+data:
+  common-service-maps.yaml: |
+    controlNamespace: cs-control
+    namespaceMapping:
+    - requested-from-namespace:
+      - REQUESTED_NAMESPACE
+      map-to-common-service-namespace: MAP_TO_COMMON_SERVICES_NAMESPACE

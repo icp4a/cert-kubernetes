@@ -1,0 +1,128 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  name: zen-sync-recipe
+  namespace: ibm-spectrum-fusion-ns
+spec:
+  appType: common-service
+  groups:
+    - labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
+      name: zen-volume
+      type: volume
+    - includeClusterResources: true
+      includedResourceTypes:
+        - deployments
+        - serviceaccount
+        - role
+        - rolebinding
+        - configmaps
+      labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
+      name: zen-br-resources
+      type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        - zenservices.zen.cpd.ibm.com
+        - customresourcedefinitions.apiextensions.k8s.io
+      labelSelector: foundationservices.cloudpak.ibm.com=zen
+      name: zen
+      type: resource
+    - backupRef: zen
+      includeClusterResources: true
+      includedResourceTypes:
+        - zenservices.zen.cpd.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=zen
+      name: zen-instance
+      type: resource
+    - backupRef: zen
+      includeClusterResources: true
+      includedResourceTypes:
+        - customresourcedefinitions.apiextensions.k8s.io
+      name: zen-crd
+      type: resource
+    - backupRef: zen-br-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - serviceaccount
+        - role
+        - rolebinding
+        - configmaps
+      name: zen-pre-deploy
+      type: resource
+    - backupRef: zen-br-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - deployments
+      name: zen-deployment
+      type: resource
+  hooks:
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 1200
+      labelSelector: 'k8s.enterprisedb.io/cluster=zen-metastore-edb,role=primary'
+      name: zen-metastore-edb-check
+      namespace: <service namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 1200
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
+      name: zen5-deployment
+      namespace: <service namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
+      name: zen5-data
+      namespace: <service namespace>
+      onError: fail
+      ops:
+        - command: |
+            ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh <service namespace>"]
+          container: zen5-backup-job
+          name: backup
+          timeout: 600
+        - command: |
+            ["/bin/bash", "-c", "/zen5/restore_zen5.sh <service namespace> <zenservice name>"]
+          container: zen5-backup-job
+          name: restore
+          timeout: 3600
+      selectResource: deployment
+      type: exec
+    - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
+      name: cpfs-util
+      namespace: <operator namespace>
+      onError: fail
+      ops:
+        - command: |
+            ["/bin/bash", "-c", "/scripts/velero/schedule/deploy-br-resources.sh -c --zen --services-ns <service namespace>"]
+          container: cpfs-util
+          name: cleanup-zen-br-resources
+          timeout: 600
+      selectResource: pod
+      type: exec
+  workflows:
+    - failOn: any-error
+      name: backup
+      sequence:
+        - hook: zen5-data/backup
+        - group: zen
+        - group: zen-br-resources
+        - group: zen-volume
+    - failOn: any-error
+      name: restore
+      sequence:
+        - hook: cpfs-util/cleanup-zen-br-resources
+        - hook: zen-metastore-edb-check/podReady
+        - group: zen-pre-deploy
+        - group: zen-volume
+        - group: zen-deployment
+        - hook: zen5-deployment/podReady
+        - hook: zen5-data/restore

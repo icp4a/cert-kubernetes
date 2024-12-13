@@ -1,0 +1,16 @@
+-- BASE DB upgrade script for 24.0.1
+
+-- Update project_usage table
+DROP INDEX ix_project_usage_year_mon;
+
+ALTER TABLE project_usage ALTER COLUMN project_guid SET NOT NULL;
+ALTER TABLE project_usage ALTER COLUMN year SET NOT NULL;
+ALTER TABLE project_usage ALTER COLUMN month SET NOT NULL;
+ALTER TABLE project_usage ALTER COLUMN day_of_month SET NOT NULL;
+ALTER TABLE project_usage ALTER COLUMN day_of_week SET NOT NULL;
+ALTER TABLE project_usage ALTER COLUMN num_docs SET NOT NULL;
+ALTER TABLE project_usage ALTER COLUMN num_pages SET NOT NULL;
+ALTER TABLE project_usage ALTER COLUMN created_ts SET NOT null;
+ALTER TABLE project_usage ALTER COLUMN created_ts drop default;
+
+ALTER TABLE project_usage ADD CONSTRAINT project_usage_pkey PRIMARY KEY (project_guid, year, month, day_of_month);

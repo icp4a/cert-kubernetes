@@ -1,0 +1,19 @@
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: ingress-ibm-flink-operand
+  namespace: "flinkNamespace"
+spec:
+  podSelector: 
+    matchLabels:
+      type: flink-standalone-kubernetes
+  ingress:
+    - ports:
+      - protocol: TCP
+        port: 443
+      - protocol: TCP
+        port: 9443
+      from:
+        - podSelector: {}
+  policyTypes:
+    - Ingress

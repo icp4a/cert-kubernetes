@@ -1,0 +1,6 @@
+\c "$base_db_name" ;
+
+set search_path to "$base_db_user" ;
+
+-- Insert the row in TenantInfo table with a placeholder for the schema_version. The version will be updated by a common function
+insert into TENANTINFO (tenantid,ontology,tenanttype,dailylimit,rdbmsengine,bacaversion,connstring,dbname,dbuser,tenantdbversion,featureflags,dbstatus,project_guid,bas_id) values ( '$tenant_id', '$tenant_ontology', $tenant_type, $daily_limit, 'PG', '24.0.1','$rdbmsconnection','$tenant_db_name','$tenant_db_user','24.0.1',154366,$dbstatus,$project_guid,$bas_id) ;

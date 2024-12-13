@@ -1,0 +1,29 @@
+# Sample values for odm installation using custom configuration.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: odm-demo-external-custom-db
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+spec:
+  odm_configuration:
+    image:
+      repository: ""
+      pullPolicy: IfNotPresent
+
+    oidc:
+      # Configuring the OPENID parameters
+      # Following instructions at https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/tsk_config_odm_ums.html
+      enabled: true
+      serverUrl: "https://openid-hostname:openid-port" 
+      adminRef: my-openid-admin-secret 
+      allowedDomains: "openid-domain-list"
+
+    customization:
+      # Configuring the OPENID user registry
+      # Following instructions at https://www.ibm.com/support/knowledgecenter/SSYHZ8_20.0.x/com.ibm.dba.offerings/topics/tsk_config_odm_ums.html
+      authSecretRef: my-openid-auth-secret

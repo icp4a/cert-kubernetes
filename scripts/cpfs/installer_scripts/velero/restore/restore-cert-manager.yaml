@@ -1,0 +1,20 @@
+apiVersion: velero.io/v1
+kind: Restore
+metadata:
+  name: restore-cert-manager
+  namespace: velero
+spec:
+  backupName: __BACKUP_NAME__
+  excludedResources:
+  - nodes
+  - events
+  - events.events.k8s.io
+  - backups.velero.io
+  - restores.velero.io
+  - resticrepositories.velero.io
+  hooks: {}
+  includedNamespaces:
+  - '*'
+  labelSelector:
+    matchLabels:
+      foundationservices.cloudpak.ibm.com: cert-manager

@@ -1,0 +1,1 @@
+CREATE USER "$tenant_db_user" password '$tenant_db_pwd';

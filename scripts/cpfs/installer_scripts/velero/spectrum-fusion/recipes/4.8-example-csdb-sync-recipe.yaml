@@ -1,0 +1,152 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  name: cs-db-sync-recipe
+  namespace: ibm-spectrum-fusion-ns
+spec:
+  appType: common-service
+  groups:
+    - labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
+      name: cs-db-volume
+      type: volume
+    - includeClusterResources: true
+      includedResourceTypes:
+        - deployments
+        - serviceaccount
+        - role
+        - rolebinding
+        - configmaps
+      labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
+      name: cs-db-br-resources
+      type: resource
+    - backupRef: cs-db-br-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - serviceaccount
+        - role
+        - rolebinding
+        - configmaps
+      name: cs-db-pre-deploy
+      type: resource
+    - backupRef: cs-db-br-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - deployments
+      name: cs-db-deployment
+      type: resource
+  hooks:
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      labelSelector: 'k8s.enterprisedb.io/cluster=common-service-db,role=primary'
+      name: common-service-db-check
+      namespace: <service namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
+      name: cs-db-deployment
+      namespace: <service namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: platform-identity-provider
+      nameSelector: platform-identity-provider
+      namespace: <service namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: platform-auth-service
+      nameSelector: platform-auth-service
+      namespace: <service namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: platform-identity-management
+      nameSelector: platform-identity-management
+      namespace: <service namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
+      name: cs-db-data
+      namespace: <service namespace>
+      onError: fail
+      ops:
+        - command: |
+            ["/bin/bash", "-c", "/cs-db/br_cs-db.sh backup <service namespace>"]
+          container: cs-db-br
+          name: cs-db-backup-pre
+          timeout: 600
+        - command: |
+            ["/bin/bash", "-c", "rm -rf /cs-db/cs-db-backup/database"]
+          container: cs-db-br
+          name: cs-db-backup-post
+          timeout: 600
+        - command: |
+            ["/bin/bash", "-c", "sleep 120 && /cs-db/br_cs-db.sh restore <service namespace>"]
+          container: cs-db-br
+          name: restore
+          timeout: 2000
+      selectResource: deployment
+      type: exec
+    - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
+      name: cpfs-util
+      namespace: <operator namespace>
+      onError: fail
+      ops:
+        - command: |
+            ["/bin/bash", "-c", "/scripts/velero/schedule/deploy-br-resources.sh -c --im --services-ns <service namespace>"]
+          container: cpfs-util
+          name: cleanup-cs-db-br-resources
+          timeout: 600
+      selectResource: pod
+      type: exec
+  workflows:
+    - failOn: any-error
+      name: backup
+      sequence:
+        - hook: cs-db-data/cs-db-backup-pre
+        - group: cs-db-br-resources
+        - group: cs-db-volume
+        - hook: cs-db-data/cs-db-backup-post
+    - failOn: any-error
+      name: restore
+      sequence:
+        - hook: cpfs-util/cleanup-cs-db-br-resources
+        - hook: common-service-db-check/podReady
+        - group: cs-db-pre-deploy
+        - group: cs-db-volume
+        - group: cs-db-deployment
+        - hook: cs-db-deployment/podReady
+        - hook: platform-identity-management/podReady
+        - hook: platform-auth-service/podReady
+        - hook: platform-identity-provider/podReady
+        - hook: cs-db-data/restore

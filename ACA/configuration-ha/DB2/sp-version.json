@@ -1,0 +1,8 @@
+{
+    "BUILD_ID": "42",
+    "BUILD_DATE": "2024-11-26T16:11:48-0800",
+    "GIT_COMMIT": "d4d6135f1a723d915eb06d842d72d7a7aa12b6fa",
+    "GIT_BRANCH": "master",
+    "RELEASE_BASE": "24.0.1",
+    "DB_SCHEMA_VERSION": "24.0.1"
+}

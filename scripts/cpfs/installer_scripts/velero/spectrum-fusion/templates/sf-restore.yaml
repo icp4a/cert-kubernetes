@@ -1,0 +1,23 @@
+apiVersion: data-protection.isf.ibm.com/v1alpha1
+kind: Restore
+metadata:
+  name: <restore name>
+  namespace: ibm-spectrum-fusion-ns
+  finalizers:
+    - restore
+  labels:
+    dp.isf.ibm.com/application-name: <application name>
+    dp.isf.ibm.com/backuppolicy-name: <backup policy name>
+    dp.isf.ibm.com/backupstoragelocation-name: <backup storage location name>
+    dp.isf.ibm.com/provider-name: isf-backup-restore
+spec:
+  backup: <backup name>
+  objectsToRestore:
+    RESOURCES:
+      - ALL
+    v1/persistentvolumeclaim:
+      - <operator_ns>/setup-tenant-job-pvc
+      - <services_ns>/cs-db-backup-pvc
+      - <services_ns>/zen5-backup-pvc
+      - <lsr_ns>/lsr-backup-pvc
+  targetCluster: <Cluster CR name only for restores to spoke cluster>

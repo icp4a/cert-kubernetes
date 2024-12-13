@@ -1,0 +1,17 @@
+apiVersion: turbonomic.com/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: platformapis.operator.ibm.com
+  labels:
+    component: cpfs
+spec:
+  resourceMappings:
+    - srcResourceSpec:
+        kind: Deployment
+        componentNames:
+          - platform-api
+      resourceMappingTemplates:
+        - srcPath: .spec.template.spec.containers[?(@.name=="audit-service")].resources
+          destPath: .spec.auditService.resources
+        - srcPath: .spec.template.spec.containers[?(@.name=="platform-api")].resources
+          destPath: .spec.platformApi.resources

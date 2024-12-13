@@ -1,0 +1,380 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  name: cs-recipe
+  namespace: ibm-spectrum-fusion-ns
+spec:
+  appType: common-service
+  groups:
+    - includeClusterResources: true
+      includedResourceTypes:
+        - secrets
+        - certificates.cert-manager.io
+        - issuers.cert-manager.io
+        - clusterissuers.cert-manager.io
+        - certmanagerconfigs.operator.ibm.com
+        - customresourcedefinitions.apiextensions.k8s.io
+      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
+      name: cert-manager-resources
+      type: resource
+    - backupRef: cert-manager-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - secrets
+        - certificates.cert-manager.io
+        - issuers.cert-manager.io
+        - clusterissuers.cert-manager.io
+        - certmanagerconfigs.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
+      name: cert-manager-workload-resources
+      type: resource
+    - backupRef: cert-manager-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - customresourcedefinitions.apiextensions.k8s.io
+      name: cert-manager-crd
+      type: resource
+    - labelSelector: foundationservices.cloudpak.ibm.com=licensing
+      name: licensing-resources
+      type: resource
+    - includedResourceTypes:
+        - catalogsources.operators.coreos.com
+      labelSelector: foundationservices.cloudpak.ibm.com=catalog
+      name: common-services-catalogs
+      type: resource
+    - includedNamespaces:
+        - openshift-config
+      includedResourceTypes:
+        - secrets
+      labelSelector: foundationservices.cloudpak.ibm.com=pull-secret
+      name: pull-secret
+      type: resource
+    - backupRef: pull-secret
+      includedNamespaces:
+        - openshift-config
+      includedResourceTypes:
+        - secrets
+      labelSelector: foundationservices.cloudpak.ibm.com=pull-secret
+      name: ow-pull-secret
+      restoreOverwriteResources: true
+      type: resource
+    - includedResourceTypes:
+        - configmaps
+      labelSelector: foundationservices.cloudpak.ibm.com=configmap
+      name: common-services-configmaps
+      type: resource
+    - includedResourceTypes:
+        - roles
+        - rolebindings
+        - serviceaccounts
+      labelSelector: foundationservices.cloudpak.ibm.com=permissions
+      name: cs-operator-permissions
+      type: resource
+    - includeClusterResources: true
+      labelSelector: foundationservices.cloudpak.ibm.com=namespace
+      name: common-services-namespace
+      type: resource
+    - includedResourceTypes:
+        - operatorgroups.operators.coreos.com
+      labelSelector: foundationservices.cloudpak.ibm.com=operatorgroup
+      name: common-services-operatorgroups
+      type: resource
+    - includedResourceTypes:
+        - subscriptions.operators.coreos.com
+      labelSelector: foundationservices.cloudpak.ibm.com=subscription
+      name: common-services-subscriptions
+      type: resource
+    - includedResourceTypes:
+        - subscriptions.operators.coreos.com
+      labelSelector: foundationservices.cloudpak.ibm.com=singleton-subscription
+      name: singleton-subscriptions
+      type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        - customresourcedefinitions.apiextensions.k8s.io
+      labelSelector: foundationservices.cloudpak.ibm.com=crd
+      name: commonservice-crd
+      type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        - customresourcedefinitions.apiextensions.k8s.io
+      labelSelector: foundationservices.cloudpak.ibm.com=crd
+      name: nss-crd
+      type: resource
+    - includedResourceTypes:
+        - commonservices.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=commonservice
+      name: commonservice-cr
+      type: resource
+    - includedResourceTypes:
+        - namespacescopes.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=nss
+      name: nss-cr
+      type: resource
+    - includedResourceTypes:
+        - operandrequests.operator.ibm.com
+        - operandconfigs.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=operand
+      name: odlm-resources
+      type: resource
+    - backupRef: odlm-resources
+      includedResourceTypes:
+        - operandrequests.operator.ibm.com
+        - operandconfigs.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=operand
+      name: operand-resources
+      restoreOverwriteResources: true
+      type: resource
+    - labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
+      name: zen-volume
+      type: volume
+    - includeClusterResources: true
+      includedResourceTypes:
+        - deployments
+        - serviceaccount
+        - role
+        - rolebinding
+        - configmaps
+      labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
+      name: zen-br-resources
+      type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        - zenservices.zen.cpd.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=zen
+      name: zen
+      type: resource
+    - backupRef: zen
+      includeClusterResources: true
+      includedResourceTypes:
+        - zenservices.zen.cpd.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=zen
+      name: zen-instance
+      type: resource
+    - backupRef: zen-br-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - serviceaccount
+        - role
+        - rolebinding
+        - configmaps
+      name: zen-pre-deploy
+      type: resource
+    - backupRef: zen-br-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - deployments
+      name: zen-deployment
+      type: resource
+    - labelSelector: foundationservices.cloudpak.ibm.com=mongo-data
+      name: mongo-volume
+      type: volume
+    - includedResourceTypes:
+        - deployments
+      labelSelector: foundationservices.cloudpak.ibm.com=mongo-data
+      name: mongo-deployment
+      type: resource
+  hooks:
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 1200
+      labelSelector: app.kubernetes.io/name=operand-deployment-lifecycle-manager
+      name: odlm-check
+      namespace: <operator namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 1200
+      type: check
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      labelSelector: app.kubernetes.io/name=cert-manager
+      name: cert-manager-operator-check
+      namespace: ibm-cert-manager
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: cert-manager-webhook-check
+      nameSelector: cert-manager-webhook
+      namespace: ibm-cert-manager
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 1200
+      labelSelector: 'k8s.enterprisedb.io/cluster=zen-metastore-edb,role=primary'
+      name: zen-metastore-edb-check
+      namespace: <operator namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 1200
+      type: check
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
+      name: zen5-deployment
+      namespace: <operator namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
+      name: zen5-data
+      namespace: <operator namespace>
+      onError: fail
+      ops:
+        - command: |
+            ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh <operator namespace>"]
+          container: zen5-backup-job
+          name: backup
+          timeout: 600
+        - command: |
+            ["/bin/bash", "-c", "/zen5/restore_zen5.sh <operator namespace> <zenservice name>"]
+          container: zen5-backup-job
+          name: restore
+          timeout: 3600
+      selectResource: pod
+      type: exec
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: platform-identity-provider
+      nameSelector: platform-identity-provider
+      namespace: <operator namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: platform-auth-service
+      nameSelector: platform-auth-service
+      namespace: <operator namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: platform-identity-management
+      nameSelector: platform-identity-management
+      namespace: <operator namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      labelSelector: foundationservices.cloudpak.ibm.com=mongo-data
+      name: mongo-deployment
+      namespace: <operator namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - labelSelector: foundationservices.cloudpak.ibm.com=mongo-data
+      name: mongo-data
+      namespace: <operator namespace>
+      onError: fail
+      ops:
+        - command: |
+            ["/bin/bash","-c", "'rm -rf /dump/dump/*'; cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongodump --oplog --out /dump/dump --host mongodb:$MONGODB_SERVICE_PORT --username $ADMIN_USER --password $ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem"]
+          container: mongodb-backup
+          name: backup
+          timeout: 600
+        - command: |
+            ["/bin/bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --db platform-db --host mongodb:$MONGODB_SERVICE_PORT --username $ADMIN_USER --password $ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem /dump/dump/platform-db --drop"]
+          container: mongodb-backup
+          name: restore
+          timeout: 3600
+      selectResource: pod
+      type: exec
+  workflows:
+    - failOn: any-error
+      name: backup
+      sequence:
+        - hook: mongo-data/backup
+        - group: mongo-volume
+        - group: mongo-deployment
+        - hook: zen5-data/backup
+        - group: zen-volume
+        - group: zen
+        - group: zen-br-resources
+        - group: common-services-namespace
+        - group: pull-secret
+        - group: common-services-catalogs
+        - group: common-services-operatorgroups
+        - group: common-services-configmaps
+        - group: commonservice-crd
+        - group: commonservice-cr
+        - group: cs-operator-permissions
+        - group: singleton-subscriptions
+        - group: cert-manager-resources
+        - group: licensing-resources
+        - group: common-services-subscriptions
+        - group: cert-manager-workload-resources
+        - group: odlm-resources
+        - group: operand-resources
+    - failOn: any-error
+      name: restore
+      sequence:
+        - group: common-services-namespace
+        - group: pull-secret
+        - group: ow-pull-secret
+        - group: common-services-catalogs
+        - group: common-services-operatorgroups
+        - group: common-services-configmaps
+        - group: commonservice-crd
+        - group: cert-manager-crd
+        - group: singleton-subscriptions
+        - group: commonservice-cr
+        - hook: cert-manager-operator-check/podReady
+        - hook: cert-manager-webhook-check/podReady
+        - group: cert-manager-workload-resources
+        - group: licensing-resources
+        - group: common-services-subscriptions
+        - hook: odlm-check/podReady
+        - group: odlm-resources
+        - group: operand-resources
+        - group: mongo-volume
+        - group: mongo-deployment
+        - hook: mongo-deployment/podReady
+        - hook: platform-identity-management/podReady
+        - hook: platform-auth-service/podReady
+        - hook: platform-identity-provider/podReady
+        - hook: mongo-data/restore
+        - group: zen-instance
+        - hook: zen-metastore-edb-check/podReady
+        - group: zen-pre-deploy
+        - group: zen-volume
+        - group: zen-deployment
+        - hook: zen5-deployment/podReady
+        - hook: zen5-data/restore

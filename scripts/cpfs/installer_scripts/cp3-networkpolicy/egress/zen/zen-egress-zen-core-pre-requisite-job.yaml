@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-zen-core-pre-requisite-job
+  namespace: "zenNamespace"
+  labels:
+    component: cpfs3
+spec:
+  podSelector:
+    matchLabels:
+      component: "zen-core-pre-requisite-job"
+  policyTypes:
+  - Egress
+  egress:
+  - {}
