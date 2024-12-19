@@ -706,7 +706,8 @@ function update_secret_template_passwords(){
         if [[ "$machine_lower" == "linux" ]]; then
             temp_val=$(echo -n "$password_value" | base64 -w 0 )
         else
-            temp_val=$(echo "$password_value" | base64 )
+            # printf makes sure there is no addition of newline character in certain cases
+            temp_val=$(printf "%s" "$password_value" | base64 )
         fi
     fi
     # Remove the field from stringData and add it to data with the new encoded value
