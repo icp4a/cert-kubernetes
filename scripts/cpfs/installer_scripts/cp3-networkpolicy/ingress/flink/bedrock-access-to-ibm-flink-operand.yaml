@@ -12,7 +12,9 @@ spec:
       - protocol: TCP
         port: 443
       - protocol: TCP
-        port: 9443
+        port: 8081
+      - protocol: TCP
+        port: 9081
       from:
         - podSelector: {}
   policyTypes:

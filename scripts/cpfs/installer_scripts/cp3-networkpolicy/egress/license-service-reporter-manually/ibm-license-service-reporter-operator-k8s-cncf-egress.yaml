@@ -1,0 +1,23 @@
+###
+# DEFAULT KUBERNETES SERVICE:
+# > kubectl describe service kubernetes
+###
+
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: ibm-license-service-reporter-operator-kubernetes-api-egress
+  namespace: ibm-licensing-namespace
+spec:
+  podSelector:
+    matchLabels:
+      name: ibm-license-service-reporter-operator
+  egress:
+    - ports:
+        - protocol: TCP
+          port: <$TargetPort> # TargetPort from the DEFAULT KUBERNETES SERVICE
+      to:
+        - ipBlock:
+            cidr: <IPs>/32 # IPs from the DEFAULT KUBERNETES SERVICE
+  policyTypes:
+    - Egress

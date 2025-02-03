@@ -18,7 +18,7 @@ OPERATOR_NS=""
 SERVICES_NS=""
 NS_LIST=""
 CONTROL_NS=""
-CHANNEL="v4.6"
+CHANNEL="v4.10"
 ODLM_CHANNEL="v4.3"
 MAINTAINED_CHANNEL="v4.2"
 SOURCE="opencloud-operators"
@@ -164,6 +164,11 @@ function main() {
         for ns in ${NS_LIST//,/ }; do
             ${BASE_DIR}/common/authorize-namespace.sh $ns -to $OPERATOR_NS
         done
+
+        # In the case that CPFS 4.x accidentally delete the NamespaceScope CR
+        # due to misunderstanding simple topology or All namespaces topology(namespace-scope ConfigMap is not updated in time)
+        # Re-Create/Update NamespaceScope CR common-service after NSS operator upgrade.
+        update_nss_kind "$OPERATOR_NS" "$NS_LIST"
 
         accept_license "namespacescope" "$OPERATOR_NS" "common-service"
     fi
@@ -361,16 +366,15 @@ function pre_req() {
     
     # When Common Service channel info is less then maintained channel, update maintained channel for backward compatibility e.g., v4.1 and v4.0
     # Otherwise, maintained channel is pinned at v4.2
-    local channel_numeric="${CHANNEL#v}"
-    local maintained_channel_numeric="${MAINTAINED_CHANNEL#v}"
-    if awk -v num="$channel_numeric" "BEGIN { exit !(num < $maintained_channel_numeric) }"; then
+    IFS='.' read -r channel_major channel_minor <<< "${CHANNEL#v}"
+    IFS='.' read -r maintained_major maintained_minor <<< "${MAINTAINED_CHANNEL#v}"
+
+    if (( channel_major < maintained_major )) || { (( channel_major == maintained_major )) && (( channel_minor < maintained_minor )); }; then
         MAINTAINED_CHANNEL="$CHANNEL"
     fi
 
     # When Common Service channel is less than v4.5, use maintained channel for ODLM channel
-    local channel_numeric="${CHANNEL#v}"
-    local odlm_channel_numeric="${ODLM_CHANNEL#v}"
-    if awk -v num="$channel_numeric" "BEGIN { exit !(num < 4.6) }"; then
+    if (( channel_major < 4 )) || { (( channel_major == 4 )) && (( channel_minor < 5 )); }; then
         ODLM_CHANNEL="$MAINTAINED_CHANNEL"
     fi
 }

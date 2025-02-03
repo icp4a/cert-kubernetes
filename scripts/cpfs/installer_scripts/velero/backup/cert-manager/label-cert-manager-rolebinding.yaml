@@ -1,0 +1,12 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: label-cert-manager-job
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: label-cert-manager-job
+subjects:
+- kind: ServiceAccount
+  name: label-cert-manager-job
+  namespace: <operator namespace>

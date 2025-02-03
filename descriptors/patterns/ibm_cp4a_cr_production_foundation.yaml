@@ -92,8 +92,7 @@ spec:
     ## the possible values are: non-production and production and if not set, the license will
     ## be defaulted to production.  This value could be different from the other licenses in the CR.
     sc_deployment_license: "<Required>"
-
-
+      
     ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or
     ## know the reason to change this value, please leave the default value.
     sc_deployment_context: "CP4A"
@@ -129,8 +128,10 @@ spec:
     ## Optional: You can specify a profile size for CloudPak - valid values are small,medium,large - default is small.
     sc_deployment_profile_size: "small"
 
-    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-    # sc_deployment_hostname_suffix: "{{ meta.namespace }}.<Required>"
+    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <router-canonical-hostname> when not defined.
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=scp-shared-configuration
+    ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
+    #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname>  or your own custom domain, e.g., `.acme.com`"
 
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false

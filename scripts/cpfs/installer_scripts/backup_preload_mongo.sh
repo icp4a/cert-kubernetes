@@ -1426,6 +1426,8 @@ data:
 type: Opaque
 EOF
     #icp-mongodb-metrics-secret.yaml
+    metrics_pass=$(${OC} get secret icp-mongodb-metrics -n $FROM_NAMESPACE -o=jsonpath='{.data.password}')
+    metrics_user=$(${OC} get secret icp-mongodb-metrics -n $FROM_NAMESPACE -o=jsonpath='{.data.user}')
     cat << EOF | ${OC} apply -f -
 kind: Secret
 apiVersion: v1
@@ -1438,8 +1440,8 @@ metadata:
     app.kubernetes.io/name: icp-mongodb
     release: mongodb
 data:
-  password: aWNwbWV0cmljcw==
-  user: bWV0cmljcw==
+  password: $metrics_pass
+  user: $metrics_user
 type: Opaque
 EOF
     #mongo-rbac.yaml

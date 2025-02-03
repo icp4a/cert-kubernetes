@@ -638,7 +638,7 @@ function check_dbserver_name_valid(){
             echo -e "***************** example *****************"
             echo -e "if DB_SERVER_LIST=\"DBSERVER1\""
             echo -e "You need to change"
-            echo -e "<DB_SERVER_NAME>.GCD_DB_NAME=\"GCDDB\""
+            echo -e "<DB_ALIAS_NAME>.GCD_DB_NAME=\"GCDDB\""
             echo -e "to"
             echo -e "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
             echo -e "***************** example *****************"

@@ -46,7 +46,7 @@ spec:
     sc_deployment_type: Starter
 
     ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that corresponds to a user ID
-    sc_run_as_user: 
+    sc_run_as_user:
 
     ## This is the deployment platform supported for CP4A and the possible values are: ROKS, OCP, and other (which includes all Certified Kubernetes platforms)
     sc_deployment_platform: 
@@ -71,8 +71,10 @@ spec:
       ## Default are 53,5353 for OCP and ROKS
       sc_dns_port:
 
-    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-    # sc_deployment_hostname_suffix:
+    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <router-canonical-hostname> when not defined.
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=scp-shared-configuration
+    ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
+    #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname>  or your own custom domain, e.g., `.acme.com`"
     
     ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers, 
     ## all the files must be compressed in a single file.

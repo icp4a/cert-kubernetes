@@ -102,6 +102,7 @@ ODM_DB_SSL_SECRET_FILE=${ODM_SECRET_FOLDER}/ibm-odm-db-ssl-cert-secret.sh
 
 ADP_SECRET_FOLDER=${SECRET_FILE_FOLDER}/adp
 ADP_BASE_DB_SECRET_FILE=${ADP_SECRET_FOLDER}/ibm-aca-db-secret.sh
+ADP_BASE_DB_SECRET_YAML_FILE=${ADP_SECRET_FOLDER}/ibm-aca-db-secret.yaml
 ADP_GIT_SSL_SECRET_FILE=${ADP_SECRET_FOLDER}/ibm-adp-git-connection-secret.sh
 ADP_CDRA_SSL_SECRET_FILE=${ADP_SECRET_FOLDER}/ibm-adp-cdra-route-secret.sh
 ADP_SECRET_FILE=${ADP_SECRET_FOLDER}/ibm-adp-secret.yaml
@@ -152,33 +153,37 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 # Release/Patch version for CP4BA
 # CP4BA_RELEASE_BASE is for fetch content/foundation operator pod, only need to change for major release.
 CP4BA_RELEASE_BASE="24.0.0"
-CP4BA_PATCH_VERSION="IF003"
+CP4BA_PATCH_VERSION="IF004"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v24.0.3"
+CP4BA_CSV_VERSION="v24.0.4"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
 CP4BA_CHANNEL_VERSION="v24.0"
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.6.6"
+CS_OPERATOR_VERSION="v4.6.9"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
 CS_CHANNEL_VERSION="v4.6"
 # CERT_LICENSE_OPERATOR_VERSION is for checking IBM cert-manager/licensing operator upgrade status, need to update for each IFIX
-CERT_LICENSE_OPERATOR_VERSION="v4.2.8"
+CERT_LICENSE_OPERATOR_VERSION="v4.2.11"
 # CERT_LICENSE_CHANNEL_VERSION is for for IBM cert-manager/licensing script -c option, need to update for each IFIX
 CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
-CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-6-6"
+CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-6-9"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v5.1.8"
+ZEN_OPERATOR_VERSION="v5.1.11"
 # BTS_CHANNEL_VERSION is for for BTS, need to update for each IFIX
-BTS_CHANNEL_VERSION="v3.34"
-# BTS_CATALOG_VERSION is for BTS 3.34.0.
-BTS_CATALOG_VERSION="bts-operator-v3-34-0"
+BTS_CHANNEL_VERSION="v3.35"
+# BTS_CATALOG_VERSION is for BTS 3.35.1.
+BTS_CATALOG_VERSION="bts-operator-v3-35-1"
 # REQUIREDVER_BTS is for checking bts operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_BTS="3.34.0"
+REQUIREDVER_BTS="3.35.1"
 # REQUIREDVER_POSTGRESQL is for checking postgresql operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_POSTGRESQL="1.18.12"
+REQUIREDVER_POSTGRESQL="1.22.7"
 # EVENTS_OPERATOR_VERSION is for checking IBM Events operator upgrade status, need to update for each IFIX
 EVENTS_OPERATOR_VERSION="v5.0.1"
+# List of CP4BA versions that are supported for upgrade to $CP4BA_CSV_VERSION
+MINIMUM_SUPPORTED_UPGRADE_VERSIONS=("21.3.31" "22.2.6" "23.2.6" )
+#DBADCLD-162192. This is a list of minimum 21.0.3 CP4BA version that BAS (authoring) supports for upgrade due to schema changes.
+MINIMUM_SUPPORTED_BAW_AUTHORING_UPGRADE_VERSIONS=("21.3.31" "21.3.32" "21.3.33" "21.3.34" "21.3.39" )
 
 
 CERT_MANAGER_PROJECT="ibm-cert-manager"
@@ -523,6 +528,13 @@ function echo_impl() {
     echo -e "\x1B[1${PREFIX}${MSG}\x1B[0m"
 }
 
+## <https://jsw.ibm.com/browse/DBACLD-159357> - Introduced new function to deal with pressing control keys to continune, need to clear buffer before and after reading user input.
+function prompt_press_any_key_to_continue() {
+    while read -r -t 1; do :; done  # Clear the buffer
+    read -rsn1 -p "Press any key to continue ${1}..."; echo # wait for user input
+    read -r -t 1 # Clear any remaining escape seqence
+}
+
 ############################
 # check OCP version
 ############################
@@ -535,7 +547,6 @@ function check_platform_version(){
         # PLATFORM_VERSION="3.11"
         PLATFORM_VERSION="4.4OrLater"
         echo -e "\x1B[1;31mIMPORTANT: Only support OCp4.4 or Later, exit...\n\x1B[0m"
-        read -rsn1 -p"Press any key to continue";echo
         exit 1
     fi
 }
@@ -633,6 +644,79 @@ function decode_xor_password() {
     echo $encoded
   fi
 }
+
+# Function to encode the certificate contents to a base64 string
+encode_crt_file_to_base64() {
+    local crt_file="$1"
+    if [[ ! -f "$crt_file" ]]; then
+        echo "File not found: $crt_file"
+        return 1
+    fi
+
+    # Read and base64 encode the .crt file
+    local machine_lower=$(echo "${machine}" | tr '[:upper:]' '[:lower:]')
+    if [[ "$machine_lower" == "linux" ]]; then
+        base64_encoded_content=$(cat "$crt_file" | base64 -w 0)
+    else
+        base64_encoded_content=$(cat "$crt_file" | base64 )
+    fi
+    
+    echo "$base64_encoded_content"
+}
+
+function check_single_quotes_password() {
+    local temp_pwd=$1
+    local variable_name=$2
+    temp_pwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$temp_pwd")
+    variable_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$variable_name")
+    if [[ $temp_pwd == *"'"* ]]; then
+        fail "Found single quotes (') in \"$variable_name\". Exiting..."
+        warning "DO NOT use special character single quotes (') in the password."
+        exit 1
+    fi
+}
+
+
+# For https://jsw.ibm.com/browse/DBACLD-157020
+# Function that base64 encodes the password in the generated secret template and moves it to the data section of the template
+# We cant directy use the base64 value in the stringData field as when the secret template is applied the cluster automatically base64 encodes it again and this will result in a wrong password being used by the operator code
+# This was code that was repeating in numerous places so it was made a common function
+# password_value is the value to base64 and update in the secret template
+# secret template field is the property field in the secret template who's value will be the value in password_value
+# secret_file is the name of the secret template file. (this file is already created prior to this function call)
+# new_secret_template_field is the name of a new secret field to be added. This is only passed for the fncm secret where we add password fields to the existing template
+# for new_secret_template_field to be used, secret template field must be osDBpassword as the current logic will append the new field after osDBpassword . 
+# Other than for fncm secret the new_secret_template_field field is empty and not needed
+function update_secret_template_passwords(){
+    local password_value=$1
+    local secret_template_field=$2
+    local secret_file=$3
+    local new_secret_template_field=$4
+    # Checking if the password in the property file is base64 encoded and if so we just remove the prefix.
+    # IF the password is plaintext we base64 encode it
+
+    if [[ "${password_value:0:8}" == "{Base64}"  ]]; then
+        temp_val=$(echo "$password_value" | sed -e "s/^{Base64}//" )
+    else
+        local machine_lower=$(echo "${machine}" | tr '[:upper:]' '[:lower:]')
+        if [[ "$machine_lower" == "linux" ]]; then
+            temp_val=$(echo -n "$password_value" | base64 -w 0 )
+        else
+            # printf makes sure there is no addition of newline character in certain cases
+            temp_val=$(printf "%s" "$password_value" | base64 )
+        fi
+    fi
+    # Remove the field from stringData and add it to data with the new encoded value
+    # Use yq to delete and add the field in a more compatible way without eval
+    if [[ "$secret_template_field" != "osDBPassword" && "$secret_template_field" != "mongoPwd" ]]; then
+        ${YQ_CMD} w -i "$secret_file" "data.$secret_template_field" "$temp_val"
+        ${YQ_CMD} d -i "$secret_file" "stringData.$secret_template_field"
+    else
+        ${YQ_CMD} w -i "$secret_file" "data.$new_secret_template_field" "$temp_val"
+    fi
+}
+
+
 # function to create a userpassword dictionary string to pass to the ldap validation jar
 # Sample format - username:testuser,password:testpassword;username:testuser2,password:;
 # All values are base64 encoded so that all special characters are parsed correctly

@@ -118,6 +118,7 @@ spec:
         secret:
           secretName: mongodb-root-ca-cert
       restartPolicy: OnFailure
+      serviceAccountName: ibm-mongodb-operand
 EOF
   sleep 15s
 

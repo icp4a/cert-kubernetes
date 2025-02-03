@@ -34,7 +34,7 @@ spec:
     ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or
     ## know the reason to change this value, please leave the default value.
     sc_deployment_context: "CP4A"
-
+  
     ## All CP4A components must use/share the image_pull_secrets to pull images
     image_pull_secrets:
     - ibm-entitlement-key
@@ -56,8 +56,10 @@ spec:
     ## Optional: You can specify a profile size for CloudPak - valid values are small,medium,large - default is small.
     sc_deployment_profile_size: "small"
 
-    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-    # sc_deployment_hostname_suffix: "{{ meta.namespace }}.<Required>"
+    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <router-canonical-hostname> when not defined.
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=scp-shared-configuration
+    ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
+    #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname>  or your own custom domain, e.g., `.acme.com`"
 
     ## CP4A patterns or capabilities to be deployed.  This CR represents the "workflow-process-service" pattern, which includes the following
     ## mandatory components: bas(Business Automation Studio) and optional components: bai

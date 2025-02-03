@@ -11,8 +11,6 @@ spec:
     - ports:
       - protocol: TCP
         port: 443
-      - protocol: TCP
-        port: 6443
       to:
       - podSelector:
           matchLabels:
@@ -36,9 +34,9 @@ spec:
       - protocol: TCP
         port: 443
       - protocol: TCP
-        port: 8081
+        port: 2112
       - protocol: TCP
-        port: 9081
+        port: 9200
       to:
       - podSelector: {}
   policyTypes:

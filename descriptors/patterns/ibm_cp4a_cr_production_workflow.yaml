@@ -50,7 +50,7 @@ spec:
     ## The optional components are: bai,elasticsearch,kafka
     ## To enable Kafka services in your workflow automations, add kafka to sc_optional_components.
     sc_optional_components:
-
+      
     ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
     ## This secret is also used by Workflow and BAStudio to store AES encryption key.
     encryption_key_secret: ibm-iaws-shared-key-secret

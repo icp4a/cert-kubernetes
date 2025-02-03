@@ -24,6 +24,10 @@ LSR_NAMESPACE="ibm-lsr"
 
 # Catalog sources and namespace
 ENABLE_PRIVATE_CATALOG=0
+ENABLE_CERT_MANAGER=0
+ENABLE_LICENSING=0
+ENABLE_LSR=0
+ENABLE_DEEFAULT_CS=0
 CS_SOURCE_NS="openshift-marketplace"
 CM_SOURCE_NS="openshift-marketplace"
 LIS_SOURCE_NS="openshift-marketplace"
@@ -45,14 +49,114 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 source ${BASE_DIR}/env.properties
 
 function main() {
+    parse_arguments "$@"
     pre_req
     label_catalogsource
     label_ns_and_related 
     label_configmap
     label_subscription
-    label_lsr
+    if [[ $ENABLE_LSR -eq 1 ]]; then
+        label_lsr
+    fi
     label_cs
+    if [[ $SERVICES_NS != "" ]]; then
+        label_nss
+    fi
+    label_mcsp
     success "Successfully labeled all the resources"
+}
+
+function print_usage(){ #TODO update usage definition
+    script_name=`basename ${0}`
+    echo "Usage: ${script_name} [OPTIONS]"
+    echo ""
+    echo "Label Bedrock resources to prepare for Backup."
+    echo "Operator namespace is always required. If using a separation of duties topology, make sure to include services and tethered namespaces."
+    echo "This script assumes the following:"
+    echo "    * An existing CPFS instance installed in the namespaces entered as parameters."
+    echo "    * Filled in required variables in the accompanying env.properties file"
+    echo ""
+    echo "Options:"
+    echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH. Can also be set in env.properties."
+    echo "   --operator-ns                  Required. Namespace where Bedrock operators are deployed."
+    echo "   --services-ns                  Optional. Namespace where Bedrock operands are deployed. Only optional if not using Separation of Duties topology."
+    echo "   --tethered-ns                  Optional. Comma-delimitted list of tethered namespaces using Bedrock services located in operator and services namespaces."
+    echo "   --control-ns                   Optional. Only necessary if tenant included is Bedrock LTSR (v3.19.x or 3.23.x)."
+    echo "   --cert-manager-ns              Optional. Specifying will enable labeling of the cert manager operator. Permissions may need to be updated to include the namespace."
+    echo "   --licensing-ns                 Optional. Specifying will enable labeling of the licensing operator and its resources. Permissions may need to be updated to include the namespace."
+    echo "   --lsr-ns                       Optional. Specifying will enable labeling of the license service reporter operator and its resources. Permissions may need to be updated to include the namespace."
+    echo "   --enable-private-catalog       Optional. Specifying will look for catalog sources in the operator namespace. If enabled, will look for cert manager, licensing, and lsr catalogs in their respective namespaces."
+    echo "   --enable-default-catalog-ns    Optional. Specifying will label all IBM published catalog sources in openshift-marketplace namespace."
+    echo "   --additional-catalog-sources   Optional. Comma-delimted list of non-default catalog sources to be labeled."
+    echo "   -h, --help                     Print usage information"
+    echo ""
+    
+}
+
+function parse_arguments() {
+    script_name=`basename ${0}`
+    echo "All arguments passed into the ${script_name}: $@"
+    echo ""
+
+    # process options
+    while [[ "$@" != "" ]]; do
+        case "$1" in
+        --oc)
+            shift
+            OC=$1
+            ;;
+        --operator-ns)
+            shift
+            OPERATOR_NS=$1
+            ;;
+        --services-ns)
+            shift
+            SERVICES_NS=$1
+            ;;
+        --tethered-ns)
+            shift
+            TETHERED_NS=$1
+            ;;
+        --control-ns)
+            shift
+            CONTROL_NS=$1
+            ;;
+        --cert-manager-ns)
+            shift
+            CERT_MANAGER_NAMESPACE=$1
+            ENABLE_CERT_MANAGER=1
+            ;;
+        --licensing-ns)
+            shift
+            LICENSING_NAMESPACE=$1
+            ENABLE_LICENSING=1
+            ;;
+        --lsr-ns)
+            shift
+            LSR_NAMESPACE=$1
+            ENABLE_LSR=1
+            ;;
+        --enable-private-catalog)
+            ENABLE_PRIVATE_CATALOG=1
+            ;;
+        --enable-default-catalog-ns)
+            ENABLE_DEEFAULT_CS=1
+            ;;
+        --additional-catalog-sources)
+            shift
+            ADDITIONAL_SOURCES=$1
+            ;;
+        -h | --help)
+            print_usage
+            exit 1
+            ;;
+        *)
+            echo "Entered option $1 not supported. Run ./${script_name} -h for script usage info."
+            ;;
+        esac
+        shift
+    done
+    echo ""
 }
 
 function pre_req(){
@@ -90,15 +194,25 @@ function label_catalogsource() {
         LIS_SOURCE_NS=$LICENSING_NAMESPACE
         LSR_SOURCE_NS=$LSR_NAMESPACE
 
-        private_namespaces="$OPERATOR_NS,$CERT_MANAGER_NAMESPACE,$LICENSING_NAMESPACE,$LSR_NAMESPACE"
+        private_namespaces="$OPERATOR_NS"
+        if [[ $ENABLE_CERT_MANAGER -eq 1 ]]; then
+            private_namespaces+=",$CERT_MANAGER_NAMESPACE"
+        fi
+        if [[ $ENABLE_LICENSING -eq 1 ]]; then
+            private_namespaces+=",$LICENSING_NAMESPACE"
+        fi
+        if [[ $ENABLE_LSR -eq 1 ]]; then
+            private_namespaces+=",$LSR_NAMESPACE"
+        fi
         private_namespaces=$(echo "$private_namespaces" | tr ',' '\n')
 
         while IFS= read -r namespace; do
             label_ibm_catalogsources "$namespace"
         done <<< "$private_namespaces"
     fi
-
-    label_ibm_catalogsources "$DEFAULT_SOURCE_NS"
+    if [[ $ENABLE_DEEFAULT_CS -eq 1 ]]; then
+        label_ibm_catalogsources "$DEFAULT_SOURCE_NS"
+    fi
     echo ""
 }
 
@@ -129,7 +243,19 @@ function label_ns_and_related() {
     title "Start to label the namespaces, operatorgroups and secrets... "
     namespaces=$(${OC} get configmap namespace-scope -n $OPERATOR_NS -oyaml | awk '/^data:/ {flag=1; next} /^  namespaces:/ {print $2; next} flag && /^  [^ ]+: / {flag=0}')
     # add cert-manager namespace and licensing namespace and lsr namespace into the list with comma separated
-    namespaces+=",$CONTROL_NS,$CERT_MANAGER_NAMESPACE,$LICENSING_NAMESPACE,$LSR_NAMESPACE"
+    if [[ $CONTROL_NS != "" ]]; then
+        namespaces+=",$CONTROL_NS"
+    fi
+    if [[ $ENABLE_CERT_MANAGER -eq 1 ]]; then
+        namespaces+=",$CERT_MANAGER_NAMESPACE"
+    fi
+    if [[ $ENABLE_LICENSING -eq 1 ]]; then
+        namespaces+=",$LICENSING_NAMESPACE"
+    fi
+    if [[ $ENABLE_LSR -eq 1 ]]; then
+        namespaces+=",$LSR_NAMESPACE"
+    fi
+
     namespaces=$(echo "$namespaces" | tr ',' '\n')
 
     while IFS= read -r namespace; do
@@ -147,6 +273,17 @@ function label_ns_and_related() {
         operand_requests=$(${OC} get operandrequest -n "$namespace" -o custom-columns=NAME:.metadata.name --no-headers)
         # Loop through each OperandRequest name
         while IFS= read -r operand_request; do
+            # Skip all the operandrequest with ownerreference
+            ownerReferences=$(${OC} get operandrequest $operand_request -n "$namespace" -o jsonpath='{.metadata.ownerReferences}')
+            if [[ $ownerReferences != "" ]]; then
+                continue
+            fi
+            # Skip all the operandrequest generate by ODLM
+            control_by_odlm=$(${OC} get operandrequest $operand_request -n "$namespace" --show-labels --no-headers | grep "operator.ibm.com/opreq-control=true" || echo "false")
+            if [[ $control_by_odlm != "false" ]]; then
+                continue
+            fi
+            
             ${OC} label operandrequests $operand_request foundationservices.cloudpak.ibm.com=operand -n "$namespace" --overwrite=true 2>/dev/null
         done <<< "$operand_requests"
 
@@ -160,7 +297,9 @@ function label_ns_and_related() {
 
     done <<< "$namespaces"
 
+    #TODO need to ensure we label this script in the operator namespace as well
     ${OC} label secret ibm-entitlement-key foundationservices.cloudpak.ibm.com=entitlementkey -n $DEFAULT_SOURCE_NS --overwrite=true 2>/dev/null
+    #TODO need to toggle labeling this due to permission issues
     ${OC} label secret pull-secret -n openshift-config foundationservices.cloudpak.ibm.com=pull-secret --overwrite=true 2>/dev/null
     echo ""
 }
@@ -170,7 +309,7 @@ function label_configmap() {
     title "Start to label the ConfigMaps... "
     ${OC} label configmap common-service-maps foundationservices.cloudpak.ibm.com=configmap -n kube-public --overwrite=true 2>/dev/null
     ${OC} label configmap cs-onprem-tenant-config foundationservices.cloudpak.ibm.com=configmap -n $SERVICES_NS --overwrite=true 2>/dev/null
-    ${OC} label configmap platform-auth-idp foundationservices.cloudpak.ibm.com=configmap -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label configmap common-web-ui-config foundationservices.cloudpak.ibm.com=configmap -n $SERVICES_NS --overwrite=true 2>/dev/null
     echo ""
 }
 
@@ -183,9 +322,15 @@ function label_subscription() {
     local lsr_pm="ibm-license-service-reporter-operator"
     
     ${OC} label subscriptions.operators.coreos.com $cs_pm foundationservices.cloudpak.ibm.com=subscription -n $OPERATOR_NS --overwrite=true 2>/dev/null
-    ${OC} label subscriptions.operators.coreos.com $cm_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $CERT_MANAGER_NAMESPACE --overwrite=true 2>/dev/null
-    ${OC} label subscriptions.operators.coreos.com $lis_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LICENSING_NAMESPACE --overwrite=true 2>/dev/null
-    ${OC} label subscriptions.operators.coreos.com $lsr_pm foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
+    if [[ $ENABLE_CERT_MANAGER -eq 1 ]]; then
+        ${OC} label subscriptions.operators.coreos.com $cm_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $CERT_MANAGER_NAMESPACE --overwrite=true 2>/dev/null
+    fi
+    if [[ $ENABLE_LICENSING -eq 1 ]]; then
+        ${OC} label subscriptions.operators.coreos.com $lis_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LICENSING_NAMESPACE --overwrite=true 2>/dev/null
+    fi
+    if [[ $ENABLE_LSR -eq 1 ]]; then
+        ${OC} label subscriptions.operators.coreos.com $lsr_pm foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
+    fi
     echo ""
 }
 
@@ -225,7 +370,35 @@ function label_cs(){
     title "Start to label the CommonService CR... "
     ${OC} label customresourcedefinition commonservices.operator.ibm.com foundationservices.cloudpak.ibm.com=crd --overwrite=true 2>/dev/null
     ${OC} label commonservices common-service foundationservices.cloudpak.ibm.com=commonservice -n $OPERATOR_NS --overwrite=true 2>/dev/null
-    ${OC} label operandconfig common-service foundationservices.cloudpak.ibm.com=operand -n $SERVICES_NS --overwrite=true 2>/dev/null
+    echo ""
+}
+
+function label_nss(){
+    title "Label Namespacescope resources"
+    local nss_pm="ibm-namespace-scope-operator"
+    ${OC} label subscriptions.operators.coreos.com $nss_pm foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label namespacescopes.operator.ibm.com common-service foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label customresourcedefinition namespacescopes.operator.ibm.com foundationservices.cloudpak.ibm.com=nss --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount ibm-namespace-scope-operator foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label configmap namespace-scope foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    if [[ $TETHERED_NS != "" ]]; then
+        for namespace in ${TETHERED_NS//,/ }
+        do
+            ${OC} label role nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $namespace --overwrite=true 2>/dev/null
+            ${OC} label rolebinding nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $namespace --overwrite=true 2>/dev/null
+        done
+    fi
+    echo ""
+}
+
+function label_mcsp(){
+
+    title "Start to label mcsp resources"
+    ${OC} label secret user-mgmt-bootstrap foundationservices.cloudpak.ibm.com=user-mgmt -n $SERVICES_NS --overwrite=true 2>/dev/null
     echo ""
 }
 

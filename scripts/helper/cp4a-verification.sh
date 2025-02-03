@@ -98,58 +98,72 @@ function verify_ldap_connection(){
     msg "Checking connection for LDAP server \"$ldap_server\" using Bind DN \"$ldap_binddn\".."
     output=$(java -Dsemeru.fips=$fips_flag -Djavax.net.ssl.trustStore=/tmp/ldap-truststore.jks -Djavax.net.ssl.trustStorePassword=changeit -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u "ldaps://$ldap_server:$ldap_port" -b "$ldap_basedn" -D "$ldap_binddn" -w "$ldap_binddn_pwd" -additionalvalidation -gdn "$ldap_group_basedn" -upl "$ldap_user_password_list" -gl "$ldap_group_list" -uf "$ldap_user_filter" -gf "$ldap_group_filter" 2>&1)
     retVal_verify_ldap_tmp=$?
-    connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
-    echo "Latency: $connection_time ms"
-    # Check if elapsed time is greater than 10 ms using awk
-    if [[ $(awk 'BEGIN { print ("'$connection_time'" < 10) }') -eq 1 ]]; then
-      echo "The latency is less than 10ms, which is acceptable performance for a simple LDAP operation."
-    elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 10 && "'$connection_time'" < 30) }') -eq 1 ]]; then
-      echo "The latency is between 10ms and 30ms, which exceeds acceptable performance of 10 ms for a simple LDAP operation, but the service is still accessible."
-    elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 30) }') -eq 1 ]]; then
-      echo "The latency exceeds 30ms for a simple LDAP operation, which indicates potential for failures."
-    fi
 
-    [[ retVal_verify_ldap_tmp -ne 0 ]] && \
-    warning "Execute: java -Dsemeru.fips=$fips_flag -Djavax.net.ssl.trustStore=/tmp/ldap-truststore.jks -Djavax.net.ssl.trustStorePassword=changeit -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u \"ldaps://$ldap_server:$ldap_port\" -b \"$ldap_basedn\" -D \"$ldap_binddn\" -w \"******\"" && \
-    fail "Unable to connect to LDAP server \"$ldap_server\" using Bind DN \"$ldap_binddn\", please check configuration in ldap property again."
-    [[ retVal_verify_ldap_tmp -eq 0 ]] && \
-    success "Connected to LDAP \"$ldap_server\" using BindDN:\"$ldap_binddn\" successfuly, PASSED!"
-    echo "\n"
-    info "Review the additional LDAP Validation checks performed on LDAP server \"$ldap_server\" ."
-    echo "\n"
-    # Extract everything from "LDAP Users Summary" until "Total time taken"
-    # /LDAP Users Summary/ {flag=1} starts printing everything from LDAP Users Summary and /Total time taken/ {flag=0} stops printing when Total time taken is found
-    ldap_validation_table=$(echo "$output" | awk '/LDAP Users Summary/ {flag=1} /Total time taken/ {flag=0} flag')
-    echo "$ldap_validation_table"
-    echo "\n"
+    if [[ "$output" == *"Error while binding to LDAP"* ]]; then
+      warning "Execute: java -Dsemeru.fips=$fips_flag -Djavax.net.ssl.trustStore=/tmp/ldap-truststore.jks -Djavax.net.ssl.trustStorePassword=changeit -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u \"ldaps://$ldap_server:$ldap_port\" -b \"$ldap_basedn\" -D \"$ldap_binddn\" -w \"******\"" && \
+      fail "Unable to connect to LDAP server \"$ldap_server\" using Bind DN \"$ldap_binddn\", please check configuration in ldap property again."
+    else
+      # Moving all additional validation checks to be displayed only if we get a successful connection
+      #For https://jsw.ibm.com/browse/DBACLD-158315
+      success "Connected to LDAP \"$ldap_server\" using BindDN:\"$ldap_binddn\" successfuly, PASSED!"
+      printf "\n"
+      connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
+      echo "Latency: $connection_time ms"
+      # Check if elapsed time is greater than 10 ms using awk
+      if [[ $(awk 'BEGIN { print ("'$connection_time'" < 10) }') -eq 1 ]]; then
+        echo "The latency is less than 10ms, which is acceptable performance for a simple LDAP operation."
+      elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 10 && "'$connection_time'" < 30) }') -eq 1 ]]; then
+        echo "The latency is between 10ms and 30ms, which exceeds acceptable performance of 10 ms for a simple LDAP operation, but the service is still accessible."
+      elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 30) }') -eq 1 ]]; then
+        echo "The latency exceeds 30ms for a simple LDAP operation, which indicates potential for failures."
+      fi
+      # Extract everything from "LDAP Users Summary" until "Total time taken"
+      # /LDAP Users Summary/ {flag=1} starts printing everything from LDAP Users Summary and /Total time taken/ {flag=0} stops printing when Total time taken is found
+      # https://jsw.ibm.com/browse/DBACLD-159190
+      # showing the group summary only if grouplist passed to the jar is not empty, One such use case is for an ADS only deployment that requires no ldap group is required to be specified in the property file
+      if [[ ${#ldap_group_list} -eq 0 ]]; then
+        ldap_validation_table=$(echo "$output" | awk '/LDAP Users Summary/ {flag=1} /LDAP Groups Summary/ {flag=0} flag')
+      else
+        ldap_validation_table=$(echo "$output" | awk '/LDAP Users Summary/ {flag=1} /Total time taken/ {flag=0} flag')
+      fi
+      echo "$ldap_validation_table"
+      printf "\n"
+    fi
   else
     msg "Checking connection for LDAP server \"$ldap_server\" using Bind DN \"$ldap_binddn\".."
     output=$(java -Dsemeru.fips=$fips_flag -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u "ldap://$ldap_server:$ldap_port" -b "$ldap_basedn" -D "$ldap_binddn" -w "$ldap_binddn_pwd" -additionalvalidation -gdn "$ldap_group_basedn" -upl "$ldap_user_password_list" -gl "$ldap_group_list" -uf "$ldap_user_filter" -gf "$ldap_group_filter" 2>&1)
     retVal_verify_ldap_tmp=$?
-    connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
-    echo "Latency: $connection_time ms"
-    # Check if elapsed time is greater than 10 ms using awk
-    if [[ $(awk 'BEGIN { print ("'$connection_time'" < 10) }') -eq 1 ]]; then
-      echo "The latency is less than 10ms, which is acceptable performance for a simple LDAP operation."
-    elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 10 && "'$connection_time'" < 30) }') -eq 1 ]]; then
-      echo "The latency is between 10ms and 30ms, which exceeds acceptable performance of 10 ms for a simple LDAP operation, but the service is still accessible."
-    elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 30) }') -eq 1 ]]; then
-      echo "The latency exceeds 30ms for a simple LDAP operation, which indicates potential for failures."
+    
+    if [[ "$output" == *"Error while binding to LDAP"* ]]; then
+      warning "Execution: java -Dsemeru.fips=$fips_flag -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u \"ldap://$ldap_server:$ldap_port\" -b \"$ldap_basedn\" -D \"$ldap_binddn\" -w \"******\"" && \
+      fail "Unable to connect to LDAP server \"$ldap_server\" using Bind DN \"$ldap_binddn\", please check configuration in ldap property again."
+    else
+      # Moving all additional validation checks to be displayed only if we get a successful connection
+      #For https://jsw.ibm.com/browse/DBACLD-158315
+      success "Connected to LDAP \"$ldap_server\" using BindDN:\"$ldap_binddn\" successfuly, PASSED!"
+      printf "\n"
+      connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
+      echo "Latency: $connection_time ms"
+      # Check if elapsed time is greater than 10 ms using awk
+      if [[ $(awk 'BEGIN { print ("'$connection_time'" < 10) }') -eq 1 ]]; then
+        echo "The latency is less than 10ms, which is acceptable performance for a simple LDAP operation."
+      elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 10 && "'$connection_time'" < 30) }') -eq 1 ]]; then
+        echo "The latency is between 10ms and 30ms, which exceeds acceptable performance of 10 ms for a simple LDAP operation, but the service is still accessible."
+      elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 30) }') -eq 1 ]]; then
+        echo "The latency exceeds 30ms for a simple LDAP operation, which indicates potential for failures."
+      fi
+      # Extract everything from "LDAP Users Summary" until "Total time taken"
+      # /LDAP Users Summary/ {flag=1} starts printing everything from LDAP Users Summary and /Total time taken/ {flag=0} stops printing when Total time taken is found
+      # https://jsw.ibm.com/browse/DBACLD-159190
+      # showing the group summary only if grouplist passed to the jar is not empty, One such use case is for an ADS only deployment that requires no ldap group is required to be specified in the property file
+      if [[ ${#ldap_group_list} -eq 0 ]]; then
+        ldap_validation_table=$(echo "$output" | awk '/LDAP Users Summary/ {flag=1} /LDAP Groups Summary/ {flag=0} flag')
+      else
+        ldap_validation_table=$(echo "$output" | awk '/LDAP Users Summary/ {flag=1} /Total time taken/ {flag=0} flag')
+      fi
+      echo "$ldap_validation_table"
+      printf "\n" 
     fi
-
-    [[ retVal_verify_ldap_tmp -ne 0 ]] && \
-    warning "Execution: java -Dsemeru.fips=$fips_flag -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u \"ldap://$ldap_server:$ldap_port\" -b \"$ldap_basedn\" -D \"$ldap_binddn\" -w \"******\"" && \
-    fail "Unable to connect to LDAP server \"$ldap_server\" using Bind DN \"$ldap_binddn\", please check configuration in ldap property again."
-    [[ retVal_verify_ldap_tmp -eq 0 ]] && \
-    success "Connected to LDAP \"$ldap_server\" using BindDN:\"$ldap_binddn\" successfuly, PASSED!"
-    echo "\n"
-    info "Review the additional LDAP Validation checks performed for LDAP server \"$ldap_server\" ."
-    echo "\n"
-    # Extract everything from "LDAP Users Summary" until "Total time taken"
-    # /LDAP Users Summary/ {flag=1} starts printing everything from LDAP Users Summary and /Total time taken/ {flag=0} stops printing when Total time taken is found
-    ldap_validation_table=$(echo "$output" | awk '/LDAP Users Summary/ {flag=1} /Total time taken/ {flag=0} flag')
-    echo "$ldap_validation_table"
-    echo "\n"
   fi 
 }
 

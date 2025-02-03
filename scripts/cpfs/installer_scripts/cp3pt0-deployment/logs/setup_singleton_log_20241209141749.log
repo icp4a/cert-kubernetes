@@ -1,0 +1,4 @@
+[✔] oc command available
+[✔] yq command available
+[✘] Error in /Users/varunsriram/Documents/Work/CloudPak/CodeRepos/cert-kubernetes/scripts/cpfs/installer_scripts/cp3pt0-deployment/common/utils.sh at line 63 in function check_yq_version: yq version 3.3.0-dev must be at least 4.18.1 or higher.
+Instructions for installing/upgrading yq are available here: https://github.com/marketplace/actions/yq-portable-yaml-processor

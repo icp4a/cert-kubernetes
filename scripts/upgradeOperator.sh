@@ -215,7 +215,7 @@ function prepare_olm_install() {
       for i in ${!sub_array[@]}; do
           if [[ ! -z "${sub_array[i]}" ]]; then
             if [[ ${sub_array[i]} = ibm-baw-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = ibm-pfs-operator* ]]; then
-              oc patch subscriptions.operators.coreos.com ${sub_array[i]} -n $NAMESPACE -p '{"spec":{"channel":"v24.0"}}' --type=merge >/dev/null 2>&1
+              oc patch subscriptions.operators.coreos.com ${sub_array[i]} -n $NAMESPACE -p '{"spec":{"channel":"'"$CP4BA_CHANNEL_VERSION"'"}}' --type=merge >/dev/null 2>&1
               if [ $? -eq 0 ]
               then
                   echo "Update the channel of subscription '${sub_array[i]}' to $CP4BA_CHANNEL_VERSION!"
@@ -237,7 +237,7 @@ function prepare_olm_install() {
       for i in ${!sub_array[@]}; do
           if [[ ! -z "${sub_array[i]}" ]]; then
             if [[ ${sub_array[i]} = ibm-cp4a-operator* || ${sub_array[i]} = ibm-cp4a-wfps-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = icp4a-foundation-operator* || ${sub_array[i]} = ibm-pfs-operator* ]]; then
-              oc patch subscriptions.operators.coreos.com ${sub_array[i]} -n $NAMESPACE -p '{"spec":{"channel":"v24.0"}}' --type=merge >/dev/null 2>&1
+              oc patch subscriptions.operators.coreos.com ${sub_array[i]} -n $NAMESPACE -p '{"spec":{"channel":"'"$CP4BA_CHANNEL_VERSION"'"}}' --type=merge >/dev/null 2>&1
               if [ $? -eq 0 ]
               then
                   echo "Update the channel of subscription '${sub_array[i]}' to $CP4BA_CHANNEL_VERSION!"

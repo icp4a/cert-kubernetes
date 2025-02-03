@@ -1,0 +1,22 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: auth-service-orm
+  namespace: $namespace
+spec:
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          path: .spec.template.spec.containers[?(@.name=="platform-auth-service")].resources
+          selector: im_auth_service_deploy
+        ownerPath: .spec.authService.resources
+    selectors:
+      im_auth_service_deploy:
+        matchLabels:
+          app: platform-auth-service
+  owner:
+    apiVersion: operator.ibm.com/v1alpha1
+    kind: Authentication
+    name: example-authentication

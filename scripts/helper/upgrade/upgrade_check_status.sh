@@ -1,4 +1,4 @@
-#!/BIN/BASH
+#!/bin/bash
 # set -x
 ###############################################################################
 #
@@ -10,6 +10,76 @@
 # DISCLOSURE RESTRICTED BY GSA ADP SCHEDULE CONTRACT WITH IBM CORP.
 #
 ###############################################################################
+# This function is used in check_cp4ba_operator_version where it will check the version of the operator and compare it with the array of minimum supported upgrade versions
+# It will fail if the operator version is not less than the minimum supported upgrade version.
+# This function takes 2 arguments:
+# 1. version_prefix: The prefix of the version that needs to be checked such as "21.3.", "22.2.", "23.2."
+# 2. upgrade_message: The message that will be displayed if the version is not supported
+function check_cp4ba_minimum_version(){
+
+    local version_prefix=$1
+    local upgrade_message=$2
+
+    for line in "${MINIMUM_SUPPORTED_UPGRADE_VERSIONS[@]}"; do
+        if [[ $line == "$version_prefix"* ]]; then
+            if [ ! "$(printf '%s\n' "$line" "$cp4a_operator_csv_version" | sort -V | head -n1)" = "$line" ]; then
+                info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
+                fail "$upgrade_message"
+                exit 1
+            else
+                info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
+                break
+            fi
+        fi
+    done 
+}
+
+#DBACLD-163192: Check and make sure that only the version in the MINIMUM_SUPPORTED_BAW_AUTHORING_UPGRADE_VERSIONS array is allowed for direct upgrade to 24.0.0-IF004 or later when BAW authoring is enabled
+# The cp4a_operator_csv_version is the version of the operator that is currently installed in the cluster
+# The MINIMUM_SUPPORTED_BAW_AUTHORING_UPGRADE_VERSIONS is an array of minimum supported upgrade versions for BAW Authoring.  It is defined in the common.sh file
+function check_cp4ba_baw_authoring_minimum_version(){
+
+if [[ ! " ${MINIMUM_SUPPORTED_BAW_AUTHORING_UPGRADE_VERSIONS[*]} " =~ ${cp4a_operator_csv_version} ]]; then
+    warning "There is a known issue with the following capabilities: ADS, ADP Development, BAA, BAW Authoring, BAW Runtime in CP4BA ${cp4a_operator_csv_version} when upgrading to CP4BA ${CP4BA_CSV_VERSION}.  Please refer to the technote https://www.ibm.com/mysupport/aCIKe000000CkmPOAS to check and perform the necessary steps before you can upgrade to CP4BA ${CP4BA_CSV_VERSION}"
+    read -r -p "Select 'Yes' to continue with the upgrade if you have checked and confirmed that the database schema is in the correct state.  (Yes/No) (Default: No): " confirmation
+    if [[ ! $confirmation =~ ^[Yy]([Ee][Ss])?$ ]]; then
+        fail "Upgrade is stopped.  Please check and perform the necessary steps from the above technote before you can upgrade to CP4BA ${CP4BA_CSV_VERSION}"
+        exit 1
+    else
+        info "Upgrade is continued."
+    fi
+fi
+
+}
+#DBACLD-163910: Checking the validity of EDB license.
+# We will check for the validity of EDB license.  We'll display the valid license along with the expired license (if any).  We'll prompt the user to review the technote to update the license before  continue with the upgrade if the license is expired.
+function check_edb_license(){
+    info "Checking the validity of EDB license(s)"
+    edb_license_status=$(oc get cluster.postgresql --ignore-not-found -A -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\t"}{.status.licenseStatus.licenseExpiration}{"\t"}{.status.licenseStatus.licenseStatus}{"\n"}{end}')
+    edb_license_expired=$( grep -E -i '^.*invalid' <<< "$edb_license_status")
+    edb_license_valid=$( grep -E -i '^.*valid' <<< "$edb_license_status" | grep -v -i 'invalid' )
+    if [[ -n "$edb_license_valid" ]]; then
+        success "The license(s) for the following EDB instance(s) are valid:"
+        printf "%s\n" "$edb_license_valid"
+        printf "\n"
+    fi
+
+    if [[ -n "$edb_license_expired" ]]; then
+        warning "The license(s) for the following EDB instance(s) have expired. Please following this technote to renew the license: https://www.ibm.com/support/pages/embedded-postgresql-database-license-key-expires-october-1st-2024-cloud-pak-business-automation-and-can-cause-outages before continuing with the upgrade to CP4BA ${CP4BA_CSV_VERSION}"
+        printf "%s\n" "$edb_license_expired"
+        read -r -p "Select 'Yes' to continue with the upgrade if you have checked and confirmed that the license(s) have been updated.  (Yes/No) (Default: No): " confirmation
+        if [[ ! $confirmation =~ ^[Yy]([Ee][Ss])?$ ]]; then
+            fail "Upgrade is stopped.  Please check and perform the necessary steps from the above technote before you can upgrade to CP4BA ${CP4BA_CSV_VERSION}"
+            exit 1
+        else
+            info "Upgrade is continued"
+        fi
+    fi
+    # return edb_licenses_expired and edb_license_status in this function so that it can be used in the main script
+    echo "$edb_license_status" "$edb_license_expired"
+
+}
+
 
 # function for checking operator version
 function check_cp4ba_operator_version(){
@@ -54,57 +124,34 @@ function check_cp4ba_operator_version(){
         elif [[ "$cp4a_operator_csv_version" == "24.0."* ]]; then
             info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
             break
+
+        # CP4BA 21.0.3.x.  Minimum version is defined in MINIMUM_SUPPORTED_UPGRADE_VERSIONS array
         elif [[ "$cp4a_operator_csv_version" == "21.3."* ]]; then
-            fail "Please upgrade to CP4BA v24.0.0 IF001, then you can upgrade from IF001 to this iFix"
-            exit 1
-            # cp4a_operator_csv=$(kubectl get csv $cp4a_operator_csv_name_target_ns -n $project_name -o 'jsonpath={.spec.version}')
-            # cp4a_operator_csv="22.2.2"
-            # requiredver="21.3.31"
-            # if [ ! "$(printf '%s\n' "$requiredver" "$cp4a_operator_csv_version" | sort -V | head -n1)" = "$requiredver" ]; then
-            #     info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
-            #     fail "Please upgrade to CP4BA v21.0.3-IF031 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
-            #     exit 1
-            # else
-            #     info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
-            #     break
-            # fi
-        elif [[ "$cp4a_operator_csv_version" == "23.1."* ]]; then
-            fail "Please upgrade to CP4BA v24.0.0 IF001, then you can upgrade from IF001 to this iFix"
-            exit 1
-            # info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
-            # fail "Please upgrade to CP4BA v23.0.2-IF003 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
-            # exit 1
+            check_cp4ba_minimum_version "21.3." "Please upgrade to CP4BA v21.0.3-IF031 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
+            
+            #DBACLD-163192: Call check_cp4ba_baw_authoring_minimum_version function to check the minimum supported version for  BAW Authoring.
+            check_cp4ba_baw_authoring_minimum_version
+
+            break
+        #CP4BA 22.0.1.x
         elif [[ "$cp4a_operator_csv_version" == "22.1."* ]]; then
-            fail "Please upgrade to CP4BA v24.0.0 IF001, then you can upgrade from IF001 to this iFix"
+            fail "Please upgrade to CP4BA v22.0.2 IF006 first, then you can upgrade to CP4BA $CP4BA_CSV_VERSION"
             exit 1
-            # info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
-            # fail "Please upgrade to CP4BA v22.0.2-IF006 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
-            # exit 1
+
+        # CP4BA 22.0.2.x
         elif [[ "$cp4a_operator_csv_version" == "22.2."* ]]; then
-            fail "Please upgrade to CP4BA v24.0.0 IF001, then you can upgrade from IF001 to this iFix"
+            check_cp4ba_minimum_version "22.2." "Please upgrade to CP4BA v22.2.6 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
+            break
+        # CP4BA 23.0.1.x
+        elif [[ "$cp4a_operator_csv_version" == "23.1."* ]]; then
+            fail "Please upgrade to CP4BA v23.0.2 IF006 first, then you can upgrade to CP4BA $CP4BA_CSV_VERSION"
             exit 1
-            # requiredver="22.2.6"
-            # if [ ! "$(printf '%s\n' "$requiredver" "$cp4a_operator_csv_version" | sort -V | head -n1)" = "$requiredver" ]; then
-            #     info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
-            #     fail "Please upgrade to CP4BA v22.0.2-IF006 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
-            #     exit 1
-            # else
-            #     info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
-            #     break
-            # fi
-        #The latest policy states that upgrades from 23.0.2 IF006 are supported and not 23.0.2 IF003 or newer
+        
+        # CP4BA 23.0.2.x. Minimum version is defined in MINIMUM_SUPPORTED_UPGRADE_VERSIONS array
         elif [[ "$cp4a_operator_csv_version" == "23.2."* ]]; then
-            #fail "Please upgrade to CP4BA v24.0.0 IF001, then you can upgrade from IF001 to this iFix"
-            #exit 1
-            requiredver="23.2.6"
-            if [[ ! "$(printf '%s\n' "$requiredver" "$cp4a_operator_csv_version" | sort -V | head -n1)" == "$requiredver" ]]; then
-                info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
-                fail "Please upgrade to CP4BA v23.0.2-IF006 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
-                exit 1
-            else
-                info "Found IBM Cloud Pak for Business Automation Operator is \"$cp4a_operator_csv_version\" version."
-                break
-            fi
+            check_cp4ba_minimum_version "23.2." "Please upgrade to CP4BA v23.2.6 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
+            break
+        
         elif [[ "$cp4a_operator_csv_version" != "${CP4BA_CSV_VERSION//v/}" ]]; then
             if [[ $retry -eq ${maxRetry} ]]; then
                 info "Timeout Checking for the version of IBM Cloud Pak for Business Automation in the project \"$project_name\""
@@ -120,6 +167,7 @@ function check_cp4ba_operator_version(){
 }
 
 # function for checking operator version
+# Not being used. This is just for reference
 function check_content_operator_version(){
     local project_name=$1
     local maxRetry=5
@@ -1006,7 +1054,7 @@ function check_cp4ba_deployment_status(){
 
     exist_pfs_cr_array=($(kubectl get ProcessFederationServer -n $project_name --no-headers --ignore-not-found | awk '{print $1}'))
     if [ ! -z $exist_pfs_cr_array ]; then
-        for item in "${exist_wfps_cr_array[@]}"
+        for item in "${exist_pfs_cr_array[@]}"
         do
             cr_type="ProcessFederationServer"
             cr_metaname=$(kubectl get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} r - metadata.name)
@@ -1032,14 +1080,14 @@ function show_cp4ba_upgrade_status() {
         if [[ $CONTENT_CR_EXIST == "Yes" || (" ${EXISTING_PATTERN_ARR[@]} " =~ "content") || ((" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow") && (! " ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-process-service")) || (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "baw_authoring") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "ae_data_persistence") ]]; then
             echo -e "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Run ${GREEN_TEXT}\"./cp4a-pre-upgrade-and-post-upgrade-optional.sh post-upgrade\"${RESET_TEXT} ${YELLOW_TEXT}(NOTES: AFTER UPGRADING IBM CLOUD PAK FOR BUSINESS AUTOMATION (CP4BA) DEPLOYMENT SUCCESSFULLY, YOU NEED TO RUN \"./cp4a-pre-upgrade-and-post-upgrade-optional.sh post-upgrade\", AND THEN CLEAN BROWSER COOKIE BEFORE LOGIN.${RESET_TEXT}"
             echo -e "    ${YELLOW_TEXT}[ATTENTION]${RESET_TEXT}: ${RED_TEXT}DO NOT need to run it when upgrade CP4BA from 23.0.2.X to 24.0.0 (migration IBM Cloud Pak foundational services from Cluster-scoped -> Cluster-scoped or Namespace-scoped -> Namespace-scoped).${RESET_TEXT}"
-            echo -e "    ${YELLOW_TEXT}[NOTES]${RESET_TEXT}: After running ${GREEN_TEXT}\"./cp4a-pre-upgrade-and-post-upgrade-optional.sh post-upgrade\"${RESET_TEXT}, you can access the Administration Console for Content Platform Engine after next reconcile finishing for new custom resource."
+            echo -e "    ${YELLOW_TEXT}[NOTES]${RESET_TEXT}: After running ${GREEN_TEXT}\"./cp4a-pre-upgrade-and-post-upgrade-optional.sh post-upgrade\"${RESET_TEXT}, please allow the Content operator to complete one reconcile with the newly applied custom resource (CR) before accessing the Administration Console for Content Platform Engine (ACCE)."
 
             printf "\n"
             step_num=$((step_num + 1))
         fi
             # echo "${YELLOW_TEXT}[ATTENTION] ${RESET_TEXT}${RED_TEXT}(REQUIRED)${RESET_TEXT}:"
         if [[ $CONTENT_CR_EXIST == "Yes" || (" ${EXISTING_PATTERN_ARR[@]} " =~ "content") || ((" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow") && (! " ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-process-service")) || (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "baw_authoring") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "ae_data_persistence") ]]; then
-            echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: ${YELLOW_TEXT}After completion of upgrade of IBM Cloud Pak for Business Automation deployment, enable the Content Event Emitter if it is configured on an object store for Content Platform Engine.${RESET_TEXT}"
+            echo "  - STEP ${step_num} ${RED_TEXT}(Required if Business Automation Insights (BAI) is installed)${RESET_TEXT}: ${YELLOW_TEXT}After completion of upgrade of IBM Cloud Pak for Business Automation deployment, enable the Content Event Emitter if it is configured on an object store for Content Platform Engine.${RESET_TEXT}"
             echo "    1. Log in to the Administration Console for Content Platform Engine."
             echo "    2. Go to Object Stores > object store name > Events, Actions, Processes > Subscriptions."
             echo "    3. Click ContentEventEmitterSubscription or the name of the existing subscription used by the Content event emitter."
@@ -1097,7 +1145,7 @@ function check_cp4ba_separate_operand(){
     if ${CLI_CMD} get configMap ibm-cp4ba-common-config -n $project >/dev/null 2>&1; then
         success "Found \"ibm-cp4ba-common-config\" configMap in the project \"$project\"."
     else
-        warning "Not found \"ibm-cp4ba-common-config\" configMap in the project \"$project\"."
+        warning "\"ibm-cp4ba-common-config\" configMap was not found in the project \"$project\"."
         while [[ $CP4BA_SERVICES_NS == "" ]];
         do
             printf "\n"
@@ -1126,10 +1174,13 @@ function check_cp4ba_separate_operand(){
                     if ${CLI_CMD} get configMap ibm-cp4ba-common-config -n $CP4BA_SERVICES_NS >/dev/null 2>&1; then
                         success "Found \"ibm-cp4ba-common-config\" configMap in the project \"$CP4BA_SERVICES_NS\"."
                     else
-                        warning "Not found \"ibm-cp4ba-common-config\" configMap in the project \"$CP4BA_SERVICES_NS\"."
+                        warning "\"ibm-cp4ba-common-config\" configMap was not found in the project \"$CP4BA_SERVICES_NS\"."
                         CP4BA_SERVICES_NS=""
-                        if [[ ($SCRIPT_MODE == "" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "dev" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "review" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "baw-dev" && $RUNTIME_MODE == "") ]]; then
-                            fail "You NEED to create \"ibm-cp4ba-common-config\" configMap first in the project (namespace) where you want to deploy CP4BA operands (i.e., runtime pods)."
+                        if [[ ($SCRIPT_MODE == "" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "dev" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "review" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "baw-dev" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "" && $RUNTIME_MODE == "upgradeOperator")|| ($SCRIPT_MODE == "" && $RUNTIME_MODE == "upgradeDeployment") || ($SCRIPT_MODE == "" && $RUNTIME_MODE == "upgradeDeploymentStatus") ]]; then
+                            # For https://jsw.ibm.com/browse/DBACLD-160661 where we have added remediation steps on how to recreate the configmap
+                            fail "You NEED to first create the \"ibm-cp4ba-common-config\" configMap in the project (namespace) where you want to deploy or upgrade CP4BA operands (i.e., runtime pods)."
+                            info "${YELLOW_TEXT}- [NEXT-STEPS]${RESET_TEXT}"
+                            echo "  - STEP 1 ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # Execute the cp4a-clusteradmin-setup.sh script with the \"-fix_configmap\" option to re-create the missing \"ibm-cp4ba-common-config\" configMap in the target namespace.For additional information refer to the Troubleshooting page in the Upgrade Section of the Knowledge Center.${RESET_TEXT}"
                             exit 1
                         fi
                     fi
@@ -1166,7 +1217,7 @@ function check_cp4ba_separate_operand(){
             CP4BA_SERVICES_NS=$TARGET_PROJECT_NAME
         fi
     else
-        warning "Not found \"operator_namespace\\services_namespace\" in \"ibm-cp4ba-common-config\" configMap under the project \"$tmp_namespace_val\""
+        warning "\"operator_namespace\\services_namespace\" was not found in \"ibm-cp4ba-common-config\" configMap under the project \"$tmp_namespace_val\""
         fail "You need to set correct value(s) in \"ibm-cp4ba-common-config\" configMap for CP4BA seperate of operand under the project \"$tmp_namespace_val\""
         exit 1
     fi

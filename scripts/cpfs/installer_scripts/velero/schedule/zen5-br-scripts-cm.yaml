@@ -50,8 +50,8 @@ data:
 
         #Backup zen metastoredb
         #check if this flag is true, otherwise do not proceed
-        return_value=$(oc get cm ibm-zen-metastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED_DATABASE}{"\n"}' || echo "fail")
-        if [[ $return_value != "fail" ]]; then #obviously needs to be corrected
+        return_value=$(oc get cm ibm-zen-metastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED_DATABASE}{"\n"}')
+        if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
             info "Value IS_EMBEDDED_DATABASE marked true in configmap ibm-zen-metastore-edb-cm, backing up zen-metastore-edb"
             CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}" -n $ZEN_NAMESPACE` && \
             oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- mkdir -p /run/zen_backup && \
@@ -59,12 +59,14 @@ data:
             
             #Move backup to backup location
             oc cp $ZEN_NAMESPACE/$CNPG_PRIMARY_POD:/run/zen_backup/zen_db_backup.dump $BACKUP_DIR/database/zen_db_backup.dump
+        else
+            info "Value IS_EMBEDDED_DATABASE marked false in configmap ibm-zen-metastore-edb-cm, skipping back up of zen-metastore-edb."
         fi
         #Backup zen object storage
         #check if this is true
         return_value=""
-        return_value=$(oc -n $ZEN_NAMESPACE get cm ibm-zen-objectstore-cm -o jsonpath='{.data.IS_EMBEDDED_OBJECTSTORE}{"\n"}' || echo "fail")
-        if [[ $return_value != "fail" ]]; then
+        return_value=$(oc -n $ZEN_NAMESPACE get cm ibm-zen-objectstore-cm -o jsonpath='{.data.IS_EMBEDDED_OBJECTSTORE}{"\n"}')
+        if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
             info "IS_EMBEDDED_OBJECTSTORE value true in configmap ibm-zen-objectstore-cm, backing up zen objectstore"
             #Read object storage connection and credentials
             OBJECTSTORE_ENDPOINT=$(oc -n $ZEN_NAMESPACE get cm ibm-zen-objectstore-cm -o jsonpath="{.data.OBJECTSTORE_ENDPOINT}")
@@ -75,6 +77,8 @@ data:
 
             #Move backup to backup location
             oc cp $ZEN_NAMESPACE/zen-minio-0:/tmp/backup $BACKUP_DIR/objstorage && oc exec -t zen-minio-0 -- bash -c "rm -rf /tmp/backup"
+        else
+            info "IS_EMBEDDED_OBJECTSTORE value false in configmap ibm-zen-objectstore-cm, skipping backup of zen objectstore"
         fi
 
         #store list of extensions from source cluster to be restored later
@@ -212,38 +216,66 @@ data:
             deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" | awk '{print $4}' | grep -v 0 || echo clear)
         done
         
-        info "Reset patform metadata and configuration data"
         #[2.2.3] Reset platform metadata and configuration data
         #[2.2.3.1] Reset database
-        info "Prepping database..."
-        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}" -n $ZEN_NAMESPACE` && oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "DROP DATABASE IF EXISTS zen;"  -c "DROP USER IF EXISTS zen_user;" -c "CREATE DATABASE zen;" -c "CREATE USER zen_user;" -c "GRANT CONNECT ON DATABASE zen TO public;" -c "ALTER DATABASE zen OWNER TO zen_user;" -c "GRANT ALL PRIVILEGES ON DATABASE zen to zen_user;"
-    
+        return_value=""
+        return_value=$(oc get cm ibm-zen-metastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED_DATABASE}{"\n"}')
+        if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
+            info "Value IS_EMBEDDED_DATABASE marked true in configmap ibm-zen-metastore-edb-cm, resetting zen-metastore-edb"
+            info "Reset platform metadata and configuration data"
+            info "Prepping database..."
+            CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}" -n $ZEN_NAMESPACE` && oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "DROP DATABASE IF EXISTS zen;"  -c "DROP USER IF EXISTS zen_user;" -c "CREATE DATABASE zen;" -c "CREATE USER zen_user;" -c "GRANT CONNECT ON DATABASE zen TO public;" -c "ALTER DATABASE zen OWNER TO zen_user;" -c "GRANT ALL PRIVILEGES ON DATABASE zen to zen_user;"
+        else
+            info "IS_EMBEDDED_DATABASE value false, skipping metastoredb reset."
+        fi
+
         #[2.2.3.2] reset object storage
         #[2.2.3.2.1] read object storage connection and credentials
-        info "Prepping objectstore..."
-        IBM_ZEN_BUCKET_NAME=$(oc get cm ibm-zen-objectstore-cm -o=jsonpath='{.data.BUCKET_ZEN_CONFIGURATION}' -n $ZEN_NAMESPACE)
-        OBJECTSTORE_ENDPOINT=$(oc get cm ibm-zen-objectstore-cm -o jsonpath="{.data.OBJECTSTORE_ENDPOINT}" -n $ZEN_NAMESPACE)
-        oc -n $ZEN_NAMESPACE extract secret/ibm-zen-objectstore-secret --to=$BACKUP_DIR/workspace --confirm
+        return_value=""
+        return_value=$(oc -n $ZEN_NAMESPACE get cm ibm-zen-objectstore-cm -o jsonpath='{.data.IS_EMBEDDED_OBJECTSTORE}{"\n"}')
+        if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
+            info "IS_EMBEDDED_OBJECTSTORE value true, resetting objectstore data."
+            info "Prepping objectstore..."
+            IBM_ZEN_BUCKET_NAME=$(oc get cm ibm-zen-objectstore-cm -o=jsonpath='{.data.BUCKET_ZEN_CONFIGURATION}' -n $ZEN_NAMESPACE)
+            OBJECTSTORE_ENDPOINT=$(oc get cm ibm-zen-objectstore-cm -o jsonpath="{.data.OBJECTSTORE_ENDPOINT}" -n $ZEN_NAMESPACE)
+            oc -n $ZEN_NAMESPACE extract secret/ibm-zen-objectstore-secret --to=$BACKUP_DIR/workspace --confirm
 
-        #[2.2.3.2.2] Remove and recreate Zen bucket
-        info "Remove and recreate Zen bucket."
-        oc -n $ZEN_NAMESPACE exec -t zen-minio-0 -- bash -c "rm -rf /tmp/backup && mkdir -p /tmp/backup && export HOME=/tmp && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/tmp/.mc --insecure && /workdir/bin/mc ls zenobjstore/${IBM_ZEN_BUCKET_NAME} --insecure && /workdir/bin/mc rb zenobjstore/${IBM_ZEN_BUCKET_NAME} --force --dangerous --insecure && /workdir/bin/mc mb zenobjstore/${IBM_ZEN_BUCKET_NAME} --insecure"
+            #[2.2.3.2.2] Remove and recreate Zen bucket
+            info "Remove and recreate Zen bucket."
+            oc -n $ZEN_NAMESPACE exec -t zen-minio-0 -- bash -c "rm -rf /tmp/backup && mkdir -p /tmp/backup && export HOME=/tmp && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/tmp/.mc --insecure && /workdir/bin/mc ls zenobjstore/${IBM_ZEN_BUCKET_NAME} --insecure && /workdir/bin/mc rb zenobjstore/${IBM_ZEN_BUCKET_NAME} --force --dangerous --insecure && /workdir/bin/mc mb zenobjstore/${IBM_ZEN_BUCKET_NAME} --insecure"
+        else
+            info "IS_EMBEDDED_OBJECTSTORE value false, skipping objectstore reset."
+        fi
 
         #[2.2.4] Restore data
-        info "Restore platform metadata."
-        #[2.2.4.1] Restore platform metadata (metastore database)
-        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}"`
-        oc exec $CNPG_PRIMARY_POD -n $ZEN_NAMESPACE -- mkdir -p /run/zen_backup
-        oc cp $BACKUP_DIR/database/zen_db_backup.dump $ZEN_NAMESPACE/$CNPG_PRIMARY_POD:/run/zen_backup/zen_db_backup.dump
-        oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-        oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d zen -f /run/zen_backup/zen_db_backup.dump
-        oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+        return_value=""
+        return_value=$(oc get cm ibm-zen-metastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED_DATABASE}{"\n"}')
+        if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
+            info "Value IS_EMBEDDED_DATABASE marked true in configmap ibm-zen-metastore-edb-cm, restoring zen-metastore-edb data"
+            info "Restore platform metadata."
+            #[2.2.4.1] Restore platform metadata (metastore database)
+            CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}"`
+            oc exec $CNPG_PRIMARY_POD -n $ZEN_NAMESPACE -- mkdir -p /run/zen_backup
+            oc cp $BACKUP_DIR/database/zen_db_backup.dump $ZEN_NAMESPACE/$CNPG_PRIMARY_POD:/run/zen_backup/zen_db_backup.dump
+            oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+            oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d zen -f /run/zen_backup/zen_db_backup.dump
+            oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+        else
+            info "IS_EMBEDDED_DATABASE value false, skipping metastoredb data restore."
+        fi
 
         #[2.2.4.2] Restore platform configuration data (object storage)
-        info "Restore platform configuration data (object storage)."
-        IBM_ZEN_BUCKET_NAME=$(oc get cm ibm-zen-objectstore-cm -o=jsonpath='{.data.BUCKET_ZEN_CONFIGURATION}')
-        oc cp $BACKUP_DIR/objstorage $ZEN_NAMESPACE/zen-minio-0:/tmp/backup 
-        oc -n $ZEN_NAMESPACE exec -t zen-minio-0 -- bash -c "export HOME=/tmp && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/tmp/.mc --insecure && /workdir/bin/mc cp --recursive /tmp/backup/objstorage/${IBM_ZEN_BUCKET_NAME}/ zenobjstore/${IBM_ZEN_BUCKET_NAME}/ --insecure"
+        return_value=""
+        return_value=$(oc -n $ZEN_NAMESPACE get cm ibm-zen-objectstore-cm -o jsonpath='{.data.IS_EMBEDDED_OBJECTSTORE}{"\n"}')
+        if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
+            info "IS_EMBEDDED_OBJECTSTORE value true, restoring objectstore data."
+            info "Restore platform configuration data (object storage)."
+            IBM_ZEN_BUCKET_NAME=$(oc get cm ibm-zen-objectstore-cm -o=jsonpath='{.data.BUCKET_ZEN_CONFIGURATION}')
+            oc cp $BACKUP_DIR/objstorage $ZEN_NAMESPACE/zen-minio-0:/tmp/backup 
+            oc -n $ZEN_NAMESPACE exec -t zen-minio-0 -- bash -c "export HOME=/tmp && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/tmp/.mc --insecure && /workdir/bin/mc cp --recursive /tmp/backup/objstorage/${IBM_ZEN_BUCKET_NAME}/ zenobjstore/${IBM_ZEN_BUCKET_NAME}/ --insecure"
+        else
+            info "IS_EMBEDDED_OBJECTSTORE value false, skipping objectstore restore."
+        fi
 
         #[2.2.4.3] Restore JWT configuration and keys
         info "Restore JWT configuration and keys."

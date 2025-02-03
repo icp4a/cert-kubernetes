@@ -121,6 +121,13 @@ success "All prerequisites passed. Ready for clean up."
 echo
 echo -e "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;33mThis script is only intended to delete any remaining resources in the Cloud Pak for Business Automation and Cloud Pak foundational services namespace(s), and it is not intended for uninstalling Cloud Pak for Business Automation and Cloud Pak foundational services deployment. The script also does not support cleaning up shared Cloud Pak foundational services.\x1B[0m\n"
 
+# <https://jsw.ibm.com/browse/DBACLD-156516> - User need to provide the service namespace in separation of duties
+# Check if ibm-cp4ba-common-config is present in the namespace
+if [ -z "$(oc get configmap ibm-cp4ba-common-config -n ${CP4BA_NAMESPACE} 2>/dev/null)" ]; then
+    error "Not able to find configmap \"ibm-cp4ba-common-config\" in Namespace ${CP4BA_NAMESPACE}. Please make sure you have provided the namespace where CP4BA is installed or if your have separation of duties please provide the services namespace."
+    exit 1
+fi
+
 # CP4BA seperation of duty check
 CP4BA_CM_CONFIG=$(oc get configmap ibm-cp4ba-common-config -n ${CP4BA_NAMESPACE} -o jsonpath="{ .data}" 2>/dev/null)
 CP4BA_CM_CONFIG_YAML=$(mktemp)
@@ -224,10 +231,6 @@ while true; do
 	esac
 done
 
-# Get CP4BA Operator version
-cp4a_operator_csv_name_target_ns=$(oc get csv -n "$CP4BA_NAMESPACE" --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
-CP4BA_VERSION=$(oc get csv $cp4a_operator_csv_name_target_ns -n "$CP4BA_NAMESPACE" --no-headers --ignore-not-found -o 'jsonpath={.spec.version}')
-
 # Get Resource function
 function get_resource() {
 	local RESOURCE_NAME=$1
@@ -320,6 +323,9 @@ CP4BA_RESOURCES=(
 	"compositeresourcedefinitions"
 	"configurationrevisions"
 	"flinkdeployment"
+	# <https://jsw.ibm.com/browse/DBACLD-156830> - Added full name of flinkdeployments to be cleaned up
+	"flinkdeployments.flink.ibm.com"
+	"flinkdeployments.flink.apache.org"
 	"secret"
 	"kafkatopics.ibmevents.ibm.com"
 )
@@ -630,8 +636,8 @@ if [[ $CLEAN_CPFS == "true" ]]; then
 	fi
 fi
 
-# Delete configmaps in kube-public
-if [[ "$CP4BA_VERSION" == "21.3."* && "$CS_NAMESPACE_COUNT" -gt 1 ]]; then
+# Update/delete configmaps in kube-public
+if [[ "$CS_NAMESPACE_COUNT" -gt 1 ]]; then
 	INFO "Remove mapping from ${COMMON_SERVICES_CM_NAMESPACE} namespace"
 	# Remove mapping from common-service-maps.yaml and apply it back
 	NEW_CS_MAPS=$(${YQ_CMD} d "$CS_MAPS_YAML" "namespaceMapping[${CS_MAP_INDEX}]")

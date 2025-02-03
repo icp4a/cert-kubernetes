@@ -9,6 +9,11 @@
 #
 ###############################################################################
 
+# Import common utilities and environment variables
+CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
+source ${CUR_DIR}/helper/common.sh
+
 #Options
 HELP="false"
 
@@ -63,34 +68,59 @@ done
 
 # Get Operand namespace from user
 if [ -z "$CP4BA_SERVICE_NAMESPACE" ]; then
-	printf "\x1B[1m\nDid you install CP4BA with Separation of Duties?:? (Yes/No, default: Yes) \x1B[0m"
-	read -rp "" ans 
-	ans=$(echo "${ans}" | tr '[:upper:]' '[:lower:]')
-	case "$ans" in
-		"y"|"yes"|"")
-			while [ -z "$CP4BA_SERVICE_NAMESPACE" ]; do
-				printf "\x1B[1mEnter Operand namespace of your CP4BA deployment: \x1B[0m"
-				read -rp "" ans 
-				CP4BA_SERVICE_NAMESPACE=$ans
-					if [ -z "$(oc get project "${CP4BA_SERVICE_NAMESPACE}" 2>/dev/null)" ]; then
-						echo -e "\x1B[1;31mError: Namespace ${CP4BA_SERVICE_NAMESPACE} does not exist. Please re-enter the namespace. \x1B[0m\n"
-						CP4BA_SERVICE_NAMESPACE=""
-					fi
-				echo
-			done
-			echo -e "\x1B[1mGetting Operator Namespace... \x1B[0m"
-			CP4BA_NAMESPACE=$(oc get cm ibm-cp4ba-common-config -n $CP4BA_SERVICE_NAMESPACE --ignore-not-found -o jsonpath="{ .data.operators_namespace}")
-			if [[ -z "$CP4BA_NAMESPACE" ]]; then
-				echo -e "\x1B[31;5mError: ibm-cp4ba-common-config ConfigMap not found in ${CP4BA_SERVICE_NAMESPACE} \x1B[0m\n"
-				exit 1
-			fi 
-		;;
-		"n"|"no")
-			CP4BA_SERVICE_NAMESPACE=$CP4BA_NAMESPACE
-		;;
-		*)
-			warning "Answer must be 'Yes' or 'No'"
-	esac
+	# For https://jsw.ibm.com/browse/DBACLD-157622
+    # Update the default answer for Seperation of Duties to No
+	#fixes a potential scenario of no input passed to the next step
+	max_retries=0
+	while [ $max_retries -lt 4 ]; do
+		printf "\x1B[1m\nDid you install CP4BA with Separation of Duties? (Yes/No, default: No) \x1B[0m"
+		read -rp "" ans 
+		# If the user provides no input, set the default to 'No'
+		if [ -z "$ans" ]; then
+			ans="No"
+		fi
+		ans=$(echo "${ans}" | tr '[:upper:]' '[:lower:]')
+		case "$ans" in
+			"y"|"yes"|"")
+				max_counter=0
+				while [ $max_counter -lt 4 ]; do
+					printf "\x1B[1mEnter Operand namespace of your CP4BA deployment: \x1B[0m"
+					read -rp "" ans 
+					CP4BA_SERVICE_NAMESPACE=$ans
+						if [ -z "$(oc get project "${CP4BA_SERVICE_NAMESPACE}" 2>/dev/null)" ]; then
+							echo -e "\x1B[1;31mError: Namespace ${CP4BA_SERVICE_NAMESPACE} does not exist. Please re-enter the namespace. \x1B[0m\n"
+							CP4BA_SERVICE_NAMESPACE=""
+							max_counter=$(($max_counter + 1))
+						else
+							break
+						fi
+					echo
+				done
+				if [[ -z "$CP4BA_SERVICE_NAMESPACE" ]]; then
+					error "Maximum retries for incorrect inputs exceeded. The script will now exit.."
+					exit
+				fi
+				echo -e "\x1B[1mGetting Operator Namespace... \x1B[0m"
+				CP4BA_NAMESPACE=$(oc get cm ibm-cp4ba-common-config -n $CP4BA_SERVICE_NAMESPACE --ignore-not-found -o jsonpath="{ .data.operators_namespace}")
+				if [[ -z "$CP4BA_NAMESPACE" ]]; then
+					echo -e "\x1B[31;5mError: ibm-cp4ba-common-config ConfigMap not found in ${CP4BA_SERVICE_NAMESPACE} \x1B[0m\n"
+					exit 1
+				fi 
+				break
+			;;
+			"n"|"no")
+				CP4BA_SERVICE_NAMESPACE=$CP4BA_NAMESPACE
+				break
+			;;
+			*)
+				warning "Answer must be 'Yes' or 'No'"
+				max_retries=$(($max_retries + 1))
+		esac
+	done
+	if [[ $max_retries == 4 ]]; then
+		error "Maximum retries for incorrect inputs exceeded. The script will now exit.."
+		exit
+	fi
 fi
 
 # Validate CP4BA_NAMESPACE env var is for existing namespace
@@ -176,6 +206,9 @@ echo -e "\n\x1B[1mFinsihed cleaning up all zen-metastore-edb related secrets. \x
 # delete FlinkDeployment CR
 echo "Deleting FlinkDeployment CR"
 delete_resource FlinkDeployment $CP4BA_SERVICE_NAMESPACE
+# <https://jsw.ibm.com/browse/DBACLD-156830?> - Need to add a full name for flinkdeployments, as there could be another flinkdeployment CRD
+delete_resource flinkdeployments.flink.ibm.com $CP4BA_SERVICE_NAMESPACE
+delete_resource flinkdeployments.flink.apache.org $CP4BA_SERVICE_NAMESPACE
 
 # delete Flink operator certificate
 echo "Deleting flink-operator-cert secret "

@@ -2,7 +2,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2022, 2023. All Rights Reserved.
+# (C) Copyright IBM Corp. 2022, 2025. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -71,7 +71,7 @@ spec:
       containers:
         - name: operator
           # Replace this with the built image name
-          image: icr.io/cpopen/icp4a-pfs-operator@sha256:15e2aa525ba0401cd6ab77d04a1ab242fc6abe1365b0b6c4427fd7721730f789
+          image: icr.io/cpopen/icp4a-pfs-operator@sha256:6bb8e63e3c55ad12ef4df2c0e6bc277e4e2a2823716c06df71b0780e657412d9
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
