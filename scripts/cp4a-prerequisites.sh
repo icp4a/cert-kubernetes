@@ -150,7 +150,7 @@ function prompt_license(){
         INSTALL_BAW_ONLY="No"
     fi
 
-    read -rsn1 -p"Press any key to continue";echo
+    prompt_press_any_key_to_continue
 
     printf "\n"
     while true; do
@@ -382,7 +382,7 @@ function select_pattern(){
         fi
     fi
     patter_ent_input_array=("1" "2" "3" "4" "5a" "5b" "5A" "5B" "6" "7a" "7b" "7A" "7B" "8" "5b,6" "5B,6" "5b, 6" "5B, 6" "5b 6" "5B 6")
-    tips1="\x1B[1;31mTips\x1B[0m:\x1B[1mPress [ENTER] to accept the default (None of the patterns is selected)\x1B[0m"
+    tips1="\x1B[1;31mTips\x1B[0m:\x1B[1mPress [ENTER] to accept the default (None of the capabilities is selected)\x1B[0m"
     tips2="\x1B[1;31mTips\x1B[0m:\x1B[1mPress [ENTER] when you are done\x1B[0m"
     pattern_starter_tips="\x1B[1mInfo: Except pattern (4/5), Business Automation Navigator will be automatically installed in the environment as it is part of the Cloud Pak for Business Automation foundation platform. \n\nTips:  After you make your first selection you will be able to make additional selections since you can combine multiple selections.\n\x1B[0m"
     pattern_production_tips="\x1B[1mInfo: Business Automation Navigator will be automatically installed in the environment as it is part of the Cloud Pak for Business Automation foundation platform. \n\nTips:  After you make your first selection you will be able to make additional selections since you can combine multiple selections.\n\x1B[0m"
@@ -849,7 +849,7 @@ function select_pattern(){
 
     if [ "${#pattern_arr[@]}" -eq "0" ]; then
         PATTERNS_SELECTED="None"
-        printf "\x1B[1;31mPlease select one pattern at least, exiting... \n\x1B[0m"
+        printf "\x1B[1;31mPlease select at least one capability, exiting... \n\x1B[0m"
         exit 1
     else
         PATTERNS_SELECTED=$( IFS=$','; echo "${pattern_arr[*]}" )
@@ -888,7 +888,7 @@ function select_optional_component(){
         fncm_tips="\x1B[1mNote: IBM Enterprise Records (IER) and IBM Content Collector for SAP (ICCSAP) do not integrate with User Management Service (UMS).\n"
         linux_starter_tips="\x1B[33;5mATTENTION: \x1B[0m\x1B[1;31mIBM Content Collector for SAP (4) does NOT support a cluster running a Linux on Power architecture.\n\x1B[0m"
         linux_production_tips="\x1B[33;5mATTENTION: \x1B[0m\x1B[1;31mIBM Content Collector for SAP (5) does NOT support a cluster running a Linux on Power architecture.\n\x1B[0m"
-        ads_tips="\x1B[1mTips:\x1B[0m Decision Designer is typically required if you are deploying a development or test environment.\nThis feature will automatically install Business Automation Studio, if not already present. \n\nDecision Runtime is typically recommended if you are deploying a test or production environment. \n\nYou should choose at least one these features to have a minimum environment configuration.\n"
+        ads_tips="\x1B[1mTips:\x1B[0m Decision Designer is typically required if you are deploying a development or test environment.\nThis feature will automatically install Business Automation Studio, if not already present. \n\nDecision Runtime is typically recommended if you are deploying a test or production environment. \n\nYou should choose at least one these features to have a minimum environment configuration.\n${YELLOW_TEXT}IMPORTANT: If the optional component Decisions Designer is selected, the script will automatically include the optional component Decisions Runtime.\n ${RESET_TEXT}"
         if [[ $DEPLOYMENT_TYPE == "starter" ]];then
             decision_tips="\x1B[1mTips:\x1B[0m Decision Center, Rule Execution Server and Decision Runner will be installed by default.\n"
         else
@@ -1084,9 +1084,12 @@ function select_optional_component(){
                 elif [[ "${optional_components_list[i]}" == "Decision Runner" ]]
                 then
                     [[ "${choices_component[i]}" ]] && { optional_component_arr=( "${optional_component_arr[@]}" "DecisionRunner" ); msg=""; }
-                elif [[ "${optional_components_list[i]}" == "Decision Designer" ]]
+                elif [[ "${optional_components_list[i]}" == "Decision Designer and Decision Runtime" ]]
                 then
+                    # This is to make sure if Decisions Designer is selected, we automatically add Designer Runtime
+                    # For https://jsw.ibm.com/browse/DBACLD-159303
                     [[ "${choices_component[i]}" ]] && { optional_component_arr=( "${optional_component_arr[@]}" "DecisionDesigner" ); msg=""; }
+                    [[ "${choices_component[i]}" ]] && { optional_component_arr=( "${optional_component_arr[@]}" "DecisionRuntime" ); msg=""; }
                 elif [[ "${optional_components_list[i]}" == "Decision Runtime" ]]
                 then
                     [[ "${choices_component[i]}" ]] && { optional_component_arr=( "${optional_component_arr[@]}" "DecisionRuntime" ); msg=""; }
@@ -1139,6 +1142,11 @@ function select_optional_component(){
                     [[ "${choices_component[i]}" ]] && { optional_component_arr=( "${optional_component_arr[@]}" "${optional_components_list[i]}" ); msg=""; }
                 fi
                 [[ "${choices_component[i]}" ]] && { optional_component_cr_arr=( "${optional_component_cr_arr[@]}" "${optional_components_cr_list[i]}" ); msg=""; }
+                # This is to make sure if Decisions Designer is selected, we automatically add Designer Runtime
+                # For https://jsw.ibm.com/browse/DBACLD-159303
+                if [[ "${optional_components_list[i]}" == "Decision Designer and Decision Runtime" ]]; then
+                    [[ "${choices_component[i]}" ]] && { optional_component_cr_arr=( "${optional_component_cr_arr[@]}" "ads_runtime" ); msg=""; }
+                fi
             else
                 if [[ "${choices_component[i]}" == "(To Be Uninstalled)" ]]; then
                     pos=`indexof "${optional_component_cr_arr[i]}"`
@@ -1163,9 +1171,12 @@ function select_optional_component(){
                     elif [[ "${optional_components_list[i]}" == "Decision Runner" ]]
                     then
                         optional_component_arr=( "${optional_component_arr[@]}" "DecisionRunner" )
-                    elif [[ "${optional_components_list[i]}" == "Decision Designer" ]]
+                    elif [[ "${optional_components_list[i]}" == "Decision Designer and Decision Runtime" ]]
                     then
+                        # This is to make sure if Decisions Designer is selected, we automatically add Designer Runtime
+                        # For https://jsw.ibm.com/browse/DBACLD-159303
                         optional_component_arr=( "${optional_component_arr[@]}" "DecisionDesigner" )
+                        optional_component_arr=( "${optional_component_arr[@]}" "DecisionRuntime" )
                     elif [[ "${optional_components_list[i]}" == "Decision Runtime" ]]
                     then
                         optional_component_arr=( "${optional_component_arr[@]}" "DecisionRuntime" )
@@ -1218,6 +1229,11 @@ function select_optional_component(){
                         optional_component_arr=( "${optional_component_arr[@]}" "${optional_components_list[i]}" )
                     fi
                     optional_component_cr_arr=( "${optional_component_cr_arr[@]}" "${optional_components_cr_list[i]}" )
+                    # This is to make sure if Decisions Designer is selected, we automatically add Designer Runtime
+                    # For https://jsw.ibm.com/browse/DBACLD-159303
+                    if [[ "${optional_components_list[i]}" == "Decision Designer and Decision Runtime" ]]; then
+                        optional_component_cr_arr=( "${optional_component_cr_arr[@]}" "ads_runtime" )
+                    fi
                 fi
             fi
         done
@@ -1308,7 +1324,9 @@ function select_optional_component(){
                         optional_components_list=()
                         optional_components_cr_list=()
                     else
-                        optional_components_list=("Business Automation Insights" "Decision Designer" "Decision Runtime")
+                        # This is to make sure if Decisions Designer is selected, we automatically add Designer Runtime
+                        # For https://jsw.ibm.com/browse/DBACLD-159303
+                        optional_components_list=("Business Automation Insights" "Decision Designer and Decision Runtime" "Decision Runtime")
                         optional_components_cr_list=("bai" "ads_designer" "ads_runtime")
                         show_optional_components
                         optional_components_list=()
@@ -1540,7 +1558,7 @@ function check_dbserver_name_valid(){
             echo -e "***************** example *****************"
             echo -e "if DB_SERVER_LIST=\"DBSERVER1\""
             echo -e "You need to change"
-            echo -e "<DB_SERVER_NAME>.GCD_DB_NAME=\"GCDDB\""
+            echo -e "<DB_ALIAS_NAME>.GCD_DB_NAME=\"GCDDB\""
             echo -e "to"
             echo -e "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
             echo -e "***************** example *****************"
@@ -1549,11 +1567,78 @@ function check_dbserver_name_valid(){
     fi
 }
 
+# Function that checks if there are any missing quotes in any property files after the user updates the property files
+function check_missing_quotes(){
+    missing_quotes=0
+    property_files=("${USER_PROFILE_PROPERTY_FILE}" "${DB_SERVER_INFO_PROPERTY_FILE}" "${DB_NAME_USER_PROPERTY_FILE}" "${LDAP_PROPERTY_FILE}" "${EXTERNAL_LDAP_PROPERTY_FILE}")
+    for input_file in "${property_files[@]}"; do
+        # Check if the property file exists
+        if [ ! -f "$input_file" ]; then
+            continue
+        fi
+        # Array to store incorrect entries
+        incorrect_values=()
+
+        while IFS= read -r line || [ -n "$line" ]; do
+            # Skip comment lines or empty lines
+            if [[ $line =~ ^[[:space:]]*# ]] || [[ -z $line ]]; then
+                continue
+            fi
+            # Skip lines that are completely empty or contain only whitespace
+            if [[ "$line" =~ ^[[:space:]]*$ ]]; then
+                continue
+            fi
+
+            # Ensure the line contains '=' before processing
+            if [[ $line != *"="* ]]; then
+                continue
+            fi
+
+            # Extract the key and value
+            key=$(echo "$line" | cut -d'=' -f1)
+            value=$(echo "$line" | cut -d'=' -f2-)
+
+            # Check if the value is enclosed in quotes
+            if [[ ! $value =~ ^\".*\"$ ]]; then
+                # Add to the list of incorrect values
+                incorrect_values+=("$key")
+            fi
+        done < "$input_file"
+
+        # Output results
+        if [ ! ${#incorrect_values[@]} -eq 0 ]; then
+            missing_quotes=1
+            error "Validation failed: The following values in the property file located at \"${input_file}\" are not enclosed in quotes:"
+            printf "\n"
+            echo "---------------------------------------------------------------"
+            for entry in "${incorrect_values[@]}"; do
+                echo "  - $entry"
+            done
+            echo "---------------------------------------------------------------"
+
+        fi
+    done
+    if [[ "$missing_quotes" == 1 ]] ; then
+        info "[NEXT_STEPS]: Reference the table above and ensure all values in all property files are enclosed in quotes and re-run cp4a-prerequisites.sh script in generate mode."
+        exit 1
+    fi
+}
+
 function check_property_file(){
+    # Function to check for missing quotes in any of the property files
+    # For https://jsw.ibm.com/browse/DBACLD-161426
+    check_missing_quotes
     local empty_value_tag=0
     value_empty=`grep '="<Required>"' "${USER_PROFILE_PROPERTY_FILE}" | wc -l`  >/dev/null 2>&1
     if [ $value_empty -ne 0 ] ; then
         error "Found invalid value(s) \"<Required>\" in property file \"${USER_PROFILE_PROPERTY_FILE}\", please input the correct value."
+        empty_value_tag=1
+    fi
+
+    ## --https://jsw.ibm.com/browse/DBACLD-158616 <- ## Check for missing "{Base64}<Required>" placeholders in the user profile property file and display an error message if not provided.>
+    value_empty=`grep '="{Base64}<Required>"' "${USER_PROFILE_PROPERTY_FILE}" | wc -l`  >/dev/null 2>&1
+    if [ $value_empty -ne 0 ] ; then
+        error "Found invalid value(s) \"{Base64}<Required>\" in property file \"${USER_PROFILE_PROPERTY_FILE}\", please input the correct value."
         empty_value_tag=1
     fi
 
@@ -1563,9 +1648,9 @@ function check_property_file(){
         empty_value_tag=1
     fi
 
-    value_empty=`grep '^<DB_SERVER_NAME>.' "${DB_NAME_USER_PROPERTY_FILE}" | wc -l`  >/dev/null 2>&1
+    value_empty=`grep '^<DB_ALIAS_NAME>.' "${DB_NAME_USER_PROPERTY_FILE}" | wc -l`  >/dev/null 2>&1
     if [ $value_empty -ne 0 ] ; then
-        error "Please change prefix \"<DB_SERVER_NAME>\" to assign database used by component to which database server or instance in property file \"${DB_NAME_USER_PROPERTY_FILE}\"."
+        error "Please change prefix \"<DB_ALIAS_NAME>\" to assign database used by component to which database server or instance in property file \"${DB_NAME_USER_PROPERTY_FILE}\"."
         empty_value_tag=1
     fi
 
@@ -1578,13 +1663,13 @@ function check_property_file(){
         empty_value_tag=1
     fi
 
-    # check ADP_PROJECT_DB_SERVER contain <DB_SERVER_NAME>
+    # check ADP_PROJECT_DB_SERVER contain <DB_ALIAS_NAME>
     if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" ]]; then
         tmp_dbserver="$(prop_db_name_user_property_file ADP_PROJECT_DB_SERVER)"
         tmp_dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbserver")
-        value_empty=`echo $tmp_dbserver | grep '<DB_SERVER_NAME>' | wc -l`  >/dev/null 2>&1
+        value_empty=`echo $tmp_dbserver | grep '<DB_ALIAS_NAME>' | wc -l`  >/dev/null 2>&1
         if [ $value_empty -ne 0 ] ; then
-            error "Please change \"<DB_SERVER_NAME>\" for \"ADP_PROJECT_DB_SERVER\" parameter to assign database used by component to which database server or instance in property file \"${DB_NAME_USER_PROPERTY_FILE}\"."
+            error "Please change \"<DB_ALIAS_NAME>\" for \"ADP_PROJECT_DB_SERVER\" parameter to assign database used by component to which database server or instance in property file \"${DB_NAME_USER_PROPERTY_FILE}\"."
             empty_value_tag=1
         fi
     fi
@@ -1607,9 +1692,23 @@ function check_property_file(){
         empty_value_tag=1
     fi
 
+    ##--https://jsw.ibm.com/browse/DBACLD-158616 <- ## Check for missing "{Base64}<yourpassword>" placeholders in the user profile property file and display an error message if not provided.
+    value_empty=`grep -v '^# .*.CHOS_DB_USER_NAME="{Base64}<yourpassword>"' "${DB_NAME_USER_PROPERTY_FILE}" | grep '="{Base64}<yourpassword>"' | wc -l`  >/dev/null 2>&1
+    if [ $value_empty -ne 0 ] ; then
+        error "Found invalid value(s) \"{Base64}<yourpassword>\" in property file \"${DB_NAME_USER_PROPERTY_FILE}\", please input the correct value."
+        empty_value_tag=1
+    fi
+
     value_empty=`grep '="<Required>"' "${LDAP_PROPERTY_FILE}" | wc -l`  >/dev/null 2>&1
     if [ $value_empty -ne 0 ] ; then
         error "Found invalid value(s) \"<Required>\" in property file \"${LDAP_PROPERTY_FILE}\", please input the correct value."
+        empty_value_tag=1
+    fi
+
+    ## --https://jsw.ibm.com/browse/DBACLD-158616 <- ## Check for missing "{Base64}<Required>" placeholders in the user profile property file and display an error message if not provided.>
+    value_empty=`grep '="{Base64}<Required>"' "${LDAP_PROPERTY_FILE}" | wc -l`  >/dev/null 2>&1
+    if [ $value_empty -ne 0 ] ; then
+        error "Found invalid value(s) \"{Base64}<Required>\" in property file \"${LDAP_PROPERTY_FILE}\", please input the correct value."
         empty_value_tag=1
     fi
 
@@ -1638,7 +1737,7 @@ function check_property_file(){
                 echo -e "***************** example *****************"
                 echo -e "if DB_SERVER_LIST=\"DBSERVER1\""
                 echo -e "You need to change"
-                echo -e "<DB_SERVER_NAME>.GCD_DB_NAME=\"GCDDB\""
+                echo -e "<DB_ALIAS_NAME>.GCD_DB_NAME=\"GCDDB\""
                 echo -e "to"
                 echo -e "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
                 echo -e "***************** example *****************"
@@ -1657,7 +1756,7 @@ function check_property_file(){
             echo -e "********************* example *********************"
             echo -e "if DB_SERVER_LIST=\"DBSERVER1\""
             echo -e "You need to change"
-            echo -e "<DB_SERVER_NAME>.DATABASE_SERVERNAME=\"samplehost\""
+            echo -e "<DB_ALIAS_NAME>.DATABASE_SERVERNAME=\"samplehost\""
             echo -e "to"
             echo -e "DBSERVER1.DATABASE_SERVERNAME=\"samplehost\""
             echo -e "********************* example *********************"
@@ -1912,35 +2011,27 @@ function create_prerequisites() {
         # Create LDAP bind secret
         create_ldap_secret_template
         #  replace ldap user
-        tmp_dbuser="$(prop_ldap_property_file LDAP_BIND_DN)"
-        ${SED_COMMAND} "s|\"<LDAP_BIND_DN>\"|\"$tmp_dbuser\"|g" ${LDAP_SECRET_FILE}
+        tmp_ldapuser="$(prop_ldap_property_file LDAP_BIND_DN)"
+        ${YQ_CMD} w -i "${LDAP_SECRET_FILE}" "stringData.ldapUsername" "$tmp_ldapuser"
 
         tmp_ldapuserpwd="$(prop_ldap_property_file LDAP_BIND_DN_PASSWORD)"
-        if [[ "${tmp_ldapuserpwd:0:8}" == "{Base64}"  ]]; then
-            temp_val=$(echo "$tmp_ldapuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-            check_single_quotes_password $temp_val "LDAP_BIND_DN_PASSWORD"
-            ${SED_COMMAND} "s|\"<LDAP_PASSWORD>\"|'$(printf '%q' $temp_val)'|g" ${LDAP_SECRET_FILE}
-        else
-            ${SED_COMMAND} "s|\"<LDAP_PASSWORD>\"|\"$tmp_ldapuserpwd\"|g" ${LDAP_SECRET_FILE}
-        fi
+        # For https://jsw.ibm.com/browse/DBACLD-157020
+        # Function that updates the secret template with the base64 password
+        update_secret_template_passwords "$tmp_ldapuserpwd" "ldapPassword" "$LDAP_SECRET_FILE"
         # ${SED_COMMAND} "s|\"<LDAP_PASSWORD>\"|\"$tmp_dbuserpwd\"|g" ${LDAP_SECRET_FILE}
 
         # Create LDAP bind secret for external share
         if [[ $SET_EXT_LDAP == "Yes" ]]; then
             create_ext_ldap_secret_template
             #  replace ldap user
-            tmp_dbuser="$(prop_ext_ldap_property_file LDAP_BIND_DN)"
-            ${SED_COMMAND} "s|\"<LDAP_BIND_DN>\"|\"$tmp_dbuser\"|g" ${EXT_LDAP_SECRET_FILE}
+            tmp_ldapuser="$(prop_ext_ldap_property_file LDAP_BIND_DN)"
+            ${SED_COMMAND} "s|\"<LDAP_BIND_DN>\"|$tmp_ldapuser|g" ${EXT_LDAP_SECRET_FILE}
 
             tmp_ldapuserpwd="$(prop_ext_ldap_property_file LDAP_BIND_DN_PASSWORD)"
-            if [[ "${tmp_ldapuserpwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_ldapuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "LDAP_BIND_DN_PASSWORD"
-                ${SED_COMMAND} "s|\"<LDAP_PASSWORD>\"|'$(printf '%q' $temp_val)'|g" ${EXT_LDAP_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|\"<LDAP_PASSWORD>\"|\"$tmp_ldapuserpwd\"|g" ${EXT_LDAP_SECRET_FILE}
-            fi
-            # ${SED_COMMAND} "s|\"<LDAP_PASSWORD>\"|\"$tmp_dbuserpwd\"|g" ${EXT_LDAP_SECRET_FILE}
+            # For https://jsw.ibm.com/browse/DBACLD-157020
+            # Function that updates the secret template with the base64 password
+            update_secret_template_passwords "$tmp_ldapuserpwd" "ldapPassword" "$EXT_LDAP_SECRET_FILE"
+            ${YQ_CMD} w -i "${EXT_LDAP_SECRET_FILE}" "stringData.ldapUsername" "$tmp_ldapuser"
 
         fi
     fi
@@ -1966,40 +2057,22 @@ function create_prerequisites() {
         # replace appLoginUsername/appLoginPassword
         tmp_appuser="$(prop_user_profile_property_file CONTENT.APPLOGIN_USER)"
         tmp_apppwd="$(prop_user_profile_property_file CONTENT.APPLOGIN_PASSWORD)"
-        ${SED_COMMAND} "s|appLoginUsername:.*|appLoginUsername: \"$tmp_appuser\"|g" ${FNCM_SECRET_FILE}
-        # ${SED_COMMAND} "s|appLoginPassword:.*|appLoginPassword: \"$tmp_apppwd\"|g" ${FNCM_SECRET_FILE}
-        if [[ "${tmp_apppwd:0:8}" == "{Base64}"  ]]; then
-            temp_val=$(echo "$tmp_apppwd" | sed -e "s/^{Base64}//" | base64 --decode)
-            check_single_quotes_password $temp_val "CONTENT.APPLOGIN_PASSWORD"
-            ${SED_COMMAND} "s|appLoginPassword:.*|appLoginPassword: '$(printf '%q' $temp_val)'|g" ${FNCM_SECRET_FILE}
-        else
-            ${SED_COMMAND} "s|appLoginPassword:.*|appLoginPassword: \"$tmp_apppwd\"|g" ${FNCM_SECRET_FILE}
-        fi
+        ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.appLoginUsername" "$tmp_appuser"
+        # For https://jsw.ibm.com/browse/DBACLD-157020
+        # Function that updates the secret template with the base64 password
+        update_secret_template_passwords "$tmp_apppwd" "appLoginPassword" "$FNCM_SECRET_FILE"
 
         # replace ltpaPassword/keystorePassword for FNCM
         tmp_ltpapwd="$(prop_user_profile_property_file CONTENT.LTPA_PASSWORD)"
         tmp_kestorepwd="$(prop_user_profile_property_file CONTENT.KEYSTORE_PASSWORD)"
-            if [[ "${tmp_ltpapwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_ltpapwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "CONTENT.LTPA_PASSWORD"
-                ${SED_COMMAND} "s|ltpaPassword:.*|ltpaPassword: '$(printf '%q' $temp_val)'|g" ${FNCM_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|ltpaPassword:.*|ltpaPassword: \"$tmp_ltpapwd\"|g" ${FNCM_SECRET_FILE}
-            fi
-            # ${SED_COMMAND} "s|ltpaPassword:.*|ltpaPassword: \"$tmp_ltpapwd\"|g" ${BAN_SECRET_FILE}
-            if [[ "${tmp_kestorepwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_kestorepwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "CONTENT.KEYSTORE_PASSWORD"
-                ${SED_COMMAND} "s|keystorePassword:.*|keystorePassword: '$(printf '%q' $temp_val)'|g" ${FNCM_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|keystorePassword:.*|keystorePassword: \"$tmp_kestorepwd\"|g" ${FNCM_SECRET_FILE}
-            fi
-        # ${SED_COMMAND} "s|ltpaPassword:.*|ltpaPassword: \"$tmp_ltpapwd\"|g" ${FNCM_SECRET_FILE}
-        # ${SED_COMMAND} "s|keystorePassword:.*|keystorePassword: \"$tmp_kestorepwd\"|g" ${FNCM_SECRET_FILE}
+        # For https://jsw.ibm.com/browse/DBACLD-157020
+        # Function that updates the secret template with the base64 password
+        update_secret_template_passwords "$tmp_ltpapwd" "ltpaPassword" "$FNCM_SECRET_FILE"
+        update_secret_template_passwords "$tmp_kestorepwd" "keystorePassword" "$FNCM_SECRET_FILE"
 
         #  replace gcddb user
         tmp_dbuser="$(prop_db_name_user_property_file GCD_DB_USER_NAME)"
-        ${SED_COMMAND} "s|\"<GCD_DB_USER_NAME>\"|$tmp_dbuser|g" ${FNCM_SECRET_FILE}
+        ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.gcdDBUsername" "$tmp_dbuser"
 
         # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
         if [[ $DB_TYPE = "postgresql" ]]; then
@@ -2015,13 +2088,9 @@ function create_prerequisites() {
             ${SED_COMMAND} '/^  gcdDBPassword/d' ${FNCM_SECRET_FILE}
         else
             tmp_dbuserpwd="$(prop_db_name_user_property_file GCD_DB_USER_PASSWORD)"
-            if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "GCD_DB_USER_PASSWORD"
-                ${SED_COMMAND} "s|\"<GCD_DB_USER_PASSWORD>\"|'$(printf '%q' $temp_val)'|g" ${FNCM_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|\"<GCD_DB_USER_PASSWORD>\"|$tmp_dbuserpwd|g" ${FNCM_SECRET_FILE}
-            fi
+            # For https://jsw.ibm.com/browse/DBACLD-157020
+            # Function that updates the secret template with the base64 password
+            update_secret_template_passwords "$tmp_dbuserpwd" "gcdDBPassword" "$FNCM_SECRET_FILE"
         fi
         # support multiple db server/instance in ibm-fncm-secret
         # add dc_os_lable in ibm-fncm-secret for final cr
@@ -2047,34 +2116,13 @@ function create_prerequisites() {
 
                 tmp_dbuserpwd="$(prop_db_name_user_property_file OS$((j+1))_DB_USER_PASSWORD)"
                 tmp_dbuser="$(prop_db_name_user_property_file OS$((j+1))_DB_USER_NAME)"
-                if [[ "$machine" == "Mac" ]]; then
-                    # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
-                    if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
-                    if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                    temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $temp_val "OS$((j+1))_DB_USER_PASSWORD"
-                    ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  os$((j+1))DBPassword: '$(printf '%q' $temp_val)'\\${nl}" ${FNCM_SECRET_FILE}
-                    else
-                    ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  os$((j+1))DBPassword: $tmp_dbuserpwd\\${nl}" ${FNCM_SECRET_FILE}
-                    fi
-                    fi
-                    ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  os$((j+1))DBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
-                else
-                    # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
-                    if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
-                        if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                            temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                            check_single_quotes_password $temp_val "OS$((j+1))_DB_USER_PASSWORD"
-                            ${SED_COMMAND} "/^  osDBPassword: .*/a\  os$((j+1))DBPassword: '$(printf '%q' $temp_val)'" ${FNCM_SECRET_FILE}
-                        else
-                            ${SED_COMMAND} "/^  osDBPassword: .*/a\  os$((j+1))DBPassword: $tmp_dbuserpwd" ${FNCM_SECRET_FILE}
-                        fi
-                    fi
-                    ${SED_COMMAND} "/^  osDBPassword: .*/a\  os$((j+1))DBUsername: $tmp_dbuser" ${FNCM_SECRET_FILE}
+                # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret, the below condition adds the password for POSTGRESQL_SSL_CLIENT_SERVER as false
+                if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
+                    # For https://jsw.ibm.com/browse/DBACLD-157020
+                    # Function that updates the secret template with the base64 password
+                    update_secret_template_passwords "$tmp_dbuserpwd" "osDBPassword" "$FNCM_SECRET_FILE" "os$((j+1))DBPassword"
                 fi
+                ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.os$((j+1))DBUsername" "$tmp_dbuser"
             done
         fi
         # add aeos
@@ -2097,34 +2145,13 @@ function create_prerequisites() {
             #  replace aeos user
             tmp_dbuserpwd="$(prop_db_name_user_property_file AEOS_DB_USER_PASSWORD)"
             tmp_dbuser="$(prop_db_name_user_property_file AEOS_DB_USER_NAME)"
-            if [[ "$machine" == "Mac" ]]; then
-                # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
-                if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
-                if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "AEOS_DB_USER_PASSWORD"
-                ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  aeosDBPassword: '$(printf '%q' $temp_val)'\\${nl}" ${FNCM_SECRET_FILE}
-                else
-                ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  aeosDBPassword: $tmp_dbuserpwd\\${nl}" ${FNCM_SECRET_FILE}
-                fi
-                fi
-                ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  aeosDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
-            else
-                # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
-                if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
-                    if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                        temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $temp_val "AEOS_DB_USER_PASSWORD"
-                        ${SED_COMMAND} "/^  osDBPassword: .*/a\  aeosDBPassword: '$(printf '%q' $temp_val)'" ${FNCM_SECRET_FILE}
-                    else
-                        ${SED_COMMAND} "/^  osDBPassword: .*/a\  aeosDBPassword: $tmp_dbuserpwd" ${FNCM_SECRET_FILE}
-                    fi
-                fi
-                ${SED_COMMAND} "/^  osDBPassword: .*/a\  aeosDBUsername: $tmp_dbuser" ${FNCM_SECRET_FILE}
+            # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret, the below condition adds the password for POSTGRESQL_SSL_CLIENT_SERVER as false
+            if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
+                # For https://jsw.ibm.com/browse/DBACLD-157020
+                # Function that updates the secret template with the base64 password
+                update_secret_template_passwords "$tmp_dbuserpwd" "osDBPassword" "$FNCM_SECRET_FILE" "aeosDBPassword"
             fi
+            ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.aeosDBUsername" "$tmp_dbuser"
         fi
 
         # add baw authoring/ baw runtime / bas+ aws os
@@ -2148,35 +2175,13 @@ function create_prerequisites() {
                 tmp_dbuser="$(prop_db_name_user_property_file ${BAW_AUTH_OS_ARR[i]}_DB_USER_NAME)"
                 tmp_val=$(echo ${BAW_AUTH_OS_ARR[i]} | tr '[:upper:]' '[:lower:]')
                 tmp_dbuserpwd="$(prop_db_name_user_property_file ${BAW_AUTH_OS_ARR[i]}_DB_USER_PASSWORD)"
-                if [[ "$machine" == "Mac" ]]; then
-                    # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
-                    if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
-                    if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                    temp_pwd_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $temp_val "${BAW_AUTH_OS_ARR[i]}_DB_USER_PASSWORD"
-                    ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  ${tmp_val}DBPassword: '$(printf '%q' $temp_pwd_val)'\\${nl}" ${FNCM_SECRET_FILE}
-                    else
-                    ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  ${tmp_val}DBPassword: $tmp_dbuserpwd\\${nl}" ${FNCM_SECRET_FILE}
-                    fi
-                    fi
-                    ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  ${tmp_val}DBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
-                else
-                    # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
-                    if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
-                        if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                            temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                            check_single_quotes_password $temp_val "${BAW_AUTH_OS_ARR[i]}_DB_USER_PASSWORD"
-                            ${SED_COMMAND} "/^  osDBPassword: .*/a\  ${tmp_val}DBPassword: '$(printf '%q' $temp_val)'" ${FNCM_SECRET_FILE}
-                        else
-                            ${SED_COMMAND} "/^  osDBPassword: .*/a\  ${tmp_val}DBPassword: $tmp_dbuserpwd" ${FNCM_SECRET_FILE}
-                        fi
-                    # ${SED_COMMAND} "/^  osDBPassword: .*/a\  ${tmp_val}DBPassword: $tmp_dbuserpwd" ${FNCM_SECRET_FILE}
-                    fi
-                    ${SED_COMMAND} "/^  osDBPassword: .*/a\  ${tmp_val}DBUsername: $tmp_dbuser" ${FNCM_SECRET_FILE}
+                # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
+                if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
+                    # For https://jsw.ibm.com/browse/DBACLD-157020
+                    # Function that updates the secret template with the base64 password
+                    update_secret_template_passwords "$tmp_dbuserpwd" "osDBPassword" "$FNCM_SECRET_FILE" "${tmp_val}DBPassword"
                 fi
+                ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.${tmp_val}DBUsername" "$tmp_dbuser"
             done
             if [[ " ${pattern_cr_arr[@]}" =~ "workflow-workstreams" ]]; then
                 # get server/instance for OS
@@ -2196,35 +2201,12 @@ function create_prerequisites() {
 
                 tmp_dbuserpwd="$(prop_db_name_user_property_file AWSDOCS_DB_USER_PASSWORD)"
                 tmp_dbuser="$(prop_db_name_user_property_file AWSDOCS_DB_USER_NAME)"
-                if [[ "$machine" == "Mac" ]]; then
-                    # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
-                    if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
-                    if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                    temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $temp_val "AWSDOCS_DB_USER_PASSWORD"
-                    ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  awsdocsDBPassword: '$(printf '%q' $temp_val)'\\${nl}" ${FNCM_SECRET_FILE}
-                    else
-                    ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  awsdocsDBPassword: $tmp_dbuserpwd\\${nl}" ${FNCM_SECRET_FILE}
-                    fi
-                    fi
-                    ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  awsdocsDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
-                else
-                    # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
-                    if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
-                        if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                            temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                            check_single_quotes_password $temp_val "AWSDOCS_DB_USER_PASSWORD"
-                            ${SED_COMMAND} "/^  osDBPassword: .*/a\  awsdocsDBPassword: '$(printf '%q' $temp_val)'" ${FNCM_SECRET_FILE}
-                        else
-                            ${SED_COMMAND} "/^  osDBPassword: .*/a\  awsdocsDBPassword: $tmp_dbuserpwd" ${FNCM_SECRET_FILE}
-                        fi
-                    # ${SED_COMMAND} "/^  osDBPassword: .*/a\  awsdocsDBPassword: $tmp_dbuserpwd" ${FNCM_SECRET_FILE}
-                    fi
-                    ${SED_COMMAND} "/^  osDBPassword: .*/a\  awsdocsDBUsername: $tmp_dbuser" ${FNCM_SECRET_FILE}
+                if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
+                    # For https://jsw.ibm.com/browse/DBACLD-157020
+                    # Function that updates the secret template with the base64 password
+                    update_secret_template_passwords "$tmp_dbuserpwd" "osDBPassword" "$FNCM_SECRET_FILE" "awsdocsDBPassword"
                 fi
+                ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.awsdocsDBUsername" "$tmp_dbuser"
             fi
         fi
 
@@ -2247,35 +2229,13 @@ function create_prerequisites() {
 
             tmp_dbuserpwd="$(prop_db_name_user_property_file AWSDOCS_DB_USER_PASSWORD)"
             tmp_dbuser="$(prop_db_name_user_property_file AWSDOCS_DB_USER_NAME)"
-            if [[ "$machine" == "Mac" ]]; then
-                # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
-                if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
-                if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "AWSDOCS_DB_USER_PASSWORD"
-                ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  awsdocsDBPassword: '$(printf '%q' $temp_val)'\\${nl}" ${FNCM_SECRET_FILE}
-                else
-                ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  awsdocsDBPassword: $tmp_dbuserpwd\\${nl}" ${FNCM_SECRET_FILE}
-                fi
-                fi
-                ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  awsdocsDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
-            else
-                # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
-                if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
-                    if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                        temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $temp_val "AWSDOCS_DB_USER_PASSWORD"
-                        ${SED_COMMAND} "/^  osDBPassword: .*/a\  awsdocsDBPassword: '$(printf '%q' $temp_val)'" ${FNCM_SECRET_FILE}
-                    else
-                        ${SED_COMMAND} "/^  osDBPassword: .*/a\  awsdocsDBPassword: $tmp_dbuserpwd" ${FNCM_SECRET_FILE}
-                    fi
-                # ${SED_COMMAND} "/^  osDBPassword: .*/a\  awsdocsDBPassword: $tmp_dbuserpwd" ${FNCM_SECRET_FILE}
-                fi
-                ${SED_COMMAND} "/^  osDBPassword: .*/a\  awsdocsDBUsername: $tmp_dbuser" ${FNCM_SECRET_FILE}
+            # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
+            if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
+                # For https://jsw.ibm.com/browse/DBACLD-157020
+                # Function that updates the secret template with the base64 password
+                update_secret_template_passwords "$tmp_dbuserpwd" "osDBPassword" "$FNCM_SECRET_FILE" "awsdocsDBPassword"
             fi
+            ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.awsdocsDBUsername" "$tmp_dbuser"
         fi
 
             # add Case History os
@@ -2299,35 +2259,13 @@ function create_prerequisites() {
 
                 tmp_dbuserpwd="$(prop_db_name_user_property_file CHOS_DB_USER_PASSWORD)"
                 tmp_dbuser="$(prop_db_name_user_property_file CHOS_DB_USER_NAME)"
-                if [[ "$machine" == "Mac" ]]; then
-                    # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
-                    if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
-                    if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                    temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $temp_val "CHOS_DB_USER_PASSWORD"
-                    ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-chDBPassword: '$(printf '%q' $temp_val)'\\${nl}" ${FNCM_SECRET_FILE}
-                    else
-                    ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-chDBPassword: $tmp_dbuserpwd\\${nl}" ${FNCM_SECRET_FILE}
-                    fi
-                    fi
-                    ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
-                else
-                    # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
-                    if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
-                        if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                            temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                            check_single_quotes_password $temp_val "CHOS_DB_USER_PASSWORD"
-                            ${SED_COMMAND} "/^  osDBPassword: .*/a\  chDBPassword: '$(printf '%q' $temp_val)'" ${FNCM_SECRET_FILE}
-                        else
-                            ${SED_COMMAND} "/^  osDBPassword: .*/a\  chDBPassword: $tmp_dbuserpwd" ${FNCM_SECRET_FILE}
-                        fi
-                    # ${SED_COMMAND} "/^  osDBPassword: .*/a\  chDBPassword: $tmp_dbuserpwd" ${FNCM_SECRET_FILE}
-                    fi
-                    ${SED_COMMAND} "/^  osDBPassword: .*/a\  chDBUsername: $tmp_dbuser" ${FNCM_SECRET_FILE}
+                # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
+                if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
+                    # For https://jsw.ibm.com/browse/DBACLD-157020
+                    # Function that updates the secret template with the base64 password
+                    update_secret_template_passwords "$tmp_dbuserpwd" "osDBPassword" "$FNCM_SECRET_FILE" "chDBPassword"
                 fi
+                ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.chDBUsername" "$tmp_dbuser"
             fi
         fi
 
@@ -2350,35 +2288,13 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
 
             tmp_dbuserpwd="$(prop_db_name_user_property_file DEVOS_DB_USER_PASSWORD)"
             tmp_dbuser="$(prop_db_name_user_property_file DEVOS_DB_USER_NAME)"
-            if [[ "$machine" == "Mac" ]]; then
-                # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
-                if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
-                if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "DEVOS_DB_USER_PASSWORD"
-                ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  devos1DBPassword: '$(printf '%q' $temp_val)'\\${nl}" ${FNCM_SECRET_FILE}
-                else
-                ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  devos1DBPassword: $tmp_dbuserpwd\\${nl}" ${FNCM_SECRET_FILE}
-                fi
-                fi
-                ${SED_COMMAND} "/^  osDBPassword: .*/a\ 
-  devos1DBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
-            else
-                # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
-                if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
-                    if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                        temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $temp_val "DEVOS_DB_USER_PASSWORD"
-                        ${SED_COMMAND} "/^  osDBPassword: .*/a\  devos1DBPassword: '$(printf '%q' $temp_val)'" ${FNCM_SECRET_FILE}
-                    else
-                        ${SED_COMMAND} "/^  osDBPassword: .*/a\  devos1DBPassword: $tmp_dbuserpwd" ${FNCM_SECRET_FILE}
-                    fi
-                # ${SED_COMMAND} "/^  osDBPassword: .*/a\  devos1DBPassword: $tmp_dbuserpwd" ${FNCM_SECRET_FILE}
-                fi
-                ${SED_COMMAND} "/^  osDBPassword: .*/a\  devos1DBUsername: $tmp_dbuser" ${FNCM_SECRET_FILE}
+            # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
+            if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
+                # For https://jsw.ibm.com/browse/DBACLD-157020
+                # Function that updates the secret template with the base64 password
+                update_secret_template_passwords "$tmp_dbuserpwd" "osDBPassword" "$FNCM_SECRET_FILE" "devos1DBPassword"
             fi
+            ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.devos1DBUsername" "$tmp_dbuser"
         fi
         ${SED_COMMAND} '/^  osDBUsername/d' ${FNCM_SECRET_FILE}
         ${SED_COMMAND} '/^  osDBPassword/d' ${FNCM_SECRET_FILE}
@@ -2391,14 +2307,9 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
 
             # replace keystorePassword for ICCSAP
             tmp_kestorepwd="$(prop_user_profile_property_file ICCSAP.KEYSTORE_PASSWORD)"
-            if [[ "${tmp_kestorepwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_kestorepwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "ICCSAP.KEYSTORE_PASSWORD"
-                ${SED_COMMAND} "s|keystorePassword:.*|keystorePassword: '$(printf '%q' $temp_val)'|g" ${FNCM_ICCSAP_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|keystorePassword:.*|keystorePassword: \"$tmp_kestorepwd\"|g" ${FNCM_ICCSAP_SECRET_FILE}
-            fi
-
+            # For https://jsw.ibm.com/browse/DBACLD-157020
+            # Function that updates the secret template with the base64 password
+            update_secret_template_passwords "$tmp_dbuserpwd" "keystorePassword" "$FNCM_ICCSAP_SECRET_FILE"
             success "Created ibm-iccsap-secret secret YAML template for CP4BA\n"
         fi
         # If select ICC Archive
@@ -2408,16 +2319,12 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
 
             # replace keystorePassword for ICCSAP
             tmp_archive_id="$(prop_user_profile_property_file CONTENT.ARCHIVE_USER_ID)"
-            ${SED_COMMAND} "s|archiveUserId:.*|archiveUserId: \"$tmp_archive_id\"|g" ${FNCM_ICC_SECRET_FILE}
+            ${YQ_CMD} w -i "${FNCM_ICC_SECRET_FILE}" "stringData.archiveUserId" "$tmp_archive_id"
 
             tmp_archive_pwd="$(prop_user_profile_property_file CONTENT.ARCHIVE_USER_PASSWORD)"
-            if [[ "${tmp_archive_pwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_archive_pwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "CONTENT.ARCHIVE_USER_PASSWORD"
-                ${SED_COMMAND} "s|archivePassword:.*|archivePassword: '$(printf '%q' $temp_val)'|g" ${FNCM_ICC_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|archivePassword:.*|archivePassword: \"$tmp_archive_pwd\"|g" ${FNCM_ICC_SECRET_FILE}
-            fi
+            # For https://jsw.ibm.com/browse/DBACLD-157020
+            # Function that updates the secret template with the base64 password
+            update_secret_template_passwords "$tmp_archive_pwd" "archivePassword" "$FNCM_ICC_SECRET_FILE"
 
             success "Created ibm-icc-secret secret YAML template for CP4BA\n"
         fi
@@ -2429,14 +2336,9 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
 
             # replace keystorePassword for IER
             tmp_kestorepwd="$(prop_user_profile_property_file IER.KEYSTORE_PASSWORD)"
-            if [[ "${tmp_kestorepwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_kestorepwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "IER.KEYSTORE_PASSWORD"
-                ${SED_COMMAND} "s|keystorePassword:.*|keystorePassword: '$(printf '%q' $temp_val)'|g" ${FNCM_IER_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|keystorePassword:.*|keystorePassword: \"$tmp_kestorepwd\"|g" ${FNCM_IER_SECRET_FILE}
-            fi
-            # ${SED_COMMAND} "s|keystorePassword:.*|keystorePassword: \"$tmp_kestorepwd\"|g" ${FNCM_IER_SECRET_FILE}
+            # For https://jsw.ibm.com/browse/DBACLD-157020
+            # Function that updates the secret template with the base64 password
+            update_secret_template_passwords "$tmp_kestorepwd" "keystorePassword" "$FNCM_IER_SECRET_FILE"
 
             success "Created ibm-ier-secret secret YAML template for CP4BA\n"
         fi
@@ -2473,34 +2375,19 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
             # replace appLoginUsername/appLoginPassword
             tmp_appuser="$(prop_user_profile_property_file BAN.APPLOGIN_USER)"
             tmp_apppwd="$(prop_user_profile_property_file BAN.APPLOGIN_PASSWORD)"
-            ${SED_COMMAND} "s|appLoginUsername:.*|appLoginUsername: \"$tmp_appuser\"|g" ${BAN_SECRET_FILE}
-            if [[ "${tmp_apppwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_apppwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "BAN.APPLOGIN_PASSWORD"
-                ${SED_COMMAND} "s|appLoginPassword:.*|appLoginPassword: '$(printf '%q' $temp_val)'|g" ${BAN_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|appLoginPassword:.*|appLoginPassword: \"$tmp_apppwd\"|g" ${BAN_SECRET_FILE}
-            fi
+            ${YQ_CMD} w -i "${BAN_SECRET_FILE}" "stringData.appLoginUsername" "$tmp_appuser"
+            # For https://jsw.ibm.com/browse/DBACLD-157020
+            # Function that updates the secret template with the base64 password
+            update_secret_template_passwords "$tmp_apppwd" "appLoginPassword" "$BAN_SECRET_FILE"
 
             # replace ltpaPassword/keystorePassword for FNCM
             tmp_ltpapwd="$(prop_user_profile_property_file BAN.LTPA_PASSWORD)"
             tmp_kestorepwd="$(prop_user_profile_property_file BAN.KEYSTORE_PASSWORD)"
-            if [[ "${tmp_ltpapwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_ltpapwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "BAN.LTPA_PASSWORD"
-                ${SED_COMMAND} "s|ltpaPassword:.*|ltpaPassword: '$(printf '%q' $temp_val)'|g" ${BAN_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|ltpaPassword:.*|ltpaPassword: \"$tmp_ltpapwd\"|g" ${BAN_SECRET_FILE}
-            fi
-            # ${SED_COMMAND} "s|ltpaPassword:.*|ltpaPassword: \"$tmp_ltpapwd\"|g" ${BAN_SECRET_FILE}
-            if [[ "${tmp_kestorepwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_kestorepwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "BAN.KEYSTORE_PASSWORD"
-                ${SED_COMMAND} "s|keystorePassword:.*|keystorePassword: '$(printf '%q' $temp_val)'|g" ${BAN_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|keystorePassword:.*|keystorePassword: \"$tmp_kestorepwd\"|g" ${BAN_SECRET_FILE}
-            fi
-            # ${SED_COMMAND} "s|keystorePassword:.*|keystorePassword: \"$tmp_kestorepwd\"|g" ${BAN_SECRET_FILE}
+            # For https://jsw.ibm.com/browse/DBACLD-157020
+            # Function that updates the secret template with the base64 password
+            update_secret_template_passwords "$tmp_ltpapwd" "ltpaPassword" "$BAN_SECRET_FILE"
+            update_secret_template_passwords "$tmp_kestorepwd" "keystorePassword" "$BAN_SECRET_FILE"
+
 
             # replace ltpaPassword/keystorePassword for FNCM
             tmp_appuser="$(prop_user_profile_property_file BAN.JMAIL_USER_NAME)"
@@ -2510,32 +2397,24 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
             tmp_apppwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_apppwd")
 
             if [[ ! ($tmp_appuser == "<Optional>" || $tmp_appuser == "<Optional>") ]]; then
-                ${SED_COMMAND} "s|jMailUsername:.*|jMailUsername: \"$tmp_appuser\"|g" ${BAN_SECRET_FILE}
-                if [[ "${tmp_apppwd:0:8}" == "{Base64}"  ]]; then
-                    temp_val=$(echo "$tmp_apppwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $temp_val "BAN.JMAIL_USER_PASSWORD"
-                    ${SED_COMMAND} "s|jMailPassword:.*|jMailPassword: '$(printf '%q' $temp_val)'|g" ${BAN_SECRET_FILE}
-                else
-                    ${SED_COMMAND} "s|jMailPassword:.*|jMailPassword: \"$tmp_apppwd\"|g" ${BAN_SECRET_FILE}
-                fi
+                ${YQ_CMD} w -i "${BAN_SECRET_FILE}" "stringData.jMailUsername" "$tmp_appuser"
+                # For https://jsw.ibm.com/browse/DBACLD-157020
+                # Function that updates the secret template with the base64 password
+                update_secret_template_passwords "$tmp_apppwd" "jMailPassword" "$BAN_SECRET_FILE"
             fi
 
             #  replace icndb user
             tmp_dbuser="$(prop_db_name_user_property_file ICN_DB_USER_NAME)"
-            ${SED_COMMAND} "s|\"<ICN_DB_USER_NAME>\"|$tmp_dbuser|g" ${BAN_SECRET_FILE}
+            ${YQ_CMD} w -i "${BAN_SECRET_FILE}" "stringData.navigatorDBUsername" "$tmp_dbuser"
 
             # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
             if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
                 ${SED_COMMAND} '/^  navigatorDBPassword/d' ${BAN_SECRET_FILE}
             else
                 tmp_dbuserpwd="$(prop_db_name_user_property_file ICN_DB_USER_PASSWORD)"
-                if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                    temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $temp_val "ICN_DB_USER_PASSWORD"
-                    ${SED_COMMAND} "s|\"<ICNDB_PASSWORD>\"|'$(printf '%q' $temp_val)'|g" ${BAN_SECRET_FILE}
-                else
-                    ${SED_COMMAND} "s|\"<ICNDB_PASSWORD>\"|$tmp_dbuserpwd|g" ${BAN_SECRET_FILE}
-                fi
+                # For https://jsw.ibm.com/browse/DBACLD-157020
+                # Function that updates the secret template with the base64 password
+                update_secret_template_passwords "$tmp_dbuserpwd" "navigatorDBPassword" "$BAN_SECRET_FILE"
             fi
             success "Created ibm-ban-secret secret YAML template for CP4BA\n"
         fi
@@ -2551,7 +2430,8 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
             tmp_dbname="$(prop_db_name_user_property_file ADP_BASE_DB_USER_NAME)"
         fi
 
-        create_aca_db_secret_template $tmp_dbname $tmp_dbservername
+        # create aca db secret and populate the function
+        create_aca_db_secret_template
 
         # create ibm-adp-secret
         create_adp_secret_template
@@ -2559,71 +2439,61 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
         # replace serviceUser/servicePwd for ADP
         tmp_username="$(prop_user_profile_property_file ADP.SERVICE_USER_NAME)"
         tmp_userpwd="$(prop_user_profile_property_file ADP.SERVICE_USER_PASSWORD)"
-        ${SED_COMMAND} "s|serviceUser:.*|serviceUser: \"$tmp_username\"|g" ${ADP_SECRET_FILE}
-        if [[ "${tmp_userpwd:0:8}" == "{Base64}"  ]]; then
-            temp_val=$(echo "$tmp_userpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-            check_single_quotes_password $temp_val "ADP.SERVICE_USER_PASSWORD"
-            ${SED_COMMAND} "s|servicePwd:.*|servicePwd: '$(printf '%q' $temp_val)'|g" ${ADP_SECRET_FILE}
-        else
-            ${SED_COMMAND} "s|servicePwd:.*|servicePwd: \"$tmp_userpwd\"|g" ${ADP_SECRET_FILE}
-        fi
+        ${YQ_CMD} w -i "${ADP_SECRET_FILE}" "stringData.serviceUser" "$tmp_username"
+        # For https://jsw.ibm.com/browse/DBACLD-157020
+        # Function that updates the secret template with the base64 password
+        update_secret_template_passwords "$tmp_userpwd" "servicePwd" "$ADP_SECRET_FILE"
 
         # replace serviceUserBas/servicePwdBas for ADP
         tmp_username="$(prop_user_profile_property_file ADP.SERVICE_USER_NAME_BASE)"
         tmp_userpwd="$(prop_user_profile_property_file ADP.SERVICE_USER_PASSWORD_BASE)"
-        ${SED_COMMAND} "s|serviceUserBas:.*|serviceUserBas: \"$tmp_username\"|g" ${ADP_SECRET_FILE}
-        if [[ "${tmp_userpwd:0:8}" == "{Base64}"  ]]; then
-            temp_val=$(echo "$tmp_userpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-            check_single_quotes_password $temp_val "ADP.SERVICE_USER_PASSWORD_BASE"
-            ${SED_COMMAND} "s|servicePwdBas:.*|servicePwdBas: '$(printf '%q' $temp_val)'|g" ${ADP_SECRET_FILE}
-        else
-            ${SED_COMMAND} "s|servicePwdBas:.*|servicePwdBas: \"$tmp_userpwd\"|g" ${ADP_SECRET_FILE}
-        fi
+        ${YQ_CMD} w -i "${ADP_SECRET_FILE}" "stringData.serviceUserBas" "$tmp_username"
+        # For https://jsw.ibm.com/browse/DBACLD-157020
+        # Function that updates the secret template with the base64 password
+        update_secret_template_passwords "$tmp_userpwd" "servicePwdBas" "$ADP_SECRET_FILE"
 
         # replace serviceUserCa/servicePwdCa for ADP
         tmp_username="$(prop_user_profile_property_file ADP.SERVICE_USER_NAME_CA)"
         tmp_userpwd="$(prop_user_profile_property_file ADP.SERVICE_USER_PASSWORD_CA)"
-        ${SED_COMMAND} "s|serviceUserCa:.*|serviceUserCa: \"$tmp_username\"|g" ${ADP_SECRET_FILE}
-        if [[ "${tmp_userpwd:0:8}" == "{Base64}"  ]]; then
-            temp_val=$(echo "$tmp_userpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-            check_single_quotes_password $temp_val "ADP.SERVICE_USER_PASSWORD_CA"
-            ${SED_COMMAND} "s|servicePwdCa:.*|servicePwdCa: '$(printf '%q' $temp_val)'|g" ${ADP_SECRET_FILE}
-        else
-            ${SED_COMMAND} "s|servicePwdCa:.*|servicePwdCa: \"$tmp_userpwd\"|g" ${ADP_SECRET_FILE}
-        fi
+        ${YQ_CMD} w -i "${ADP_SECRET_FILE}" "stringData.serviceUserCa" "$tmp_username"
+        # For https://jsw.ibm.com/browse/DBACLD-157020
+        # Function that updates the secret template with the base64 password
+        update_secret_template_passwords "$tmp_userpwd" "servicePwdCa" "$ADP_SECRET_FILE"
+
         # replace envOwnerUser/envOwnerPwd for ADP
         tmp_username="$(prop_user_profile_property_file ADP.ENV_OWNER_USER_NAME)"
         tmp_userpwd="$(prop_user_profile_property_file ADP.ENV_OWNER_USER_PASSWORD)"
-        ${SED_COMMAND} "s|envOwnerUser:.*|envOwnerUser: \"$tmp_username\"|g" ${ADP_SECRET_FILE}
-        if [[ "${tmp_userpwd:0:8}" == "{Base64}"  ]]; then
-            temp_val=$(echo "$tmp_userpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-            check_single_quotes_password $temp_val "ADP.ENV_OWNER_USER_PASSWORD"
-            ${SED_COMMAND} "s|envOwnerPwd:.*|envOwnerPwd: '$(printf '%q' $temp_val)'|g" ${ADP_SECRET_FILE}
-        else
-            ${SED_COMMAND} "s|envOwnerPwd:.*|envOwnerPwd: \"$tmp_userpwd\"|g" ${ADP_SECRET_FILE}
-        fi
+        ${YQ_CMD} w -i "${ADP_SECRET_FILE}" "stringData.envOwnerUser" "$tmp_username"
+        # For https://jsw.ibm.com/browse/DBACLD-157020
+        # Function that updates the secret template with the base64 password
+        update_secret_template_passwords "$tmp_userpwd" "envOwnerPwd" "$ADP_SECRET_FILE"
 
         # Applying user profile for ibm-adp-secret
         tmp_mongo_flag="$(prop_user_profile_property_file ADP.USE_EXTERNAL_MONGODB)"
         tmp_mongo_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_mongo_flag")
-
         if [[ $tmp_mongo_flag == "Yes" || $tmp_mongo_flag == "YES" || $tmp_mongo_flag == "Y" || $tmp_mongo_flag == "True" || $tmp_mongo_flag == "true" ]]; then
             # replace mongoUri/mongoUser/mongoPwd for ADP
             tmp_mongo_uri="$(prop_user_profile_property_file ADP.EXTERNAL_MONGO_URI)"
             tmp_username="$(prop_user_profile_property_file ADP.MONGO_USER_NAME)"
             tmp_userpwd="$(prop_user_profile_property_file ADP.MONGO_USER_PASSWORD)"
-            ${YQ_CMD} w -i ${ADP_SECRET_FILE} stringData.mongoUri "\"$tmp_mongo_uri\""
+            ${YQ_CMD} w -i ${ADP_SECRET_FILE} stringData.mongoUri "$tmp_mongo_uri"
             # ${SED_COMMAND} "s|# mongoUri:.*|mongoUri: \"$tmp_mongo_uri\"|g" ${ADP_SECRET_FILE}
-            ${SED_COMMAND} "s|# mongoUser:.*|mongoUser: \"$tmp_username\"|g" ${ADP_SECRET_FILE}
-            if [[ "${tmp_userpwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_userpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "ADP.MONGO_USER_PASSWORD"
-                ${SED_COMMAND} "s|# mongoPwd:.*|mongoPwd: '$(printf '%q' $temp_val)'|g" ${ADP_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|# mongoPwd:.*|mongoPwd: \"$tmp_userpwd\"|g" ${ADP_SECRET_FILE}
-            fi
+            ${YQ_CMD} w -i ${ADP_SECRET_FILE} stringData.mongoUser "$tmp_username"
+            # For https://jsw.ibm.com/browse/DBACLD-157020
+            # Function that updates the secret template with the base64 password
+            update_secret_template_passwords "$tmp_userpwd" "mongoPwd" "$ADP_SECRET_FILE" "mongoPwd"
+
             ${SED_COMMAND} "s|'\"|\"|g" ${ADP_SECRET_FILE}
             ${SED_COMMAND} "s|\"'|\"|g" ${ADP_SECRET_FILE}
+        # Using YQ to update the fields removes the commented section of the mongo parameters. Hence adding it back when mongo flag is no , if the mongo flag is yes this is not needed and the script will fill the template accordingly 
+        else
+            ${SED_COMMAND} "/envOwnerUser:/a\\
+  # If you want to use your own Enterprise MongoDB instance in the environment,\\
+  # you must also include the mongoURI and your Mongo user and password values in the secret\\
+  # mongoUri: \"mongodb://mongo:<mongoPwd>@<mongo_database_hostname>:<mongo_database_port>/<mongo_database_name>?authSource=admin&connectTimeoutMS=3000\"\\
+  # mongoUser: \"<MONGO_USER>\"\\
+  # mongoPwd: \"<MONGO_PASSWORD>\"
+" "$ADP_SECRET_FILE"
         fi
 
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing_designer" ]]; then
@@ -2738,20 +2608,16 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
         create_app_engine_secret_template $tmp_dbname $tmp_dbservername
         #  replace APP Engine DB user
         tmp_dbuser="$(prop_db_name_user_property_file APP_ENGINE_DB_USER_NAME)"
-        ${SED_COMMAND} "s|AE_DATABASE_USER: .*|AE_DATABASE_USER: $tmp_dbuser|g" ${APP_ENGINE_SECRET_FILE}
+        ${YQ_CMD} w -i ${APP_ENGINE_SECRET_FILE} stringData.AE_DATABASE_USER "$tmp_dbuser"
 
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
         if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
             ${SED_COMMAND} '/^  AE_DATABASE_PWD/d' ${APP_ENGINE_SECRET_FILE}
         else
             tmp_dbuserpwd="$(prop_db_name_user_property_file APP_ENGINE_DB_USER_PASSWORD)"
-            if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "APP_ENGINE_DB_USER_PASSWORD"
-                ${SED_COMMAND} "s|AE_DATABASE_PWD: .*|AE_DATABASE_PWD: '$(printf '%q' $temp_val)'|g" ${APP_ENGINE_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|AE_DATABASE_PWD: .*|AE_DATABASE_PWD: $tmp_dbuserpwd|g" ${APP_ENGINE_SECRET_FILE}
-            fi
+            # For https://jsw.ibm.com/browse/DBACLD-157020
+            # Function that updates the secret template with the base64 password
+            update_secret_template_passwords "$tmp_dbuserpwd" "AE_DATABASE_PWD" "$APP_ENGINE_SECRET_FILE"
         fi
 
         # Redis for AE HA session
@@ -2805,20 +2671,16 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
         create_odm_secret_template $tmp_dbname $tmp_dbservername
         #  replace basedb user
         tmp_dbuser="$(prop_db_name_user_property_file ODM_DB_USER_NAME)"
-        ${SED_COMMAND} "s|db-user: .*|db-user: $tmp_dbuser|g" ${ODM_SECRET_FILE}
+        ${YQ_CMD} w -i ${ODM_SECRET_FILE} stringData.db-user "$tmp_dbuser"
 
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
         if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
             ${SED_COMMAND} '/^  db-password/d' ${ODM_SECRET_FILE}
         else
             tmp_dbuserpwd="$(prop_db_name_user_property_file ODM_DB_USER_PASSWORD)"
-            if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "ODM_DB_USER_PASSWORD"
-                ${SED_COMMAND} "s|db-password: .*|db-password: '$(printf '%q' $temp_val)'|g" ${ODM_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|db-password: .*|db-password: $tmp_dbuserpwd|g" ${ODM_SECRET_FILE}
-            fi
+            # For https://jsw.ibm.com/browse/DBACLD-157020
+            # Function that updates the secret template with the base64 password
+            update_secret_template_passwords "$tmp_dbuserpwd" "db-password" "$ODM_SECRET_FILE"
         fi
 
     fi
@@ -2847,20 +2709,16 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
         create_bas_secret_template $tmp_dbname $tmp_dbservername
         #  replace BAStudio DB user
         tmp_dbuser="$(prop_db_name_user_property_file STUDIO_DB_USER_NAME)"
-        ${SED_COMMAND} "s|dbUsername: .*|dbUsername: $tmp_dbuser|g" ${BAS_SECRET_FILE}
+        ${YQ_CMD} w -i ${BAS_SECRET_FILE} stringData.dbUsername "$tmp_dbuser"
 
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
         if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
             ${SED_COMMAND} '/^  dbPassword/d' ${BAS_SECRET_FILE}
         else
             tmp_dbuserpwd="$(prop_db_name_user_property_file STUDIO_DB_USER_PASSWORD)"
-            if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "STUDIO_DB_USER_PASSWORD"
-                ${SED_COMMAND} "s|dbPassword: .*|dbPassword: '$(printf '%q' $temp_val)'|g" ${BAS_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|dbPassword: .*|dbPassword: $tmp_dbuserpwd|g" ${BAS_SECRET_FILE}
-            fi
+            # For https://jsw.ibm.com/browse/DBACLD-157020
+            # Function that updates the secret template with the base64 password
+            update_secret_template_passwords "$tmp_dbuserpwd" "dbPassword" "$BAS_SECRET_FILE"
         fi
 
     fi
@@ -2889,20 +2747,16 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
         create_ae_playback_secret_template $tmp_dbname $tmp_dbservername
         #  replace ae playback db user
         tmp_dbuser="$(prop_db_name_user_property_file APP_PLAYBACK_DB_USER_NAME)"
-        ${SED_COMMAND} "s|AE_DATABASE_USER: .*|AE_DATABASE_USER: $tmp_dbuser|g" ${APP_ENGINE_PLAYBACK_SECRET_FILE}
+        ${YQ_CMD} w -i ${APP_ENGINE_PLAYBACK_SECRET_FILE} stringData.AE_DATABASE_USER "$tmp_dbuser"
 
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
         if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
             ${SED_COMMAND} '/^  AE_DATABASE_PWD/d' ${APP_ENGINE_PLAYBACK_SECRET_FILE}
         else
             tmp_dbuserpwd="$(prop_db_name_user_property_file APP_PLAYBACK_DB_USER_PASSWORD)"
-            if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "APP_PLAYBACK_DB_USER_PASSWORD"
-                ${SED_COMMAND} "s|AE_DATABASE_PWD: .*|AE_DATABASE_PWD: '$(printf '%q' $temp_val)'|g" ${APP_ENGINE_PLAYBACK_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|AE_DATABASE_PWD: .*|AE_DATABASE_PWD: $tmp_dbuserpwd|g" ${APP_ENGINE_PLAYBACK_SECRET_FILE}
-            fi
+            # For https://jsw.ibm.com/browse/DBACLD-157020
+            # Function that updates the secret template with the base64 password
+            update_secret_template_passwords "$tmp_dbuserpwd" "AE_DATABASE_PWD" "$APP_ENGINE_PLAYBACK_SECRET_FILE"
         fi
         # Redis for Playback HA session
         tmp_redis_tls_enabled="$(prop_user_profile_property_file APP_PLAYBACK.SESSION_REDIS_TLS_ENABLED)"
@@ -2972,20 +2826,16 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
 
         #  replace baw db user
         tmp_dbuser="$(prop_db_name_user_property_file BAW_RUNTIME_DB_USER_NAME)"
-        ${SED_COMMAND} "s|dbUser: .*|dbUser: $tmp_dbuser|g" ${BAW_RUNTIME_SECRET_FILE}
+        ${YQ_CMD} w -i ${BAW_RUNTIME_SECRET_FILE} stringData.dbUser "$tmp_dbuser"
 
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
         if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
             ${SED_COMMAND} '/^  password/d' ${BAW_RUNTIME_SECRET_FILE}
         else
             tmp_dbuserpwd="$(prop_db_name_user_property_file BAW_RUNTIME_DB_USER_PASSWORD)"
-            if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "BAW_RUNTIME_DB_USER_PASSWORD"
-                ${SED_COMMAND} "s|password: .*|password: '$(printf '%q' $temp_val)'|g" ${BAW_RUNTIME_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|password: .*|password: $tmp_dbuserpwd|g" ${BAW_RUNTIME_SECRET_FILE}
-            fi
+            # For https://jsw.ibm.com/browse/DBACLD-157020
+            # Function that updates the secret template with the base64 password
+            update_secret_template_passwords "$tmp_dbuserpwd" "password" "$BAW_RUNTIME_SECRET_FILE"
         fi
 
 
@@ -3014,20 +2864,16 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
         create_baw_aws_secret_template $tmp_dbname $tmp_dbservername
 
         tmp_dbuser="$(prop_db_name_user_property_file AWS_DB_USER_NAME)"
-        ${SED_COMMAND} "s|dbUser: .*|dbUser: $tmp_dbuser|g" ${BAW_AWS_SECRET_FILE}
+        ${YQ_CMD} w -i ${BAW_AWS_SECRET_FILE} stringData.dbUser "$tmp_dbuser"
 
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
         if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
             ${SED_COMMAND} '/^  password/d' ${BAW_AWS_SECRET_FILE}
         else
             tmp_dbuserpwd="$(prop_db_name_user_property_file AWS_DB_USER_PASSWORD)"
-            if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "AWS_DB_USER_PASSWORD"
-                ${SED_COMMAND} "s|password: .*|password: '$(printf '%q' $temp_val)'|g" ${BAW_AWS_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|password: .*|password: $tmp_dbuserpwd|g" ${BAW_AWS_SECRET_FILE}
-            fi
+            # For https://jsw.ibm.com/browse/DBACLD-157020
+            # Function that updates the secret template with the base64 password
+            update_secret_template_passwords "$tmp_dbuserpwd" "password" "$BAW_AWS_SECRET_FILE"
         fi
     elif [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" && (! " ${pattern_cr_arr[@]}" =~ "workflow-workstreams" ) ]]; then
         # get server/instance for baw runtime
@@ -3052,20 +2898,16 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
         create_baw_runtime_secret_template $tmp_dbname $tmp_dbservername
         #  replace baw db user
         tmp_dbuser="$(prop_db_name_user_property_file BAW_RUNTIME_DB_USER_NAME)"
-        ${SED_COMMAND} "s|dbUser: .*|dbUser: $tmp_dbuser|g" ${BAW_RUNTIME_SECRET_FILE}
+        ${YQ_CMD} w -i ${BAW_RUNTIME_SECRET_FILE} stringData.dbUser "$tmp_dbuser"
 
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
         if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
             ${SED_COMMAND} '/^  password/d' ${BAW_RUNTIME_SECRET_FILE}
         else
             tmp_dbuserpwd="$(prop_db_name_user_property_file BAW_RUNTIME_DB_USER_PASSWORD)"
-            if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "BAW_RUNTIME_DB_USER_PASSWORD"
-                ${SED_COMMAND} "s|password: .*|password: '$(printf '%q' $temp_val)'|g" ${BAW_RUNTIME_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|password: .*|password: $tmp_dbuserpwd|g" ${BAW_RUNTIME_SECRET_FILE}
-            fi
+            # For https://jsw.ibm.com/browse/DBACLD-157020
+            # Function that updates the secret template with the base64 password
+            update_secret_template_passwords "$tmp_dbuserpwd" "password" "$BAW_RUNTIME_SECRET_FILE"
         fi
     elif [[ " ${pattern_cr_arr[@]}" =~ "workstreams" && (! " ${pattern_cr_arr[@]}" =~ "workflow-workstreams" ) ]]; then
         # get server/instance for AWS
@@ -3090,20 +2932,16 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
         create_baw_aws_secret_template $tmp_dbname $tmp_dbservername
         #  replace aws db user
         tmp_dbuser="$(prop_db_name_user_property_file AWS_DB_USER_NAME)"
-        ${SED_COMMAND} "s|dbUser: .*|dbUser: $tmp_dbuser|g" ${BAW_AWS_SECRET_FILE}
-
+        ${YQ_CMD} w -i ${BAW_AWS_SECRET_FILE} stringData.dbUser "$tmp_dbuser"
+        
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
         if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
             ${SED_COMMAND} '/^  password/d' ${BAW_AWS_SECRET_FILE}
         else
             tmp_dbuserpwd="$(prop_db_name_user_property_file AWS_DB_USER_PASSWORD)"
-            if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                check_single_quotes_password $temp_val "AWS_DB_USER_PASSWORD"
-                ${SED_COMMAND} "s|password: .*|password: '$(printf '%q' $temp_val)'|g" ${BAW_AWS_SECRET_FILE}
-            else
-                ${SED_COMMAND} "s|password: .*|password: $tmp_dbuserpwd|g" ${BAW_AWS_SECRET_FILE}
-            fi
+            # For https://jsw.ibm.com/browse/DBACLD-157020
+            # Function that updates the secret template with the base64 password
+            update_secret_template_passwords "$tmp_dbuserpwd" "password" "$BAW_AWS_SECRET_FILE"
         fi
     fi
 
@@ -3115,13 +2953,13 @@ chDBUsername: $tmp_dbuser\\${nl}" ${FNCM_SECRET_FILE}
             create_ads_secret_template
             # replace gitMongoUri/mongoHistoryUri/runtimeMongoUri for ADS
             tmp_uri="$(prop_user_profile_property_file ADS.EXTERNAL_GIT_MONGO_URI)"
-            ${YQ_CMD} w -i ${ADS_SECRET_FILE} stringData.gitMongoUri "\"$tmp_uri\""
+            ${YQ_CMD} w -i ${ADS_SECRET_FILE} stringData.gitMongoUri "$tmp_uri"
             tmp_uri="$(prop_user_profile_property_file ADS.EXTERNAL_MONGO_URI)"
-            ${YQ_CMD} w -i ${ADS_SECRET_FILE} stringData.mongoUri "\"$tmp_uri\""
+            ${YQ_CMD} w -i ${ADS_SECRET_FILE} stringData.mongoUri "$tmp_uri"
             tmp_uri="$(prop_user_profile_property_file ADS.EXTERNAL_MONGO_HISTORY_URI)"
-            ${YQ_CMD} w -i ${ADS_SECRET_FILE} stringData.mongoHistoryUri "\"$tmp_uri\""
+            ${YQ_CMD} w -i ${ADS_SECRET_FILE} stringData.mongoHistoryUri "$tmp_uri"
             tmp_uri="$(prop_user_profile_property_file ADS.EXTERNAL_RUNTIME_MONGO_URI)"
-            ${YQ_CMD} w -i ${ADS_SECRET_FILE} stringData.runtimeMongoUri "\"$tmp_uri\""
+            ${YQ_CMD} w -i ${ADS_SECRET_FILE} stringData.runtimeMongoUri "$tmp_uri"
             ${SED_COMMAND} "s|'\"|\"|g" ${ADS_SECRET_FILE}
             ${SED_COMMAND} "s|\"'|\"|g" ${ADS_SECRET_FILE}
         fi
@@ -3590,7 +3428,7 @@ function create_temp_property_file(){
    # Convert optional components name to list by common
     delim=""
     opt_components_name_joined=""
-    for item in "${optional_component_arr[@]}"; do
+    for item in "${OPT_COMPONENTS_SELECTED[@]}"; do
         opt_components_name_joined="$opt_components_name_joined$delim$item"
         delim=","
     done
@@ -3717,7 +3555,7 @@ function create_property_file(){
     if [[ $DB_TYPE == "oracle" ]]; then
         local DB_SERVER_PREFIX="<DB_INSTANCE_NAME>"
     else
-        local DB_SERVER_PREFIX="<DB_SERVER_NAME>"
+        local DB_SERVER_PREFIX="<DB_ALIAS_NAME>"
     fi
     printf "\n"
     # mkdir -p $PREREQUISITES_FOLDER_BAK >/dev/null 2>&1
@@ -4053,7 +3891,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         fi
     fi
 
-    # if only one database server is input, set <DB_SERVER_NAME> auto
+    # if only one database server is input, set <DB_ALIAS_NAME> auto
     if [ ${#db_server_array[@]} -eq 1 ]; then
         DB_SERVER_PREFIX="${db_server_array[0]}"
     fi
@@ -4077,7 +3915,9 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
     fi
 
-    if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" ]]; then
+    # CP4BA.BAW_LICENSE required for either workflow runtime or workflow authoring
+    # For https://jsw.ibm.com/browse/DBACLD-161792
+    if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring" ]]; then
         echo "## Business Automation Workflow (BAW) license and possible values are: user, non-production, and production." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## This value could be different from the other licenses in the CR." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "CP4BA.BAW_LICENSE=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
@@ -4404,7 +4244,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
             # property for oc_cpe_obj_store_workflow_pe_conn_point_name
-            echo "## Provide a name for the connection point" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## Provide a name for the connection point. For example: \"pe_conn_os1"\" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "CONTENT_INITIALIZATION.CPE_OBJ_STORE_WORKFLOW_PE_CONN_POINT_NAME=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
         fi
@@ -4562,6 +4402,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                 done
                 # for case history
                 if [[ $DB_TYPE != "oracle" ]]; then
+                    echo "## Uncomment the parameters below when Case History Emitter is enabled by removing the \"#\" in front." >> ${DB_NAME_USER_PROPERTY_FILE}
                     if [[ $DB_TYPE != "postgresql-edb" ]]; then
                         if [[ $DB_TYPE == "postgresql" ]]; then
                             echo "## Provide the name of the database for Case History when Case History Emitter is enabled. For example: \"chos\" (Notes: the database name must be lowercase)" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4576,7 +4417,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                         if [[ $DB_TYPE == "db2"  ]]; then
                             echo "## For DB2, the schema name is case-sensitive, and must be specified in uppercase characters." >> ${DB_NAME_USER_PROPERTY_FILE}
                         fi
-                        echo "$DB_SERVER_PREFIX.CHOS_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        echo "# $DB_SERVER_PREFIX.CHOS_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                         # fi
                         echo "## Provide the user name for the object store database required by Case History when Case History Emitter is enabled. For example: \"dbuser1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "# $DB_SERVER_PREFIX.CHOS_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5685,203 +5526,204 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
     # Create USER_PROFILE_PROPERTY for IM SCIM attribute mappings for SDS/MSAD
     set_scim_attr="true"
     if [[ "${set_scim_attr}" == "true" ]]; then
-      if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring" || " ${pattern_cr_arr[@]}" =~ "content" || " ${pattern_cr_arr[@]}" =~ "document_processing" || "${optional_component_cr_arr[@]}" =~ "ae_data_persistence" || (" ${pattern_cr_arr[@]}" =~ "workflow-process-service" && "${optional_component_cr_arr[@]}" =~ "wfps_authoring") ]]; then
-        if [[ $LDAP_TYPE == "AD" ]]; then
-            LDAP_NAME="Microsoft Active Directory"
-        elif [[ $LDAP_TYPE == "TDS" ]]; then
-            LDAP_NAME="IBM Security Directory Server"
+        ## <https://jsw.ibm.com/browse/DBACLD-158645> -  Added checks when workflow-process-service, wfps_authoring selected and LDAP_WFPS_AUTHORING == "Yes".
+        if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring" || " ${pattern_cr_arr[@]}" =~ "content" || " ${pattern_cr_arr[@]}" =~ "document_processing" || "${optional_component_cr_arr[@]}" =~ "ae_data_persistence" || (" ${pattern_cr_arr[@]}" =~ "workflow-process-service" && "${optional_component_cr_arr[@]}" =~ "wfps_authoring" && $LDAP_WFPS_AUTHORING == "Yes") ]]; then
+            if [[ $LDAP_TYPE == "AD" ]]; then
+                LDAP_NAME="Microsoft Active Directory"
+            elif [[ $LDAP_TYPE == "TDS" ]]; then
+                LDAP_NAME="IBM Security Directory Server"
+            fi
+
+            # user profile SCMI User section
+            tip="##       USER Property for the customized IAM SCIM LDAP attributes for the LDAP ($LDAP_NAME) configuration       ##"
+            echo "###########################################################################################" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo $tip >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "###########################################################################################" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## [NOTES:]" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## For information about SCIM parameters used by the CP4BA deployment, you can refer below link: " >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=parameters-ldap-configuration#ldap_kubernetes__scim." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## For information about LDAP attributes, you can use the ldapsearch tool or other LDAP browser utilitise." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## How to use ldapsearch tool to get LDAP attributes, you can refer below link: " >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.4?topic=users-updating-scim-ldap-attributes-mapping#about_ldap_attributes." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            if [[ $LDAP_TYPE == "AD" ]]; then
+                tmp_val="sAMAccountName"
+            elif [[ $LDAP_TYPE == "TDS" ]]; then
+                tmp_val="ibm-entryuuid"
+            fi
+
+            echo "## Provide the user unique id attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## This attribute MUST be set to an LDAP attribute that is unique and immutable." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_UNIQUE_ID_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            if [[ $LDAP_TYPE == "AD" ]]; then
+                tmp_val="sAMAccountName"
+            elif [[ $LDAP_TYPE == "TDS" ]]; then
+                tmp_val="uid"
+            fi
+            echo "## Provide the user name attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_NAME_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## Provide the user principal name attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_PRINCIPAL_NAME_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+
+            if [[ $LDAP_TYPE == "AD" ]]; then
+                tmp_val="displayName"
+            elif [[ $LDAP_TYPE == "TDS" ]]; then
+                tmp_val="cn"
+            fi
+            echo "## Provide the user display name attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_DISPLAY_NAME_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            if [[ $LDAP_TYPE == "AD" ]]; then
+                tmp_val="givenName"
+            elif [[ $LDAP_TYPE == "TDS" ]]; then
+                tmp_val="cn"
+            fi
+            echo "## Provide the user given name attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_GIVEN_NAME_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## Provide the user family name attribute, the default value \"sn\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_FAMILY_NAME_ATTRIBUTE=\"sn\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## Provide the user full name attribute, the default value \"cn\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_FULL_NAME_ATTRIBUTE=\"cn\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## Provide the user external id attribute, the default value \"dn\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_EXTERNAL_ID_ATTRIBUTE=\"dn\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## Provide the user emails attribute, the default value \"mail\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_EMAILS_ATTRIBUTE=\"mail\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            if [[ $LDAP_TYPE == "AD" ]]; then
+                tmp_val="whenCreated"
+            elif [[ $LDAP_TYPE == "TDS" ]]; then
+                tmp_val="createTimestamp"
+            fi
+            echo "## Provide the user created attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_CREATED_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            if [[ $LDAP_TYPE == "AD" ]]; then
+                tmp_val="whenChanged"
+            elif [[ $LDAP_TYPE == "TDS" ]]; then
+                tmp_val="modifyTimestamp"
+            fi
+            echo "## Provide the user lastModified attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_LASTMODIFIED_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## Provide the user phoneNumbers value (first), the default value \"mobile\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_PHONENUMBERS_VALUE1=\"mobile\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## Provide the user phoneNumbers type (first), the default value \"mobile\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_PHONENUMBERS_TYPE1=\"mobile\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## Provide the user phoneNumbers value (second), the default value \"telephoneNumber\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_PHONENUMBERS_VALUE2=\"telephoneNumber\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## Provide the user phoneNumbers type (second), the default value \"work\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_PHONENUMBERS_TYPE2=\"work\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## Provide the user object class attribute, the default value \"person\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_OBJECT_CLASS_ATTRIBUTE=\"person\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## Provide the user groups attribute, the default value \"memberOf\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.USER_GROUPS_ATTRIBUTE=\"memberOf\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            # user profile SCMI Group section
+            if [[ $LDAP_TYPE == "AD" ]]; then
+                tmp_val="sAMAccountName"
+            elif [[ $LDAP_TYPE == "TDS" ]]; then
+                tmp_val="ibm-entryuuid"
+            fi
+
+            echo "## Provide the group unique id attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## This attribute MUST be set to an LDAP attribute that is unique and immutable." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.GROUP_UNIQUE_ID_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## Provide the group name attribute, the default value \"cn\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.GROUP_NAME_ATTRIBUTE=\"cn\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## Provide the group principal name attribute, the default value \"cn\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.GROUP_PRINCIPAL_NAME_ATTRIBUTE=\"cn\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## Provide the group display name attribute, the default value \"cn\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.GROUP_DISPLAY_NAME_ATTRIBUTE=\"cn\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## Provide the group external id attribute, the default value \"dn\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.GROUP_EXTERNAL_ID_ATTRIBUTE=\"dn\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            if [[ $LDAP_TYPE == "AD" ]]; then
+                tmp_val="whenCreated"
+            elif [[ $LDAP_TYPE == "TDS" ]]; then
+                tmp_val="createTimestamp"
+            fi
+            echo "## Provide the group created attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.GROUP_CREATED_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            if [[ $LDAP_TYPE == "AD" ]]; then
+                tmp_val="whenChanged"
+            elif [[ $LDAP_TYPE == "TDS" ]]; then
+                tmp_val="modifyTimestamp"
+            fi
+            echo "## Provide the group lastModified attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.GROUP_LASTMODIFIED_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            if [[ $LDAP_TYPE == "AD" ]]; then
+                tmp_val="group"
+            elif [[ $LDAP_TYPE == "TDS" ]]; then
+                tmp_val="groupOfUniqueNames"
+            fi
+            echo "## Provide the group object class attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.GROUP_OBJECT_CLASS_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            if [[ $LDAP_TYPE == "AD" ]]; then
+                tmp_val="member"
+            elif [[ $LDAP_TYPE == "TDS" ]]; then
+                tmp_val="uniqueMember"
+            fi
+            echo "## Provide the group members attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "SCIM.GROUP_MEMBERS_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
         fi
-
-        # user profile SCMI User section
-        tip="##       USER Property for the customized IAM SCIM LDAP attributes for the LDAP ($LDAP_NAME) configuration       ##"
-        echo "###########################################################################################" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo $tip >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "###########################################################################################" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## [NOTES:]" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## For information about SCIM parameters used by the CP4BA deployment, you can refer below link: " >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=parameters-ldap-configuration#ldap_kubernetes__scim." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## For information about LDAP attributes, you can use the ldapsearch tool or other LDAP browser utilitise." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## How to use ldapsearch tool to get LDAP attributes, you can refer below link: " >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.4?topic=users-updating-scim-ldap-attributes-mapping#about_ldap_attributes." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        if [[ $LDAP_TYPE == "AD" ]]; then
-            tmp_val="sAMAccountName"
-        elif [[ $LDAP_TYPE == "TDS" ]]; then
-            tmp_val="ibm-entryuuid"
-        fi
-
-        echo "## Provide the user unique id attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## This attribute MUST be set to an LDAP attribute that is unique and immutable." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_UNIQUE_ID_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        if [[ $LDAP_TYPE == "AD" ]]; then
-            tmp_val="sAMAccountName"
-        elif [[ $LDAP_TYPE == "TDS" ]]; then
-            tmp_val="uid"
-        fi
-        echo "## Provide the user name attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_NAME_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the user principal name attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_PRINCIPAL_NAME_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-
-        if [[ $LDAP_TYPE == "AD" ]]; then
-            tmp_val="displayName"
-        elif [[ $LDAP_TYPE == "TDS" ]]; then
-            tmp_val="cn"
-        fi
-        echo "## Provide the user display name attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_DISPLAY_NAME_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        if [[ $LDAP_TYPE == "AD" ]]; then
-            tmp_val="givenName"
-        elif [[ $LDAP_TYPE == "TDS" ]]; then
-            tmp_val="cn"
-        fi
-        echo "## Provide the user given name attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_GIVEN_NAME_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the user family name attribute, the default value \"sn\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_FAMILY_NAME_ATTRIBUTE=\"sn\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the user full name attribute, the default value \"cn\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_FULL_NAME_ATTRIBUTE=\"cn\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the user external id attribute, the default value \"dn\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_EXTERNAL_ID_ATTRIBUTE=\"dn\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the user emails attribute, the default value \"mail\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_EMAILS_ATTRIBUTE=\"mail\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        if [[ $LDAP_TYPE == "AD" ]]; then
-            tmp_val="whenCreated"
-        elif [[ $LDAP_TYPE == "TDS" ]]; then
-            tmp_val="createTimestamp"
-        fi
-        echo "## Provide the user created attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_CREATED_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        if [[ $LDAP_TYPE == "AD" ]]; then
-            tmp_val="whenChanged"
-        elif [[ $LDAP_TYPE == "TDS" ]]; then
-            tmp_val="modifyTimestamp"
-        fi
-        echo "## Provide the user lastModified attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_LASTMODIFIED_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the user phoneNumbers value (first), the default value \"mobile\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_PHONENUMBERS_VALUE1=\"mobile\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the user phoneNumbers type (first), the default value \"mobile\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_PHONENUMBERS_TYPE1=\"mobile\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the user phoneNumbers value (second), the default value \"telephoneNumber\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_PHONENUMBERS_VALUE2=\"telephoneNumber\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the user phoneNumbers type (second), the default value \"work\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_PHONENUMBERS_TYPE2=\"work\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the user object class attribute, the default value \"person\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_OBJECT_CLASS_ATTRIBUTE=\"person\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the user groups attribute, the default value \"memberOf\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.USER_GROUPS_ATTRIBUTE=\"memberOf\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        # user profile SCMI Group section
-        if [[ $LDAP_TYPE == "AD" ]]; then
-            tmp_val="sAMAccountName"
-        elif [[ $LDAP_TYPE == "TDS" ]]; then
-            tmp_val="ibm-entryuuid"
-        fi
-
-        echo "## Provide the group unique id attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## This attribute MUST be set to an LDAP attribute that is unique and immutable." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.GROUP_UNIQUE_ID_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the group name attribute, the default value \"cn\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.GROUP_NAME_ATTRIBUTE=\"cn\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the group principal name attribute, the default value \"cn\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.GROUP_PRINCIPAL_NAME_ATTRIBUTE=\"cn\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the group display name attribute, the default value \"cn\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.GROUP_DISPLAY_NAME_ATTRIBUTE=\"cn\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the group external id attribute, the default value \"dn\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.GROUP_EXTERNAL_ID_ATTRIBUTE=\"dn\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        if [[ $LDAP_TYPE == "AD" ]]; then
-            tmp_val="whenCreated"
-        elif [[ $LDAP_TYPE == "TDS" ]]; then
-            tmp_val="createTimestamp"
-        fi
-        echo "## Provide the group created attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.GROUP_CREATED_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        if [[ $LDAP_TYPE == "AD" ]]; then
-            tmp_val="whenChanged"
-        elif [[ $LDAP_TYPE == "TDS" ]]; then
-            tmp_val="modifyTimestamp"
-        fi
-        echo "## Provide the group lastModified attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.GROUP_LASTMODIFIED_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        if [[ $LDAP_TYPE == "AD" ]]; then
-            tmp_val="group"
-        elif [[ $LDAP_TYPE == "TDS" ]]; then
-            tmp_val="groupOfUniqueNames"
-        fi
-        echo "## Provide the group object class attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.GROUP_OBJECT_CLASS_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        if [[ $LDAP_TYPE == "AD" ]]; then
-            tmp_val="member"
-        elif [[ $LDAP_TYPE == "TDS" ]]; then
-            tmp_val="uniqueMember"
-        fi
-        echo "## Provide the group members attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "SCIM.GROUP_MEMBERS_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-      fi
     fi
 
 
     # Add <Required> in each mandatory value
     if (( db_server_number > 0 )); then
-    ${SED_COMMAND} "s|=\"\"|=\"<Required>\"|g" ${DB_NAME_USER_PROPERTY_FILE}
-    ${SED_COMMAND} "s|=\"\"|=\"<Required>\"|g" ${DB_SERVER_INFO_PROPERTY_FILE}
-    #set DB2 HADR as optional
-    ${SED_COMMAND} "s|HADR_STANDBY_SERVERNAME=\"<Required>\"|HADR_STANDBY_SERVERNAME=\"<Optional>\"|g" ${DB_SERVER_INFO_PROPERTY_FILE}
-    ${SED_COMMAND} "s|HADR_STANDBY_PORT=\"<Required>\"|HADR_STANDBY_PORT=\"<Optional>\"|g" ${DB_SERVER_INFO_PROPERTY_FILE}
+        ${SED_COMMAND} "s|=\"\"|=\"<Required>\"|g" ${DB_NAME_USER_PROPERTY_FILE}
+        ${SED_COMMAND} "s|=\"\"|=\"<Required>\"|g" ${DB_SERVER_INFO_PROPERTY_FILE}
+        #set DB2 HADR as optional
+        ${SED_COMMAND} "s|HADR_STANDBY_SERVERNAME=\"<Required>\"|HADR_STANDBY_SERVERNAME=\"<Optional>\"|g" ${DB_SERVER_INFO_PROPERTY_FILE}
+        ${SED_COMMAND} "s|HADR_STANDBY_PORT=\"<Required>\"|HADR_STANDBY_PORT=\"<Optional>\"|g" ${DB_SERVER_INFO_PROPERTY_FILE}
     fi
 
     if [[ ! ("${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "No") ]]; then
@@ -5916,8 +5758,8 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
 
         echo -e  "\x1b[32m* [cp4ba_db_name_user.property]:\x1B[0m"
         echo -e  "  - Properties for database name and user name required by each component of the CP4BA deployment, such as GCD_DB_NAME/GCD_DB_USER_NAME/GCD_DB_USER_PASSWORD.\n"
-        echo -e  "  - Change the prefix \"<DB_SERVER_NAME>\" to assign which database is used by the component.\n"
-        echo -e  "  - The value of \"<DB_SERVER_NAME>\" must match the value of <DB_SERVER_LIST> that is defined in \"<DB_SERVER_LIST>\" of \"cp4ba_db_server.property\".\n"
+        echo -e  "  - Change the prefix \"<DB_ALIAS_NAME>\" to assign which database is used by the component.\n"
+        echo -e  "  - The value of \"<DB_ALIAS_NAME>\" must match the value of <DB_SERVER_LIST> that is defined in \"<DB_SERVER_LIST>\" of \"cp4ba_db_server.property\".\n"
     fi
     if [[ ! ("${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "No") ]]; then
         echo -e  "\x1b[32m* [cp4ba_LDAP.property]:\x1B[0m"
@@ -7624,7 +7466,7 @@ function select_profile_type(){
         done
         echo -e "\x1B[1;31mExisting profile size type found in CR: \"$existing_profile_type\"\x1B[0m"
         # echo -e "\x1B[1;31mDo not need to select again.\n\x1B[0m"
-        read -rsn1 -p"Press any key to continue ...";echo
+        prompt_press_any_key_to_continue
     fi
 }
 

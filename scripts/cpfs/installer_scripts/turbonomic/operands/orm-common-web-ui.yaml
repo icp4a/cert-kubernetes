@@ -1,0 +1,26 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: common-web-ui-orm
+  namespace: {{ placeholder_namespace }}
+  labels:
+    component: cpfs
+spec:
+  owner: # target same namespace by default
+    apiVersion: operators.ibm.com/v1alpha1
+    kind: CommonWebUI
+    name: example-commonwebui
+  mappings:
+    patterns:
+    - ownerPath: .spec.replicas
+      owned:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: common-web-ui
+        path: .spec.replicas
+    - ownerPath: .spec.resources
+      owned:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: common-web-ui
+        path: .spec.template.spec.containers[?(@.name=="common-web-ui")].resources

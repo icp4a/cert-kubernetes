@@ -6,13 +6,11 @@ metadata:
 spec:
   podSelector: 
     matchLabels:
-      type: ibm-elasticsearch
+      app.kubernetes.io/managed-by: ibm-elasticsearch
   egress:
     - ports:
-        - protocol: TCP
-          port: 443
-        - protocol: TCP
-          port: 9443
+      - protocol: TCP
+        port: 443
       to:
         - podSelector:
             matchLabels:
@@ -22,9 +20,13 @@ spec:
       - protocol: TCP
         port: 443
       - protocol: TCP
+        port: 19300
+      - protocol: TCP
         port: 8081
       - protocol: TCP
-        port: 9081
+        port: 9300
+      - protocol: TCP
+        port: 9200
       to:
         - podSelector: {}
   policyTypes:

@@ -57,3 +57,4 @@ spec:
           secretName: mongodb-root-ca-cert
       - name: tmp-mongodb
         emptyDir: {}
+      serviceAccountName: ibm-mongodb-operand

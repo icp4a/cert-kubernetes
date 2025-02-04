@@ -1,0 +1,2 @@
+[✔] oc command available
+[✘] Error in /Users/varunsriram/Documents/Work/CloudPak/CodeRepos/cert-kubernetes/scripts/cpfs/installer_scripts/cp3pt0-deployment/common/utils.sh at line 52 in function check_command: yq command not available

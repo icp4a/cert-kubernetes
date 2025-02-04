@@ -36,8 +36,8 @@ spec:
 
     ## Business Automation Workflow (BAW) license and possible values are: user, non-production, and production.
     ## This value could be different from the other licenses in the CR.
-    sc_deployment_baw_license: non-production
-
+    sc_deployment_baw_license: non-production 
+      
     ## FileNet Content Manager (FNCM) license and possible values are: user, non-production, and production.
     ## This value could be different from the other licenses in the CR.
     sc_deployment_fncm_license: non-production
@@ -67,8 +67,10 @@ spec:
       ## Default are 53,5353 for OCP and ROKS
       sc_dns_port:
 
-    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-    # sc_deployment_hostname_suffix: "{{ meta.name }}"
+    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <router-canonical-hostname> when not defined.
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=scp-shared-configuration
+    ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
+    #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname>  or your own custom domain, e.g., `.acme.com`"
     storage_configuration:
       sc_dynamic_storage_classname: ""
       sc_block_storage_classname: ""

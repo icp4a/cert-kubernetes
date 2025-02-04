@@ -53,6 +53,10 @@ spec:
     ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is optional. It is not supported on OCP and ROKS.
     sc_run_as_user:
 
+    ## Optional setting for customzing the host of OpenSearch Route. The default Route host will be `opensearch.{meta.namespace}.router-canonicalhostname` if parameter is undefined or value is empty
+    opensearch_configuration:
+      route_host:
+
     ## If your Openshift cluster is configured for Hugepages and you want the applicable deployment resources to consume Hugepages.
     ## You must set "true" for sc_hugepages.enabled. Default is "false".
     ## You must set type for "Hugepages" like hugepages-2Mi or hugepages-1Gi. Default is "hugepages-2Mi".
@@ -72,16 +76,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -116,8 +120,10 @@ spec:
     ## based on input from the user.
     sc_deployment_platform:
 
-    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-    # sc_deployment_hostname_suffix: "{{ meta.namespace }}"
+    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <router-canonical-hostname> when not defined.
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=scp-shared-configuration
+    ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
+    #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname>  or your own custom domain, e.g., `.acme.com`"
 
     sc_egress_configuration:
       ## Required. Enable or disable egress access to external systems.
@@ -166,9 +172,6 @@ spec:
     ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
     ## This secret is also used by Workflow and BAStudio to store AES encryption key.
     encryption_key_secret: ibm-iaws-shared-key-secret
-
-    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-    # sc_deployment_hostname_suffix: "{{ meta.namespace }}"
 
     ## On OCP 3.x and 4.x, the User script will populate these three (3) parameters based on your input for "production" deployment.
     ## If you manually deploying without using the User script, then you would provide the different storage classes for the slow, medium
@@ -364,6 +367,9 @@ spec:
     ## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc.
     #lc_ldap_port: "<Required>"
 
+    ## The LDAP bind secret for LDAP authentication.  The secret is expected to have ldap<id_name>Username and ldap<id_name>Password keys.  Refer to Knowledge Center for more info.
+    #lc_bind_secret: ldap-bind-secret
+
     ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
     #lc_ldap_base_dn: "<Required>"
 
@@ -519,7 +525,7 @@ spec:
 
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: "24.0.0-IF003"
+      tag: "24.0.0-IF004"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -703,7 +709,7 @@ spec:
       pull_policy: IfNotPresent
       resource_registry:
         repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
     admin_secret_name: resource-registry-admin-secret
     replica_size: 1
     probe:
@@ -802,7 +808,7 @@ spec:
       pull_policy: IfNotPresent
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
     #Adjust this one if you created the secret with name other than the default
     admin_secret_name: "{{ meta.name }}-bas-admin-secret"
     #-----------------------------------------------------------------------
@@ -1082,10 +1088,10 @@ spec:
         pull_policy: IfNotPresent
         db_job:
           repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-          tag: "24.0.0-IF003"
+          tag: "24.0.0-IF004"
         solution_server:
           repository: cp.icr.io/cp/cp4a/aae/solution-server
-          tag: "24.0.0-IF003"
+          tag: "24.0.0-IF004"
       # For most cases, you don't need to input hostname and port here. They can be calculated with your environment informations
       # And all the endpoints can be visit through unified external URL
       # With none zen mode. If you want to customize external hostname and port. Update values here. They will be used as application playback server external visit hostname and port.
@@ -1399,7 +1405,7 @@ spec:
     application_setup:
       image:
         repository: cp.icr.io/cp/cp4a/bai/insights-engine-application-setup
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
       # The back-off limit property specifies the number of retries before the setup job is considered failed. Default: 6.
       backoff_limit: 7
       resources:
@@ -1423,7 +1429,7 @@ spec:
     setup:
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-setup
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
       # The back-off limit property specifies the number of retries before the setup job is considered failed. Default: 6.
       backoff_limit: 7
       resources:
@@ -1446,11 +1452,11 @@ spec:
     management:
       image:
         repository: cp.icr.io/cp/cp4a/bai/insights-engine-management
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
       backend:
         image:
           repository: cp.icr.io/cp/cp4a/bai/insights-engine-management-backend
-          tag: "24.0.0-IF003"
+          tag: "24.0.0-IF004"
       # You can use this parameter to customize the hostname of the management service route.
       # If not set, the value of shared_configuration.sc_deployment_hostname_suffix is used.
       hostname: "management.bai.{{ shared_configuration.sc_deployment_hostname_suffix }}"
@@ -1569,7 +1575,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-bpmn
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1607,7 +1613,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-bawadv
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1639,7 +1645,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-icm
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1677,7 +1683,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-flink
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1709,7 +1715,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-flink
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1741,7 +1747,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-flink
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1774,7 +1780,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-flink
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1806,13 +1812,13 @@ spec:
     init_image:
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-init
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
 
     # Business data dashboarding.
     business_performance_center:
       image:
         repository: cp.icr.io/cp/cp4a/bai/insights-engine-cockpit
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
       # Set to false to disable Business Performance Center. Default: true.
 
       # add this to set workforce_insights configuration properties
@@ -1834,7 +1840,7 @@ spec:
       init_ums:
         image:
           repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
-          tag: "24.0.0-IF003"
+          tag: "24.0.0-IF004"
       ## For SaaS
       oidc:
         # The internal communication with single-sign-on (SSO) service.
@@ -1934,10 +1940,10 @@ spec:
       pull_policy: IfNotPresent
       solution_server:
         repository: cp.icr.io/cp/cp4a/aae/solution-server
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
       db_job:
         repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
     # If you inputed hostname and port here. They will be used always
     # If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value)
     # Then you don't need to fill the hostname and port. It will use shared_configuration.sc_deployment_hostname_suffix to generate one

@@ -231,11 +231,19 @@ function is_migrate_licensing() {
     fi
 
     title "Check migrating LTSR ibm-licensing-operator"
-    
-    local ns=$("$OC" get deployments -A | grep ibm-licensing-operator | cut -d ' ' -f1)
-    if [ -z "$ns" ]; then
+    # wait for ibm-licensing-operator instance 
+    local licensing_operator_exist=$("$OC" get deployment -A | (grep ibm-licensing-operator || echo "fail"))  
+    if [[ $licensing_operator_exist != "fail" ]]; then
+        wait_for_licensing_instance_deployment
+    else
         info "No LTSR ibm-licensing-operator to migrate, skipping"
         return 0
+    fi
+
+    local licensing_service_count=$("$OC" get deployments -A | grep ibm-licensing-service-instance | wc -l)
+    # If multiple Licensing service deployment is found, it should error out
+    if [ "$licensing_service_count" -ge 2 ]; then
+        error "More than one ibm-licensing-service-instance found in namespace: $ns. There should be only one ibm-licensing-service-instance each cluster."
     fi
 
     local version=$("$OC" get ibmlicensings.operator.ibm.com instance -o jsonpath='{.spec.version}' --ignore-not-found)
@@ -383,7 +391,7 @@ function install_licensing() {
         info "There is no ibm-licensing-operator-app Subscription installed\n"
     fi
 
-    local ns=$("$OC" get deployments -A | grep ibm-licensing-operator | cut -d ' ' -f1)
+    local ns=$("$OC" get deployments -A | grep ibm-licensing-service-instance | cut -d ' ' -f1)
     if [ ! -z "$ns" ]; then
         if [ "$ns" != "$LICENSING_NAMESPACE" ]; then
             error "An ibm-licensing-operator already installed in namespace: $ns, expected namespace is: $LICENSING_NAMESPACE"

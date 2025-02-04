@@ -8,7 +8,7 @@
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
 #
 ###############################################################################
-# CP4BA 24.0.0-IF003 catalog
+# CP4BA 24.0.0-IF004 catalog
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
@@ -18,7 +18,7 @@ spec:
   displayName: ibm-cp4a-operator
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-cp-automation-catalog@sha256:2d00d01669ba5aba7471dcb85128b014577956b13630fc8da4e2ad3cf0c84db4
+  image: icr.io/cpopen/ibm-cp-automation-catalog@sha256:217c1db8db7405bb78291a2658e157edd1c4e7dd35c44bff8c230180c359ee46
   updateStrategy:
     registryPoll:
       interval: 45m
@@ -40,7 +40,7 @@ spec:
       interval: 45m
   priority: 100
 ---
-# IBM CS Opensearch Operator Catalog 1.1.2213
+# IBM CS Opensearch Operator Catalog 1.1.2470
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
@@ -50,47 +50,47 @@ spec:
   displayName: IBM CS Opencontent Opensearch Catalog
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/opencontent-elasticsearch-operator-catalog@sha256:947c8d3ea4c281fb81e53ee1f1051c1d25fcb807d3e1466d430f6bfaa81a406c
+  image: icr.io/cpopen/opencontent-elasticsearch-operator-catalog@sha256:5b81f9d2a5bb20f96503f76d6a39fc71cb844c49f4bc4f580e37bc4aeecb9474
   updateStrategy:
     registryPoll:
       interval: 45m
   priority: 100
 ---
-# IBM Certificate Manager 4.2.8
+# IBM Certificate Manager 4.2.11
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
   name: ibm-cert-manager-catalog
   namespace: openshift-marketplace
 spec:
-  displayName: ibm-cert-manager-4.2.8
+  displayName: ibm-cert-manager-4.2.11
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-cert-manager-operator-catalog@sha256:6268cedf6759cf544560d9f652974c14f293858c53bf747b145b4522d39701bb
+  image: icr.io/cpopen/ibm-cert-manager-operator-catalog@sha256:1c9e4a2a2abddfcdcb95898f14aecd3ab9e59bd388fb38de335118d1c36651e3
   updateStrategy:
     registryPoll:
       interval: 45m
 ---
-# IBM License Manager 4.2.8
+# IBM License Manager 4.2.11
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
   name: ibm-licensing-catalog
   namespace: openshift-marketplace
 spec:
-  displayName: ibm-licensing-4.2.8
+  displayName: ibm-licensing-4.2.11
   publisher: IBM
-  image: icr.io/cpopen/ibm-licensing-catalog@sha256:a4c1121894a0fadd0f62415fdfe381bd92ac8afb9314539c8770c88c006ebd42
+  image: icr.io/cpopen/ibm-licensing-catalog@sha256:5a67decdd3513fefd99e165cc6cb2798937d42031230819f6d5b4fa54a5f28c1
   sourceType: grpc
   updateStrategy:
     registryPoll:
       interval: 45m
 ---
-# IBM Cloud Foundational Services 4.6.6
+# IBM Cloud Foundational Services 4.6.9
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
-  name: ibm-cs-install-catalog-v4-6-6
+  name: ibm-cs-install-catalog-v4-6-9
   namespace: openshift-marketplace
   annotations:
     bedrock_catalogsource_priority: '1'
@@ -98,17 +98,17 @@ spec:
   displayName: IBM CS Install Operators
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-cs-install-catalog@sha256:f97e7cb0d476edfc16a3e983596512fd6166506cc9cfc5c833581ff23affd1b0
+  image: icr.io/cpopen/ibm-cs-install-catalog@sha256:4f8b767d7c0ff69b20121184e53d8c9415b1f8820820f6fe0cea9363ab96368c
   updateStrategy:
     registryPoll:
       interval: 45m
   priority: 100    
 ---
-# IBM Business Teams Service version 3.34.0
+# IBM Business Teams Service version 3.35.1
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
-  name: bts-operator-v3-34-0
+  name: bts-operator-v3-35-1
   namespace: openshift-marketplace
   annotations:
     bedrock_catalogsource_priority: '1'
@@ -116,12 +116,12 @@ spec:
   displayName: BTS Operator
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-bts-operator-catalog@sha256:437a91f9e0cc224c32fb3d574dbe56efe5d1211f2338746e8a7e192034beae8f
+  image: icr.io/cpopen/ibm-bts-operator-catalog@sha256:c803538b0ff68d76f5c85a21fed3c3a680acbf12c6150d39f2c3072e89de04b1
   updateStrategy:
     registryPoll:
       interval: 45m
 ---
-# IBM CS IM Operator Catalog 4.5.5
+# IBM CS IM Operator Catalog 4.5.8
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
@@ -133,13 +133,13 @@ spec:
   displayName: IBM IAM Operator Catalog
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-iam-operator-catalog@sha256:205906d04301c85fe006143e2fc7134cd019a7fa83d3dd94fd816b929712605e
+  image: icr.io/cpopen/ibm-iam-operator-catalog@sha256:678f3c53c086766f357873a6add96ebabffad1a02a1a7aa567c9bb4f36119df3
   updateStrategy:
     registryPoll:
       interval: 45m
   priority: 100
 ---
-# IBM Zen Operator Catalog 5.1.8
+# IBM Zen Operator Catalog 5.1.11
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
@@ -151,7 +151,7 @@ spec:
   displayName: IBM Zen Operator Catalog
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-zen-operator-catalog@sha256:d0157f7ff656b745424a4ed276ee3ee19de2507989d4c506f638adc85b440127
+  image: icr.io/cpopen/ibm-zen-operator-catalog@sha256:5e36cfa6c92bb6aa1b028a63e03c4351f53be697af177e490ce09bc75078c058
   updateStrategy:
     registryPoll:
       interval: 45m
@@ -175,7 +175,7 @@ spec:
       interval: 45m
   priority: 100
 ---
-# Cloud Native PostgresSQL 1.18.12 (4.25.0)
+# Cloud Native PostgresSQL 1.22.7 (CASE 4.30.0+20241023.165233.2074)(Postgresql Image Version 14.13)
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
@@ -187,7 +187,7 @@ spec:
   displayName: Cloud Native Postgresql Catalog
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-cpd-cloud-native-postgresql-operator-catalog@sha256:0b46a3ec66622dd4a96d96243602a21d7a29cd854f67a876ad745ec524337a1f
+  image: icr.io/cpopen/ibm-cpd-cloud-native-postgresql-operator-catalog@sha256:3b867e7e0879ec24b5058e5db01c0a9be8d9d8d5ef2b7bb1bb7e247babb8b96d
   updateStrategy:
     registryPoll:
       interval: 45m
@@ -203,7 +203,7 @@ spec:
   displayName: ibm-fncm-operator
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-fncm-catalog@sha256:d87f78ab8f97116a5d3d5bb46caedc3f0256ed74a5af97b0d8d6548cebe28bc3
+  image: icr.io/cpopen/ibm-fncm-catalog@sha256:f9b94bed28ed637c907eb82d04bbe3f67a7ec5615c982ae92a25810f0a57b817
   updateStrategy:
     registryPoll:
       interval: 45m

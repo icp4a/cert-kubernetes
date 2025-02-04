@@ -70,7 +70,7 @@ function select_deployment_type(){
             done
             echo -e "\x1B[1;31mExisting deployment type found in CR: \"$existing_deployment_type\"\x1B[0m"
             # echo -e "\x1B[1;31mDo not need to select again.\n\x1B[0m"
-            read -rsn1 -p"Press any key to continue ...";echo
+            prompt_press_any_key_to_continue
         fi
     fi
 }

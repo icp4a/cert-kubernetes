@@ -105,7 +105,7 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/common/dba-keytool-initcontainer
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
         
     ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
     ## based on input from the user.
@@ -137,8 +137,10 @@ spec:
     ## For ROKS Ingress, provide TLS secret name for Ingress controller. If you are not using ROKS, comment out this line.
     sc_ingress_tls_secret_name: <Required>
 
-    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-    # sc_deployment_hostname_suffix: "{{ meta.namespace }}"
+    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <router-canonical-hostname> when not defined.
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=scp-shared-configuration
+    ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
+    #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname>  or your own custom domain, e.g., `.acme.com`"
 
     ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
     ## the external service to the component's truststore.
@@ -412,6 +414,9 @@ spec:
     ## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc.
     #lc_ldap_port: "<Required>"
 
+    ## The LDAP bind secret for LDAP authentication.  The secret is expected to have ldap<id_name>Username and ldap<id_name>Password keys.  Refer to Knowledge Center for more info.
+    #lc_bind_secret: ldap-bind-secret
+
     ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
     #lc_ldap_base_dn: "<Required>"
 
@@ -530,65 +535,6 @@ spec:
     # tds:
     #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
-
-   ## Uncomment this section if you have OpenId Connect providers.
-    # open_id_connect_providers: "<Required>"
-    ## Set the provider name that is for your redirect url.
-    #- provider_name: "<Required>"
-       ## Set the display name for the sign in button in navigator.
-    #  display_name: "Single Sign on"
-       ## Enter your oidc secret names here for cpe, nav external share and graphql.
-       ## Not all are required depending on you deployment.
-    #  client_oidc_secret:
-    #    es: "" # Points to a secret with client_id and client_secret in that format.
-    #    nav: "" # Points to a secret with client_id and client_secret in that format.
-    #    cpe: "" # Points to a secret with client_id and client_secret in that format.
-    #    graphql: "" # Points to a secret with client_id and client_secret in that format.
-    #  issuer_identifier: ""
-       ## REQUIRED PROPERTIES AND VALUES which are common
-       ## If not set will be set to the defaults.
-    #  response_type: "code"
-    #  scope: "openid email profile"
-    #  map_identity_to_registry_user: "false"
-    #  authn_session_disabled: "false"
-    #  inbound_propagation: "supported"
-    #  https_required: "true"
-    #  validation_method: "introspect"
-    #  disable_ltpa_cookie: "true"
-    #  signature_algorithm: "RS256"
-    #  user_identifier: "sub" # sub for ums and ibm id, email for google
-    #  unique_user_identifier: "sub" # sub for ums and ibm id, email for google
-    #  user_identity_to_create_subject: "sub" # sub for ums and ibm id, email for google
-       ##
-       ## Uncomment out discovery_endpoint_url for Google or UMS IdP.
-       ##
-    #  discovery_endpoint_url:
-       ##
-       ## Optional parameters
-       ##
-    #    authorization_endpoint_url: ""
-    #    token_endpoint_url: ""
-    #    validation_endpoint_url: ""
-    #    trust_alias_name: "secrent name you created"
-    #    disables_iss_checking: "true"
-    #    jwk_client_oidc_secret:
-    #      es: "" # Points to a secret with client_id and client_secret in that format.
-    #      nav: "" # Points to a secret with client_id and client_secret in that format.
-    #      cpe: "" # Points to a secret with client_id and client_secret in that format.
-    #      graphql: ""  # Points to a secret with client_id and client_secret in that format.
-    #    token_reuse: "true"
-       ##
-       ## User defined parameters.
-       ## If you do not see a parameter that is needed for you OpenId Connect provider.
-       ## You are able to defined in this section has a key value pair separated by the delimeter `:`
-       ## If you want to change the default delimeter, add `DELIM=<NEW_DELIMETER>` infront of your
-       ## key value pair. Ex: 'DELIM=;myKey;myValue'.  In this example, the new delimeter is `;` and
-       ## the key value pair is set to `myKey;myValue` instead of `myKey:myValue`.
-       ##
-    #    oidc_ud_param:
-    #    - 'DELIM=;myKey;myValue'
-    #    - "myKey2:myValue2"
-    #    - "myKey3:myValue3"
 
 
   ## The idp_iam_configuration is meant when you have an identity provider configured in iam that isn't a directory provider service
@@ -938,7 +884,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1099,7 +1045,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1196,7 +1142,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1358,7 +1304,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1478,7 +1424,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1586,7 +1532,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1734,7 +1680,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "24.0.0-IF003"
+      tag: "24.0.0-IF004"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2125,7 +2071,7 @@ spec:
 
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: "24.0.0-IF003"
+        tag: "24.0.0-IF004"
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -2246,7 +2192,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: "24.0.0-IF003"
+      tag: "24.0.0-IF004"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent

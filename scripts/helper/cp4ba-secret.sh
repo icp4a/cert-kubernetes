@@ -195,7 +195,9 @@ cat << EOF > ${CP4A_DB_SSL_SECRET_FILE}
 
 if [[ -f "<cp4a-db-crt-file-in-local>/db-cert.crt" ]]; then
   kubectl delete secret "<cp4a-db-ssl-secret-name>" -n "${CP4BA_SERVICES_NS}" >/dev/null 2>&1
-  kubectl create secret generic "<cp4a-db-ssl-secret-name>" --from-file=tls.crt="<cp4a-db-crt-file-in-local>/db-cert.crt" -n "$CP4BA_SERVICES_NS"
+  kubectl create secret generic "<cp4a-db-ssl-secret-name>" \
+  --from-file=tls.crt="<cp4a-db-crt-file-in-local>/db-cert.crt" \
+  --from-file=cacert.crt="<cp4a-db-crt-file-in-local>/db-cert.crt" -n "$CP4BA_SERVICES_NS"
 else
   echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
@@ -393,141 +395,120 @@ EOF
   chmod 755 ${BAN_DB_SSL_SECRET_FILE}
 }
 
-# function for creating the template for CP4BA ADP capabilities secret 
-function create_aca_db_secret_template(){
-  local dbname=$1
-  dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbname")
-  wait_msg "Creating DPE DB secret shell script template"
-  mkdir -p $ADP_SECRET_FOLDER >/dev/null 2>&1
-
-cat << EOF > ${ADP_BASE_DB_SECRET_FILE}
-#!/bin/bash
-#
-# Shell template for creating Document Processing Engine (DPE) DB secret
-# Run this script in the namespace or project in which you are deploying CP4BA
+# function for creating the yaml template for aca-basedb secret
+function create_aca_db_secret_yaml_template(){
+    local dbname=$1
+    local dbserver=$2
+    dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
+    dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbname")
+cat << EOF > ${ADP_BASE_DB_SECRET_YAML_FILE}
+# YAML template for Document Processing Engine (DPE) DB secret
+---
+kind: Secret
+apiVersion: v1
+type: Opaque
+metadata:
+  name: aca-basedb
+  namespace: "$CP4BA_SERVICES_NS"
+  # DO NOT change the content of metadata.labels
+  labels:
+    base-db-server: $dbserver
+    base-db-name: $dbname
+stringData:
+  BASE_DB_USER: "<ADP_BASE_DB_USER_NAME>"
+  BASE_DB_CONFIG: "<ADP_BASE_DB_USER_PASSWORD>"
 EOF
 
-  # set execute permissions on the file since it is a shell script
-  chmod +x ${ADP_BASE_DB_SECRET_FILE} 
+}
 
-  # Start kubectl command
-  echo "" >> ${ADP_BASE_DB_SECRET_FILE}
-  echo "kubectl delete secret \"aca-basedb\" -n \"$CP4BA_SERVICES_NS\" >/dev/null 2>&1" >> ${ADP_BASE_DB_SECRET_FILE}
-  echo "kubectl create secret generic \"aca-basedb\" -n \"$CP4BA_SERVICES_NS\"\\" >> ${ADP_BASE_DB_SECRET_FILE}
-
-  #  Add basedb user
-  local tmp_dbuser="$(prop_db_name_user_property_file ADP_BASE_DB_USER_NAME)"
-  local tmp_dbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbuser")
-  echo " --from-literal=BASE_DB_USER=\"$tmp_dbuser\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
-
-  # Add basedb pwd
-  local tmp_dbuserpwd="$(prop_db_name_user_property_file ADP_BASE_DB_USER_PASSWORD)"
-  local tmp_dbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbuserpwd")
-  if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-      temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode) 
-      echo " --from-literal=BASE_DB_CONFIG='$temp_val' \\" >> ${ADP_BASE_DB_SECRET_FILE}
-  else
-      echo " --from-literal=BASE_DB_CONFIG=\"$tmp_dbuserpwd\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
-  fi
-  
-
-  local db_name_array=()
-  local db_user_array=()
-  local db_userpwd_array=()
-
-  local tmp_dbname=$(prop_db_name_user_property_file ADP_PROJECT_DB_NAME)
-  local tmp_dbuser=$(prop_db_name_user_property_file ADP_PROJECT_DB_USER_NAME)
-  local tmp_dbuserpwd=$(prop_db_name_user_property_file ADP_PROJECT_DB_USER_PASSWORD)
-  tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
-  tmp_dbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbuser")
-  tmp_dbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbuserpwd")
-
-  OIFS=$IFS
-  IFS=',' read -ra db_name_array <<< "$tmp_dbname"
-  IFS=',' read -ra db_user_array <<< "$tmp_dbuser"
-  IFS=',' read -ra db_userpwd_array <<< "$tmp_dbuserpwd"
-  IFS=$OIFS
-
-  if [[ ${#db_name_array[@]} != ${#db_user_array[@]} || ${#db_user_array[@]} != ${#db_userpwd_array[@]} ]]; then
-    fail "The number of values of: ADP_PROJECT_DB_NAME, ADP_PROJECT_DB_USER_NAME, ADP_PROJECT_DB_USER_PASSWORD must all be equal. Exit ..."
-  else
-    # Check if SSL is being used, if so, we need to add a line for path to certificate files
-    # ADP only supports 1 database server, so only the first property in array will be used
-    tmp_dbservername=${db_server_array[0]}
-    local db_ssl_enable=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.DATABASE_SSL_ENABLE)")
-    db_ssl_enable=$(echo $db_ssl_enable| tr '[:upper:]' '[:lower:]')
-
-    if [[ "$db_ssl_enable" == "true" || "$db_ssl_enable" == "yes" || "$db_ssl_enable" == "y" ]]; then
-        # if SSL, include line for CERT
-        #  specify SSL cert file folder
-        # ADP only supports 1 database server, so only the first property in array will be used
-        ssl_folder_path="$(prop_db_server_property_file ${db_server_array[0]}.DATABASE_SSL_CERT_FILE_FOLDER)"
-        ssl_folder_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$ssl_folder_path") 
-
-        if [[ "$DB_TYPE" == "postgresql" ]]; then                  
-          local tmp_postgresql_client_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
-          tmp_postgresql_client_flag=$(echo $tmp_postgresql_client_flag | tr '[:upper:]' '[:lower:]') 
-          if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then    
-            echo " --from-file=CERT=\"${ssl_folder_path}/client.crt\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
-            echo " --from-file=KEY=\"${ssl_folder_path}/client.key\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
-            echo " --from-file=ROOTCERT=\"${ssl_folder_path}/root.crt\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
-          else
-            # when POSTGRESQL_SSL_CLIENT_SERVER=false, only root cert is needed.  in this situation the scripts seem to expect "db-cert.crt" as the filename
-            echo " --from-file=ROOTCERT=\"${ssl_folder_path}/db-cert.crt\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
-          fi
-        else 
-          echo " --from-file=CERT=\"${ssl_folder_path}/db-cert.crt\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
-        fi
-        
-    fi
-
-    # Used later in check for when last line of script is reached
-    projs_max_index=${#db_name_array[@]}-1
-    
-    for num in "${!db_name_array[@]}"; do
-        tmp_dbname=${db_name_array[num]}
-        tmp_dbname=$(echo $tmp_dbname | tr '[:lower:]' '[:upper:]')
-        tmp_dbuser=${db_user_array[num]}
-        tmp_dbuserpwd=${db_userpwd_array[num]}
-
-        if [[ "$num" -lt "$projs_max_index" ]]; then
-            # if not last line, then trailing slash is needed at end of line
-            if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                echo " --from-literal=${tmp_dbname}_DB_CONFIG='${temp_val}' \\" >> ${ADP_BASE_DB_SECRET_FILE}
-            else
-                echo " --from-literal=${tmp_dbname}_DB_CONFIG=\"${tmp_dbuserpwd}\" \\" >> ${ADP_BASE_DB_SECRET_FILE}
-            fi
-        else
-            # if this is last line, then no trailing slash needed
-            if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
-                temp_val=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                echo " --from-literal=${tmp_dbname}_DB_CONFIG='${temp_val}' " >> ${ADP_BASE_DB_SECRET_FILE} 
-            else
-                echo " --from-literal=${tmp_dbname}_DB_CONFIG=\"${tmp_dbuserpwd}\" " >> ${ADP_BASE_DB_SECRET_FILE} 
-            fi
-        fi
-    done
-
-    # Add label for DPE secret
+# function for creating the template for CP4BA ADP capabilities secret 
+function create_aca_db_secret_template(){
     tmp_dbname="$(prop_db_name_user_property_file ADP_BASE_DB_NAME)"
     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name ADP_BASE_DB_NAME)"
     check_dbserver_name_valid $tmp_dbservername "ADP_BASE_DB_NAME"
-    echo "kubectl label --overwrite secret \"aca-basedb\" base-db-server=$tmp_dbservername" >> ${ADP_BASE_DB_SECRET_FILE}
-    echo "kubectl label --overwrite secret \"aca-basedb\" base-db-name=$tmp_dbname" >> ${ADP_BASE_DB_SECRET_FILE}
-    # tmp_dbservername="$(prop_db_name_user_property_file_for_server_name ADP_PROJECT_DB_NAME)"
-    # echo "kubectl label --overwrite secret \"aca-basedb\" proj-db-server=$tmp_dbservername" >> ${ADP_BASE_DB_SECRET_FILE}
+    wait_msg "Creating DPE DB secret YAML template"
+    mkdir -p $ADP_SECRET_FOLDER >/dev/null 2>&1
+    # Function that creates the yaml template
+    create_aca_db_secret_yaml_template $tmp_dbname $tmp_dbservername
 
-    echo "# IMPORTANT:"
-    echo "# Please confirm that the values above are correct, and modify as needed." >> ${ADP_BASE_DB_SECRET_FILE}
+    #  Add basedb user
+    local tmp_basedbuser="$(prop_db_name_user_property_file ADP_BASE_DB_USER_NAME)"
+    local tmp_basedbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_basedbuser")
+    ${YQ_CMD} w -i "$ADP_BASE_DB_SECRET_YAML_FILE" "stringData.BASE_DB_USER" "$tmp_basedbuser"
 
-    if [[ "$db_ssl_enable" == "true" || "$db_ssl_enable" == "yes" || "$db_ssl_enable" == "y" ]]; then
-      echo "# Please confirm that the paths for the SSL certificates and keys are correct." >> ${ADP_BASE_DB_SECRET_FILE}
-      echo "# If needed, remove any lines that are not applicable for your database environment." >> ${ADP_BASE_DB_SECRET_FILE}
+    # Add basedb pwd
+    local tmp_basedbuserpwd="$(prop_db_name_user_property_file ADP_BASE_DB_USER_PASSWORD)"
+    local tmp_basedbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_basedbuserpwd")
+    # For https://jsw.ibm.com/browse/DBACLD-157020
+    # Function that updates the secret template with the base64 password
+    update_secret_template_passwords "$tmp_basedbuserpwd" "BASE_DB_CONFIG" "$ADP_BASE_DB_SECRET_YAML_FILE"
+
+    local db_name_array=()
+    local db_user_array=()
+    local db_userpwd_array=()
+
+    local tmp_dbname=$(prop_db_name_user_property_file ADP_PROJECT_DB_NAME)
+    local tmp_dbuser=$(prop_db_name_user_property_file ADP_PROJECT_DB_USER_NAME)
+    local tmp_dbuserpwd=$(prop_db_name_user_property_file ADP_PROJECT_DB_USER_PASSWORD)
+    tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
+    tmp_dbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbuser")
+    tmp_dbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbuserpwd")
+
+    OIFS=$IFS
+    IFS=',' read -ra db_name_array <<< "$tmp_dbname"
+    IFS=',' read -ra db_user_array <<< "$tmp_dbuser"
+    IFS=',' read -ra db_userpwd_array <<< "$tmp_dbuserpwd"
+    IFS=$OIFS
+
+    if [[ ${#db_name_array[@]} != ${#db_user_array[@]} || ${#db_user_array[@]} != ${#db_userpwd_array[@]} ]]; then
+        fail "The number of values of: ADP_PROJECT_DB_NAME, ADP_PROJECT_DB_USER_NAME, ADP_PROJECT_DB_USER_PASSWORD must all be equal. Exit ..."
+    else
+        # Check if SSL is being used, if so, we need to add a line for path to certificate files
+        # ADP only supports 1 database server, so only the first property in array will be used
+        tmp_dbservername=${db_server_array[0]}
+        local db_ssl_enable=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.DATABASE_SSL_ENABLE)")
+        db_ssl_enable=$(echo $db_ssl_enable| tr '[:upper:]' '[:lower:]')
+
+        if [[ "$db_ssl_enable" == "true" || "$db_ssl_enable" == "yes" || "$db_ssl_enable" == "y" ]]; then
+
+            # if SSL, include line for CERT
+            #  specify SSL cert file folder
+            # ADP only supports 1 database server, so only the first property in array will be used
+            ssl_folder_path="$(prop_db_server_property_file ${db_server_array[0]}.DATABASE_SSL_CERT_FILE_FOLDER)"
+            ssl_folder_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$ssl_folder_path")
+            if [[ "$DB_TYPE" == "postgresql" ]]; then                  
+                local tmp_postgresql_client_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
+                tmp_postgresql_client_flag=$(echo $tmp_postgresql_client_flag | tr '[:upper:]' '[:lower:]') 
+                if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then       
+                    base64_clientcrt=$(encode_crt_file_to_base64 "${ssl_folder_path}/client.crt")
+                    ${YQ_CMD} w -i "$ADP_BASE_DB_SECRET_YAML_FILE" "data.CERT" "$base64_clientcrt"
+                    base64_clientkey=$(encode_crt_file_to_base64 "${ssl_folder_path}/client.key")
+                    ${YQ_CMD} w -i "$ADP_BASE_DB_SECRET_YAML_FILE" "data.KEY" "$base64_clientkey"
+                    base64_rootcrt=$(encode_crt_file_to_base64 "${ssl_folder_path}/root.crt")
+                    ${YQ_CMD} w -i "$ADP_BASE_DB_SECRET_YAML_FILE" "data.ROOTCERT" "$base64_rootcrt"
+                else
+                    # when POSTGRESQL_SSL_CLIENT_SERVER=false, only root cert is needed.  in this situation the scripts seem to expect "db-cert.crt" as the filename
+                    base64_dbcrt=$(encode_crt_file_to_base64 "${ssl_folder_path}/db-cert.crt")
+                    ${YQ_CMD} w -i "$ADP_BASE_DB_SECRET_YAML_FILE" "data.ROOTCERT" "$base64_dbcrt"
+                fi
+            else
+                base64_dbcrt=$(encode_crt_file_to_base64 "${ssl_folder_path}/db-cert.crt")
+                ${YQ_CMD} w -i "$ADP_BASE_DB_SECRET_YAML_FILE" "data.CERT" "$base64_dbcrt"
+            fi
+            
+        fi
+
+        for num in "${!db_name_array[@]}"; do
+            tmp_dbname=${db_name_array[num]}
+            tmp_dbname=$(echo $tmp_dbname | tr '[:lower:]' '[:upper:]')
+            tmp_dbuser=${db_user_array[num]}
+            tmp_dbuserpwd=${db_userpwd_array[num]}
+            update_secret_template_passwords "$tmp_dbuserpwd" "${tmp_dbname}_DB_CONFIG" "$ADP_BASE_DB_SECRET_YAML_FILE"
+        done
+
     fi
-  fi
 
-  success "Created DPE DB secret shell script template\n"
+    success "Created DPE DB secret YAML template\n"
 }
 
 
@@ -634,6 +615,9 @@ kind: Secret
 metadata:
   # the name: {{meta.name}}-workspace-aae-app-engine-admin-secret, {{meta.name}} is the value of metadata.name in CP4BA Custome Resource 
   name: icp4adeploy-workspace-aae-app-engine-admin-secret
+  # For https://jsw.ibm.com/browse/DBACLD-158657
+  # Add namespace field for secret template
+  namespace: "$CP4BA_SERVICES_NS"
   # DO NOT change the content of metadata.labels
   labels:
     db-server: $dbserver
@@ -689,6 +673,9 @@ kind: Secret
 metadata:
   # the name: {{meta.name}}-bas-admin-secret, {{meta.name}} is the value of metadata.name in CP4BA Custome Resource 
   name: icp4adeploy-bas-admin-secret
+  # For https://jsw.ibm.com/browse/DBACLD-158657
+  # Add namespace field for secret template
+  namespace: "$CP4BA_SERVICES_NS"
   # DO NOT change the content of metadata.labels
   labels:
     db-server: $dbserver

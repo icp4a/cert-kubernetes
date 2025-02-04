@@ -78,6 +78,33 @@ process_datavolumes() {
     done
 }
 
+# For DBACLD-159463 where we need to add quotes around the jvm options string passed. In addition all custom annotations defined in the CR must be in strings
+function add_quotes_to_values(){
+    local input_yaml="$1"
+    jvm_options_paths=$(${YQ_CMD} r "${input_yaml}" --printMode p '**.jvm_customize_options')
+    for path in $jvm_options_paths; do
+        current_value=$(${YQ_CMD} r "${input_yaml}" "$path")
+        ${YQ_CMD} w -i "${input_yaml}" "$path" \"$current_value\"
+    done
+
+    annotations_paths=$(${YQ_CMD} r "${input_yaml}" --printMode p '**.custom_annotations')
+    for path in $annotations_paths; do
+
+        keys=($(${YQ_CMD} r "${input_yaml}" "$path"  | grep -v '^\s'| awk -F ':' '{print $1}' | xargs -n 1))
+        # Loop through the keys using the index
+        for i in "${!keys[@]}"; do
+            key="${keys[$i]}"
+            key_path="$path.\"$key\""
+            current_value=$(${YQ_CMD} r "${input_yaml}" "$key_path")
+            if [[ $current_value == true || $current_value == false ]]; then
+                ${YQ_CMD} w -i "${input_yaml}" "$key_path" \"$current_value\"
+            fi
+        done
+    done
+    ${SED_COMMAND} "s|'\"|\"|g" ${input_yaml}
+    ${SED_COMMAND} "s|\"'|\"|g" ${input_yaml}
+}
+
 # This is a function to remove all image tags from a CR
 # Called during the upgradeDeployment mode
 function remove_image_tags(){
@@ -102,7 +129,7 @@ function remove_image_tags(){
             info "$repository_value:$tag_value"
         done
         printf "\n"
-        read -rsn1 -p "Press any key to continue to remove the defined image tags from the Custom Resource file...";echo
+        prompt_press_any_key_to_continue "to remove the defined image tags from the Custom Resource file"
         printf "\n"
         # To remove the tags and prevent them from being added back by the last-applied-configuration annotation we need to 
         # 1. Remove it from the CR file that will be applied
@@ -412,7 +439,7 @@ EOF
 function select_apply_cr(){
     local cr_file=$1
     echo "${YELLOW_TEXT}[ATTENTION]: YOU NEED TO REVIEW OR MODIFY THE NEW CUSTOM RESOURCE ($cr_file) FOLLOW IBM CLOUD PAK FOR BUSINESS AUTOMATION DOCUMENTATION BEFORE APPLYING IT.${RESET_TEXT}"
-    read -rsn1 -p"Press any key to continue ...";echo
+    prompt_press_any_key_to_continue
     APPLY_UPDATED_CR="No"
     # while true; do
     #     printf "\n"
@@ -567,6 +594,9 @@ function upgrade_deployment(){
                 ${SED_COMMAND} "s/: \"No\"/: false/g" ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
                 ${SED_COMMAND} "s/: \"no\"/: false/g" ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
 
+                #For DBACLD-159463 to make sure all jvm options defined and all custom annotations are strings
+                add_quotes_to_values "${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}"
+
                 # Remove all null string
                 ${SED_COMMAND} "s/: null/: /g" ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
 
@@ -622,7 +652,7 @@ function upgrade_deployment(){
                 fi
                 
                 echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}PLEASE DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} AS ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA 23.0.2.X)${RESET_TEXT}"
-                read -rsn1 -p"Press any key to continue ...";echo
+                prompt_press_any_key_to_continue
                 printf "\n"
 
                 select_apply_cr $UPGRADE_DEPLOYMENT_CONTENT_CR
@@ -712,10 +742,16 @@ function upgrade_deployment(){
             ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} metadata.generation
             ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} metadata.resourceVersion
             ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} metadata.uid
+
+            # Scale up wfps operator deployment to enable webhook for CR validation
+            kubectl scale --replicas=1 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
+            wait_for_pod $operator_project_name ibm-cp4a-wfps-operator
             #Validate the CR by performing a dry run
             dryrun $UPGRADE_DEPLOYMENT_WFPS_CR_TMP $deployment_project_name
             #applying the latest tmp CR so that we can update the kubectl.kubernetes.io/last-applied-configuration section to include any potential user edits
             kubectl apply -f ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
+            # Scale down wfps operator deployment again
+            kubectl scale --replicas=0 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
 
             # replace release/appVersion
             # ${SED_COMMAND} "s|release: .*|release: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_PFS_CR_TMP}
@@ -737,6 +773,9 @@ function upgrade_deployment(){
             ${SED_COMMAND} "s/: \"yes\"/: true/g" ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}
             ${SED_COMMAND} "s/: \"No\"/: false/g" ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}
             ${SED_COMMAND} "s/: \"no\"/: false/g" ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}
+
+            #For DBACLD-159463 to make sure all jvm options defined and all custom annotations are strings
+            add_quotes_to_values "${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}"
 
             # Remove all null string
             ${SED_COMMAND} "s/: null/: /g" ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}
@@ -1583,6 +1622,9 @@ function upgrade_deployment(){
         ${SED_COMMAND} "s/: \"No\"/: false/g" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
         ${SED_COMMAND} "s/: \"no\"/: false/g" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
 
+        #For DBACLD-159463 to make sure all jvm options defined and all custom annotations are strings
+        add_quotes_to_values "${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}"
+
         # must use string type for nodelabel_value in ADP
         if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") ]]; then
             ${SED_COMMAND} 's/\(nodelabel_value: \)\([^"][^ ]*\)/\1"\2"/' ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} >/dev/null 2>&1
@@ -1626,7 +1668,7 @@ function upgrade_deployment(){
         fi
 
         echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}PLEASE DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} AS ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA 23.0.2.X)${RESET_TEXT}"
-        read -rsn1 -p"Press any key to continue ...";echo
+        prompt_press_any_key_to_continue
         printf "\n"
         select_apply_cr $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR
 
@@ -1753,5 +1795,50 @@ function upgrade_deployment(){
     if [[ (-z $icp4acluster_cr_name) && (-z $content_cr_name) && (-z $exist_wfps_cr_array) ]]; then
         fail "No found Content or ICP4ACluster or WfPSRuntime custom resource in the project \"$deployment_project_name\""
         exit 1
+    fi
+}
+function wait_for_pod() {
+    local namespace=$1
+    local name=$2
+    local condition="oc -n ${namespace} get po --no-headers --ignore-not-found | egrep 'Running|Completed|Succeeded' | grep ^${name}"
+    local retries=30
+    local sleep_time=10
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for pod ${name} in namespace ${namespace} to be running ..."
+    local success_message="Pod ${name} in namespace ${namespace} is running."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} in namespace ${namespace} to be running."
+
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function wait_for_condition() {
+    local condition=$1
+    local retries=$2
+    local sleep_time=$3
+    local wait_message=$4
+    local success_message=$5
+    local error_message=$6
+
+    info "${wait_message}"
+    while true; do
+        result=$(eval "${condition}")
+
+        if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
+            error "${error_message}"
+        fi
+
+        sleep ${sleep_time}
+        result=$(eval "${condition}")
+
+        if [[ -z "${result}" ]]; then
+            info "RETRYING: ${wait_message} (${retries} left)"
+            retries=$(( retries - 1 ))
+        else
+            break
+        fi
+    done
+
+    if [[ ! -z "${success_message}" ]]; then
+        success "${success_message}"
     fi
 }

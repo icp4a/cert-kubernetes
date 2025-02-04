@@ -1,0 +1,40 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: cert-manager-orm
+  namespace: $namespace
+spec:
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          path: .spec.template.spec.containers[?(@.name=="cert-manager-controller")].resources
+          selector: cert_manager_controller_deploy
+        ownerPath: .spec.certManagerController.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          path: .spec.template.spec.containers[?(@.name=="cert-manager-webhook")].resources
+          selector: cert_manager_webhook_deploy
+        ownerPath: .spec.certManagerWebhook.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          path: .spec.template.spec.containers[?(@.name=="cert-manager-cainjector")].resources
+          selector: cert_manager_cainjector_deploy
+        ownerPath: .spec.certManagerCAInjector.resources
+    selectors:
+      cert_manager_controller_deploy:
+        matchLabels:
+          app: ibm-cert-manager-controller
+      cert_manager_webhook_deploy:
+        matchLabels:
+          app: ibm-cert-manager-webhook
+      cert_manager_cainjector_deploy:
+        matchLabels:
+          app: ibm-cert-manager-cainjector
+  owner:
+    apiVersion: operator.ibm.com/v1
+    kind: CertManagerConfig
+    name: default

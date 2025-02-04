@@ -469,7 +469,7 @@ function check_dbserver_name_valid(){
         echo -e "***************** example *****************"
         echo -e "if DB_SERVER_LIST=\"DBSERVER1\""
         echo -e "You need to change"
-        echo -e "<DB_SERVER_NAME>.GCD_DB_NAME=\"GCDDB\""
+        echo -e "<DB_ALIAS_NAME>.GCD_DB_NAME=\"GCDDB\""
         echo -e "to"
         echo -e "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
         echo -e "***************** example *****************"
@@ -495,9 +495,9 @@ function check_property_file(){
     fi
 
     # check baw_db_name_user.property
-    value_empty=`grep '^<DB_SERVER_NAME>.' "${DB_NAME_USER_PROPERTY_FILE}" | wc -l`  >/dev/null 2>&1
+    value_empty=`grep '^<DB_ALIAS_NAME>.' "${DB_NAME_USER_PROPERTY_FILE}" | wc -l`  >/dev/null 2>&1
     if [ $value_empty -ne 0 ] ; then
-        error "Change prefix \"<DB_SERVER_NAME>\" to assign the database used by the component to a specific database server or instance in the property file \"${DB_NAME_USER_PROPERTY_FILE}\"."
+        error "Change prefix \"<DB_ALIAS_NAME>\" to assign the database used by the component to a specific database server or instance in the property file \"${DB_NAME_USER_PROPERTY_FILE}\"."
         empty_value_tag=1
     fi
 
@@ -510,13 +510,13 @@ function check_property_file(){
         empty_value_tag=1
     fi
 
-    # check ADP_PROJECT_DB_SERVER contain <DB_SERVER_NAME>
+    # check ADP_PROJECT_DB_SERVER contain <DB_ALIAS_NAME>
     if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" ]]; then
         tmp_dbserver="$(prop_db_name_user_property_file ADP_PROJECT_DB_SERVER)"
         tmp_dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbserver")
-        value_empty=`echo $tmp_dbserver | grep '<DB_SERVER_NAME>' | wc -l`  >/dev/null 2>&1
+        value_empty=`echo $tmp_dbserver | grep '<DB_ALIAS_NAME>' | wc -l`  >/dev/null 2>&1
         if [ $value_empty -ne 0 ] ; then
-            error "Change \"<DB_SERVER_NAME>\" for \"ADP_PROJECT_DB_SERVER\" parameter to assign the database used by the component to a specific database server or instance in the property file \"${DB_NAME_USER_PROPERTY_FILE}\"."
+            error "Change \"<DB_ALIAS_NAME>\" for \"ADP_PROJECT_DB_SERVER\" parameter to assign the database used by the component to a specific database server or instance in the property file \"${DB_NAME_USER_PROPERTY_FILE}\"."
             empty_value_tag=1
         fi
     fi
@@ -569,7 +569,7 @@ function check_property_file(){
             echo -e "***************** example *****************"
             echo -e "if DB_SERVER_LIST=\"DBSERVER1\""
             echo -e "You need to change"
-            echo -e "<DB_SERVER_NAME>.GCD_DB_NAME=\"GCDDB\""
+            echo -e "<DB_ALIAS_NAME>.GCD_DB_NAME=\"GCDDB\""
             echo -e "to"
             echo -e "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
             echo -e "***************** example *****************"
@@ -587,7 +587,7 @@ function check_property_file(){
             echo -e "********************* example *********************"
             echo -e "if DB_SERVER_LIST=\"DBSERVER1\""
             echo -e "You need to change"
-            echo -e "<DB_SERVER_NAME>.DATABASE_SERVERNAME=\"samplehost\""
+            echo -e "<DB_ALIAS_NAME>.DATABASE_SERVERNAME=\"samplehost\""
             echo -e "to"
             echo -e "DBSERVER1.DATABASE_SERVERNAME=\"samplehost\""
             echo -e "********************* example *********************"
@@ -1125,7 +1125,7 @@ function create_property_file(){
     if [[ $DB_TYPE == "oracle" ]]; then
         local DB_SERVER_PREFIX="<DB_INSTANCE_NAME>"
     else
-        local DB_SERVER_PREFIX="<DB_SERVER_NAME>"
+        local DB_SERVER_PREFIX="<DB_ALIAS_NAME>"
     fi
     printf "\n"
 
@@ -1801,8 +1801,8 @@ element_val.DATABASE_SERVERNAME=\"\"\\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
     
     echo -e  "\x1B[33;5m* [baw_db_name_user.property]:\x1B[0m"
     echo -e  "  - Properties for database name and user name required by each components of by BAW on containers deployment, such as GCD_DB_NAME/GCD_DB_USER_NAME/GCD_DB_USER_PASSWORD.\n"
-    echo -e  "  - Change the prefix \"<DB_SERVER_NAME>\" to assign which database is used by the component.\n"
-    echo -e  "  - The value of \"<DB_SERVER_NAME>\" must match with the value of <DB_SERVER_LIST> which defined in \"<DB_SERVER_LIST>\" of \"baw_db_server.property\".\n"
+    echo -e  "  - Change the prefix \"<DB_ALIAS_NAME>\" to assign which database is used by the component.\n"
+    echo -e  "  - The value of \"<DB_ALIAS_NAME>\" must match with the value of <DB_SERVER_LIST> which defined in \"<DB_SERVER_LIST>\" of \"baw_db_server.property\".\n"
     
     echo -e  "\x1B[33;5m* [baw_LDAP.property]:\x1B[0m"
     echo -e  "  - Properties for the LDAP server that is used by the Business Automation Workflow on containers, such as LDAP_SERVER/LDAP_PORT/LDAP_BASE_DN/LDAP_BIND_DN/LDAP_BIND_DN_PASSWORD.\n"

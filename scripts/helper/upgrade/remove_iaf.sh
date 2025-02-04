@@ -281,11 +281,16 @@ else
 fi
 
 sleep 20
-iaf_count=$(oc get subs,csv -o name --no-headers --ignore-not-found -n ${OPERATOR_NAMESPACE}| grep ibm-automation |wc -l|xargs)
-if [ $iaf_count -gt 0 ]; then
-  info "Discovering and deleting IBM Automation Foundation Subscriptions and ClusterServiceVersions"
-  oc -n ${OPERATOR_NAMESPACE} get subs,csv -o name | grep ibm-automation | xargs oc delete -n ${OPERATOR_NAMESPACE} --wait --dry-run=${DRY_RUN}  # TODO: Fully qualify subscription/csv
-else
-  info "NO IAF subs,csv in ${OPERATOR_NAMESPACE}"
-fi
-
+#Implement while loop to check if the subs,csv are deleted
+is_iaf_deleted=false
+while [[ "$is_iaf_deleted" == false ]] ; do
+  iaf_count=$(oc get subs,csv -o name --no-headers --ignore-not-found -n ${OPERATOR_NAMESPACE}| grep ibm-automation |wc -l|xargs)
+  if [ $iaf_count -gt 0 ]; then
+    info "Discovering and deleting IBM Automation Foundation Subscriptions and ClusterServiceVersions"
+    oc -n ${OPERATOR_NAMESPACE} get subs,csv -o name | grep ibm-automation | xargs oc delete -n ${OPERATOR_NAMESPACE} --wait --dry-run=${DRY_RUN}  # TODO: Fully qualify subscription/csv
+  else
+    is_iaf_deleted=true
+    info "NO IAF subs,csv in ${OPERATOR_NAMESPACE}"
+  fi
+  sleep 10
+done
