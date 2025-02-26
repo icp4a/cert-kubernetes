@@ -1162,12 +1162,23 @@ function setup_opensearch(){
             while [[ ! -z $common_service_namespace ]]
             do
                 if [[ $common_service_namespace == "ibm-common-services" ]]; then
-                    info "IBM Cloud Pak foundational services is working in \"Cluster-scoped\"."
-                    # select_upgrade_mode_simple
-                    UPGRADE_MODE="shared2dedicated"
-                    info "IBM Cloud Pak foundational services will always migrate from \"Cluster-scoped\" to \"Namespace-scoped\"."
-                    prompt_press_any_key_to_continue
-                    break
+                    # listing all the requested namespaces that are in shared mode
+                    # If the CP4BA_SERVICES_NS is in this list under ibm-common-services then it is shared otherwise it means CP4BA_SERVICES_NS is dedicated but there are other deployments in shared mode. Just checking if ibm-common-services is listed in namespaceMapping.map-to-common-service-namespace is not sufficient.
+                    # For https://jsw.ibm.com/browse/DBACLD-168119
+                    common_service_requested_namespace=`cat /tmp/common-service-maps.yaml | ${YQ_CMD} r - namespaceMapping.[$index].requested-from-namespace`
+                    if echo "$common_service_requested_namespace" | grep -q "$CP4BA_SERVICES_NS"; then
+                        info "IBM Cloud Pak foundational services is working in \"Cluster-scoped\"."
+                        # select_upgrade_mode
+                        UPGRADE_MODE="shared2dedicated"
+                        info "IBM Cloud Pak foundational services will always migrate from \"Cluster-scoped\" to \"Namespace-scoped\"."
+                        prompt_press_any_key_to_continue
+                        break
+                    else
+                        info "IBM Cloud Pak foundational services is working in \"Namespace-scoped\"."
+                        UPGRADE_MODE="dedicated2dedicated"
+                        prompt_press_any_key_to_continue
+                        break
+                    fi
                 fi
                 ((index++))
                 common_service_namespace=`cat /tmp/common-service-maps.yaml | ${YQ_CMD} r - namespaceMapping.[$index].map-to-common-service-namespace`
@@ -9595,12 +9606,23 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             while [[ ! -z $common_service_namespace ]]
             do
                 if [[ $common_service_namespace == "ibm-common-services" ]]; then
-                    info "IBM Cloud Pak foundational services is working in \"Cluster-scoped\"."
-                    # select_upgrade_mode
-                    UPGRADE_MODE="shared2dedicated"
-                    info "IBM Cloud Pak foundational services will always migrate from \"Cluster-scoped\" to \"Namespace-scoped\"."
-                    read -rsn1 -p"Press any key to continue";echo
-                    break
+                    # listing all the requested namespaces that are in shared mode
+                    # If the CP4BA_SERVICES_NS is in this list under ibm-common-services then it is shared otherwise it means CP4BA_SERVICES_NS is dedicated but there are other deployments in shared mode. Just checking if ibm-common-services is listed in namespaceMapping.map-to-common-service-namespace is not sufficient.
+                    # For https://jsw.ibm.com/browse/DBACLD-168119
+                    common_service_requested_namespace=`cat /tmp/common-service-maps.yaml | ${YQ_CMD} r - namespaceMapping.[$index].requested-from-namespace`
+                    if echo "$common_service_requested_namespace" | grep -q "$CP4BA_SERVICES_NS"; then
+                        info "IBM Cloud Pak foundational services is working in \"Cluster-scoped\"."
+                        # select_upgrade_mode
+                        UPGRADE_MODE="shared2dedicated"
+                        info "IBM Cloud Pak foundational services will always migrate from \"Cluster-scoped\" to \"Namespace-scoped\"."
+                        prompt_press_any_key_to_continue
+                        break
+                    else
+                        info "IBM Cloud Pak foundational services is working in \"Namespace-scoped\"."
+                        UPGRADE_MODE="dedicated2dedicated"
+                        prompt_press_any_key_to_continue
+                        break
+                    fi
                 fi
                 ((index++))
                 common_service_namespace=`cat /tmp/common-service-maps.yaml | ${YQ_CMD} r - namespaceMapping.[$index].map-to-common-service-namespace`
