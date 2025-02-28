@@ -120,8 +120,10 @@ spec:
     ## based on input from the user.
     sc_deployment_platform:
 
-    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-    # sc_deployment_hostname_suffix: "{{ meta.namespace }}"
+    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <router-canonical-hostname> when not defined.
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=scp-shared-configuration
+    ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
+    #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
 
     sc_egress_configuration:
       ## Required. Enable or disable egress access to external systems.
@@ -171,9 +173,6 @@ spec:
     ## This secret is also used by Workflow and BAStudio to store AES encryption key.
     encryption_key_secret: ibm-iaws-shared-key-secret
 
-    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-    # sc_deployment_hostname_suffix: "{{ meta.namespace }}"
-
     ## On OCP 3.x and 4.x, the User script will populate these three (3) parameters based on your input for "production" deployment.
     ## If you manually deploying without using the User script, then you would provide the different storage classes for the slow, medium
     ## and fast storage parameters below.  If you only have 1 storage class defined, then you can use that 1 storage class for all 3 parameters.
@@ -206,21 +205,6 @@ spec:
     ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
     sc_is_multiple_az: false
-
-    ## Audit logging configuration for CP4BA components. The default value is "false".  If set to "true", then the audit logging will be enabled for all the CP4BA components.
-    ## These settings can be overridden at the component level by setting the "audit_logging" parameter in the component configuration such as ecm_configuration, ads_configuration, etc...
-    ## NOTE: Not all components support audit logging in 24.0.1 release.  Please refer to KC for more information.
-    sc_audit_logging:
-      # Enable or disable audit logging for all CP4BA components
-      enabled: false
-      # The audit log directory size.  The default value is "150Mi".  The value should be in the format of "<number><unit>".  The valid units are "Ki", "Mi", "Gi", "Ti", "Pi", "Ei".
-      # This log directory will be mounted as an ephemeral storage volume in the CP4BA components' pods.
-      audit_log_dir_size: '150Mi'
-
-      # The number of audit log files to keep.  The default value is "5". Increasing this value will increase the number of audit log files kept. You may want to increase the audit_log_dir_size if you increase this value.
-      rolling_max_files: 5
-      # The maximum size of each audit log file.  The default value is "20Mi".  The value should be in the format of "<number><unit>".  The valid units are "Ki", "Mi", "Gi", "Ti", "Pi", "Ei". You may want to increase the audit_log_dir_size if you increase this value.
-      rolling_max_size: '20Mi'
 
   ## The beginning section of LDAP configuration for CP4A
   ldap_configuration:
@@ -382,6 +366,9 @@ spec:
 
     ## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc.
     #lc_ldap_port: "<Required>"
+
+    ## The LDAP bind secret for LDAP authentication.  The secret is expected to have ldap<id_name>Username and ldap<id_name>Password keys.  Refer to Knowledge Center for more info.
+    #lc_bind_secret: ldap-bind-secret
 
     ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
     #lc_ldap_base_dn: "<Required>"
@@ -1380,6 +1367,21 @@ spec:
     # Image pull policy for BAI images.
     # If not set, shared_configuration.images.pull_policy is used.
     image_pull_policy: "IfNotPresent"
+
+    ## Values in this field will be used as annotations in all BAI pods and it must be valid annotation key value pairs.
+    # Example:
+    # customAnnotationKey: customAnnotationValue
+    ## This can be overwritten by componenent level definitions:
+    # "bai_configuration.cockpit.custom_annotations", "bai_configuration.management.custom_annotations"
+    # "bai_configuration.flink.custom_annotations", "bai_configuration.application_setup.custom_annotations"
+    custom_annotations: {}
+    ## Values in this field will be used as labels in all BAI pods and it must be valid label key value pairs
+    # Example:
+    # customLabelKey: customLabelValue
+    ## This can be overwritten by componenent level definitions:
+    # "bai_configuration.cockpit.custom_labels", "bai_configuration.management.custom_labels"
+    # "bai_configuration.flink.custom_labels", "bai_configuration.application_setup.custom_labels"
+    custom_labels: {}
 
     ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower.
     ## For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html

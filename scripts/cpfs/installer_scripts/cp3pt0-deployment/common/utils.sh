@@ -279,8 +279,10 @@ function wait_for_certificate() {
 function wait_for_csv() {
     local namespace=$1
     local package_name=$2
-    local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}'"
-    local debug_condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o jsonpath='{.items[*].status.conditions}'"
+    local key="${package_name}.${namespace}"
+    local length_limited_key=$(echo ${key:0:63})
+    local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${length_limited_key}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}'"
+    local debug_condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${length_limited_key}='' -n ${namespace} -o jsonpath='{.items[*].status.conditions}'"
     
     local retries=180
     local sleep_time=10
@@ -337,8 +339,10 @@ function wait_for_operand_request() {
 function wait_for_nss_patch() {
     local namespace=$1
     local package_name=$2
+    local key="${package_name}.${namespace}"
+    local length_limited_key=$(echo ${key:0:63})
 
-    local sub_name=$(${OC} get subscription.operators.coreos.com -n ${namespace} -l operators.coreos.com/${package_name}.${namespace}='' --no-headers | awk '{print $1}')
+    local sub_name=$(${OC} get subscription.operators.coreos.com -n ${namespace} -l operators.coreos.com/${length_limited_key}='' --no-headers | awk '{print $1}')
     local csv_name=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${namespace} --ignore-not-found -o jsonpath={.status.installedCSV})
 
     local condition="${OC} -n ${namespace} get csv ${csv_name} -o jsonpath='{.spec.install.spec.deployments[0].spec.template.spec.containers[0].env[?(@.name==\"WATCH_NAMESPACE\")].valueFrom.configMapKeyRef.name}'| grep 'namespace-scope'"
@@ -483,13 +487,36 @@ function wait_for_deployment() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
+function wait_for_licensing_instance_deployment() {
+    # Retry and wait for the licensing instance to be available
+    retries=10
+    while [[ $retries -gt 0 ]]; do
+        echo "Wait for licensing instance deployment to be ready..."
+        sleep 30
+        ns=$("$OC" get deployments -A | grep ibm-licensing-service-instance | cut -d ' ' -f1)
+
+        if [ -z "$ns" ]; then
+            info "RETRYING: Waiting for Deployment ibm-licensing-service-instance to be ready (${retries} left)"
+        else
+            info "Found licensing instance"
+            break
+        fi
+
+        ((retries--))
+    done
+
+}
+
 function wait_for_operator_upgrade() {
     local namespace=$1
     local package_name=$2
     local channel=$3
     local install_mode=$4
-    local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}' | grep -w $channel"
-    local debug_condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o jsonpath='{.items[*].status.conditions}'"
+    local key="${package_name}.${namespace}"
+    # k8s label name length limit to 64 characters
+    local length_limited_key=$(echo ${key:0:63})
+    local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${length_limited_key}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}' | grep -w $channel"
+    local debug_condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${length_limited_key}='' -n ${namespace} -o jsonpath='{.items[*].status.conditions}'"
 
     local retries=120
     local sleep_time=20
@@ -1253,8 +1280,10 @@ function update_operator() {
     local remove_opreq_label=${7:-}
     local retries=5 # Number of retries
     local delay=5 # Delay between retries in seconds
-
-    local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${package_name}.${ns}='' --no-headers | awk '{print $1}')
+    local key="${package_name}.${ns}"
+    # k8s label name length limit to 64 characters
+    local length_limited_key=$(echo ${key:0:63})
+    local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${length_limited_key}='' --no-headers | awk '{print $1}')
     if [ -z "$sub_name" ]; then
         warning "Not found subscription ${package_name} in ${ns}"
         return 0
@@ -1388,9 +1417,18 @@ function scale_down() {
     local services_ns=$2
     local channel=$3
     local source=$4
-    local cs_sub=$(${OC} get subscription.operators.coreos.com -n ${operator_ns} -l operators.coreos.com/ibm-common-service-operator.${operator_ns}='' --no-headers | awk '{print $1}')
+    local cs_package="ibm-common-service-operator"    
+    local cs_key="${cs_package}.${operator_ns}"
+    # k8s label name length limit to 64 characters
+    local length_limited_cs_key=$(echo ${cs_key:0:63})
+    local cs_sub=$(${OC} get subscription.operators.coreos.com -n ${operator_ns} -l operators.coreos.com/${length_limited_cs_key}='' --no-headers | awk '{print $1}')
     local cs_CSV=$(${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} --ignore-not-found -o jsonpath={.status.installedCSV})
-    local odlm_sub=$(${OC} get subscription.operators.coreos.com -n ${services_ns} -l operators.coreos.com/ibm-odlm.${services_ns}='' --no-headers | awk '{print $1}')
+
+    local odlm_package="ibm-odlm"    
+    local odlm_key="${odlm_package}.${services_ns}"
+    # k8s label name length limit to 64 characters
+    local length_limited_odlm_key=$(echo ${odlm_key:0:63})
+    local odlm_sub=$(${OC} get subscription.operators.coreos.com -n ${services_ns} -l operators.coreos.com/${length_limited_odlm_key}='' --no-headers | awk '{print $1}')
     local odlm_CSV=$(${OC} get subscription.operators.coreos.com ${odlm_sub} -n ${services_ns} --ignore-not-found -o jsonpath={.status.installedCSV})
 
     ${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} -o yaml > /tmp/sub.yaml
@@ -1477,7 +1515,9 @@ function scale_up() {
     local services_ns=$2
     local package_name=$3
     local deployment=$4
-    local sub=$(${OC} get subscription.operators.coreos.com -n ${operator_ns} -l operators.coreos.com/${package_name}.${operator_ns}='' --no-headers | awk '{print $1}')
+    local key="${package_name}.${operator_ns}"
+    local length_limited_key=$(echo ${key:0:63})
+    local sub=$(${OC} get subscription.operators.coreos.com -n ${operator_ns} -l operators.coreos.com/${length_limited_key}='' --no-headers | awk '{print $1}')
     local csv=$(${OC} get subscription.operators.coreos.com ${sub} -n ${operator_ns} --ignore-not-found -o jsonpath={.status.installedCSV})
 
     if [[ "$deployment" == "operand-deployment-lifecycle-manager" ]]; then

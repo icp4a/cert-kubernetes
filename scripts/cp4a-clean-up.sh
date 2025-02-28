@@ -12,6 +12,7 @@
 ###############################################################################
 CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
+CLI_CMD="oc"
 # Import common utilities and environment variables
 source ${CUR_DIR}/helper/common.sh
 
@@ -62,16 +63,14 @@ if [[ $HELP == "true" ]]; then
 	exit 0
 fi
 
-if ! [ -x "$(command -v oc)" ]; then
-	error "OpenShift CLI is not installed."
+# Check if OpenShift CLI is installed
+if ! [ -x "$(command -v ${CLI_CMD})" ]; then
+	error "OpenShift CLI is not installed. Please install OpenShift CLI before running this script."
 	exit 1
 fi
 
-oc project > /dev/null 2>&1
-if [ $? -gt 0 ]; then
-	error "oc login is required for running this script."
-	exit 1
-fi
+# Check cluster login
+check_cluster_login
 
 # CP4BA Namespace check
 if [ -z "$CP4BA_NAMESPACE" ]; then
@@ -81,55 +80,55 @@ fi
 
 # Namespace check to avoid cleaning up in the wrong namespace
 if [[ "$CP4BA_NAMESPACE" == openshift* ]]; then
-	error "Then entered namespace should not be 'openshift' or start with 'openshift'. It should be the namespace where CP4BA is installed. The script aborted."
+	error "Then entered namespace must not be 'openshift' or start with 'openshift'. It should be the namespace where CP4BA is installed. The script has been aborted."
 	exit 1
 elif [[ "$CP4BA_NAMESPACE" == kube* ]]; then
-	error "Then entered namespace should not be 'kube' or start with 'kube'. It should be the namespace where CP4BA is installed. The script aborted."
+	error "Then entered namespace must not be 'kube' or start with 'kube'. It should be the namespace where CP4BA is installed. The script has been aborted."
 	exit 1
 elif [[ "$CP4BA_NAMESPACE" == "services" ]]; then
-	error "Then entered namespace should not be 'services'. It should be the namespace where CP4BA is installed. The script aborted."
+	error "Then entered namespace must not be 'services'. It should be the namespace where CP4BA is installed. The script has been aborted."
 	exit 1
 elif [[ "$CP4BA_NAMESPACE" == "default" ]]; then
-	error "Then entered namespace should not be 'default'. It should be the namespace where CP4BA is installed. The script aborted."
+	error "Then entered namespace must not be 'default'. It should be the namespace where CP4BA is installed. The script has been aborted."
 	exit 1
 elif [[ "$CP4BA_NAMESPACE" == "calico-system" ]]; then
-	error "Then entered namespace should not be 'calico-system'. It should be the namespace where CP4BA is installed. The script aborted."
+	error "Then entered namespace must not be 'calico-system'. It should be the namespace where CP4BA is installed. The script has been aborted."
 	exit 1
 elif [[ "$CP4BA_NAMESPACE" == "ibm-cert-store" ]]; then
-	error "Then entered namespace should not be 'ibm-cert-store'. It should be the namespace where CP4BA is installed. The script aborted."
+	error "Then entered namespace must not be 'ibm-cert-store'. It should be the namespace where CP4BA is installed. The script has been aborted."
 	exit 1
 elif [[ "$CP4BA_NAMESPACE" == "ibm-observe" ]]; then
-	error "Then entered namespace should not be 'ibm-observe'. It should be the namespace where CP4BA is installed. The script aborted."
+	error "Then entered namespace must not be 'ibm-observe'. It should be the namespace where CP4BA is installed. The script has been aborted."
 	exit 1
 elif [[ "$CP4BA_NAMESPACE" == "ibm-odf-validation-webhook" ]]; then
-	error "Then entered namespace should not be 'ibm-odf-validation-webhook'. It should be the namespace where CP4BA is installed. The script aborted."
+	error "Then entered namespace must not be 'ibm-odf-validation-webhook'. It should be the namespace where CP4BA is installed. The script has been aborted."
 	exit 1
 elif [[ "$CP4BA_NAMESPACE" == "ibm-system" ]]; then
-	error "Then entered namespace should not be 'ibm-system'. It should be the namespace where CP4BA is installed. The script aborted."
+	error "Then entered namespace must not be 'ibm-system'. It should be the namespace where CP4BA is installed. The script has been aborted."
 	exit 1
 fi
 
 # Validate CP4BA_NAMESPACE env var is for existing namespace
-if [ -z "$(oc get project "${CP4BA_NAMESPACE}" 2>/dev/null)" ]; then
+if [ -z "$(${CLI_CMD} get project "${CP4BA_NAMESPACE}" 2>/dev/null)" ]; then
 	error "Namespace ${CP4BA_NAMESPACE} does not exist. Specify an existing namespace where CP4BA is installed."
 	exit 1
 fi
 
 echo -e "The CP4BA namespace entered:\n- ${CP4BA_NAMESPACE}\n"
-echo -e "Note: Please make sure you have entered the namespace you intended to clean up.\n"
+echo -e "Note: Please ensure you are using the intended namespace for cleanup.\n"
 success "All prerequisites passed. Ready for clean up."
 echo
 echo -e "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;33mThis script is only intended to delete any remaining resources in the Cloud Pak for Business Automation and Cloud Pak foundational services namespace(s), and it is not intended for uninstalling Cloud Pak for Business Automation and Cloud Pak foundational services deployment. The script also does not support cleaning up shared Cloud Pak foundational services.\x1B[0m\n"
 
 # <https://jsw.ibm.com/browse/DBACLD-156516> - User need to provide the service namespace in separation of duties
 # Check if ibm-cp4ba-common-config is present in the namespace
-if [ -z "$(oc get configmap ibm-cp4ba-common-config -n ${CP4BA_NAMESPACE} 2>/dev/null)" ]; then
+if [ -z "$(${CLI_CMD} get configmap ibm-cp4ba-common-config -n ${CP4BA_NAMESPACE} 2>/dev/null)" ]; then
 	error "Not able to find configmap \"ibm-cp4ba-common-config\" in Namespace ${CP4BA_NAMESPACE}. Please make sure you have provided the namespace where CP4BA is installed or if your have separation of duties please provide the services namespace."
 	exit 1
 fi
 
 # CP4BA seperation of duty check
-CP4BA_CM_CONFIG=$(oc get configmap ibm-cp4ba-common-config -n ${CP4BA_NAMESPACE} -o jsonpath="{ .data}" 2>/dev/null)
+CP4BA_CM_CONFIG=$(${CLI_CMD} get configmap ibm-cp4ba-common-config -n ${CP4BA_NAMESPACE} -o jsonpath="{ .data}" 2>/dev/null)
 CP4BA_CM_CONFIG_YAML=$(mktemp)
 echo "$CP4BA_CM_CONFIG" > "$CP4BA_CM_CONFIG_YAML"
 # get operators namespace
@@ -153,7 +152,7 @@ rm "$CP4BA_CM_CONFIG_YAML"
 
 if [[ "$ALL_NAMESPACE" == "false" ]]; then
 	# CPFS shared check
-	CS_MAP=$(oc get configmap "${COMMON_SERVICES_CM_DEDICATED_NAME}"  -n kube-public -o jsonpath="{ .data['common-service-maps\.yaml']}" 2>/dev/null)
+	CS_MAP=$(${CLI_CMD} get configmap "${COMMON_SERVICES_CM_DEDICATED_NAME}"  -n kube-public -o jsonpath="{ .data['common-service-maps\.yaml']}" 2>/dev/null)
 	if [[ -z $CS_MAP ]]; then
 		error "No Cloud Pak foundational services mapping was detected, Cloud Pak foundational services could be shared or does not exist. The script aborted."
 		exit 1
@@ -231,17 +230,13 @@ while true; do
 	esac
 done
 
-# Get CP4BA Operator version
-cp4a_operator_csv_name_target_ns=$(oc get csv -n "$CP4BA_NAMESPACE" --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
-CP4BA_VERSION=$(oc get csv $cp4a_operator_csv_name_target_ns -n "$CP4BA_NAMESPACE" --no-headers --ignore-not-found -o 'jsonpath={.spec.version}')
-
 # Get Resource function
 function get_resource() {
 	local RESOURCE_NAME=$1
 	local NAMESPACE_NAME=$2
-	oc get "${RESOURCE_NAME}" -n "${NAMESPACE_NAME}" --ignore-not-found=true &>/dev/null
+	${CLI_CMD} get "${RESOURCE_NAME}" -n "${NAMESPACE_NAME}" --ignore-not-found=true &>/dev/null
 	if [ $? -eq 0 ]; then
-		for i in $(oc get "${RESOURCE_NAME}" --no-headers -n "${NAMESPACE_NAME}" --ignore-not-found=true| awk '{print $1}'); do
+		for i in $(${CLI_CMD} get "${RESOURCE_NAME}" --no-headers -n "${NAMESPACE_NAME}" --ignore-not-found=true| awk '{print $1}'); do
 			echo "${RESOURCE_NAME}/${i}"
 		done
 	fi
@@ -250,11 +245,11 @@ function get_resource() {
 function delete_resource() {
 	local RESOURCE_NAME=$1
 	local NAMESPACE_NAME=$2
-	oc get "${RESOURCE_NAME}" -n "${NAMESPACE_NAME}" --ignore-not-found=true &>/dev/null
+	${CLI_CMD} get "${RESOURCE_NAME}" -n "${NAMESPACE_NAME}" --ignore-not-found=true &>/dev/null
 	if [ $? -eq 0 ]; then
-		for i in $(oc get "${RESOURCE_NAME}" --no-headers -n "${NAMESPACE_NAME}" --ignore-not-found=true | awk '{print $1}'); do
-			oc patch "${RESOURCE_NAME}"/$i -n "${NAMESPACE_NAME}" -p '{"metadata":{"finalizers":[]}}' --type=merge
-			oc delete "${RESOURCE_NAME}" $i -n "${NAMESPACE_NAME}" --ignore-not-found=true
+		for i in $(${CLI_CMD} get "${RESOURCE_NAME}" --no-headers -n "${NAMESPACE_NAME}" --ignore-not-found=true | awk '{print $1}'); do
+			${CLI_CMD} patch "${RESOURCE_NAME}"/$i -n "${NAMESPACE_NAME}" -p '{"metadata":{"finalizers":[]}}' --type=merge
+			${CLI_CMD} delete "${RESOURCE_NAME}" $i -n "${NAMESPACE_NAME}" --ignore-not-found=true
 		done
 	fi
 }
@@ -263,18 +258,18 @@ function delete_specific_resource() {
     local RESOURCE_NAME=$1
     local NAMESPACE_NAME=$2
     local OBJECT_NAME=$3
-    itemcount=$(oc -n "${NAMESPACE_NAME}" get "${RESOURCE_NAME}" "${OBJECT_NAME}" --no-headers --ignore-not-found=true | wc -l)
+    itemcount=$(${CLI_CMD} -n "${NAMESPACE_NAME}" get "${RESOURCE_NAME}" "${OBJECT_NAME}" --no-headers --ignore-not-found=true | wc -l)
     if [[ $itemcount == 1 ]]; then
-        oc patch "${RESOURCE_NAME}"/"${OBJECT_NAME}" -n "${NAMESPACE_NAME}" -p '{"metadata":{"finalizers":[]}}' --type=merge
+        ${CLI_CMD} patch "${RESOURCE_NAME}"/"${OBJECT_NAME}" -n "${NAMESPACE_NAME}" -p '{"metadata":{"finalizers":[]}}' --type=merge
         # run this in the background because it can sometimes hang
         info "Deleting ${RESOURCE_NAME} ${OBJECT_NAME} in namespace ${NAMESPACE_NAME}"
-        oc delete "${RESOURCE_NAME}" "${OBJECT_NAME}" -n "${NAMESPACE_NAME}" --ignore-not-found=true --force --grace-period=0 &
+        ${CLI_CMD} delete "${RESOURCE_NAME}" "${OBJECT_NAME}" -n "${NAMESPACE_NAME}" --ignore-not-found=true --force --grace-period=0 &
         info "Wait for 10 secs before checking if ${RESOURCE_NAME} ${OBJECT_NAME} is removed"
         sleep 10 
-        itemcount=$(oc -n "${NAMESPACE_NAME}" get "${RESOURCE_NAME}" "${OBJECT_NAME}" --no-headers --ignore-not-found=true | wc -l)
+        itemcount=$(${CLI_CMD} -n "${NAMESPACE_NAME}" get "${RESOURCE_NAME}" "${OBJECT_NAME}" --no-headers --ignore-not-found=true | wc -l)
         if [[ $itemcount == 1 ]]; then
            info "${RESOURCE_NAME} ${OBJECT_NAME} is still found.  Removing finalizer..."
-           oc patch "${RESOURCE_NAME}"/"${OBJECT_NAME}" -n "${NAMESPACE_NAME}" -p '{"metadata":{"finalizers":[]}}' --type=merge
+           ${CLI_CMD} patch "${RESOURCE_NAME}"/"${OBJECT_NAME}" -n "${NAMESPACE_NAME}" -p '{"metadata":{"finalizers":[]}}' --type=merge
         fi
     fi
 }
@@ -340,10 +335,10 @@ if [[ "$SEPARATION_DUTY" == "true" ]]; then
 	for RESOURCE in "${CP4BA_RESOURCES[@]}"; do
 		get_resource "${RESOURCE}" "${CP4BA_OPERATORS_NAMESPACE}"
 	done
-	for i in $(oc get pv --no-headers | grep "operator-shared-pv*" | awk '{print $1}'); do
+	for i in $(${CLI_CMD} get pv --no-headers | grep "operator-shared-pv*" | awk '{print $1}'); do
 		echo "pv/${i}"
 		done
-	for i in $(oc get operators --no-headers | grep "${CP4BA_OPERATORS_NAMESPACE} " | awk '{print $1}'); do
+	for i in $(${CLI_CMD} get operators --no-headers | grep "${CP4BA_OPERATORS_NAMESPACE} " | awk '{print $1}'); do
 		echo "operators/${i}"
 	done
 
@@ -351,10 +346,10 @@ if [[ "$SEPARATION_DUTY" == "true" ]]; then
 	for RESOURCE in "${CP4BA_RESOURCES[@]}"; do
 		get_resource "${RESOURCE}" "${CP4BA_SERVICES_NAMESPACE}"
 	done
-	for i in $(oc get pv --no-headers | grep "operator-shared-pv*" | awk '{print $1}'); do
+	for i in $(${CLI_CMD} get pv --no-headers | grep "operator-shared-pv*" | awk '{print $1}'); do
 		echo "pv/${i}"
 	done
-	for i in $(oc get operators --no-headers | grep "${CP4BA_SERVICES_NAMESPACE} " | awk '{print $1}'); do
+	for i in $(${CLI_CMD} get operators --no-headers | grep "${CP4BA_SERVICES_NAMESPACE} " | awk '{print $1}'); do
 		echo "operators/${i}"
 	done
 else
@@ -364,10 +359,10 @@ else
 		get_resource "${RESOURCE}" "${CP4BA_NAMESPACE}"
 	done
 
-	for i in $(oc get pv --no-headers -n "${CP4BA_NAMESPACE}" | grep "operator-shared-pv*" | awk '{print $1}'); do
+	for i in $(${CLI_CMD} get pv --no-headers -n "${CP4BA_NAMESPACE}" | grep "operator-shared-pv*" | awk '{print $1}'); do
 		echo "pv/${i}"
 	done
-	for i in $(oc get operators --no-headers | grep "${CP4BA_NAMESPACE} " | awk '{print $1}'); do
+	for i in $(${CLI_CMD} get operators --no-headers | grep "${CP4BA_NAMESPACE} " | awk '{print $1}'); do
 		echo "operators/${i}"
 	done
 
@@ -411,7 +406,7 @@ if [[ $CLEAN_CPFS == "true" ]]; then
 	done
 
 	#Check CPFS Control namespace exist
-	oc get project ${CPFS_CONTROL_NAMESPACE} &>/dev/null
+	${CLI_CMD} get project ${CPFS_CONTROL_NAMESPACE} &>/dev/null
 	if [ $? -eq 0 -a $CS_NAMESPACE_COUNT -eq 1 ]; then
 		# Get CPFS Control namespace resources
 		INFO "Resource in Namespace: ${CPFS_CONTROL_NAMESPACE}"
@@ -428,12 +423,12 @@ if [[ $CLEAN_CPFS == "true" ]]; then
 	pattern5="ibm-operandrequest-webhook-configuration"
 	pattern6="ibm-common-service-webhook-configuration"
 
-	webhook_configs=$(oc get ValidatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers | grep -E "$pattern2|$pattern3")
+	webhook_configs=$(${CLI_CMD} get ValidatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers | grep -E "$pattern2|$pattern3")
 	for webhook in $webhook_configs; do
 		echo -e "ValidatingWebhookConfiguration/${webhook}"
 	done
 
-	webhook_configs=$(oc get MutatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers | grep -E "$pattern4|$pattern5|$pattern6")
+	webhook_configs=$(${CLI_CMD} get MutatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers | grep -E "$pattern4|$pattern5|$pattern6")
 	for webhook in $webhook_configs; do
 		echo -e "MutatingWebhookConfiguration/${webhook}"
 	done
@@ -461,7 +456,7 @@ if [[ $CLEAN_CRDS == "true" ]]; then
 	)
 	INFO "CustomResourceDefinitions"
 	for i in "${CP4BA_CRDS[@]}"; do
-		oc get crd $i &>/dev/null
+		${CLI_CMD} get crd $i &>/dev/null
 		if [ $? -eq 0 ]; then
 			echo "crd/${i}"
 		fi
@@ -471,34 +466,34 @@ fi
 if [[ $CLEAN_CPFS == "true" ]]; then
 	# Configmaps for CPFS
 	INFO "Configmaps in ${COMMON_SERVICES_CM_NAMESPACE} namespace"
-	for i in $(oc get cm common-service-maps ibm-common-services-status -n "${COMMON_SERVICES_CM_NAMESPACE}" --ignore-not-found --no-headers | awk '{print $1}'); do
+	for i in $(${CLI_CMD} get cm common-service-maps ibm-common-services-status -n "${COMMON_SERVICES_CM_NAMESPACE}" --ignore-not-found --no-headers | awk '{print $1}'); do
 		echo "cm/${i}"
 	done
 
 	# Role
 	INFO "Other Resources"
-	for i in $(oc get ClusterRoleBinding ibm-common-service-webhook secretshare-ibm-common-services $(oc get ClusterRoleBinding | grep nginx-ingress-clusterrole | awk '{print $1}') --ignore-not-found --no-headers | awk '{print $1}'); do
+	for i in $(${CLI_CMD} get ClusterRoleBinding ibm-common-service-webhook secretshare-ibm-common-services $(${CLI_CMD} get ClusterRoleBinding | grep nginx-ingress-clusterrole | awk '{print $1}') --ignore-not-found --no-headers | awk '{print $1}'); do
 		echo "ClusterRoleBinding/${i}"
 	done
-	for i in $(oc get ClusterRole ibm-common-service-webhook secretshare nginx-ingress-clusterrole --ignore-not-found --no-headers | awk '{print $1}'); do
+	for i in $(${CLI_CMD} get ClusterRole ibm-common-service-webhook secretshare nginx-ingress-clusterrole --ignore-not-found --no-headers | awk '{print $1}'); do
 		echo "ClusterRole/${i}"
 	done
-	for i in $(oc get RoleBinding ibmcloud-cluster-info ibmcloud-cluster-ca-cert -n "${COMMON_SERVICES_CM_NAMESPACE}" --ignore-not-found --no-headers | awk '{print $1}'); do
+	for i in $(${CLI_CMD} get RoleBinding ibmcloud-cluster-info ibmcloud-cluster-ca-cert -n "${COMMON_SERVICES_CM_NAMESPACE}" --ignore-not-found --no-headers | awk '{print $1}'); do
 		echo "RoleBinding/${i}"
 	done
-	for i in $(oc get Role ibmcloud-cluster-info ibmcloud-cluster-ca-cert -n "${COMMON_SERVICES_CM_NAMESPACE}" --ignore-not-found --no-headers | awk '{print $1}'); do
+	for i in $(${CLI_CMD} get Role ibmcloud-cluster-info ibmcloud-cluster-ca-cert -n "${COMMON_SERVICES_CM_NAMESPACE}" --ignore-not-found --no-headers | awk '{print $1}'); do
 		echo "Role/${i}"
 	done
-	for i in $(oc get scc nginx-ingress-scc --ignore-not-found --no-headers | awk '{print $1}'); do
+	for i in $(${CLI_CMD} get scc nginx-ingress-scc --ignore-not-found --no-headers | awk '{print $1}'); do
 		echo "scc/${i}"
 	done
 
 	# Get apiservice
-	oc get apiservice v1beta1.webhook.certmanager.k8s.io &>/dev/null
+	${CLI_CMD} get apiservice v1beta1.webhook.certmanager.k8s.io &>/dev/null
 	if [ $? -eq 0 ]; then
 		echo "apiservice/v1beta1.webhook.certmanager.k8s.io"
 	fi
-	oc get apiservice v1.metering.ibm.com &>/dev/null
+	${CLI_CMD} get apiservice v1.metering.ibm.com &>/dev/null
 	if [ $? -eq 0 ]; then
 		echo "apiservice/v1.metering.ibm.com"
 	fi
@@ -537,7 +532,7 @@ if [[ "$SEPARATION_DUTY" == "true" ]]; then
 		delete_resource "${RESOURCE}" "${CP4BA_OPERATORS_NAMESPACE}"
 	done
 	
-	for i in $(oc get operators --no-headers | grep "${CP4BA_OPERATORS_NAMESPACE} " | awk '{print $1}'); do
+	for i in $(${CLI_CMD} get operators --no-headers | grep "${CP4BA_OPERATORS_NAMESPACE} " | awk '{print $1}'); do
 		echo "operators/${i}"
 	done
 
@@ -554,8 +549,8 @@ if [[ "$SEPARATION_DUTY" == "true" ]]; then
 	INFO "Cleaning up PVC operator-shared-pvc and corresponding PV in CP4BA Operators Namespace: ${CP4BA_SERVICES_NAMESPACE}"
 	delete_specific_resource "pvc" "${CP4BA_SERVICES_NAMESPACE}" "operator-shared-pvc"
 
-	for i in $(oc get operators --no-headers | grep "${CP4BA_SERVICES_NAMESPACE} " | awk '{print $1}'); do
-		oc delete operator "$i"
+	for i in $(${CLI_CMD} get operators --no-headers | grep "${CP4BA_SERVICES_NAMESPACE} " | awk '{print $1}'); do
+		${CLI_CMD} delete operator "$i"
 	done
 else
 	INFO "Cleaning up resources in CP4BA Namespace: ${CP4BA_NAMESPACE}"
@@ -567,10 +562,10 @@ else
 		delete_resource "${RESOURCE}" "${CP4BA_NAMESPACE}"
 	done
 
-	oc get pv --no-headers | grep "operator-shared-pv*" | grep -E "Available|Failed" | awk '{print $1}' | xargs oc delete pv 2>/dev/null
+	${CLI_CMD} get pv --no-headers | grep "operator-shared-pv*" | grep -E "Available|Failed" | awk '{print $1}' | xargs ${CLI_CMD} delete pv 2>/dev/null
 
-	for i in $(oc get operators --no-headers | grep "${CP4BA_NAMESPACE} " | awk '{print $1}'); do
-		oc delete operator "$i"
+	for i in $(${CLI_CMD} get operators --no-headers | grep "${CP4BA_NAMESPACE} " | awk '{print $1}'); do
+		${CLI_CMD} delete operator "$i"
 	done
 fi
 
@@ -587,7 +582,7 @@ if [[ $CLEAN_CPFS == "true" ]]; then
 	done
 
 	# Clean up CPFS control
-	oc get project ${CPFS_CONTROL_NAMESPACE} &>/dev/null
+	${CLI_CMD} get project ${CPFS_CONTROL_NAMESPACE} &>/dev/null
 	if [ $? -eq 0 -a $CS_NAMESPACE_COUNT -eq 1 ]; then
 		# Delete CPFS Control namespace resources
 		INFO "Cleaning up resources in Namespace: ${CPFS_CONTROL_NAMESPACE}"
@@ -607,41 +602,41 @@ if [[ $CLEAN_CPFS == "true" ]]; then
 	pattern5="ibm-operandrequest-webhook-configuration"
 	pattern6="ibm-common-service-webhook-configuration"
 
-	webhook_configs=$(oc get ValidatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers | grep -E "$pattern2|$pattern3 &>/dev/null")
+	webhook_configs=$(${CLI_CMD} get ValidatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers | grep -E "$pattern2|$pattern3 &>/dev/null")
 	if [ $? -eq 0 ]; then
 		for webhook in $webhook_configs; do
-			oc delete ValidatingWebhookConfiguration "$webhook"
+			${CLI_CMD} delete ValidatingWebhookConfiguration "$webhook"
 		done
 	fi
 
-	webhook_configs=$(oc get MutatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers | grep -E "$pattern4|$pattern5|$pattern6 &>/dev/null")
+	webhook_configs=$(${CLI_CMD} get MutatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers | grep -E "$pattern4|$pattern5|$pattern6 &>/dev/null")
 	if [ $? -eq 0 ]; then
 		for webhook in $webhook_configs; do
-			oc delete MutatingWebhookConfiguration "$webhook"
+			${CLI_CMD} delete MutatingWebhookConfiguration "$webhook"
 		done
 	fi
 	# Cleaning up Role related resources
-	oc delete ClusterRoleBinding ibm-common-service-webhook secretshare-ibm-common-services $(oc get ClusterRoleBinding | grep nginx-ingress-clusterrole | awk '{print $1}') --ignore-not-found
-	oc delete ClusterRole ibm-common-service-webhook secretshare nginx-ingress-clusterrole --ignore-not-found
-	oc delete RoleBinding ibmcloud-cluster-info ibmcloud-cluster-ca-cert -n "${COMMON_SERVICES_CM_NAMESPACE}" --ignore-not-found
-	oc delete Role ibmcloud-cluster-info ibmcloud-cluster-ca-cert -n "${COMMON_SERVICES_CM_NAMESPACE}" --ignore-not-found
-	oc delete scc nginx-ingress-scc --ignore-not-found
+	${CLI_CMD} delete ClusterRoleBinding ibm-common-service-webhook secretshare-ibm-common-services $(${CLI_CMD} get ClusterRoleBinding | grep nginx-ingress-clusterrole | awk '{print $1}') --ignore-not-found
+	${CLI_CMD} delete ClusterRole ibm-common-service-webhook secretshare nginx-ingress-clusterrole --ignore-not-found
+	${CLI_CMD} delete RoleBinding ibmcloud-cluster-info ibmcloud-cluster-ca-cert -n "${COMMON_SERVICES_CM_NAMESPACE}" --ignore-not-found
+	${CLI_CMD} delete Role ibmcloud-cluster-info ibmcloud-cluster-ca-cert -n "${COMMON_SERVICES_CM_NAMESPACE}" --ignore-not-found
+	${CLI_CMD} delete scc nginx-ingress-scc --ignore-not-found
 
 	# Cleaning up apiservice
-	oc get apiservice v1beta1.webhook.certmanager.k8s.io 2>/dev/null
+	${CLI_CMD} get apiservice v1beta1.webhook.certmanager.k8s.io 2>/dev/null
 	if [ $? -eq 0 ]; then
 		INFO "Delete apiservice v1beta1.webhook.certmanager.k8s.io"
-		oc delete apiservice v1beta1.webhook.certmanager.k8s.io
+		${CLI_CMD} delete apiservice v1beta1.webhook.certmanager.k8s.io
 	fi
-	oc get apiservice v1.metering.ibm.com 2>/dev/null
+	${CLI_CMD} get apiservice v1.metering.ibm.com 2>/dev/null
 	if [ $? -eq 0 ]; then
 		INFO "Delete apiservice v1.metering.ibm.com"
-		oc delete apiservice v1.metering.ibm.com
+		${CLI_CMD} delete apiservice v1.metering.ibm.com
 	fi
 fi
 
-# Delete configmaps in kube-public
-if [[ "$CP4BA_VERSION" == "21.3."* && "$CS_NAMESPACE_COUNT" -gt 1 ]]; then
+# Update/delete configmaps in kube-public
+if [[ "$CS_NAMESPACE_COUNT" -gt 1 ]]; then
 	INFO "Remove mapping from ${COMMON_SERVICES_CM_NAMESPACE} namespace"
 	# Remove mapping from common-service-maps.yaml and apply it back
 	NEW_CS_MAPS=$(${YQ_CMD} d "$CS_MAPS_YAML" "namespaceMapping[${CS_MAP_INDEX}]")
@@ -658,25 +653,25 @@ data:
 ${padded_yaml}
 EOF
 )"
-	echo "$NEW_CS_MAPS_YAML" | oc apply -f -
+	echo "$NEW_CS_MAPS_YAML" | ${CLI_CMD} apply -f -
 else
 	INFO "Delete configmaps from ${COMMON_SERVICES_CM_NAMESPACE} namespace"
-	oc delete cm common-service-maps ibm-common-services-status -n "${COMMON_SERVICES_CM_NAMESPACE}" --ignore-not-found
+	${CLI_CMD} delete cm common-service-maps ibm-common-services-status -n "${COMMON_SERVICES_CM_NAMESPACE}" --ignore-not-found
 fi
 
 # Delete resource in openshift-operator namespace
 if [[ $SELECT_ALL == "true" ]]; then
 	INFO "Cleaning up openshift-operators namespace"
-	oc -n $OPENSHIFT_OPERATORS_NAMESPACE delete operandrequest --force --grace-period=0 --all --ignore-not-found=true --wait=true
-	oc delete csv,sub -n $OPENSHIFT_OPERATORS_NAMESPACE --all --ignore-not-found=true --wait=true
-	oc -n $OPENSHIFT_OPERATORS_NAMESPACE get cm | grep -E "iaf|ibm|namespace-scope" | awk '{print $1}' | xargs oc delete cm -n $OPENSHIFT_OPERATORS_NAMESPACE --ignore-not-found=true
-	oc -n $OPENSHIFT_OPERATORS_NAMESPACE get sa | grep -E "iaf|ibm|postgresql" | awk '{print $1}' | xargs oc delete sa -n $OPENSHIFT_OPERATORS_NAMESPACE --ignore-not-found=true
-	oc delete rolebinding iaf-insights-engine-operator-leader-election-rolebinding -n $OPENSHIFT_OPERATORS_NAMESPACE
-	oc delete lease,secret,svc,netpol,job,deploy,pvc,role --all -n $OPENSHIFT_OPERATORS_NAMESPACE --ignore-not-found=true
-	oc delete commonservice,operandregistry,operandconfig --all -n $OPENSHIFT_OPERATORS_NAMESPACE --ignore-not-found=true --wait=true 
-	for i in $(oc -n $OPENSHIFT_OPERATORS_NAMESPACE get operandrequest --no-headers | awk '{print $1}'); do
-		oc -n $OPENSHIFT_OPERATORS_NAMESPACE patch operandrequest/$i -p '{"metadata":{"finalizers":[]}}' --type=merge
-		oc -n $OPENSHIFT_OPERATORS_NAMESPACE delete operandrequest $i --ignore-not-found=true --wait=true
+	${CLI_CMD} -n $OPENSHIFT_OPERATORS_NAMESPACE delete operandrequest --force --grace-period=0 --all --ignore-not-found=true --wait=true
+	${CLI_CMD} delete csv,sub -n $OPENSHIFT_OPERATORS_NAMESPACE --all --ignore-not-found=true --wait=true
+	${CLI_CMD} -n $OPENSHIFT_OPERATORS_NAMESPACE get cm | grep -E "iaf|ibm|namespace-scope" | awk '{print $1}' | xargs ${CLI_CMD} delete cm -n $OPENSHIFT_OPERATORS_NAMESPACE --ignore-not-found=true
+	${CLI_CMD} -n $OPENSHIFT_OPERATORS_NAMESPACE get sa | grep -E "iaf|ibm|postgresql" | awk '{print $1}' | xargs ${CLI_CMD} delete sa -n $OPENSHIFT_OPERATORS_NAMESPACE --ignore-not-found=true
+	${CLI_CMD} delete rolebinding iaf-insights-engine-operator-leader-election-rolebinding -n $OPENSHIFT_OPERATORS_NAMESPACE
+	${CLI_CMD} delete lease,secret,svc,netpol,job,deploy,pvc,role --all -n $OPENSHIFT_OPERATORS_NAMESPACE --ignore-not-found=true
+	${CLI_CMD} delete commonservice,operandregistry,operandconfig --all -n $OPENSHIFT_OPERATORS_NAMESPACE --ignore-not-found=true --wait=true 
+	for i in $(${CLI_CMD} -n $OPENSHIFT_OPERATORS_NAMESPACE get operandrequest --no-headers | awk '{print $1}'); do
+		${CLI_CMD} -n $OPENSHIFT_OPERATORS_NAMESPACE patch operandrequest/$i -p '{"metadata":{"finalizers":[]}}' --type=merge
+		${CLI_CMD} -n $OPENSHIFT_OPERATORS_NAMESPACE delete operandrequest $i --ignore-not-found=true --wait=true
 	done
 fi
 
@@ -684,26 +679,26 @@ fi
 INFO "Cleaning up CP4BA CRDs"
 if [[ $CLEAN_CRDS == "true" ]]; then
 	for i in "${CP4BA_CRDS[@]}"; do
-		oc patch crd/$i -p '{"metadata":{"finalizers":[]}}' --type=merge
-		oc delete crd $i --ignore-not-found=true --grace-period=0 --force
+		${CLI_CMD} patch crd/$i -p '{"metadata":{"finalizers":[]}}' --type=merge
+		${CLI_CMD} delete crd $i --ignore-not-found=true --grace-period=0 --force
 	done
 fi
 
 # Switch back to the default namespace
-oc project default
+${CLI_CMD} project default
 
 
 if [[ "$SEPARATION_DUTY" == "true" ]]; then
 	INFO "Cleaning up all pods before deleting CP4BA operators namespace: ${CP4BA_OPERATORS_NAMESPACE}"
-	oc delete pod --all -n "$CP4BA_OPERATORS_NAMESPACE" --grace-period=0 --force
+	${CLI_CMD} delete pod --all -n "$CP4BA_OPERATORS_NAMESPACE" --grace-period=0 --force
 
 	INFO "Deleting CP4BA Namespace: ${CP4BA_OPERATORS_NAMESPACE}"
-	oc delete project "${CP4BA_OPERATORS_NAMESPACE}"
+	${CLI_CMD} delete project "${CP4BA_OPERATORS_NAMESPACE}"
 
 	info "Wait until namespace ${CP4BA_OPERATORS_NAMESPACE} is completely deleted."
 	count=0
 	while :; do
-		oc get project "${CP4BA_OPERATORS_NAMESPACE}" 2>/dev/null
+		${CLI_CMD} get project "${CP4BA_OPERATORS_NAMESPACE}" 2>/dev/null
 		if [[ $? -gt 0 ]]; then
 			success "Namespace ${CP4BA_OPERATORS_NAMESPACE} deletion successful."
 			break
@@ -714,22 +709,22 @@ if [[ "$SEPARATION_DUTY" == "true" ]]; then
 				sleep 10
 			else
 				error "Deleting namespace ${CP4BA_OPERATORS_NAMESPACE} is taking too long and giving up"
-				oc get project "${CP4BA_OPERATORS_NAMESPACE}" -o yaml
+				${CLI_CMD} get project "${CP4BA_OPERATORS_NAMESPACE}" -o yaml
 				exit 1
 			fi
 		fi
 	done
 
 	INFO "Cleaning up all pods before deleting CP4BA services operators namespace: ${CP4BA_SERVICES_NAMESPACE}"
-	oc delete pod --all -n "$CP4BA_SERVICES_NAMESPACE" --grace-period=0 --force
+	${CLI_CMD} delete pod --all -n "$CP4BA_SERVICES_NAMESPACE" --grace-period=0 --force
 
 	INFO "Deleting CP4BA Namespace: ${CP4BA_SERVICES_NAMESPACE}"
-	oc delete project "${CP4BA_SERVICES_NAMESPACE}"
+	${CLI_CMD} delete project "${CP4BA_SERVICES_NAMESPACE}"
 
 	info "Wait until namespace ${CP4BA_SERVICES_NAMESPACE} is completely deleted."
 	count=0
 	while :; do
-		oc get project "${CP4BA_SERVICES_NAMESPACE}" 2>/dev/null
+		${CLI_CMD} get project "${CP4BA_SERVICES_NAMESPACE}" 2>/dev/null
 		if [[ $? -gt 0 ]]; then
 			success "Namespace ${CP4BA_SERVICES_NAMESPACE} deletion successful."
 			break
@@ -740,7 +735,7 @@ if [[ "$SEPARATION_DUTY" == "true" ]]; then
 				sleep 10
 			else
 				error "Deleting namespace ${CP4BA_SERVICES_NAMESPACE} is taking too long and giving up"
-				oc get project "${CP4BA_SERVICES_NAMESPACE}" -o yaml
+				${CLI_CMD} get project "${CP4BA_SERVICES_NAMESPACE}" -o yaml
 				exit 1
 			fi
 		fi
@@ -749,15 +744,15 @@ if [[ "$SEPARATION_DUTY" == "true" ]]; then
 else
 
 	INFO "Cleaning up all pods before deleting CP4BA namespace."
-	oc delete pod --all -n "$CP4BA_NAMESPACE" --grace-period=0 --force
+	${CLI_CMD} delete pod --all -n "$CP4BA_NAMESPACE" --grace-period=0 --force
 
 	INFO "Deleting CP4BA Namespace: ${CP4BA_NAMESPACE}"
-	oc delete project "${CP4BA_NAMESPACE}"
+	${CLI_CMD} delete project "${CP4BA_NAMESPACE}"
 
 	info "Wait until namespace ${CP4BA_NAMESPACE} is completely deleted."
 	count=0
 	while :; do
-		oc get project "${CP4BA_NAMESPACE}" 2>/dev/null
+		${CLI_CMD} get project "${CP4BA_NAMESPACE}" 2>/dev/null
 		if [[ $? -gt 0 ]]; then
 			success "Namespace ${CP4BA_NAMESPACE} deletion successful."
 			break
@@ -768,7 +763,7 @@ else
 				sleep 10
 			else
 				error "Deleting namespace ${CP4BA_NAMESPACE} is taking too long and giving up"
-				oc get project "${CP4BA_NAMESPACE}" -o yaml
+				${CLI_CMD} get project "${CP4BA_NAMESPACE}" -o yaml
 				exit 1
 			fi
 		fi
@@ -777,15 +772,15 @@ fi
 
 if [[ $CLEAN_CPFS == "true" ]]; then
 	INFO "Cleaning up all pods before deleting CPfs namespace."
-	oc delete pod --all -n "${CPFS_SHARED_NAMESPACE}" --grace-period=0 --force
+	${CLI_CMD} delete pod --all -n "${CPFS_SHARED_NAMESPACE}" --grace-period=0 --force
 	
 	INFO "Deleting namespace ${CPFS_SHARED_NAMESPACE}"
-	oc delete project "${CPFS_SHARED_NAMESPACE}"
+	${CLI_CMD} delete project "${CPFS_SHARED_NAMESPACE}"
 
 	info "Wait until namespace ${CPFS_SHARED_NAMESPACE} is completely deleted."
 	count=0
 	while :; do
-		oc get project "${CPFS_SHARED_NAMESPACE}" 2>/dev/null
+		${CLI_CMD} get project "${CPFS_SHARED_NAMESPACE}" 2>/dev/null
 		if [[ $? -gt 0 ]]; then
 			success "Namespace ${CPFS_SHARED_NAMESPACE} deletion successful."
 			break
@@ -796,22 +791,22 @@ if [[ $CLEAN_CPFS == "true" ]]; then
 				sleep 10
 			else
 				error "Deleting namespace ${CPFS_SHARED_NAMESPACE} is taking too long and giving up"
-				oc get project "${CPFS_SHARED_NAMESPACE}" -o yaml
+				${CLI_CMD} get project "${CPFS_SHARED_NAMESPACE}" -o yaml
 				exit 1
 			fi
 		fi
 	done
-	oc get project "${CPFS_CONTROL_NAMESPACE}" &>/dev/null
+	${CLI_CMD} get project "${CPFS_CONTROL_NAMESPACE}" &>/dev/null
 	if [ $? -eq 0 -a $CS_NAMESPACE_COUNT -eq 1 ]; then
 		# Delete CPfs Control namespace if namespace exists and if there is only one deployment using CPfs
 		INFO "Cleaning up all pods before deleting CPfs control namespace."
-		oc delete pod --all -n "${CPFS_CONTROL_NAMESPACE}" --grace-period=0 --force
+		${CLI_CMD} delete pod --all -n "${CPFS_CONTROL_NAMESPACE}" --grace-period=0 --force
 		INFO "Deleting namespace ${CPFS_CONTROL_NAMESPACE}"
-		oc delete project "${CPFS_CONTROL_NAMESPACE}"
+		${CLI_CMD} delete project "${CPFS_CONTROL_NAMESPACE}"
 		info "Wait until namespace ${CPFS_CONTROL_NAMESPACE} is completely deleted."
 		count=0
 		while :; do
-			oc get project "${CPFS_CONTROL_NAMESPACE}" 2>/dev/null
+			${CLI_CMD} get project "${CPFS_CONTROL_NAMESPACE}" 2>/dev/null
 			if [[ $? -gt 0 ]]; then
 				success "Namespace ${CPFS_CONTROL_NAMESPACE} deletion successful."
 				break
@@ -822,7 +817,7 @@ if [[ $CLEAN_CPFS == "true" ]]; then
 					sleep 10
 				else
 					error "Deleting namespace ${CPFS_CONTROL_NAMESPACE} is taking too long and giving up"
-					oc get project "${CPFS_CONTROL_NAMESPACE}" -o yaml
+					${CLI_CMD} get project "${CPFS_CONTROL_NAMESPACE}" -o yaml
 					exit 1
 				fi
 			fi
@@ -833,24 +828,24 @@ fi
 # For cleaning up IBM Cert Manager and IBM Licensing. DEV and QA only. Using -a option.
 if [[ $SELECT_ALL == "true" ]]; then
 	# IBM Cert Manager
-	oc delete sub,csv --all -n ${IBM_CERT_MANAGER_NAMESPACE} --ignore-not-found=true --wait=true
-	oc delete deploy,sts,job,svc --all -n ${IBM_CERT_MANAGER_NAMESPACE} --ignore-not-found=true --wait=true
-	oc delete certmanagerconfig --all --ignore-not-found=true --wait=true
-	oc delete ValidatingWebhookConfiguration cert-manager-webhook
-	oc delete MutatingWebhookConfiguration cert-manager-webhook
+	${CLI_CMD} delete sub,csv --all -n ${IBM_CERT_MANAGER_NAMESPACE} --ignore-not-found=true --wait=true
+	${CLI_CMD} delete deploy,sts,job,svc --all -n ${IBM_CERT_MANAGER_NAMESPACE} --ignore-not-found=true --wait=true
+	${CLI_CMD} delete certmanagerconfig --all --ignore-not-found=true --wait=true
+	${CLI_CMD} delete ValidatingWebhookConfiguration cert-manager-webhook
+	${CLI_CMD} delete MutatingWebhookConfiguration cert-manager-webhook
 
 
 	# IBM Licensing
-	oc delete ibmlicensing --all -n "${IBM_LICENSING_NAMESPACE}" --ignore-not-found=true --wait=true
-	oc delete sub,csv --all -n "${IBM_LICENSING_NAMESPACE}" --ignore-not-found=true --wait=true
-	oc delete deploy,sts,job,svc --all -n "${IBM_LICENSING_NAMESPACE}" --ignore-not-found=true --wait=true
+	${CLI_CMD} delete ibmlicensing --all -n "${IBM_LICENSING_NAMESPACE}" --ignore-not-found=true --wait=true
+	${CLI_CMD} delete sub,csv --all -n "${IBM_LICENSING_NAMESPACE}" --ignore-not-found=true --wait=true
+	${CLI_CMD} delete deploy,sts,job,svc --all -n "${IBM_LICENSING_NAMESPACE}" --ignore-not-found=true --wait=true
 
 	INFO "Deleting namespace ${IBM_CERT_MANAGER_NAMESPACE}"
-	oc delete project "${IBM_CERT_MANAGER_NAMESPACE}"
+	${CLI_CMD} delete project "${IBM_CERT_MANAGER_NAMESPACE}"
 	info "Wait until namespace ${IBM_CERT_MANAGER_NAMESPACE} is completely deleted."
 	count=0
 	while :; do
-		oc get project "${IBM_CERT_MANAGER_NAMESPACE}" 2>/dev/null
+		${CLI_CMD} get project "${IBM_CERT_MANAGER_NAMESPACE}" 2>/dev/null
 		if [[ $? -gt 0 ]]; then
 			success "Namespace ${IBM_CERT_MANAGER_NAMESPACE} deletion successful"
 			break
@@ -861,18 +856,18 @@ if [[ $SELECT_ALL == "true" ]]; then
 				sleep 10
 			else
 				error "Deleting namespace ${IBM_CERT_MANAGER_NAMESPACE} is taking too long and giving up"
-				oc get project "${IBM_CERT_MANAGER_NAMESPACE}" -o yaml
+				${CLI_CMD} get project "${IBM_CERT_MANAGER_NAMESPACE}" -o yaml
 				exit 1
 			fi
 		fi
 	done
 
 	INFO "Deleting namespace ${IBM_LICENSING_NAMESPACE}"
-	oc delete project "${IBM_LICENSING_NAMESPACE}"
+	${CLI_CMD} delete project "${IBM_LICENSING_NAMESPACE}"
 	info "Wait until namespace ${IBM_LICENSING_NAMESPACE} is completely deleted."
 	count=0
 	while :; do
-		oc get project "${IBM_LICENSING_NAMESPACE}" 2>/dev/null
+		${CLI_CMD} get project "${IBM_LICENSING_NAMESPACE}" 2>/dev/null
 		if [[ $? -gt 0 ]]; then
 			success "Namespace ${IBM_LICENSING_NAMESPACE} deletion successful."
 			break
@@ -883,7 +878,7 @@ if [[ $SELECT_ALL == "true" ]]; then
 				sleep 10
 			else
 				error "Deleting namespace ${IBM_LICENSING_NAMESPACE} is taking too long and giving up"
-				oc get project "${IBM_LICENSING_NAMESPACE}" -o yaml
+				${CLI_CMD} get project "${IBM_LICENSING_NAMESPACE}" -o yaml
 				exit 1
 			fi
 		fi

@@ -80,22 +80,6 @@ spec:
     ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
     sc_is_multiple_az: false
-    
-    ## Audit logging configuration for CP4BA components. The default value is "false".  If set to "true", then the audit logging will be enabled for all the CP4BA components.
-    ## These settings can be overridden at the component level by setting the "audit_logging" parameter in the component configuration such as ecm_configuration, ads_configuration, etc...
-    ## NOTE: Not all components support audit logging in 24.0.1 release.  Please refer to KC for more information.
-    sc_audit_logging:
-      # Enable or disable audit logging for all CP4BA components
-      enabled: false
-      # The audit log directory size.  The default value is "150Mi".  The value should be in the format of "<number><unit>".  The valid units are "Ki", "Mi", "Gi", "Ti", "Pi", "Ei".
-      # This log directory will be mounted as an ephemeral storage volume in the CP4BA components' pods.
-      audit_log_dir_size: '150Mi'
-
-      # The number of audit log files to keep.  The default value is "5". Increasing this value will increase the number of audit log files kept. You may want to increase the audit_log_dir_size if you increase this value.
-      rolling_max_files: 5
-      # The maximum size of each audit log file.  The default value is "20Mi".  The value should be in the format of "<number><unit>".  The valid units are "Ki", "Mi", "Gi", "Ti", "Pi", "Ei". You may want to increase the audit_log_dir_size if you increase this value.
-      rolling_max_size: '20Mi'
-
 
   # #############################################################################################################################################################################
   # ## This sections contains 2 object stores' data sources: Content Platform Engine Global Configuration Database object store(GCD) data source and Business Automation Application Data Persistence(ae_data_persistence) object store(AEOS) data source

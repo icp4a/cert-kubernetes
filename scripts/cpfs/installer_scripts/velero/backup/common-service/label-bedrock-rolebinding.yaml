@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: label-bedrock-job
+  namespace: <every namespace in the tenant>
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: label-bedrock-job
+subjects:
+- kind: ServiceAccount
+  name: label-bedrock-job
+  namespace: <operator namespace>

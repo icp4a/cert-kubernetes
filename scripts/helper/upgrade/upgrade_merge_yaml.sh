@@ -82,7 +82,7 @@ function update_license() {
                     break
                     ;;
                 *)
-                    echo "Invalid option. Please choose again."
+                    echo "Invalid option. Choose again."
                     ;;
             esac
 
@@ -203,7 +203,7 @@ function remove_image_tags(){
             info "$repository_value:$tag_value"
         done
         printf "\n"
-        read -rsn1 -p "Press any key to continue to remove the defined image tags from the Custom Resource file...";echo
+        prompt_press_any_key_to_continue "to remove the defined image tags from the Custom Resource file"
         printf "\n"
         # To remove the tags and prevent them from being added back by the last-applied-configuration annotation we need to 
         # 1. Remove it from the CR file that will be applied
@@ -231,9 +231,9 @@ function dryrun(){
             # The sample output of the dry run when there is an unknown/invalid field ends with "strict decoding error: unknown field \"<field_name>\""
             # The sed command first removes the entire output string before and including unknown_field " and then removes everything the next quote it finds,keep only <field_name> to be assigned to the unknownfield variable
             unknownfield=$(echo "$output" | sed 's/.*unknown field "//;s/".*//')
-            error "ERROR: Unknown field \"$unknownfield\" found in ${FILE}. Please check the field names and values."
+            error "ERROR: Unknown field \"$unknownfield\" found in ${FILE}. Check the field names and values."
         elif echo "$output" | grep -q "error parsing"; then
-            error "Error: Error parsing ${FILE}. Please fix the YAML syntax for this custom resource file."
+            error "Error: Error parsing ${FILE}. Fix the YAML syntax for this custom resource file."
         else
             # Handle other errors
             error "Unknown Error found while applying the Custom Resource file."
@@ -243,7 +243,7 @@ function dryrun(){
         step_num=1
         printf "\n"
         echo "${YELLOW_TEXT}- Resolve the errors that were discovered earlier by modifying the Custom Resource file \"${FILE}\" .${RESET_TEXT}"
-        echo "${YELLOW_TEXT}- If the error is related to an unknown field, please remove the unknown field from the Custom Resource file \"${FILE}\" .${RESET_TEXT}"
+        echo "${YELLOW_TEXT}- If the error is related to an unknown field, remove the unknown field from the Custom Resource file \"${FILE}\" .${RESET_TEXT}"
         echo "${YELLOW_TEXT}- If the error is due to YAML parsing, fix the YAML syntax or indentation of the Custom Resource file \"${FILE}\" .${RESET_TEXT}"
         echo "${YELLOW_TEXT}[NOTE]:${RESET_TEXT} This step will fix the custom resource file errors that were found in the previous executed of the upgradeDeployment mode."
         echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${FILE} -n $projectname${RESET_TEXT}" && step_num=$((step_num + 1))
@@ -395,7 +395,8 @@ function convert_olm_cr(){
             if [[ $olm_optional_component_flag == "true" ]]; then
                 OIFS=$IFS
                 IFS='.' read -r -a array <<< "${OLM_OPTIONAL_COMPONENT_CR_MAPPING[$i]}"
-                last_element="${array[-1]}"
+                ## - - https://jsw.ibm.com/browse/DBACLD-165625 - <cp4a-deployment script show errors when running on MacOS>
+                last_element="${array[${#array[@]}-1]}"
                 EXISTING_OPT_COMPONENT_ARR=( "${EXISTING_OPT_COMPONENT_ARR[@]}" "$last_element" )
                 IFS=$OIFS
             elif [[ -z $olm_pattern_flag && ${OLM_OPTIONAL_COMPONENT_CR_MAPPING[$i]} != "spec.olm_production_option.workfow_authoring.ae_data_persistence" && ${OLM_OPTIONAL_COMPONENT_CR_MAPPING[$i]} != "spec.olm_production_option.workfow_runtime.elasticsearch" ]]; then
@@ -519,7 +520,7 @@ EOF
 function select_apply_cr(){
     local cr_file=$1
     echo "${YELLOW_TEXT}[ATTENTION]: YOU NEED TO REVIEW OR MODIFY THE NEW CUSTOM RESOURCE ($cr_file) FOLLOW IBM CLOUD PAK FOR BUSINESS AUTOMATION DOCUMENTATION BEFORE APPLYING IT.${RESET_TEXT}"
-    read -rsn1 -p"Press any key to continue ...";echo
+    prompt_press_any_key_to_continue
     APPLY_UPDATED_CR="No"
     # while true; do
     #     printf "\n"
@@ -667,7 +668,7 @@ function upgrade_deployment(){
 
                 if [[ "$allow_direct_upgrade" == 1 ]]; then
                     # Set sc_restricted_internet_access always "false" in upgrade
-                    info "${RED_TEXT}Setting \"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\" as \"false\" when upgrade CP4BA deployment, you could change it according to your requirements of security.${RESET_TEXT}"
+                    info "${RED_TEXT}Setting \"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\" to \"false\" when upgrade CP4BA deployment, you could change it according to your requirements of security.${RESET_TEXT}"
                     ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access "false"
                     # Set shared_configuration.enable_fips always "false" in upgrade
                     info "${RED_TEXT}Setting \"shared_configuration.enable_fips\" as \"false\" when upgrade CP4BA deployment, you could change it according to your requirements.${RESET_TEXT}"
@@ -744,8 +745,8 @@ function upgrade_deployment(){
                     printf "\n"
                 fi
                 if [[ "$allow_direct_upgrade" == 1 ]]; then
-                    echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}PLEASE DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} AS ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA $cr_version)${RESET_TEXT}"
-                    read -rsn1 -p"Press any key to continue ...";echo
+                    echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} TO ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA $cr_version)${RESET_TEXT}"
+                    prompt_press_any_key_to_continue
                     printf "\n"
                 fi
 
@@ -898,10 +899,10 @@ function upgrade_deployment(){
                     if [[ $retry -eq ${maxRetry} ]]; then
                     printf "\n"
                     warning "Timeout waiting for IBM CP4BA Workflow Process Service operator to start"
-                    echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+                    echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
                     echo "oc describe pod $(oc get pod -n $deployment_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $deployment_project_name"
                     printf "\n"
-                    echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+                    echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
                     echo "oc describe rs $(oc get rs -n $deployment_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $deployment_project_name"
                     printf "\n"
                     exit 1
@@ -1330,7 +1331,7 @@ function upgrade_deployment(){
                     baw_desktop_name=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.workflow_authoring_configuration.case.desktop_name`
 
                     if [[ (-z $baw_connection_point_name_tos || -z $baw_object_store_name_tos) && (-z $init_section) ]]; then
-                        warning "Not found both workflow_authoring_configuration.case.connection_point_name_tos/object_store_name_tos and oc_cpe_obj_store_workflow_pe_conn_point_name under initialize_configuration, please refer KC https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-business-automation-workflow-authoring"
+                        warning "Not found both workflow_authoring_configuration.case.connection_point_name_tos/object_store_name_tos and oc_cpe_obj_store_workflow_pe_conn_point_name under initialize_configuration, refer KC https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-business-automation-workflow-authoring"
                     fi
                     if [[ ! -z "$baw_object_store_name_tos" ]]; then
                         ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.workflow_authoring_configuration.case.tos_list.[0].object_store_name "$baw_object_store_name_tos"
@@ -1437,7 +1438,7 @@ function upgrade_deployment(){
                         baw_target_environment_name=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.baw_configuration.[${baw_instance_index}].case.target_environment_name`
                         baw_desktop_name=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.baw_configuration.[${baw_instance_index}].case.desktop_name`
                         if [[ (-z $baw_connection_point_name_tos || -z $baw_object_store_name_tos) && (-z $init_section) ]]; then
-                            warning "Not found both baw_configuration.[${baw_instance_index}].case.connection_point_name_tos/object_store_name_tos and oc_cpe_obj_store_workflow_pe_conn_point_name under initialize_configuration, please refer KC https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-business-automation-workflow-runtime"
+                            warning "Not found both baw_configuration.[${baw_instance_index}].case.connection_point_name_tos/object_store_name_tos and oc_cpe_obj_store_workflow_pe_conn_point_name under initialize_configuration, refer KC https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-business-automation-workflow-runtime"
                         fi
                         if [[ ! -z "$baw_object_store_name_tos" ]]; then
                             ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.baw_configuration.[${baw_instance_index}].case.tos_list.[0].object_store_name "$baw_object_store_name_tos"
@@ -1788,8 +1789,8 @@ function upgrade_deployment(){
             printf "\n"
         fi
         if [[ "$allow_direct_upgrade" == 1 ]]; then
-            echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}PLEASE DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} AS ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA $cr_version)${RESET_TEXT}"
-            read -rsn1 -p"Press any key to continue ...";echo
+            echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} TO ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA $cr_version)${RESET_TEXT}"
+            prompt_press_any_key_to_continue
         fi
         printf "\n"
         select_apply_cr $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR
@@ -1828,7 +1829,7 @@ function upgrade_deployment(){
             for element in "${EXISTING_PATTERN_ARR[@]}"; do
                 if [[ "$element" != "decisions" && "$element" == "decisions_ads" && "$allow_direct_upgrade" == 1 ]]; then
                     echo -e "\x1B[33;5m- Automation Decision Services capability is installed in this CP4BA deployment: \x1B[0m"
-                    echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Please refer to the Knowledge Center: \"Upgrading IBM Automation Decision Services\" topic:"
+                    echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Refer to the Knowledge Center: \"Upgrading IBM Automation Decision Services\" topic:"
                     echo "    - if upgrading from 21.0.3 or 22.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=deployment-upgrading-automation-decision-services]"
                     echo "    - if upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=ucreciyd-upgrading-automation-decision-services]"
                     echo "  - Add the storage_configuration.sc_block_storage_classname property in the CR file if it is not already included."
@@ -1847,10 +1848,10 @@ function upgrade_deployment(){
                     echo -e "\x1B[33;5m- Automation Document Processing capability is installed in this CP4BA deployment: \x1B[0m"
                     echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Upgrade the Automation Document Processing databases"
                 if [[ $allow_direct_upgrade == 1 ]]; then # only show the direct upgrade link if the user is allowed to do a direct upgrade
-                    echo "    - If you are upgrading from 21.0.3 or 22.0.2, please refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-your-automation-document-processing-databases"
-                    echo "    - If you are upgrading from 23.0.2, please refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=ucreciyd-upgrading-automation-document-processing#tasktask_upgrd_adp__postreq__1"
+                    echo "    - If you are upgrading from 21.0.3 or 22.0.2, refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-your-automation-document-processing-databases"
+                    echo "    - If you are upgrading from 23.0.2, refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=ucreciyd-upgrading-automation-document-processing#tasktask_upgrd_adp__postreq__1"
                 fi
-                    echo "    - If you are upgrading from 24.0.0, please refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-automation-document-processing#tasktask_upgrd_adp__postreq__1"
+                    echo "    - If you are upgrading from 24.0.0, refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-automation-document-processing#tasktask_upgrd_adp__postreq__1"
                     step_num=$((step_num + 1))
                     printf "\n"
             fi

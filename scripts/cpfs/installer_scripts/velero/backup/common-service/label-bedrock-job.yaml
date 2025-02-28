@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: label-bedrock-job
+  namespace: <operator namespace>
+spec:
+  template:
+    metadata:
+      name: label-bedrock-job
+      namespace: <operator namespace>
+    spec:
+      suspend: true
+      restartPolicy: OnFailure
+      containers:
+      - command: ["/bin/bash", "-c", "/scripts/velero/backup/common-service/label-common-service.sh --operator-ns <operator namespace> --services-ns <service namespace> --tethered-ns <comma delimited tethered namespaces> --enable-private-catalog --additional-catalog-sources <comma delimited list of catalog source names>"]
+        image: icr.io/cpopen/cpfs/cpfs-utils:4.6.4
+        imagePullPolicy: IfNotPresent
+        name: cpfs-util
+        resources:
+          limits:
+            cpu: 500m
+            ephemeral-storage: 512Mi
+            memory: 1536Mi
+          requests:
+            cpu: 200m
+            ephemeral-storage: 128Mi
+            memory: 512Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - name: logs
+          mountPath: /scripts/logs
+      dnsPolicy: ClusterFirst
+      schedulerName: default-scheduler
+      securityContext:
+        runAsNonRoot: true
+      serviceAccount: label-bedrock-job
+      serviceAccountName: label-bedrock-job
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir: {}
+        name: logs

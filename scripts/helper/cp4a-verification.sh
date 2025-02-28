@@ -80,6 +80,7 @@ function verify_ldap_connection(){
   local ldap_group_filter=$9
   local ldap_user_password_list=${10}
   local ldap_group_list=${11}
+  local ldap_truststore_password=$(generate_truststore_password)
 
 
   if [[ $ldap_ssl == "true" || $ldap_ssl == "yes" || $ldap_ssl == "y" ]]; then
@@ -94,13 +95,13 @@ function verify_ldap_connection(){
     sudo -s export PATH="/opt/ibm/java/jre/bin/:$PATH"; export PATH="/opt/ibm/java/jre/bin/:$PATH"; echo "PATH=$PATH:/opt/ibm/java/jre/bin/" >> ~/.bashrc; source ~/.bashrc
 
     openssl x509 -outform der -in $tmp_cert_folder/ldap-cert.crt -out /tmp/ldap.der 2>&1 </dev/null
-    keytool -import -alias cp4baLdapCerts -keystore /tmp/ldap-truststore.jks -file /tmp/ldap.der -storepass changeit -storetype JKS -noprompt 2>&1 </dev/null
+    keytool -import -alias cp4baLdapCerts -keystore /tmp/ldap-truststore.jks -file /tmp/ldap.der -storepass "$ldap_truststore_password" -storetype JKS -noprompt 2>&1 </dev/null
     msg "Checking connection for LDAP server \"$ldap_server\" using Bind DN \"$ldap_binddn\".."
 
-    output=$(java -Dsemeru.fips=$fips_flag -Djavax.net.ssl.trustStore=/tmp/ldap-truststore.jks -Djavax.net.ssl.trustStorePassword=changeit -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u "ldaps://$ldap_server:$ldap_port" -b "$ldap_basedn" -D "$ldap_binddn" -w "$ldap_binddn_pwd" -additionalvalidation -gdn "$ldap_group_basedn" -upl "$ldap_user_password_list" -gl "$ldap_group_list" -uf "$ldap_user_filter" -gf "$ldap_group_filter" 2>&1)
+    output=$(java -Dsemeru.fips=$fips_flag -Djavax.net.ssl.trustStore=/tmp/ldap-truststore.jks -Djavax.net.ssl.trustStorePassword=$ldap_truststore_password -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u "ldaps://$ldap_server:$ldap_port" -b "$ldap_basedn" -D "$ldap_binddn" -w "$ldap_binddn_pwd" -additionalvalidation -gdn "$ldap_group_basedn" -upl "$ldap_user_password_list" -gl "$ldap_group_list" -uf "$ldap_user_filter" -gf "$ldap_group_filter" 2>&1)
     retVal_verify_ldap_tmp=$?
     if [[ "$output" == *"Error while binding to LDAP"* ]]; then
-      warning "Execute: java -Dsemeru.fips=$fips_flag -Djavax.net.ssl.trustStore=/tmp/ldap-truststore.jks -Djavax.net.ssl.trustStorePassword=changeit -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u \"ldaps://$ldap_server:$ldap_port\" -b \"$ldap_basedn\" -D \"$ldap_binddn\" -w \"******\"" && \
+      warning "Execute: java -Dsemeru.fips=$fips_flag -Djavax.net.ssl.trustStore=/tmp/ldap-truststore.jks -Djavax.net.ssl.trustStorePassword=$ldap_truststore_password -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u \"ldaps://$ldap_server:$ldap_port\" -b \"$ldap_basedn\" -D \"$ldap_binddn\" -w \"******\"" && \
       fail "Unable to connect to LDAP server \"$ldap_server\" using Bind DN \"$ldap_binddn\", please check configuration in ldap property again."
     else
       # Moving all additional validation checks to be displayed only if we get a successful connection
@@ -108,14 +109,8 @@ function verify_ldap_connection(){
       success "Connected to LDAP \"$ldap_server\" using BindDN:\"$ldap_binddn\" successfuly, PASSED!"
       printf "\n"
       connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
-      echo "Latency: $connection_time ms"
-      # Check if elapsed time is greater than 10 ms using awk
-      if [[ $(awk 'BEGIN { print ("'$connection_time'" < 10) }') -eq 1 ]]; then
-        echo "The latency is less than 10ms, which is acceptable performance for a simple LDAP operation."
-      elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 10 && "'$connection_time'" < 30) }') -eq 1 ]]; then
-        echo "The latency is between 10ms and 30ms, which exceeds acceptable performance of 10 ms for a simple LDAP operation, but the service is still accessible."
-      elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 30) }') -eq 1 ]]; then
-        echo "The latency exceeds 30ms for a simple LDAP operation, which indicates potential for failures."
+      if [[ ! -z $connection_time ]]; then
+        display_latency_warning $connection_time "LDAP"
       fi
       # Extract everything from "LDAP Users Summary" until "Total time taken"
       # /LDAP Users Summary/ {flag=1} starts printing everything from LDAP Users Summary and /Total time taken/ {flag=0} stops printing when Total time taken is found
@@ -142,14 +137,8 @@ function verify_ldap_connection(){
       success "Connected to LDAP \"$ldap_server\" using BindDN:\"$ldap_binddn\" successfuly, PASSED!"
       printf "\n"
       connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
-      echo "Latency: $connection_time ms"
-      # Check if elapsed time is greater than 10 ms using awk
-      if [[ $(awk 'BEGIN { print ("'$connection_time'" < 10) }') -eq 1 ]]; then
-        echo "The latency is less than 10ms, which is acceptable performance for a simple LDAP operation."
-      elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 10 && "'$connection_time'" < 30) }') -eq 1 ]]; then
-        echo "The latency is between 10ms and 30ms, which exceeds acceptable performance of 10 ms for a simple LDAP operation, but the service is still accessible."
-      elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 30) }') -eq 1 ]]; then
-        echo "The latency exceeds 30ms for a simple LDAP operation, which indicates potential for failures."
+      if [[ ! -z $connection_time ]]; then
+        display_latency_warning $connection_time "LDAP"
       fi
       # Extract everything from "LDAP Users Summary" until "Total time taken"
       # /LDAP Users Summary/ {flag=1} starts printing everything from LDAP Users Summary and /Total time taken/ {flag=0} stops printing when Total time taken is found
@@ -172,6 +161,7 @@ function verify_db_connection(){
   local DB_JDBC_NAME=${JDBC_DRIVER_DIR}/$DB_TYPE
   local DB_CONNECTION_JAR_PATH=${CUR_DIR}/helper/verification/$DB_TYPE
   local LDAP_TEST_JAR_PATH=${CUR_DIR}/helper/verification/ldap
+  local db_truststore_password=$(generate_truststore_password)
   
   if [[ $DB_TYPE == "oracle" ]]; then
     local dbuser=$1
@@ -268,15 +258,7 @@ function verify_db_connection(){
               retVal_verify_db_tmp=$?
               connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
               if [[ ! -z $connection_time ]]; then
-                echo "Latency: $connection_time ms"
-                # Check if elapsed time is greater than 10 ms using awk
-                if [[ $(awk 'BEGIN { print ("'$connection_time'" < 10) }') -eq 1 ]]; then
-                  echo "The latency is less than 10ms, which is acceptable performance for a simple DB operation."
-                elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 10 && "'$connection_time'" < 30) }') -eq 1 ]]; then
-                  echo "The latency is between 10ms and 30ms, which exceeds acceptable performance of 10 ms for a simple DB operation, but the service is still accessible."
-                elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 30) }') -eq 1 ]]; then
-                  echo "The latency exceeds 30ms for a simple DB operation, which indicates potential for failures."
-                fi
+                display_latency_warning $connection_time "Database"
               fi
               [[ retVal_verify_db_tmp -ne 0 ]] && \
               warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar\" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -ssl -ca $dbcafolder/db-cert.crt" && \
@@ -293,24 +275,16 @@ function verify_db_connection(){
               sudo -s export PATH="/opt/ibm/java/jre/bin/:$PATH"; export PATH="/opt/ibm/java/jre/bin/:$PATH"; echo "PATH=$PATH:/opt/ibm/java/jre/bin/" >> ~/.bashrc; source ~/.bashrc
 
               openssl x509 -outform der -in $dbcafolder/db-cert.crt -out $TRUSTSTORE_FOLDER/oracle-db-cert.der 2>&1 </dev/null
-              keytool -import -alias cp4baOraleCerts -keystore $TRUSTSTORE_FOLDER/oracle-db-truststore.p12 -file $TRUSTSTORE_FOLDER/oracle-db-cert.der -storepass changeit -storetype PKCS12 -noprompt 2>&1 </dev/null
+              keytool -import -alias cp4baOraleCerts -keystore $TRUSTSTORE_FOLDER/oracle-db-truststore.p12 -file $TRUSTSTORE_FOLDER/oracle-db-cert.der -storepass '$db_truststore_password' -storetype PKCS12 -noprompt 2>&1 </dev/null
 
-              output=$(java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -cp "${DB_JDBC_NAME}/ojdbc8.jar:${DB_CONNECTION_JAR_PATH}/OracleJDBCConnection.jar" OracleConnection -url "$oracle_url" -u $dbuser -pwd $dbuserpwd -ssl -trustorefile $TRUSTSTORE_FOLDER/oracle-db-truststore.p12 -trustoretype "PKCS12" -trustorePwd "changeit" 2>&1)
+              output=$(java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -cp "${DB_JDBC_NAME}/ojdbc8.jar:${DB_CONNECTION_JAR_PATH}/OracleJDBCConnection.jar" OracleConnection -url "$oracle_url" -u $dbuser -pwd $dbuserpwd -ssl -trustorefile $TRUSTSTORE_FOLDER/oracle-db-truststore.p12 -trustoretype "PKCS12" -trustorePwd "$db_truststore_password" 2>&1)
               retVal_verify_db_tmp=$?
               connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
               if [[ ! -z $connection_time ]]; then
-                echo "Latency: $connection_time ms"
-                # Check if elapsed time is greater than 10 ms using awk
-                if [[ $(awk 'BEGIN { print ("'$connection_time'" < 10) }') -eq 1 ]]; then
-                  echo "The latency is less than 10ms, which is acceptable performance for a simple DB operation."
-                elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 10 && "'$connection_time'" < 30) }') -eq 1 ]]; then
-                  echo "The latency is between 10ms and 30ms, which exceeds acceptable performance of 10 ms for a simple DB operation, but the service is still accessible."
-                elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 30) }') -eq 1 ]]; then
-                  echo "The latency exceeds 30ms for a simple DB operation, which indicates potential for failures."
-                fi
+                display_latency_warning $connection_time "Database"
               fi
               [[ retVal_verify_db_tmp -ne 0 ]] && \
-              warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -cp \"${DB_JDBC_NAME}/ojdbc8.jar:${DB_CONNECTION_JAR_PATH}/OracleJDBCConnection.jar\" OracleConnection -url \"$oracle_url\" -u $dbuser -pwd ****** -ssl -trustorefile $TRUSTSTORE_FOLDER/oracle-db-truststore.p12 -trustoretype \"PKCS12\" -trustorePwd \"changeit\"" && \
+              warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -cp \"${DB_JDBC_NAME}/ojdbc8.jar:${DB_CONNECTION_JAR_PATH}/OracleJDBCConnection.jar\" OracleConnection -url \"$oracle_url\" -u $dbuser -pwd ****** -ssl -trustorefile $TRUSTSTORE_FOLDER/oracle-db-truststore.p12 -trustoretype \"PKCS12\" -trustorePwd \"$db_truststore_password\"" && \
               fail "Unable to connect to database \"$dbuser\" using JDBC URL \"$oracle_url\", please check configuration again."
               [[ retVal_verify_db_tmp -eq 0 ]] && \
               success "Checked DB connection for \"$dbuser\" using JDBC URL \"$oracle_url\", PASSED!"
@@ -324,22 +298,14 @@ function verify_db_connection(){
               sudo -s export PATH="/opt/ibm/java/jre/bin/:$PATH"; export PATH="/opt/ibm/java/jre/bin/:$PATH"; echo "PATH=$PATH:/opt/ibm/java/jre/bin/" >> ~/.bashrc; source ~/.bashrc
 
               openssl x509 -outform der -in $dbcafolder/db-cert.crt -out $TRUSTSTORE_FOLDER/sqlserver-db-cert.der 2>&1 </dev/null
-              keytool -import -alias cp4baSQLServerCerts -keystore $TRUSTSTORE_FOLDER/sqlserver-db-truststore.p12 -file $TRUSTSTORE_FOLDER/sqlserver-db-cert.der -storepass changeit -storetype PKCS12 -noprompt 2>&1 </dev/null
+              keytool -import -alias cp4baSQLServerCerts -keystore $TRUSTSTORE_FOLDER/sqlserver-db-truststore.p12 -file $TRUSTSTORE_FOLDER/sqlserver-db-cert.der -storepass '$db_truststore_password' -storetype PKCS12 -noprompt 2>&1 </dev/null
                                                                                                                         # ssl_connection_str: "encrypt=true;trustServerCertificate=false;trustStore={{ban_cert_dir}}/ibm_customBANTrustStore.p12;trustStorePassword={{ ban_keystore_decoded_pwd|first if '{xor}' in ban_keystore_password else ban_keystore_password }}"
-              SSL_CONNECTION_STR="fips=$fips_flag;encrypt=true;trustServerCertificate=false;trustStore=${TRUSTSTORE_FOLDER}/sqlserver-db-truststore.p12;trustStorePassword=changeit"
+              SSL_CONNECTION_STR="fips=$fips_flag;encrypt=true;trustServerCertificate=false;trustStore=${TRUSTSTORE_FOLDER}/sqlserver-db-truststore.p12;trustStorePassword=${db_truststore_password}"
               output=$(java -Duser.language=en -Duser.country=US -cp "${DB_JDBC_NAME}/mssql-jdbc.jre8.jar:${DB_CONNECTION_JAR_PATH}/SQLJDBCConnection.jar" SQLConnection -h $dbserver -p $dbport -d $dbname -u $dbuser -pwd $dbuserpwd -ssl "$SSL_CONNECTION_STR" 2>&1)
               retVal_verify_db_tmp=$?
               connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
               if [[ ! -z $connection_time ]]; then
-                echo "Latency: $connection_time ms"
-                # Check if elapsed time is greater than 10 ms using awk
-                if [[ $(awk 'BEGIN { print ("'$connection_time'" < 10) }') -eq 1 ]]; then
-                  echo "The latency is less than 10ms, which is acceptable performance for a simple DB operation."
-                elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 10 && "'$connection_time'" < 30) }') -eq 1 ]]; then
-                  echo "The latency is between 10ms and 30ms, which exceeds acceptable performance of 10 ms for a simple DB operation, but the service is still accessible."
-                elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 30) }') -eq 1 ]]; then
-                  echo "The latency exceeds 30ms for a simple DB operation, which indicates potential for failures."
-                fi
+                display_latency_warning $connection_time "Database"
               fi
 
               [[ retVal_verify_db_tmp -ne 0 ]] && \
@@ -358,15 +324,7 @@ function verify_db_connection(){
                 retVal_verify_db_tmp=$?
                 connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
                 if [[ ! -z $connection_time ]]; then
-                  echo "Latency: $connection_time ms"
-                  # Check if elapsed time is greater than 10 ms using awk
-                  if [[ $(awk 'BEGIN { print ("'$connection_time'" < 10) }') -eq 1 ]]; then
-                    echo "The latency is less than 10ms, which is acceptable performance for a simple DB operation."
-                  elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 10 && "'$connection_time'" < 30) }') -eq 1 ]]; then
-                    echo "The latency is between 10ms and 30ms, which exceeds acceptable performance of 10 ms for a simple DB operation, but the service is still accessible."
-                  elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 30) }') -eq 1 ]]; then
-                    echo "The latency exceeds 30ms for a simple DB operation, which indicates potential for failures."
-                  fi
+                  display_latency_warning $connection_time "Database"
                 fi
 
                 [[ retVal_verify_db_tmp -ne 0 ]] && \
@@ -386,15 +344,7 @@ function verify_db_connection(){
                 retVal_verify_db_tmp=$?
                 connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
                 if [[ ! -z $connection_time ]]; then
-                  echo "Latency: $connection_time ms"
-                  # Check if elapsed time is greater than 10 ms using awk
-                  if [[ $(awk 'BEGIN { print ("'$connection_time'" < 10) }') -eq 1 ]]; then
-                    echo "The latency is less than 10ms, which is acceptable performance for a simple DB operation."
-                  elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 10 && "'$connection_time'" < 30) }') -eq 1 ]]; then
-                    echo "The latency is between 10ms and 30ms, which exceeds acceptable performance of 10 ms for a simple DB operation, but the service is still accessible."
-                  elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 30) }') -eq 1 ]]; then
-                    echo "The latency exceeds 30ms for a simple DB operation, which indicates potential for failures."
-                  fi
+                  display_latency_warning $connection_time "Database"
                 fi
 
                 [[ retVal_verify_db_tmp -ne 0 ]] && \
@@ -416,15 +366,7 @@ function verify_db_connection(){
               retVal_verify_db_tmp=$?
               connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
               if [[ ! -z $connection_time ]]; then
-                echo "Latency: $connection_time ms"
-                # Check if elapsed time is greater than 10 ms using awk
-                if [[ $(awk 'BEGIN { print ("'$connection_time'" < 10) }') -eq 1 ]]; then
-                  echo "The latency is less than 10ms, which is acceptable performance for a simple DB operation."
-                elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 10 && "'$connection_time'" < 30) }') -eq 1 ]]; then
-                  echo "The latency is between 10ms and 30ms, which exceeds acceptable performance of 10 ms for a simple DB operation, but the service is still accessible."
-                elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 30) }') -eq 1 ]]; then
-                  echo "The latency exceeds 30ms for a simple DB operation, which indicates potential for failures."
-                fi
+                display_latency_warning $connection_time "Database"
               fi
 
               [[ retVal_verify_db_tmp -ne 0 ]] && \
@@ -439,15 +381,7 @@ function verify_db_connection(){
               retVal_verify_db_tmp=$?
               connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
               if [[ ! -z $connection_time ]]; then
-                echo "Latency: $connection_time ms"
-                # Check if elapsed time is greater than 10 ms using awk
-                if [[ $(awk 'BEGIN { print ("'$connection_time'" < 10) }') -eq 1 ]]; then
-                  echo "The latency is less than 10ms, which is acceptable performance for a simple DB operation."
-                elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 10 && "'$connection_time'" < 30) }') -eq 1 ]]; then
-                  echo "The latency is between 10ms and 30ms, which exceeds acceptable performance of 10 ms for a simple DB operation, but the service is still accessible."
-                elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 30) }') -eq 1 ]]; then
-                  echo "The latency exceeds 30ms for a simple DB operation, which indicates potential for failures."
-                fi
+                display_latency_warning $connection_time "Database"
               fi
 
               [[ retVal_verify_db_tmp -ne 0 ]] && \
@@ -462,15 +396,7 @@ function verify_db_connection(){
               retVal_verify_db_tmp=$?
               connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
               if [[ ! -z $connection_time ]]; then
-                echo "Latency: $connection_time ms"
-                # Check if elapsed time is greater than 10 ms using awk
-                if [[ $(awk 'BEGIN { print ("'$connection_time'" < 10) }') -eq 1 ]]; then
-                  echo "The latency is less than 10ms, which is acceptable performance for a simple DB operation."
-                elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 10 && "'$connection_time'" < 30) }') -eq 1 ]]; then
-                  echo "The latency is between 10ms and 30ms, which exceeds acceptable performance of 10 ms for a simple DB operation, but the service is still accessible."
-                elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 30) }') -eq 1 ]]; then
-                  echo "The latency exceeds 30ms for a simple DB operation, which indicates potential for failures."
-                fi
+                display_latency_warning $connection_time "Database"
               fi
               [[ retVal_verify_db_tmp -ne 0 ]] && \
               warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -cp \"${DB_JDBC_NAME}/mssql-jdbc.jre8.jar:${DB_CONNECTION_JAR_PATH}/SQLJDBCConnection.jar\" SQLConnection -h $dbserver -p $dbport -d $dbname -u $dbuser -pwd ****** -ssl 'encrypt=false'" && \
@@ -484,15 +410,7 @@ function verify_db_connection(){
               retVal_verify_db_tmp=$?
               connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
               if [[ ! -z $connection_time ]]; then
-                echo "Latency: $connection_time ms"
-                # Check if elapsed time is greater than 10 ms using awk
-                if [[ $(awk 'BEGIN { print ("'$connection_time'" < 10) }') -eq 1 ]]; then
-                  echo "The latency is less than 10ms, which is acceptable performance for a simple DB operation."
-                elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 10 && "'$connection_time'" < 30) }') -eq 1 ]]; then
-                  echo "The latency is between 10ms and 30ms, which exceeds acceptable performance of 10 ms for a simple DB operation, but the service is still accessible."
-                elif [[ $(awk 'BEGIN { print ("'$connection_time'" > 30) }') -eq 1 ]]; then
-                  echo "The latency exceeds 30ms for a simple DB operation, which indicates potential for failures."
-                fi
+                display_latency_warning $connection_time "Database"
               fi
               [[ retVal_verify_db_tmp -ne 0 ]] && \
               warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -Dcom.ibm.jsse2.overrideDefaultTLS=true -cp \"${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode disable" && \

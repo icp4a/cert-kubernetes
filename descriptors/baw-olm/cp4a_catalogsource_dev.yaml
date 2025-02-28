@@ -17,7 +17,7 @@ spec:
   displayName: ibm-baw-operator
   publisher: IBM
   sourceType: grpc
-  image: cp.stg.icr.io/cp/cp4a/ibm-cs-bawautomation-catalog:2401-latest
+  image: cp.stg.icr.io/cp/cp4a/ibm-cs-bawautomation-catalog:2401.latest
   updateStrategy:
     registryPoll:
       interval: 45m

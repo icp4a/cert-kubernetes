@@ -2,7 +2,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2022, 2024. All Rights Reserved.
+# (C) Copyright IBM Corp. 2022, 2025. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -70,7 +70,7 @@ spec:
                 - ppc64le
       containers:
         - name: operator
-          image: icr.io/cpopen/icp4a-pfs-operator@sha256:6d4188d0945fc5ff63e0f3189c5734c042aa48196eb35eb185545fdaef295ca7
+          image: icr.io/cpopen/icp4a-pfs-operator@sha256:ce74559f24d554a8151238081a2b69d107c5e80fd1edaf9db6333b6d1fcfa6d9
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

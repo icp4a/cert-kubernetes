@@ -741,5 +741,5 @@ function generate_baw_std_cr_file(){
     tips ""
     msgB "Confirm final custom resource is under $FINAL_CR_FOLDER"
     msgB "Then, press any key to continue!"
-    read -rsn1 -p"Press any key to continue";echo
+    prompt_press_any_key_to_continue
 }

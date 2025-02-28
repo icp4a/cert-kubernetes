@@ -10,21 +10,13 @@
 # DISCLOSURE RESTRICTED BY GSA ADP SCHEDULE CONTRACT WITH IBM CORP.
 #
 ###############################################################################
-CUR_DIR=$(dirname "$0")
-# Import common utilities and environment variables
-# source "${CUR_DIR}/../common.sh"
-
-#list of versions for which direct upgrade to 24.0.1 is not supported
-upgrade_blocked_versions=("21.3." "23.1." "22.1." "22.2." "23.2.")
-#list of versions for which direct upgrade to 24.0.1 is supported
-upgrade_valid_versions=("24.0." "24.1.")
 
 #Determine if it's an Ifix to ifix upgrade or a n-1 upgrade using CSV
 # Format of CSV x.y.z where x is major version, y is minor version and z is ifix version
 # For example: 
 # - 24.0.1 version will have 24.1.0 in the CSV
 # - 24.0.1-IF001 version will 24.1.1 in the CSV
-# - 25.0.0-GA wversion will have 25.0.0 in the CSV 
+# - 25.0.0-GA version will have 25.0.0 in the CSV 
 # The rules are:
 # 1. n-1 upgrade: Use the desired major version such as 24 from the CP4BA_CSV_VERSION in the common.sh  to compare with the current install version
 #   - If x version of the current CSV is equal to the desired major version, then it's a n-1 upgrade.  For example, if the current version is 24.0.0-IF003 (24.0.3) and the desired version is 24.0.1 (24.1.0), then it's a n-1 upgrade
@@ -49,6 +41,39 @@ function determine_type_of_upgrade() {
     fi
 
 }
+# This function is used in check_cp4ba_operator_version where it will check the version of the operator and compare it with the array of minimum supported upgrade versions
+# It will fail if the operator version is not less than the minimum supported upgrade version.
+# This function takes 3 arguments:
+# 1. current_csv_version: The csv of the version that needs to be checked such as "24.0.0", "24.0.4", "240.1"
+# 2. failed_upgrade_message: The message that will be displayed if the version is not supported
+# 3. The internal flag that will allow the customer to do direct upgrade to the desired version even though the current version is not in the minimum supported upgrade versions
+function check_cp4ba_minimum_version(){
+
+    local current_version=$1
+    local failed_upgrade_message=$2
+    local allow_direct_upgrade=$3
+
+    for version in "${MINIMUM_SUPPORTED_UPGRADE_VERSIONS[@]}"; do
+            if [[ "$current_version" == "${CP4BA_CSV_VERSION//v/}" ]]; then
+                  info "The current IBM Cloud Pak for Business Automation Operator is already ${CP4BA_CSV_VERSION//v/}"
+                  valid_version=true
+                  break
+            fi
+            if [[ (! "$(printf '%s\n' "$version" "$current_version" | sort -V | head -n1)" = "$version") && "$allow_direct_upgrade" != 1 ]]; then
+                info "Found IBM Cloud Pak for Business Automation Operator is \"$current_version\" version."
+                fail "$failed_upgrade_message"
+                valid_version=false
+                exit 1
+
+            else
+                info "Found IBM Cloud Pak for Business Automation Operator is \"$current_version\" version."
+                valid_version=true
+
+                break
+            fi
+
+    done 
+}
 
 # function for checking operator version
 function check_cp4ba_operator_version(){
@@ -62,8 +87,8 @@ function check_cp4ba_operator_version(){
     cp4a_operator_csv_name_allnamespace_ns=$(kubectl get csv -n $ALL_NAMESPACE_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
 
     if [[ -z $cp4a_operator_csv_name_allnamespace_ns && -z $cp4a_operator_csv_name_target_ns ]]; then
-        fail "No found IBM Cloud Pak for Business Automation Operator in both \"$project_name\" and \"$ALL_NAMESPACE_NAME\" project."
-        warning "Please input correct project name for CP4BA."
+        fail "No IBM Cloud Pak for Business Automation Operator found in both \"$project_name\" and \"$ALL_NAMESPACE_NAME\" project."
+        warning "Input correct project name for CP4BA."
         exit 1
     fi
     for ((retry=0;retry<=${maxRetry};retry++)); do
@@ -85,32 +110,9 @@ function check_cp4ba_operator_version(){
             CP4BA_ORIGINAL_CSV_VERSION=$(sed -e 's/^"//' -e 's/"$//' <<<"$CP4BA_ORIGINAL_CSV_VERSION")
             cp4a_operator_csv_version=$CP4BA_ORIGINAL_CSV_VERSION
         fi
-        # For 24.0.1 , we only support upgrades from 24.0.0 GA or a newer IFIX
-        if [[ "$cp4a_operator_csv_version" == "${CP4BA_CSV_VERSION//v/}" ]]; then
-            success "The current IBM Cloud Pak for Business Automation Operator is already ${CP4BA_CSV_VERSION//v/}"
-            break
-        fi
-        # Checking if the current operator version belongs to any of the versions we support upgrade to this specific version
-        for valid_version in "${upgrade_valid_versions[@]}"; do
-            if [[ "$cp4a_operator_csv_version" == "$valid_version"* ]]; then
-                info "The version of IBM Cloud Pak for Business Automation Operator found is \"$cp4a_operator_csv_version\" ."
-                valid_version=true
-                break
-            fi
-        done
-        # Checking if the current operator version belongs to any of the versions we don't support upgrade to this specific version
-        for blocked_version in "${upgrade_blocked_versions[@]}"; do
+        # DBACLD-164148: Calling check_cp4ba_minimum_version function to check the minimum supported version
+        check_cp4ba_minimum_version "$cp4a_operator_csv_version" "Upgrade to CP4BA v24.0.0 or a later iFix first before upgrading to CP4BA $CP4BA_CSV_VERSION" "$allow_direct_upgrade"
 
-            if [[ "$cp4a_operator_csv_version" == "$blocked_version"*  && "$allow_direct_upgrade" == 1 ]]; then
-                info "The version of IBM Cloud Pak for Business Automation Operator found is \"$cp4a_operator_csv_version\" ."
-                valid_version=true
-            elif [[ "$cp4a_operator_csv_version" == "$blocked_version"* ]]; then
-                info "The version of IBM Cloud Pak for Business Automation Operator found is \"$cp4a_operator_csv_version\" ."
-                fail "Please upgrade to CP4BA v24.0.0 or a later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
-                exit 1
-            fi
-        done
-        # Calling determine_type_of_upgrade function to determine the type of upgrade
         determine_type_of_upgrade "$cp4a_operator_csv_version"
         if [[ "$valid_version" == true ]]; then
             break
@@ -146,17 +148,17 @@ function check_content_operator_version(){
             # cp4a_operator_csv="22.2.2"
             requiredver="22.2.2"
             if [ ! "$(printf '%s\n' "$requiredver" "$cp4a_content_operator_csv" | sort -V | head -n1)" = "$requiredver" ]; then
-                fail "Please upgrade to CP4BA 22.0.2-IF002 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
+                fail "Upgrade to CP4BA 22.0.2-IF002 or later iFix first before upgrading to CP4BA $CP4BA_CSV_VERSION"
                 exit 1
             else
                 info "Found IBM CP4BA FileNet Content Manager Operator is \"$cp4a_content_operator_csv_version\" version."
                 break
             fi
         elif [[ "$cp4a_content_operator_csv_version" == "23.1."* ]]; then
-            fail "Please upgrade to CP4BA 23.0.2 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
+            fail "Upgrade to CP4BA 23.0.2 or later iFix first before upgrading to CP4BA $CP4BA_CSV_VERSION"
             exit 1
         elif [[ "$cp4a_content_operator_csv_version" == "22.1."* ]]; then
-            fail "Please upgrade to CP4BA 22.0.2 or later iFix first before you can upgrade to CP4BA $CP4BA_CSV_VERSION"
+            fail "Upgrade to CP4BA 22.0.2 or later iFix first before upgrading to CP4BA $CP4BA_CSV_VERSION"
             exit 1
         elif [[ "$cp4a_content_operator_csv_version" != "${CP4BA_CSV_VERSION//v/}" ]]; then
             if [[ $retry -eq ${maxRetry} ]]; then
@@ -191,10 +193,10 @@ function check_operator_status(){
                 if [[ $retry -eq ${maxRetry} ]]; then
                 printf "\n"
                 warning "Timeout waiting for IBM Cloud Pak foundational operator to start"
-                echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+                echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
                 echo "oc describe pod $(oc get pod -n $project_name|grep ibm-common-service-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
-                echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+                echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
                 echo "oc describe rs $(oc get rs -n $project_name|grep ibm-common-service-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
                 exit 1
@@ -279,10 +281,10 @@ function check_operator_status(){
                 if [[ $retry -eq ${maxRetry} ]]; then
                 printf "\n"
                 warning "Timeout waiting for IBM Cloud Pak for Business Automation (CP4BA) multi-pattern operator to start"
-                echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+                echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
                 echo "oc describe pod $(oc get pod -n $project_name|grep ibm-cp4a-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
-                echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+                echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
                 echo "oc describe rs $(oc get rs -n $project_name|grep ibm-cp4a-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
                 exit 1
@@ -338,10 +340,10 @@ function check_operator_status(){
             if [[ $retry -eq ${maxRetry} ]]; then
                 printf "\n"
                 warning "Timeout waiting for IBM CP4BA FileNet Content Manager operator to start"
-                echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+                echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
                 echo "oc describe pod $(oc get pod -n $project_name|grep ibm-content-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
-                echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+                echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
                 echo "oc describe rs $(oc get rs -n $project_name|grep ibm-content-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
                 exit 1
@@ -396,10 +398,10 @@ function check_operator_status(){
             if [[ $retry -eq ${maxRetry} ]]; then
             printf "\n"
             warning "Timeout waiting for CP4BA Foundation operator to start"
-            echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+            echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
             echo "oc describe pod $(oc get pod -n $project_name|grep icp4a-foundation-operator|awk '{print $1}') -n $project_name"
             printf "\n"
-            echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+            echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
             echo "oc describe rs $(oc get rs -n $project_name|grep icp4a-foundation-operator|awk '{print $1}') -n $project_name"
             printf "\n"
             exit 1
@@ -454,10 +456,10 @@ function check_operator_status(){
             if [[ $retry -eq ${maxRetry} ]]; then
             printf "\n"
             warning "Timeout waiting for IBM CP4BA Automation Decision Service operator to start"
-            echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+            echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
             echo "oc describe pod $(oc get pod -n $project_name|grep ibm-ads-operator|awk '{print $1}') -n $project_name"
             printf "\n"
-            echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+            echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
             echo "oc describe rs $(oc get rs -n $project_name|grep ibm-ads-operator|awk '{print $1}') -n $project_name"
             printf "\n"
             exit 1
@@ -514,10 +516,10 @@ function check_operator_status(){
                 if [[ $retry -eq ${maxRetry} ]]; then
                 printf "\n"
                 warning "Timeout waiting for IBM Operational Decision Manager operator to start"
-                echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+                echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
                 echo "oc describe pod $(oc get pod -n $project_name|grep ibm-odm-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
-                echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+                echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
                 echo "oc describe rs $(oc get rs -n $project_name|grep ibm-odm-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
                 exit 1
@@ -578,10 +580,10 @@ function check_operator_status(){
                     if [[ $retry -eq ${maxRetry} ]]; then
                     printf "\n"
                     warning "Timeout waiting for IBM Document Processing Engine operator to start"
-                    echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+                    echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
                     echo "oc describe pod $(oc get pod -n $project_name|grep ibm-dpe-operator|awk '{print $1}') -n $project_name"
                     printf "\n"
-                    echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+                    echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
                     echo "oc describe rs $(oc get rs -n $project_name|grep ibm-dpe-operator|awk '{print $1}') -n $project_name"
                     printf "\n"
                     exit 1
@@ -638,10 +640,10 @@ function check_operator_status(){
             if [[ $retry -eq ${maxRetry} ]]; then
             printf "\n"
             warning "Timeout waiting for IBM CP4BA Workflow Process Service operator to start"
-            echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+            echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
             echo "oc describe pod $(oc get pod -n $project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $project_name"
             printf "\n"
-            echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+            echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
             echo "oc describe rs $(oc get rs -n $project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $project_name"
             printf "\n"
             exit 1
@@ -697,10 +699,10 @@ function check_operator_status(){
                 if [[ $retry -eq ${maxRetry} ]]; then
                 printf "\n"
                 warning "Timeout waiting for IBM CP4BA Insights Engine operator to start"
-                echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+                echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
                 echo "oc describe pod $(oc get pod -n $project_name|grep ibm-insights-engine-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
-                echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+                echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
                 echo "oc describe rs $(oc get rs -n $project_name|grep ibm-insights-engine-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
                 exit 1
@@ -756,10 +758,10 @@ function check_operator_status(){
             if [[ $retry -eq ${maxRetry} ]]; then
             printf "\n"
             warning "Timeout waiting for IBM CP4BA Process Federation Server operator to start"
-            echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+            echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
             echo "oc describe pod $(oc get pod -n $project_name|grep ibm-pfs-operator|awk '{print $1}') -n $project_name"
             printf "\n"
-            echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+            echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
             echo "oc describe rs $(oc get rs -n $project_name|grep ibm-pfs-operator|awk '{print $1}') -n $project_name"
             printf "\n"
             exit 1
@@ -815,10 +817,10 @@ function check_operator_status(){
             if [[ $retry -eq ${maxRetry} ]]; then
             printf "\n"
             warning "Timeout waiting for IBM CP4BA Workflow operator to start"
-            echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+            echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
             echo "oc describe pod $(oc get pod -n $project_name|grep ibm-workflow-operator|awk '{print $1}') -n $project_name"
             printf "\n"
-            echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+            echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
             echo "oc describe rs $(oc get rs -n $project_name|grep ibm-workflow-operator|awk '{print $1}') -n $project_name"
             printf "\n"
             exit 1
@@ -1033,7 +1035,7 @@ function show_cp4ba_upgrade_status() {
     printf '%s %s\n' "$(date)" "[refresh interval: 30s]"
     echo -en "[Press Ctrl+C to exit] \t\t"
     check_cp4ba_deployment_status "${CP4BA_SERVICES_NS}"
-
+    _original_cr_version=${original_cr_version:-"PREVIOUS"}
     ## <https://jsw.ibm.com/browse/DBACLD-159411> - Change the upgrade version to 24.1.* so it will detect as n-1 to n upgrade when upgrading from 24.0.0 to 24.0.1
     if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "24.1."*) ]]; then
         printf "\n"
@@ -1062,7 +1064,7 @@ function show_cp4ba_upgrade_status() {
         fi
 
         printf "\n"
-        echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}PLEASE DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} AS ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA $cr_version)${RESET_TEXT}"
+        echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} TO ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE ${_original_cr_version} CP4BA VERSION)${RESET_TEXT}"
     ## <https://jsw.ibm.com/browse/DBACLD-159411>
     ###### This "else" section is for 24.0.1 ifix to ifix scenario, the instructions are not needed for this scenario, so it is being commented out. ######
     # else
@@ -1100,7 +1102,7 @@ function check_cp4ba_separate_operand(){
     if ${CLI_CMD} get configMap ibm-cp4ba-common-config -n $project >/dev/null 2>&1; then
         success "Found \"ibm-cp4ba-common-config\" configMap in the project \"$project\"."
     else
-        warning "Not found \"ibm-cp4ba-common-config\" configMap in the project \"$project\"."
+        warning "\"ibm-cp4ba-common-config\" configMap was not found in the project \"$project\"."
         while [[ $CP4BA_SERVICES_NS == "" ]];
         do
             printf "\n"
@@ -1122,17 +1124,20 @@ function check_cp4ba_separate_operand(){
                 isProjExists=`${CLI_CMD} get project $CP4BA_SERVICES_NS --ignore-not-found | wc -l`  >/dev/null 2>&1
 
                 if [ "$isProjExists" -ne 2 ] ; then
-                    echo -e "\x1B[1;31mInvalid project name, please enter a existing project name ...\x1B[0m"
+                    echo -e "\x1B[1;31mInvalid project name, enter a existing project name ...\x1B[0m"
                     CP4BA_SERVICES_NS=""
                 else
                     echo -e "\x1B[1mUsing project ${CP4BA_SERVICES_NS}...\x1B[0m"
                     if ${CLI_CMD} get configMap ibm-cp4ba-common-config -n $CP4BA_SERVICES_NS >/dev/null 2>&1; then
                         success "Found \"ibm-cp4ba-common-config\" configMap in the project \"$CP4BA_SERVICES_NS\"."
                     else
-                        warning "Not found \"ibm-cp4ba-common-config\" configMap in the project \"$CP4BA_SERVICES_NS\"."
+                        warning "\"ibm-cp4ba-common-config\" configMap was not found in the project \"$CP4BA_SERVICES_NS\"."
                         CP4BA_SERVICES_NS=""
-                        if [[ ($SCRIPT_MODE == "" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "dev" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "review" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "baw-dev" && $RUNTIME_MODE == "") ]]; then
-                            fail "You NEED to create \"ibm-cp4ba-common-config\" configMap first in the project (namespace) where you want to deploy CP4BA operands (i.e., runtime pods)."
+                        if [[ ($SCRIPT_MODE == "" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "dev" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "review" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "baw-dev" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "" && $RUNTIME_MODE == "upgradeOperator")|| ($SCRIPT_MODE == "" && $RUNTIME_MODE == "upgradeDeployment") || ($SCRIPT_MODE == "" && $RUNTIME_MODE == "upgradeDeploymentStatus") ]]; then
+                            # For https://jsw.ibm.com/browse/DBACLD-160661 where we have added remediation steps on how to recreate the configmap
+                            fail "You NEED to first create the \"ibm-cp4ba-common-config\" configMap in the project (namespace) where you want to deploy or upgrade CP4BA operands (i.e., runtime pods)."
+                            info "${YELLOW_TEXT}- [NEXT-STEPS]${RESET_TEXT}"
+                            echo "  - STEP 1 ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # Execute the cp4a-clusteradmin-setup.sh script with the \"-fix_configmap\" option to re-create the missing \"ibm-cp4ba-common-config\" configMap in the target namespace.For additional information refer to the Troubleshooting page in the Upgrade Section of the Knowledge Center.${RESET_TEXT}"
                             exit 1
                         fi
                     fi
@@ -1169,7 +1174,7 @@ function check_cp4ba_separate_operand(){
             CP4BA_SERVICES_NS=$TARGET_PROJECT_NAME
         fi
     else
-        warning "Not found \"operator_namespace\\services_namespace\" in \"ibm-cp4ba-common-config\" configMap under the project \"$tmp_namespace_val\""
+        warning "\"operator_namespace\\services_namespace\" was not found in \"ibm-cp4ba-common-config\" configMap under the project \"$tmp_namespace_val\""
         fail "You need to set correct value(s) in \"ibm-cp4ba-common-config\" configMap for CP4BA seperate of operand under the project \"$tmp_namespace_val\""
         exit 1
     fi

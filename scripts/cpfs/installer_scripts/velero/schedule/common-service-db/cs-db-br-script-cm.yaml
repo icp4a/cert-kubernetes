@@ -57,15 +57,23 @@ data:
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=im -f /run/cs-db_backup/cs-db_im_backup.dump --format=c
         info "Beginning backup of zen database..."
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=zen -f /run/cs-db_backup/cs-db_zen_backup.dump --format=c
+        ACCOUNT_IAM=$(oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" | grep "account_iam" || echo False)
+        if [[ $ACCOUNT_IAM != "False" ]]; then
+            info "Beginning backup of account_iam database..."
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=account_iam -f /run/cs-db_backup/cs-db_account_iam_backup.dump --format=c
+        fi
 
         #Move backup to backup location
         info "Copy backup file."
         oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_cloudpak_backup.dump $BACKUP_DIR/database/cs-db_cloudpak_backup.dump
         oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump $BACKUP_DIR/database/cs-db_im_backup.dump
         oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump $BACKUP_DIR/database/cs-db_zen_backup.dump
+        if [[ $ACCOUNT_IAM != "False" ]]; then
+            oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_account_iam_backup.dump $BACKUP_DIR/database/cs-db_account_iam_backup.dump
+        fi
 
     }
-    
+
     function restore {
 
         wait_for_cluster_cr
@@ -74,6 +82,10 @@ data:
         oc cp $BACKUP_DIR/database/cs-db_cloudpak_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_cloudpak_backup.dump
         oc cp $BACKUP_DIR/database/cs-db_im_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump
         oc cp $BACKUP_DIR/database/cs-db_zen_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump
+        ACCOUNT_IAM=$(ls $BACKUP_DIR/database/ | grep "cs-db_account_iam_backup.dump" || echo False)
+        if [[ $ACCOUNT_IAM != "False" ]]; then
+            oc cp $BACKUP_DIR/database/cs-db_account_iam_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_account_iam_backup.dump        
+        fi
         
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
         info "Beginning restore of cloudpak database..."
@@ -82,6 +94,10 @@ data:
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname im --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_im_backup.dump
         info "Beginning restore of zen database..."
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname zen --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_zen_backup.dump
+        if [[ $ACCOUNT_IAM != "False" ]]; then
+            info "Beginning restore of account_iam database..."
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname account_iam --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_account_iam_backup.dump        
+        fi
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
 
         info "Rerunning OIDC registration job..."

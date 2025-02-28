@@ -110,8 +110,10 @@ spec:
       ## Default are 53,5353 for OCP and ROKS
       sc_dns_port:
 
-    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-    # sc_deployment_hostname_suffix: "{{ meta.namespace }}.<Required>"
+    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <router-canonical-hostname> when not defined.
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=scp-shared-configuration
+    ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
+    #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
 
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false
@@ -152,9 +154,6 @@ spec:
     #  cpe: false
     #  css: false
     #  ban: false
-
-    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-    # sc_deployment_hostname_suffix: "{{ meta.namespace }}.<Required>"
 
     ## On OCP 3.x and 4.x, the User script will populate these three (3) parameters based on your input for "custom" deployment.
     ## If you manually deploying without using the User script, then you would provide the different storage classes for the slow, medium
@@ -553,6 +552,7 @@ spec:
         ## The repository service (cdra) url.
         ## For a runtime environment update this value to point to your
         ## development cdra external URL (not service endpoint).
+        ## https://<Authoring Environment's CPD (Zen) Route>/adp/cdra/cdapi. This value for CPDS_REPO_SERVICE_URL will set the repo_service_url: "<Required>" value in the generated CR.
   #        repo_service_url: "<Required>"
 
   ############################################################

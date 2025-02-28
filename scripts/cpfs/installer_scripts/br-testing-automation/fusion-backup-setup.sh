@@ -125,8 +125,8 @@ function prereq() {
     elif [[ $BACKUP_SETUP == "false" ]] && [[ $RESTORE_SETUP == "false" ]]; then
         error "Neither Hub nor Spoke setup options selected. Please rerun selecting one or the other (Hub has to come first)."
     elif [[ $BACKUP_SETUP == "true" ]] || [[ $RESTORE_SETUP == "true" ]]; then
-        if [[ -z $CATALOG_SOURCE ]] || [[ -z $CAT_SRC_NS ]] || [[ -z $SF_NAMESPACE ]] || [[ -z $GITHUB_USER ]] || [[ -z $GITHUB_TOKEN ]] || [[ -z $STORAGE_CLASS ]]; then
-            error "Missing value for one or more of CATALOG_SOURCE, CAT_SRC_NS, SF_NAMESPACE, GITHUB_USER, GITHUB_TOKEN, or STORAGE_CLASS. Please update env.properties file with correct parameters and rerun."
+        if [[ -z $CS_CATALOG_SOURCE ]] || [[ -z $FUSION_CATALOG_SOURCE ]] || [[ -z $CAT_SRC_NS ]] || [[ -z $SF_NAMESPACE ]] || [[ -z $GITHUB_USER ]] || [[ -z $GITHUB_TOKEN ]] || [[ -z $STORAGE_CLASS ]]; then
+            error "Missing value for one or more of CS_CATALOG_SOURCE, FUSION_CATALOG_SOURCE, CAT_SRC_NS, SF_NAMESPACE, GITHUB_USER, GITHUB_TOKEN, or STORAGE_CLASS. Please update env.properties file with correct parameters and rerun."
         fi
         if [[ $BACKUP_SETUP == "true" ]]; then
             if [[ -z $OPERATOR_NS ]] || [[ -z $SERVICES_NS ]] || [[ -z $BACKUP_STORAGE_LOCATION_NAME ]] || [[ -z $STORAGE_BUCKET_NAME ]] || [[ -z $S3_URL ]] || [[ -z $STORAGE_SECRET_ACCESS_KEY ]] || [[ -z $STORAGE_SECRET_ACCESS_KEY_ID ]] || [[ -z $CERT_MANAGER_NAMESPACE ]] || [[ -z $LICENSING_NAMESPACE ]] || [[ -z $LSR_NAMESPACE ]] || [[ -z $CPFS_VERSION ]] || [[ -z $ZENSERVICE_NAME ]]; then
@@ -181,13 +181,13 @@ EOF
 }
 
 function install_sf_br(){
-    title "Installing Spectrum Fusion and its Backup and Restore service from catalog $CATALOG_SOURCE."
+    title "Installing Spectrum Fusion and its Backup and Restore service from catalog $FUSION_CATALOG_SOURCE."
     role=$1
     info "Cloning SF cmd-line-install repo..."
     git clone https://$GITHUB_USER:$GITHUB_TOKEN@github.ibm.com/ProjectAbell/cmd-line-install.git
     
     #TODO verify catalog source pod is actually running
-    catalog_image=$(${OC} get catalogsource -o jsonpath='{.spec.image}' $CATALOG_SOURCE -n $CAT_SRC_NS)
+    catalog_image=$(${OC} get catalogsource -o jsonpath='{.spec.image}' $FUSION_CATALOG_SOURCE -n $CAT_SRC_NS)
 
     info "executing install-isf-br.sh script with catalog image $catalog_image in namespace $SF_NAMESPACE."
     if [[ $role == "hub" ]]; then
@@ -334,7 +334,7 @@ function create_sf_resources(){
     size=$(${OC} get commonservice common-service -n $OPERATOR_NS -o jsonpath='{.spec.size}')
     sed -i -E "s/<.spec.size value from commonservice cr>/$size/" ./templates/multi-ns-recipe.yaml
     sed -i -E "s/<install mode, either Manual or Automatic>/Automatic/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<catalog source name>/$CATALOG_SOURCE/" ./templates/multi-ns-recipe.yaml
+    sed -i -E "s/<catalog source name>/$CS_CATALOG_SOURCE/" ./templates/multi-ns-recipe.yaml
     sed -i -E "s/<catalog source namespace>/$CAT_SRC_NS/" ./templates/multi-ns-recipe.yaml
 
     if [[ $change_ns == "true" ]]; then
@@ -374,6 +374,7 @@ function label_cs_resources() {
 
     mv ../velero/backup/common-service/env.properties ../velero/backup/common-service/og-env.properties
     cp env.properties ../velero/backup/common-service/env.properties
+    export TETHERED_NS="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
     info "Labeling remaining CPFS resources..."
     ./../velero/backup/common-service/label-common-service.sh || error "Unable to complete labeling of CPFS resources."
 

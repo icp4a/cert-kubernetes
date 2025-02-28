@@ -149,9 +149,10 @@ spec:
     ## For ROKS Ingress, provide TLS secret name for Ingress controller. If you are not using ROKS, comment out this line.
     sc_ingress_tls_secret_name: <Required>
 
-    ## This is the deployment hostname suffix, this is optional and the default hostname suffix will be used as {meta.namespace}.router-canonicalhostname
-
-    # sc_deployment_hostname_suffix: "{{ meta.namespace }}.<Required>"
+    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <router-canonical-hostname> when not defined.
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=scp-shared-configuration
+    ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
+    #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
 
     ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
     ## the external service to the component's truststore.
@@ -217,21 +218,6 @@ spec:
     ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
     sc_is_multiple_az: false
-
-    ## Audit logging configuration for CP4BA components. The default value is "false".  If set to "true", then the audit logging will be enabled for all the CP4BA components.
-    ## These settings can be overridden at the component level by setting the "audit_logging" parameter in the component configuration such as ecm_configuration, ads_configuration, etc...
-    ## NOTE: Not all components support audit logging in 24.0.1 release.  Please refer to KC for more information.
-    sc_audit_logging:
-      # Enable or disable audit logging for all CP4BA components
-      enabled: false
-      # The audit log directory size.  The default value is "150Mi".  The value should be in the format of "<number><unit>".  The valid units are "Ki", "Mi", "Gi", "Ti", "Pi", "Ei".
-      # This log directory will be mounted as an ephemeral storage volume in the CP4BA components' pods.
-      audit_log_dir_size: '150Mi'
-
-      # The number of audit log files to keep.  The default value is "5". Increasing this value will increase the number of audit log files kept. You may want to increase the audit_log_dir_size if you increase this value.
-      rolling_max_files: 5
-      # The maximum size of each audit log file.  The default value is "20Mi".  The value should be in the format of "<number><unit>".  The valid units are "Ki", "Mi", "Gi", "Ti", "Pi", "Ei". You may want to increase the audit_log_dir_size if you increase this value.
-      rolling_max_size: '20Mi'
 
   ## The beginning section of LDAP configuration for CP4A
   ldap_configuration:
@@ -384,6 +370,9 @@ spec:
     ## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc.
     #lc_ldap_port: "<Required>"
 
+    ## The LDAP bind secret for LDAP authentication.  The secret is expected to have ldap<id_name>Username and ldap<id_name>Password keys.  Refer to Knowledge Center for more info.
+    #lc_bind_secret: ldap-bind-secret
+
     ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
     #lc_ldap_base_dn: "<Required>"
 
@@ -466,14 +455,14 @@ spec:
     #     # ibmentryuuid : ibm-entryuuid
 
   ## The idp_iam_configuration is meant when you have an identity provider configured in iam that isn't a directory provider service
-  ## Such as Okta or AzureAD configured in IAM as the identity provider.
+  ## Such as Okta or Microsoft Entra ID configured in IAM as the identity provider.
   ## Set the idp_id to the name giving to the identity provider configured in IAM.
-  ## Set the idp_type.  Supported types are okta or azuread.
+  ## Set the idp_type.  Supported types are okta or Microsoft Entra ID.
   ## idp_allow_email_or_upn_short_names by default is true. Only specify idp_allow_email_or_upn_short_names: false if
   ## email or upn short name is not used to login
   #idp_iam_configuration:
   #  - idp_id: <idp_name>
-  #    idp_type: okta (or azuread)
+  #    idp_type: okta (or Microsoft Entra ID)
   #    idp_allow_email_or_upn_short_names: true (optional - default value is true)
 
   ## The beginning section of database configuration for CP4A

@@ -2,7 +2,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2024. All Rights Reserved.
+# (C) Copyright IBM Corp. 2024, 2025. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -50,7 +50,7 @@ spec:
         - /baw-operator
         args:
         - --leader-elect
-        image: icr.io/cpopen/icp4a-workflow-operator@sha256:d179f7b81bb805b0b655e855183b64ad52ee24992414b62605dd059f66d16149
+        image: icr.io/cpopen/icp4a-workflow-operator@sha256:8447b750e1e099c3fabc527a577a5c7f4bee9d079e3b75d60d1b8c2ed52676cf
         imagePullPolicy: IfNotPresent
         name: operator
         securityContext:

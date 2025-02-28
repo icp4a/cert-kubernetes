@@ -76,6 +76,7 @@ spec:
         secret:
           secretName: mongodb-root-ca-cert
       restartPolicy: Never
+      serviceAccountName: ibm-mongodb-operand
 EOF
     sleep 20s
 

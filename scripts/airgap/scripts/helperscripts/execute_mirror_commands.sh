@@ -19,7 +19,7 @@ download_case_files() {
     read -p "Do you want to proceed? (yes/no) [default: no]: " response
 
     # Set default response if empty
-    response="${response,,}"  # Convert to lowercase
+    response=$(echo "$response" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
     if [ -z "$response" ]; then
         response="no"
     fi
@@ -61,7 +61,7 @@ generate_mirror_manifests(){
     oc ibm-pak config mirror-tools --enabled oc-mirror
     printf "\n"
     # Set default response if empty
-    response="${response,,}"  # Convert to lowercase
+    response=$(echo "$response" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
     if [ -z "$response" ]; then
         response="no"
     fi
@@ -170,7 +170,7 @@ mirror_images(){
     read -p "Do you want to proceed? (yes/no) [default: no]: " response
 
     # Set default response if empty
-    response="${response,,}"  # Convert to lowercase
+    response=$(echo "$response" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
     if [ -z "$response" ]; then
         response="no"
     fi
@@ -185,7 +185,7 @@ mirror_images(){
     printf "\n"
     read -p "Do you want the script to use nohup to execute the mirroring of images? (yes/no) [default: no]: " response
     # Set default response if empty
-    response="${response,,}"  # Convert to lowercase
+    response=$(echo "$response" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
     if [ -z "$response" ]; then
         response="no"
     fi
