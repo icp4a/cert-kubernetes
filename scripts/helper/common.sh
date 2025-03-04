@@ -938,3 +938,17 @@ function display_latency_warning() {
         echo "The latency exceeds 30ms for a simple $connection_type operation, which indicates potential for failures."
     fi
 }
+
+# This function is to generate a truststore password for DB and LDAP verification
+# DBACLD-167057
+function generate_truststore_password() {
+    local pwd_length="${1:-8}"
+    local pwd_charset="${2:-A-Za-z0-9}"
+    local machine_lower=$(echo "${machine}" | tr '[:upper:]' '[:lower:]')
+    if [[ "$machine_lower" == "linux" ]]; then
+        < /dev/urandom tr -dc "$pwd_charset" | head -c "$pwd_length"
+    else
+        < /dev/urandom tr -dc "$pwd_charset" | cut -c1-"$pwd_length"
+    fi
+    echo
+}
