@@ -39,6 +39,7 @@ OLM_SUBSCRIPTION_TMP=${TEMP_FOLDER}/.subscription.yaml
 LICENSE_FILE=${PARENT_DIR}/LICENSE
 LICENSE_ACCEPTED=""
 CATALOG_FOUND="Yes"
+CATALOG_NS="openshift-marketplace"
 
 function show_help {
     echo -e "\nPrerequisite:"
@@ -137,8 +138,10 @@ function prepare_olm_install() {
 
     if [[ $CATALOG_FOUND == "Yes" ]]; then
         if [[ $PINNED == "Yes" ]]; then
-          echo "Found ibm CP4BA operator catalog source, updating it ..."
-          oc apply -f $OLM_CATALOG >/dev/null 2>&1
+          echo "Found ibm CP4BA operator catalog source (in $CATALOG_NS), updating it ..."
+          cp $OLM_CATALOG ${OLM_CATALOG_TMP}
+          sed "s|namespace: .*|namespace: \"$CATALOG_NS\"|g" ${OLM_CATALOG} > ${OLM_CATALOG_TMP}
+           oc apply -f $OLM_CATALOG_TMP >/dev/null 2>&1
           if [ $? -eq 0 ]; then
             echo "IBM CP4BA Operator Catalog source Updated!"
           else
@@ -149,6 +152,51 @@ function prepare_olm_install() {
           kubectl apply -f ${CUR_DIR}/../descriptors/role.yaml --validate=false
           kubectl apply -f ${CUR_DIR}/../descriptors/role_binding.yaml --validate=false
           kubectl apply -f ${CUR_DIR}/../upgradeOperator.yaml --validate=false
+        elif [[ $PINNED == "No" ]]; then  # #168788 this should only occur for an older install that used ibm-operator-catalog for baw. 
+          if [[ $RUNTIME_MODE == "baw" ]];then
+            echo "Found ibm operator catalog source, add pinned ibm baw operator catalog and subscription..."
+            sed "s|namespace: .*|namespace: \"$CATALOG_NS\"|g" ${OLM_CATALOG} > ${OLM_CATALOG_TMP}
+            oc apply -f $OLM_CATALOG_TMP >/dev/null 2>&1
+            if [ $? -eq 0 ]; then
+              echo "IBM BAW Operator Catalog source created!"
+            else
+              echo "IBM BAW Operator catalog source creation failed"
+              exit 1
+            fi
+            sed "s/REPLACE_NAMESPACE/$project_name/g" ${OLM_SUBSCRIPTION} > ${OLM_SUBSCRIPTION_TMP}
+            ${YQ_CMD} w -i ${OLM_SUBSCRIPTION_TMP} spec.source "$online_source"
+            sed -i "s/sourceNamespace: .*/sourceNamespace: \"$CATALOG_NS\"/g" ${OLM_SUBSCRIPTION_TMP}
+            oc apply -f ${OLM_SUBSCRIPTION_TMP} -n $NAMESPACE
+            if [ $? -eq 0 ]
+            then
+                echo "BAW Operator Subscription Created!"
+            else
+                echo "BAW Operator Subscription creation failed"
+                exit 1
+            fi
+            sub_inst_list=$(oc get subscriptions.operators.coreos.com -n $NAMESPACE|grep ibm-|awk '{if(NR>0){if(NR==1){ arr=$1; }else{ arr=arr" "$1; }} } END{ print arr }')
+            #sub_inst_list=$(oc get subscriptions.operators.coreos.com -n $NAMESPACE|grep ibm-cp4a-|awk '{if(NR>0){if(NR==1){ arr=$1; }else{ arr=arr" "$1; }} } END{ print arr }')
+            sub_array=($sub_inst_list)
+            for i in ${!sub_array[@]}; do
+                if [[ ! -z "${sub_array[i]}" ]]; then
+                  if [[ ${sub_array[i]} = ibm-baw-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = ibm-pfs-operator* || ${sub_array[i]} = ibm-workflow-operator* ]]; then
+                    #also ensure subscriptions use the pinned ibm-baw-operator-catalog
+                    oc patch subscriptions.operators.coreos.com ${sub_array[i]} -n $NAMESPACE -p '{"spec":{"source":"'"$online_source"'"}}' --type=merge >/dev/null 2>&1
+                    if [ $? -eq 0 ]
+                    then
+                        echo "Update the catalog source of subscription '${sub_array[i]}' to $online_source!"
+                        printf "\n"
+                    else
+                        echo "Failed to update the catalog source of subscription '${sub_array[i]}' to $online_source! exiting now..."
+                        exit 1
+                    fi
+                  fi
+                else
+                    echo "Subscription '${sub_array[i]}' not found! exiting now..."
+                    exit 1
+                fi
+            done
+          fi
         fi
     else
         oc apply -f $OLM_CATALOG >/dev/null 2>&1
@@ -162,12 +210,12 @@ function prepare_olm_install() {
 
     echo "Waiting for CP4BA Operator Catalog pod initialization"
     for ((retry=0;retry<=${maxRetry};retry++)); do
-      isReady=$(oc get pod -n openshift-marketplace --no-headers | grep $online_source | grep "Running")
+      isReady=$(oc get pod -n $CATALOG_NS --no-headers | grep $online_source | grep "Running")
       if [[ -z $isReady ]]; then
         if [[ $retry -eq ${maxRetry} ]]; then
           echo "Timeout waiting for  CP4BA Operator Catalog pod to start"
           echo -e "\x1B[1mPlease check the status of Pod by issue cmd: \x1B[0m"
-          echo "oc describe pod $(oc get pod -n openshift-marketplace|grep $online_source|awk '{print $1}') -n openshift-marketplace"
+          echo "oc describe pod $(oc get pod -n $CATALOG_NS|grep $online_source|awk '{print $1}') -n $CATALOG_NS"
           exit 1
         else
           sleep 30
@@ -208,13 +256,14 @@ function prepare_olm_install() {
           exit 1
       fi
     fi
+
     if [[ $RUNTIME_MODE == "baw-dev" || $RUNTIME_MODE == "baw" ]];then
       sub_inst_list=$(oc get subscriptions.operators.coreos.com -n $NAMESPACE|grep ibm-|awk '{if(NR>0){if(NR==1){ arr=$1; }else{ arr=arr" "$1; }} } END{ print arr }')
       #sub_inst_list=$(oc get subscriptions.operators.coreos.com -n $NAMESPACE|grep ibm-cp4a-|awk '{if(NR>0){if(NR==1){ arr=$1; }else{ arr=arr" "$1; }} } END{ print arr }')
       sub_array=($sub_inst_list)
       for i in ${!sub_array[@]}; do
           if [[ ! -z "${sub_array[i]}" ]]; then
-            if [[ ${sub_array[i]} = ibm-baw-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = ibm-pfs-operator* ]]; then
+            if [[ ${sub_array[i]} = ibm-baw-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = ibm-pfs-operator* || ${sub_array[i]} = ibm-workflow-operator* ]]; then
               oc patch subscriptions.operators.coreos.com ${sub_array[i]} -n $NAMESPACE -p '{"spec":{"channel":"'"$CP4BA_CHANNEL_VERSION"'"}}' --type=merge >/dev/null 2>&1
               if [ $? -eq 0 ]
               then
@@ -226,7 +275,7 @@ function prepare_olm_install() {
               fi
             fi
           else
-              echo "No found subscription '${sub_array[i]}'! exiting now..."
+              echo "Subscription '${sub_array[i]}' not found! exiting now..."
               exit 1
           fi
       done
@@ -236,7 +285,7 @@ function prepare_olm_install() {
       sub_array=($sub_inst_list)
       for i in ${!sub_array[@]}; do
           if [[ ! -z "${sub_array[i]}" ]]; then
-            if [[ ${sub_array[i]} = ibm-cp4a-operator* || ${sub_array[i]} = ibm-cp4a-wfps-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = icp4a-foundation-operator* || ${sub_array[i]} = ibm-pfs-operator* ]]; then
+            if [[ ${sub_array[i]} = ibm-cp4a-operator* || ${sub_array[i]} = ibm-cp4a-wfps-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = icp4a-foundation-operator* || ${sub_array[i]} = ibm-pfs-operator* || ${sub_array[i]} = ibm-workflow-operator* ]]; then
               oc patch subscriptions.operators.coreos.com ${sub_array[i]} -n $NAMESPACE -p '{"spec":{"channel":"'"$CP4BA_CHANNEL_VERSION"'"}}' --type=merge >/dev/null 2>&1
               if [ $? -eq 0 ]
               then
@@ -399,12 +448,26 @@ function cp4a_operator_uninstall(){
 
 # Check existing catalog source is pinned or non pinned
 if [[ -z $RUNTIME_MODE || $RUNTIME_MODE == "baw" ]]; then
-  if oc get catalogsource -n openshift-marketplace | grep ibm-operator-catalog; then
+  # DBACLD-168788 prio to 24.0.0 ifix005 an online install for baw created an unpinned catalogue
+  if oc get catalogsource -n openshift-marketplace | grep ibm-baw-operator-catalog; then # openshift-marketplace namspace for non-private catalogue
+    CATALOG_FOUND="Yes"
+    PINNED="Yes"
+  elif oc get catalogsource -n ${NAMESPACE}| grep ibm-baw-operator-catalog; then #  project namspace for private catalogue
+    CATALOG_FOUND="Yes"
+    PINNED="Yes"
+    CATALOG_NS=${NAMESPACE}
+  #only check for older unpinned ibm-operator-catalog the pinned ibm-baw-operator-catalog is not installed yet
+  elif oc get catalogsource -n openshift-marketplace | grep ibm-operator-catalog; then
+    CATALOG_FOUND="Yes"
+    PINNED="No" 
+  elif oc get catalogsource -n ${NAMESPACE}| grep ibm-operator-catalog; then
     CATALOG_FOUND="Yes"
     PINNED="No"
+    CATALOG_NS=${NAMESPACE}
   elif oc get catalogsource -n openshift-marketplace | grep ibm-cp4a-operator-catalog; then
     CATALOG_FOUND="Yes"
     PINNED="Yes"
+  # elif oc get catalogsource -n ${NAMESPACE}| grep ibm-cp4a-operator-catalog; then  .... if cp4a does not use this script no need to check for private catalog in specific namespace
   else
     CATALOG_FOUND="No"
     PINNED="Yes" # Fresh install use pinned catalog source
@@ -413,6 +476,10 @@ elif [[ $RUNTIME_MODE == "dev" || $RUNTIME_MODE == "baw-dev" ]]; then
   if oc get catalogsource -n openshift-marketplace | grep ibm-cp4a-operator-catalog; then
     CATALOG_FOUND="Yes"
     PINNED="Yes"
+  elif oc get catalogsource -n ${NAMESPACE}| grep ibm-baw-operator-catalog; then
+    CATALOG_FOUND="Yes"
+    PINNED="Yes"
+    CATALOG_NS=${NAMESPACE}
   else
     CATALOG_FOUND="No"
     PINNED="Yes" # Fresh install use pinned catalog source
@@ -432,7 +499,7 @@ if [[ $PINNED == "Yes" ]];then
       OLM_CATALOG=${PARENT_DIR}/descriptors/baw-olm/catalog_source.yaml
       OLM_OPT_GROUP=${PARENT_DIR}/descriptors/baw-olm/operator_group.yaml
       OLM_SUBSCRIPTION=${PARENT_DIR}/descriptors/baw-olm/subscription.yaml
-      online_source="ibm-operator-catalog"
+      online_source="ibm-baw-operator-catalog"
   elif [[ -z $RUNTIME_MODE ]]; then
       OLM_CATALOG=${PARENT_DIR}/descriptors/op-olm/catalog_source.yaml
       online_source="ibm-cp4a-operator-catalog"
@@ -450,7 +517,7 @@ elif [[ $PINNED == "No" ]];then
       OLM_CATALOG=${PARENT_DIR}/descriptors/baw-olm/catalog_source.yaml
       OLM_OPT_GROUP=${PARENT_DIR}/descriptors/baw-olm/operator_group.yaml
       OLM_SUBSCRIPTION=${PARENT_DIR}/descriptors/baw-olm/subscription.yaml
-      online_source="ibm-operator-catalog"
+      online_source="ibm-baw-operator-catalog"
   elif [[ -z $RUNTIME_MODE ]]; then
       OLM_CATALOG=${PARENT_DIR}/descriptors/op-olm/catalog_source.yaml
       online_source="ibm-operator-catalog"

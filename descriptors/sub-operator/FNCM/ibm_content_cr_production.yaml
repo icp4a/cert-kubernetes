@@ -24,16 +24,16 @@ spec:
   ##########################################################################
   appVersion: 24.0.0
 
-  ## MUST exist, used to accept ibm license, valid value only can be "accept"
+  ## MUST exist, used to accept ibm license, valid value only can be "true".
   license:
     accept: true
 
-  ## The deployment type as selected by the user.  Possible values are: Starter and Production.
+  ## The deployment type as selected by the user. Possible values are: Starter and Production.
   content_deployment_type: Production
 
   ## The optional components to be installed if listed here.
   ## The optional components are: Content Manager Image Services (cmis), css (Content Search Services), es (External Share), tm (Task Manager),
-  ##                              IBM Enterprise Records (ier) and IBM Content Collector for SAP (iccsap)
+  ## IBM Enterprise Records (ier) and IBM Content Collector for SAP (iccsap)
   ## NOTE: ier, and iccsap does NOT support integration with ums.
   ## NOTE: es does not work when using Zen and IAM for authentication.
   content_optional_components:
@@ -53,7 +53,7 @@ spec:
     image_pull_secrets:
     - ibm-entitlement-key
 
-    ## All CP4A components must use/share the same docker image repository.  For example, if IBM Entitled Registry is used, then
+    ## All CP4A components must use/share the same docker image repository. For example, if IBM Entitled Registry is used, then
     ## it should be "cp.icr.io".  Otherwise, it will be a local docker registry.
     sc_image_repository: cp.icr.io
 
@@ -64,7 +64,7 @@ spec:
     ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is optional. It is not supported on OCP and ROKS.
     sc_run_as_user:
 
-    ## The platform to be deployed specified by the user.  Possible values are: OCP and ROKS.  This is normally populated by the User script
+    ## The platform to be deployed specified by the user. Possible values are: OCP and ROKS.  This is normally populated by the User script
     ## based on input from the user.
     sc_deployment_platform:
 
@@ -116,8 +116,8 @@ spec:
 
     ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
-    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true" (or the parameter doesn't exist), then the initialization will occur.
-    ## However, if sc_content_initialization is set to "false", then the initialization will not occur (even with the "initialize_configuration" section defined)
+    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true", then the initialization will occur.
+    ## However, if sc_content_initialization is set to "false" (or the parameter doesn't exist), then the initialization will not occur (even with the "initialize_configuration" section defined)
     sc_content_initialization: false
 
     ## OR

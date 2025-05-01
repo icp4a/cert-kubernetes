@@ -24,16 +24,16 @@ spec:
   ##########################################################################
   appVersion: 24.0.0
 
-  ## MUST exist, used to accept ibm license, valid value only can be "accept" 
+  ## MUST exist, used to accept ibm license, valid value only can be "true". 
   license:
     accept: true
 
-  ## The deployment type as selected by the user.  Possible values are: Starter and Production.
+  ## The deployment type as selected by the user. Possible values are: Starter and Production.
   content_deployment_type: Production
 
   ## The optional components to be installed if listed here.
   ## The optional components are: Content Manager Image Services (cmis), css (Content Search Services), es (External Share), tm (Task Manager),
-  ##                              IBM Enterprise Records (ier) and IBM Content Collector for SAP (iccsap)
+  ## IBM Enterprise Records (ier) and IBM Content Collector for SAP (iccsap)
   ## NOTE: ier, and iccsap does NOT support integration with ums.
   ## NOTE: es does not work when using Zen and IAM for authentication.
   content_optional_components:
@@ -55,7 +55,7 @@ spec:
     ## be defaulted to production.  This value could be different from the other licenses in the CR.
     sc_deployment_license: "<Required>"
 
-    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or 
+    ## The deployment context, which has a default value of "CP4A". Unless you are instructed to change this value or 
     ## know the reason to change this value, please leave the default value.
     sc_deployment_context: "CP4A"
 
@@ -91,11 +91,11 @@ spec:
     ## to https://www.ibm.com/docs/en/cloud-paks/1.0?topic=foundation-custom-resources#automationuiconfig for more information.
     external_tls_certificate_secret:
 
-    ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that corresponds to a user ID.
+    ## Specify the RunAsUser for the security context of the pod. This is usually a numeric value that corresponds to a user ID.
     ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is optional. It is not supported on OCP and ROKS.
     sc_run_as_user:
 
-    ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower. 
+    ## Optional setting for secure computing mode (seccomp) profile for CP4A containers. The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower. 
     ## For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
     ## NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start.  This custom profile should be created at the worker nodes.
     sc_seccomp_profile:
@@ -105,9 +105,9 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/common/dba-keytool-initcontainer
-        tag: "24.0.0-IF004"
+        tag: "24.0.0-IF005"
         
-    ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
+    ## The platform to be deployed specified by the user. Possible values are: OCP, ROKS, and other. This is normally populated by the User script
     ## based on input from the user.
     sc_deployment_platform:
 
@@ -163,8 +163,8 @@ spec:
 
     ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
-    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true" (or the parameter doesn't exist), then the initialization will occur.
-    ## However, if sc_content_initialization is set to "false", then the initialization will not occur (even with the "initialize_configuration" section defined)
+    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true", then the initialization will occur.
+    ## However, if sc_content_initialization is set to "false" (or the parameter doesn't exist), then the initialization will not occur (even with the "initialize_configuration" section defined)
     sc_content_initialization: false
 
     ## OR
@@ -261,10 +261,10 @@ spec:
     ## The name of the LDAP server to connect
     lc_ldap_server: "<Required>"
 
-    ## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc.
+    ## The port of the LDAP server to connect. Some possible values are: 389, 636, etc.
     lc_ldap_port: "<Required>"
 
-    ## The LDAP bind secret for LDAP authentication.  The secret is expected to have ldapUsername and ldapPassword keys.  Refer to Knowledge Center for more info.
+    ## The LDAP bind secret for LDAP authentication. The secret is expected to have ldapUsername and ldapPassword keys. Refer to Knowledge Center for more info.
     lc_bind_secret: ldap-bind-secret
 
     ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
@@ -285,17 +285,17 @@ spec:
     ## The LDAP group base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
     lc_ldap_group_base_dn: "<Required>"
 
-    ## The LDAP group name attribute.  One possible value is "*:cn" for TDS and "*:cn" for AD. Refer to Knowledge Center for more info.
+    ## The LDAP group name attribute. One possible value is "*:cn" for TDS and "*:cn" for AD. Refer to Knowledge Center for more info.
     lc_ldap_group_name_attribute: "*:cn"
 
-    ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
+    ## The LDAP group display name attribute. One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
     lc_ldap_group_display_name_attr: "cn"
 
-    ## The LDAP group membership search filter string.  One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS
+    ## The LDAP group membership search filter string. One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS
     ## and "(&(cn=%v)(objectcategory=group))" for AD.
     lc_ldap_group_membership_search_filter: "<Required>"
 
-    ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
+    ## The LDAP group membership ID map. One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
     lc_ldap_group_member_id_map: "<Required>"
 
     ## Set to true if you want to enable LDAP nested search in IAM, by default it is false
@@ -538,14 +538,14 @@ spec:
 
 
   ## The idp_iam_configuration is meant when you have an identity provider configured in iam that isn't a directory provider service
-  ## Such as Okta or AzureAD configured in IAM as the identity provider.
+  ## Such as Okta or Microsoft Entra ID configured in IAM as the identity provider.
   ## Set the idp_id to the name giving to the identity provider configured in IAM.
-  ## Set the idp_type.  Supported types are okta or azuread.
+  ## Set the idp_type.  Supported types are okta or Microsoft Entra ID.
   ## idp_allow_email_or_upn_short_names by default is true. Only specify idp_allow_email_or_upn_short_names: false if
   ## email or upn short name is not used to login
   #idp_iam_configuration:
   #  - idp_id: <idp_name>
-  #    idp_type: okta (or azuread) 
+  #    idp_type: okta (or Microsoft Entra ID) 
   #    idp_allow_email_or_upn_short_names: true (optional - default value is true) 
 
   ## The beginning section of database configuration for CP4A
@@ -884,7 +884,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.0-IF004"
+        tag: "24.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1045,7 +1045,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "24.0.0-IF004"
+        tag: "24.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1142,7 +1142,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.0-IF004"
+        tag: "24.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1304,7 +1304,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.0-IF004"
+        tag: "24.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1424,7 +1424,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "24.0.0-IF004"
+        tag: "24.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1532,7 +1532,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "24.0.0-IF004"
+        tag: "24.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1680,7 +1680,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "24.0.0-IF004"
+      tag: "24.0.0-IF005"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2071,7 +2071,7 @@ spec:
 
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: "24.0.0-IF004"
+        tag: "24.0.0-IF005"
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -2192,7 +2192,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: "24.0.0-IF004"
+      tag: "24.0.0-IF005"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent

@@ -27,6 +27,12 @@ function create_baw_db_oracle_sql_file(){
 cat << EOF > $BAW_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/create_baw_db.sql
 -- Please ensure you already have existing oracle instance or pluggable database (PDB). If not, please create one first
 
+-- NOTE: The tablespace creation command below uses file-based storage.  
+-- If your Oracle environment uses ASM (Automatic Storage Management),  
+-- update the 'DATAFILE' and 'TEMPFILE' paths to reflect your ASM configuration.  
+-- Additionally, ensure that database object names (e.g., tablespace, user, etc.)  
+-- match the expected naming conventions. Any deviations may cause issues.
+
 -- create a new user
 CREATE USER ${dbuser} IDENTIFIED BY "${dbuserpwd}";
 

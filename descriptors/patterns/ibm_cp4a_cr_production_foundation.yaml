@@ -79,7 +79,6 @@ spec:
   ##
   ######################################################################################################################
   shared_configuration:
-
     ## FileNet Content Manager (FNCM) license and possible values are: user, non-production, and production.
     ## This value could be different from the other licenses in the CR.
     sc_deployment_fncm_license: "<Required>"

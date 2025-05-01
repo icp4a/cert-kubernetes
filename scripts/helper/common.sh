@@ -153,23 +153,23 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 # Release/Patch version for CP4BA
 # CP4BA_RELEASE_BASE is for fetch content/foundation operator pod, only need to change for major release.
 CP4BA_RELEASE_BASE="24.0.0"
-CP4BA_PATCH_VERSION="IF004"
+CP4BA_PATCH_VERSION="IF005"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v24.0.4"
+CP4BA_CSV_VERSION="v24.0.5"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
 CP4BA_CHANNEL_VERSION="v24.0"
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.6.9"
+CS_OPERATOR_VERSION="v4.6.11"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
 CS_CHANNEL_VERSION="v4.6"
 # CERT_LICENSE_OPERATOR_VERSION is for checking IBM cert-manager/licensing operator upgrade status, need to update for each IFIX
-CERT_LICENSE_OPERATOR_VERSION="v4.2.11"
+CERT_LICENSE_OPERATOR_VERSION="v4.2.13"
 # CERT_LICENSE_CHANNEL_VERSION is for for IBM cert-manager/licensing script -c option, need to update for each IFIX
 CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
-CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-6-9"
+CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-6-11"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v5.1.11"
+ZEN_OPERATOR_VERSION="v5.1.13"
 # BTS_CHANNEL_VERSION is for for BTS, need to update for each IFIX
 BTS_CHANNEL_VERSION="v3.35"
 # BTS_CATALOG_VERSION is for BTS 3.35.1.
@@ -183,7 +183,7 @@ EVENTS_OPERATOR_VERSION="v5.0.1"
 # List of CP4BA versions that are supported for upgrade to $CP4BA_CSV_VERSION
 MINIMUM_SUPPORTED_UPGRADE_VERSIONS=("21.3.31" "22.2.6" "23.2.6" )
 #DBADCLD-162192. This is a list of minimum 21.0.3 CP4BA version that BAS (authoring) supports for upgrade due to schema changes.
-MINIMUM_SUPPORTED_BAW_AUTHORING_UPGRADE_VERSIONS=("21.3.31" "21.3.32" "21.3.33" "21.3.34" "21.3.39" )
+MINIMUM_SUPPORTED_BAW_AUTHORING_UPGRADE_VERSIONS=("21.3.31" "21.3.32" "21.3.33" "21.3.34" )
 
 
 CERT_MANAGER_PROJECT="ibm-cert-manager"
@@ -529,9 +529,10 @@ function echo_impl() {
 }
 
 ## <https://jsw.ibm.com/browse/DBACLD-159357> - Introduced new function to deal with pressing control keys to continune, need to clear buffer before and after reading user input.
+## - - https://jsw.ibm.com/browse/DBACLD-165921 - <Press any key to continue...does not continue when "shift key" is pressed>
 function prompt_press_any_key_to_continue() {
     while read -r -t 1; do :; done  # Clear the buffer
-    read -rsn1 -p "Press any key to continue ${1}..."; echo # wait for user input
+    read -rsn1 -p "Press Enter/Return to continue ${1}..."; echo # wait for user input
     read -r -t 1 # Clear any remaining escape seqence
 }
 
@@ -548,6 +549,26 @@ function check_platform_version(){
         PLATFORM_VERSION="4.4OrLater"
         echo -e "\x1B[1;31mIMPORTANT: Only support OCp4.4 or Later, exit...\n\x1B[0m"
         exit 1
+    fi
+}
+
+## <https://jsw.ibm.com/browse/DBACLD-161428> - Create a common function to check cluster login for all related scripts.
+#############################
+# Check cluster Login
+#############################
+function check_cluster_login() {
+    if [[ "$CLI_CMD" == "oc" ]]; then
+        oc whoami >/dev/null 2>&1
+        if [ $? -gt 0 ]; then
+            error "Not logged in to a cluster. Please login to a cluster before running this script."
+            exit 1
+        fi
+    elif [[ "$CLI_CMD" == "kubectl" ]]; then
+        kubectl auth whoami >/dev/null 2>&1
+        if [ $? -gt 0 ]; then
+            error "Not logged in to a cluster. Please login to a cluster before running this script."
+            exit 1
+        fi
     fi
 }
 
@@ -878,5 +899,39 @@ function ldap_validation_parameter_generator(){
     # creating the user password dictionary string
     ldap_user_password_list=$(create_user_password_dictionary_string ldap_user_list[@] ldap_password_list[@])
 
-    echo "$ldap_group_basedn $ldap_user_filter $ldap_group_filter $ldap_user_password_list $final_ldap_group_list"
+    ldap_details=("$ldap_group_basedn" "$ldap_user_filter" "$ldap_group_filter" "$ldap_user_password_list" "$final_ldap_group_list")
+}
+
+# This function is used to display a latency warning based on the time taken for a DB/LDAP connection
+# Takes in 2 parameters
+# 1. time_taken which is used to display the latency and make comparisons using bc -l which allows for float point based comparisons
+# connection_type which is used to display if the connection is for a DB or LDAP
+# DBACLD-159742
+function display_latency_warning() {
+    local time_taken=$1
+    local connection_type=$2
+    echo "Latency: $time_taken ms"
+    # Check if elapsed time is greater than 10 ms using awk. [[ ]] not used since it doesnt do float point comparisons correctly
+    # If tt is between 10 and 30, it exits with 0 (success)
+    if awk -v tt="$time_taken" 'BEGIN { exit !(tt < 10) }'; then
+        echo "The latency is less than 10ms, which is acceptable performance for a simple $connection_type operation."
+    elif awk -v tt="$time_taken" 'BEGIN { exit !(tt >= 10 && tt <= 30) }'; then
+        echo "The latency is between 10ms and 30ms, which exceeds acceptable performance of 10 ms for a simple $connection_type operation, but the service is still accessible."
+    else
+        echo "The latency exceeds 30ms for a simple $connection_type operation, which indicates potential for failures."
+    fi
+}
+
+# This function is to generate a truststore password for DB and LDAP verification
+# DBACLD-167057
+function generate_truststore_password() {
+    local pwd_length="${1:-8}"
+    local pwd_charset="${2:-A-Za-z0-9}"
+    local machine_lower=$(echo "${machine}" | tr '[:upper:]' '[:lower:]')
+    if [[ "$machine_lower" == "linux" ]]; then
+        < /dev/urandom tr -dc "$pwd_charset" | head -c "$pwd_length"
+    else
+        < /dev/urandom tr -dc "$pwd_charset" | cut -c1-"$pwd_length"
+    fi
+    echo
 }

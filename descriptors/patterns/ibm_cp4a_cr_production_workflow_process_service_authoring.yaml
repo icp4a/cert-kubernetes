@@ -24,7 +24,6 @@ spec:
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
   shared_configuration:
-
     ## Use this parameter to specify the license for the CP4A deployment and
     ## the possible values are: non-production and production and if not set, the license will
     ## be defaulted to production.  This value could be different from the other licenses in the CR.

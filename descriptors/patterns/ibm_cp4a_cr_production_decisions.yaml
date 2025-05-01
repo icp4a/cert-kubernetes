@@ -42,7 +42,6 @@ spec:
   ######################################################################################################################
 
   shared_configuration:
-
     ## CP4A patterns or capabilities to be deployed. This CR represents Operational Decsision Manage "decisions" pattern
     ## that brings Decision Center, Rule Execution Server and Decision Runner, based on the user specification in the
     ## sc_optional_components specification

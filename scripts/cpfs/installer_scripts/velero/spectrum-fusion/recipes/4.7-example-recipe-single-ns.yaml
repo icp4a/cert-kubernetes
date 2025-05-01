@@ -138,31 +138,11 @@ spec:
       labelSelector: foundationservices.cloudpak.ibm.com=crd
       name: commonservice-crd
       type: resource
-    - includeClusterResources: true
-      includedResourceTypes:
-        - deployments
-        - roles
-        - serviceaccounts
-        - rolebindings
-        - configmaps
-      labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
-      name: setup-tenant-resources
-      type: resource
-    - includeClusterResources: true
-      includedResourceTypes:
-        - customresourcedefinitions.apiextensions.k8s.io
-      labelSelector: foundationservices.cloudpak.ibm.com=crd
-      name: nss-crd
-      type: resource
+
     - includedResourceTypes:
         - commonservices.operator.ibm.com
       labelSelector: foundationservices.cloudpak.ibm.com=commonservice
       name: commonservice-cr
-      type: resource
-    - includedResourceTypes:
-        - namespacescopes.operator.ibm.com
-      labelSelector: foundationservices.cloudpak.ibm.com=nss
-      name: nss-cr
       type: resource
     - includedResourceTypes:
         - operandrequests.operator.ibm.com
@@ -256,13 +236,13 @@ spec:
         - condition: '{$.status.phase} == {"Running"}'
           name: podReady
           onError: fail
-          timeout: 1200
+          timeout: 600
       labelSelector: app.kubernetes.io/name=operand-deployment-lifecycle-manager
       name: odlm-check
       namespace: <operator namespace>
       onError: fail
       selectResource: pod
-      timeout: 1200
+      timeout: 600
       type: check
     - chks:
         - condition: '{$.status.phase} == {"Running"}'
@@ -428,7 +408,6 @@ spec:
         - group: license-service-reporter-crd
         - group: commonservice-crd
         - group: commonservice-cr
-        - group: setup-tenant-resources
         - group: singleton-subscriptions
         - group: cert-manager-resources
         - group: licensing-resources

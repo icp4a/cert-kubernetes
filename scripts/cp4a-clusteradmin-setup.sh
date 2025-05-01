@@ -155,7 +155,7 @@ elif [[ $RUNTIME_MODE == "baw-dev" ]]; then
     CP4BA_AUTO_PUSH_IMAGE_LOCAL_REGISTRY=$AUTO_PUSH_IMAGE_LOCAL_REGISTRY
     CP4BA_AUTO_STORAGE_CLASS_OCP=$AUTO_STORAGE_CLASS
 elif [[ $RUNTIME_MODE == "baw" ]]; then
-    online_source="ibm-operator-catalog"
+    online_source="ibm-baw-operator-catalog"
     CP4BA_AUTO_ALL_NAMESPACES=$AUTO_ALL_NAMESPACES
     CP4BA_AUTO_CLUSTER_USER=$AUTO_CLUSTER_USER
     CP4BA_AUTO_DEPLOYMENT_TYPE=$AUTO_DEPLOYMENT_TYPE
@@ -3331,6 +3331,9 @@ if [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" || "$RUNTIME_M
 fi
 
 select_deployment_type
+
+# Check cluster login
+check_cluster_login
 
  # BAW STD couldn't enable fips since it don't use the common service.
 if [[ ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS") && $DEPLOYMENT_TYPE == "production" && $RUNTIME_MODE != "baw" && $RUNTIME_MODE != "baw-dev" ]]; then

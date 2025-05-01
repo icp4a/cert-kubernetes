@@ -32,9 +32,11 @@ function main() {
 
     # cleanup namespaceScope in Control namespace
     cleanup_NamespaceScope $CONTROL_NS
+    delete_operator "ibm-namespace-scope-operator" "$CONTROL_NS"
 
-    # cleanup webhookc
+    # cleanup webhook
     cleanup_webhook $CONTROL_NS ""
+    cleanup_webhook_service $CONTROL_NS
     
     # cleanup secretshare
     cleanup_secretshare $CONTROL_NS ""

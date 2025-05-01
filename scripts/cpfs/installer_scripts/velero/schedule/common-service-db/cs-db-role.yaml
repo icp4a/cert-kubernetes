@@ -20,6 +20,7 @@ rules:
       - extensions
       - apps
       - policy
+      - route.openshift.io
     resources:
       - pods
       - pods/log
@@ -33,6 +34,8 @@ rules:
       - pods/status
       - jobs
       - secrets
+      - configmaps
+      - routes
   - verbs:
       - get
       - list

@@ -24,6 +24,14 @@ function create_bawaws1_db_oracle_sql_file(){
     mkdir -p $BAW_AWS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
     rm -rf $BAW_AWS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/create_baw_db_instance1_for_baw.sql
 cat << EOF > $BAW_AWS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/create_baw_db_instance1_for_baw.sql
+-- Please ensure you already have existing oracle instance or pluggable database (PDB). If not, please create one first
+
+-- NOTE: The tablespace creation command below uses file-based storage.  
+-- If your Oracle environment uses ASM (Automatic Storage Management),  
+-- update the 'DATAFILE' and 'TEMPFILE' paths to reflect your ASM configuration.  
+-- Additionally, ensure that database object names (e.g., tablespace, user, etc.)  
+-- match the expected naming conventions. Any deviations may cause issues.
+
 -- Create a new user.
 CREATE USER ${dbuser} IDENTIFIED BY "${dbuserpwd}";
 

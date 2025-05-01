@@ -319,7 +319,8 @@ function convert_olm_cr(){
             if [[ $olm_optional_component_flag == "true" ]]; then
                 OIFS=$IFS
                 IFS='.' read -r -a array <<< "${OLM_OPTIONAL_COMPONENT_CR_MAPPING[$i]}"
-                last_element="${array[-1]}"
+		## - - https://jsw.ibm.com/browse/DBACLD-165625 - <cp4a-deployment script show errors when running on MacOS>
+                last_element="${array[${#array[@]}-1]}"
                 EXISTING_OPT_COMPONENT_ARR=( "${EXISTING_OPT_COMPONENT_ARR[@]}" "$last_element" )
                 IFS=$OIFS
             elif [[ -z $olm_pattern_flag && ${OLM_OPTIONAL_COMPONENT_CR_MAPPING[$i]} != "spec.olm_production_option.workfow_authoring.ae_data_persistence" && ${OLM_OPTIONAL_COMPONENT_CR_MAPPING[$i]} != "spec.olm_production_option.workfow_runtime.elasticsearch" ]]; then
@@ -627,9 +628,28 @@ function upgrade_deployment(){
                 info "Scaling down CPE deployment"
                 ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-cpe-deploy -n $deployment_project_name >/dev/null 2>&1
                 echo "Done!"
+                # To allow any changes to creation of the zen extension configuration that we make from IFIX to IFIX,its best if the watcher pods are scaled down prior to applying the new CR
+                # DBACLD-171900
+                info "Scaling down CPE Watcher deployment"
+                ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-cpe-watcher -n $deployment_project_name >/dev/null 2>&1
+                echo "Done!"
                 info "Scaling down Navigator deployment"
                 ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-navigator-deploy -n $deployment_project_name >/dev/null 2>&1
                 echo "Done!"
+                # To allow any changes to creation of the zen extension configuration that we make from IFIX to IFIX,its best if the watcher pods are scaled down prior to applying the new CR
+                # DBACLD-171900
+                info "Scaling down Navigator Watcher deployment"
+                ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-navigator-watcher -n $deployment_project_name >/dev/null 2>&1
+                echo "Done!"
+
+                # DBACLD-168537: need to re-create {{meta.name}}-fncm-custom-ssl-secret to add CSS DNSName (in case they are missing from previous deployment) which will be included in FNCM's keystores
+                local fncm_custom_ssl_secret=$(${CLI_CMD} get secret --no-headers --ignore-not-found ${content_cr_name}-fncm-custom-ssl-secret -n $deployment_project_name | awk '{print $1}') 
+                if [[ -z $fncm_custom_ssl_secret ]]; then
+                	info "${content_cr_name}-fncm-custom-ssl-secret is not found."
+                else
+                        info "Found ${content_cr_name}-fncm-custom-ssl-secret and delete it."
+                        ${CLI_CMD} delete secret ${content_cr_name}-fncm-custom-ssl-secret -n $deployment_project_name
+                fi
 
                 # For jsw.ibm.com/browse/DBACLD-153103 where we need to update the datavolume section of the CR to be in the right format
                 if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && ($cr_version == "21.0.3") ]]; then
@@ -651,7 +671,7 @@ function upgrade_deployment(){
                     printf "\n"
                 fi
                 
-                echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}PLEASE DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} AS ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA 23.0.2.X)${RESET_TEXT}"
+                echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} AS ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA 23.0.2.X)${RESET_TEXT}"
                 prompt_press_any_key_to_continue
                 printf "\n"
 
@@ -690,7 +710,7 @@ function upgrade_deployment(){
                     echo "${YELLOW_TEXT}- Refer to the Knowledge Center: \"Updating the custom resource for each capability in your deployment\" topic to complete REQUIRED steps for the installed pattern(s)."
                     echo "  - if upgrading from 21.0.3 or 22.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpd-updating-custom-resource-each-capability-in-your-deployment]"
                     echo "  - if upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment] ${RESET_TEXT}"
-                    echo "${YELLOW_TEXT}- After reviewing or modifying the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\", you need to follow the steps below to upgrade this CP4BA deployment.${RESET_TEXT}"
+                    echo "${YELLOW_TEXT}- After reviewing or modifying the custom resource file \"${UPGRADE_DEPLOYMENT_CONTENT_CR}\", you need to follow the steps below to upgrade this CP4BA deployment.${RESET_TEXT}"
                     # As a part of DBACLD-149126 solution we no longer needed the user to patch or annotate the custom resource file
                     echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR} -n $deployment_project_name${RESET_TEXT}" && step_num=$((step_num + 1))
 
@@ -794,10 +814,10 @@ function upgrade_deployment(){
                     if [[ $retry -eq ${maxRetry} ]]; then
                     printf "\n"
                     warning "Timeout waiting for IBM CP4BA Workflow Process Service operator to start"
-                    echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+                    echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
                     echo "oc describe pod $(oc get pod -n $deployment_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $deployment_project_name"
                     printf "\n"
-                    echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+                    echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
                     echo "oc describe rs $(oc get rs -n $deployment_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $deployment_project_name"
                     printf "\n"
                     exit 1
@@ -900,6 +920,15 @@ function upgrade_deployment(){
         # replace release/appVersion
         ${SED_COMMAND} "s|release: .*|release: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
         ${SED_COMMAND} "s|appVersion: .*|appVersion: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
+
+        # DBACLD-168537:  need to re-create {{meta.name}}-fncm-custom-ssl-secret to add CSS DNSName (in case they are missing from previous deployment) which will be included in FNCM's keystores
+        local fncm_custom_ssl_secret=$(${CLI_CMD} get secret --no-headers --ignore-not-found ${icp4acluster_cr_name}-fncm-custom-ssl-secret -n $deployment_project_name | awk '{print $1}') 
+        if [ -z $fncm_custom_ssl_secret ]; then
+        	info "${icp4acluster_cr_name}-fncm-custom-ssl-secret is not found."
+        else
+                info "Found ${icp4acluster_cr_name}-fncm-custom-ssl-secret and delete it."
+                ${CLI_CMD} delete secret ${icp4acluster_cr_name}-fncm-custom-ssl-secret -n $deployment_project_name
+        fi
 
         # 21.0.3
         # if select baw authoring
@@ -1537,8 +1566,18 @@ function upgrade_deployment(){
             info "Scaling down CPE deployment"
             ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-cpe-deploy -n $deployment_project_name >/dev/null 2>&1
             echo "Done!"
+            # To allow any changes to creation of the zen extension configuration that we make from IFIX to IFIX,its best if the watcher pods are scaled down prior to applying the new CR
+            # DBACLD-171900
+            info "Scaling down CPE Watcher deployment"
+            ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-cpe-watcher -n $deployment_project_name >/dev/null 2>&1
+            echo "Done!"
             info "Scaling down Navigator deployment"
             ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-navigator-deploy -n $deployment_project_name >/dev/null 2>&1
+            echo "Done!"
+            # To allow any changes to creation of the zen extension configuration that we make from IFIX to IFIX,its best if the watcher pods are scaled down prior to applying the new CR
+            # DBACLD-171900
+            info "Scaling down Navigator Watcher deployment"
+            ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-navigator-watcher -n $deployment_project_name >/dev/null 2>&1
             echo "Done!"
         fi
 
@@ -1667,7 +1706,7 @@ function upgrade_deployment(){
             printf "\n"
         fi
 
-        echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}PLEASE DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} AS ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA 23.0.2.X)${RESET_TEXT}"
+        echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} AS ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA 23.0.2.X)${RESET_TEXT}"
         prompt_press_any_key_to_continue
         printf "\n"
         select_apply_cr $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR
@@ -1701,7 +1740,7 @@ function upgrade_deployment(){
             for element in "${EXISTING_PATTERN_ARR[@]}"; do
                 if [[ "$element" != "decisions" && "$element" == "decisions_ads" ]]; then
                     echo -e "\x1B[33;5m- Automation Decision Services capability is installed in this CP4BA deployment: \x1B[0m"
-                    echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Please refer to the Knowledge Center: \"Upgrading IBM Automation Decision Services\" topic:"
+                    echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Refer to the Knowledge Center: \"Upgrading IBM Automation Decision Services\" topic:"
                     echo "    - if upgrading from 21.0.3 or 22.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=deployment-upgrading-automation-decision-services]"
                     echo "    - if upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=ucreciyd-upgrading-automation-decision-services]"
                     echo "  - Add the storage_configuration.sc_block_storage_classname property in the CR file if it is not already included."
@@ -1719,8 +1758,10 @@ function upgrade_deployment(){
             if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") ]]; then
                     echo -e "\x1B[33;5m- Automation Document Processing capability is installed in this CP4BA deployment: \x1B[0m"
                     echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Upgrade the Automation Document Processing databases"
-                    echo "    - If you are upgrading from 21.0.3 or 22.0.2, please refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-your-automation-document-processing-databases"
-                    echo "    - If you are upgrading from 23.0.2, please refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=2302-upgrading-your-automation-document-processing-databases"
+                    echo "    - If you are upgrading from 21.0.3 or 22.0.2, go to the following KC version:"
+                    echo -e "      ${GREEN_TEXT}https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE${RESET_TEXT}\n      Navigate to:\n        - \"Upgrading from 21.0.3 or 22.0.2\"\n        - \"Upgrading your IBM Cloud Pak deployment\"\n        - \"Updating the custom resource for each capability in your deployment\"\n        - \"Upgrading IBM Automation Document Processing\""
+                    echo "    - If you are upgrading from 23.0.2, go to the following KC version:"
+                    echo -e "      ${GREEN_TEXT}https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE${RESET_TEXT}\n      Navigate to:\n        - \"Upgrading from 23.0.2\"\n        - \"Upgrading your IBM Cloud Pak deployment\"\n        - \"Updating the custom resource for each capability in your deployment\"\n        - \"Upgrading IBM Automation Document Processing\""
                     step_num=$((step_num + 1))
 
                     # NOTE: After discussion with ADP team, we will only output a link to KC since the details of the steps may change based on the ADP version.
@@ -1793,7 +1834,7 @@ function upgrade_deployment(){
     fi
 
     if [[ (-z $icp4acluster_cr_name) && (-z $content_cr_name) && (-z $exist_wfps_cr_array) ]]; then
-        fail "No found Content or ICP4ACluster or WfPSRuntime custom resource in the project \"$deployment_project_name\""
+        fail "No Content or ICP4ACluster or WfPSRuntime custom resource found in the project \"$deployment_project_name\""
         exit 1
     fi
 }

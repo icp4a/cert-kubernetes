@@ -28,7 +28,8 @@ spec:
   ibm_license: ""
 
   shared_configuration:
-
+    ## This is an optional parameter, If the user installing cp4ba in a CNCF cluster and they selected the parameter sc_deployment_platform as "OCP" then the possible values for this parameter is: ARO or ROSA.
+    sc_deployment_ocp_platform:
     ## FileNet Content Manager (FNCM) license and possible values are: user, non-production, and production.
     ## This value could be different from the other licenses in the CR.
     sc_deployment_fncm_license: "<Required>"
@@ -105,7 +106,7 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/common/dba-keytool-initcontainer
-        tag: "24.0.0-IF004"
+        tag: "24.0.0-IF005"
 
     ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
     ## based on input from the user.
@@ -163,8 +164,8 @@ spec:
 
     ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
-    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true" (or the parameter doesn't exist), then the initialization will occur.
-    ## However, if sc_content_initialization is set to "false", then the initialization will not occur (even with the "initialize_configuration" section defined)
+    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true", then the initialization will occur.
+    ## However, if sc_content_initialization is set to "false" (or the parameter doesn't exist), then the initialization will not occur (even with the "initialize_configuration" section defined)
     sc_content_initialization: false
 
     ## OR
@@ -522,14 +523,14 @@ spec:
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
 
   ## The idp_iam_configuration is meant when you have an identity provider configured in iam that isn't a directory provider service
-  ## Such as Okta or AzureAD configured in IAM as the identity provider.
+  ## Such as Okta or Microsoft Entra ID configured in IAM as the identity provider.
   ## Set the idp_id to the name giving to the identity provider configured in IAM.
-  ## Set the idp_type.  Supported types are okta or azuread.
+  ## Set the idp_type.  Supported types are okta or Microsoft Entra ID.
   ## idp_allow_email_or_upn_short_names by default is true. Only specify idp_allow_email_or_upn_short_names: false if
   ## email or upn short name is not used to login
   #idp_iam_configuration:
   #  - idp_id: <idp_name>
-  #    idp_type: okta (or azuread)
+  #    idp_type: okta (or Microsoft Entra ID)
   #    idp_allow_email_or_upn_short_names: true (optional - default value is true)
 
   ## The beginning section of database configuration for CP4A
@@ -865,7 +866,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.0-IF004"
+        tag: "24.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1026,7 +1027,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "24.0.0-IF004"
+        tag: "24.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1123,7 +1124,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.0-IF004"
+        tag: "24.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1285,7 +1286,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.0-IF004"
+        tag: "24.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1405,7 +1406,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "24.0.0-IF004"
+        tag: "24.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1513,7 +1514,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "24.0.0-IF004"
+        tag: "24.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1661,7 +1662,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "24.0.0-IF004"
+      tag: "24.0.0-IF005"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2058,7 +2059,7 @@ spec:
 
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: "24.0.0-IF004"
+        tag: "24.0.0-IF005"
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -2178,7 +2179,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: "24.0.0-IF004"
+      tag: "24.0.0-IF005"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent

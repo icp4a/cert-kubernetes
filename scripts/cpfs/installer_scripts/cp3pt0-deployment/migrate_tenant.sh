@@ -18,8 +18,8 @@ OPERATOR_NS=""
 SERVICES_NS=""
 NS_LIST=""
 CONTROL_NS=""
-CHANNEL="v4.10"
-ODLM_CHANNEL="v4.3"
+CHANNEL="v4.11"
+ODLM_CHANNEL="v4.4"
 MAINTAINED_CHANNEL="v4.2"
 SOURCE="opencloud-operators"
 CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
@@ -374,8 +374,14 @@ function pre_req() {
     fi
 
     # When Common Service channel is less than v4.5, use maintained channel for ODLM channel
+    # When Common Service channel is between v4.5 and v4.10, use v4.3 for ODLM channel
     if (( channel_major < 4 )) || { (( channel_major == 4 )) && (( channel_minor < 5 )); }; then
         ODLM_CHANNEL="$MAINTAINED_CHANNEL"
+    elif (( channel_major == 4 )) && (( channel_minor >= 5 )) && (( channel_minor <= 10 )); then
+        ODLM_CHANNEL="v4.3"
+    else
+        odlm_minor=$(( channel_minor - 7 ))
+        ODLM_CHANNEL="v${channel_major}.${odlm_minor}"
     fi
 }
 
