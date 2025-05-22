@@ -41,7 +41,6 @@ spec:
   ##
   ######################################################################################################################
   shared_configuration:
-
     ## CP4A patterns or capabilities to be deployed.  This CR represents the "application" pattern (aka Business Automation Manager), which includes the following
     ## mandatory components: ban(Business Automation Navigator), ums (User Management Service), app_engine( Application Engine) and optional components: app_designer, ae_data_persistence
     sc_deployment_patterns: application
@@ -52,8 +51,8 @@ spec:
 
     ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
-    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true" (or the parameter doesn't exist), then the initialization will occur.
-    ## However, if sc_content_initialization is set to "false", then the initialization will not occur (even with the "initialize_configuration" section defined)
+    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true", then the initialization will occur.
+    ## However, if sc_content_initialization is set to "false" (or the parameter doesn't exist), then the initialization will not occur (even with the "initialize_configuration" section defined)
     sc_content_initialization: false
 
     sc_egress_configuration:

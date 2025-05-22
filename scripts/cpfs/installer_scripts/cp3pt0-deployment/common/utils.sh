@@ -312,7 +312,7 @@ function wait_for_cscr_status(){
     local namespace=$1
     local name=$2
     local condition="${OC} -n ${namespace} get commonservice ${name} --no-headers --ignore-not-found -o jsonpath='{.status.phase}' | grep 'Succeeded'"
-    local retries=100
+    local retries=150
     local sleep_time=6
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for CommonService CR ${name} in ${namespace} to be ready"
@@ -1044,6 +1044,12 @@ function cleanup_webhook() {
     info "Deleting ValidatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
 
+}
+
+function cleanup_webhook_service() {
+    local control_ns=$1
+    info "Deleting ibm-common-service-webhook-service"
+    ${OC} delete service ibm-common-service-webhook -n $control_ns --ignore-not-found
 }
 
 # Clean up secretshare deployment and CR in service_ns

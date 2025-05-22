@@ -12,9 +12,12 @@ spec:
       annotations:
         backup.velero.io/backup-volumes: keycloak-backup
         pre.hook.backup.velero.io/command: '["sh", "-c", "/keycloak/br_keycloak.sh backup <keycloak namespace>"]'
+        pre.hook.backup.velero.io/on-error: Fail
         pre.hook.backup.velero.io/timeout: 300s
         post.hook.backup.velero.io/command: '["sh", "-c", "rm -rf /keycloak/keycloak-backup/database && rm -rf /keycloak/keycloak-backup/secrets"]'
+        post.hook.backup.velero.io/on-error: Fail
         post.hook.restore.velero.io/command: '["sh", "-c", "/keycloak/br_keycloak.sh restore <keycloak namespace>"]'
+        post.hook.restore.velero.io/on-error: Fail
         post.hook.restore.velero.io/wait-timeout: 300s
         post.hook.restore.velero.io/exec-timeout: 300s
         post.hook.restore.velero.io/timeout: 720s

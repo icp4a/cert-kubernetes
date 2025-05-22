@@ -27,6 +27,12 @@ function create_fncm_gcddb_oracle_sql_file(){
 cat << EOF > $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createGCDDB.sql
 -- Please ensure you already have existing oracle instance or pluggable database (PDB). If not, please create one first
 
+-- NOTE: The tablespace creation command below uses file-based storage.  
+-- If your Oracle environment uses ASM (Automatic Storage Management),  
+-- update the 'DATAFILE' and 'TEMPFILE' paths to reflect your ASM configuration.  
+-- Additionally, ensure that database object names (e.g., tablespace, user, etc.)  
+-- match the expected naming conventions. Any deviations may cause issues. 
+
 -- create tablespace
 -- Please make sure you change the DATAFILE and TEMPFILE to your Oracle database.
 CREATE TABLESPACE ${dbuser}DATATS DATAFILE '/home/oracle/orcl/${dbuser}DATATS.dbf' SIZE 200M REUSE AUTOEXTEND ON NEXT 20M EXTENT MANAGEMENT LOCAL SEGMENT SPACE MANAGEMENT AUTO ONLINE PERMANENT;

@@ -19,6 +19,7 @@
 
 # Key used to authenticate with IBM Entitlement Registry
 # Check the link on how to obtain an IBM Entitlement key https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=deployment-getting-access-images-from-public-entitled-registry
+# Please make sure that the IBM Entitlement key is set in double quotes below.
 ENTITLEMENT_KEY="<REQUIRED>"
 
 # CNCF Only: Pull images from a pirvate registry

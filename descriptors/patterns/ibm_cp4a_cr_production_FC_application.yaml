@@ -28,6 +28,8 @@ spec:
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
   shared_configuration:
+    ## This is an optional parameter, If the user installing cp4ba in a CNCF cluster and they selected the parameter sc_deployment_platform as "OCP" then the possible values for this parameter is: ARO or ROSA.
+    sc_deployment_ocp_platform:
     ## CP4A patterns or capabilities to be deployed.  This CR represents the "application" pattern (aka Business Automation Application)
     sc_deployment_patterns: application
 
@@ -43,8 +45,8 @@ spec:
 
     ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
-    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true" (or the parameter doesn't exist), then the initialization will occur.
-    ## However, if sc_content_initialization is set to "false", then the initialization will not occur (even with the "initialize_configuration" section defined)
+    ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true", then the initialization will occur.
+    ## However, if sc_content_initialization is set to "false" (or the parameter doesn't exist), then the initialization will not occur (even with the "initialize_configuration" section defined)
     sc_content_initialization: false
 
     sc_egress_configuration:
@@ -199,7 +201,7 @@ spec:
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/cpe
-  #       tag: "24.0.1"
+  #       tag: "24.0.1-IF002"
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
@@ -346,7 +348,7 @@ spec:
   #         pull_policy: IfNotPresent
   #         ## The default repository is the IBM Entitled Registry.
   #         repository: cp.icr.io/cp/cp4a/fncm/lscollector
-  #         tag: "24.0.1"
+  #         tag: "24.0.1-IF002"
   #       ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
   #       ## If more resources are needed, make the changes here to meet your requirement.
   #       resources:
@@ -382,7 +384,7 @@ spec:
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/graphql
-  #       tag: "24.0.1"
+  #       tag: "24.0.1-IF002"
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
@@ -498,7 +500,7 @@ spec:
   #  #    pull_policy: IfNotPresent
   #  #    ## The default repository is the IBM Entitled Registry.
   #  #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-  #  #    tag: "24.0.1"
+  #  #    tag: "24.0.1-IF002"
   #  # #  #  ## Below are the default LSReporter Production settings.
   #  #  ## Make the necessary changes as you see fit.
   #  #  product_settings:

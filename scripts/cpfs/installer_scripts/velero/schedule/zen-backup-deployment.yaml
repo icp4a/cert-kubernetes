@@ -14,8 +14,10 @@ spec:
       annotations:
         backup.velero.io/backup-volumes: zendump
         pre.hook.backup.velero.io/command: '["sh", "-c", "/zen4/zen4-br.sh <zenservice namespace> true"]'
+        pre.hook.backup.velero.io/on-error: Fail
         pre.hook.backup.velero.io/timeout: 300s
         post.hook.restore.velero.io/command: '["sh", "-c", "/zen4/zen4-br.sh <zenservice namespace> false"]'
+        post.hook.restore.velero.io/on-error: Fail
         post.hook.restore.velero.io/wait-timeout: 300s
         post.hook.restore.velero.io/exec-timeout: 300s
         post.hook.restore.velero.io/timeout: 600s

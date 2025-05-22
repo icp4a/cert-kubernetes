@@ -40,7 +40,8 @@ spec:
   ######################################################################################################################
 
   shared_configuration:
-
+    ## This is an optional parameter, If the user installing cp4ba in a CNCF cluster and they selected the parameter sc_deployment_platform as "OCP" then the possible values for this parameter is: ARO or ROSA.
+    sc_deployment_ocp_platform:
     ## CP4A patterns or capabilities to be deployed. This CR represents Operational Decision Manager "decisions" pattern
     ## that brings Decision Center, Rule Execution Server and Decision Runtime, based on the user specification in the
     ## sc_optional_components specification
@@ -222,7 +223,7 @@ spec:
 
     image:
       # Specify to override the tag docker images in case of an interim fix.
-      tag: "24.0.1"
+      tag: "24.0.1-IF002"
       # Specify the pull policy for the Docker images. See Kuberntes documentation for more inforations.
       # Possible values : IfNotPresent, Always, Never
       pullPolicy: IfNotPresent

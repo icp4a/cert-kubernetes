@@ -1336,6 +1336,16 @@ rules:
   - verbs:
       - get
       - list
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - watsonxaiifm.cpd.ibm.com
+    resources:
+      - watsonxaiifm
+  - verbs:
+      - get
+      - list
     apiGroups:
       - ibm.com
     resources:

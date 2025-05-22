@@ -35,6 +35,7 @@ DEBUG=0
 BACKUP_LICENSING="false"
 PREVIEW_MODE=0
 IS_ISOLATED=0
+REQUEST_CERTMANAGER="false"
 
 # ---------- Command variables ----------
 
@@ -117,6 +118,16 @@ function main() {
     #need to get the namespaces for csmaps generation before pausing cs, otherwise namespace-scope cm does not include all namespaces
     prereq
     local ns_list=$(gather_csmaps_ns)
+    local full_ns_list="${ns_list},${EXCLUDED_NS}"
+    full_ns_list=$(echo "${full_ns_list//,/$'\n'}"| sort -u)
+    # verify if cert manager is requested
+    check_if_certmanager_requested "${full_ns_list}"
+
+    #verify one and only one cert manager is installed
+    if [[ $REQUEST_CERTMANAGER == "true" ]]; then
+        check_certmanager_count
+    fi
+
     pause
     cleanup_webhook
     cleanup_secretshare
@@ -134,7 +145,18 @@ function main() {
         info "Licensing not marked for backup, skipping."
     fi
     restart
-    wait_for_certmanager "${ns_list}"
+    check_if_certmanager_requested "${ns_list}"
+    if [[ $REQUEST_CERTMANAGER == "true" ]]; then
+        wait_for_certmanager
+    else
+        # check if certmanager is requested in excluded namespace
+        excluded_namespace=$(echo "${EXCLUDED_NS//,/$'\n'}"| sort -u)
+        check_if_certmanager_requested "${excluded_namespace}"
+        if [[ $REQUEST_CERTMANAGER == "true" ]]; then
+            request_certmanager
+            wait_for_certmanager
+        fi
+    fi
     wait_for_nss_update "${ns_list}"
     success "Isolation complete"
 }
@@ -177,8 +199,6 @@ function prereq() {
         error "Invalid value for DEBUG. Expected 0 or 1."
     fi
 
-    #verify one and only one cert manager is installed
-    check_certmanager_count
     check_command "${OC}"
     check_command "${YQ}"
     # Check yq version
@@ -762,10 +782,10 @@ function cleanup_secretshare() {
     cleanup_deployment "secretshare" $MASTER_NS
 }
 
-function check_if_certmanager_deployed() {
+function check_if_certmanager_requested() {
     local namespaces=$@
-    info "Checking for cert manager deployed in scope."
-    local deployed="false"
+    info "Checking for cert manager requested in scope."
+    local requested="false"
     for ns in $namespaces
     do
         opreqs=$(${OC} get opreq -n $ns --no-headers | awk '{print $1}' | tr '\n' ' ')
@@ -773,15 +793,25 @@ function check_if_certmanager_deployed() {
         do
             local return_value=$(${OC} get opreq $opreq -n $ns -o yaml | ${YQ} '.spec.requests[]' | grep "name: ibm-cert-manager-operator" || echo "fail")
             if [[ $return_value != "fail" ]]; then
-                deployed="true"
-                info "Cert manager requested in scope, moving on..."
+                requested="true"
+                info "Cert manager requested in scope"
                 break
             fi
         done
     done
 
-    if [[ $deployed == "false" ]]; then
-        info "Cert manager not requested in scope, deploying..."
+    if [[ $requested != "false" ]]; then
+        info "Cert manager is requested in scope"
+        REQUEST_CERTMANAGER="true"
+    else
+        info "Cert manager is not requested in scope"
+        REQUEST_CERTMANAGER="false"
+    fi
+}
+
+function request_certmanager() {
+    # create operandrequst to request cert-manager
+    info "Cert manager not requested in scope, deploying..."
         cat <<EOF > /tmp/tmp-opreq.yaml
 apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRequest
@@ -802,7 +832,6 @@ EOF
 
     ${OC} apply -f /tmp/tmp-opreq.yaml
     rm -f /tmp/tmp-opreq.yaml
-    fi
 
 }
 
@@ -811,7 +840,6 @@ function wait_for_certmanager() {
     title " Wait for Cert Manager pods to come ready "
     msg "-----------------------------------------------------------------------"
     
-    check_if_certmanager_deployed "${namespaces}"
 
     #check cert manager operator pod
     local name="cert-manager-operator"
@@ -1078,9 +1106,6 @@ function prev_fail_check() {
 
     if [[ $cs_op_scale_needed == "true" ]]; then
         check_CSCR "$MASTER_NS"
-        #wait for cert manager to come back ready after scaling up
-        local ns_list=$(gather_csmaps_ns)
-        wait_for_certmanager "${ns_list}"
     fi
 
 }

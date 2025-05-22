@@ -45,11 +45,12 @@ spec:
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
   shared_configuration:
-
+    ## This is an optional parameter, If the user installing cp4ba in a CNCF cluster and they selected the parameter sc_deployment_platform as "OCP" then the possible values for this parameter is: ARO or ROSA.
+    sc_deployment_ocp_platform:
     ## CP4A patterns or capabilities to be deployed. This CR represents the "decisions_ads" pattern that brings ADS Designer and ADS Runtime.
 
     sc_deployment_patterns: decisions_ads
-
+    
     ## The optional components to be installed if listed here.
     ## This is normally populated by the User script based on input from the user.
     ## User can also manually specify the optional components to be deployed here.
@@ -180,7 +181,7 @@ spec:
     rr_integration:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
-        tag: "24.0.1"
+        tag: "24.0.1-IF002"
 
       resources:
         requests:
@@ -198,7 +199,7 @@ spec:
       admin_secret_name: ibm-dba-ads-mongo-secret
       image:
         repository: cp.icr.io/cp/cp4a/ads/mongo
-        tag: 6.0.19
+        tag: 6.0.20
 
       persistence:
         use_dynamic_provisioning: true
@@ -220,7 +221,7 @@ spec:
     rest_api:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-restapi
-        tag: "24.0.1"
+        tag: "24.0.1-IF002"
       replica_count: 1
 
       resources:
@@ -236,7 +237,7 @@ spec:
     credentials_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-credentials
-        tag: "24.0.1"
+        tag: "24.0.1-IF002"
       replica_count: 1
 
       resources:
@@ -250,7 +251,7 @@ spec:
     git_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
-        tag: "24.0.1"
+        tag: "24.0.1-IF002"
       replica_count: 1
 
       resources:
@@ -264,7 +265,7 @@ spec:
     parsing_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-parsing
-        tag: "24.0.1"
+        tag: "24.0.1-IF002"
       replica_count: 1
 
       resources:
@@ -284,7 +285,7 @@ spec:
     run_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-run
-        tag: "24.0.1"
+        tag: "24.0.1-IF002"
       replica_count: 1
 
       resources:
@@ -304,7 +305,7 @@ spec:
     decision_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: "24.0.1"
+        tag: "24.0.1-IF002"
       replica_count: 1
 
       # Whether the decision runtime should include an exception stack trace when an incident occurs.

@@ -29,7 +29,6 @@ spec:
   ## your application is receiving expected input.
   ## shared configuration among all tribe
   shared_configuration:
-
     ## FileNet Content Manager (FNCM) license and possible values are: user, concurrent-user, authorized-user, non-production, and production.
     ## This value could be different from the rest of the licenses.
     sc_deployment_fncm_license: non-production

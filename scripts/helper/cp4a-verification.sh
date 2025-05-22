@@ -86,7 +86,7 @@ function verify_ldap_connection(){
   if [[ $ldap_ssl == "true" || $ldap_ssl == "yes" || $ldap_ssl == "y" ]]; then
     tmp_cert_folder="$(prop_ldap_property_file LDAP_SSL_CERT_FILE_FOLDER)"
     if [[ ! -f "${tmp_cert_folder}/ldap-cert.crt" ]]; then
-      fail "Not found required certificat file \"ldap-cert.crt\" under \"$tmp_cert_folder\", exit..."
+      fail "Not found required certificate file \"ldap-cert.crt\" under \"$tmp_cert_folder\", exit..."
       exit 1
     fi
     rm -rf /tmp/ldap.der 2>&1 </dev/null
@@ -219,12 +219,12 @@ function verify_db_connection(){
     # check certification existing or not
     if [[ $DB_TYPE == "oracle" ]]; then
       if [[ ! -f "${dbcafolder}/db-cert.crt" ]]; then
-        fail "Not found required server certificat file \"db-cert.crt\" under \"$dbcafolder\" for $DB_TYPE database instance \"$dbuser\", exit..."
+        fail "Not found required server certificate file \"db-cert.crt\" under \"$dbcafolder\" for $DB_TYPE database instance \"$dbuser\", exit..."
         exit 1
       fi
     elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" || $DB_TYPE == "sqlserver" ]]; then
       if [[ ! -f "${dbcafolder}/db-cert.crt" ]]; then
-        fail "Not found required server certificat file \"db-cert.crt\" under \"$dbcafolder\" for $DB_TYPE database server \"$dbserver\", exit..."
+        fail "Not found required server certificate file \"db-cert.crt\" under \"$dbcafolder\" for $DB_TYPE database server \"$dbserver\", exit..."
         exit 1
       fi
     elif [[ $DB_TYPE == "postgresql" ]]; then
@@ -232,7 +232,7 @@ function verify_db_connection(){
         tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
         if [[ $tmp_flag == "no" || $tmp_flag == "false" || $tmp_flag == "" || -z $tmp_flag ]]; then
           if [[ ! -f "${dbcafolder}/db-cert.crt" ]]; then
-            fail "Not found required server certificat file \"db-cert.crt\" under \"$dbcafolder\" for $DB_TYPE database server \"$dbserver\", exit..."
+            fail "Not found required server certificate file \"db-cert.crt\" under \"$dbcafolder\" for $DB_TYPE database server \"$dbserver\", exit..."
             exit 1
           fi
         elif [[ $tmp_flag == "yes" || $tmp_flag == "true" || $tmp_flag == "y" ]]; then
@@ -241,7 +241,7 @@ function verify_db_connection(){
             exit 1
           fi
           if [[ ! -f "${dbcafolder}/client.crt" ]]; then
-            fail "Not found required client certificat file \"client.crt\" for under \"$dbcafolder\" for $DB_TYPE database server \"$dbserver\", exit..."
+            fail "Not found required client certificate file \"client.crt\" for under \"$dbcafolder\" for $DB_TYPE database server \"$dbserver\", exit..."
             exit 1
           fi
           if [[ ! -f "${dbcafolder}/client.key" ]]; then
@@ -254,14 +254,14 @@ function verify_db_connection(){
     while true; do
         case $DB_TYPE in
           "db2")                                                                                   # -h {{ db2_server }} -p {{ db2_port }} -db {{ db2_dbname }} -u {{ db2_user }} -pwd {{ db2_pwd }} -ssl -ca {{ db2_cafile }}
-              output=$(java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -ssl -ca $dbcafolder/db-cert.crt 2>&1)
+              output=$(java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -ssl -ca $dbcafolder/db-cert.crt 2>&1)
               retVal_verify_db_tmp=$?
               connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
               if [[ ! -z $connection_time ]]; then
                 display_latency_warning $connection_time "Database"
               fi
               [[ retVal_verify_db_tmp -ne 0 ]] && \
-              warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar\" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -ssl -ca $dbcafolder/db-cert.crt" && \
+              warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar\" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -ssl -ca $dbcafolder/db-cert.crt" && \
               fail "Unable to connect to database \"$dbname\" on database server \"$dbserver\", please check configuration again."
               [[ retVal_verify_db_tmp -eq 0 ]] && \
               success "Checked DB connection for \"$dbname\" on database server \"$dbserver\", PASSED!"
@@ -277,14 +277,14 @@ function verify_db_connection(){
               openssl x509 -outform der -in $dbcafolder/db-cert.crt -out $TRUSTSTORE_FOLDER/oracle-db-cert.der 2>&1 </dev/null
               keytool -import -alias cp4baOraleCerts -keystore $TRUSTSTORE_FOLDER/oracle-db-truststore.p12 -file $TRUSTSTORE_FOLDER/oracle-db-cert.der -storepass "$db_truststore_password" -storetype PKCS12 -noprompt 2>&1 </dev/null
 
-              output=$(java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -cp "${DB_JDBC_NAME}/ojdbc8.jar:${DB_CONNECTION_JAR_PATH}/OracleJDBCConnection.jar" OracleConnection -url "$oracle_url" -u $dbuser -pwd $dbuserpwd -ssl -trustorefile $TRUSTSTORE_FOLDER/oracle-db-truststore.p12 -trustoretype "PKCS12" -trustorePwd "$db_truststore_password" 2>&1)
+              output=$(java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp "${DB_JDBC_NAME}/ojdbc8.jar:${DB_CONNECTION_JAR_PATH}/OracleJDBCConnection.jar" OracleConnection -url "$oracle_url" -u $dbuser -pwd $dbuserpwd -ssl -trustorefile $TRUSTSTORE_FOLDER/oracle-db-truststore.p12 -trustoretype "PKCS12" -trustorePwd "$db_truststore_password" 2>&1)
               retVal_verify_db_tmp=$?
               connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
               if [[ ! -z $connection_time ]]; then
                 display_latency_warning $connection_time "Database"
               fi
               [[ retVal_verify_db_tmp -ne 0 ]] && \
-              warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -cp \"${DB_JDBC_NAME}/ojdbc8.jar:${DB_CONNECTION_JAR_PATH}/OracleJDBCConnection.jar\" OracleConnection -url \"$oracle_url\" -u $dbuser -pwd ****** -ssl -trustorefile $TRUSTSTORE_FOLDER/oracle-db-truststore.p12 -trustoretype \"PKCS12\" -trustorePwd \"$db_truststore_password\"" && \
+              warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp \"${DB_JDBC_NAME}/ojdbc8.jar:${DB_CONNECTION_JAR_PATH}/OracleJDBCConnection.jar\" OracleConnection -url \"$oracle_url\" -u $dbuser -pwd ****** -ssl -trustorefile $TRUSTSTORE_FOLDER/oracle-db-truststore.p12 -trustoretype \"PKCS12\" -trustorePwd \"$db_truststore_password\"" && \
               fail "Unable to connect to database \"$dbuser\" using JDBC URL \"$oracle_url\", please check configuration again."
               [[ retVal_verify_db_tmp -eq 0 ]] && \
               success "Checked DB connection for \"$dbuser\" using JDBC URL \"$oracle_url\", PASSED!"
@@ -320,7 +320,7 @@ function verify_db_connection(){
               tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
               if [[ $tmp_flag == "no" || $tmp_flag == "false" || $tmp_flag == "" || -z $tmp_flag ]]; then
                 postgres_cafile="${dbcafolder}/db-cert.crt"
-                output=$(java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode require -ca $postgres_cafile 2>&1)
+                output=$(java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode require -ca $postgres_cafile 2>&1)
                 retVal_verify_db_tmp=$?
                 connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
                 if [[ ! -z $connection_time ]]; then
@@ -328,7 +328,7 @@ function verify_db_connection(){
                 fi
 
                 [[ retVal_verify_db_tmp -ne 0 ]] && \
-                warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode require -ca $postgres_cafile" && \
+                warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode require -ca $postgres_cafile" && \
                 fail "Unable to connect to database \"$dbname\" on database server \"$dbserver\", please check configuration again."
                 [[ retVal_verify_db_tmp -eq 0 ]] && \
                 success "Checked DB connection for \"$dbname\" on database server \"$dbserver\", PASSED!"
@@ -340,7 +340,7 @@ function verify_db_connection(){
                 rm -rf ${dbcafolder}/clientkey.pk8 2>&1 </dev/null
                 openssl pkcs8 -topk8 -outform DER -in $postgres_clientkeyfile -out ${dbcafolder}/clientkey.pk8 -nocrypt 2>&1 </dev/null
                 dbuserpwd="changit" # client auth does not need dbuserpwd
-                output=$(java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${dbcafolder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
+                output=$(java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${dbcafolder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
                 retVal_verify_db_tmp=$?
                 connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
                 if [[ ! -z $connection_time ]]; then
@@ -348,7 +348,7 @@ function verify_db_connection(){
                 fi
 
                 [[ retVal_verify_db_tmp -ne 0 ]] && \
-                warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode verify-ca -ca $postgres_cafile -clientkey ${dbcafolder}/clientkey.pk8 -clientcert $postgres_clientcertfile" && \
+                warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode verify-ca -ca $postgres_cafile -clientkey ${dbcafolder}/clientkey.pk8 -clientcert $postgres_clientcertfile" && \
                 fail "Unable to connect to database \"$dbname\" on database server \"$dbserver\", please check configuration again."
                 [[ retVal_verify_db_tmp -eq 0 ]] && \
                 success "Checked DB connection for \"$dbname\" on database server \"$dbserver\", PASSED!"
@@ -362,7 +362,7 @@ function verify_db_connection(){
     while true; do
         case $DB_TYPE in
           "db2")                                                                                                                                                   # -h {{ db2_server }} -p {{ db2_port }} -db {{ db2_dbname }} -u {{ db2_user }} -pwd {{ db2_pwd }} -ssl -ca {{ db2_cafile }}
-              output=$(java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -cp "${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd 2>&1)
+              output=$(java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp "${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd 2>&1)
               retVal_verify_db_tmp=$?
               connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
               if [[ ! -z $connection_time ]]; then
@@ -370,14 +370,14 @@ function verify_db_connection(){
               fi
 
               [[ retVal_verify_db_tmp -ne 0 ]] && \
-              warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -cp \"${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar\" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ******" && \
+              warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp \"${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar\" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ******" && \
               fail "Unable to connect to database \"$dbname\" on database host server \"$dbserver\", please check configuration again."
               [[ retVal_verify_db_tmp -eq 0 ]] && \
               success "Checked DB connection for \"$dbname\" on database host server \"$dbserver\", PASSED!"
               break
               ;;
           "oracle")                                                                                                                                 # -url "{{ oracle_url }}" -u {{ oracle_user }} -pwd {{ oracle_password_decoded }} -ssl -trustorefile {{trustorefile}} -trustoretype {{trustoretype}} -trustorePwd {{trustorePwd}}
-              output=$(java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -cp "${DB_JDBC_NAME}/ojdbc8.jar:${DB_CONNECTION_JAR_PATH}/OracleJDBCConnection.jar" OracleConnection -url "$oracle_url" -u $dbuser -pwd $dbuserpwd 2>&1)
+              output=$(java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp "${DB_JDBC_NAME}/ojdbc8.jar:${DB_CONNECTION_JAR_PATH}/OracleJDBCConnection.jar" OracleConnection -url "$oracle_url" -u $dbuser -pwd $dbuserpwd 2>&1)
               retVal_verify_db_tmp=$?
               connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
               if [[ ! -z $connection_time ]]; then
@@ -385,35 +385,35 @@ function verify_db_connection(){
               fi
 
               [[ retVal_verify_db_tmp -ne 0 ]] && \
-              warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -cp \"${DB_JDBC_NAME}/ojdbc8.jar:${DB_CONNECTION_JAR_PATH}/OracleJDBCConnection.jar\" OracleConnection -url \"$oracle_url\" -u $dbuser -pwd ******" && \
+              warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp \"${DB_JDBC_NAME}/ojdbc8.jar:${DB_CONNECTION_JAR_PATH}/OracleJDBCConnection.jar\" OracleConnection -url \"$oracle_url\" -u $dbuser -pwd ******" && \
               echo -e  "\x1B[1;31mUnable to connect to database \"$dbuser\" using JDBC URL \"$oracle_url\", please check configuration again.\x1B[0m"
               [[ retVal_verify_db_tmp -eq 0 ]] && \
               success "Checked DB connection for \"$dbuser\" using JDBC URL \"$oracle_url\", PASSED!"
               break
               ;;
           "sqlserver")                                                                                                          # SQLConnection -h {{ database_servername }} -p {{ database_port }} -d {{ database_name }} -u {{ sqlserver_user }} -pwd {{ sqlserver_password_decoded }} -ssl 'encrypt=false'
-              output=$(java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -cp "${DB_JDBC_NAME}/mssql-jdbc.jre8.jar:${DB_CONNECTION_JAR_PATH}/SQLJDBCConnection.jar" SQLConnection -h $dbserver -p $dbport -d $dbname -u $dbuser -pwd $dbuserpwd -ssl 'encrypt=false' 2>&1)
+              output=$(java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp "${DB_JDBC_NAME}/mssql-jdbc.jre8.jar:${DB_CONNECTION_JAR_PATH}/SQLJDBCConnection.jar" SQLConnection -h $dbserver -p $dbport -d $dbname -u $dbuser -pwd $dbuserpwd -ssl 'encrypt=false' 2>&1)
               retVal_verify_db_tmp=$?
               connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
               if [[ ! -z $connection_time ]]; then
                 display_latency_warning $connection_time "Database"
               fi
               [[ retVal_verify_db_tmp -ne 0 ]] && \
-              warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -cp \"${DB_JDBC_NAME}/mssql-jdbc.jre8.jar:${DB_CONNECTION_JAR_PATH}/SQLJDBCConnection.jar\" SQLConnection -h $dbserver -p $dbport -d $dbname -u $dbuser -pwd ****** -ssl 'encrypt=false'" && \
+              warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp \"${DB_JDBC_NAME}/mssql-jdbc.jre8.jar:${DB_CONNECTION_JAR_PATH}/SQLJDBCConnection.jar\" SQLConnection -h $dbserver -p $dbport -d $dbname -u $dbuser -pwd ****** -ssl 'encrypt=false'" && \
               fail "Unable to connect to database \"$dbname\" on database host server \"$dbserver\", please check configuration again."
               [[ retVal_verify_db_tmp -eq 0 ]] && \
               success "Checked DB connection for \"$dbname\" on database host server \"$dbserver\", PASSED!"
               break
               ;;
           "postgresql")                                                                                                                                                                                    # -h {{ postgres_host }} -p {{ postgres_port }} -db {{ postgres_db }} -u {{ postgresql_server_user }} -pwd {{ postgres_pwd }} -sslmode require -ca {{ postgres_cafile}}
-              output=$(java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -Dcom.ibm.jsse2.overrideDefaultTLS=true -cp "${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode disable 2>&1)
+              output=$(java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -cp "${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode disable 2>&1)
               retVal_verify_db_tmp=$?
               connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
               if [[ ! -z $connection_time ]]; then
                 display_latency_warning $connection_time "Database"
               fi
               [[ retVal_verify_db_tmp -ne 0 ]] && \
-              warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=en -Duser.country=US -Dcom.ibm.jsse2.overrideDefaultTLS=true -cp \"${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode disable" && \
+              warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -cp \"${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode disable" && \
               fail "Unable to connect to database \"$dbname\" on database host server \"$dbserver\", please check configuration again."
               [[ retVal_verify_db_tmp -eq 0 ]] && \
               success "Checked DB connection for \"$dbname\" on database host server \"$dbserver\", PASSED!"

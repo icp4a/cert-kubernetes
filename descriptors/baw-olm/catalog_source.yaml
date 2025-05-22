@@ -11,11 +11,11 @@
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
-  name: ibm-operator-catalog
+  name: ibm-baw-operator-catalog
   namespace: openshift-marketplace
 spec:
-  displayName: "IBM Operator Catalog"
-  image: icr.io/cpopen/ibm-operator-catalog
+  displayName: "IBM BAW on Containers Catalog"
+  image: icr.io/cpopen/ibm-cs-bawautomation-catalog@sha256:77135e808552cff52f0f86142a54815bcf773d70b87fce6d74226ca48c8d7212
   publisher: IBM
   sourceType: grpc
   updateStrategy:

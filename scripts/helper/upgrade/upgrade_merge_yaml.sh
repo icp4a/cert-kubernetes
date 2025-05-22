@@ -722,10 +722,29 @@ function upgrade_deployment(){
                 info "Scaling down CPE deployment"
                 ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-cpe-deploy -n $deployment_project_name >/dev/null 2>&1
                 echo "Done!"
+                # To allow any changes to the creation of the zen extension configuration that we make from IFIX to IFIX,its best if the watcher pods are scaled down prior to applying the new CR
+                # DBACLD-171900
+                info "Scaling down CPE Watcher deployment"
+                ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-cpe-watcher -n $deployment_project_name >/dev/null 2>&1
+                echo "Done!"
                 info "Scaling down Navigator deployment"
                 ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-navigator-deploy -n $deployment_project_name >/dev/null 2>&1
                 echo "Done!"
-
+                # To allow any changes to creation of the zen extension configuration that we make from IFIX to IFIX,its best if the watcher pods are scaled down prior to applying the new CR
+                # DBACLD-171900
+                info "Scaling down Navigator Watcher deployment"
+                ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-navigator-watcher -n $deployment_project_name >/dev/null 2>&1
+                echo "Done!"
+                
+                # DBACLD-168537: need to re-create {{meta.name}}-fncm-custom-ssl-secret to add CSS DNSName (in case they are missing from previous deployment) which will be included in FNCM's keystores
+                local fncm_custom_ssl_secret=$(${CLI_CMD} get secret --no-headers --ignore-not-found ${content_cr_name}-fncm-custom-ssl-secret -n $deployment_project_name | awk '{print $1}') 
+                if [[ -z $fncm_custom_ssl_secret ]]; then
+                    info "${content_cr_name}-fncm-custom-ssl-secret is not found."
+                else
+                    info "Found ${content_cr_name}-fncm-custom-ssl-secret and delete it."
+                    ${CLI_CMD} delete secret ${content_cr_name}-fncm-custom-ssl-secret -n $deployment_project_name
+                fi
+                
                 # For jsw.ibm.com/browse/DBACLD-153103 where we need to update the datavolume section of the CR to be in the right format
                 if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && ($cr_version == "21.0.3") ]]; then
                     #function to update datastore section to the current format if required
@@ -789,7 +808,7 @@ function upgrade_deployment(){
                         echo "  - If upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment]"
                     fi
                     echo "  - If upgrading from 24.0.0: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment] ${RESET_TEXT}"
-                    echo "${YELLOW_TEXT}- After reviewing or modifying the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\", you need to follow the steps below to upgrade this CP4BA deployment.${RESET_TEXT}"
+                    echo "${YELLOW_TEXT}- After reviewing or modifying the custom resource file \"${UPGRADE_DEPLOYMENT_CONTENT_CR}\", you need to follow the steps below to upgrade this CP4BA deployment.${RESET_TEXT}"
 
                     # As a part of DBACLD-149126 solution we no longer needed the user to patch or annotate the custom resource file
                     echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR} -n $deployment_project_name${RESET_TEXT}" && step_num=$((step_num + 1))
@@ -893,7 +912,7 @@ function upgrade_deployment(){
             info "Checking for IBM CP4BA Workflow Process Service operator pod initialization"
             maxRetry=10
             for ((retry=0;retry<=${maxRetry};retry++)); do
-                isReady=$(${CLI_CMD} get csv ibm-cp4a-wfps-operator.$CP4BA_CSV_VERSION -n $deployment_project_name -o jsonpath='{.status.phase}')
+                isReady=$(${CLI_CMD} get csv ibm-cp4a-wfps-operator.$CP4BA_PATTERN_OPR_CSV_VERSION -n $deployment_project_name -o jsonpath='{.status.phase}')
                 # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $deployment_project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine $CP4BA_RELEASE_BASE")
                 if [[ $isReady != "Succeeded" ]]; then
                     if [[ $retry -eq ${maxRetry} ]]; then
@@ -1011,6 +1030,15 @@ function upgrade_deployment(){
         update_license ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} "fncm"
         update_license ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} "baw"
 
+        # DBACLD-168537: need to re-create {{meta.name}}-fncm-custom-ssl-secret to add CSS DNSName (in case they are missing from previous deployment) which will be included in FNCM's keystores
+        local fncm_custom_ssl_secret=$(${CLI_CMD} get secret --no-headers --ignore-not-found ${icp4acluster_cr_name}-fncm-custom-ssl-secret -n $deployment_project_name | awk '{print $1}') 
+        if [[ -z $fncm_custom_ssl_secret ]]; then
+            info "${icp4acluster_cr_name}-fncm-custom-ssl-secret is not found."
+        else
+            info "Found ${icp4acluster_cr_name}-fncm-custom-ssl-secret and delete it."
+            ${CLI_CMD} delete secret ${icp4acluster_cr_name}-fncm-custom-ssl-secret -n $deployment_project_name
+        fi
+        
         # 21.0.3
         # if select baw authoring, handles specific upgrades for versions and optional components related to BAW authoring
         if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $cr_version == "21.0.3" && (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "baw_authoring") ]]; then
@@ -1655,8 +1683,18 @@ function upgrade_deployment(){
             info "Scaling down CPE deployment"
             ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-cpe-deploy -n $deployment_project_name >/dev/null 2>&1
             echo "Done!"
+            # To allow any changes to creation of the zen extension configuration that we make from IFIX to IFIX,its best if the watcher pods are scaled down prior to applying the new CR
+            # DBACLD-171900
+            info "Scaling down CPE Watcher deployment"
+            ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-cpe-watcher -n $deployment_project_name >/dev/null 2>&1
+            echo "Done!"
             info "Scaling down Navigator deployment"
             ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-navigator-deploy -n $deployment_project_name >/dev/null 2>&1
+            echo "Done!"
+            # To allow any changes to creation of the zen extension configuration that we make from IFIX to IFIX,its best if the watcher pods are scaled down prior to applying the new CR
+            # DBACLD-171900
+            info "Scaling down Navigator Watcher deployment"
+            ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-navigator-watcher -n $deployment_project_name >/dev/null 2>&1
             echo "Done!"
         fi
 

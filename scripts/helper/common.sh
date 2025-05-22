@@ -153,29 +153,32 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 # Release/Patch version for CP4BA
 # CP4BA_RELEASE_BASE is for fetch content/foundation operator pod, only need to change for major release.
 CP4BA_RELEASE_BASE="24.0.1"
-CP4BA_PATCH_VERSION="IF001"
+CP4BA_PATCH_VERSION="IF003"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v24.1.1"
+CP4BA_CSV_VERSION="v24.1.3"
+# the above CSV_VERSION is for the cp4ba, foundation, workflow operators as those were refreshed after 24.0.1-IF002 was released
+# the below CSV_VERSION is for the pattern operators: content, insights-engine, ads, odm, workflow-ps, pfs etc 
+CP4BA_PATTERN_OPR_CSV_VERSION="v24.1.2"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
 CP4BA_CHANNEL_VERSION="v24.1"
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.10.0"
+CS_OPERATOR_VERSION="v4.11.0"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
-CS_CHANNEL_VERSION="v4.10"
+CS_CHANNEL_VERSION="v4.11"
 # CERT_LICENSE_OPERATOR_VERSION is for checking IBM cert-manager/licensing operator upgrade status, need to update for each IFIX
-CERT_LICENSE_OPERATOR_VERSION="v4.2.11"
+CERT_LICENSE_OPERATOR_VERSION="v4.2.12"
 # CERT_LICENSE_CHANNEL_VERSION is for for IBM cert-manager/licensing script -c option, need to update for each IFIX
 CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
-CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-10-0"
+CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-11-0"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v6.1.0"
+ZEN_OPERATOR_VERSION="v6.1.1"
 # BTS_CHANNEL_VERSION is for for BTS, need to update for each IFIX
 BTS_CHANNEL_VERSION="v3.35"
-# BTS_CATALOG_VERSION is for BTS 3.35.1.
-BTS_CATALOG_VERSION="bts-operator-v3-35-1"
+# BTS_CATALOG_VERSION is for BTS 3.35.2.
+BTS_CATALOG_VERSION="ibm-bts-operator-catalog-v3-35"
 # REQUIREDVER_BTS is for checking bts operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_BTS="3.35.1"
+REQUIREDVER_BTS="3.35.2"
 # REQUIREDVER_POSTGRESQL is for checking postgresql operator upgrade status before run removal_iaf.sh, need to update for each IFIX
 REQUIREDVER_POSTGRESQL="1.22.7"
 # EVENTS_OPERATOR_VERSION is for checking IBM Events operator upgrade status, need to update for each IFIX

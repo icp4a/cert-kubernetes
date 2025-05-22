@@ -18,9 +18,9 @@ source ${CUR_DIR}/helper/common.sh
 
 function show_help() {
     echo -e "Usage: "
-    echo -e "  ./cp4a-deployment.sh -m [modetype] -n <CP4BA_NAMESPACE>"
+    echo -e "  ${CUR_DIR}/cp4a-deployment.sh -m [modetype] -n <CP4BA_NAMESPACE>"
     echo -e "  OR"
-    echo -e "  ./cp4a-deployment.sh -n <CP4BA_NAMESPACE>"
+    echo -e "  ${CUR_DIR}/cp4a-deployment.sh -n <CP4BA_NAMESPACE>"
     echo "Options:"
     echo "  -h  Display the help."
     echo "  -m  Optional: The valid mode types are:[upgradeOperator], [upgradeOperatorStatus], [upgradeDeployment] and [upgradeDeploymentStatus]."
@@ -558,7 +558,7 @@ function show_tips_es_to_os_migration(){
     printf "\n"
     echo "  ${YELLOW_TEXT}- STEP ${step_num} (Required)${RESET_TEXT}: Upgrade CP4BA operators."
     echo "    Execute the following command:"
-    echo "    ${GREEN_TEXT}# ./cp4a-deployment.sh -m upgradeOperator -n $TARGET_PROJECT_NAME${RESET_TEXT}"
+    echo "    ${GREEN_TEXT}# ${CUR_DIR}/cp4a-deployment.sh -m upgradeOperator -n $TARGET_PROJECT_NAME${RESET_TEXT}"
 }
 
 function select_private_catalog_cp4ba(){
@@ -1936,7 +1936,8 @@ function select_platform(){
     validate_kube_oc_cli
 
     # For Azure Red Hat OpenShift (ARO)/Red Hat OpenShift Service on AWS (ROSA)
-    if [[ "$PLATFORM_SELECTED" == "OCP" && "${DEPLOYMENT_TYPE}" == "starter" ]]; then
+    if [[ "$PLATFORM_SELECTED" == "OCP" && "${DEPLOYMENT_TYPE}" == "starter" ]] || [[ "$PLATFORM_SELECTED" == "OCP" && "${DEPLOYMENT_TYPE}" == "production" ]] ; then    #DBACLD-166320 This code changes addressing the issue while the customer deploying CP4BA into ARO or AWS
+
         while true; do
             printf "\n"
             printf "\x1B[1mIs your OCP deployed on AWS or Azure? (Yes/No, default: No): \x1B[0m"
@@ -6650,7 +6651,7 @@ function sync_property_into_final_cr(){
         fi
 
         # set dc_odm_datasource.dc_common_database_instance_secret
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_odm_db_name} -o yaml -n $TARGET_PROJECT_NAME | ${YQ_CMD} r - items.[0].metadata.name`
+        tmp_secret_name=`kubectl get secret -l db-name=${tmp_odm_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
         ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_odm_datasource.dc_common_database_instance_secret "\"$tmp_secret_name\""
 
         if [[ $DB_TYPE == "postgresql" ]]; then
@@ -6746,7 +6747,7 @@ function sync_property_into_final_cr(){
         done
         
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_baw_runtime_db_name} -o yaml -n $TARGET_PROJECT_NAME | ${YQ_CMD} r - items.[0].metadata.name`
+        tmp_secret_name=`kubectl get secret -l db-name=${tmp_baw_runtime_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
 
         # set baw_configuration
         ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.secret_name "\"$tmp_secret_name\""
@@ -6787,7 +6788,7 @@ function sync_property_into_final_cr(){
         if [[ $DB_TYPE == "postgresql-edb" ]]; then
             ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.type "postgresql"
             ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.dc_use_postgres "true"
-            # always use default schema for postgresql EDB
+            # always use default schema for EDB Postgres
             ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.current_schema
             # set dc_ssl_enabled always true for postgresql-edb
             ds_cfg_val=`cat $CP4A_PATTERN_FILE_TMP | ${YQ_CMD} r - spec.baw_configuration.[0].database`
@@ -6835,7 +6836,7 @@ function sync_property_into_final_cr(){
         done
 
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_baw_runtime_db_name} -o yaml -n $TARGET_PROJECT_NAME | ${YQ_CMD} r - items.[0].metadata.name`
+        tmp_secret_name=`kubectl get secret -l db-name=${tmp_baw_runtime_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
 
         # set baw_configuration
         ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.secret_name "\"$tmp_secret_name\""
@@ -6876,7 +6877,7 @@ function sync_property_into_final_cr(){
         if [[ $DB_TYPE == "postgresql-edb" ]]; then
             ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.type "postgresql"
             ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.dc_use_postgres "true"
-            # always use default schema for postgresql EDB
+            # always use default schema for EDB Postgres
             ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.current_schema
             # set dc_ssl_enabled always true for postgresql-edb
             ds_cfg_val=`cat $CP4A_PATTERN_FILE_TMP | ${YQ_CMD} r - spec.baw_configuration.[0].database`
@@ -6915,7 +6916,7 @@ function sync_property_into_final_cr(){
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_aws_db_name} -o yaml -n $TARGET_PROJECT_NAME | ${YQ_CMD} r - items.[0].metadata.name`
+        tmp_secret_name=`kubectl get secret -l db-name=${tmp_aws_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
 
         # set baw_configuration
         ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].database.secret_name "\"$tmp_secret_name\""
@@ -6956,7 +6957,7 @@ function sync_property_into_final_cr(){
         if [[ $DB_TYPE == "postgresql-edb" ]]; then
             ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].database.type "postgresql"
             ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].database.dc_use_postgres "true"
-            # always use default schema for postgresql EDB
+            # always use default schema for EDB Postgres
             ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].database.current_schema
             # set dc_ssl_enabled always true for postgresql-edb
             ds_cfg_val=`cat $CP4A_PATTERN_FILE_TMP | ${YQ_CMD} r - spec.baw_configuration.[1].database`
@@ -6994,7 +6995,7 @@ function sync_property_into_final_cr(){
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_aws_db_name} -o yaml -n $TARGET_PROJECT_NAME | ${YQ_CMD} r - items.[0].metadata.name`
+        tmp_secret_name=`kubectl get secret -l db-name=${tmp_aws_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
 
         # set baw_configuration
         ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.secret_name "\"$tmp_secret_name\""
@@ -7035,7 +7036,7 @@ function sync_property_into_final_cr(){
         if [[ $DB_TYPE == "postgresql-edb" ]]; then
             ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.type "postgresql"
             ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.dc_use_postgres "true"
-            # always use default schema for postgresql EDB
+            # always use default schema for EDB Postgres
             ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.current_schema
             # set dc_ssl_enabled always true for postgresql-edb
             ds_cfg_val=`cat $CP4A_PATTERN_FILE_TMP | ${YQ_CMD} r - spec.baw_configuration.[0].database`
@@ -7056,7 +7057,7 @@ function sync_property_into_final_cr(){
         tmp_mongo_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_mongo_flag")
         if [[ $tmp_mongo_flag == "Yes" || $tmp_mongo_flag == "YES" || $tmp_mongo_flag == "Y" || $tmp_mongo_flag == "True" || $tmp_mongo_flag == "true" ]]; then
             # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-            tmp_secret_name=`kubectl get secret -l db-name=ads-mongo -o yaml -n $TARGET_PROJECT_NAME | ${YQ_CMD} r - items.[0].metadata.name`
+            tmp_secret_name=`kubectl get secret -l db-name=ads-mongo -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
             if [[ -z $tmp_secret_name ]]; then
                 info "Not found ibm-dba-ads-mongo-secret secret for an external MongoDB"
             fi
@@ -7184,7 +7185,7 @@ function sync_property_into_final_cr(){
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_bas_db_name} -o yaml -n $TARGET_PROJECT_NAME | ${YQ_CMD} r - items.[0].metadata.name`
+        tmp_secret_name=`kubectl get secret -l db-name=${tmp_bas_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
 
         # set bastudio_configuration
         ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.admin_secret_name "\"$tmp_secret_name\""
@@ -7254,7 +7255,7 @@ function sync_property_into_final_cr(){
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_app_db_name} -o yaml -n $TARGET_PROJECT_NAME | ${YQ_CMD} r - items.[0].metadata.name`
+        tmp_secret_name=`kubectl get secret -l db-name=${tmp_app_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
 
         # set bastudio_configuration.playback_server
         ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.admin_secret_name "\"$tmp_secret_name\""
@@ -7348,7 +7349,7 @@ function sync_property_into_final_cr(){
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_ae_db_name} -o yaml -n $TARGET_PROJECT_NAME | ${YQ_CMD} r - items.[0].metadata.name`
+        tmp_secret_name=`kubectl get secret -l db-name=${tmp_ae_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
 
         # set application_engine_configuration
         ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].admin_secret_name "\"$tmp_secret_name\""
@@ -7436,7 +7437,7 @@ function sync_property_into_final_cr(){
     fi
     # set lc_bind_secret
     # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-    tmp_secret_name=`kubectl get secret -l name=ldap-bind-secret -o yaml -n $TARGET_PROJECT_NAME | ${YQ_CMD} r - items.[0].metadata.name`
+    tmp_secret_name=`kubectl get secret -l name=ldap-bind-secret -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
     ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ldap_configuration.lc_bind_secret "\"$tmp_secret_name\""
     # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ldap_configuration.lc_ldap_bind_dn
     # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ldap_configuration.lc_ldap_bind_dn_pwd
@@ -7466,7 +7467,7 @@ function sync_property_into_final_cr(){
 
         # set lc_bind_secret
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml -n $TARGET_PROJECT_NAME | ${YQ_CMD} r - items.[0].metadata.name`
+        tmp_secret_name=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
         ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ext_ldap_configuration.lc_bind_secret "\"$tmp_secret_name\""
         # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ext_ldap_configuration.lc_ldap_bind_dn
         # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ext_ldap_configuration.lc_ldap_bind_dn_pwd
@@ -9788,7 +9789,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                             if [[ "${iam_provider}" == "cp-console-iam-provider" && "${iam_idmgmt}" == "cp-console-iam-idmgmt" ]]; then
                                 success "Found cp-console-iam-provider/cp-console-iam-idmgmt routes in the project \"ibm-common-services\"."
                             else
-                                error "cp-console-iam-provider/cp-console-iam-idmgmt routes not found in the project \"ibm-common-services\". You NEED to run \"./cp4a-pre-upgrade-and-post-upgrade-optional.sh pre-upgrade\" first, and then RERUN \"./cp4a-deployment.sh -m upgradeOperator -n $TARGET_PROJECT_NAME\"."
+                                error "cp-console-iam-provider/cp-console-iam-idmgmt routes not found in the project \"ibm-common-services\". You NEED to run \"./cp4a-pre-upgrade-and-post-upgrade-optional.sh pre-upgrade\" first, and then RERUN \"${CUR_DIR}/cp4a-deployment.sh -m upgradeOperator -n $TARGET_PROJECT_NAME\"."
                                 exit 1
                             fi
                         elif [[ $UPGRADE_MODE == "dedicated2dedicated" ]]; then
@@ -9798,7 +9799,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                             if [[ "${iam_provider}" == "cp-console-iam-provider" && "${iam_idmgmt}" == "cp-console-iam-idmgmt" ]]; then
                                 success "Found cp-console-iam-provider/cp-console-iam-idmgmt routes in the project \"$CP4BA_SERVICES_NS\"."
                             else
-                                error "cp-console-iam-provider/cp-console-iam-idmgmt routes not found in the project \"$CP4BA_SERVICES_NS\". You NEED to run \"./cp4a-pre-upgrade-and-post-upgrade-optional.sh pre-upgrade\" first, and then RERUN \"./cp4a-deployment.sh -m upgradeOperator -n $TARGET_PROJECT_NAME\"."
+                                error "cp-console-iam-provider/cp-console-iam-idmgmt routes not found in the project \"$CP4BA_SERVICES_NS\". You NEED to run \"./cp4a-pre-upgrade-and-post-upgrade-optional.sh pre-upgrade\" first, and then RERUN \"${CUR_DIR}/cp4a-deployment.sh -m upgradeOperator -n $TARGET_PROJECT_NAME\"."
                                 exit 1
                             fi
                         fi
@@ -9839,12 +9840,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                 case "${sub_array[i]}" in
                 "ibm-cp4a-operator"*)
                     prefix_sub="ibm-cp4a-operator.v"
+                    target_csv_version=${CP4BA_CSV_VERSION//v/}
                     ;;
                 "ibm-content-operator"*)
                     prefix_sub="ibm-content-operator.v"
+                    target_csv_version=${CP4BA_PATTERN_OPR_CSV_VERSION//v/}
                     ;;
                 "ibm-insights-engine-operator"*)
                     prefix_sub="ibm-insights-engine-operator.v"
+                    target_csv_version=${CP4BA_PATTERN_OPR_CSV_VERSION//v/}
                     ;;
                 esac
                 current_version=${current_version#"$prefix_sub"}
@@ -10743,7 +10747,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         prefix_bts="ibm-cp4a-wfps-operator.v"
                         current_version_wfps=${current_version_wfps#"$prefix_bts"}
                         installed_version_wfps=${installed_version_wfps#"$prefix_bts"}
-                        REQUIREDVER_VERSION="${CP4BA_CSV_VERSION//v/}"
+                        REQUIREDVER_VERSION="${CP4BA_PATTERN_OPR_CSV_VERSION//v/}"
                         if [[ (! "$(printf '%s\n' "$REQUIREDVER_VERSION" "$current_version_wfps" | sort -V | head -n1)" = "$REQUIREDVER_VERSION") || (! "$(printf '%s\n' "$REQUIREDVER_VERSION" "$installed_version_wfps" | sort -V | head -n1)" = "$REQUIREDVER_VERSION") ]]; then
                             if [[ $retry -eq ${maxRetry} ]]; then
                                 info "Timeout Checking for the version of $ibm_cp4a_wfps_sub_name subscription in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
@@ -10777,7 +10781,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         prefix_bts="ibm-ads-operator.v"
                         current_version_ads=${current_version_ads#"$prefix_bts"}
                         installed_version_ads=${installed_version_ads#"$prefix_bts"}
-                        REQUIREDVER_VERSION="${CP4BA_CSV_VERSION//v/}"
+                        REQUIREDVER_VERSION="${CP4BA_PATTERN_OPR_CSV_VERSION//v/}"
                         if [[ (! "$(printf '%s\n' "$REQUIREDVER_VERSION" "$current_version_ads" | sort -V | head -n1)" = "$REQUIREDVER_VERSION") || (! "$(printf '%s\n' "$REQUIREDVER_VERSION" "$installed_version_ads" | sort -V | head -n1)" = "$REQUIREDVER_VERSION") ]]; then
                             if [[ $retry -eq ${maxRetry} ]]; then
                                 info "Timeout Checking for the version of $ibm_cp4a_ads_sub_name subscription in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
@@ -10808,7 +10812,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         prefix_bts="ibm-content-operator.v"
                         current_version_content=${current_version_content#"$prefix_bts"}
                         installed_version_content=${installed_version_content#"$prefix_bts"}
-                        REQUIREDVER_VERSION="${CP4BA_CSV_VERSION//v/}"
+                        REQUIREDVER_VERSION="${CP4BA_PATTERN_OPR_CSV_VERSION//v/}"
                         if [[ (! "$(printf '%s\n' "$REQUIREDVER_VERSION" "$current_version_content" | sort -V | head -n1)" = "$REQUIREDVER_VERSION") || (! "$(printf '%s\n' "$REQUIREDVER_VERSION" "$installed_version_content" | sort -V | head -n1)" = "$REQUIREDVER_VERSION") ]]; then
                             if [[ $retry -eq ${maxRetry} ]]; then
                                 info "Timeout Checking for the version of $ibm_cp4a_content_sub_name subscription in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
@@ -10839,7 +10843,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         prefix_bts="ibm-pfs-operator.v"
                         current_version_pfs=${current_version_pfs#"$prefix_bts"}
                         installed_version_pfs=${installed_version_pfs#"$prefix_bts"}
-                        REQUIREDVER_VERSION="${CP4BA_CSV_VERSION//v/}"
+                        REQUIREDVER_VERSION="${CP4BA_PATTERN_OPR_CSV_VERSION//v/}"
                         if [[ (! "$(printf '%s\n' "$REQUIREDVER_VERSION" "$current_version_pfs" | sort -V | head -n1)" = "$REQUIREDVER_VERSION") || (! "$(printf '%s\n' "$REQUIREDVER_VERSION" "$installed_version_pfs" | sort -V | head -n1)" = "$REQUIREDVER_VERSION") ]]; then
                             if [[ $retry -eq ${maxRetry} ]]; then
                                 info "Timeout Checking for the version of $ibm_cp4a_pfs_sub_name subscription in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
@@ -10908,7 +10912,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         prefix_bts="ibm-cp4a-wfps-operator.v"
                         current_version_wfps=${current_version_wfps#"$prefix_bts"}
                         installed_version_wfps=${installed_version_wfps#"$prefix_bts"}
-                        REQUIREDVER_VERSION="${CP4BA_CSV_VERSION//v/}"
+                        REQUIREDVER_VERSION="${CP4BA_PATTERN_OPR_CSV_VERSION//v/}"
                         if [[ (! "$(printf '%s\n' "$REQUIREDVER_VERSION" "$current_version_wfps" | sort -V | head -n1)" = "$REQUIREDVER_VERSION") || (! "$(printf '%s\n' "$REQUIREDVER_VERSION" "$installed_version_wfps" | sort -V | head -n1)" = "$REQUIREDVER_VERSION") ]]; then
                             if [[ $retry -eq ${maxRetry} ]]; then
                                 info "Timeout Checking for the version of $ibm_cp4a_wfps_sub_name subscription in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
@@ -10942,7 +10946,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         prefix_bts="ibm-ads-operator.v"
                         current_version_ads=${current_version_ads#"$prefix_bts"}
                         installed_version_ads=${installed_version_ads#"$prefix_bts"}
-                        REQUIREDVER_VERSION="${CP4BA_CSV_VERSION//v/}"
+                        REQUIREDVER_VERSION="${CP4BA_PATTERN_OPR_CSV_VERSION//v/}"
                         if [[ (! "$(printf '%s\n' "$REQUIREDVER_VERSION" "$current_version_ads" | sort -V | head -n1)" = "$REQUIREDVER_VERSION") || (! "$(printf '%s\n' "$REQUIREDVER_VERSION" "$installed_version_ads" | sort -V | head -n1)" = "$REQUIREDVER_VERSION") ]]; then
                             if [[ $retry -eq ${maxRetry} ]]; then
                                 info "Timeout Checking for the version of $ibm_cp4a_ads_sub_name subscription in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
@@ -10973,7 +10977,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         prefix_bts="ibm-content-operator.v"
                         current_version_content=${current_version_content#"$prefix_bts"}
                         installed_version_content=${installed_version_content#"$prefix_bts"}
-                        REQUIREDVER_VERSION="${CP4BA_CSV_VERSION//v/}"
+                        REQUIREDVER_VERSION="${CP4BA_PATTERN_OPR_CSV_VERSION//v/}"
                         if [[ (! "$(printf '%s\n' "$REQUIREDVER_VERSION" "$current_version_content" | sort -V | head -n1)" = "$REQUIREDVER_VERSION") || (! "$(printf '%s\n' "$REQUIREDVER_VERSION" "$installed_version_content" | sort -V | head -n1)" = "$REQUIREDVER_VERSION") ]]; then
                             if [[ $retry -eq ${maxRetry} ]]; then
                                 info "Timeout Checking for the version of $ibm_cp4a_content_sub_name subscription in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
@@ -11004,7 +11008,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         prefix_bts="ibm-pfs-operator.v"
                         current_version_pfs=${current_version_pfs#"$prefix_bts"}
                         installed_version_pfs=${installed_version_pfs#"$prefix_bts"}
-                        REQUIREDVER_VERSION="${CP4BA_CSV_VERSION//v/}"
+                        REQUIREDVER_VERSION="${CP4BA_PATTERN_OPR_CSV_VERSION//v/}"
                         if [[ (! "$(printf '%s\n' "$REQUIREDVER_VERSION" "$current_version_pfs" | sort -V | head -n1)" = "$REQUIREDVER_VERSION") || (! "$(printf '%s\n' "$REQUIREDVER_VERSION" "$installed_version_pfs" | sort -V | head -n1)" = "$REQUIREDVER_VERSION") ]]; then
                             if [[ $retry -eq ${maxRetry} ]]; then
                                 info "Timeout Checking for the version of $ibm_cp4a_pfs_sub_name subscription in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
@@ -11610,6 +11614,49 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         success "The channel of subscription '${sub_array[i]}' is $currentChannel!"
                         printf "\n"
                         maxRetry=40
+                        case "${sub_array[i]}" in
+                        "ibm-cp4a-operator"*)
+                            prefix_sub="ibm-cp4a-operator.v"
+                            target_csv_version=${CP4BA_CSV_VERSION//v/}
+                            ;;
+                        "ibm-cp4a-wfps-operator"*)
+                            prefix_sub="ibm-cp4a-wfps-operator.v"
+                            target_csv_version=${CP4BA_PATTERN_OPR_CSV_VERSION//v/}
+                            ;;
+                        "ibm-content-operator"*)
+                            prefix_sub="ibm-content-operator.v"
+                            target_csv_version=${CP4BA_PATTERN_OPR_CSV_VERSION//v/}
+                            ;;
+                        "icp4a-foundation-operator"*)
+                            prefix_sub="icp4a-foundation-operator.v"
+                            target_csv_version=${CP4BA_CSV_VERSION//v/}
+                            ;;
+                        "ibm-pfs-operator"*)
+                            prefix_sub="ibm-pfs-operator.v"
+                            target_csv_version=${CP4BA_PATTERN_OPR_CSV_VERSION//v/}
+                            ;;
+                        "ibm-ads-operator"*)
+                            prefix_sub="ibm-ads-operator.v"
+                            target_csv_version=${CP4BA_PATTERN_OPR_CSV_VERSION//v/}
+                            ;;
+                        "ibm-dpe-operator"*)
+                            prefix_sub="ibm-dpe-operator.v"
+                            target_csv_version=${CP4BA_PATTERN_OPR_CSV_VERSION//v/}
+                            ;;
+                        "ibm-odm-operator"*)
+                            prefix_sub="ibm-odm-operator.v"
+                            target_csv_version=${CP4BA_PATTERN_OPR_CSV_VERSION//v/}
+                            ;;
+                        "ibm-insights-engine-operator"*)
+                            prefix_sub="ibm-insights-engine-operator.v"
+                            target_csv_version=${CP4BA_PATTERN_OPR_CSV_VERSION//v/}
+                            ;;
+                        "ibm-workflow-operator"*)
+                            prefix_sub="ibm-workflow-operator.v"
+                            target_csv_version=${CP4BA_CSV_VERSION//v/}
+                            ;;
+                        esac
+
                         info "Waiting for the \"${sub_array[i]}\" subscription be upgraded to the ClusterServiceVersions(CSV) \"v$target_csv_version\""
                         for ((retry=0;retry<=${maxRetry};retry++)); do
                             current_version=$(${CLI_CMD} get subscriptions.operators.coreos.com ${sub_array[i]} --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
@@ -11618,38 +11665,6 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                 error "Failed to retrieve installed or current CSV. Aborting the upgrade procedure. Check the subscription status of ${sub_array[i]}."
                                 exit 1
                             fi
-                            case "${sub_array[i]}" in
-                            "ibm-cp4a-operator"*)
-                                prefix_sub="ibm-cp4a-operator.v"
-                                ;;
-                            "ibm-cp4a-wfps-operator"*)
-                                prefix_sub="ibm-cp4a-wfps-operator.v"
-                                ;;
-                            "ibm-content-operator"*)
-                                prefix_sub="ibm-content-operator.v"
-                                ;;
-                            "icp4a-foundation-operator"*)
-                                prefix_sub="icp4a-foundation-operator.v"
-                                ;;
-                            "ibm-pfs-operator"*)
-                                prefix_sub="ibm-pfs-operator.v"
-                                ;;
-                            "ibm-ads-operator"*)
-                                prefix_sub="ibm-ads-operator.v"
-                                ;;
-                            "ibm-dpe-operator"*)
-                                prefix_sub="ibm-dpe-operator.v"
-                                ;;
-                            "ibm-odm-operator"*)
-                                prefix_sub="ibm-odm-operator.v"
-                                ;;
-                            "ibm-insights-engine-operator"*)
-                                prefix_sub="ibm-insights-engine-operator.v"
-                                ;;
-                            "ibm-workflow-operator"*)
-                                prefix_sub="ibm-workflow-operator.v"
-                                ;;
-                            esac
 
                             current_version=${current_version#"$prefix_sub"}
                             installed_version=${installed_version#"$prefix_sub"}
@@ -11700,13 +11715,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                 fi
             fi
             printf "\n"
+            ## -- https://jsw.ibm.com/browse/DBACLD-174848 - <To fix the incorrect script path while running the deployment script in the upgrade mode>
+            CUR_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
             echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}"
             echo "${YELLOW_TEXT}  - All CP4BA operators have already been shut down by the script.${RESET_TEXT}"
             echo "${YELLOW_TEXT}  - All CP4BA operators will start up automatically when running the [upgradeDeploymentStatus] mode of the cp4a-deployment.sh script.${RESET_TEXT}"
             printf "\n"
             echo "${YELLOW_TEXT}[NEXT ACTIONS]:${RESET_TEXT}"
             step_num=1
-            echo "  - STEP ${step_num} ${YELLOW_TEXT}(Optional)${RESET_TEXT}: You can run ${GREEN_TEXT}\"./cp4a-deployment.sh -m upgradeOperatorStatus -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to check whether the upgrade of the CP4BA operator and its dependencies was successful."
+            echo "  - STEP ${step_num} ${YELLOW_TEXT}(Optional)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${CUR_DIR}/cp4a-deployment.sh -m upgradeOperatorStatus -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to check whether the upgrade of the CP4BA operator and its dependencies was successful."
             step_num=$((step_num + 1))
 
             if [[ $css_flag == "true" || " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "css" ]]; then
@@ -11718,7 +11735,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                 echo "      4. Click Save to apply your changes."
                 step_num=$((step_num + 1))
             fi
-            echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You need to run ${GREEN_TEXT}\"./cp4a-deployment.sh -m upgradeDeployment -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to upgrade CP4BA deployment."
+            echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You need to run ${GREEN_TEXT}\"${CUR_DIR}/cp4a-deployment.sh -m upgradeDeployment -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to upgrade CP4BA deployment."
             echo "    ${RED_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}When you run the [upgradeDeployment] mode of the cp4a-deployment.sh script, the updated custom resource (CR) must be manually applied that all required additional actions can be completed before the upgrade process begins. Refer to the Knowledge Center: \"Updating the custom resource for each capability in your deployment\" topic to complete the REQUIRED steps for the installed pattern(s).${RESET_TEXT}"
             if [[ "$cp4a_operator_csv_version" != "24."* ]]; then
                 echo "${YELLOW_TEXT}      - if upgrading from 21.0.3 or 22.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpd-updating-custom-resource-each-capability-in-your-deployment]"
@@ -11726,13 +11743,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             fi
         else
             # for upgrading IFIX by IFIX
+            ## -- https://jsw.ibm.com/browse/DBACLD-177573 - <Incorrect Script Path in [NEXT ACTIONS] Output of cp4a-deployment.sh for 24.0.1 IFixes upgrade> Adding CUR_DIR in else statement as well
+            CUR_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
             printf "\n"
             echo "${YELLOW_TEXT}[NEXT ACTIONS]:${RESET_TEXT}"
             step_num=1
-            echo "  - STEP ${step_num} ${YELLOW_TEXT}(Optional)${RESET_TEXT}: You can run ${GREEN_TEXT}\"./cp4a-deployment.sh -m upgradeOperatorStatus -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to check whether the upgrade of the CP4BA operator and its dependencies was successful."
+            echo "  - STEP ${step_num} ${YELLOW_TEXT}(Optional)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${CUR_DIR}/cp4a-deployment.sh -m upgradeOperatorStatus -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to check whether the upgrade of the CP4BA operator and its dependencies was successful."
             printf "\n"
             step_num=$((step_num + 1))
-            echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You can run ${GREEN_TEXT}\"./cp4a-deployment.sh -m upgradeDeploymentStatus -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to check whether the upgrade of the CP4BA deployment was successful."
+            echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${CUR_DIR}/cp4a-deployment.sh -m upgradeDeploymentStatus -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to check whether the upgrade of the CP4BA deployment was successful."
         fi
     fi
 
@@ -11875,13 +11894,14 @@ if [ "$RUNTIME_MODE" == "upgradeOperatorStatus" ]; then
         echo "${YELLOW_TEXT}[NEXT ACTION]${RESET_TEXT}: "
         #check if the original CSV version is not matching a specific pattern (version "24.1.")
         #check ensures that the shutdown operation is only performed if the version is not "24.1.". The version check helps in controlling upgrade.
+        CUR_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
         if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "24.1."*) ]]; then
             echo "${YELLOW_TEXT}* Run the script in [upgradeDeployment] mode to upgrade the CP4BA deployment when upgrade CP4BA to $CP4BA_RELEASE_BASE.${RESET_TEXT}"
-            echo "${GREEN_TEXT}# ./cp4a-deployment.sh -m upgradeDeployment -n $TARGET_PROJECT_NAME${RESET_TEXT}"
+            echo "${GREEN_TEXT}# ${CUR_DIR}/cp4a-deployment.sh -m upgradeDeployment -n $TARGET_PROJECT_NAME${RESET_TEXT}"
         fi
         printf "\n"
         echo "${YELLOW_TEXT}* Run the script in [upgradeDeploymentStatus] mode directly when upgrade CP4BA from $CP4BA_RELEASE_BASE IFix to IFix.${RESET_TEXT}"
-        echo "${GREEN_TEXT}# ./cp4a-deployment.sh -m upgradeDeploymentStatus -n $TARGET_PROJECT_NAME${RESET_TEXT}"
+        echo "${GREEN_TEXT}# ${CUR_DIR}/cp4a-deployment.sh -m upgradeDeploymentStatus -n $TARGET_PROJECT_NAME${RESET_TEXT}"
     fi
 fi
 

@@ -17,5 +17,5 @@ spec:
   channel: v24.1
   name: ibm-baw-operator
   installPlanApproval: Automatic
-  source: ibm-operator-catalog
+  source: ibm-baw-operator-catalog
   sourceNamespace: openshift-marketplace

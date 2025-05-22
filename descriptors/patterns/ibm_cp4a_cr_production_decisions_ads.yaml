@@ -42,7 +42,6 @@ spec:
 
   shared_configuration:
 
-
     ## CP4A patterns or capabilities to be deployed. This CR represents the "decisions_ads" pattern that brings ADS Designer and ADS Runtime.
     sc_deployment_patterns: decisions_ads
 

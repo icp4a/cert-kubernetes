@@ -14,8 +14,10 @@ spec:
       annotations:
         backup.velero.io/backup-volumes: lsr-backup
         pre.hook.backup.velero.io/command: '["sh", "-c", "rm -rf /lsr/lsr-backup/database; /lsr/br_lsr.sh <lsr namespace> backup"]'
+        pre.hook.backup.velero.io/on-error: Fail
         pre.hook.backup.velero.io/timeout: 300s
         post.hook.restore.velero.io/command: '["sh", "-c", "/lsr/br_lsr.sh <lsr namespace> restore"]'
+        post.hook.restore.velero.io/on-error: Fail
         post.hook.restore.velero.io/wait-timeout: 300s
         post.hook.restore.velero.io/exec-timeout: 300s
         post.hook.restore.velero.io/timeout: 600s
