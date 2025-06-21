@@ -13,6 +13,9 @@
 
 #common variables needed for the script
 
+# Release/Patch version for CP4BA
+# CP4BA_RELEASE_BASE is for fetch content/foundation operator pod, only need to change for major release.
+CP4BA_RELEASE_BASE="25.0.0"
 #set of filters that can be used while mirroring images
 AUTOMATION_DECISION_SERVICES="ibmcp4baProd,ibmcp4baADSImages,ibmcp4baBANImages,ibmcp4baBASImages,ibmcp4baAAEImages,ibmEdbStandard"
 AUTOMATION_DOCUMENT_PROCESSING="ibmcp4baProd,ibmcp4baADPImages,ibmcp4baFNCMImages,ibmcp4baBANImages,ibmcp4baBASImages,ibmcp4baAAEImages,ibmEdbStandard"
@@ -434,7 +437,7 @@ function display_next_steps(){
 	info "    NOTE : If there is an existing ImageContentsourcePolicy named ibm-cp-automation on the cluster, then on running the command, it overwrites the existing mirroring configuration due to which all deployments on the cluster are affected. To keep the existing mirroring configuration of the ImageContentsourcePolicy unchanged, you must update the existing ImageContentsourcePolicy manually with the mirroring configuration that is created in the file that is located at ${ICSP_CONFIG}"
 	echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT}  Run the following command to create ImageContentsourcePolicy ${RESET_TEXT}# oc apply -f ${ICSP_CONFIG} "  && step_num=$((step_num + 1))
 	echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT}  Verify that the ImageContentsourcePolicy resource is created ${RESET_TEXT}# oc get imageContentSourcePolicy "  && step_num=$((step_num + 1))
-	echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT}  Install the Cloud Pak catalog and operator instances by using the cluster admin script. For more information see [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=icpcoi-option-1-installing-cloud-pak-catalog-operator-instances-by-using-cluster-admin-script-recommended] ${RESET_TEXT}"  && step_num=$((step_num + 1))
+	echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT}  Install the Cloud Pak catalog and operator instances by using the cluster admin script. For more information see [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=icpcoi-option-1-installing-cloud-pak-catalog-operator-instances-by-using-cluster-admin-script-recommended] ${RESET_TEXT}"  && step_num=$((step_num + 1))
 
 	printf "\n"
 	

@@ -1,0 +1,303 @@
+# Start to validate the parameters passed into script... 
+[✔] oc command available
+[✔] /Users/varunsriram/Documents/Work/CloudPak/CodeRepos/cert-kubernetes/scripts/cpfs/yq/macos/yq command available
+[✔] oc command logged in as kube:admin
+[✔] Channel v4.11 is valid
+[INFO] ibm-common-service-operator subscription exists, it is upgrade scenario
+
+[✗] It is simple namespace topology
+
+[✔] Profile size is valid.
+# Validate CatalogSource for operator ibm-common-service-operator in cp2401 namespace
+[✔] CatalogSource ibm-cs-install-catalog-v4-11-0 from cp2401 CatalogSourceNamespace is available for ibm-common-service-operator in cp2401 namespace
+
+# Checking whether Namespace cp2401 exist...
+[✔] Namespace cp2401 already exists. Skip creating
+
+# Checking whether Namespace cp2401 exist...
+[✔] Namespace cp2401 already exists. Skip creating
+
+# Checking whether OperatorGroup in cp2401 exist...
+[✔] OperatorGroup already exists in cp2401. Skip creating
+
+#  Checking whether Cert Manager exist...
+#  Smoke test for Cert Manager existence...
+[DEBUG] Creating Issuer test-issuer in namespace cp2401 .
+[INFO] Creating following issuer:
+
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: test-issuer
+  namespace: cp2401
+spec:
+  selfSigned: {}
+
+issuer.cert-manager.io/test-issuer created
+[DEBUG] Creating Certificate test-certificate in namespace cp2401 .
+[INFO] Creating following certificate:
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: test-certificate
+  namespace: cp2401
+spec:
+  commonName: test-certificate
+  issuerRef:
+    kind: Issuer
+    name: test-issuer
+  secretName: test-certificate-secret
+
+certificate.cert-manager.io/test-certificate created
+[INFO] Waiting for Issuer test-issuer in namespace cp2401 to be Ready
+[✔] Issuer test-issuer in namespace cp2401 is Ready
+
+[INFO] Waiting for Certificate test-certificate in namespace cp2401 to be Ready
+[✔] Certificate test-certificate in namespace cp2401 is Ready
+
+[INFO] Deleting test-issuer Issuer ...
+issuer.cert-manager.io "test-issuer" deleted
+
+[INFO] Deleting test-certificate Certificate ...
+certificate.cert-manager.io "test-certificate" deleted
+
+[INFO] Deleting 19843secret_name Secret ...
+secret "test-certificate-secret" deleted
+
+#  Checking IBMLicensing...
+[✗] NamespaceScope Configuration is not needed for simple or all namespaces topology, skip NamespaceScope setup
+
+# Installing IBM Foundational services operator into operator namespace cp2401...
+# Checking if CommonService CRD exists in the cluster...
+[INFO] CommonService CRD exist
+
+# Configuring CommonService CR in cp2401...
+[INFO] Configuring CommonService CR common-service in cp2401
+
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  annotations:
+    version: "-1"
+  labels:
+    app.kubernetes.io/component: Operator
+    app.kubernetes.io/instance: icp4adeploy
+    app.kubernetes.io/managed-by: Operator
+    app.kubernetes.io/name: icp4adeploy-cp4ba
+    app.kubernetes.io/version: 24.0.1
+    foundationservices.cloudpak.ibm.com: commonservice
+    release: 24.0.1
+  name: common-service
+  namespace: cp2401
+spec:
+  license:
+    accept: true
+  operatorNamespace: cp2401
+  servicesNamespace: cp2401
+  size: small
+  storageClass: csi-cephfs
+status:
+  bedrockOperators:
+    - installPlanName: install-x55kg
+      name: ibm-iam-operator
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v4.9.0
+    - installPlanName: install-x55kg
+      name: ibm-zen-operator
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v6.1.0
+    - installPlanName: install-m9fh9
+      name: cloud-native-postgresql
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v1.22.7
+  conditions:
+    - lastTransitionTime: "2025-01-31T22:04:40Z"
+      lastUpdateTime: "2025-01-31T22:04:40Z"
+      message: reconciling CommonService CR.
+      reason: StartReconciling
+      status: "False"
+      type: Reconciling
+    - lastTransitionTime: "2025-03-06T09:07:18Z"
+      lastUpdateTime: "2025-03-06T09:07:18Z"
+      message: 'initializing/updating: waiting for OperandRegistry and OperandConfig to become ready.'
+      reason: UpdatingResources
+      status: "False"
+      type: Pending
+    - lastTransitionTime: "2025-03-06T09:07:46Z"
+      lastUpdateTime: "2025-03-06T09:07:46Z"
+      message: configuring CommonService CR.
+      reason: Configuring
+      status: "False"
+      type: Reconciling
+    - lastTransitionTime: "2025-03-06T09:07:46Z"
+      lastUpdateTime: "2025-03-06T09:07:46Z"
+      message: CommonService CR is ready.
+      reason: ReconcileSucceeded
+      status: "True"
+      type: Ready
+  configStatus:
+    catalogName: ibm-cs-install-catalog-v4-10-0
+    catalogNamespace: cp2401
+    configurable: true
+    operatorDeployed: true
+    operatorNamespace: cp2401
+    servicesDeployed: true
+    servicesNamespace: cp2401
+    topologyConfigurableCRs:
+      - apiVersion: operator.ibm.com/v3
+        kind: CommonService
+        namespace: cp2401
+        objectName: common-service
+  overallStatus: Succeeded
+  phase: Succeeded
+
+pod/ibm-common-service-operator-65db9d8d7d-b5xbv condition met
+[DEBUG] ibm-common-service-operator pod is ready
+
+Warning: resource commonservices/common-service is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by oc apply. oc apply should only be used on resources created declaratively by either oc create --save-config or oc apply. The missing annotation will be patched automatically.
+commonservice.operator.ibm.com/common-service configured
+[✔] Successfully patched CommonService CR in cp2401
+# Checking whether IBM Common Service operator exist...
+[INFO] There is an ibm-common-service-operator Subscription already
+
+# Updating ibm-common-service-operator-v4.10-ibm-cs-install-catalog-v4-10-0-cp2401 in namesapce cp2401...
+[INFO] v4.10 is less than v4.11
+[INFO] catalogsource ibm-cs-install-catalog-v4-10-0 is different from ibm-cs-install-catalog-v4-11-0
+[INFO] ibm-common-service-operator is ready for updating the subscription.
+subscription.operators.coreos.com/ibm-common-service-operator-v4.10-ibm-cs-install-catalog-v4-10-0-cp2401 configured
+[✔] Successfully patched subscription ibm-common-service-operator in cp2401
+[INFO] Waiting for operator ibm-common-service-operator to be upgraded
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.cp2401='' -n cp2401 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-03-12T00:38:14Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"message":"constraints not satisfiable: no operators found in channel v25.0 of package ibm-cp4a-wfps-operator in the catalog referenced by subscription ibm-cp4a-wfps-operator-v24.1-ibm-cp4a-operator-catalog-cp2401, subscription ibm-cp4a-wfps-operator-v24.1-ibm-cp4a-operator-catalog-cp2401 exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (120 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.cp2401='' -n cp2401 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-03-12T00:38:14Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (119 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.cp2401='' -n cp2401 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-03-12T00:38:14Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-03-12T00:40:13Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (118 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.cp2401='' -n cp2401 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-03-12T00:38:14Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-03-12T00:40:13Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (117 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.cp2401='' -n cp2401 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-03-12T00:38:14Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-03-12T00:40:13Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (116 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.cp2401='' -n cp2401 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-03-12T00:38:14Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-03-12T00:40:13Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (115 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.cp2401='' -n cp2401 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-03-12T00:38:14Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-03-12T00:40:13Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (114 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.cp2401='' -n cp2401 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-03-12T00:38:14Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-03-12T00:40:13Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"[a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-content-operator\": ibm-content-operator.v24.1.1, ibm-content-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-ads-operator\": ibm-ads-operator.v24.1.1, ibm-ads-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-cp4a-wfps-operator\": ibm-cp4a-wfps-operator.v24.1.1, ibm-cp4a-wfps-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-workflow-operator\": ibm-workflow-operator.v24.1.1, ibm-workflow-operator.v25.0.0]","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (113 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.cp2401='' -n cp2401 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-03-12T00:38:14Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-03-12T00:40:13Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"[a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-content-operator\": ibm-content-operator.v24.1.1, ibm-content-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-ads-operator\": ibm-ads-operator.v24.1.1, ibm-ads-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-cp4a-wfps-operator\": ibm-cp4a-wfps-operator.v24.1.1, ibm-cp4a-wfps-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-workflow-operator\": ibm-workflow-operator.v24.1.1, ibm-workflow-operator.v25.0.0]","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (112 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.cp2401='' -n cp2401 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-03-12T00:38:14Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-03-12T00:40:13Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"[a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-content-operator\": ibm-content-operator.v24.1.1, ibm-content-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-ads-operator\": ibm-ads-operator.v24.1.1, ibm-ads-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-cp4a-wfps-operator\": ibm-cp4a-wfps-operator.v24.1.1, ibm-cp4a-wfps-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-workflow-operator\": ibm-workflow-operator.v24.1.1, ibm-workflow-operator.v25.0.0]","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (111 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.cp2401='' -n cp2401 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-03-12T00:38:14Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-03-12T00:40:13Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"[a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-content-operator\": ibm-content-operator.v24.1.1, ibm-content-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-ads-operator\": ibm-ads-operator.v24.1.1, ibm-ads-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-cp4a-wfps-operator\": ibm-cp4a-wfps-operator.v24.1.1, ibm-cp4a-wfps-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-workflow-operator\": ibm-workflow-operator.v24.1.1, ibm-workflow-operator.v25.0.0]","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (110 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.cp2401='' -n cp2401 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-03-12T00:38:14Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-03-12T00:40:13Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"[a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-content-operator\": ibm-content-operator.v24.1.1, ibm-content-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-ads-operator\": ibm-ads-operator.v24.1.1, ibm-ads-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-cp4a-wfps-operator\": ibm-cp4a-wfps-operator.v24.1.1, ibm-cp4a-wfps-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-workflow-operator\": ibm-workflow-operator.v24.1.1, ibm-workflow-operator.v25.0.0]","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (109 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.cp2401='' -n cp2401 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-03-12T00:38:14Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-03-12T00:40:13Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"[a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-content-operator\": ibm-content-operator.v24.1.1, ibm-content-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-ads-operator\": ibm-ads-operator.v24.1.1, ibm-ads-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-cp4a-wfps-operator\": ibm-cp4a-wfps-operator.v24.1.1, ibm-cp4a-wfps-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-workflow-operator\": ibm-workflow-operator.v24.1.1, ibm-workflow-operator.v25.0.0]","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (108 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.cp2401='' -n cp2401 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-03-12T00:38:14Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-03-12T00:40:13Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"[a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-content-operator\": ibm-content-operator.v24.1.1, ibm-content-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-ads-operator\": ibm-ads-operator.v24.1.1, ibm-ads-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-cp4a-wfps-operator\": ibm-cp4a-wfps-operator.v24.1.1, ibm-cp4a-wfps-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-workflow-operator\": ibm-workflow-operator.v24.1.1, ibm-workflow-operator.v25.0.0]","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (107 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.cp2401='' -n cp2401 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-03-12T00:38:14Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-03-12T00:40:13Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (106 left)
+[✔] Operator ibm-common-service-operator is upgraded to latest version in channel v4.11
+
+[INFO] Waiting for operator ibm-common-service-operator CSV in namespace cp2401 to be bound to Subscription
+[✔] Operator ibm-common-service-operator CSV in namespace cp2401 is bound to Subscription
+
+[INFO] Waiting for operator ibm-common-service-operator in namespace cp2401 to become available
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator in namespace cp2401 to become available (50 left)
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator in namespace cp2401 to become available (49 left)
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator in namespace cp2401 to become available (48 left)
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator in namespace cp2401 to become available (47 left)
+[✔] Operator ibm-common-service-operator in namespace cp2401 is available
+
+# Accepting license for commonservice common-service in namespace cp2401...
+[✔] License accepted for commonservice common-service
+
+[INFO] Waiting for operator ibm-odlm CSV in namespace cp2401 to be bound to Subscription
+[✔] Operator ibm-odlm CSV in namespace cp2401 is bound to Subscription
+
+[INFO] Waiting for operator operand-deployment-lifecycle-manager in namespace cp2401 to become available
+[✔] Operator operand-deployment-lifecycle-manager in namespace cp2401 is available
+
+[INFO] Waiting for CommonService CR common-service in cp2401 to be ready
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (150 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (149 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (148 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (147 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (146 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (145 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (144 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (143 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (142 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (141 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (140 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (139 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (138 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (137 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (136 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (135 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (134 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (133 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (132 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (131 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (130 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (129 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (128 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (127 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (126 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (125 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (124 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (123 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (122 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (121 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (120 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (119 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (118 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (117 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (116 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (115 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (114 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (113 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (112 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (111 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (110 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (109 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (108 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (107 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (106 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in cp2401 to be ready (105 left)
+[✔] CommonService CR in cp2401 is in Succeeded Phase
+

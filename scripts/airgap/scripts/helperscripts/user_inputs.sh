@@ -137,7 +137,7 @@ process_entitlement_key() {
         # Prompt for entitlement key
         while true; do
             printf "\x1B[1;31mFollow the instructions on how to get your Entitlement Key: \n\x1B[0m"
-            printf "\x1B[1;31mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=deployment-getting-access-images-from-public-entitled-registry\n\x1B[0m"
+            printf "\x1B[1;31mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-getting-access-images-from-public-entitled-registry\n\x1B[0m"
             read -p "Do you have an entitlement key? (yes/no): " has_key
             has_key=$(echo "$has_key" | tr '[:upper:]' '[:lower:]')
             case "$has_key" in
@@ -285,7 +285,7 @@ process_private_registry(){
     while true; do
         while true; do
             printf "\x1B[1;31mA private image registry must be used to store all images used in an offline (Airgap) deployment. \n\x1B[0m"
-            printf "\x1B[1;31mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=deployment-setting-up-private-registry\n\x1B[0m"
+            printf "\x1B[1;31mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-setting-up-private-registry\n\x1B[0m"
             read -p "Do you have access to a private registry where you can store images? (yes/no): " has_key
             has_key=$(echo "$has_key" | tr '[:upper:]' '[:lower:]')
             case "$has_key" in
@@ -377,7 +377,7 @@ process_image_storage_location(){
     while true; do
         while true; do
             printf "\x1B[1;31m The images can be mirrored to a specific location in the private registry. \n\x1B[0m"
-            printf "\x1B[1;31mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=deployment-mirroring-catalogs-private-registry-using-oc-mirror\n\x1B[0m"
+            printf "\x1B[1;31mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-mirroring-catalogs-private-registry-using-oc-mirror\n\x1B[0m"
             read -p "Do you wish to mirror images access to a specific location in the private registry.? (yes/no) (default no): " has_key
             has_key=$(echo "$has_key" | tr '[:upper:]' '[:lower:]')
             case "$has_key" in

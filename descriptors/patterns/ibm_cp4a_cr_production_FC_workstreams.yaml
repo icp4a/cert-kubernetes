@@ -3,7 +3,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2022, 2024. All Rights Reserved.
+# (C) Copyright IBM Corp. 2022, 2025. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -17,9 +17,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 24.0.1
+    release: 25.0.0
 spec:
-  appVersion: 24.0.1
+  appVersion: 25.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -78,16 +78,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -118,25 +118,11 @@ spec:
     ## based on input from the user.
     sc_deployment_platform:
 
-    sc_egress_configuration:
-      ## Required. Enable or disable egress access to external systems.
-      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true".
-      ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
-      sc_restricted_internet_access: true
-      ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
-      ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
-      sc_api_namespace:
-      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## Default are 443,6443 for OCP and ROKS
-      sc_api_port:
-      ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
-      ## Default is "openshift-dns" for OCP and ROKS
-      sc_dns_namespace:
-      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## Default are 53,5353 for OCP and ROKS
-      sc_dns_port:
+    ## Staring with CP4BA 25.0.0, the operators are no longer creating network policies automatically due to a change in the security requirements where the permissions to create network policies have been removed.
+    ## The optional parameter to enable/disable the creation of sample network policy templates for CP4BA components.  If the parameter is not defined, then the default value is "false".
+    ## Set this flag to "true" if you plan to have restricted network policies in CP4BA namespaces so that the operators can create sample network policy templates for CP4BA components.
+    ## Please refer to the CP4BA documentation for more information about how to retrieve and apply the sample network policy templates.
+    sc_generate_sample_network_policies: false
 
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false
@@ -144,8 +130,8 @@ spec:
     ## For ROKS Ingress, provide TLS secret name for Ingress controller. If you are not using ROKS, comment out this line.
     sc_ingress_tls_secret_name: <Required>
 
-    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <router-canonical-hostname> when not defined.
-    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=scp-shared-configuration
+    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <route-name>-{{meta.namespace}}.<router-canonical-hostname> when not defined.
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.0?topic=scp-shared-configuration
     ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
     #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
 
@@ -214,6 +200,20 @@ spec:
     ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
     sc_is_multiple_az: false
+
+    ## Audit logging configuration for CP4BA components. The default value is "false".  If set to "true", then the audit logging will be enabled for all the CP4BA components.
+    ## These settings can be overridden at the component level by setting the "audit_logging" parameter in the component configuration such as ecm_configuration, ads_configuration, etc...
+    sc_audit_logging:
+      # Enable or disable audit logging for all CP4BA components
+      enabled: false
+      # The audit log directory size.  The default value is "150Mi".  The value should be in the format of "<number><unit>".  The valid units are "Ki", "Mi", "Gi", "Ti", "Pi", "Ei".
+      # This log directory will be mounted as an ephemeral storage volume in the CP4BA components' pods.
+      audit_log_dir_size: '150Mi'
+
+      # The number of audit log files to keep.  The default value is "5". Increasing this value will increase the number of audit log files kept. You may want to increase the audit_log_dir_size if you increase this value.
+      rolling_max_files: 5
+      # The maximum size of each audit log file.  The default value is "20Mi".  The value should be in the format of "<number><unit>".  The valid units are "Ki", "Mi", "Gi", "Ti", "Pi", "Ei". You may want to increase the audit_log_dir_size if you increase this value.
+      rolling_max_size: '20Mi'
 
   ## The beginning section of LDAP configuration for CP4A
   ldap_configuration:
@@ -474,7 +474,7 @@ spec:
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for a GCD database, set this parameter to true
       dc_use_postgres: false
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "db2rds" or "db2rdsHADR" or "oracle" or "postgresql".
       dc_database_type: "<Required>"
       ## The GCD non-XA datasource name.  The default value is "FNGCDDS".
       dc_common_gcd_datasource_name: "FNGCDDS"
@@ -517,7 +517,7 @@ spec:
 
     ## The database configuration for the document object store (DOCS) datasource for CPE
     dc_os_datasources:
-    ## The database configuration for the target object store (AWS DOCS) datasource for CPE. Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the GCD.
+    ## The database configuration for the target object store (AWS DOCS) datasource for CPE. Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "db2rds" or "db2rdsHADR" or "oracle" or "postgresql".  This should be the same as the GCD.
     - dc_database_type: "<Required>"
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
@@ -672,14 +672,14 @@ spec:
       ## Workflow Server (Process Server) image repository URL.
       repository: cp.icr.io/cp/cp4a/baw/workflow-server
       ## Image tag for Workflow Server container.
-      tag: "24.0.1-IF002"
+      tag: "25.0.0"
       ## Pull policy for Workflow Server container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pull_policy: IfNotPresent
     upgrade_job:
       ## Workflow Server database handling image repository URL.
       repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
       ## Workflow Server database handling image repository tag.
-      tag: "24.0.1-IF002"
+      tag: "25.0.0"
       ## Pull policy for database handling. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pull_policy: IfNotPresent
       ## The trace Specification for database handling job, the trace is disabled by default, you can enable it when the job fails, the sample trace specification is WLE.*=all:com.ibm.bpm.*=all:com.ibm.workflow.*=all
@@ -695,7 +695,7 @@ spec:
       ## The secret will store the database client key and client certificate and ca certification.
       ## Required only when enable_ssl is true. If enable_ssl is false, comment out this line.
       db_cert_secret_name: "<Required>"
-      ## Workflow Server database type. Possible values are: db2, oracle, postgresql
+      ## Workflow Server database type. Possible values are: db2, db2HADR, db2rds, db2rdsHADR, oracle, postgresql, sqlserver
       type: "<Required>"
       ## Workflow Server database server name. It must be an accessible address, such as IP, hostname, or Kubernetes service name.
       ## This parameter is required.
@@ -753,7 +753,7 @@ spec:
         ## Image name for content integration container.
         repository: cp.icr.io/cp/cp4a/baw/iaws-ps-content-integration
         ## Image tag for content integration container.
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
         ## Pull policy for content integration container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
         pull_policy: IfNotPresent
       ## Domain name for content integration. The value must be the same as initialize_configuration.ic_domain_creation.domain_name.
@@ -888,23 +888,6 @@ spec:
       max_files: 10
       # The maximum size (in MB) that a log file can reach before it is rolled.
       max_filesize: 50
-
-    ## audit log configuration
-    audit_log:
-      ## Whether to enable Process Admin Console audit log. Default value is false.
-      enable: false
-      ## Persistent volume claim (PVC) for audit logs. If it is not specified, audit logs are stored in log PVC. Default value is empty.
-      pvc_name: ""
-      ## Size of the persistent volume (PV) that is mounted as the audit log store. Default value is 2Gi.
-      pvc_size: 2Gi
-      ## Audit log file name. Default value is bawaudit.log
-      file_name: bawaudit.log
-      ## Audit log rollover size(in MB). Default value is 100.
-      rollover_size: 100
-      ## Whether to enable verbose mode. Default value is true.
-      verbose: true
-      ## Maximum number of historical files that are kept. Default value is 5.
-      max_historical_files: 5
 
     ## storage configuration
     storage:
@@ -1156,11 +1139,17 @@ spec:
       ## it is recommended to have 2 or more.
       replica_count: 2
 
+      ## Rolling update settings for CPE deployment.  By default, max_unavailable is set to 99% and max_surge is set to 1.  This will help speeding up the CPE upgrade process.
+      ## Valid values for max_unavailable are 0-100% or 0-<number of replicas>.  Valid values for max_surge are 0-100% or 0-<number of replicas>.
+      rolling_update:
+        max_unavailable: 99%
+        max_surge: 1
+
       ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1296,6 +1285,98 @@ spec:
       image_pull_secrets:
         name: "ibm-entitlement-key"
 
+      ###########################################
+      ## CPE audit logging.  If you want to change the default values, update the section below.
+      ###########################################
+      audit_logging:
+        # Enable/disable audit logging.  The default is "false".
+        enabled: false
+        # Default size of the audit log directory.  The default is "150Mi".
+        audit_log_dir_size: 150Mi
+        # Default number of audit log files to keep.  The default is "5".
+        rolling_max_files: 5
+        # Default size of the audit log file.  The default is "20Mi".
+        rolling_max_size: 20Mi
+        # Optional.  This configmap allows user to define a set of Object Store names to be used for audit logging along with other parameters.
+        # Please refer to the Knowledge Center for more information.
+        configmap:
+        ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
+        arch:
+          amd64: "3 - Most preferred"
+        ## The number of replicas or pods to be deployed. The default is 1 replica.
+        replicas: 1
+        ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+        image:
+          ## The default repository is the IBM Entitled Registry.
+          repository: cp.icr.io/cp/cp4a/fncm/cpe-audit-log
+          tag: "25.0.0"
+          ## This will override the image pull policy in the shared_configuration.
+          pull_policy: IfNotPresent
+        initresources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+            ephemeral_storage: 62Mi 
+          limits:
+            cpu: 500m
+            memory: 512Mi
+            ephemeral_storage: 82Mi
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1536Mi
+            ephemeral_storage: 1Gi 
+          limits:
+            cpu: 1
+            memory: 1536Mi
+            ephemeral_storage: 1Gi 
+        ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
+        ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
+        auto_scaling:
+          enabled: false
+          max_replicas: "<Required>"
+          min_replicas: "<Required>"
+          ## This is the default cpu percentage before autoscaling occurs.
+          target_cpu_utilization_percentage: "<Required>"
+        node_affinity:
+          #-------------------------------------
+          # custom_node_selector_match_expression will be added in node selector match expressions.
+          # It accepts array list inputs. You can assign multiple selector match expressions except (kubernetes.io/arch)
+          # Example value:
+          # - key: kubernetes.io/hostname
+          #   operator: In
+          #   values:
+          #     - worker0
+          #     - worker1
+          #     - worker3
+          #-------------------------------------
+          custom_node_selector_match_expression: [ ]      
+        image_pull_secrets:
+          name: "ibm-entitlement-key"
+        probe:
+          readiness:
+            period_seconds: 10
+            timeout_seconds: 10
+            failure_threshold: 6
+          liveness:
+            period_seconds: 10
+            timeout_seconds: 5
+            failure_threshold: 6
+        jvm_initial_heap_percentage: 40
+        jvm_max_heap_percentage: 66
+        license: accept
+        ## Values in this field will be used as annotations in all generated pods and it must be valid annotation key value pairs.
+        # Example:
+        # customAnnotationKey: customAnnotationValue
+        ## To include '{{ }}' in annotation like '{{example}}', add a backward slash before curly brace like '\{\{example\}\}'.
+        ## This can be overwritten by componenent level definition for example ecm_configuration.cpe.custom_annotations.
+        custom_annotations: {}
+        ## Values in this field will be used as labels in all generated pods and it must be valid label key value pairs
+        # Example:
+        # customLabelKey: customLableValue
+        ## This can be overwritten by componenent level definition for example ecm_configuration.cpe.custom_labels.
+        custom_labels: {}
+
       # #############################################
       # ## Start of configuration for LSCollector  ##
       # ## When sc_deployment_fncm_license is set  ##
@@ -1310,7 +1391,7 @@ spec:
       #     pull_policy: IfNotPresent
       #     ## The default repository is the IBM Entitled Registry.
       #     repository: cp.icr.io/cp/cp4a/fncm/lscollector
-      #     tag: "24.0.1-IF002"
+      #     tag: "25.0.0"
       #   ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
       #   ## If more resources are needed, make the changes here to meet your requirement.
       #   resources:
@@ -1346,7 +1427,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1455,6 +1536,18 @@ spec:
       ## By default, the plugin for Graphite is enable to emit container metrics.
       collectd_enable_plugin_write_graphite: false
 
+      ## Audit logging configuration for CMIS component. The default value is "false".
+      audit_logging:
+        # Enable or disable audit logging for CMIS component
+        enabled: false
+        # The audit log directory size.  The default value is "150Mi". The value should be in the format of "<number><unit>".  The valid units are "Ki", "Mi", "Gi", "Ti", "Pi", "Ei".
+        # This log directory will be mounted as an ephemeral storage volume in the CMIS pods.
+        audit_log_dir_size: '150Mi'
+        # The number of audit log files to keep. The default value is "5". Increasing this value will increase the number of audit log files kept. You may want to increase the audit_log_dir_size if you increase this value.
+        rolling_max_files: 5
+        # The maximum size of each audit log file. The default value is "20Mi".  The value should be in the format of "<number><unit>".  The valid units are "Ki", "Mi", "Gi", "Ti", "Pi", "Ei". You may want to increase the audit_log_dir_size if you increase this value.
+        rolling_max_size: '20Mi'
+
       ## Persistent Volume Claims for CMIS.  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
@@ -1499,7 +1592,7 @@ spec:
     #    pull_policy: IfNotPresent
     #    ## The default repository is the IBM Entitled Registry.
     #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-    #    tag: "24.0.1-IF002"
+    #    tag: "25.0.0"
     #
     #  ## Below are the default LSReporter Production settings.
     #  ## Make the necessary changes as you see fit.

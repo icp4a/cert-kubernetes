@@ -68,6 +68,7 @@ EOF
 
 # verify ldap connection
 function verify_ldap_connection(){
+  set -x
   local LDAP_TEST_JAR_PATH=${CUR_DIR}/helper/verification/ldap
   local ldap_server=$1
   local ldap_port=$2
@@ -222,7 +223,7 @@ function verify_db_connection(){
         fail "Not found required server certificate file \"db-cert.crt\" under \"$dbcafolder\" for $DB_TYPE database instance \"$dbuser\", exit..."
         exit 1
       fi
-    elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" || $DB_TYPE == "sqlserver" ]]; then
+    elif [[ $DB_TYPE == "db2" || $DB_TYPE == "sqlserver" ]]; then
       if [[ ! -f "${dbcafolder}/db-cert.crt" ]]; then
         fail "Not found required server certificate file \"db-cert.crt\" under \"$dbcafolder\" for $DB_TYPE database server \"$dbserver\", exit..."
         exit 1
@@ -254,15 +255,26 @@ function verify_db_connection(){
     while true; do
         case $DB_TYPE in
           "db2")                                                                                   # -h {{ db2_server }} -p {{ db2_port }} -db {{ db2_dbname }} -u {{ db2_user }} -pwd {{ db2_pwd }} -ssl -ca {{ db2_cafile }}
-              output=$(java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -ssl -ca $dbcafolder/db-cert.crt 2>&1)
+              # Adding a flag to the jar command so that it can validate a db2rds type database
+              # DBACLD-163779
+              if [[ $IS_RDS == true ]]; then
+                output=$(java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -ssl -ca $dbcafolder/db-cert.crt -db2rds 2>&1)
+              else
+                output=$(java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -ssl -ca $dbcafolder/db-cert.crt 2>&1)
+              fi
               retVal_verify_db_tmp=$?
               connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
               if [[ ! -z $connection_time ]]; then
                 display_latency_warning $connection_time "Database"
               fi
               [[ retVal_verify_db_tmp -ne 0 ]] && \
-              warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar\" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -ssl -ca $dbcafolder/db-cert.crt" && \
-              fail "Unable to connect to database \"$dbname\" on database server \"$dbserver\", please check configuration again."
+              if [[ $IS_RDS == true ]]; then
+                warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar\" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -ssl -ca $dbcafolder/db-cert.crt -db2rds" && \
+                fail "Unable to connect to database \"$dbname\" on database server \"$dbserver\", please check configuration again."
+              else 
+                warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar\" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -ssl -ca $dbcafolder/db-cert.crt " && \
+                fail "Unable to connect to database \"$dbname\" on database server \"$dbserver\", please check configuration again."
+              fi
               [[ retVal_verify_db_tmp -eq 0 ]] && \
               success "Checked DB connection for \"$dbname\" on database server \"$dbserver\", PASSED!"
               break
@@ -301,7 +313,7 @@ function verify_db_connection(){
               keytool -import -alias cp4baSQLServerCerts -keystore $TRUSTSTORE_FOLDER/sqlserver-db-truststore.p12 -file $TRUSTSTORE_FOLDER/sqlserver-db-cert.der -storepass "$db_truststore_password" -storetype PKCS12 -noprompt 2>&1 </dev/null
                                                                                                                         # ssl_connection_str: "encrypt=true;trustServerCertificate=false;trustStore={{ban_cert_dir}}/ibm_customBANTrustStore.p12;trustStorePassword={{ ban_keystore_decoded_pwd|first if '{xor}' in ban_keystore_password else ban_keystore_password }}"
               SSL_CONNECTION_STR="fips=$fips_flag;encrypt=true;trustServerCertificate=false;trustStore=${TRUSTSTORE_FOLDER}/sqlserver-db-truststore.p12;trustStorePassword=${db_truststore_password}"
-              output=$(eval java -Duser.language=en -Duser.country=US -cp "${DB_JDBC_NAME}/mssql-jdbc.jre8.jar:${DB_CONNECTION_JAR_PATH}/SQLJDBCConnection.jar" SQLConnection -h $dbserver -p $dbport -d $dbname -u $dbuser -pwd $dbuserpwd -ssl "$SSL_CONNECTION_STR" 2>&1)
+              output=$(eval java -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp "${DB_JDBC_NAME}/mssql-jdbc.jre8.jar:${DB_CONNECTION_JAR_PATH}/SQLJDBCConnection.jar" SQLConnection -h $dbserver -p $dbport -d $dbname -u $dbuser -pwd $dbuserpwd -ssl "$SSL_CONNECTION_STR" 2>&1)
               retVal_verify_db_tmp=$?
               connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
               if [[ ! -z $connection_time ]]; then
@@ -309,7 +321,7 @@ function verify_db_connection(){
               fi
 
               [[ retVal_verify_db_tmp -ne 0 ]] && \
-              warning "Execute: java -Duser.language=en -Duser.country=US -cp \"${DB_JDBC_NAME}/mssql-jdbc.jre8.jar:${DB_CONNECTION_JAR_PATH}/SQLJDBCConnection.jar\" SQLConnection -h $dbserver -p $dbport -d $dbname -u $dbuser -pwd ****** -ssl \"$SSL_CONNECTION_STR\"" && \
+              warning "Execute: java -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp \"${DB_JDBC_NAME}/mssql-jdbc.jre8.jar:${DB_CONNECTION_JAR_PATH}/SQLJDBCConnection.jar\" SQLConnection -h $dbserver -p $dbport -d $dbname -u $dbuser -pwd ****** -ssl \"$SSL_CONNECTION_STR\"" && \
               fail "Unable to connect to database \"$dbname\" on database server \"$dbserver\", please check configuration again."
               [[ retVal_verify_db_tmp -eq 0 ]] && \
               success "Checked DB connection for \"$dbname\" on database server \"$dbserver\", PASSED!"
@@ -362,7 +374,13 @@ function verify_db_connection(){
     while true; do
         case $DB_TYPE in
           "db2")                                                                                                                                                   # -h {{ db2_server }} -p {{ db2_port }} -db {{ db2_dbname }} -u {{ db2_user }} -pwd {{ db2_pwd }} -ssl -ca {{ db2_cafile }}
-              output=$(java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp "${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd 2>&1)
+              # Adding a flag to the jar command so that it can validate a db2rds type database
+              # DBACLD-163779
+              if [[ $IS_RDS == true ]]; then
+                output=$(java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp "${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -db2rds 2>&1)
+              else
+                output=$(java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp "${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd 2>&1)
+              fi
               retVal_verify_db_tmp=$?
               connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
               if [[ ! -z $connection_time ]]; then
@@ -370,8 +388,13 @@ function verify_db_connection(){
               fi
 
               [[ retVal_verify_db_tmp -ne 0 ]] && \
-              warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp \"${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar\" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ******" && \
-              fail "Unable to connect to database \"$dbname\" on database host server \"$dbserver\", please check configuration again."
+              if [[ $IS_RDS == true ]]; then
+                warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp \"${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar\" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -db2rds" && \
+                fail "Unable to connect to database \"$dbname\" on database host server \"$dbserver\", please check configuration again."
+              else
+                warning "Execute: java -Dsemeru.fips=$fips_flag -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp \"${DB_JDBC_NAME}/db2jcc4.jar:${DB_CONNECTION_JAR_PATH}/DB2JDBCConnection.jar\" DB2Connection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ******" && \
+                fail "Unable to connect to database \"$dbname\" on database host server \"$dbserver\", please check configuration again."
+              fi
               [[ retVal_verify_db_tmp -eq 0 ]] && \
               success "Checked DB connection for \"$dbname\" on database host server \"$dbserver\", PASSED!"
               break

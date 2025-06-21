@@ -30,7 +30,7 @@ cat << EOF > $BAN_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createICNDB.sql
 -- If your Oracle environment uses ASM (Automatic Storage Management),  
 -- update the 'DATAFILE' and 'TEMPFILE' paths to reflect your ASM configuration.  
 -- Additionally, ensure that database object names (e.g., tablespace, user, etc.)  
--- match the expected naming conventions. Any deviations may cause issues. 
+-- match the expected naming conventions. Any deviations may cause issues.
 
 -- create a new user
 CREATE USER ${dbuser} IDENTIFIED BY "${dbuserpwd}";

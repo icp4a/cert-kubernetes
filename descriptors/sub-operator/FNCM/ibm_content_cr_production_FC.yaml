@@ -17,12 +17,12 @@ metadata:
     app.kubernetes.io/instance: ibm-dba-content
     app.kubernetes.io/managed-by: ibm-dba-content
     app.kubernetes.io/name: ibm-dba-content
-    release: 24.0.1
+    release: 25.0.0
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 24.0.1
+  appVersion: 25.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "true".
   license:
@@ -52,10 +52,10 @@ spec:
 
     ## Use this parameter to specify the license for the CP4A deployment and
     ## the possible values are: non-production and production and if not set, the license will
-    ## be defaulted to production.  This value could be different from the other licenses in the CR.
+    ## be defaulted to production. This value could be different from the other licenses in the CR.
     sc_deployment_license: "<Required>"
 
-    ## The deployment context, which has a default value of "CP4A".  Unless you are instructed to change this value or
+    ## The deployment context, which has a default value of "CP4A". Unless you are instructed to change this value or
     ## know the reason to change this value, please leave the default value.
     sc_deployment_context: "CP4A"
 
@@ -63,7 +63,7 @@ spec:
     image_pull_secrets:
     - ibm-entitlement-key
 
-    ## All CP4A components must use/share the same docker image repository.  For example, if IBM Entitled Registry is used, then
+    ## All CP4A components must use/share the same docker image repository. For example, if IBM Entitled Registry is used, then
     ## it should be "cp.icr.io".  Otherwise, it will be a local docker registry.
     sc_image_repository: cp.icr.io
 
@@ -91,7 +91,7 @@ spec:
     ## to https://www.ibm.com/docs/en/cloud-paks/1.0?topic=foundation-custom-resources#automationuiconfig for more information.
     external_tls_certificate_secret:
 
-    ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that corresponds to a user ID.
+    ## Specify the RunAsUser for the security context of the pod. This is usually a numeric value that corresponds to a user ID.
     ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is optional. It is not supported on OCP and ROKS.
     sc_run_as_user:
 
@@ -105,31 +105,17 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/common/dba-keytool-initcontainer
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
-    ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
+    ## The platform to be deployed specified by the user. Possible values are: OCP, ROKS, and other. This is normally populated by the User script
     ## based on input from the user.
     sc_deployment_platform:
 
-    sc_egress_configuration:
-      ## Required. Enable or disable egress access to external systems.
-      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true".
-      ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
-      sc_restricted_internet_access: true
-      ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
-      ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
-      sc_api_namespace:
-      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## Default are 443,6443 for OCP and ROKS
-      sc_api_port:
-      ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
-      ## Default is "openshift-dns" for OCP and ROKS
-      sc_dns_namespace:
-      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## Default are 53,5353 for OCP and ROKS
-      sc_dns_port:
+    ## Staring with CP4BA 25.0.0, the operators are no longer creating network policies automatically due to a change in the security requirements where the permissions to create network policies have been removed.
+    ## The optional parameter to enable/disable the creation of sample network policy templates for CP4BA components.  If the parameter is not defined, then the default value is "false".
+    ## Set this flag to "true" if you plan to have restricted network policies in CP4BA namespaces so that the operators can create sample network policy templates for CP4BA components.
+    ## Please refer to the CP4BA documentation for more information about how to retrieve and apply the sample network policy templates.
+    sc_generate_sample_network_policies: false
 
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false
@@ -137,8 +123,8 @@ spec:
     ## For ROKS Ingress, provide TLS secret name for Ingress controller. If you are not using ROKS, comment out this line.
     sc_ingress_tls_secret_name: <Required>
 
-    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <router-canonical-hostname> when not defined.
-    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=scp-shared-configuration
+    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <route-name>-{{meta.namespace}}.<router-canonical-hostname> when not defined.
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.0?topic=scp-shared-configuration
     ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
     #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
 
@@ -177,7 +163,7 @@ spec:
 
 
     ## Enable/disable the ECM (FNCM) / BAN verification (e.g., creation of test folder, creation of test document,
-    ## execution of CBR search, and creation of Navigator demo repository and desktop).  If the "verify_configuration"
+    ## execution of CBR search, and creation of Navigator demo repository and desktop). If the "verify_configuration"
     ## section is defined in the CR and sc_content_verification is set to true, then the verification will occur.  Note that if you are upgrading or
     ## migrating, set this parameter to "false" since the env has been previously verified.
     sc_content_verification: false
@@ -536,7 +522,6 @@ spec:
     #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
 
-
   ## The idp_iam_configuration is meant when you have an identity provider configured in iam that isn't a directory provider service
   ## Such as Okta or Microsoft Entra ID configured in IAM as the identity provider.
   ## Set the idp_id to the name giving to the identity provider configured in IAM.
@@ -561,7 +546,7 @@ spec:
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for a GCD database, set this parameter to true
       dc_use_postgres: false
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "db2rds" or "db2rdsHADR" or "oracle" or "postgresql".
       dc_database_type: "<Required>"
       ## The GCD non-XA datasource name.  The default value is "FNGCDDS".
       dc_common_gcd_datasource_name: "FNGCDDS"
@@ -603,7 +588,7 @@ spec:
         purge_policy: EntirePool
     ## The database configuration for the object store 1 (OS1) datasource for CPE
     dc_os_datasources:
-    ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
+    ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "db2rds" or "db2rdsHADR" or "oracle" or "postgresql".  This should be the same as the
     ## GCD configuration above.
     - dc_database_type: "<Required>"
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
@@ -663,7 +648,7 @@ spec:
 
     ## The database configuration for CPE, Operator will only add them as data source for CPE, won't create Object Store for these database connection.
     dc_cpe_datasources:
-    ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
+    ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "db2rds" or "db2rdsHADR" or "oracle" or "postgresql".  This should be the same as the
     ## GCD configuration above.
     - dc_database_type: "<Required>"
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
@@ -723,7 +708,7 @@ spec:
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for a Navigator database, set this parameter to true
       dc_use_postgres: false
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "db2rds" or "db2rdsHADR" or "oracle" or "postgresql".  This should be the same as the
       ## GCD and object store configuration above.
       dc_database_type: "<Required>"
       ## Provide the ICN datasource name.  The default value is "ECMClientDS".
@@ -880,11 +865,17 @@ spec:
       ## it is recommended to have 2 or more.
       replica_count: 2
 
+      ## Rolling update settings for CPE deployment.  By default, max_unavailable is set to 99% and max_surge is set to 1.  This will help speeding up the CPE upgrade process.
+      ## Valid values for max_unavailable are 0-100% or 0-<number of replicas>.  Valid values for max_surge are 0-100% or 0-<number of replicas>.
+      rolling_update:
+        max_unavailable: 99%
+        max_surge: 1
+
       ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1037,7 +1028,7 @@ spec:
       #     pull_policy: IfNotPresent
       #     ## The default repository is the IBM Entitled Registry.
       #     repository: cp.icr.io/cp/cp4a/fncm/lscollector
-      #     tag: "24.0.1-IF002"
+      #     tag: "25.0.0"
       #   ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
       #   ## If more resources are needed, make the changes here to meet your requirement.
       #   resources:
@@ -1078,7 +1069,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1175,7 +1166,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1337,7 +1328,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1457,7 +1448,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1565,7 +1556,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1691,7 +1682,7 @@ spec:
     #    pull_policy: IfNotPresent
     #    ## The default repository is the IBM Entitled Registry.
     #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-    #    tag: "24.0.1-IF002"
+    #    tag: "25.0.0"
     #
     #  ## Below are the default LSReporter Production settings.
     #  ## Make the necessary changes as you see fit.
@@ -1779,7 +1770,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "24.0.1-IF002"
+      tag: "25.0.0"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2170,7 +2161,7 @@ spec:
 
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -2291,7 +2282,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: "24.0.1-IF002"
+      tag: "25.0.0"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent

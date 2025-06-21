@@ -1,8 +1,8 @@
 {
-    "BUILD_ID": "42",
-    "BUILD_DATE": "2024-11-26T16:11:48-0800",
-    "GIT_COMMIT": "d4d6135f1a723d915eb06d842d72d7a7aa12b6fa",
+    "BUILD_ID": "44",
+    "BUILD_DATE": "2025-03-07T01:43:59-0800",
+    "GIT_COMMIT": "8622cdbab0c04a567d80c9839cefbcb6378925bb",
     "GIT_BRANCH": "master",
-    "RELEASE_BASE": "24.0.1",
-    "DB_SCHEMA_VERSION": "24.0.1"
+    "RELEASE_BASE": "25.0.0",
+    "DB_SCHEMA_VERSION": "25.0.0"
 }

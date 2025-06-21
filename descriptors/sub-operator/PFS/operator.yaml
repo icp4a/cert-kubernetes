@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-cp4a-pfs-operator
     app.kubernetes.io/managed-by: ibm-cp4a-pfs-operator
     app.kubernetes.io/name: ibm-cp4a-pfs-operator
-    release: 24.0.1
+    release: 25.0.0
 spec:
   replicas: 1
   selector:
@@ -29,17 +29,17 @@ spec:
         app.kubernetes.io/instance: ibm-cp4a-pfs-operator
         app.kubernetes.io/managed-by: ibm-cp4a-pfs-operator
         app.kubernetes.io/name: ibm-cp4a-pfs-operator
-        release: 24.0.1
+        release: 25.0.0
       annotations:
         cloudpakId: "94a9c8c358bb43ba8fbdea62e7e166a5"
         cloudpakName: "IBM Cloud Pak for Business Automation"
-        cloudpakVersion: "24.0.1"
+        cloudpakVersion: "25.0.0"
         productChargedContainers: ""
         productCloudpakRatio: '1:1'
         productID: 94a9c8c358bb43ba8fbdea62e7e166a5
         productMetric: "VIRTUAL_PROCESSOR_CORE"
         productName: "Process Federation Server - CP4BA"
-        productVersion: "24.0.1"
+        productVersion: "25.0.0"
     spec:
       hostNetwork: false
       hostPID: false
@@ -70,7 +70,7 @@ spec:
                 - ppc64le
       containers:
         - name: operator
-          image: icr.io/cpopen/icp4a-pfs-operator@sha256:ce74559f24d554a8151238081a2b69d107c5e80fd1edaf9db6333b6d1fcfa6d9
+          image: icr.io/cpopen/icp4a-pfs-operator:25.0.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

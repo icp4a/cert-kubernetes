@@ -22,7 +22,7 @@ CS_NS=
 CS_CTRL_NS=
 
 CS_CATALOG="opencloud-operators"
-BTS_CATALOG="ibm-bts-operator-catalog-v3-35-1"
+BTS_CATALOG="bts-operator"
 POSTGRES_CATALOG="cloud-native-postgresql-catalog"
 CS_CATALOG_LIST="${CS_CATALOG} ${BTS_CATALOG} ${POSTGRES_CATALOG}"
 CP4BA_CATALOG="ibm-cp4a-operator-catalog"

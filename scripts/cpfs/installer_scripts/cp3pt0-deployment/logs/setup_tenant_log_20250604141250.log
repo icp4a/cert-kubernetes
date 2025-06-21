@@ -1,0 +1,298 @@
+# Start to validate the parameters passed into script... 
+[✔] oc command available
+[✔] /Users/varunsriram/Documents/Work/CloudPak/CodeRepos/cert-kubernetes/scripts/cpfs/yq/macos/yq command available
+[✔] oc command logged in as kube:admin
+[✔] Channel v4.12 is valid
+[INFO] ibm-common-service-operator subscription exists, it is upgrade scenario
+
+[✗] It is simple namespace topology
+
+[✔] Profile size is valid.
+# Validate CatalogSource for operator ibm-common-service-operator in prod namespace
+[✔] CatalogSource ibm-cs-install-catalog-v4-12-0 from prod CatalogSourceNamespace is available for ibm-common-service-operator in prod namespace
+
+# Checking whether Namespace prod exist...
+[✔] Namespace prod already exists. Skip creating
+
+# Checking whether Namespace prod exist...
+[✔] Namespace prod already exists. Skip creating
+
+# Checking whether OperatorGroup in prod exist...
+[✔] OperatorGroup already exists in prod. Skip creating
+
+#  Checking whether Cert Manager exist...
+#  Smoke test for Cert Manager existence...
+[DEBUG] Creating Issuer test-issuer in namespace prod .
+[INFO] Creating following issuer:
+
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: test-issuer
+  namespace: prod
+spec:
+  selfSigned: {}
+
+issuer.cert-manager.io/test-issuer created
+[DEBUG] Creating Certificate test-certificate in namespace prod .
+[INFO] Creating following certificate:
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: test-certificate
+  namespace: prod
+spec:
+  commonName: test-certificate
+  issuerRef:
+    kind: Issuer
+    name: test-issuer
+  secretName: test-certificate-secret
+
+certificate.cert-manager.io/test-certificate created
+[INFO] Waiting for Issuer test-issuer in namespace prod to be Ready
+[✔] Issuer test-issuer in namespace prod is Ready
+
+[INFO] Waiting for Certificate test-certificate in namespace prod to be Ready
+[✔] Certificate test-certificate in namespace prod is Ready
+
+[INFO] Deleting test-issuer Issuer ...
+issuer.cert-manager.io "test-issuer" deleted
+
+[INFO] Deleting test-certificate Certificate ...
+certificate.cert-manager.io "test-certificate" deleted
+
+[INFO] Deleting 54939secret_name Secret ...
+secret "test-certificate-secret" deleted
+
+#  Checking IBMLicensing...
+[✗] NamespaceScope Configuration is not needed for simple or all namespaces topology, skip NamespaceScope setup
+
+# Installing IBM Foundational services operator into operator namespace prod...
+# Checking if CommonService CRD exists in the cluster...
+[INFO] CommonService CRD exist
+
+# Configuring CommonService CR in prod...
+[INFO] Configuring CommonService CR common-service in prod
+
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"operator.ibm.com/v3","kind":"CommonService","metadata":{"annotations":{"version":"-1"},"labels":{"app.kubernetes.io/component":"Operator","app.kubernetes.io/instance":"content","app.kubernetes.io/managed-by":"Operator","app.kubernetes.io/name":"content-cp4ba","app.kubernetes.io/version":"24.0.1","foundationservices.cloudpak.ibm.com":"commonservice","release":"24.0.1"},"name":"common-service","namespace":"prod"},"spec":{"license":{"accept":true},"operatorNamespace":"prod","servicesNamespace":"prod","size":"small","storageClass":"csi-cephfs"},"status":{"bedrockOperators":[{"installPlanName":"install-c8qnv","name":"ibm-iam-operator","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v4.9.0"},{"installPlanName":"install-c8qnv","name":"ibm-zen-operator","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v6.1.0"},{"installPlanName":"install-6zqvc","name":"cloud-native-postgresql","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v1.22.7"}],"conditions":[{"lastTransitionTime":"2025-06-04T15:38:31Z","lastUpdateTime":"2025-06-04T15:38:31Z","message":"reconciling CommonService CR.","reason":"StartReconciling","status":"False","type":"Reconciling"},{"lastTransitionTime":"2025-06-04T15:44:25Z","lastUpdateTime":"2025-06-04T15:44:25Z","message":"initializing/updating: waiting for OperandRegistry and OperandConfig to become ready.","reason":"UpdatingResources","status":"False","type":"Pending"},{"lastTransitionTime":"2025-06-04T15:44:45Z","lastUpdateTime":"2025-06-04T15:44:45Z","message":"configuring CommonService CR.","reason":"Configuring","status":"False","type":"Reconciling"},{"lastTransitionTime":"2025-06-04T15:44:45Z","lastUpdateTime":"2025-06-04T15:44:45Z","message":"CommonService CR is ready.","reason":"ReconcileSucceeded","status":"True","type":"Ready"}],"configStatus":{"catalogName":"ibm-cs-install-catalog-v4-10-0","catalogNamespace":"prod","configurable":true,"operatorDeployed":true,"operatorNamespace":"prod","servicesDeployed":true,"servicesNamespace":"prod","topologyConfigurableCRs":[{"apiVersion":"operator.ibm.com/v3","kind":"CommonService","namespace":"prod","objectName":"common-service"}]},"overallStatus":"Succeeded","phase":"Succeeded"}}
+    version: "-1"
+  labels:
+    app.kubernetes.io/component: Operator
+    app.kubernetes.io/instance: content
+    app.kubernetes.io/managed-by: Operator
+    app.kubernetes.io/name: content-cp4ba
+    app.kubernetes.io/version: 24.0.1
+    foundationservices.cloudpak.ibm.com: commonservice
+    release: 24.0.1
+  name: common-service
+  namespace: prod
+spec:
+  license:
+    accept: true
+  operatorNamespace: prod
+  servicesNamespace: prod
+  size: small
+  storageClass: csi-cephfs
+status:
+  bedrockOperators:
+    - installPlanName: install-ffw9b
+      name: ibm-iam-operator
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v4.10.0
+    - installPlanName: install-bcpq9
+      name: ibm-zen-operator
+      subscriptionStatus: UpgradePending
+      troubleshooting: Operator status is not healthy, please check https://ibm.biz/cpfs_general_troubleshooting for more information
+      version: v6.1.1-89
+    - installPlanName: install-bcpq9
+      name: cloud-native-postgresql
+      operatorStatus: Replacing
+      subscriptionStatus: UpgradePending
+      troubleshooting: Operator status is not healthy, please check https://ibm.biz/cpfs_general_troubleshooting for more information
+      version: v1.22.7
+  conditions:
+    - lastTransitionTime: "2025-06-04T15:38:31Z"
+      lastUpdateTime: "2025-06-04T15:38:31Z"
+      message: reconciling CommonService CR.
+      reason: StartReconciling
+      status: "False"
+      type: Reconciling
+    - lastTransitionTime: "2025-06-04T16:52:50Z"
+      lastUpdateTime: "2025-06-04T16:52:50Z"
+      message: 'initializing/updating: waiting for OperandRegistry and OperandConfig to become ready.'
+      reason: UpdatingResources
+      status: "False"
+      type: Pending
+    - lastTransitionTime: "2025-06-04T16:53:12Z"
+      lastUpdateTime: "2025-06-04T16:53:12Z"
+      message: configuring CommonService CR.
+      reason: Configuring
+      status: "False"
+      type: Reconciling
+    - lastTransitionTime: "2025-06-04T16:53:12Z"
+      lastUpdateTime: "2025-06-04T16:53:12Z"
+      message: CommonService CR is ready.
+      reason: ReconcileSucceeded
+      status: "True"
+      type: Ready
+  configStatus:
+    catalogName: ibm-cs-install-catalog-v4-11-0
+    catalogNamespace: prod
+    configurable: true
+    operatorDeployed: true
+    operatorNamespace: prod
+    servicesDeployed: true
+    servicesNamespace: prod
+    topologyConfigurableCRs:
+      - apiVersion: operator.ibm.com/v3
+        kind: CommonService
+        namespace: prod
+        objectName: common-service
+  overallStatus: NotReady
+  phase: Succeeded
+
+pod/ibm-common-service-operator-6dd56fb8d8-jwzg6 condition met
+[DEBUG] ibm-common-service-operator pod is ready
+
+commonservice.operator.ibm.com/common-service configured
+[✔] Successfully patched CommonService CR in prod
+# Checking whether IBM Common Service operator exist...
+[INFO] There is an ibm-common-service-operator Subscription already
+
+# Updating ibm-common-service-operator-v4.10-ibm-cs-install-catalog-v4-10-0-prod in namesapce prod...
+[INFO] v4.11 is less than v4.12
+[INFO] catalogsource ibm-cs-install-catalog-v4-11-0 is different from ibm-cs-install-catalog-v4-12-0
+[INFO] ibm-common-service-operator is ready for updating the subscription.
+subscription.operators.coreos.com/ibm-common-service-operator-v4.10-ibm-cs-install-catalog-v4-10-0-prod configured
+[✔] Successfully patched subscription ibm-common-service-operator in prod
+[INFO] Waiting for operator ibm-common-service-operator to be upgraded
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.prod='' -n prod -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-06-04T21:09:39Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (120 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.prod='' -n prod -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-06-04T21:09:39Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (119 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.prod='' -n prod -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-06-04T21:09:39Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (118 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.prod='' -n prod -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-06-04T21:09:39Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"message":"[a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-content-operator\": ibm-content-operator.v24.1.2, ibm-content-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-odm-operator\": ibm-odm-operator.v25.0.0, ibm-odm-operator.v24.1.2, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-insights-engine-operator\": ibm-insights-engine-operator.v24.1.2, ibm-insights-engine-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-pfs-operator\": ibm-pfs-operator.v24.1.2, ibm-pfs-operator.v25.0.0]","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (117 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.prod='' -n prod -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-06-04T21:09:39Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"message":"[a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-content-operator\": ibm-content-operator.v24.1.2, ibm-content-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-odm-operator\": ibm-odm-operator.v25.0.0, ibm-odm-operator.v24.1.2, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-insights-engine-operator\": ibm-insights-engine-operator.v24.1.2, ibm-insights-engine-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-pfs-operator\": ibm-pfs-operator.v24.1.2, ibm-pfs-operator.v25.0.0]","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (116 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.prod='' -n prod -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-06-04T21:09:39Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"message":"[a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-content-operator\": ibm-content-operator.v24.1.2, ibm-content-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-odm-operator\": ibm-odm-operator.v25.0.0, ibm-odm-operator.v24.1.2, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-insights-engine-operator\": ibm-insights-engine-operator.v24.1.2, ibm-insights-engine-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-pfs-operator\": ibm-pfs-operator.v24.1.2, ibm-pfs-operator.v25.0.0]","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (115 left)
+E0604 14:15:38.037903   55652 memcache.go:265] couldn't get current server API group list: Get "https://api.bvh.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp 9.60.193.195:6443: connect: connection refused
+E0604 14:15:38.042149   55652 memcache.go:265] couldn't get current server API group list: Get "https://api.bvh.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp 9.60.193.195:6443: connect: connection refused
+E0604 14:15:38.048414   55652 memcache.go:265] couldn't get current server API group list: Get "https://api.bvh.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp 9.60.193.195:6443: connect: connection refused
+E0604 14:15:38.054367   55652 memcache.go:265] couldn't get current server API group list: Get "https://api.bvh.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp 9.60.193.195:6443: connect: connection refused
+E0604 14:15:38.059618   55652 memcache.go:265] couldn't get current server API group list: Get "https://api.bvh.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp 9.60.193.195:6443: connect: connection refused
+The connection to the server api.bvh.cp.fyre.ibm.com:6443 was refused - did you specify the right host or port?
+E0604 14:15:38.180297   55655 memcache.go:265] couldn't get current server API group list: Get "https://api.bvh.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp 9.60.193.195:6443: connect: connection refused
+E0604 14:15:38.184663   55655 memcache.go:265] couldn't get current server API group list: Get "https://api.bvh.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp 9.60.193.195:6443: connect: connection refused
+E0604 14:15:38.190225   55655 memcache.go:265] couldn't get current server API group list: Get "https://api.bvh.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp 9.60.193.195:6443: connect: connection refused
+E0604 14:15:38.193683   55655 memcache.go:265] couldn't get current server API group list: Get "https://api.bvh.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp 9.60.193.195:6443: connect: connection refused
+E0604 14:15:38.198258   55655 memcache.go:265] couldn't get current server API group list: Get "https://api.bvh.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp 9.60.193.195:6443: connect: connection refused
+The connection to the server api.bvh.cp.fyre.ibm.com:6443 was refused - did you specify the right host or port?
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.prod='' -n prod -o jsonpath='{.items[*].status.conditions}' -> 
+
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (114 left)
+E0604 14:15:38.259649   55657 memcache.go:265] couldn't get current server API group list: Get "https://api.bvh.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp 9.60.193.195:6443: connect: connection refused
+E0604 14:15:38.264742   55657 memcache.go:265] couldn't get current server API group list: Get "https://api.bvh.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp 9.60.193.195:6443: connect: connection refused
+E0604 14:15:38.357353   55657 memcache.go:265] couldn't get current server API group list: Get "https://api.bvh.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp 9.60.193.195:6443: connect: connection refused
+E0604 14:15:38.362271   55657 memcache.go:265] couldn't get current server API group list: Get "https://api.bvh.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp 9.60.193.195:6443: connect: connection refused
+E0604 14:15:38.366720   55657 memcache.go:265] couldn't get current server API group list: Get "https://api.bvh.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp 9.60.193.195:6443: connect: connection refused
+The connection to the server api.bvh.cp.fyre.ibm.com:6443 was refused - did you specify the right host or port?
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.prod='' -n prod -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-06-04T21:09:39Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"message":"[a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-content-operator\": ibm-content-operator.v24.1.2, ibm-content-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-odm-operator\": ibm-odm-operator.v25.0.0, ibm-odm-operator.v24.1.2, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-insights-engine-operator\": ibm-insights-engine-operator.v24.1.2, ibm-insights-engine-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-pfs-operator\": ibm-pfs-operator.v24.1.2, ibm-pfs-operator.v25.0.0]","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (113 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.prod='' -n prod -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-06-04T21:09:39Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"message":"[a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-content-operator\": ibm-content-operator.v24.1.2, ibm-content-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-odm-operator\": ibm-odm-operator.v25.0.0, ibm-odm-operator.v24.1.2, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-insights-engine-operator\": ibm-insights-engine-operator.v24.1.2, ibm-insights-engine-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-pfs-operator\": ibm-pfs-operator.v24.1.2, ibm-pfs-operator.v25.0.0]","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (112 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.prod='' -n prod -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-06-04T21:09:39Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"message":"[a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-content-operator\": ibm-content-operator.v24.1.2, ibm-content-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-odm-operator\": ibm-odm-operator.v25.0.0, ibm-odm-operator.v24.1.2, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-insights-engine-operator\": ibm-insights-engine-operator.v24.1.2, ibm-insights-engine-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-pfs-operator\": ibm-pfs-operator.v24.1.2, ibm-pfs-operator.v25.0.0]","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (111 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.prod='' -n prod -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-06-04T21:09:39Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"message":"[a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-content-operator\": ibm-content-operator.v24.1.2, ibm-content-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-odm-operator\": ibm-odm-operator.v25.0.0, ibm-odm-operator.v24.1.2, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-insights-engine-operator\": ibm-insights-engine-operator.v24.1.2, ibm-insights-engine-operator.v25.0.0, a unique replacement chain within a channel is required to determine the relative order between channel entries, but 2 replacement chains were found in channel \"\" of package \"ibm-pfs-operator\": ibm-pfs-operator.v24.1.2, ibm-pfs-operator.v25.0.0]","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (110 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.prod='' -n prod -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-06-04T21:09:39Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"},{"lastTransitionTime":"2025-06-04T21:17:16Z","reason":"Installing","status":"True","type":"InstallPlanPending"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (109 left)
+[✔] Operator ibm-common-service-operator is upgraded to latest version in channel v4.12
+
+[INFO] Waiting for operator ibm-common-service-operator CSV in namespace prod to be bound to Subscription
+[✔] Operator ibm-common-service-operator CSV in namespace prod is bound to Subscription
+
+[INFO] Waiting for operator ibm-common-service-operator in namespace prod to become available
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator in namespace prod to become available (50 left)
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator in namespace prod to become available (49 left)
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator in namespace prod to become available (48 left)
+[✔] Operator ibm-common-service-operator in namespace prod is available
+
+# Accepting license for commonservice common-service in namespace prod...
+[✔] License accepted for commonservice common-service
+
+[INFO] Waiting for operator ibm-odlm CSV in namespace prod to be bound to Subscription
+[✔] Operator ibm-odlm CSV in namespace prod is bound to Subscription
+
+[INFO] Waiting for operator operand-deployment-lifecycle-manager in namespace prod to become available
+[✔] Operator operand-deployment-lifecycle-manager in namespace prod is available
+
+[INFO] Waiting for CommonService CR common-service in prod to be ready
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (150 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (149 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (148 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (147 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (146 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (145 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (144 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (143 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (142 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (141 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (140 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (139 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (138 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (137 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (136 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (135 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (134 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (133 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (132 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (131 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (130 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (129 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (128 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (127 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (126 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (125 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (124 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (123 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (122 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (121 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (120 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (119 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (118 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in prod to be ready (117 left)
+[✔] CommonService CR in prod is in Succeeded Phase
+

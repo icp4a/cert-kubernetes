@@ -2,7 +2,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2024. All Rights Reserved.
+# (C) Copyright IBM Corp. 2024, 2025. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -17,7 +17,7 @@ metadata:
     app.kubernetes.io/name: ibm-dba-workflowruntime
     app.kubernetes.io/instance: ibm-dba-workflowruntime
     app.kubernetes.io/managed-by: ibm-dba-workflowruntime
-    release: 24.0.1
+    release: 25.0.0
 spec:
   group: icp4a.ibm.com
   names:

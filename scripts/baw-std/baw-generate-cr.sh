@@ -657,14 +657,14 @@ function generate_baw_std_cr_file(){
     ${SED_COMMAND} "s|sc_medium_file_storage_classname:.*|sc_medium_file_storage_classname: \"${tmp_storage_class_medium}\"|g" ${BAW_STD_PATTERN_FILE_TMP}
     ${SED_COMMAND} "s|sc_fast_file_storage_classname:.*|sc_fast_file_storage_classname: \"${tmp_storage_class_fast}\"|g" ${BAW_STD_PATTERN_FILE_TMP}
 
-    # load restricted access flag and set sc_restricted_internet_access
-    restricted_flag="$(prop_user_profile_property_file CP4BA.ENABLE_RESTRICTED_INTERNET_ACCESS)"
-    restricted_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$restricted_flag")
-    restricted_flag=$(echo $restricted_flag | tr '[:upper:]' '[:lower:]')
-    if [[ (! -z $restricted_flag) && $restricted_flag == "true" ]]; then
-        ${YQ_CMD} w -i ${BAW_STD_PATTERN_FILE_TMP} spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access "true"
+    # load restricted access flag and set generate_sample_network_policies
+    generate_network_policy_flag="$(prop_user_profile_property_file CP4BA.ENABLE_GENERATE_SAMPLE_NETWORK_POLICIES)"
+    generate_network_policy_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$generate_network_policy_flag")
+    generate_network_policy_flag=$(echo $generate_network_policy_flag | tr '[:upper:]' '[:lower:]')
+    if [[ (! -z $generate_network_policy_flag) && $generate_network_policy_flag == "true" ]]; then
+        ${YQ_CMD} w -i ${BAW_STD_PATTERN_FILE_TMP} spec.shared_configuration.sc_generate_sample_network_policies "true"
     else
-        ${YQ_CMD} w -i ${BAW_STD_PATTERN_FILE_TMP} spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access "false"
+        ${YQ_CMD} w -i ${BAW_STD_PATTERN_FILE_TMP} spec.shared_configuration.sc_generate_sample_network_policies "false"
     fi
 
     # Comment out sc_ingress_tls_secret_name if OCP platform

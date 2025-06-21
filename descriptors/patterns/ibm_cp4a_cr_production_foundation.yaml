@@ -17,10 +17,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 24.0.1
+    release: 25.0.0
 spec:
   ## CP4A application version
-  appVersion: 24.0.1
+  appVersion: 25.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -128,8 +128,8 @@ spec:
     ## Optional: You can specify a profile size for CloudPak - valid values are small,medium,large - default is small.
     sc_deployment_profile_size: "small"
 
-    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <router-canonical-hostname> when not defined.
-    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=scp-shared-configuration
+    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <route-name>-{{meta.namespace}}.<router-canonical-hostname> when not defined.
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.0?topic=scp-shared-configuration
     ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
     #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
 
@@ -236,7 +236,7 @@ spec:
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for a Navigator database, set this parameter to true
       dc_use_postgres: false
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "db2rds" or "db2rdsHADR" or "oracle" or "postgresql".  This should be the same as the
       ## GCD and object store configuration above.
       dc_database_type: "<Required>"
       ## Provide the ICN datasource name.  The default value is "ECMClientDS".

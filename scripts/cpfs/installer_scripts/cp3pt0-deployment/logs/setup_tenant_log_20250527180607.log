@@ -1,0 +1,914 @@
+[34m# Start to validate the parameters passed into script... [0m
+[32m[✔] oc command available[0m
+[32m[✔] /Users/varunsriram/Documents/Work/CloudPak/CodeRepos/cert-kubernetes/scripts/cpfs/yq/macos/yq command available[0m
+[32m[✔] oc command logged in as kube:admin[0m
+[32m[✔] Channel v4.13 is valid[0m
+[INFO] ibm-common-service-operator subscription exists, it is upgrade scenario
+
+[33m[✗] It is simple namespace topology
+[0m
+[32m[✔] Profile size is valid.[0m
+[34m# Validate CatalogSource for operator ibm-common-service-operator in upgrade namespace[0m
+[32m[✔] CatalogSource ibm-cs-install-catalog-v4-13-0 from upgrade CatalogSourceNamespace is available for ibm-common-service-operator in upgrade namespace[0m
+
+[34m# Checking whether Namespace upgrade exist...[0m
+[32m[✔] Namespace upgrade already exists. Skip creating
+[0m
+[34m# Checking whether Namespace upgrade exist...[0m
+[32m[✔] Namespace upgrade already exists. Skip creating
+[0m
+[34m# Checking whether OperatorGroup in upgrade exist...[0m
+[32m[✔] OperatorGroup already exists in upgrade. Skip creating
+[0m
+[34m#  Checking whether Cert Manager exist...[0m
+[34m#  Smoke test for Cert Manager existence...[0m
+[33m[DEBUG] Creating Issuer test-issuer in namespace upgrade .[0m
+[INFO] Creating following issuer:
+
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: test-issuer
+  namespace: upgrade
+spec:
+  selfSigned: {}
+
+issuer.cert-manager.io/test-issuer created
+[33m[DEBUG] Creating Certificate test-certificate in namespace upgrade .[0m
+[INFO] Creating following certificate:
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: test-certificate
+  namespace: upgrade
+spec:
+  commonName: test-certificate
+  issuerRef:
+    kind: Issuer
+    name: test-issuer
+  secretName: test-certificate-secret
+
+certificate.cert-manager.io/test-certificate created
+[INFO] Waiting for Issuer test-issuer in namespace upgrade to be Ready
+[32m[✔] Issuer test-issuer in namespace upgrade is Ready
+[0m
+[INFO] Waiting for Certificate test-certificate in namespace upgrade to be Ready
+[32m[✔] Certificate test-certificate in namespace upgrade is Ready
+[0m
+[INFO] Deleting test-issuer Issuer ...
+issuer.cert-manager.io "test-issuer" deleted
+
+[INFO] Deleting test-certificate Certificate ...
+certificate.cert-manager.io "test-certificate" deleted
+
+[INFO] Deleting 60139secret_name Secret ...
+secret "test-certificate-secret" deleted
+
+[34m#  Checking IBMLicensing...[0m
+[33m[✗] NamespaceScope Configuration is not needed for simple or all namespaces topology, skip NamespaceScope setup
+[0m
+[34m# Installing IBM Foundational services operator into operator namespace upgrade...[0m
+[34m# Checking if CommonService CRD exists in the cluster...[0m
+[INFO] CommonService CRD exist
+
+[34m# Configuring CommonService CR in upgrade...[0m
+[INFO] Configuring CommonService CR common-service in upgrade
+
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"operator.ibm.com/v3","kind":"CommonService","metadata":{"annotations":{"version":"-1"},"creationTimestamp":"2025-05-27T15:43:43Z","generation":1,"name":"common-service","namespace":"upgrade"},"spec":{"operatorNamespace":"upgrade","servicesNamespace":"upgrade","size":"starterset"},"status":{"bedrockOperators":[{"installPlanName":"install-lrwvd","name":"ibm-mongodb-operator","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v1.18.13"},{"installPlanName":"install-hfmr6","name":"ibm-cert-manager-operator","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v3.25.13"},{"installPlanName":"install-ptm2k","name":"ibm-iam-operator","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v3.23.14"},{"installPlanName":"install-7ms49","name":"ibm-commonui-operator","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v1.21.14"},{"installPlanName":"install-ptm2k","name":"ibm-management-ingress-operator","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v1.20.13"},{"installPlanName":"install-lrwvd","name":"ibm-ingress-nginx-operator","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v1.20.13"},{"installPlanName":"install-ptm2k","name":"ibm-platform-api-operator","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v3.25.13"},{"installPlanName":"install-997wx","name":"ibm-events-operator","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v5.0.1"},{"installPlanName":"install-7ms49","name":"ibm-zen-operator","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v1.8.13"},{"installPlanName":"install-lpzvd","name":"cloud-native-postgresql","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v1.18.12"},{"installPlanName":"install-tzmq9","name":"ibm-bts-operator","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v3.33.1"},{"installPlanName":"install-cfl8k","name":"ibm-namespace-scope-operator","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v1.17.13"},{"installPlanName":"install-mnjjc","name":"operand-deployment-lifecycle-manager","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v1.21.13"}],"overallStatus":"Succeeded","phase":"Succeeded"}}
+    version: "-1"
+  labels:
+    app.kubernetes.io/component: Operator
+    app.kubernetes.io/instance: icp4adeploy
+    app.kubernetes.io/managed-by: Operator
+    app.kubernetes.io/name: icp4adeploy-cp4ba
+    app.kubernetes.io/version: 24.0.0
+    release: 24.0.0
+  name: common-service
+  namespace: upgrade
+spec:
+  license:
+    accept: true
+  operatorNamespace: upgrade
+  servicesNamespace: upgrade
+  size: small
+  storageClass: nfs-client
+status:
+  conditions:
+    - lastTransitionTime: "2025-05-28T01:05:03Z"
+      lastUpdateTime: "2025-05-28T01:05:03Z"
+      message: 'initializing/updating: waiting for OperandRegistry and OperandConfig to become ready.'
+      reason: UpdatingResources
+      status: "False"
+      type: Pending
+    - lastTransitionTime: "2025-05-27T21:23:45Z"
+      lastUpdateTime: "2025-05-27T21:23:45Z"
+      message: 'warning: StorageClass is not configured in CommonService CR, if KeyCloak or IBM IM service will be deployed, please configure StorageClass in the CS CR. Refer to the documentation for more information: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.6?topic=options-configuring-foundational-services#storage-class'
+      reason: WarningOccurred
+      status: "True"
+      type: Warning
+    - lastTransitionTime: "2025-05-27T21:13:57Z"
+      lastUpdateTime: "2025-05-27T21:13:57Z"
+      message: 'failed to wait for the operator CSV to be installed: timed out waiting for the condition'
+      reason: ReconcileError
+      status: "True"
+      type: Error
+    - lastTransitionTime: "2025-05-28T01:05:32Z"
+      lastUpdateTime: "2025-05-28T01:05:32Z"
+      message: configuring CommonService CR.
+      reason: Configuring
+      status: "False"
+      type: Reconciling
+    - lastTransitionTime: "2025-05-28T01:05:33Z"
+      lastUpdateTime: "2025-05-28T01:05:33Z"
+      message: CommonService CR is ready.
+      reason: ReconcileSucceeded
+      status: "True"
+      type: Ready
+  configStatus:
+    catalogName: ibm-cs-install-catalog-v4-6-11
+    catalogNamespace: upgrade
+    configurable: true
+    operatorDeployed: true
+    operatorNamespace: upgrade
+    servicesDeployed: true
+    servicesNamespace: upgrade
+    topologyConfigurableCRs:
+      - apiVersion: operator.ibm.com/v3
+        kind: CommonService
+        namespace: upgrade
+        objectName: common-service
+  phase: Succeeded
+
+pod/ibm-common-service-operator-5d99cb776f-6rmkp condition met
+[33m[DEBUG] ibm-common-service-operator pod is ready
+[0m
+commonservice.operator.ibm.com/common-service configured
+[32m[✔] Successfully patched CommonService CR in upgrade[0m
+[34m# Checking whether IBM Common Service operator exist...[0m
+[INFO] There is an ibm-common-service-operator Subscription already
+
+[34m# Updating ibm-common-service-operator-v3-opencloud-operators-openshift-marketplace in namesapce upgrade...[0m
+[INFO] v4.6 is less than v4.13
+[INFO] catalogsource ibm-cs-install-catalog-v4-6-11 is different from ibm-cs-install-catalog-v4-13-0
+[INFO] ibm-common-service-operator is ready for updating the subscription.
+subscription.operators.coreos.com/ibm-common-service-operator-v3-opencloud-operators-openshift-marketplace configured
+[32m[✔] Successfully patched subscription ibm-common-service-operator in upgrade[0m
+[INFO] Waiting for operator ibm-common-service-operator to be upgraded
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:03:27Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: subscription ibm-bts-operator exists, no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (120 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:03:27Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: subscription ibm-bts-operator exists, no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (119 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:03:27Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: subscription ibm-bts-operator exists, no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (118 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:03:27Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: subscription ibm-bts-operator exists, no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (117 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: subscription ibm-bts-operator exists, no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (116 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: subscription ibm-bts-operator exists, no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (115 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: subscription ibm-bts-operator exists, no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (114 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: subscription ibm-bts-operator exists, no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (113 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: subscription ibm-bts-operator exists, no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (112 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: subscription ibm-bts-operator exists, no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (111 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (110 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (109 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (108 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (107 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (106 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (105 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (104 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (103 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (102 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (101 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (100 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (99 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (98 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (97 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (96 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (95 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (94 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (93 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (92 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (91 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (90 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (89 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (88 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (87 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (86 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (85 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (84 left)
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2025-05-28T01:05:50Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"lastTransitionTime":"2025-05-27T21:54:34Z","reason":"ReferencedInstallPlanNotFound","status":"True","type":"InstallPlanMissing"},{"message":"constraints not satisfiable: no operators found from catalog ibm-bts-operator-catalog-v3-35-1 in namespace upgrade referenced by subscription ibm-bts-operator, subscription ibm-bts-operator exists","reason":"ConstraintsNotSatisfiable","status":"True","type":"ResolutionFailed"}]
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (83 left)
+E0527 18:21:32.739619   63689 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 18:21:32.740749   63689 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 18:21:32.741338   63689 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 18:21:32.742379   63689 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 18:21:32.743085   63689 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 18:21:32.816032   63694 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 18:21:32.816571   63694 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 18:21:32.817670   63694 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 18:21:32.818115   63694 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 18:21:32.819235   63694 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (82 left)
+E0527 18:21:32.879903   63696 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 18:21:32.880806   63696 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 18:21:32.881474   63696 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 18:21:32.882338   63696 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 18:21:32.882980   63696 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:00:01.123509   63770 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:00:01.124424   63770 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:00:01.125442   63770 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:00:01.126211   63770 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:00:01.127266   63770 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:00:01.190029   63773 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:00:01.190631   63773 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:00:01.191955   63773 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:00:01.192609   63773 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:00:01.193644   63773 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (81 left)
+E0527 19:00:01.252208   63775 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:00:01.252773   63775 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:00:01.253928   63775 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:00:01.254502   63775 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:00:01.255659   63775 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:34:26.563371   63908 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:34:26.564512   63908 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:34:26.565166   63908 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:34:26.566141   63908 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:34:26.566630   63908 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:34:26.627136   63919 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:34:26.627659   63919 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:34:26.629001   63919 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:34:26.629670   63919 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:34:26.632119   63919 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (80 left)
+E0527 19:34:26.695128   63929 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:34:26.695716   63929 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:34:26.696912   63929 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:34:26.697461   63929 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 19:34:26.698644   63929 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:22:07.230734   64139 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:22:07.231911   64139 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:22:07.232879   64139 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:22:07.233759   64139 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:22:07.234880   64139 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:22:07.290591   64142 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:22:07.291089   64142 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:22:07.292440   64142 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:22:07.292876   64142 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:22:07.294022   64142 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (79 left)
+E0527 20:22:07.350049   64144 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:22:07.350514   64144 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:22:07.351618   64144 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:22:07.352036   64144 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:22:07.353196   64144 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:53:44.822948   64294 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:53:44.824447   64294 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:53:44.825532   64294 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:53:44.826511   64294 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:53:44.827324   64294 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:53:44.893063   64298 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:53:44.893521   64298 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:53:44.894643   64298 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:53:44.895063   64298 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:53:44.896235   64298 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (78 left)
+E0527 20:53:44.952198   64300 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:53:44.952682   64300 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:53:44.953881   64300 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:53:44.954259   64300 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 20:53:44.955446   64300 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:10:04.435327   64367 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:10:04.436100   64367 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:10:04.437250   64367 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:10:04.437832   64367 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:10:04.439132   64367 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:10:04.501504   64370 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:10:04.501948   64370 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:10:04.503213   64370 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:10:04.503610   64370 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:10:04.504774   64370 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (77 left)
+E0527 21:10:04.559637   64372 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:10:04.560140   64372 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:10:04.561265   64372 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:10:04.561699   64372 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:10:04.562887   64372 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:38:51.270381   64457 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:38:51.275603   64457 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:38:51.276936   64457 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:38:51.278100   64457 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:38:51.281342   64457 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:38:51.365118   64460 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:38:51.365553   64460 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:38:51.366748   64460 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:38:51.367173   64460 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:38:51.368305   64460 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (76 left)
+E0527 21:38:51.424020   64462 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:38:51.424515   64462 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:38:51.425682   64462 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:38:51.426102   64462 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 21:38:51.427346   64462 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 22:40:31.143571   64623 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 22:40:31.154312   64623 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 22:40:31.155373   64623 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 22:40:31.156358   64623 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 22:40:31.157150   64623 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 22:40:31.270857   64626 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 22:40:31.272585   64626 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 22:40:31.273622   64626 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 22:40:31.274333   64626 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 22:40:31.275566   64626 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (75 left)
+E0527 22:40:31.347637   64628 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 22:40:31.348636   64628 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 22:40:31.349412   64628 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 22:40:31.350575   64628 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 22:40:31.351172   64628 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:11:52.868594   64862 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:11:52.869854   64862 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:11:52.870930   64862 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:11:52.871755   64862 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:11:52.872855   64862 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:11:52.935160   64865 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:11:52.935617   64865 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:11:52.936836   64865 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:11:52.937283   64865 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:11:52.938442   64865 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (74 left)
+E0527 23:11:52.996740   64867 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:11:52.997228   64867 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:11:52.998378   64867 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:11:52.998890   64867 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:11:53.000213   64867 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:25:04.382391   64965 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:25:04.383461   64965 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:25:04.384692   64965 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:25:04.385672   64965 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:25:04.386681   64965 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:25:04.449358   64968 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:25:04.449818   64968 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:25:04.450951   64968 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:25:04.451355   64968 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:25:04.452545   64968 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (73 left)
+E0527 23:25:04.509891   64970 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:25:04.510367   64970 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:25:04.511491   64970 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:25:04.511912   64970 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:25:04.513096   64970 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:59:27.871914   65074 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:59:27.872990   65074 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:59:27.873939   65074 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:59:27.874824   65074 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:59:27.875623   65074 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:59:27.936739   65077 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:59:27.937203   65077 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:59:27.938345   65077 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:59:27.938753   65077 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:59:27.939938   65077 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (72 left)
+E0527 23:59:27.995768   65079 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:59:27.996200   65079 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:59:27.997414   65079 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:59:27.997802   65079 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0527 23:59:27.999036   65079 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 00:08:36.316565   65185 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 00:08:36.317836   65185 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 00:08:36.318767   65185 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 00:08:36.319622   65185 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 00:08:36.320503   65185 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 00:08:36.381528   65190 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 00:08:36.381996   65190 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 00:08:36.383237   65190 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 00:08:36.383650   65190 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 00:08:36.384816   65190 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (71 left)
+E0528 00:08:36.441131   65192 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 00:08:36.441601   65192 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 00:08:36.442765   65192 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 00:08:36.443213   65192 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 00:08:36.444416   65192 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.528563   65340 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.530195   65340 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.530882   65340 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.532011   65340 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.532547   65340 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.533692   65340 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.534710   65340 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.592299   65343 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.592978   65343 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.594086   65343 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.595274   65343 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.596375   65343 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.597375   65343 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.597901   65343 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (70 left)
+E0528 01:16:05.652293   65345 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.652882   65345 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.654303   65345 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.654779   65345 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.656111   65345 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.657150   65345 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 01:16:05.658459   65345 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.025794   65511 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.027511   65511 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.028748   65511 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.029940   65511 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.030979   65511 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.032031   65511 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.036336   65511 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.097453   65520 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.098108   65520 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.099334   65520 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.100163   65520 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.104618   65520 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.105387   65520 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.106675   65520 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (69 left)
+E0528 02:21:31.160947   65526 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.161633   65526 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.162625   65526 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.163173   65526 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.164377   65526 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.164851   65526 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 02:21:31.166167   65526 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.112458   65661 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.113144   65661 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.114287   65661 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.114826   65661 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.116225   65661 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.116830   65661 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.118251   65661 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.177972   65664 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.179659   65664 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.180144   65664 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.182413   65664 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.183438   65664 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.184321   65664 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.185136   65664 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (68 left)
+E0528 03:02:59.515073   65666 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.518048   65666 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.519839   65666 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.524924   65666 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.528791   65666 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.530308   65666 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:02:59.531345   65666 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.862850   65843 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.863581   65843 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.864580   65843 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.865038   65843 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.866198   65843 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.866850   65843 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.868014   65843 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.921661   65846 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.922154   65846 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.923691   65846 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.924491   65846 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.925522   65846 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.926301   65846 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.927374   65846 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (67 left)
+E0528 03:48:35.978325   65848 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.978889   65848 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.979972   65848 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.980464   65848 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.981615   65848 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.982006   65848 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 03:48:35.983215   65848 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.411674   66012 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.412480   66012 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.413772   66012 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.414435   66012 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.415783   66012 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.416822   66012 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.417853   66012 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.486213   66015 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.486905   66015 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.488182   66015 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.488901   66015 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.489968   66015 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.490520   66015 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.491762   66015 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (66 left)
+E0528 04:56:46.543726   66017 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.544963   66017 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.545690   66017 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.546717   66017 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.547295   66017 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.549384   66017 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 04:56:46.550165   66017 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:26.902811   66104 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:26.904179   66104 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:26.905351   66104 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:26.906397   66104 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:26.907146   66104 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:26.908210   66104 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:26.909169   66104 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:26.965920   66107 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:26.966424   66107 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:26.967613   66107 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:26.968025   66107 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:26.969368   66107 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:26.969835   66107 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:26.971008   66107 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (65 left)
+E0528 05:16:27.022416   66109 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:27.022902   66109 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:27.024026   66109 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:27.024459   66109 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:27.025672   66109 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:27.026117   66109 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 05:16:27.027306   66109 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.123608   66275 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.125534   66275 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.126640   66275 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.127344   66275 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.128382   66275 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.128924   66275 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.130089   66275 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.181229   66290 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.181719   66290 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.182957   66290 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.183461   66290 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.184777   66290 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.185202   66290 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.186385   66290 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (64 left)
+E0528 06:17:19.239859   66296 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.240362   66296 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.241503   66296 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.242001   66296 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.243027   66296 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.243416   66296 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 06:17:19.244582   66296 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.189811   66455 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.191523   66455 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.192961   66455 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.211237   66455 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.214429   66455 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.216085   66455 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.217623   66455 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.284788   66459 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.285750   66459 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.286664   66459 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.287724   66459 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.288399   66459 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.290163   66459 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.290840   66459 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (63 left)
+E0528 07:00:01.345033   66465 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.345855   66465 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.347055   66465 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.347829   66465 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.349237   66465 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.350412   66465 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:00:01.351490   66465 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.802908   66563 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.804143   66563 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.805106   66563 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.805945   66563 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.806587   66563 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.807481   66563 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.808012   66563 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.865251   66566 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.865795   66566 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.866986   66566 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.867484   66566 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.868722   66566 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.869733   66566 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.870563   66566 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (62 left)
+E0528 07:15:20.920712   66568 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.921210   66568 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.922820   66568 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.923719   66568 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.924657   66568 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.925621   66568 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:15:20.926339   66568 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.648194   66622 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.648834   66622 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.649862   66622 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.650386   66622 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.652006   66622 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.654357   66622 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.655138   66622 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.710297   66625 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.710780   66625 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.711962   66625 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.712418   66625 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.713669   66625 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.714071   66625 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.715301   66625 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (61 left)
+E0528 07:18:19.767540   66627 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.768066   66627 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.769215   66627 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.769659   66627 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.770848   66627 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.771268   66627 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:18:19.772431   66627 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.706843   66730 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.708064   66730 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.709503   66730 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.710755   66730 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.711579   66730 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.712564   66730 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.713078   66730 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.785771   66733 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.787344   66733 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.788192   66733 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.789341   66733 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.793240   66733 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.795402   66733 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.796388   66733 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (60 left)
+E0528 07:31:32.894578   66735 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.895444   66735 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.896358   66735 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.897201   66735 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.898081   66735 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.898870   66735 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:32.899833   66735 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.045991   66852 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.046447   66852 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.047686   66852 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.048124   66852 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.049218   66852 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.049628   66852 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.050739   66852 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.108002   66855 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.108528   66855 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.109646   66855 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.110347   66855 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.111253   66855 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.111736   66855 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.112838   66855 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+[33m[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade='' -n upgrade -o jsonpath='{.items[*].status.conditions}' -> 
+
+[0m
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (59 left)
+E0528 07:31:53.168215   66857 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.168735   66857 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.169903   66857 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.170891   66857 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.171426   66857 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.172611   66857 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+E0528 07:31:53.173291   66857 memcache.go:265] couldn't get current server API group list: Get "https://api.o1-895443.cp.fyre.ibm.com:6443/api?timeout=32s": dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host
+Unable to connect to the server: dial tcp: lookup api.o1-895443.cp.fyre.ibm.com: no such host

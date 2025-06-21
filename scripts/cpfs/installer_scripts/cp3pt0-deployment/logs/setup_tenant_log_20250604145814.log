@@ -1,0 +1,199 @@
+# Start to validate the parameters passed into script... 
+[✔] oc command available
+[✔] /Users/varunsriram/Documents/Work/CloudPak/CodeRepos/cert-kubernetes/scripts/cpfs/yq/macos/yq command available
+[✔] oc command logged in as kube:admin
+[✔] Channel v4.12 is valid
+[INFO] ibm-common-service-operator subscription exists, it is upgrade scenario
+
+[✗] It is simple namespace topology
+
+[✔] Profile size is valid.
+# Validate CatalogSource for operator ibm-common-service-operator in prod namespace
+[✔] CatalogSource ibm-cs-install-catalog-v4-12-0 from prod CatalogSourceNamespace is available for ibm-common-service-operator in prod namespace
+
+# Checking whether Namespace prod exist...
+[✔] Namespace prod already exists. Skip creating
+
+# Checking whether Namespace prod exist...
+[✔] Namespace prod already exists. Skip creating
+
+# Checking whether OperatorGroup in prod exist...
+[✔] OperatorGroup already exists in prod. Skip creating
+
+#  Checking whether Cert Manager exist...
+#  Smoke test for Cert Manager existence...
+[DEBUG] Creating Issuer test-issuer in namespace prod .
+[INFO] Creating following issuer:
+
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: test-issuer
+  namespace: prod
+spec:
+  selfSigned: {}
+
+issuer.cert-manager.io/test-issuer created
+[DEBUG] Creating Certificate test-certificate in namespace prod .
+[INFO] Creating following certificate:
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: test-certificate
+  namespace: prod
+spec:
+  commonName: test-certificate
+  issuerRef:
+    kind: Issuer
+    name: test-issuer
+  secretName: test-certificate-secret
+
+certificate.cert-manager.io/test-certificate created
+[INFO] Waiting for Issuer test-issuer in namespace prod to be Ready
+[✔] Issuer test-issuer in namespace prod is Ready
+
+[INFO] Waiting for Certificate test-certificate in namespace prod to be Ready
+[✔] Certificate test-certificate in namespace prod is Ready
+
+[INFO] Deleting test-issuer Issuer ...
+issuer.cert-manager.io "test-issuer" deleted
+
+[INFO] Deleting test-certificate Certificate ...
+certificate.cert-manager.io "test-certificate" deleted
+
+[INFO] Deleting 66590secret_name Secret ...
+secret "test-certificate-secret" deleted
+
+#  Checking IBMLicensing...
+[✗] NamespaceScope Configuration is not needed for simple or all namespaces topology, skip NamespaceScope setup
+
+# Installing IBM Foundational services operator into operator namespace prod...
+# Checking if CommonService CRD exists in the cluster...
+[INFO] CommonService CRD exist
+
+# Configuring CommonService CR in prod...
+[INFO] Configuring CommonService CR common-service in prod
+
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"operator.ibm.com/v3","kind":"CommonService","metadata":{"annotations":{"version":"-1"},"labels":{"app.kubernetes.io/component":"Operator","app.kubernetes.io/instance":"content","app.kubernetes.io/managed-by":"Operator","app.kubernetes.io/name":"content-cp4ba","app.kubernetes.io/version":"24.0.1","foundationservices.cloudpak.ibm.com":"commonservice","release":"24.0.1"},"name":"common-service","namespace":"prod"},"spec":{"license":{"accept":true},"operatorNamespace":"prod","servicesNamespace":"prod","size":"small","storageClass":"csi-cephfs"},"status":{"bedrockOperators":[{"installPlanName":"install-ffw9b","name":"ibm-iam-operator","operatorStatus":"Succeeded","subscriptionStatus":"Succeeded","version":"v4.10.0"},{"installPlanName":"install-bcpq9","name":"ibm-zen-operator","subscriptionStatus":"UpgradePending","troubleshooting":"Operator status is not healthy, please check https://ibm.biz/cpfs_general_troubleshooting for more information","version":"v6.1.1-89"},{"installPlanName":"install-bcpq9","name":"cloud-native-postgresql","operatorStatus":"Replacing","subscriptionStatus":"UpgradePending","troubleshooting":"Operator status is not healthy, please check https://ibm.biz/cpfs_general_troubleshooting for more information","version":"v1.22.7"}],"conditions":[{"lastTransitionTime":"2025-06-04T15:38:31Z","lastUpdateTime":"2025-06-04T15:38:31Z","message":"reconciling CommonService CR.","reason":"StartReconciling","status":"False","type":"Reconciling"},{"lastTransitionTime":"2025-06-04T16:52:50Z","lastUpdateTime":"2025-06-04T16:52:50Z","message":"initializing/updating: waiting for OperandRegistry and OperandConfig to become ready.","reason":"UpdatingResources","status":"False","type":"Pending"},{"lastTransitionTime":"2025-06-04T16:53:12Z","lastUpdateTime":"2025-06-04T16:53:12Z","message":"configuring CommonService CR.","reason":"Configuring","status":"False","type":"Reconciling"},{"lastTransitionTime":"2025-06-04T16:53:12Z","lastUpdateTime":"2025-06-04T16:53:12Z","message":"CommonService CR is ready.","reason":"ReconcileSucceeded","status":"True","type":"Ready"}],"configStatus":{"catalogName":"ibm-cs-install-catalog-v4-11-0","catalogNamespace":"prod","configurable":true,"operatorDeployed":true,"operatorNamespace":"prod","servicesDeployed":true,"servicesNamespace":"prod","topologyConfigurableCRs":[{"apiVersion":"operator.ibm.com/v3","kind":"CommonService","namespace":"prod","objectName":"common-service"}]},"overallStatus":"NotReady","phase":"Succeeded"}}
+    version: "-1"
+  labels:
+    app.kubernetes.io/component: Operator
+    app.kubernetes.io/instance: content
+    app.kubernetes.io/managed-by: Operator
+    app.kubernetes.io/name: content-cp4ba
+    app.kubernetes.io/version: 25.0.0
+    foundationservices.cloudpak.ibm.com: commonservice
+    release: 25.0.0
+  name: common-service
+  namespace: prod
+spec:
+  license:
+    accept: true
+  operatorNamespace: prod
+  servicesNamespace: prod
+  size: small
+  storageClass: csi-cephfs
+status:
+  bedrockOperators:
+    - installPlanName: install-rsktm
+      name: ibm-iam-operator
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v4.11.0
+    - installPlanName: install-bcpq9
+      name: ibm-zen-operator
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v6.1.3
+    - installPlanName: install-jw9zv
+      name: cloud-native-postgresql
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v1.25.1
+    - installPlanName: install-rsktm
+      name: ibm-commonui-operator
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v4.8.0
+  conditions:
+    - lastTransitionTime: "2025-06-04T15:38:31Z"
+      lastUpdateTime: "2025-06-04T15:38:31Z"
+      message: reconciling CommonService CR.
+      reason: StartReconciling
+      status: "False"
+      type: Reconciling
+    - lastTransitionTime: "2025-06-04T21:30:23Z"
+      lastUpdateTime: "2025-06-04T21:30:23Z"
+      message: 'initializing/updating: waiting for OperandRegistry and OperandConfig to become ready.'
+      reason: UpdatingResources
+      status: "False"
+      type: Pending
+    - lastTransitionTime: "2025-06-04T21:30:45Z"
+      lastUpdateTime: "2025-06-04T21:30:45Z"
+      message: configuring CommonService CR.
+      reason: Configuring
+      status: "False"
+      type: Reconciling
+    - lastTransitionTime: "2025-06-04T21:30:46Z"
+      lastUpdateTime: "2025-06-04T21:30:46Z"
+      message: CommonService CR is ready.
+      reason: ReconcileSucceeded
+      status: "True"
+      type: Ready
+  configStatus:
+    catalogName: ibm-cs-install-catalog-v4-12-0
+    catalogNamespace: prod
+    configurable: true
+    operatorDeployed: true
+    operatorNamespace: prod
+    servicesDeployed: true
+    servicesNamespace: prod
+    topologyConfigurableCRs:
+      - apiVersion: operator.ibm.com/v3
+        kind: CommonService
+        namespace: prod
+        objectName: common-service
+  overallStatus: Succeeded
+  phase: Succeeded
+
+pod/ibm-common-service-operator-5cbd755f87-5wq64 condition met
+[DEBUG] ibm-common-service-operator pod is ready
+
+commonservice.operator.ibm.com/common-service configured
+[✔] Successfully patched CommonService CR in prod
+# Checking whether IBM Common Service operator exist...
+[INFO] There is an ibm-common-service-operator Subscription already
+
+# Updating ibm-common-service-operator-v4.10-ibm-cs-install-catalog-v4-10-0-prod in namesapce prod...
+[INFO] v4.12 is equal to v4.12
+[INFO] catalogsource ibm-cs-install-catalog-v4-12-0 is the same as ibm-cs-install-catalog-v4-12-0
+[INFO] ibm-common-service-operator has already updated channel v4.12 and catalogsource ibm-cs-install-catalog-v4-12-0 in the subscription.
+subscription.operators.coreos.com/ibm-common-service-operator-v4.10-ibm-cs-install-catalog-v4-10-0-prod configured
+[✔] Successfully patched subscription ibm-common-service-operator in prod
+[INFO] Waiting for operator ibm-common-service-operator to be upgraded
+[✔] Operator ibm-common-service-operator is upgraded to latest version in channel v4.12
+
+[INFO] Waiting for operator ibm-common-service-operator CSV in namespace prod to be bound to Subscription
+[✔] Operator ibm-common-service-operator CSV in namespace prod is bound to Subscription
+
+[INFO] Waiting for operator ibm-common-service-operator in namespace prod to become available
+[✔] Operator ibm-common-service-operator in namespace prod is available
+
+# Accepting license for commonservice common-service in namespace prod...
+[✔] License accepted for commonservice common-service
+
+[INFO] Waiting for operator ibm-odlm CSV in namespace prod to be bound to Subscription
+[✔] Operator ibm-odlm CSV in namespace prod is bound to Subscription
+
+[INFO] Waiting for operator operand-deployment-lifecycle-manager in namespace prod to become available
+[✔] Operator operand-deployment-lifecycle-manager in namespace prod is available
+
+[INFO] Waiting for CommonService CR common-service in prod to be ready
+[✔] CommonService CR in prod is in Succeeded Phase
+

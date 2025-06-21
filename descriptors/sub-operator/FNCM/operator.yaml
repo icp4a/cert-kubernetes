@@ -15,7 +15,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba-content
     app.kubernetes.io/managed-by: ibm-dba-content
     app.kubernetes.io/name: ibm-dba-content
-    release: 24.0.1
+    release: 25.0.0
   name: ibm-content-operator
   namespace: 
 spec:
@@ -37,7 +37,7 @@ spec:
         app.kubernetes.io/managed-by: ibm-dba-content
         app.kubernetes.io/name: ibm-dba-content
         name: ibm-content-operator
-        release: 24.0.1
+        release: 25.0.0
     spec:
       affinity:
         nodeAffinity:
@@ -62,7 +62,7 @@ spec:
                 - ppc64le
       initContainers:
         - name: folder-prepare-container
-          image: icr.io/cpopen/icp4a-content-operator@sha256:18f6f8a6c290538f3bb9780b401b47d468129417bb2450315d193bd7b03b6dba
+          image: icr.io/cpopen/icp4a-content-operator@sha256:6270bf1489982126232942d15ec825de95884509567d13b562c7b93e986221dd
           imagePullPolicy: IfNotPresent
           securityContext:
             readOnlyRootFilesystem: true
@@ -110,7 +110,7 @@ spec:
           value: smart
         - name: dba_license
           value: accept
-        image: icr.io/cpopen/icp4a-content-operator@sha256:18f6f8a6c290538f3bb9780b401b47d468129417bb2450315d193bd7b03b6dba
+        image: icr.io/cpopen/icp4a-content-operator@sha256:6270bf1489982126232942d15ec825de95884509567d13b562c7b93e986221dd
         imagePullPolicy: IfNotPresent
         name: operator
         resources:

@@ -1,4 +1,4 @@
-#### label the resources using the labels.sh script before running this recipe
+#### label the resouces using the labels.sh script before running this recipe
 #### updated the db-name=ICNDBf if you are using any other DB name
 apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
 kind: Recipe
@@ -18,8 +18,8 @@ spec:
         - openshift-config    
       includedResourceTypes:
         - secrets
-      labelSelector: custom-label=cp4ba 
-      essential: false 
+      labelSelector: custom-label=cp4ba
+      essential: false
     - name: cp4ba-oauth
       type: resource
       includedResourceTypes:
@@ -36,8 +36,8 @@ spec:
       type: resource   
       includedResourceTypes:
         - user
-      includeClusterResources: true  
-      essential: false  
+      includeClusterResources: true
+      essential: false    
     - name: cp4ba-ibm-entitlement-key
       type: resource   
       includedResourceTypes:

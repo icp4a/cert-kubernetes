@@ -1,0 +1,31 @@
+apiVersion: velero.io/v1
+kind: Restore
+metadata:
+  name: restore-namespace-charts
+  namespace: velero
+spec:
+  backupName: __BACKUP_NAME__
+  excludedResources:
+  - nodes
+  - events
+  - events.events.k8s.io
+  - backups.velero.io
+  - restores.velero.io
+  - resticrepositories.velero.io
+  hooks: {}
+  includedNamespaces:
+  - '*'
+  includedResources:
+  - '*'
+  orLabelSelectors:
+  - matchExpressions:
+    - key: foundationservices.cloudpak.ibm.com
+      operator: In
+      values:
+      - cs-chart
+      - odlm-chart
+      - ui-chart
+      - zen-chart
+      - edb-chart
+      - iam-chart
+      - nss

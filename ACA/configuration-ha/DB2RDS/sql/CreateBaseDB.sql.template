@@ -1,0 +1,10 @@
+CALL rdsadmin.create_database('$base_db_name',32768,'UTF-8','US' );
+
+--- Comment out all SQL stored procedures below when you are creating the database.
+--- Once the database is created, comment out the create_database stored procedure statement and uncomment the below statements and execute them.
+--- Creation of the Database can take some time, Please wait for a few minutes before executing the statements below.
+
+CALL rdsadmin.create_role('$base_db_name','ADP');
+CALL rdsadmin.add_user('$base_db_user','$base_db_password',null);
+CALL rdsadmin.grant_role(?,'$base_db_name','ADP','USER $base_db_user', 'N');
+CALL rdsadmin.dbadm_grant(?,'$base_db_name','DATAACCESS','USER $base_db_user');

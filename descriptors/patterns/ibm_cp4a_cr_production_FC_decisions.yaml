@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 24.0.1
+    release: 25.0.0
 spec:
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
@@ -126,7 +126,7 @@ spec:
     ## Provide the common database configuration for Decision Center and Decision Server
     dc_odm_datasource:
       ## Provide the database type from your infrastructure.
-      ## The possible values are "db2" / "postgresql" / "sqlserver" / "oracle".
+      ## The possible values are "db2" / "db2HADR" / "postgresql" / "sqlserver" / "oracle".
       dc_database_type: "<Required>"
       ## Provide the database server name or IP address of the database server.
       database_servername: "<Required>"
@@ -150,7 +150,7 @@ spec:
     ## Provide the Decision Center database configuration
     dc_odm_decisioncenter_datasource:
       ## Provide the database type from your infrastructure.
-      ## The possible values are "db2" / "postgresql" / "sqlserver" / "oracle".
+      ## The possible values are "db2" / "db2HADR" / "postgresql" / "sqlserver" / "oracle".
       database_type: "<Required>"
       ## Provide the database server name or IP address of the database server.
       database_servername: "<Required>"
@@ -174,7 +174,7 @@ spec:
     ## Provide the Decision Server database configuration
     dc_odm_decisionserver_datasource:
       ## Provide the database type from your infrastructure.
-      ## The possible values are "db2" / "postgresql" / "sqlserver" / "oracle".
+      ## The possible values are "db2" / "db2HADR" / "postgresql" / "sqlserver" / "oracle".
       database_type: "<Required>"
       ## Provide the database server name or IP address of the database server.
       database_servername: "<Required>"
@@ -210,8 +210,8 @@ spec:
     # Allow to specify which version of ODM you want to deploy.
     # Supported version > 19.0.2
     # If omitted the latest version will be used.
-    version: 24.0.0
-    
+    version: 25.0.0
+
     audit_logging:
       # Enable or disable audit logging for the ODM component
       enabled: false
@@ -223,7 +223,7 @@ spec:
 
     image:
       # Specify to override the tag docker images in case of an interim fix.
-      tag: "24.0.1-IF002"
+      tag: "25.0.0"
       # Specify the pull policy for the Docker images. See Kuberntes documentation for more inforations.
       # Possible values : IfNotPresent, Always, Never
       pullPolicy: IfNotPresent
@@ -281,6 +281,9 @@ spec:
         egress:
         #Specify the Decision Server Runtime ingress network policy.
         ingress:
+      # Create ZenExtension (true by default, other possible value is false)
+      zenExtension:
+        enabled: true
 
     ## Decision Server Console parameters
     decisionServerConsole:
@@ -318,6 +321,9 @@ spec:
         egress:
         #Specify the Decision Server Console ingress network policy.
         ingress:
+      # Create ZenExtension (true by default, other possible value is false)
+      zenExtension:
+        enabled: true
 
     ## Decision Center parameters
     decisionCenter:
@@ -378,6 +384,9 @@ spec:
         egress:
         #Specify the Decision Center ingress network policy.
         ingress:
+      # Create ZenExtension (true by default, other possible value is false)
+      zenExtension:
+        enabled: true
 
     ## Decision Runner parameters
     decisionRunner:
@@ -425,6 +434,9 @@ spec:
         egress:
         #Specify the Decision Runner ingress network policy.
         ingress:
+      # Create ZenExtension (true by default, other possible value is false)
+      zenExtension:
+        enabled: true
 
     externalDatabase:
       ## Specify the database driver url. Optionally specify a list of driversUrl using

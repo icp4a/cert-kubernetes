@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 24.0.1
+    release: 25.0.0
 spec:
   replicas: 1
   selector:
@@ -36,16 +36,16 @@ spec:
         com.ibm.cp4a.networking/egress-allow-all: "true"
         com.ibm.cp4a.networking/egress-allow-ldap: "true"
         com.ibm.cp4a.ecm.networking/egress-allow-db: "true"
-        release: 24.0.1
+        release: 25.0.0
       annotations:
         productID: "5737-I23"
         productName: "IBM Cloud Pak for Business Automation"
-        productVersion: "24.0.0"
+        productVersion: "25.0.0"
         productChargedContainers: ""
         productMetric: "VIRTUAL_PROCESSOR_CORE"
         cloudpakId: "94a9c8c358bb43ba8fbdea62e7e166a5"
         cloudpakName: "IBM Cloud Pak for Business Automation"
-        cloudpakVersion: "24.0.0"
+        cloudpakVersion: "25.0.0"
     spec:
       hostNetwork: false
       hostPID: false
@@ -76,7 +76,7 @@ spec:
                       - ppc64le
       initContainers:
         - name: folder-prepare-container
-          image: icr.io/cpopen/icp4a-operator@sha256:ad544ebd1a0c429c64e484f5fc2c7a65d34d51f2df73ba54790412d5bba0874a
+          image: icr.io/cpopen/icp4a-operator@sha256:db381905ad4345265ed735979719ebc5bc39bb2cce9845af00df857feedc7d63
           securityContext:
             readOnlyRootFilesystem: true
           volumeMounts:
@@ -103,7 +103,7 @@ spec:
       containers:
         - name: operator
           # Replace this with the built image name
-          image: icr.io/cpopen/icp4a-operator@sha256:ad544ebd1a0c429c64e484f5fc2c7a65d34d51f2df73ba54790412d5bba0874a
+          image: icr.io/cpopen/icp4a-operator@sha256:db381905ad4345265ed735979719ebc5bc39bb2cce9845af00df857feedc7d63
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

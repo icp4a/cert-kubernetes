@@ -129,8 +129,8 @@ LICENSE_PRODUCTION="production"
 PURCHASED_PRODUCT_BAW="BAW"
 PURCHASED_PRODUCT_CP4A="CP4A"
 
-LICENSE_BAW_URL="https://www.ibm.com/support/customer/csol/terms/?li=L-GPHE-W5RGSC"
-LICENSE_CP4A_URL="https://www.ibm.com/support/customer/csol/terms/?id=L-MAXV-9HY9ZD"
+LICENSE_BAW_URL="https://www.ibm.com/support/customer/csol/terms/?id=L-FWZS-PUAT9S"
+LICENSE_CP4A_URL="https://www.ibm.com/support/customer/csol/terms/?id=L-LDYZ-7V4YJ4"
 
 function show_help() {     
     echo -e "\nUsage: baw-prerequisites.sh -m [modetype]\n"     
@@ -1447,7 +1447,7 @@ element_val.DATABASE_SERVERNAME=\"\"\\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
     echo "## Enable or disable egress access to external systems (default value is \"false\")." >> ${USER_PROFILE_PROPERTY_FILE}
     echo "## true: All CP4A pods will not have access to any external systems unless custom, curated egress network policy or polices with specific 'matchLabels' are created. See the documentation for more detail." >> ${USER_PROFILE_PROPERTY_FILE}
     echo "## false: All CP4A pods will have access to any external systems with no restriction." >> ${USER_PROFILE_PROPERTY_FILE}
-    echo "CP4BA.ENABLE_RESTRICTED_INTERNET_ACCESS=\"$RESTRICTED_INTERNET_ACCESS\"" >> ${USER_PROFILE_PROPERTY_FILE}
+    echo "CP4BA.ENABLE_GENERATE_SAMPLE_NETWORK_POLICIES=\"$GENERATE_SAMPLE_NETWORK_POLICIES\"" >> ${USER_PROFILE_PROPERTY_FILE}
     echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
     success "Created user profile for the shared configuration\n"
@@ -2404,7 +2404,7 @@ function input_information(){
     get_storage_class_name
     select_enable_event_emitter
         
-    select_restricted_internet_access
+    generate_sample_network_policies
 
     create_temp_property_file
 }
@@ -2440,19 +2440,19 @@ function get_db_server_list(){
     db_server_number=${#db_server_array[@]}
 }
 
-function select_restricted_internet_access(){
+function generate_sample_network_policies(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to restrict network egress to unknown external destinations for this deployment?\x1B[0m ${YELLOW_TEXT}\x1B[1;31m(NOTE: Business Automation Workflow $CP4BA_RELEASE_BASE prevents all network egress to unknown destinations by default. You can either (1) enable all egress or (2) accept the new default and create network policies to allow your specific communication targets as documented in the Workflow documentation.)\x1B[0m${RESET_TEXT} (Yes/No, default: Yes): "
+        printf "\x1B[1mDo you want to generate the network policy templates for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Starting from $CP4BA_RELEASE_BASE, the CP4BA operators no longer install network policies automatically. If you want the operators to generate network policies from a set of templates that restrict access to the internet, select Yes. You can install the network policies by running a script after the successful deployment of CP4BA. If you select No, access to external systems is unrestricted.)${RESET_TEXT} (Yes/No, default: No):"
         read -rp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES"|"")
-            RESTRICTED_INTERNET_ACCESS="true"
+            GENERATE_SAMPLE_NETWORK_POLICIES="true"
             break
             ;;
         "n"|"N"|"no"|"No"|"NO")
-            RESTRICTED_INTERNET_ACCESS="false"
+            GENERATE_SAMPLE_NETWORK_POLICIES="false"
             break
             ;;
         *)

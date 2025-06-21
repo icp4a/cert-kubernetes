@@ -194,7 +194,9 @@ function get_edb_cluster() {
 
   rm -fr ${EDB_CLUSTER_YAML_FILE}
   rm -fr ${EDB_CLUSTER_YAML_FILE_OG}
-  ${CLI_CMD} get cluster ${EDB_CLUSTER_NAME} -o yaml > ${EDB_CLUSTER_YAML_FILE}
+  #${CLI_CMD} get cluster ${EDB_CLUSTER_NAME} -o yaml > ${EDB_CLUSTER_YAML_FILE}
+  ## https://jsw.ibm.com/browse/DBACLD-178382 - Fixing the Error in fetching cluster in postgresedb backup
+  ${CLI_CMD} get clusters.postgresql.k8s.enterprisedb.io ${EDB_CLUSTER_NAME} -o yaml > ${EDB_CLUSTER_YAML_FILE}
   cp -f ${EDB_CLUSTER_YAML_FILE} ${EDB_CLUSTER_YAML_FILE_OG}
 
 

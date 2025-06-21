@@ -68,7 +68,7 @@ mkdir -p $TEMP_FOLDER >/dev/null 2>&1
 function prompt_wfps_license(){
     clear
     echo -e "\x1B[1;31mIMPORTANT: Review the IBM Process Flow license information here: \n\x1B[0m"
-    echo -e "\x1B[1;31mhttps://www14.software.ibm.com/cgi-bin/weblap/lap.pl?li_formnum=L-FNHF-F9RU7N\n\x1B[0m"
+    echo -e "\x1B[1;31mhttps://www.ibm.com/support/customer/csol/terms/?id=L-LDYZ-7V4YJ4&lc=en\n\x1B[0m"
 
     printf "\n"
     while true; do
@@ -213,7 +213,7 @@ function validate_cli(){
     if  [[ $PLATFORM_SELECTED == "other" ]]; then
         which kubectl &>/dev/null
         [[ $? -ne 0 ]] && \
-            echo "Unable to locate the Kubernetes CLI, Install it before running this script." && \
+            echo "Unable to locate the Kubernetes CLI. Install it before running this script." && \
             exit 1
     fi
 }
@@ -236,7 +236,7 @@ function check_fips_enable(){
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 printf "\n"
-                info "Checking whether the compute nodes have FIPS enabled..."
+                info "Checking whether the compute nodes have FIPS enabled or not ..."
                 which oc &>/dev/null
                 [[ $? -ne 0 ]] && \
                     echo "Unable to locate the OpenShift CLI. You must install it to perform the FIPS check." && \
@@ -337,7 +337,7 @@ function install_cert_license_operator(){
         fi            
     fi
     printf "\n"
-    info "Starting the installation of IBM Cert Manager and IBM Licensing Operator..."
+    info "Starting the installation of IBM Cert Manager and IBM Licensing Operator ..."
 
     # which yq &>/dev/null
     # [[ $? -ne 0 ]] && \
@@ -411,7 +411,7 @@ function install_cert_license_operator(){
                     continue                        
                 fi
             else
-                success "The IBM Cert Manager Operator is now running "
+                success "The IBM Cert Manager Operator is now running: "
                 # info "Pod: $isReadyCertmanagerOperator"
                 info "Pod: $isReadyCertmanager"
                 echo "            $isReadyWebhook"
@@ -671,7 +671,7 @@ function set_separate_cpfs_service_project(){
                 echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'kube' or start with 'kube'. \x1B[0m"
                 exit 1
             elif [[ "$project_name_cs_service" == "$project_name_operator" ]]; then
-                fail "\x1B[1;31mThe project name for CPfs services (IM Services) should NOT same as the project name \"$project_name_operator\" for CP4BA operators. \x1B[0m"
+                fail "\x1B[1;31mThe project name for CPfs services (IM Services) should NOT be same as the project name \"$project_name_operator\" for CP4BA operators. \x1B[0m"
                 exit 1
             fi
             project_name_cs_service=$CP4BA_AUTO_CS_SERVICE_NAMESPACE
@@ -705,7 +705,7 @@ function set_separate_cp4ba_service_project(){
         if [ -z "$CP4BA_AUTO_SERVICE_NAMESPACE" ]; then
             printf "\n"
             echo -e "${YELLOW_TEXT}[NOTES] If you want to have multiple deployments of CP4BA in the same cluster sharing one namespace for operators, you can input the namespace names as a comma-separated list (for example: cp4ba-ns1,cp4ba-ns2,cp4ba-ns3).${RESET_TEXT}"
-            printf "\x1B[1mWhere would you like to deploy the $CP4BA_FULL_NAME components/services? Specify the namespace. \x1B[0m\n"
+            printf "\x1B[1mwould you like to deploy the $CP4BA_FULL_NAME components/services? Specify the namespace. \x1B[0m\n"
             read -rp "The project name(s): " project_name_cp4ba_service
         else
             OIFS=$IFS
@@ -764,6 +764,11 @@ function set_separate_cp4ba_service_project(){
 function create_common_service_configmap(){
     local project_name_operator=$1
     local project_name_cs_service=$2
+    # Adding network type and network cidr value to the common service configmap 
+    # This was introduced because of the RBAC changes we made in 25.0.0
+    # https://jsw.ibm.com/browse/DBACLD-173602
+    local network_type_value=$3
+    local network_cidr_value=$4
     info "Creating ibm-cp4ba-common-config configMap for this CP4BA deployment in the project \"$project_name_cs_service\""
     mkdir -p $TEMP_FOLDER >/dev/null 2>&1
 
@@ -778,6 +783,8 @@ metadata:
 data:
   operators_namespace: "$project_name_operator"
   services_namespace: "$project_name_cs_service"
+  network_type: "$network_type_value"
+  network_cidr: "$network_cidr_value"
 EOF
     ${CLI_CMD} delete -f ${TEMP_FOLDER}/ibm-cp4ba-common-config-configmap.yaml >/dev/null 2>&1
     ${CLI_CMD} apply -f ${TEMP_FOLDER}/ibm-cp4ba-common-config-configmap.yaml >/dev/null 2>&1
@@ -1813,7 +1820,7 @@ function setup_separate_operator(){
             $COMMON_SERVICES_SCRIPT_FOLDER/setup_tenant.sh --operator-namespace $project_name_operator --services-namespace $project_name_cs_service --yq "$CPFS_YQ_PATH" -c $CS_CHANNEL_VERSION -s $CS_CATALOG_VERSION --enable-private-catalog --license-accept
             success "Finished setting up the separation of operator and service for $CP4BA_FULL_NAME."
         else
-            info "Setting up the separate of operator and service for $CP4BA_FULL_NAME."
+            info "Setting up the separation of operator and service for $CP4BA_FULL_NAME."
             if [[ $RUNTIME_MODE == "dev" ]];then
                 msg "All arguments passed into the script: $COMMON_SERVICES_SCRIPT_FOLDER/setup_tenant.sh --operator-namespace $project_name_operator --services-namespace $project_name_cs_service --yq \"$CPFS_YQ_PATH\" -c $CS_CHANNEL_VERSION -s $CS_CATALOG_VERSION -n openshift-marketplace --license-accept"
             fi
@@ -1898,7 +1905,7 @@ function display_airgap_prerequisites(){
     printf "\n"
     printf "\x1B[1;31mFollow the instructions to complete the above steps if required \n\x1B[0m"
     printf "\n"
-    printf "\x1B[1;31mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=icmppd-option-2-preparing-your-cluster-air-gapped-offline-deployment \n\x1B[0m"
+    printf "\x1B[1;31mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=icmppd-option-2-preparing-your-cluster-air-gapped-offline-deployment \n\x1B[0m"
     printf "\n"
     printf "\x1B[1mDo you want to proceed with the offline/airgap cluster setup (Yes/No, default: No): \x1B[0m"
     read -rp "" ans
@@ -1953,16 +1960,16 @@ function get_entitlement_registry(){
         fi
 
         if [[ -z "$CP4BA_AUTO_ENTITLEMENT_KEY" && ! -z "$CP4BA_AUTO_LOCAL_REGISTRY" ]]; then
-            printf "\x1B[1mDo you have a $CP4BA_FULL_NAME Entitlement Registry key (Yes/No, default: Yes):\x1B[0m No"
+            printf "\x1B[1mDo you have a $CP4BA_FULL_NAME Entitlement Registry key? (Yes/No, default: Yes):\x1B[0m No"
             ans="No"
         fi
         if [[ -z "$CP4BA_AUTO_LOCAL_REGISTRY" && ! -z "$CP4BA_AUTO_ENTITLEMENT_KEY" ]]; then
-            printf "\x1B[1mDo you have a $CP4BA_FULL_NAME Entitlement Registry key (Yes/No, default: Yes):\x1B[0m Yes"
+            printf "\x1B[1mDo you have a $CP4BA_FULL_NAME Entitlement Registry key? (Yes/No, default: Yes):\x1B[0m Yes"
             ans="Yes"
         fi
 
         if [[ -z "$CP4BA_AUTO_ENTITLEMENT_KEY" && -z "$CP4BA_AUTO_LOCAL_REGISTRY" ]]; then
-            printf "\x1B[1mDo you have a $CP4BA_FULL_NAME Entitlement Registry key (Yes/No, default: Yes): \x1B[0m"
+            printf "\x1B[1mDo you have a $CP4BA_FULL_NAME Entitlement Registry key? (Yes/No, default: Yes): \x1B[0m"
             read -rp "" ans
         fi
 
@@ -2667,11 +2674,11 @@ function prepare_common_service(){
 function install_common_service_34(){
 
     if [ "$INSTALL_BAI" == "Yes" ] ; then
-    echo -e "Preparing the full Cloud Pak foundational services Release 3.4 CR for BAI Deployment..."
+    echo -e "Preparing full Cloud Pak foundational services Release 3.4 CR for BAI Deployment.."
         func_operand_request_cr_bai_34
 
     else
-    echo -e "Preparing the minimal Cloud Pak foundational services Release 3.4 CR for non-BAI Deployment..."
+    echo -e "Preparing minimal Cloud Pak foundational services Release 3.4 CR for non-BAI Deployment.."
         func_operand_request_cr_nonbai_34
     fi
 
@@ -3197,8 +3204,8 @@ function replace_name_for_process_flow(){
 function fetch_cp4ba_common_configmap_details(){
     current_namespace=$1
     # Fetch the operatorNamespace and serviceNamespace values from the CommonService resource
-    operator_namespace=$(oc get CommonService common-service -n "$current_namespace" -o yaml | grep 'operatorNamespace:' | head -n 1 | awk '{print $2}')
-    service_namespace=$(oc get CommonService common-service -n "$current_namespace" -o yaml | grep 'servicesNamespace:' | head -n 1 | awk '{print $2}')
+    operator_namespace=$(${CLI_CMD} get CommonService common-service -n "$current_namespace" -o yaml | grep 'operatorNamespace:' | head -n 1 | awk '{print $2}')
+    service_namespace=$(${CLI_CMD} get CommonService common-service -n "$current_namespace" -o yaml | grep 'servicesNamespace:' | head -n 1 | awk '{print $2}')
     
     # If there's no operatorNamespace and serviceNamespace value in the current context , then display some remediation steps
     if [[ -z "$operator_namespace" || -z "$service_namespace" ]]; then
@@ -3206,7 +3213,10 @@ function fetch_cp4ba_common_configmap_details(){
         exit 0
     fi
 
-    create_common_service_configmap $operator_namespace $service_namespace
+    # Function that retrieves the networktype and network cidr range
+    # https://jsw.ibm.com/browse/DBACLD-173602
+    retrieve_network_details "fresh_install"
+    create_common_service_configmap $operator_namespace $service_namespace $network_type $network_cidr
 }
 
 # For DBACLD-156657 where we want to add logic to recreate the ibm-cp4ba-common-config configmap if it was deleted
@@ -3351,13 +3361,19 @@ fi
 
 if [[ $SEPARATE_OPERATOR == "No" || -z $SEPARATE_OPERATOR || $DEPLOYMENT_TYPE == "starter" ]]; then
     select_project
-    create_common_service_configmap $project_name $project_name
+    # Function that retrieves the networktype and network cidr range
+    # https://jsw.ibm.com/browse/DBACLD-173602
+    retrieve_network_details "fresh_install"
+    create_common_service_configmap $project_name $project_name $network_type $network_cidr
 else
     set_separate_operator_project
     set_separate_cpfs_service_project
     if [[ $MULTIPLE_DEPLOYMENT = "Yes" ]]; then
         set_separate_cp4ba_service_project
     fi
+    # Function that retrieves the networktype and network cidr range
+    # https://jsw.ibm.com/browse/DBACLD-173602
+    retrieve_network_details "fresh_install"
     create_common_service_configmap $project_name_operator $project_name_cs_service
 fi
 

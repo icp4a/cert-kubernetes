@@ -150,7 +150,7 @@ GCDDB_CR_MAPPING=("spec.datasource_configuration.dc_gcd_datasource.dc_database_t
                   "spec.datasource_configuration.dc_gcd_datasource.dc_hadr_standby_servername"
                   "spec.datasource_configuration.dc_gcd_datasource.dc_hadr_standby_port")
 
-GCDDB_PROPERTY_COMMENTS=("## Provide the database type from your infrastructure. The possible values are \"db2\" or \"db2HADR\" or \"oracle\" or \"sqlserver\" \"postgresql\"."
+GCDDB_PROPERTY_COMMENTS=("## Provide the database type from your infrastructure. The possible values are \"db2\" or \"db2HADR\" or \"db2rds\" or \"db2rdsHADR\"or \"oracle\" or \"sqlserver\" \"postgresql\"."
                         #  "## The GCD non-XA datasource name.  The default value is \"FNGCDDS\"."
                         #  "## The GCD XA datasource name. The default value is \"FNGCDDSXA\"."
                          "## Provide the database server name or IP address of the database server. If use IPv6, the addresses need to be enclosed with the square brackets ([...]), e.g. [XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX]."
@@ -182,7 +182,7 @@ OSDB_CR_MAPPING=("dc_database_type"
                  "dc_hadr_standby_servername"
                  "dc_hadr_standby_port")
 
-OSDB_PROPERTY_COMMENTS=("## Provide the database type from your infrastructure.  The possible values are \"db2\" or \"db2HADR\" or \"oracle\" or \"sqlserver\" \"postgresql\"."
+OSDB_PROPERTY_COMMENTS=("## Provide the database type from your infrastructure.  The possible values are \"db2\" or \"db2HADR\" or \"db2rds\" or \"db2rdsHADR\"or \"oracle\" or \"sqlserver\" \"postgresql\"."
                         "## Provide the object store label for the object store.  The default value is \"os\" or not defined."
                         "## The ObjectStore non-XA datasource name.  The default value is \"FNOS1DS\"."
                         "## The ObjectStore XA datasource name. The default value is \"FNOS1DSXA\"."
@@ -225,7 +225,7 @@ ICNDB_CR_MAPPING=("spec.datasource_configuration.dc_icn_datasource.dc_database_t
                   "spec.datasource_configuration.dc_icn_datasource.dc_hadr_standby_port")
 
 
-ICNDB_PROPERTY_COMMENTS=("## Provide the database type from your infrastructure.  The possible values are \"db2\" or \"db2HADR\" or \"oracle\" or \"sqlserver\" \"postgresql\"."
+ICNDB_PROPERTY_COMMENTS=("## Provide the database type from your infrastructure.  The possible values are \"db2\" or \"db2HADR\" or \"db2rds\" or \"db2rdsHADR\"or \"oracle\" or \"sqlserver\" \"postgresql\"."
                         #  "## The GCD non-XA datasource name.  The default value is \"FNGCDDS\"."
                         #  "## The GCD XA datasource name. The default value is \"FNGCDDSXA\"."
                          "## Provide the database server name or IP address of the database server. If use IPv6, the addresses need to be enclosed with the square brackets ([...]), e.g. [XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX]."

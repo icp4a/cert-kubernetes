@@ -17,12 +17,12 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 24.0.1
+    release: 25.0.0
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 24.0.1
+  appVersion: 25.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -79,7 +79,7 @@ spec:
     ## CP4A patterns or capabilities to be deployed.  This CR represents the "document_processing" pattern (aka IBM Automation Document Processing),
     ## which includes the following required/mandatory components:
     ##   - Development env:
-    ##     - cds, cdra, cpds, viewone, Common Git Gateway (git-service and mongodb), cpe, navigator-sso, graphql;
+    ##     - cds, cdra, cpds, viewone, Common Git Gateway (git-service), cpe, navigator-sso, graphql;
     ##     - backend, rabbitmq;
     ##     - extraction ( ocr-extraction);
     ##     - processing (postprocessing, setup, classifyprocess-classify, processing-extraction);
@@ -127,25 +127,11 @@ spec:
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false
 
-    sc_egress_configuration:
-      ## Required. Enable or disable egress access to external systems.
-      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true".
-      ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
-      sc_restricted_internet_access: true
-      ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
-      ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
-      sc_api_namespace:
-      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## Default are 443,6443 for OCP and ROKS
-      sc_api_port:
-      ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
-      ## Default is "openshift-dns" for OCP and ROKS
-      sc_dns_namespace:
-      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## Default are 53,5353 for OCP and ROKS
-      sc_dns_port:
+    ## Staring with CP4BA 25.0.0, the operators are no longer creating network policies automatically due to a change in the security requirements where the permissions to create network policies have been removed.
+    ## The optional parameter to enable/disable the creation of sample network policy templates for CP4BA components.  If the parameter is not defined, then the default value is "false".
+    ## Set this flag to "true" if you plan to have restricted network policies in CP4BA namespaces so that the operators can create sample network policy templates for CP4BA components.
+    ## Please refer to the CP4BA documentation for more information about how to retrieve and apply the sample network policy templates.
+    sc_generate_sample_network_policies: false
 
     ## The platform to be deployed specified by the user.  Possible values are: OCP and other.  This is normally populated by the User script
     ## based on input from the user.
@@ -160,11 +146,10 @@ spec:
     ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers,
     ## all the files must be compressed in a single file.
     ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or
-    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed
+    ## "jdbc/db2|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 JDBC driver and ICCSAP drivers, then the compressed
     ## file should have the following structure and content:
     ##   /jdbc/db2/db2jcc4.jar
     ##   /jdbc/db2/db2jcc_license_cu.jar
-    ##   /jdbc/oracle/ojdbc8.jar
     ##   /saplibs/libicudata.so.50
     ##   /saplibs/...
     ## Then you need to put the compressed package on an anonymously accessible web server and provide the link here.
@@ -549,9 +534,10 @@ spec:
     #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
 
+
   ## The beginning section of database configuration for CP4A
   datasource_configuration:
-    ## The dc_ssl_enabled parameter is used to support database connection over SSL for DB2/Oracle/PostgreSQL.
+    ## The dc_ssl_enabled parameter is used to support database connection over SSL for DB2/PostgreSQL.
     dc_ssl_enabled: true
     ## The database_precheck parameter is used to enable or disable CPE/Navigator database connection check.
     ## If set to "true", then CPE/Navigator database connection check will be enabled.
@@ -562,22 +548,20 @@ spec:
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for a GCD database, set this parameter to true
       dc_use_postgres: false
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "db2rds" or "db2rdsHADR" or "postgresql".
       dc_database_type: "<Required>"
       ## The GCD non-XA datasource name.  The default value is "FNGCDDS".
       dc_common_gcd_datasource_name: "FNGCDDS"
       ## The GCD XA datasource name. The default value is "FNGCDDSXA".
       dc_common_gcd_xa_datasource_name: "FNGCDDSXA"
-      ## Provide the database server name or IP address of the database server. As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      ## Provide the database server name or IP address of the database server. 
       database_servername: "<Required>"
-      ## Provide the name of the database for the GCD for CPE.  For example: "GCDDB". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      ## Provide the name of the database for the GCD for CPE.  For example: "GCDDB". 
       database_name: "<Required>"
-      ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      ## Provide the database server port.  For Db2, the default is "50000". 
       database_port: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
+      ## The name of the secret that contains the DB2/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
-      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
-      dc_oracle_gcd_jdbc_url: "<Required>"
       ## Provide the validation timeout.  If not preference, keep the default value.
       dc_hadr_validation_timeout: 15
 
@@ -605,7 +589,7 @@ spec:
 
     dc_os_datasources:
     ## The data source configuration for DEVOS1 object store.
-    ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the GCD configuration above.
+    ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "db2rds" or "db2rdsHADR" or "postgresql".  This should be the same as the GCD configuration above.
     - dc_database_type: "<Required>"
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
@@ -630,17 +614,14 @@ spec:
       dc_common_os_datasource_name: "DEVOS1DS"
       ## The OS1 XA datasource name.  The default value is "DEVOS1DSXA".
       dc_common_os_xa_datasource_name: "DEVOS1DSXA"
-      ## Provide the database server name or IP address of the database server. As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter. This should be the same as the
-      ## GCD configuration above.
+      ## Provide the database server name or IP address of the database server. This should be the same as GCD configuration above.
       database_servername: "<Required>"
-      ## Provide the name of the database for the object store 1 for CPE.  For example: "DEVOS1DB". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      ## Provide the name of the database for the object store 1 for CPE.  For example: "DEVOS1DB". 
       database_name: "<Required>"
-      ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      ## Provide the database server port.  For Db2, the default is "50000". 
       database_port: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
+      ## The name of the secret that contains the DB2/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
-      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
-      dc_oracle_os_jdbc_url: "<Required>"
       ## Provide the validation timeout.  If not preference, keep the default value.
       dc_hadr_validation_timeout: 15
       ######################################################################################
@@ -691,17 +672,14 @@ spec:
       dc_common_os_datasource_name: "AEOS"
       ## The OS1 XA datasource name.  The default value is "AEOSXA".
       dc_common_os_xa_datasource_name: "AEOSXA"
-      ## Provide the database server name or IP address of the database server. As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter. This should be the same as the
-      ## GCD configuration above.
+      ## Provide the database server name or IP address of the database server. This should be the same as the GCD configuration above.
       database_servername: "<Required>"
-      ## Provide the name of the database for the object store 1 for CPE.  For example: "AEOSDB". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      ## Provide the name of the database for the object store 1 for CPE.  For example: "AEOSDB". 
       database_name: "<Required>"
-      ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      ## Provide the database server port.  For Db2, the default is "50000". 
       database_port: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
+      ## The name of the secret that contains the DB2/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
-      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
-      dc_oracle_os_jdbc_url: "<Required>"
       ## Provide the validation timeout.  If not preference, keep the default value.
       dc_hadr_validation_timeout: 15
       ######################################################################################
@@ -733,20 +711,18 @@ spec:
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
       dc_use_postgres: false
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "db2rds" or "db2rdsHADR" or "postgresql".  This should be the same as the
       ## GCD and object store configuration above.
       dc_database_type: "<Required>"
       ## Provide the ICN datasource name.  The default value is "ECMClientDS".
       dc_common_icn_datasource_name: "ECMClientDS"
       database_servername: "<Required>"
-      ## Provide the database server port.  For Db2, the default is "50000". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      ## Provide the database server port.  For Db2, the default is "50000".
       database_port: "<Required>"
-      ## Provide the name of the database for ICN (Navigator).  For example: "ICNDB". As Oracle configuration requires a JDBC URL, set the parameter to no value or comment out the parameter.
+      ## Provide the name of the database for ICN (Navigator).  For example: "ICNDB". 
       database_name: "<Required>"
-      ## The name of the secret that contains the DB2/Oracle/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
+      ## The name of the secret that contains the DB2/PostgreSQL SSL certificate, the secret can contain multiple certificates in a single tls.crt field.
       database_ssl_secret_name: "<Required>"
-      ## If the database type is Oracle, provide the Oracle DB connection string.  For example, "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
-      dc_oracle_icn_jdbc_url: "<Required>"
       ## Provide the validation timeout.  If not preference, keep the default value.
       dc_hadr_validation_timeout: 15
       ######################################################################################
@@ -782,7 +758,7 @@ spec:
       ## Provide names of the Project databases (Required for any database type, including EDB Postgres). For example: "proj01db".
       tenant_databases:
       - "<Required>"
-      ## Provide the database type from your infrastructure.  The possible values are "db2", "db2HADR", or "postgresql".
+      ## Provide the database type from your infrastructure.  The possible values are "db2", "db2HADR", or "db2rds" or "db2rdsHADR" or "postgresql".
       ## (Only required if you do not plan to use the provisioned EDB Postgres instance.)
       dc_database_type: "<Required>"
       ## Provide the hostname of the primary DB2 server in this variable
@@ -824,6 +800,20 @@ spec:
       database_ip: ""
       ## Provide the standby database server IP address if dc_hadr_standby_servername cannot be resolved by DNS.
       dc_hadr_standby_ip: ""
+
+    ## The database configuration for ADP Gitgateway 
+    dc_adp_datasource:
+      ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
+      ## If you want PostgresDB to be created for a ADP Gitgateway database, set this parameter to true
+      dc_use_postgres: false
+      ## Do not change the value of dc_database_type below.  Only "postgresql" database type is supported
+      dc_database_type: "postgresql"
+      ## Provide the database server name or IP address of the Postgres database server. 
+      database_servername: "<Required>"
+      ## Provide the database server port.  
+      database_port: "<Required>"
+      ## Provide the name of the database for ADP Gitgateway.  For example: "ADPGGDB". 
+      database_name: "<Required>"
 
    ## Monitor setting
  # monitoring_configuration:
@@ -931,11 +921,17 @@ spec:
       ## it is recommended to have 2 or more.
       replica_count: 2
 
+      ## Rolling update settings for CPE deployment.  By default, max_unavailable is set to 99% and max_surge is set to 1.  This will help speeding up the CPE upgrade process.
+      ## Valid values for max_unavailable are 0-100% or 0-<number of replicas>.  Valid values for max_surge are 0-100% or 0-<number of replicas>.
+      rolling_update:
+        max_unavailable: 99%
+        max_surge: 1
+
       ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1075,6 +1071,98 @@ spec:
       image_pull_secrets:
         name: "ibm-entitlement-key"
 
+      ###########################################
+      ## CPE audit logging.  If you want to change the default values, update the section below.
+      ###########################################
+      audit_logging:
+        # Enable/disable audit logging.  The default is "false".
+        enabled: false
+        # Default size of the audit log directory.  The default is "150Mi".
+        audit_log_dir_size: 150Mi
+        # Default number of audit log files to keep.  The default is "5".
+        rolling_max_files: 5
+        # Default size of the audit log file.  The default is "20Mi".
+        rolling_max_size: 20Mi
+        # Optional.  This configmap allows user to define a set of Object Store names to be used for audit logging along with other parameters.
+        # Please refer to the Knowledge Center for more information.
+        configmap:
+        ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
+        arch:
+          amd64: "3 - Most preferred"
+        ## The number of replicas or pods to be deployed. The default is 1 replica.
+        replicas: 1
+        ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+        image:
+          ## The default repository is the IBM Entitled Registry.
+          repository: cp.icr.io/cp/cp4a/fncm/cpe-audit-log
+          tag: "25.0.0"
+          ## This will override the image pull policy in the shared_configuration.
+          pull_policy: IfNotPresent
+        initresources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+            ephemeral_storage: 62Mi 
+          limits:
+            cpu: 500m
+            memory: 512Mi
+            ephemeral_storage: 82Mi
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1536Mi
+            ephemeral_storage: 1Gi 
+          limits:
+            cpu: 1
+            memory: 1536Mi
+            ephemeral_storage: 1Gi 
+        ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
+        ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
+        auto_scaling:
+          enabled: false
+          max_replicas: "<Required>"
+          min_replicas: "<Required>"
+          ## This is the default cpu percentage before autoscaling occurs.
+          target_cpu_utilization_percentage: "<Required>"
+        node_affinity:
+          #-------------------------------------
+          # custom_node_selector_match_expression will be added in node selector match expressions.
+          # It accepts array list inputs. You can assign multiple selector match expressions except (kubernetes.io/arch)
+          # Example value:
+          # - key: kubernetes.io/hostname
+          #   operator: In
+          #   values:
+          #     - worker0
+          #     - worker1
+          #     - worker3
+          #-------------------------------------
+          custom_node_selector_match_expression: [ ]      
+        image_pull_secrets:
+          name: "ibm-entitlement-key"
+        probe:
+          readiness:
+            period_seconds: 10
+            timeout_seconds: 10
+            failure_threshold: 6
+          liveness:
+            period_seconds: 10
+            timeout_seconds: 5
+            failure_threshold: 6
+        jvm_initial_heap_percentage: 40
+        jvm_max_heap_percentage: 66
+        license: accept
+        ## Values in this field will be used as annotations in all generated pods and it must be valid annotation key value pairs.
+        # Example:
+        # customAnnotationKey: customAnnotationValue
+        ## To include '{{ }}' in annotation like '{{example}}', add a backward slash before curly brace like '\{\{example\}\}'.
+        ## This can be overwritten by componenent level definition for example ecm_configuration.cpe.custom_annotations.
+        custom_annotations: {}
+        ## Values in this field will be used as labels in all generated pods and it must be valid label key value pairs
+        # Example:
+        # customLabelKey: customLableValue
+        ## This can be overwritten by componenent level definition for example ecm_configuration.cpe.custom_labels.
+        custom_labels: {}
+
       # #############################################
       # ## Start of configuration for LSCollector  ##
       # ## When sc_deployment_fncm_license is set  ##
@@ -1089,7 +1177,7 @@ spec:
       #     pull_policy: IfNotPresent
       #     ## The default repository is the IBM Entitled Registry.
       #     repository: cp.icr.io/cp/cp4a/fncm/lscollector
-      #     tag: "24.0.1-IF002"
+      #     tag: "25.0.0"
       #   ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
       #   ## If more resources are needed, make the changes here to meet your requirement.
       #   resources:
@@ -1125,7 +1213,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1222,7 +1310,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1333,6 +1421,18 @@ spec:
       ## By default, the plugin for Graphite is enable to emit container metrics.
       collectd_enable_plugin_write_graphite: false
 
+      ## Audit logging configuration for CMIS component. The default value is "false".
+      audit_logging:
+        # Enable or disable audit logging for CMIS component
+        enabled: false
+        # The audit log directory size.  The default value is "150Mi". The value should be in the format of "<number><unit>".  The valid units are "Ki", "Mi", "Gi", "Ti", "Pi", "Ei".
+        # This log directory will be mounted as an ephemeral storage volume in the CMIS pods.
+        audit_log_dir_size: '150Mi'
+        # The number of audit log files to keep. The default value is "5". Increasing this value will increase the number of audit log files kept. You may want to increase the audit_log_dir_size if you increase this value.
+        rolling_max_files: 5
+        # The maximum size of each audit log file. The default value is "20Mi".  The value should be in the format of "<number><unit>".  The valid units are "Ki", "Mi", "Gi", "Ti", "Pi", "Ei". You may want to increase the audit_log_dir_size if you increase this value.
+        rolling_max_size: '20Mi'
+
       ## Persistent Volume Claims for CMIS.  If the storage_configuration in the shared_configuration is configured,
       ## the Operator will create the PVC using the names below.
       datavolume:
@@ -1380,7 +1480,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1505,7 +1605,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1612,7 +1712,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1735,63 +1835,6 @@ spec:
       #deployment_profile_size: "small"
 
       ##############################################################
-      ## Start of configuration for Mongo DB      ##
-      ##############################################################
-      ## Set this parameter to true if you want Operator to deploy an embedded Mongo DB.  If you want to use your own existing Mongo DB, set this parameter to false
-      ## Note that embedded Mongo DB is not recommended in Production.
-
-      deploy_mongo: false
-      mongo:
-        ## By default, Mongodb is SSL/TLS enabled.  If you want to disable SSL/TLS, set this parameter to false
-        tls: true
-        ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
-        arch:
-          amd64: "3 - Most preferred"
-        ## For MongoDB deployed by CP4A, replica_count is only supported with "1" due the version of MongoDB that is being deployed (non-HA).
-        ##  Customers can deploy their own MongoDB and comment out this entire section.
-        # replica_count: 1
-        ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
-        image:
-        ## The default repository is the IBM Entitled Registry.
-          repository: cp.icr.io/cp/cp4a/iadp/mongo_adp
-          tag: 6.0.20
-
-          ## This will override the image pull policy in the shared_configuration.
-          pull_policy: IfNotPresent
-
-        ## The initial resources (CPU, memory) requests and limits.  If more resources are needed, make the changes here to meet your requirement.
-        resources:
-          requests:
-            cpu: 500m
-            memory: 256Mi
-            ephemeral_storage: 750Mi
-          limits:
-            cpu: 1
-            memory: 1024Mi
-            ephemeral_storage: 750Mi
-
-        ## Persistent Volume Claims for Mongo.  If the storage_configuration in the shared_configuration is configured,
-        ## the Operator will create the PVC using the names below.
-        datavolume:
-          existing_pvc_for_mongo_datastore: "mongo-datastore"
-
-        ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
-        probe:
-          startup:
-            initial_delay_seconds: 120
-            period_seconds: 10
-            timeout_seconds: 10
-            failure_threshold: 6
-          readiness:
-            period_seconds: 10
-            timeout_seconds: 10
-            failure_threshold: 6
-          liveness:
-            period_seconds: 10
-            timeout_seconds: 5
-            failure_threshold: 6
-
-      ##############################################################
       ## Start of configuration for Git Gateway      ##
       ##############################################################
       gitgateway:
@@ -1805,7 +1848,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/gitgateway
-          tag: "24.0.1-IF002"
+          tag: "25.0.0"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1868,7 +1911,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cds
-          tag: "24.0.1-IF002"
+          tag: "25.0.0"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1938,7 +1981,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cdra
-          tag: "24.0.1-IF002"
+          tag: "25.0.0"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2030,7 +2073,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cpds
-          tag: "24.0.1-IF002"
+          tag: "25.0.0"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2127,7 +2170,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/viewone
-          tag: "24.0.1-IF002"
+          tag: "25.0.0"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2223,7 +2266,7 @@ spec:
     #    pull_policy: IfNotPresent
     #    ## The default repository is the IBM Entitled Registry.
     #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-    #    tag: "24.0.1-IF002"
+    #    tag: "25.0.0"
     #  ## Below are the default LSReporter Production settings.
     #  ## Make the necessary changes as you see fit.
     #  product_settings:
@@ -2298,6 +2341,21 @@ spec:
     # you can override "shared_configuration.sc_deployment_profile_size" with "deployment_profile_size" defined here.
     # The valid values are small, medium, large - default is small.  The resources in this file are reflecting a "small" profile.
     #deployment_profile_size: "small"
+    ## Audit logging configuration for BAN component. The default value is "false".
+    audit_logging:
+      # Enable or disable audit logging for CMIS component
+      enabled: false
+      # The audit log directory size.  The default value is "150Mi". The value should be in the format of "<number><unit>".  The valid units are "Ki", "Mi", "Gi", "Ti", "Pi", "Ei".
+      # This log directory will be mounted as an ephemeral storage volume in the CMIS pods.
+      audit_log_dir_size: '150Mi'
+      # The number of audit log files to keep. The default value is "5". Increasing this value will increase the number of audit log files kept. You may want to increase the audit_log_dir_size if you increase this value.
+      rolling_max_files: 5
+      # The maximum size of each audit log file. The default value is "10Mi".  The value should be in the format of "<number><unit>".  The valid units are "Ki", "Mi", "Gi", "Ti", "Pi", "Ei". You may want to increase the audit_log_dir_size if you increase this value.
+      rolling_max_size: '10Mi'
+      # This specifies the types of events to log. Default is "all". Valid values include: configuration, authentication, and authorization.
+      events: all
+      # This specifies the types of configs to log. Default is "all". Valid values include: desktop, repository, settings, sync, plugin, viewer, menus, labels, themes, icons, system.
+      configs: all
 
     ## The architecture of the cluster.  This is the default for Linux and should not be changed.
     arch:
@@ -2311,7 +2369,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "24.0.1-IF002"
+      tag: "25.0.0"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2603,7 +2661,7 @@ spec:
         max_replicas: "<Required>"  # Required if enable set to "true"
       image:
         repository: "cp.icr.io/cp/cp4a/iadp"
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
         pull_policy: "IfNotPresent"
 ## Overwrite the default SHA digest for Document Processing engine containers by providing the SHA for each containers below.  To use SHA digest, you must comment out the `tag` parameter or leave it blank and you must use entilement registry as the repository.
         doc_processing_digest:

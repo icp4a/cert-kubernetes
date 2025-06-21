@@ -57,22 +57,6 @@ elif [ -z "${isInstalled}"  ]; then
     CP4BA_ADS_LTPA_CREATION_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 fi
 
-# Check adsMongo upgrade status
-# isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.adsMongo.adsMongoDeployment`
-# if [ "$isInstalled" == "NotInstalled" ]; then
-#     CP4BA_ADS_MONGO_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
-# elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
-#     CP4BA_ADS_MONGO_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
-# elif [[ "$isInstalled" == "Ready" ]]; then
-#     CP4BA_ADS_MONGO_DEPLOYMENT_STATUS="${GREEN_TEXT}Done${RESET_TEXT}"
-# elif [[ "$isInstalled" == "NotReady" ]]; then
-#     CP4BA_ADS_MONGO_DEPLOYMENT_STATUS="${RED_TEXT}Not Ready${RESET_TEXT}"
-# elif [[ "$isInstalled" == "Failed" ]]; then
-#     CP4BA_ADS_MONGO_DEPLOYMENT_STATUS="${RED_TEXT}Failed${RESET_TEXT}"
-# elif [ -z "${isInstalled}"  ]; then
-#     CP4BA_ADS_MONGO_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
-# fi
-
 # Check adsParsingService upgrade status
 isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.adsParsingService.adsParsingServiceDeployment`
 if [ "$isInstalled" == "NotInstalled" ]; then

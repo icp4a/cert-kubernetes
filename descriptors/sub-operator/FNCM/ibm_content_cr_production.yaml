@@ -17,12 +17,12 @@ metadata:
     app.kubernetes.io/instance: ibm-dba-content
     app.kubernetes.io/managed-by: ibm-dba-content
     app.kubernetes.io/name: ibm-dba-content
-    release: 24.0.1
+    release: 25.0.0
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 24.0.1
+  appVersion: 25.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "true".
   license:
@@ -68,29 +68,14 @@ spec:
     ## based on input from the user.
     sc_deployment_platform:
 
-    sc_egress_configuration:
-      ## Required. Enable or disable egress access to external systems.
-      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true".
-      ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
-      sc_restricted_internet_access: true
-       ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## "{}" can also be used as a value. It is equivalent to all namespaces (eg: namespaceSelector:{})
-      ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
-      sc_api_namespace:
-      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## Default are 443,6443 for OCP and ROKS
-      sc_api_port:
-      ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
-      ## Default is "openshift-dns" for OCP and ROKS
-      sc_dns_namespace:
-      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## Default are 53,5353 for OCP and ROKS
-      sc_dns_port:
+    ## Staring with CP4BA 25.0.0, the operators are no longer creating network policies automatically due to a change in the security requirements where the permissions to create network policies have been removed.
+    ## The optional parameter to enable/disable the creation of sample network policy templates for CP4BA components.  If the parameter is not defined, then the default value is "false".
+    ## Set this flag to "true" if you plan to have restricted network policies in CP4BA namespaces so that the operators can create sample network policy templates for CP4BA components.
+    ## Please refer to the CP4BA documentation for more information about how to retrieve and apply the sample network policy templates.
+    sc_generate_sample_network_policies: false
 
-
-    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <router-canonical-hostname> when not defined.
-    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=scp-shared-configuration
+    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <route-name>-{{meta.namespace}}.<router-canonical-hostname> when not defined.
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.0?topic=scp-shared-configuration
     ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
     #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
 
@@ -130,13 +115,13 @@ spec:
 
 
     ## Enable/disable the ECM (FNCM) / BAN verification (e.g., creation of test folder, creation of test document,
-    ## execution of CBR search, and creation of Navigator demo repository and desktop).  If the "verify_configuration"
+    ## execution of CBR search, and creation of Navigator demo repository and desktop). If the "verify_configuration"
     ## section is defined in the CR and sc_content_verification is set to true, then the verification will occur.  Note that if you are upgrading or
     ## migrating, set this parameter to "false" since the env has been previously verified.
     sc_content_verification: false
     ## OR
     ## If you want to enable the verification for a specific product for ECM (FNCM) / BAN, you will need to use
-    ## these fields instead.  Otherwise, use the default sc_content_verification: false
+    ## these fields instead. Otherwise, use the default sc_content_verification: false
     # sc_content_verification:
     #  cpe: false
     #  css: false
@@ -145,7 +130,7 @@ spec:
 
     ## On OCP 3.x and 4.x, the User script will populate these three (3) parameters based on your input for "production" deployment.
     ## If you manually deploying without using the User script, then you would provide the different storage classes for the slow, medium
-    ## and fast storage parameters below.  If you only have 1 storage class defined, then you can use that 1 storage class for all 3 parameters.
+    ## and fast storage parameters below. If you only have 1 storage class defined, then you can use that 1 storage class for all 3 parameters.
     ## sc_block_storage_classname is for Zen, Zen requires/recommends block storage (RWO) for metastoreDB
     storage_configuration:
       sc_slow_file_storage_classname: "<Required>"
@@ -161,10 +146,10 @@ spec:
     ## The name of the LDAP server to connect
     lc_ldap_server: "<Required>"
 
-    ## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc.
+    ## The port of the LDAP server to connect. Some possible values are: 389, 636, etc.
     lc_ldap_port: "<Required>"
 
-    ## The LDAP bind secret for LDAP authentication.  The secret is expected to have ldapUsername and ldapPassword keys.  Refer to Knowledge Center for more info.
+    ## The LDAP bind secret for LDAP authentication. The secret is expected to have ldapUsername and ldapPassword keys.  Refer to Knowledge Center for more info.
     lc_bind_secret: ldap-bind-secret
 
     ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
@@ -185,20 +170,20 @@ spec:
     ## The LDAP group base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
     lc_ldap_group_base_dn: "<Required>"
 
-    ## The LDAP group name attribute.  One possible value is "*:cn" for TDS and "*:cn" for AD. Refer to Knowledge Center for more info.
+    ## The LDAP group name attribute. One possible value is "*:cn" for TDS and "*:cn" for AD. Refer to Knowledge Center for more info.
     lc_ldap_group_name_attribute: "*:cn"
 
-    ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
+    ## The LDAP group display name attribute. One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
     lc_ldap_group_display_name_attr: "cn"
 
-    ## The LDAP group membership search filter string.  One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS
+    ## The LDAP group membership search filter string. One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS
     ## and "(&(cn=%v)(objectcategory=group))" for AD.
     lc_ldap_group_membership_search_filter: "<Required>"
 
-    ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
+    ## The LDAP group membership ID map. One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
     lc_ldap_group_member_id_map: "<Required>"
 
-    ## The User script will uncomment the section needed based on user's input from User script.  If you are deploying without the User script,
+    ## The User script will uncomment the section needed based on user's input from User script. If you are deploying without the User script,
     ## uncomment the necessary section (depending if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
     # ad:
     #   lc_ad_gc_host: "<Required>"
@@ -254,7 +239,7 @@ spec:
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for a GCD database, set this parameter to true
       dc_use_postgres: false
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "db2rds" or "db2rdsHADR" or "oracle" or "postgresql".
       dc_database_type: "<Required>"
       ## The GCD non-XA datasource name.  The default value is "FNGCDDS".
       dc_common_gcd_datasource_name: "FNGCDDS"
@@ -284,7 +269,7 @@ spec:
       dc_hadr_max_retries_for_client_reroute: 3
     ## The database configuration for the object store 1 (OS1) datasource for CPE
     dc_os_datasources:
-    ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
+    ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "db2rds" or "db2rdsHADR" or "oracle" or "postgresql".  This should be the same as the
     ## GCD configuration above.
     - dc_database_type: "<Required>"
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
@@ -334,7 +319,7 @@ spec:
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for a Navigator database, set this parameter to true
       dc_use_postgres: false
-      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
+      ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "db2rds" or "db2rdsHADR" or "oracle" or "postgresql".  This should be the same as the
       ## GCD and object store configuration above.
       dc_database_type: "<Required>"
       ## Provide the ICN datasource name.  The default value is "ECMClientDS".

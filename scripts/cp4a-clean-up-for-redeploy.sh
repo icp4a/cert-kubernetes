@@ -45,8 +45,8 @@ fi
 
 # Check if OpenShift CLI is installed
 if ! [ -x "$(command -v ${CLI_CMD})" ]; then
-  	error "OpenShift CLI is not installed. Please install OpenShift CLI before running this script."
-  	exit 1
+	error "OpenShift CLI is not installed. Please install OpenShift CLI before running this script."
+	exit 1
 fi
 
 # Check cluster login
@@ -116,7 +116,7 @@ if [ -z "$CP4BA_SERVICE_NAMESPACE" ]; then
 		esac
 	done
 	if [[ $max_retries == 4 ]]; then
-		error "Maximum retry attempts exceeded for incorrect inputs. The script will now exit.."
+		error "Maximum retry attempts exceeded for incorrect inputs. The script will now exit."
 		exit
 	fi
 fi
@@ -128,13 +128,13 @@ fi
 
 # Check for namespace to prvent accidental deletion to other important namespaces.
 if [[ "$CP4BA_SERVICE_NAMESPACE" == openshift* ]]; then
-    echo -e "\x1B[1;31mThe current namespace must not be 'openshift' or start with 'openshift'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
+    echo -e "\x1B[1;31mThe current namespace must not be 'openshift' or start with 'openshift'. It should be the namespace where CP4BA is installed. The script has been  aborted. \x1B[0m"
     exit 1
 elif [[ "$CP4BA_SERVICE_NAMESPACE" == kube* ]]; then
-    echo -e "\x1B[1;31mThe current namespace must not be 'kube' or start with 'kube'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
+    echo -e "\x1B[1;31mThe current namespace must not be 'kube' or start with 'kube'. It should be the namespace where CP4BA is installed. The script has been  aborted. \x1B[0m"
     exit 1
 elif [[ "$CP4BA_SERVICE_NAMESPACE" == "services" ]]; then
-    echo -e "\x1B[1;31mThe current namespace must not be 'services'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
+    echo -e "\x1B[1;31mThe current namespace must not be 'services'. It should be the namespace where CP4BA is installed. The script has been  aborted. \x1B[0m"
     exit 1
 elif [[ "$CP4BA_SERVICE_NAMESPACE" == "default" ]]; then
     echo -e "\x1B[1;31mThe current namespace must not be 'default'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
@@ -143,10 +143,10 @@ elif [[ "$CP4BA_SERVICE_NAMESPACE" == "calico-system" ]]; then
     echo -e "\x1B[1;31mThe current namespace must not be 'calico-system'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
     exit 1
 elif [[ "$CP4BA_SERVICE_NAMESPACE" == "ibm-cert-store" ]]; then
-    echo -e "\x1B[1;31mThe current namespace must not be 'ibm-cert-store'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
+    echo -e "\x1B[1;31mThe current namespace must not be 'ibm-cert-store'. It should be the namespace where CP4BA is installed. The script has been  aborted. \x1B[0m"
     exit 1
 elif [[ "$CP4BA_SERVICE_NAMESPACE" == "ibm-observe" ]]; then
-    echo -e "\x1B[1;31mThe current namespace must not be 'ibm-observe'. It should be the namespace where CP4BA is installed. The script has been  aborted. \x1B[0m"
+    echo -e "\x1B[1;31mThe current namespace must not be 'ibm-observe'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
     exit 1
 elif [[ "$CP4BA_SERVICE_NAMESPACE" == "ibm-odf-validation-webhook" ]]; then
     echo -e "\x1B[1;31mThe current namespace must not be 'default'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
@@ -160,7 +160,7 @@ echo -e "The CP4BA namespace entered: ${CP4BA_SERVICE_NAMESPACE}\n"
 if [[ "$CP4BA_SERVICE_NAMESPACE" != "$CP4BA_NAMESPACE" ]]; then
 	echo -e "The CP4BA operator namespace is ${CP4BA_NAMESPACE}"
 fi
-echo -e "\x1B[1mNote: Please ensure you are using the intended namespace for cleanup.\n\x1B[0m"
+echo -e "\x1B[1mNote: Please ensure you are using the intended namespace for cleanup. \n\x1B[0m"
 echo -e "\x1B[33;5mATTENTION: \x1B[0m\x1B[1;31mThis clean-up script is only intended to be run after you have deleted your ICP4ACluster or Content CR instance for your CP4BA deployment. This clean-up script will delete all Client CRs and zenExtensions, and some secrets that would cause failure in re-deployment. \x1B[0m\n"
 
 # Confirm to clean up

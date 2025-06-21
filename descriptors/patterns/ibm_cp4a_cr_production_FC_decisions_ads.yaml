@@ -16,9 +16,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 24.0.1
+    release: 25.0.0
 spec:
-  appVersion: 24.0.1
+  appVersion: 25.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -50,7 +50,7 @@ spec:
     ## CP4A patterns or capabilities to be deployed. This CR represents the "decisions_ads" pattern that brings ADS Designer and ADS Runtime.
 
     sc_deployment_patterns: decisions_ads
-    
+
     ## The optional components to be installed if listed here.
     ## This is normally populated by the User script based on input from the user.
     ## User can also manually specify the optional components to be deployed here.
@@ -72,24 +72,11 @@ spec:
       type: ""
       value: ""
 
-    sc_egress_configuration:
-      ## Required. Enable or disable egress access to external systems.
-      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true".
-      ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
-      sc_restricted_internet_access: true
-      ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
-      ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
-      sc_api_namespace:
-      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## Default are 443,6443 for OCP and ROKS
-      sc_api_port:
-      ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
-      ## Default is "openshift-dns" for OCP and ROKS
-      sc_dns_namespace:
-      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## Default are 53,5353 for OCP and ROKS
+    ## Staring with CP4BA 25.0.0, the operators are no longer creating network policies automatically due to a change in the security requirements where the permissions to create network policies have been removed.
+    ## The optional parameter to enable/disable the creation of sample network policy templates for CP4BA components.  If the parameter is not defined, then the default value is "false".
+    ## Set this flag to "true" if you plan to have restricted network policies in CP4BA namespaces so that the operators can create sample network policy templates for CP4BA components.
+    ## Please refer to the CP4BA documentation for more information about how to retrieve and apply the sample network policy templates.
+    sc_generate_sample_network_policies: false
 
     ## Enable/disable FIPS mode for the deployment (default value is "false")
     ## Note: If set as "true", in order to complete enablement of FIPS for CP4BA, please refer to "FIPS wall" configuration in IBM documentation.
@@ -99,6 +86,111 @@ spec:
     ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
     sc_is_multiple_az: false
+
+  ########################################################################
+  ########   Database configuration for CP4A                      ########
+  ########################################################################
+
+  datasource_configuration:
+
+    dc_ads_designer_datasource:
+      ## If set to true, then the ICP4A operator installs a PostgreSQL server and ADS Designer is configured
+      ## to use this server.
+      dc_use_postgres: false
+
+      ## postgresql is the only type of database supported by ADS Designer.
+      database_type: postgresql
+
+      ## Hostname of the PostgreSQL server
+      ## When dc_use_postgres is set to true, must be "postgres-cp4ba-rw.{{ meta.namespace }}.svc".
+      database_servername: 
+
+      ## TCP port number of the PostgreSQL server
+      ## When dc_use_postgres is set to true, must be 5432.
+      database_port: 5432
+
+      ## Name of the database for ADS Designer in the PostgreSQL server
+      database_name: adsdesignerdb
+
+      ## The name of the schema in the database for Decision Designer.
+      ## When dc_use_postgres is set to true, must be the same name as the username given by the database_instance_secret.
+      current_schema: "adsdesigner"
+
+      ## The name of the secret with credentials for roles to connect to the PostgreSQL database.
+      ## Expected keys:
+      ## - 'username': username to use for both password and client TLS authentication
+      ## - 'password': password for password-based authentication.  Optionnal if client TLS authentication with no password is accepted by the PostgreSQL server.
+      ## When dc_use_postgres is set to true, if this secret doesn't exist it will be created by the operator with a username equal to 'adsdesigner'.
+      database_instance_secret: 
+
+      ## If set to true, connections to the PostgreSQL server will be protected with TLS.
+      ## When dc_use_postgres is set to true, this property must be true as well.
+      ssl_enabled: true
+
+      ## The level of TLS protection when Decision Designer is connecting to the remote PostgreSQL server.
+      ## 'verify-full': require a TLS connection and validate the signature of the server certification and the hostname match
+      ## 'verify-ca':  require a TLS connection and validate the signature of the server certification but not the hostname match
+      ## 'require': require a TLS connection but no certificate validation
+      ssl_mode: verify-full
+
+      ## The name of the secret providing the CA certification for validation of the server certification
+      ## and optionnally a client certificate and key for authentication of ADS Designer
+      ## Expected keys:
+      ## - 'ca.crt': certificate of a CA that permits validation of the server certificate.
+      ## - 'tls.crt' (optional): certificate of ADS Designer for client TLS authentication.
+      ## - 'tls.key' (required if tls.crt is provided): private encryption key corresponding to the client certificate
+      ## When dc_use_postgres is set to true, must be "{{ meta.name }}-pg-client-cert-secret".  The secret will be created automatically by the operator.
+      ssl_secret_name:
+
+    dc_ads_runtime_datasource:
+      ## If set to true, then the ICP4A operator installs a PostgreSQL server and the decision runtime is configured
+      ## to use this server.
+      dc_use_postgres: false
+
+      ## postgresql is the only type of database supported by the decision runtime.
+      database_type: postgresql
+
+      ## Hostname of the PostgreSQL server
+      ## When dc_use_postgres is set to true, must be "postgres-cp4ba-rw.{{ meta.namespace }}.svc".
+      database_servername: 
+
+      ## TCP port number of the PostgreSQL server
+      ## When dc_use_postgres is set to true, must be 5432.
+      database_port: 5432
+
+      ## Name of the database for the decision runtime in the PostgreSQL server
+      database_name: adsruntimedb
+
+      ## The name of the schema in the database for the decision runtime.
+      ## When dc_use_postgres is set to true, must be the same name as the username given by the database_instance_secret.
+      current_schema: "adsruntime"
+
+      ## The name of the secret with credentials for roles to connect to the PostgreSQL database.
+      ## Expected keys:
+      ## - 'username': username to use for both password and client TLS authentication
+      ## - 'password': password for password-based authentication.  Optionnal if client TLS authentication with no password is accepted by the PostgreSQL server.
+      ## When dc_use_postgres is set to true, if this secret doesn't exist it will be created by the operator with a username equal to 'adsruntime'.
+      database_instance_secret: 
+
+      ## If set to true, connections to the PostgreSQL server will be protected with TLS.
+      ## When dc_use_postgres is set to true, this property must be true as well.
+      ssl_enabled: true
+
+      ## The level of TLS protection when the decision runtime is connecting to the remote PostgreSQL server.
+      ## 'verify-full': require a TLS connection and validate the signature of the server certification and the hostname match
+      ## 'verify-ca':  require a TLS connection and validate the signature of the server certification but not the hostname match
+      ## 'require': require a TLS connection but no certificate validation
+      ssl_mode: verify-full
+
+      ## The name of the secret providing the CA certification for validation of the server certification
+      ## and optionnally a client certificate and key for authentication of the decision runtime.
+      ## Expected keys:
+      ## - 'ca.crt': certificate of a CA that permits validation of the server certificate.
+      ## - 'tls.crt' (optional): certificate of the decision runtime for client TLS authentication.
+      ## - 'tls.key' (required if tls.crt is provided): private encryption key corresponding to the client certificate
+      ## When dc_use_postgres is set to true, must be "{{ meta.name }}-pg-client-cert-secret".  The secret will be created automatically by the operator.
+      ssl_secret_name:
+
 
   ########################################################################
   ########   IBM Business Automation Decision Services            ########
@@ -181,7 +273,7 @@ spec:
     rr_integration:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
 
       resources:
         requests:
@@ -190,16 +282,6 @@ spec:
         limits:
           cpu: '500m'
           memory: '512Mi'
-
-    mongo:
-#      # Optional: defaulted to false. (true in starter mode)
-#      # Embedded mongoDB is not recommended in production. It is not enabled by default.
-#      use_embedded: false
-      # If you provide an external mongo db, fill the mongo connection string in the admin secret.
-      admin_secret_name: ibm-dba-ads-mongo-secret
-      image:
-        repository: cp.icr.io/cp/cp4a/ads/mongo
-        tag: 6.0.20
 
       persistence:
         use_dynamic_provisioning: true
@@ -221,7 +303,7 @@ spec:
     rest_api:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-restapi
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
       replica_count: 1
 
       resources:
@@ -237,7 +319,7 @@ spec:
     credentials_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-credentials
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
       replica_count: 1
 
       resources:
@@ -251,7 +333,7 @@ spec:
     git_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
       replica_count: 1
 
       resources:
@@ -265,7 +347,7 @@ spec:
     parsing_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-parsing
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
       replica_count: 1
 
       resources:
@@ -285,7 +367,7 @@ spec:
     run_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-run
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
       replica_count: 1
 
       resources:
@@ -305,7 +387,7 @@ spec:
     decision_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: "24.0.1-IF002"
+        tag: "25.0.0"
       replica_count: 1
 
       # Whether the decision runtime should include an exception stack trace when an incident occurs.

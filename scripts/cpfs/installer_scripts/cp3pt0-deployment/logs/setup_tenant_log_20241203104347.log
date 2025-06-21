@@ -1,0 +1,235 @@
+# Start to validate the parameters passed into script... 
+[✔] oc command available
+[✔] /Users/varunsriram/Documents/Work/CloudPak/CodeRepos/cert-kubernetes/scripts/cpfs/yq/macos/yq command available
+[✔] oc command logged in as kube:admin
+[✔] Channel v4.9 is valid
+[INFO] ibm-common-service-operator subscription exists, it is upgrade scenario
+
+[✗] It is simple namespace topology
+
+[✔] Profile size is valid.
+# Validate CatalogSource for operator ibm-common-service-operator in upgrade1 namespace
+[✔] CatalogSource ibm-cs-install-catalog-v4-9-0 from upgrade1 CatalogSourceNamespace is available for ibm-common-service-operator in upgrade1 namespace
+
+# Checking whether Namespace upgrade1 exist...
+[✔] Namespace upgrade1 already exists. Skip creating
+
+# Checking whether Namespace upgrade1 exist...
+[✔] Namespace upgrade1 already exists. Skip creating
+
+# Checking whether OperatorGroup in upgrade1 exist...
+[✔] OperatorGroup already exists in upgrade1. Skip creating
+
+#  Checking whether Cert Manager exist...
+#  Smoke test for Cert Manager existence...
+[DEBUG] Creating Issuer test-issuer in namespace upgrade1 .
+[INFO] Creating following issuer:
+
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: test-issuer
+  namespace: upgrade1
+spec:
+  selfSigned: {}
+
+issuer.cert-manager.io/test-issuer created
+[DEBUG] Creating Certificate test-certificate in namespace upgrade1 .
+[INFO] Creating following certificate:
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: test-certificate
+  namespace: upgrade1
+spec:
+  commonName: test-certificate
+  issuerRef:
+    kind: Issuer
+    name: test-issuer
+  secretName: test-certificate-secret
+
+certificate.cert-manager.io/test-certificate created
+[INFO] Waiting for Issuer test-issuer in namespace upgrade1 to be Ready
+[✔] Issuer test-issuer in namespace upgrade1 is Ready
+
+[INFO] Waiting for Certificate test-certificate in namespace upgrade1 to be Ready
+[✔] Certificate test-certificate in namespace upgrade1 is Ready
+
+[INFO] Deleting test-issuer Issuer ...
+issuer.cert-manager.io "test-issuer" deleted
+
+[INFO] Deleting test-certificate Certificate ...
+certificate.cert-manager.io "test-certificate" deleted
+
+[INFO] Deleting 21811secret_name Secret ...
+secret "test-certificate-secret" deleted
+
+#  Checking IBMLicensing...
+[✗] NamespaceScope Configuration is not needed for simple or all namespaces topology, skip NamespaceScope setup
+
+# Installing IBM Foundational services operator into operator namespace upgrade1...
+# Checking if CommonService CRD exists in the cluster...
+[INFO] CommonService CRD exist
+
+# Configuring CommonService CR in upgrade1...
+[INFO] Configuring CommonService CR common-service in upgrade1
+
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  annotations:
+    version: "-1"
+  labels:
+    app.kubernetes.io/component: Operator
+    app.kubernetes.io/instance: icp4adeploy
+    app.kubernetes.io/managed-by: Operator
+    app.kubernetes.io/name: icp4adeploy-cp4ba
+    app.kubernetes.io/version: 24.0.0
+    foundationservices.cloudpak.ibm.com: commonservice
+    release: 24.0.0
+  name: common-service
+  namespace: upgrade1
+spec:
+  license:
+    accept: true
+  operatorNamespace: upgrade1
+  servicesNamespace: upgrade1
+  size: small
+  storageClass: csi-cephfs
+status:
+  bedrockOperators:
+    - installPlanName: install-5x4jj
+      name: ibm-iam-operator
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v4.5.5
+    - installPlanName: install-5x4jj
+      name: ibm-zen-operator
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v5.1.8
+    - installPlanName: install-xbgtv
+      name: ibm-commonui-operator
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v4.4.5
+    - installPlanName: install-xbgtv
+      name: cloud-native-postgresql
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v1.18.12
+  conditions:
+    - lastTransitionTime: "2024-12-03T17:22:55Z"
+      lastUpdateTime: "2024-12-03T17:22:55Z"
+      message: reconciling CommonService CR.
+      reason: StartReconciling
+      status: "False"
+      type: Reconciling
+    - lastTransitionTime: "2024-12-03T17:34:59Z"
+      lastUpdateTime: "2024-12-03T17:34:59Z"
+      message: 'initializing/updating: waiting for OperandRegistry and OperandConfig to become ready.'
+      reason: UpdatingResources
+      status: "False"
+      type: Pending
+    - lastTransitionTime: "2024-12-03T17:35:19Z"
+      lastUpdateTime: "2024-12-03T17:35:19Z"
+      message: configuring CommonService CR.
+      reason: Configuring
+      status: "False"
+      type: Reconciling
+    - lastTransitionTime: "2024-12-03T17:35:20Z"
+      lastUpdateTime: "2024-12-03T17:35:20Z"
+      message: CommonService CR is ready.
+      reason: ReconcileSucceeded
+      status: "True"
+      type: Ready
+  configStatus:
+    catalogName: ibm-cs-install-catalog-v4-6-6
+    catalogNamespace: upgrade1
+    configurable: true
+    operatorDeployed: true
+    operatorNamespace: upgrade1
+    servicesDeployed: true
+    servicesNamespace: upgrade1
+    topologyConfigurableCRs:
+      - apiVersion: operator.ibm.com/v3
+        kind: CommonService
+        namespace: upgrade1
+        objectName: common-service
+  overallStatus: Succeeded
+  phase: Succeeded
+
+pod/ibm-common-service-operator-6566bf8c78-wpv4l condition met
+[DEBUG] ibm-common-service-operator pod is ready
+
+Warning: resource commonservices/common-service is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by oc apply. oc apply should only be used on resources created declaratively by either oc create --save-config or oc apply. The missing annotation will be patched automatically.
+commonservice.operator.ibm.com/common-service configured
+[✔] Successfully patched CommonService CR in upgrade1
+# Checking whether IBM Common Service operator exist...
+[INFO] There is an ibm-common-service-operator Subscription already
+
+# Updating ibm-common-service-operator-v4.6-ibm-cs-install-catalog-v4-6-6-upgrade1 in namesapce upgrade1...
+[INFO] v4.6 is less than v4.9
+[INFO] catalogsource ibm-cs-install-catalog-v4-6-6 is different from ibm-cs-install-catalog-v4-9-0
+[INFO] ibm-common-service-operator is ready for updating the subscription.
+subscription.operators.coreos.com/ibm-common-service-operator-v4.6-ibm-cs-install-catalog-v4-6-6-upgrade1 configured
+[✔] Successfully patched subscription ibm-common-service-operator in upgrade1
+[INFO] Waiting for operator ibm-common-service-operator to be upgraded
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade1='' -n upgrade1 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2024-12-03T18:44:21Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"message":"error using catalogsource upgrade1/bts-operator-v3-35-1: failed to list bundles: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 172.30.8.49:50051: connect: connection refused\"","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (120 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade1='' -n upgrade1 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2024-12-03T18:44:21Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"message":"error using catalogsource upgrade1/bts-operator-v3-35-1: failed to list bundles: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 172.30.8.49:50051: connect: connection refused\"","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (119 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade1='' -n upgrade1 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2024-12-03T18:44:21Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"message":"error using catalogsource upgrade1/bts-operator-v3-35-1: failed to list bundles: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 172.30.8.49:50051: connect: connection refused\"","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (118 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade1='' -n upgrade1 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2024-12-03T18:44:21Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"message":"error using catalogsource upgrade1/bts-operator-v3-35-1: failed to list bundles: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 172.30.8.49:50051: connect: connection refused\"","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (117 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade1='' -n upgrade1 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2024-12-03T18:44:21Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"message":"error using catalogsource upgrade1/bts-operator-v3-35-1: failed to list bundles: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 172.30.8.49:50051: connect: connection refused\"","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (116 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade1='' -n upgrade1 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2024-12-03T18:44:21Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"message":"error using catalogsource upgrade1/bts-operator-v3-35-1: failed to list bundles: rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 172.30.8.49:50051: connect: connection refused\"","reason":"ErrorPreventedResolution","status":"True","type":"ResolutionFailed"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (115 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.upgrade1='' -n upgrade1 -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2024-12-03T18:44:21Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-common-service-operator to be upgraded (114 left)
+[✔] Operator ibm-common-service-operator is upgraded to latest version in channel v4.9
+
+[INFO] Waiting for operator ibm-common-service-operator CSV in namespace upgrade1 to be bound to Subscription
+[✔] Operator ibm-common-service-operator CSV in namespace upgrade1 is bound to Subscription
+
+[INFO] Waiting for operator ibm-common-service-operator in namespace upgrade1 to become available
+[✔] Operator ibm-common-service-operator in namespace upgrade1 is available
+
+# Accepting license for commonservice common-service in namespace upgrade1...
+Error from server (InternalError): Internal error occurred: failed calling webhook "vcommonservice.kb.io": failed to call webhook: Post "https://ibm-common-service-operator-service.upgrade1.svc:443/validate-operator-ibm-com-v3-commonservice?timeout=10s": service "ibm-common-service-operator-service" not found
+[✗] Failed to update license acceptance for commonservice CR common-service
+
+[INFO] Waiting for operator ibm-odlm CSV in namespace upgrade1 to be bound to Subscription
+[✔] Operator ibm-odlm CSV in namespace upgrade1 is bound to Subscription
+
+[INFO] Waiting for operator operand-deployment-lifecycle-manager in namespace upgrade1 to become available
+[✔] Operator operand-deployment-lifecycle-manager in namespace upgrade1 is available
+
+[INFO] Waiting for CommonService CR common-service in upgrade1 to be ready
+[INFO] RETRYING: Waiting for CommonService CR common-service in upgrade1 to be ready (100 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in upgrade1 to be ready (99 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in upgrade1 to be ready (98 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in upgrade1 to be ready (97 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in upgrade1 to be ready (96 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in upgrade1 to be ready (95 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in upgrade1 to be ready (94 left)
+[INFO] RETRYING: Waiting for CommonService CR common-service in upgrade1 to be ready (93 left)
+[✔] CommonService CR in upgrade1 is in Succeeded Phase
+

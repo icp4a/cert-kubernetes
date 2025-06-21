@@ -31,7 +31,7 @@ cat << EOF > $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createGCDDB.sql
 -- If your Oracle environment uses ASM (Automatic Storage Management),  
 -- update the 'DATAFILE' and 'TEMPFILE' paths to reflect your ASM configuration.  
 -- Additionally, ensure that database object names (e.g., tablespace, user, etc.)  
--- match the expected naming conventions. Any deviations may cause issues. 
+-- match the expected naming conventions. Any deviations may cause issues.
 
 -- create tablespace
 -- Please make sure you change the DATAFILE and TEMPFILE to your Oracle database.
@@ -100,16 +100,25 @@ function create_fncm_osdb_oracle_sql_file(){
     fi
 
     if [[ $tablespace_table != "" ]]; then
-       tablespace_table_create="CREATE TABLESPACE ${tablespace_table} DATAFILE '/home/oracle/orcl/${tablespace_table}.dbf' SIZE 400M REUSE AUTOEXTEND ON NEXT 20M EXTENT MANAGEMENT LOCAL SEGMENT SPACE MANAGEMENT AUTO ONLINE PERMANENT;"
-       tablespace_table_alter="ALTER USER ${dbuser} QUOTA UNLIMITED ON ${tablespace_table};"
+        # Tablespaces must be unique,to make it unique the DB name will be appended as a prefix to all tablespaces created
+        # https://jsw.ibm.com/browse/DBACLD-175710
+        tablespace_table="${dbuser}${tablespace_table}"
+        tablespace_table_create="CREATE TABLESPACE ${tablespace_table} DATAFILE '/home/oracle/orcl/${tablespace_table}.dbf' SIZE 400M REUSE AUTOEXTEND ON NEXT 20M EXTENT MANAGEMENT LOCAL SEGMENT SPACE MANAGEMENT AUTO ONLINE PERMANENT;"
+        tablespace_table_alter="ALTER USER ${dbuser} QUOTA UNLIMITED ON ${tablespace_table};"
     fi
     if [[ $tablespace_index != "" ]]; then
-       tablespace_index_create="CREATE TABLESPACE ${tablespace_index} DATAFILE '/home/oracle/orcl/${tablespace_index}.dbf' SIZE 300M REUSE AUTOEXTEND ON NEXT 20M EXTENT MANAGEMENT LOCAL SEGMENT SPACE MANAGEMENT AUTO ONLINE PERMANENT;"
-       tablespace_index_alter="ALTER USER ${dbuser} QUOTA UNLIMITED ON ${tablespace_index};"
+        # Tablespaces must be unique,to make it unique the DB name will be appended as a prefix to all tablespaces created
+        # https://jsw.ibm.com/browse/DBACLD-175710
+        tablespace_index="${dbuser}${tablespace_index}"
+        tablespace_index_create="CREATE TABLESPACE ${tablespace_index} DATAFILE '/home/oracle/orcl/${tablespace_index}.dbf' SIZE 300M REUSE AUTOEXTEND ON NEXT 20M EXTENT MANAGEMENT LOCAL SEGMENT SPACE MANAGEMENT AUTO ONLINE PERMANENT;"
+        tablespace_index_alter="ALTER USER ${dbuser} QUOTA UNLIMITED ON ${tablespace_index};"
     fi
     if [[ $tablespace_lob != "" ]]; then
-       tablespace_lob_create="CREATE TABLESPACE ${tablespace_lob} DATAFILE '/home/oracle/orcl/${tablespace_lob}.dbf' SIZE 300M REUSE AUTOEXTEND ON NEXT 20M EXTENT MANAGEMENT LOCAL SEGMENT SPACE MANAGEMENT AUTO ONLINE PERMANENT;"
-       tablespace_lob_alter="ALTER USER ${dbuser} QUOTA UNLIMITED ON ${tablespace_lob};"
+        # Tablespaces must be unique,to make it unique the DB name will be appended as a prefix to all tablespaces created
+        # https://jsw.ibm.com/browse/DBACLD-175710
+        tablespace_lob="${dbuser}${tablespace_lob}"
+        tablespace_lob_create="CREATE TABLESPACE ${tablespace_lob} DATAFILE '/home/oracle/orcl/${tablespace_lob}.dbf' SIZE 300M REUSE AUTOEXTEND ON NEXT 20M EXTENT MANAGEMENT LOCAL SEGMENT SPACE MANAGEMENT AUTO ONLINE PERMANENT;"
+        tablespace_lob_alter="ALTER USER ${dbuser} QUOTA UNLIMITED ON ${tablespace_lob};"
     fi
 
     rm -rf $FNCM_OSDB_SCRIPT_FILE

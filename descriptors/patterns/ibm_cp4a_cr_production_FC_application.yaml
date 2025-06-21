@@ -3,7 +3,7 @@
 ##
 ##Licensed Materials - Property of IBM
 ##
-##(C) Copyright IBM Corp. 2021, 2023. All Rights Reserved.
+##(C) Copyright IBM Corp. 2021, 2025. All Rights Reserved.
 ##
 ##US Government Users Restricted Rights - Use, duplication or
 ##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -17,9 +17,9 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 24.0.1
+    release: 25.0.0
 spec:
-  appVersion: 24.0.1
+  appVersion: 25.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -49,25 +49,11 @@ spec:
     ## However, if sc_content_initialization is set to "false" (or the parameter doesn't exist), then the initialization will not occur (even with the "initialize_configuration" section defined)
     sc_content_initialization: false
 
-    sc_egress_configuration:
-      ## Required. Enable or disable egress access to external systems.
-      ## If "sc_restricted_internet_access" is defined and has no value set, then default will be "true".
-      ## If "sc_restricted_internet_access" is not defined (e.g., in the case of upgrade, the existing CR will not have sc_restricted_internet_access), then "sc_restricted_internet_access" will be "false"
-      sc_restricted_internet_access: true
-      ## Optional.  Kubernetes API server namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
-      ## Default are "openshift-kube-apiserver", "openshift-apiserver" for OCP and ROKS.
-      sc_api_namespace:
-      ## Optional.  Kubernetes API server port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## Default are 443,6443 for OCP and ROKS
-      sc_api_port:
-      ## Optional.  Kubernetes DNS service namespace(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## "{}" can also be used as a value.  It is equivalent to all namespaces (eg: namespaceSelector:{})
-      ## Default is "openshift-dns" for OCP and ROKS
-      sc_dns_namespace:
-      ## Optional.  Kubernetes DNS service port(s) (comma separated) to be used for egress network policy when `sc_restricted_internet_access: true` and `sc_deployment_platform: "other"`.
-      ## Default are 53,5353 for OCP and ROKS
-      sc_dns_port:
+    ## Staring with CP4BA 25.0.0, the operators are no longer creating network policies automatically due to a change in the security requirements where the permissions to create network policies have been removed.
+    ## The optional parameter to enable/disable the creation of sample network policy templates for CP4BA components.  If the parameter is not defined, then the default value is "false".
+    ## Set this flag to "true" if you plan to have restricted network policies in CP4BA namespaces so that the operators can create sample network policy templates for CP4BA components.
+    ## Please refer to the CP4BA documentation for more information about how to retrieve and apply the sample network policy templates.
+    sc_generate_sample_network_policies: false
 
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false
@@ -197,11 +183,16 @@ spec:
   #     ## it is recommended to have 2 or more.
   #     replica_count: 2
 
+  #     ## Rolling update settings for CPE deployment.  By default, max_unavailable is set to 99% and max_surge is set to 1. This will help speeding up the CPE upgrade process.
+  #     ## Valid values for max_unavailable are 0-100% or 0-<number of replicas>.  Valid values for max_surge are 0-100% or 0-<number of replicas>.
+  #     rolling_update:
+  #       max_unavailable: 99%
+  #       max_surge: 1
   #     ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/cpe
-  #       tag: "24.0.1-IF002"
+  #       tag: "25.0.0"
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
@@ -348,7 +339,7 @@ spec:
   #         pull_policy: IfNotPresent
   #         ## The default repository is the IBM Entitled Registry.
   #         repository: cp.icr.io/cp/cp4a/fncm/lscollector
-  #         tag: "24.0.1-IF002"
+  #         tag: "25.0.0"
   #       ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
   #       ## If more resources are needed, make the changes here to meet your requirement.
   #       resources:
@@ -384,7 +375,7 @@ spec:
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/graphql
-  #       tag: "24.0.1-IF002"
+  #       tag: "25.0.0"
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
@@ -500,7 +491,7 @@ spec:
   #  #    pull_policy: IfNotPresent
   #  #    ## The default repository is the IBM Entitled Registry.
   #  #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-  #  #    tag: "24.0.1-IF002"
+  #  #    tag: "25.0.0"
   #  # #  #  ## Below are the default LSReporter Production settings.
   #  #  ## Make the necessary changes as you see fit.
   #  #  product_settings:
@@ -567,7 +558,7 @@ spec:
   #     ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
   #     ## If you want PostgresDB to be created for a GCD database, set this parameter to true
   #     dc_use_postgres: false
-  #     ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".
+  #     ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "db2rds" or "db2rdsHADR" or "oracle" or "postgresql".
   #     dc_database_type: "<Required>"
   #     ## The GCD non-XA datasource name.  The default value is "FNGCDDS".
   #     dc_common_gcd_datasource_name: "FNGCDDS"
@@ -597,7 +588,7 @@ spec:
 
   #   ## The database configuration for the application engine object store (AEOS) datasource for CPE
   #   dc_os_datasources:
-  #     ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".  This should be the same as the
+  #     ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "db2rds" or "db2rdsHADR" or "oracle" or "postgresql".  This should be the same as the
   #     ## GCD configuration above.
   #   ## object store for AEOS
   #   - dc_database_type: "<Required>"

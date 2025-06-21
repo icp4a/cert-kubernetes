@@ -39,6 +39,7 @@ OLM_SUBSCRIPTION_TMP=${TEMP_FOLDER}/.subscription.yaml
 LICENSE_FILE=${PARENT_DIR}/LICENSE
 LICENSE_ACCEPTED=""
 CATALOG_FOUND="Yes"
+CATALOG_NS="openshift-marketplace"
 
 function show_help {
     echo -e "\nPrerequisite:"
@@ -134,12 +135,13 @@ function userInput() {
 function prepare_olm_install() {
     local maxRetry=20
     project_name=$NAMESPACE
-    catalog_ns="openshift-marketplace"
 
     if [[ $CATALOG_FOUND == "Yes" ]]; then
         if [[ $PINNED == "Yes" ]]; then
-          echo "Found ibm CP4BA operator catalog source, updating it ..."
-          oc apply -f $OLM_CATALOG >/dev/null 2>&1
+          echo "Found ibm CP4BA operator catalog source (in $CATALOG_NS), updating it ..."
+          cp $OLM_CATALOG ${OLM_CATALOG_TMP}
+          sed "s|namespace: .*|namespace: \"$CATALOG_NS\"|g" ${OLM_CATALOG} > ${OLM_CATALOG_TMP}
+          oc apply -f $OLM_CATALOG_TMP >/dev/null 2>&1
           if [ $? -eq 0 ]; then
             echo "IBM CP4BA Operator Catalog source Updated!"
           else
@@ -150,10 +152,11 @@ function prepare_olm_install() {
           kubectl apply -f ${CUR_DIR}/../descriptors/role.yaml --validate=false
           kubectl apply -f ${CUR_DIR}/../descriptors/role_binding.yaml --validate=false
           kubectl apply -f ${CUR_DIR}/../upgradeOperator.yaml --validate=false
-        elif [[ $PINNED == "No" ]]; then  # #168788 this should only occur for an older install that used ibm-operator-catalog for baw. 
+        elif [[ $PINNED == "No" ]]; then  # #168788 this should only occur for an older install that used ibm-operator-catalog for baw.
           if [[ $RUNTIME_MODE == "baw" ]];then
             echo "Found ibm operator catalog source, add pinned ibm baw operator catalog and subscription..."
-            oc apply -f $OLM_CATALOG >/dev/null 2>&1
+            sed "s|namespace: .*|namespace: \"$CATALOG_NS\"|g" ${OLM_CATALOG} > ${OLM_CATALOG_TMP}
+            oc apply -f $OLM_CATALOG_TMP >/dev/null 2>&1
             if [ $? -eq 0 ]; then
               echo "IBM BAW Operator Catalog source created!"
             else
@@ -162,7 +165,7 @@ function prepare_olm_install() {
             fi
             sed "s/REPLACE_NAMESPACE/$project_name/g" ${OLM_SUBSCRIPTION} > ${OLM_SUBSCRIPTION_TMP}
             ${YQ_CMD} w -i ${OLM_SUBSCRIPTION_TMP} spec.source "$online_source"
-            sed -i "s/sourceNamespace: .*/sourceNamespace: \"$catalog_ns\"/g" ${OLM_SUBSCRIPTION_TMP}
+            sed -i "s/sourceNamespace: .*/sourceNamespace: \"$CATALOG_NS\"/g" ${OLM_SUBSCRIPTION_TMP}
             oc apply -f ${OLM_SUBSCRIPTION_TMP} -n $NAMESPACE
             if [ $? -eq 0 ]
             then
@@ -198,7 +201,7 @@ function prepare_olm_install() {
     else
         if [[ $RUNTIME_MODE == "baw-dev" ]]; then
             echo "Change namespace in BAW Operator Catalog source for dev"
-            catalog_ns=$project_name
+            CATALOG_NS=$project_name
             OLM_CATALOG_AUX=${TEMP_FOLDER}/.catalog_source.yaml
             sed "s|namespace: .*|namespace: $project_name|g" ${OLM_CATALOG} > ${OLM_CATALOG_AUX}
             oc apply -f ${OLM_CATALOG_AUX} >/dev/null 2>&1
@@ -213,14 +216,14 @@ function prepare_olm_install() {
         fi
     fi
 
-    echo "Waiting for CP4BA Operator Catalog pod initialization in $catalog_ns"
+    echo "Waiting for CP4BA Operator Catalog pod initialization in $CATALOG_NS"
     for ((retry=0;retry<=${maxRetry};retry++)); do
-      isReady=$(oc get pod -n $catalog_ns --no-headers | grep $online_source | grep "Running")
+      isReady=$(oc get pod -n $CATALOG_NS --no-headers | grep $online_source | grep "Running")
       if [[ -z $isReady ]]; then
         if [[ $retry -eq ${maxRetry} ]]; then
           echo "Timeout waiting for  CP4BA Operator Catalog pod to start"
           echo -e "\x1B[1mPlease check the status of Pod by issue cmd: \x1B[0m"
-          echo "oc describe pod $(oc get pod -n $catalog_ns|grep $online_source|awk '{print $1}') -n $catalog_ns"
+          echo "oc describe pod $(oc get pod -n $CATALOG_NS|grep $online_source|awk '{print $1}') -n $CATALOG_NS"
           exit 1
         else
           sleep 30
@@ -251,7 +254,7 @@ function prepare_olm_install() {
     if [[ $CATALOG_FOUND == "No" ]]; then
       sed "s/REPLACE_NAMESPACE/$project_name/g" ${OLM_SUBSCRIPTION} > ${OLM_SUBSCRIPTION_TMP}
       ${YQ_CMD} w -i ${OLM_SUBSCRIPTION_TMP} spec.source "$online_source"
-      sed -i "s/sourceNamespace: .*/sourceNamespace: \"$catalog_ns\"/g" ${OLM_SUBSCRIPTION_TMP}
+      sed -i "s/sourceNamespace: .*/sourceNamespace: \"$CATALOG_NS\"/g" ${OLM_SUBSCRIPTION_TMP}
       oc apply -f ${OLM_SUBSCRIPTION_TMP} -n $NAMESPACE
       # sed <"${OLM_SUBSCRIPTION}" "s|REPLACE_NAMESPACE|${project_name}|g; s|REPLACE_CHANNEL_NAME|stable|g" | oc apply -f -
       if [ $? -eq 0 ]
@@ -270,7 +273,7 @@ function prepare_olm_install() {
       for i in ${!sub_array[@]}; do
           if [[ ! -z "${sub_array[i]}" ]]; then
             if [[ ${sub_array[i]} = ibm-baw-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = ibm-pfs-operator* || ${sub_array[i]} = ibm-workflow-operator* ]]; then
-              oc patch subscriptions.operators.coreos.com ${sub_array[i]} -n $NAMESPACE -p '{"spec":{"channel":"'"$CP4BA_CHANNEL_VERSION"'"}}' --type=merge >/dev/null 2>&1
+              oc patch subscriptions.operators.coreos.com ${sub_array[i]} -n $NAMESPACE -p "{\"spec\":{\"channel\":\"$CP4BA_CHANNEL_VERSION\"}}" --type=merge >/dev/null 2>&1
               if [ $? -eq 0 ]
               then
                   echo "Update the channel of subscription '${sub_array[i]}' to $CP4BA_CHANNEL_VERSION!"
@@ -292,7 +295,7 @@ function prepare_olm_install() {
       for i in ${!sub_array[@]}; do
           if [[ ! -z "${sub_array[i]}" ]]; then
             if [[ ${sub_array[i]} = ibm-cp4a-operator* || ${sub_array[i]} = ibm-cp4a-wfps-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = icp4a-foundation-operator* || ${sub_array[i]} = ibm-pfs-operator* || ${sub_array[i]} = ibm-workflow-operator* ]]; then
-              oc patch subscriptions.operators.coreos.com ${sub_array[i]} -n $NAMESPACE -p '{"spec":{"channel":"'"$CP4BA_CHANNEL_VERSION"'"}}' --type=merge >/dev/null 2>&1
+              oc patch subscriptions.operators.coreos.com ${sub_array[i]} -n $NAMESPACE -p "{\"spec\":{\"channel\":\"$CP4BA_CHANNEL_VERSION\"}}" --type=merge >/dev/null 2>&1
               if [ $? -eq 0 ]
               then
                   echo "Update the channel of subscription '${sub_array[i]}' to $CP4BA_CHANNEL_VERSION!"
@@ -454,16 +457,26 @@ function cp4a_operator_uninstall(){
 
 # Check existing catalog source is pinned or non pinned
 if [[ -z $RUNTIME_MODE || $RUNTIME_MODE == "baw" ]]; then
-  # DBACLD-168788 prio to 24.0.1 ifix002 an online install created an unpinned catalogue
-  if oc get catalogsource -n openshift-marketplace | grep ibm-baw-operator-catalog; then
+  # DBACLD-168788 prio to 2400ifix005/2401ifix002 an online install for baw created an unpinned catalogue
+  if oc get catalogsource -n openshift-marketplace | grep ibm-baw-operator-catalog; then # openshift-marketplace namspace for non-private catalog
     CATALOG_FOUND="Yes"
-    PINNED="Yes" 
-  elif oc get catalogsource -n openshift-marketplace | grep ibm-operator-catalog; then #only set this for an older baw install if the ibm-baw-operator-catalog is not installed yet
+    PINNED="Yes"
+  elif oc get catalogsource -n ${NAMESPACE}| grep ibm-baw-operator-catalog; then #  project namspace for private catalogue
+    CATALOG_FOUND="Yes"
+    PINNED="Yes"
+    CATALOG_NS=${NAMESPACE}
+  #only check for older unpinned ibm-operator-catalog the pinned ibm-baw-operator-catalog is not installed yet
+  elif oc get catalogsource -n openshift-marketplace | grep ibm-operator-catalog; then
     CATALOG_FOUND="Yes"
     PINNED="No" 
+  elif oc get catalogsource -n ${NAMESPACE}| grep ibm-operator-catalog; then
+    CATALOG_FOUND="Yes"
+    PINNED="No"
+    CATALOG_NS=${NAMESPACE}
   elif oc get catalogsource -n openshift-marketplace | grep ibm-cp4a-operator-catalog; then
     CATALOG_FOUND="Yes"
     PINNED="Yes"
+  # elif oc get catalogsource -n ${NAMESPACE}| grep ibm-cp4a-operator-catalog; then  .... if cp4a does not use this script no need to check for private catalog in specific namespace
   else
     CATALOG_FOUND="No"
     PINNED="Yes" # Fresh install use pinned catalog source
@@ -472,6 +485,10 @@ elif [[ $RUNTIME_MODE == "dev" || $RUNTIME_MODE == "baw-dev" ]]; then
   if oc get catalogsource -n openshift-marketplace | grep ibm-cp4a-operator-catalog; then
     CATALOG_FOUND="Yes"
     PINNED="Yes"
+  elif oc get catalogsource -n ${NAMESPACE}| grep ibm-baw-operator-catalog; then
+    CATALOG_FOUND="Yes"
+    PINNED="Yes"
+    CATALOG_NS=${NAMESPACE}
   else
     CATALOG_FOUND="No"
     PINNED="Yes" # Fresh install use pinned catalog source

@@ -2,7 +2,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2024. All Rights Reserved.
+# (C) Copyright IBM Corp. 2024, 2025. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -17,7 +17,7 @@ metadata:
     app.kubernetes.io/name: ibm-dba-workflow
     app.kubernetes.io/instance: ibm-dba-workflow
     app.kubernetes.io/managed-by: ibm-dba-workflow
-    release: 24.0.1
+    release: 25.0.0
 spec:
   group: icp4a.ibm.com
   names:
@@ -80,6 +80,10 @@ spec:
                     format: int32
                     type: integer
                 type: object
+              baw_cncf:
+                default: false
+                description: Whether it is the BAW standalone version on CNCF
+                type: boolean
               business_event:
                 description: IBM Business Automation Insights integration configuration.
                 properties:
@@ -423,9 +427,12 @@ spec:
                     type: string
                   type:
                     description: 'Workflow Server database type. Possible values are:
-                      db2, oracle, postgresql, sqlserver'
+                      db2, db2HADR, db2rds, db2rdsHADR, oracle, postgresql, sqlserver'
                     enum:
                     - db2
+                    - db2HADR
+                    - db2rds
+                    - db2rdsHADR
                     - oracle
                     - postgresql
                     - sqlserver
@@ -568,6 +575,10 @@ spec:
                       You could also provide your own elasticsearch leveraging parameters: elasticsearch.endpoint and elasticsearch.admin_secret_name.
                     type: boolean
                 type: object
+              generate_sample_network_policies:
+                default: false
+                description: '! From ICP4ACluster shared_configuration.sc_generate_sample_network_policies'
+                type: boolean
               images:
                 description: Include all images used to deploy the workflow runtime
                 properties:
@@ -822,6 +833,10 @@ spec:
                   ! From ICP4ACluster shared_configuration.sc_ingress_tls_secret_name
                   For ROKS Ingress, provide TLS secret name for Ingress controller. If you are not using ROKS, do not need this.
                 type: string
+              install_network_policies:
+                default: false
+                description: '! From ICP4ACluster shared_configuration.sc_install_network_policies'
+                type: boolean
               jms:
                 description: The configuration for Java Messaging Service(JMS)
                 properties:
@@ -1366,6 +1381,25 @@ spec:
                       verbose:
                         default: true
                         type: boolean
+                    type: object
+                  audit_logging:
+                    description: Audit Logging configuration
+                    properties:
+                      enabled:
+                        default: false
+                        type: boolean
+                      log_dir_size:
+                        default: 150Mi
+                        type: string
+                      rolling_max_files:
+                        default: 5
+                        format: int32
+                        type: integer
+                      rolling_max_size:
+                        default: 20Mi
+                        type: string
+                    required:
+                    - enabled
                     type: object
                   autoscaling:
                     default:

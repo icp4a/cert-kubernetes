@@ -102,7 +102,7 @@ function loginEntitlementRepo() {
     printf "\n"
     printf "\x1B[1mThe script will pull 'openldap, busybox, phpldapadmin, alpine, gitea' images from Entitled Registry. \n\x1B[0m"
     printf "\x1B[1mFollow the instructions on how to get your Entitlement Key if you don't have it: \n\x1B[0m"
-    printf "\x1B[1mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=deployment-getting-access-images-from-public-entitled-registry\n\x1B[0m"
+    printf "\x1B[1mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-getting-access-images-from-public-entitled-registry\n\x1B[0m"
     # printf "\x1B[1mNote: If you are using the Staging Entiled Registry, then use IAMAPIKey in the format 'iamapikey:xxxxx' where 'xxxxx' is the IAMAPIKey.\n \x1B[0m"
     printf "\n"
     printf "\x1B[1mEnter your Entitlement Registry key: \x1B[0m"

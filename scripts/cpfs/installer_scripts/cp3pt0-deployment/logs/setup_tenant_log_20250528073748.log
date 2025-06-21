@@ -1,0 +1,224 @@
+# Start to validate the parameters passed into script... 
+[✔] oc command available
+[✔] /Users/varunsriram/Documents/Work/CloudPak/CodeRepos/cert-kubernetes/scripts/cpfs/yq/macos/yq command available
+[✔] oc command logged in as kube:admin
+[✔] Channel v4.13 is valid
+[INFO] ibm-common-service-operator subscription exists, it is upgrade scenario
+
+[✗] It is simple namespace topology
+
+[✔] Profile size is valid.
+# Validate CatalogSource for operator ibm-common-service-operator in upgrade namespace
+[✔] CatalogSource ibm-cs-install-catalog-v4-13-0 from upgrade CatalogSourceNamespace is available for ibm-common-service-operator in upgrade namespace
+
+# Checking whether Namespace upgrade exist...
+[✔] Namespace upgrade already exists. Skip creating
+
+# Checking whether Namespace upgrade exist...
+[✔] Namespace upgrade already exists. Skip creating
+
+# Checking whether OperatorGroup in upgrade exist...
+[✔] OperatorGroup already exists in upgrade. Skip creating
+
+#  Checking whether Cert Manager exist...
+#  Smoke test for Cert Manager existence...
+[DEBUG] Creating Issuer test-issuer in namespace upgrade .
+[INFO] Creating following issuer:
+
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: test-issuer
+  namespace: upgrade
+spec:
+  selfSigned: {}
+
+issuer.cert-manager.io/test-issuer created
+[DEBUG] Creating Certificate test-certificate in namespace upgrade .
+[INFO] Creating following certificate:
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: test-certificate
+  namespace: upgrade
+spec:
+  commonName: test-certificate
+  issuerRef:
+    kind: Issuer
+    name: test-issuer
+  secretName: test-certificate-secret
+
+certificate.cert-manager.io/test-certificate created
+[INFO] Waiting for Issuer test-issuer in namespace upgrade to be Ready
+[✔] Issuer test-issuer in namespace upgrade is Ready
+
+[INFO] Waiting for Certificate test-certificate in namespace upgrade to be Ready
+[✔] Certificate test-certificate in namespace upgrade is Ready
+
+[INFO] Deleting test-issuer Issuer ...
+issuer.cert-manager.io "test-issuer" deleted
+
+[INFO] Deleting test-certificate Certificate ...
+certificate.cert-manager.io "test-certificate" deleted
+
+[INFO] Deleting 68773secret_name Secret ...
+secret "test-certificate-secret" deleted
+
+#  Checking IBMLicensing...
+[✗] NamespaceScope Configuration is not needed for simple or all namespaces topology, skip NamespaceScope setup
+
+# Installing IBM Foundational services operator into operator namespace upgrade...
+# Checking if CommonService CRD exists in the cluster...
+[INFO] CommonService CRD exist
+
+# Configuring CommonService CR in upgrade...
+[INFO] Configuring CommonService CR common-service in upgrade
+
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"operator.ibm.com/v3","kind":"CommonService","metadata":{"annotations":{"version":"-1"},"labels":{"app.kubernetes.io/component":"Operator","app.kubernetes.io/instance":"icp4adeploy","app.kubernetes.io/managed-by":"Operator","app.kubernetes.io/name":"icp4adeploy-cp4ba","app.kubernetes.io/version":"24.0.0","release":"24.0.0"},"name":"common-service","namespace":"upgrade"},"spec":{"license":{"accept":true},"operatorNamespace":"upgrade","servicesNamespace":"upgrade","size":"small","storageClass":"nfs-client"},"status":{"conditions":[{"lastTransitionTime":"2025-05-28T01:05:03Z","lastUpdateTime":"2025-05-28T01:05:03Z","message":"initializing/updating: waiting for OperandRegistry and OperandConfig to become ready.","reason":"UpdatingResources","status":"False","type":"Pending"},{"lastTransitionTime":"2025-05-27T21:23:45Z","lastUpdateTime":"2025-05-27T21:23:45Z","message":"warning: StorageClass is not configured in CommonService CR, if KeyCloak or IBM IM service will be deployed, please configure StorageClass in the CS CR. Refer to the documentation for more information: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.6?topic=options-configuring-foundational-services#storage-class","reason":"WarningOccurred","status":"True","type":"Warning"},{"lastTransitionTime":"2025-05-27T21:13:57Z","lastUpdateTime":"2025-05-27T21:13:57Z","message":"failed to wait for the operator CSV to be installed: timed out waiting for the condition","reason":"ReconcileError","status":"True","type":"Error"},{"lastTransitionTime":"2025-05-28T01:05:32Z","lastUpdateTime":"2025-05-28T01:05:32Z","message":"configuring CommonService CR.","reason":"Configuring","status":"False","type":"Reconciling"},{"lastTransitionTime":"2025-05-28T01:05:33Z","lastUpdateTime":"2025-05-28T01:05:33Z","message":"CommonService CR is ready.","reason":"ReconcileSucceeded","status":"True","type":"Ready"}],"configStatus":{"catalogName":"ibm-cs-install-catalog-v4-6-11","catalogNamespace":"upgrade","configurable":true,"operatorDeployed":true,"operatorNamespace":"upgrade","servicesDeployed":true,"servicesNamespace":"upgrade","topologyConfigurableCRs":[{"apiVersion":"operator.ibm.com/v3","kind":"CommonService","namespace":"upgrade","objectName":"common-service"}]},"phase":"Succeeded"}}
+    version: "-1"
+  labels:
+    app.kubernetes.io/component: Operator
+    app.kubernetes.io/instance: icp4adeploy
+    app.kubernetes.io/managed-by: Operator
+    app.kubernetes.io/name: icp4adeploy-cp4ba
+    app.kubernetes.io/version: 24.0.0
+    release: 24.0.0
+  name: common-service
+  namespace: upgrade
+spec:
+  license:
+    accept: true
+  operatorNamespace: upgrade
+  servicesNamespace: upgrade
+  size: small
+  storageClass: nfs-client
+status:
+  bedrockOperators:
+    - installPlanName: install-kltlw
+      name: ibm-commonui-operator
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v4.9.0
+    - installPlanName: install-xwjh5
+      name: ibm-opencontent-flink
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v2.0.4
+    - installPlanName: install-kltlw
+      name: ibm-zen-operator
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v6.2.0
+    - installPlanName: install-2x54v
+      name: ibm-bts-operator
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v3.35.4
+    - installPlanName: install-997wx
+      name: ibm-events-operator
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v5.0.1
+    - installPlanName: install-kltlw
+      name: ibm-iam-operator
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v4.12.0
+    - installPlanName: install-4ftfp
+      name: cloud-native-postgresql
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v1.25.1
+    - installPlanName: install-fzf4h
+      name: ibm-elasticsearch-operator
+      operatorStatus: Succeeded
+      subscriptionStatus: Succeeded
+      version: v1.1.2470
+  conditions:
+    - lastTransitionTime: "2025-05-28T01:51:28Z"
+      lastUpdateTime: "2025-05-28T01:51:28Z"
+      message: 'initializing/updating: waiting for OperandRegistry and OperandConfig to become ready.'
+      reason: UpdatingResources
+      status: "False"
+      type: Pending
+    - lastTransitionTime: "2025-05-27T21:23:45Z"
+      lastUpdateTime: "2025-05-27T21:23:45Z"
+      message: 'warning: StorageClass is not configured in CommonService CR, if KeyCloak or IBM IM service will be deployed, please configure StorageClass in the CS CR. Refer to the documentation for more information: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.6?topic=options-configuring-foundational-services#storage-class'
+      reason: WarningOccurred
+      status: "True"
+      type: Warning
+    - lastTransitionTime: "2025-05-28T01:32:05Z"
+      lastUpdateTime: "2025-05-28T01:32:05Z"
+      message: 'failed to wait for the operator CSV to be installed: timed out waiting for the condition'
+      reason: ReconcileError
+      status: "True"
+      type: Error
+    - lastTransitionTime: "2025-05-28T01:51:57Z"
+      lastUpdateTime: "2025-05-28T01:51:57Z"
+      message: configuring CommonService CR.
+      reason: Configuring
+      status: "False"
+      type: Reconciling
+    - lastTransitionTime: "2025-05-28T01:51:58Z"
+      lastUpdateTime: "2025-05-28T01:51:58Z"
+      message: CommonService CR is ready.
+      reason: ReconcileSucceeded
+      status: "True"
+      type: Ready
+  configStatus:
+    catalogName: ibm-cs-install-catalog-v4-13-0
+    catalogNamespace: upgrade
+    configurable: true
+    operatorDeployed: true
+    operatorNamespace: upgrade
+    servicesDeployed: true
+    servicesNamespace: upgrade
+    topologyConfigurableCRs:
+      - apiVersion: operator.ibm.com/v3
+        kind: CommonService
+        namespace: upgrade
+        objectName: common-service
+  overallStatus: Succeeded
+  phase: Succeeded
+
+pod/ibm-common-service-operator-6df67bb7dc-2ldbk condition met
+[DEBUG] ibm-common-service-operator pod is ready
+
+commonservice.operator.ibm.com/common-service configured
+[✔] Successfully patched CommonService CR in upgrade
+# Checking whether IBM Common Service operator exist...
+[INFO] There is an ibm-common-service-operator Subscription already
+
+# Updating ibm-common-service-operator-v3-opencloud-operators-openshift-marketplace in namesapce upgrade...
+[INFO] v4.13 is equal to v4.13
+[INFO] catalogsource ibm-cs-install-catalog-v4-13-0 is the same as ibm-cs-install-catalog-v4-13-0
+[INFO] ibm-common-service-operator has already updated channel v4.13 and catalogsource ibm-cs-install-catalog-v4-13-0 in the subscription.
+subscription.operators.coreos.com/ibm-common-service-operator-v3-opencloud-operators-openshift-marketplace configured
+[✔] Successfully patched subscription ibm-common-service-operator in upgrade
+[INFO] Waiting for operator ibm-common-service-operator to be upgraded
+[✔] Operator ibm-common-service-operator is upgraded to latest version in channel v4.13
+
+[INFO] Waiting for operator ibm-common-service-operator CSV in namespace upgrade to be bound to Subscription
+[✔] Operator ibm-common-service-operator CSV in namespace upgrade is bound to Subscription
+
+[INFO] Waiting for operator ibm-common-service-operator in namespace upgrade to become available
+[✔] Operator ibm-common-service-operator in namespace upgrade is available
+
+# Accepting license for commonservice common-service in namespace upgrade...
+[✔] License accepted for commonservice common-service
+
+[INFO] Waiting for operator ibm-odlm CSV in namespace upgrade to be bound to Subscription
+[✔] Operator ibm-odlm CSV in namespace upgrade is bound to Subscription
+
+[INFO] Waiting for operator operand-deployment-lifecycle-manager in namespace upgrade to become available
+[✔] Operator operand-deployment-lifecycle-manager in namespace upgrade is available
+
+[INFO] Waiting for CommonService CR common-service in upgrade to be ready
+[✔] CommonService CR in upgrade is in Succeeded Phase
+

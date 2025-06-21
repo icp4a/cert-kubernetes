@@ -4,7 +4,7 @@ metadata:
   name: ibm-cp4a-operator-catalog-subscription
   namespace: REPLACE_NAMESPACE
 spec:
-  channel: v24.1
+  channel: v25.0
   name: ibm-cp4a-operator
   installPlanApproval: Automatic
   source: ibm-cp4a-operator-catalog

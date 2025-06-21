@@ -513,8 +513,9 @@ function create_aca_db_secret_template(){
 
 
 # function for creating the template for CP4BA ADP capabilities secret 
-
 function create_adp_secret_template(){
+  local dbserver=$1
+  dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
   wait_msg "Creating ibm-adp-secret YAML template"
   mkdir -p $ADP_SECRET_FOLDER >/dev/null 2>&1
 
@@ -526,6 +527,10 @@ apiVersion: v1
 metadata:
   name: ibm-adp-secret
   namespace: "$CP4BA_SERVICES_NS"
+# DO NOT change the content of metadata.labels
+  labels:
+    db-server: $dbserver
+    db-name: ibm-adp-secret
 type: Opaque
 stringData:
   serviceUser: "<SERVICE_USER>"
@@ -536,11 +541,9 @@ stringData:
   servicePwdCa: "<SERVICE_PASSWORD_CA>"
   envOwnerUser: "<ENV_OWNER_USER>"
   envOwnerPwd: "<ENV_OWNER_PASSWORD>"
-  # If you want to use your own Enterprise MongoDB instance in the environment, 
-  # you must also include the mongoURI and your Mongo user and password values in the secret
-  # mongoUri: "mongodb://mongo:<mongoPwd>@<mongo_database_hostname>:<mongo_database_port>/<mongo_database_name>?authSource=admin&connectTimeoutMS=3000"
-  # mongoUser: "<MONGO_USER>"
-  # mongoPwd: "<MONGO_PASSWORD>"
+  adpggDBUsername: "<ADP_GG_DB_USER_NAME>"
+  adpggDBPassword: "<ADP_GG_DB_USER_PASSWORD>"
+
 EOF
   success "Created ibm-adp-secret secret YAML template\n"
 }
@@ -860,30 +863,64 @@ EOF
   success "Created encryption key secret YAML template\n"
 }
 
-function create_ads_secret_template(){
-  wait_msg "Creating Automation Decision Services secret YAML template for external MongoDB"
+### <https://jsw.ibm.com/browse/DBACLD-168159> - Added missing namespace parameters in secret yaml and update function to match other create secret template functions
+# Function to create yaml file for ibm-ads-designer-database secret
+function create_ads_decisiondesigner_secret_template(){
+  local dbname=$1
+  local dbserver=$2
+  wait_msg "Creating Automation Decision Services secret for decision designer YAML template"
   mkdir -p $ADS_SECRET_FOLDER >/dev/null 2>&1
-
-cat << EOF > ${ADS_SECRET_FILE}
-# YAML template for <instance-name>-ads-mongo-secret secret
+  
+cat << EOF > ${ADS_DESIGNER_FILE}
+# YAML template for ibm-ads-designer-database secret
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: icp4adeploy-dba-ads-mongo-secret
+  name: "ibm-ads-designer-database"
   namespace: "$CP4BA_SERVICES_NS"
   # DO NOT change the content of metadata.labels
   labels:
-    db-name: ads-mongo
+    db-server: $dbserver
+    db-name: $dbname
 type: Opaque
 stringData:
-  gitMongoUri: "mongodb://<sampleDbUser>:<sampleDbPassword>@<mongodb0.example.com>:27017/ads-git?retryWrites=true&w=majority&authSource=admin"
-  mongoUri: "mongodb://<sampleDbUser>:<sampleDbPassword>@<mongodb1.example.com>:27017/ads?retryWrites=true&w=majority&authSource=admin"
-  mongoHistoryUri: "mongodb://<sampleDbUser>:<sampleDbPassword>@<mongodb1.example.com>:27017/ads-history?retryWrites=true&w=majority&authSource=admin"
-  runtimeMongoUri: "mongodb://<sampleDbUser>:<sampleDbPassword>@<mongodb1.example.com>:27017/ads-runtime-archive-metadata?retryWrites=true&w=majority&authSource=admin"
+  username: <ADS_DESIGNER_DB_USERNAME>
+  password: <ADS_DESIGNER_DB_PASSWORD>
 EOF
-  success "Created Automation Decision Services secret YAML template for external MongoDB \n"
+
+success "Created Automation Decision Services secret for decision designer YAML template\n"
 }
+
+### <https://jsw.ibm.com/browse/DBACLD-168159> - Added missing namespace parameters in secret yaml and update function to match other create secret template functions
+# Function to create yaml file for ibm-ads-runtime-database secret
+function create_ads_decisionruntime_secret_template(){
+  local dbname=$1
+  local dbserver=$2
+  wait_msg "Creating Automation Decision Services secret for decision runtime YAML template"
+  mkdir -p $ADS_SECRET_FOLDER >/dev/null 2>&1
+
+cat << EOF > ${ADS_RUNTIME_FILE}
+# YAML template for ibm-ads-runtime-database secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: "ibm-ads-runtime-database"
+  namespace: "$CP4BA_SERVICES_NS"
+  # DO NOT change the content of metadata.labels
+  labels:
+    db-server: $dbserver
+    db-name: $dbname
+type: Opaque
+stringData:
+  username: <ADS_RUNTIME_DB_USERNAME>
+  password: <ADS_RUNTIME_DB_USERNAME>
+EOF
+
+success "Created Automation Decision Services secret for decision runtime YAML template\n"
+}
+
 
 function create_zen_external_db_secret_template(){
   wait_msg "Creating ibm-zen-metastore-edb-secret secret YAML template for Zen metastore external Postgres DB"

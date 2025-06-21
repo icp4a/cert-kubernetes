@@ -36,8 +36,8 @@ spec:
       type: resource   
       includedResourceTypes:
         - user
-      includeClusterResources: true 
-      essential: false   
+      includeClusterResources: true
+      essential: false    
     - name: cp4ba-ibm-entitlement-key
       type: resource   
       includedResourceTypes:
@@ -118,8 +118,8 @@ spec:
       type: resource
       includedResourceTypes:
         - secret 
-      labelSelector: custom-label=cp4ba-ssl-secret
-      essential: false    
+      labelSelector: custom-label=cp4ba-ssl-secret 
+      essential: false   
     - name: cp4ba-ibm-ban-secret
       type: resource
       includedResourceTypes:

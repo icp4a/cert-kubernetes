@@ -1,0 +1,2 @@
+SET SCHEMA $tenant_ontology ;
+

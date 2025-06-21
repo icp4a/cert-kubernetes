@@ -395,8 +395,7 @@ function convert_olm_cr(){
             if [[ $olm_optional_component_flag == "true" ]]; then
                 OIFS=$IFS
                 IFS='.' read -r -a array <<< "${OLM_OPTIONAL_COMPONENT_CR_MAPPING[$i]}"
-                ## - - https://jsw.ibm.com/browse/DBACLD-165625 - <cp4a-deployment script show errors when running on MacOS>
-                last_element="${array[${#array[@]}-1]}"
+                last_element="${array[-1]}"
                 EXISTING_OPT_COMPONENT_ARR=( "${EXISTING_OPT_COMPONENT_ARR[@]}" "$last_element" )
                 IFS=$OIFS
             elif [[ -z $olm_pattern_flag && ${OLM_OPTIONAL_COMPONENT_CR_MAPPING[$i]} != "spec.olm_production_option.workfow_authoring.ae_data_persistence" && ${OLM_OPTIONAL_COMPONENT_CR_MAPPING[$i]} != "spec.olm_production_option.workfow_runtime.elasticsearch" ]]; then
@@ -551,6 +550,67 @@ function select_apply_cr(){
     # done
 }
 
+#Function that applies the changes required for the new network policy design as part of 25.0.0
+# 1.Retrieves the existing network policies
+# 2.Removes owner references from the network policies and reapplies the modified templates
+# 3.Notifies the user about the new flag that will generate new network policy templates after the operator is brought up
+# 4.Removes the restricted_internet_access flag as it is no longer supported
+# For https://jsw.ibm.com/browse/DBACLD-167387
+function update_network_policies(){
+    local namespace=$1
+    local cr_type=$2
+    local cr_file=$3
+    local netpol_targ_path=${CUR_DIR}/network-policies/${namespace}/templates
+    printf "\n"
+    echo "${RED_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT} Starting with 25.0.0, the operator is no longer creating network policies automatically.${RESET_TEXT}"
+    echo "${YELLOW_TEXT}In addition, the script will remove the ownerReference of any network policies created by the operators, and save the definition of the network policies to ${RESET_TEXT}${GREEN_TEXT}$netpol_targ_path${RESET_TEXT}."
+    echo "${YELLOW_TEXT}The script will not delete any existing network policies.The user now is responsible for maintaining these network policies moving forward.${RESET_TEXT}"
+    printf "\n"
+    prompt_press_any_key_to_continue
+    sh ${CUR_DIR}/cp4a-network-policies.sh -m retrieveExisting -n $namespace --kind $cr_type
+    sh ${CUR_DIR}/cp4a-network-policies.sh -m removeRef -n $namespace
+    printf "\n"
+    echo "${YELLOW_TEXT}(Notes: Starting from $CP4BA_RELEASE_BASE, the CP4BA operators no longer install network policies automatically.${RESET_TEXT}"
+    echo "However, the script \"cp4a-network-policies.sh\" is provided as a tool you can optionally use to generate network policy templates which you can review and apply.  If you want to generate network policy templates, then do the following:"
+    echo "1. Make sure the flag \"shared_configuration.sc_generate_sample_network_policies\" is set to \"true\" in your custom resource file. (By default, the script will set the sc_generate_sample_network_policies to \"false\" )"
+    echo "2. Wait for your deployment complete."
+    # Will be adding the KC link after its been created
+    echo "3. You can retrieve and apply the network policies by running the cp4a-network-policies.sh script after the CP4BA upgrade has been completed ."
+    printf "\n"
+    prompt_press_any_key_to_continue
+    # For WFPSRuntime the CR does not need the sc_generate_sample_network_policies flag nor does it have sc_restricted_internet_access
+    # The operator picks those values from the ICP4ACluster
+    # For https://jsw.ibm.com/browse/DBACLD-175988
+    if [[ $cr_type != "WfPSRuntime" ]]; then
+        ${YQ_CMD} d -i ${cr_file} spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access
+        ${YQ_CMD} w -i ${cr_file} spec.shared_configuration.sc_generate_sample_network_policies "false"
+    fi
+
+}
+
+# Function to detect if the Domain is configured with SCIM
+# During upgradeOperator we check for SCIM configuration in the Domain and then save a boolean flag in the shared info configmap
+# This function retrieves the flag and accordingly sets the sc_skip_ldap_config flag in the CR
+# https://jsw.ibm.com/browse/DBACLD-157386 https://jsw.ibm.com/browse/DBACLD-178101 https://jsw.ibm.com/browse/DBACLD-177550 https://jsw.ibm.com/browse/DBACLD-177742
+function detect_scim_configuration(){
+    local namespace=$1
+    local configmap_name=$2
+    local cr_file=$3
+    #checking if the SCIM Value is in either ibm-cp4ba-content-shared-info or ibm-cp4ba-shared-info
+    scim_enabled=''
+    scim_enabled=$(${CLI_CMD} get cm "$configmap_name" -n $namespace -o yaml | ${YQ_CMD} r - data.scim_configured)
+    if [[ ! -z "$scim_enabled" ]]; then
+        echo "SCIM STATUS----$scim_enabled"
+        if [[ "$scim_enabled" == "True" ]]; then
+            info "${YELLOW_TEXT}When the Content Process Engine directory provider type is set to SCIM, the script will set \"shared_configuration.sc_skip_ldap_config\" as \"true\" while upgrading CP4BA deployment from version \"$cr_version\".${RESET_TEXT}"
+            ${YQ_CMD} w -i ${cr_file} spec.shared_configuration.sc_skip_ldap_config "true"
+        else
+            info "${YELLOW_TEXT}When Content Process Engine directory provider type is set to LDAP (not SCIM), setting \"shared_configuration.sc_skip_ldap_config\" as \"false\" while upgrading CP4BA deployment from version \"$cr_version\".${RESET_TEXT}"
+            ${YQ_CMD} w -i ${cr_file} spec.shared_configuration.sc_skip_ldap_config "false"
+        fi
+    fi
+}
+
 #manages the shutdown of the CP4BA operator and retrieves existing CR's,to prevent conflicts during the upgrade
 #handles their processing based on their ownership.
 function upgrade_deployment(){
@@ -562,6 +622,7 @@ function upgrade_deployment(){
     # trap 'startup_operator $deployment_project_name' EXIT, to preventing issues during the upgrade
     shutdown_operator $operator_project_name
     source ${CUR_DIR}/helper/upgrade/upgrade_check_status.sh
+    
     # Retrieve existing Content CR, to verify if there are any 'content' CRs that need to be processed
     ${CLI_CMD} get crd |grep contents.icp4a.ibm.com >/dev/null 2>&1
     if [ $? -eq 0 ]; then
@@ -666,10 +727,12 @@ function upgrade_deployment(){
                 # ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} spec.verify_configuration
                 # ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} spec.initialize_configuration
 
+                # Function to detect if the Domain is configured with SCIM
+                # https://jsw.ibm.com/browse/DBACLD-157386 https://jsw.ibm.com/browse/DBACLD-178101 https://jsw.ibm.com/browse/DBACLD-177550 https://jsw.ibm.com/browse/DBACLD-177742
+                detect_scim_configuration "$deployment_project_name" "ibm-cp4ba-content-shared-info" "${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}"
+                
                 if [[ "$allow_direct_upgrade" == 1 ]]; then
-                    # Set sc_restricted_internet_access always "false" in upgrade
-                    info "${RED_TEXT}Setting \"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\" to \"false\" when upgrade CP4BA deployment, you could change it according to your requirements of security.${RESET_TEXT}"
-                    ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access "false"
+                    
                     # Set shared_configuration.enable_fips always "false" in upgrade
                     info "${RED_TEXT}Setting \"shared_configuration.enable_fips\" as \"false\" when upgrade CP4BA deployment, you could change it according to your requirements.${RESET_TEXT}"
                     ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} spec.shared_configuration.enable_fips "false"
@@ -678,6 +741,14 @@ function upgrade_deployment(){
                 ${SED_COMMAND} "s|'\"|\"|g" ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
                 ${SED_COMMAND} "s|\"'|\"|g" ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
                 ${SED_COMMAND} "s/route_reencrypt: .*/route_reencrypt: $ZEN_ROUTE_REENCRYPT/g" ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
+                
+                # Function that will retrieve the network policies created in 24.0.1 by the operators and remove the references and re-apply them 
+                # For https://jsw.ibm.com/browse/DBACLD-167387
+                update_network_policies $deployment_project_name "Content" ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
+
+                # Function that retrieves the networktype and network cidr range
+                # https://jsw.ibm.com/browse/DBACLD-173602
+                retrieve_network_details "upgrade" $deployment_project_name
 
                 # convert ssl enable true or false to meet CSV
                 ${SED_COMMAND} "s/: \"True\"/: true/g" ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
@@ -722,7 +793,7 @@ function upgrade_deployment(){
                 info "Scaling down CPE deployment"
                 ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-cpe-deploy -n $deployment_project_name >/dev/null 2>&1
                 echo "Done!"
-                # To allow any changes to the creation of the zen extension configuration that we make from IFIX to IFIX,its best if the watcher pods are scaled down prior to applying the new CR
+                # To allow any changes to creation of the zen extension configuration that we make from IFIX to IFIX,its best if the watcher pods are scaled down prior to applying the new CR
                 # DBACLD-171900
                 info "Scaling down CPE Watcher deployment"
                 ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-cpe-watcher -n $deployment_project_name >/dev/null 2>&1
@@ -735,16 +806,7 @@ function upgrade_deployment(){
                 info "Scaling down Navigator Watcher deployment"
                 ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-navigator-watcher -n $deployment_project_name >/dev/null 2>&1
                 echo "Done!"
-                
-                # DBACLD-168537: need to re-create {{meta.name}}-fncm-custom-ssl-secret to add CSS DNSName (in case they are missing from previous deployment) which will be included in FNCM's keystores
-                local fncm_custom_ssl_secret=$(${CLI_CMD} get secret --no-headers --ignore-not-found ${content_cr_name}-fncm-custom-ssl-secret -n $deployment_project_name | awk '{print $1}') 
-                if [[ -z $fncm_custom_ssl_secret ]]; then
-                    info "${content_cr_name}-fncm-custom-ssl-secret is not found."
-                else
-                    info "Found ${content_cr_name}-fncm-custom-ssl-secret and delete it."
-                    ${CLI_CMD} delete secret ${content_cr_name}-fncm-custom-ssl-secret -n $deployment_project_name
-                fi
-                
+
                 # For jsw.ibm.com/browse/DBACLD-153103 where we need to update the datavolume section of the CR to be in the right format
                 if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && ($cr_version == "21.0.3") ]]; then
                     #function to update datastore section to the current format if required
@@ -763,11 +825,7 @@ function upgrade_deployment(){
                     info "IMAGE TAGS ARE REMOVED FROM THE NEW VERSION OF THE CUSTOM RESOURCE \"${UPGRADE_DEPLOYMENT_CONTENT_CR}\"."
                     printf "\n"
                 fi
-                if [[ "$allow_direct_upgrade" == 1 ]]; then
-                    echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} TO ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA $cr_version)${RESET_TEXT}"
-                    prompt_press_any_key_to_continue
-                    printf "\n"
-                fi
+                
 
                 #function for applying CR
                 select_apply_cr $UPGRADE_DEPLOYMENT_CONTENT_CR
@@ -806,8 +864,9 @@ function upgrade_deployment(){
                     if [[ $allow_direct_upgrade == 1 ]]; then
                         echo "  - If upgrading from 21.0.3 or 22.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpd-updating-custom-resource-each-capability-in-your-deployment]"
                         echo "  - If upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment]"
+                        echo "  - If upgrading from 24.0.0: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment]${RESET_TEXT}"
                     fi
-                    echo "  - If upgrading from 24.0.0: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment] ${RESET_TEXT}"
+                    echo "  - If upgrading from 24.0.1: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment] ${RESET_TEXT}"
                     echo "${YELLOW_TEXT}- After reviewing or modifying the custom resource file \"${UPGRADE_DEPLOYMENT_CONTENT_CR}\", you need to follow the steps below to upgrade this CP4BA deployment.${RESET_TEXT}"
 
                     # As a part of DBACLD-149126 solution we no longer needed the user to patch or annotate the custom resource file
@@ -884,6 +943,11 @@ function upgrade_deployment(){
             # # change failureThreshold/periodSeconds for WfPS before upgrade
             # ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} spec.node.probe.startupProbe.failureThreshold 800
             # ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} spec.node.probe.startupProbe.periodSeconds 10
+            
+            # Function that will retrieve the network policies created in 24.0.1 by the operators and remove the references and re-apply them 
+            # For https://jsw.ibm.com/browse/DBACLD-167387
+            # not needed as we include WfPSRuntime as part of the CP4BA related CRs in the network policy script
+            #update_network_policies $deployment_project_name "WfPSRuntime" ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}
 
             ${SED_COMMAND} "s|'\"|\"|g" ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}
             ${SED_COMMAND} "s|\"'|\"|g" ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}
@@ -912,17 +976,17 @@ function upgrade_deployment(){
             info "Checking for IBM CP4BA Workflow Process Service operator pod initialization"
             maxRetry=10
             for ((retry=0;retry<=${maxRetry};retry++)); do
-                isReady=$(${CLI_CMD} get csv ibm-cp4a-wfps-operator.$CP4BA_PATTERN_OPR_CSV_VERSION -n $deployment_project_name -o jsonpath='{.status.phase}')
+                isReady=$(${CLI_CMD} get csv ibm-cp4a-wfps-operator.$CP4BA_CSV_VERSION -n $operator_project_name -o jsonpath='{.status.phase}')
                 # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $deployment_project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine $CP4BA_RELEASE_BASE")
                 if [[ $isReady != "Succeeded" ]]; then
                     if [[ $retry -eq ${maxRetry} ]]; then
                     printf "\n"
                     warning "Timeout waiting for IBM CP4BA Workflow Process Service operator to start"
                     echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
-                    echo "oc describe pod $(oc get pod -n $deployment_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $deployment_project_name"
+                    echo "oc describe pod $(oc get pod -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
                     printf "\n"
                     echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
-                    echo "oc describe rs $(oc get rs -n $deployment_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $deployment_project_name"
+                    echo "oc describe rs $(oc get rs -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
                     printf "\n"
                     exit 1
                     else
@@ -931,11 +995,11 @@ function upgrade_deployment(){
                     continue
                     fi
                 elif [[ $isReady == "Succeeded" ]]; then
-                    pod_name=$(${CLI_CMD} get pod -l=name=ibm-cp4a-wfps-operator -n $deployment_project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
+                    pod_name=$(${CLI_CMD} get pod -l=name=ibm-cp4a-wfps-operator -n $operator_project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
                     if [ -z $pod_name ]; then
                         warning "IBM CP4BA Workflow Process Service operator pod is NOT running"
                         info "Starting IBM CP4BA Workflow Process Service operator"
-                        ${CLI_CMD} scale --replicas=1 deployment ibm-cp4a-wfps-operator -n $deployment_project_name >/dev/null 2>&1
+                        ${CLI_CMD} scale --replicas=1 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
                         if [ $? -eq 0 ]; then
                             sleep 1
                         else
@@ -1030,15 +1094,134 @@ function upgrade_deployment(){
         update_license ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} "fncm"
         update_license ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} "baw"
 
-        # DBACLD-168537: need to re-create {{meta.name}}-fncm-custom-ssl-secret to add CSS DNSName (in case they are missing from previous deployment) which will be included in FNCM's keystores
-        local fncm_custom_ssl_secret=$(${CLI_CMD} get secret --no-headers --ignore-not-found ${icp4acluster_cr_name}-fncm-custom-ssl-secret -n $deployment_project_name | awk '{print $1}') 
-        if [[ -z $fncm_custom_ssl_secret ]]; then
-            info "${icp4acluster_cr_name}-fncm-custom-ssl-secret is not found."
-        else
-            info "Found ${icp4acluster_cr_name}-fncm-custom-ssl-secret and delete it."
-            ${CLI_CMD} delete secret ${icp4acluster_cr_name}-fncm-custom-ssl-secret -n $deployment_project_name
+        # 24.0.1
+        # Add "dc_adp_datasource" into datasource_configuration if upgrading from 24.0.1 and existing pattern is document_processing
+        upgrade_scenario="" 
+        cpe_database_servername=""
+        if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $cr_version == "24.0.1" && (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") && (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "document_processing_designer")]]; then
+            ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_adp_datasource.dc_database_type "postgresql"
+            ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_adp_datasource.database_name "adpggdb"
+
+            info "Determining if EnterpriseDB PostgreSQL \"$EDB_INSTANCE_CP4BA_NAME\" is installed for IBM Cloud Pak for Business Automation."
+            edb_instance_cp4ba_cr=$( ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n $deployment_project_name --no-headers --ignore-not-found $EDB_INSTANCE_CP4BA_NAME | awk '{print $1}' )
+	    if [[ $edb_instance_cp4ba_cr == $EDB_INSTANCE_CP4BA_NAME ]]; then
+                info "Found EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\"" 
+                upgrade_scenario="edb-already-exists"  # Postgres EDB exists
+                ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_adp_datasource.database_servername "\"postgres-cp4ba-rw.{{ meta.namespace }}.svc\""
+                ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_adp_datasource.database_port "\"5432\""
+                ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_adp_datasource.database_ssl_secret_name "\"{{ meta.name }}-pg-client-cert-secret\""
+                ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_adp_datasource.dc_use_postgres "true"
+            else 
+                info "Not found EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\""
+                cpe_database_type=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_gcd_datasource.dc_database_type`
+		if [[ $cpe_database_type == "postgresql" ]]; then
+  		    # FNCM is using external Postgres, so ADPGG will use the same external Postgres
+                    upgrade_scenario="external-postgres"  # External Postgres is used
+                    cpe_database_servername=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_gcd_datasource.database_servername`
+                    cpe_database_port=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_gcd_datasource.database_port`
+                    cpe_database_ssl_secret_name=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_gcd_datasource.database_ssl_secret_name`
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_adp_datasource.database_servername "$cpe_database_servername"
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_adp_datasource.database_port "\"$cpe_database_port\""
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_adp_datasource.database_ssl_secret_name "$cpe_database_ssl_secret_name"
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_adp_datasource.dc_use_postgres "false"
+                else 
+		    # FNCM is not using Postgres, so ADPGG will use Postgres EDB
+                    upgrade_scenario="new-edb"  # Provision Postgres EDB for ADPGG 
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_adp_datasource.database_servername "\"postgres-cp4ba-rw.{{ meta.namespace }}.svc\""
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_adp_datasource.database_port "\"5432\""
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_adp_datasource.database_ssl_secret_name "\"{{ meta.name }}-pg-client-cert-secret\""
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_adp_datasource.dc_use_postgres "true"
+                fi
+            fi
         fi
-        
+
+        # 24.0.1
+        # Add "dc_ads_designer_datasource" into datasource_configuration if upgrading from 24.0.1 and existing pattern is decisions_ads and optional component is ads_designer
+        icn_database_servername=""
+        if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $cr_version == "24.0.1" && (" ${EXISTING_PATTERN_ARR[@]} " =~ "decisions_ads") && (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "ads_designer") ]]; then
+            ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.dc_database_type "postgresql"
+            ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.database_name "\"adsdesignerdb\""
+            ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.current_schema "\"adsdesigner\""
+            ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.database_instance_secret "\"ibm-ads-designer-database\""
+            info "Determining if EnterpriseDB PostgreSQL \"$EDB_INSTANCE_CP4BA_NAME\" is installed for IBM Cloud Pak for Business Automation."
+            edb_instance_cp4ba_cr=$( ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n $deployment_project_name --no-headers --ignore-not-found $EDB_INSTANCE_CP4BA_NAME | awk '{print $1}' )
+	    if [[ $edb_instance_cp4ba_cr == $EDB_INSTANCE_CP4BA_NAME ]]; then
+                info "Found EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\"" 
+                upgrade_scenario="edb-already-exists"  # Postgres EDB exists
+                ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.database_servername "\"postgres-cp4ba-rw.{{ meta.namespace }}.svc\""
+                ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.database_port "\"5432\""
+                ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.ssl_secret_name "\"{{ meta.name }}-pg-client-cert-secret\""
+                ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.dc_use_postgres "true"
+            else 
+                info "Not found EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\""
+                icn_database_type=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_icn_datasource.dc_database_type`
+		if [[ $icn_database_type == "postgresql" ]]; then
+                    # ICN is using external Postgres, so ADS will use the same external Postgres
+                    upgrade_scenario="external-postgres"  # External Postgres is used
+                    icn_database_servername=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_icn_datasource.database_servername`
+                    icn_database_port=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_icn_datasource.database_port`
+                    icn_database_ssl_secret_name=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_icn_datasource.database_ssl_secret_name`
+                    database_ssl_enabled=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_ssl_enabled`
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.database_servername "$icn_database_servername"
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.database_port "\"$icn_database_port\""
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.ssl_enabled "$database_ssl_enabled"
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.ssl_mode "verify-full"
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.ssl_secret_name "\"$icn_database_ssl_secret_name\""
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.dc_use_postgres "false"
+                else 
+		    # ICN is not using Postgres, so ADS will use Postgres EDB
+                    upgrade_scenario="new-edb"  # Provision Postgres EDB for ADS
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.database_servername "\"postgres-cp4ba-rw.{{ meta.namespace }}.svc\""
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.database_port "\"5432\""
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.ssl_secret_name "\"{{ meta.name }}-pg-client-cert-secret\""
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_designer_datasource.dc_use_postgres "true"
+                fi
+            fi
+        fi
+
+        # 24.0.1
+        # Add "dc_ads_runtime_datasource" into datasource_configuration if upgrading from 24.0.1 and existing pattern is decisions_ads and optional component is ads_runtime
+        if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $cr_version == "24.0.1" && (" ${EXISTING_PATTERN_ARR[@]} " =~ "decisions_ads") && (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "ads_runtime") ]]; then
+            ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.dc_database_type "postgresql"
+            ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.database_name "\"adsruntimedb\""
+            ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.current_schema "\"adsruntime\""
+            ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.database_instance_secret "\"ibm-ads-runtime-database\""
+            info "Determining if EnterpriseDB PostgreSQL \"$EDB_INSTANCE_CP4BA_NAME\" is installed for IBM Cloud Pak for Business Automation."
+            edb_instance_cp4ba_cr=$( ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n $deployment_project_name --no-headers --ignore-not-found $EDB_INSTANCE_CP4BA_NAME | awk '{print $1}' )
+	    if [[ $edb_instance_cp4ba_cr == $EDB_INSTANCE_CP4BA_NAME ]]; then
+                info "Found EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\"" 
+                upgrade_scenario="edb-already-exists"  # Postgres EDB exists
+                ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.dc_use_postgres "true"
+                ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.database_servername "\"postgres-cp4ba-rw.{{ meta.namespace }}.svc\""
+                ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.database_port "\"5432\""
+                ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.ssl_secret_name "\"{{ meta.name }}-pg-client-cert-secret\""
+            else 
+                info "Not found EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\""
+                icn_database_type=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_icn_datasource.dc_database_type`
+		if [[ $icn_database_type == "postgresql" ]]; then
+                    # ICN is using external Postgres, so ADS will use the same external Postgres
+                    upgrade_scenario="external-postgres"  # External Postgres is used
+                    icn_database_servername=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_icn_datasource.database_servername`
+                    icn_database_port=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_icn_datasource.database_port`
+                    icn_database_ssl_secret_name=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_icn_datasource.database_ssl_secret_name`
+                    database_ssl_enabled=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_ssl_enabled`
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.dc_use_postgres "false"
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.database_servername "$icn_database_servername"
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.database_port "\"$icn_database_port\""
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.ssl_enabled "$database_ssl_enabled"
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.ssl_mode "verify-full"
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.ssl_secret_name "\"$icn_database_ssl_secret_name\""
+                else 
+		    # FNCM is not using Postgres, so ADPGG wil use Postgres EDB
+                    upgrade_scenario="new-edb"  # Provision Postgres EDB for ADS
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.dc_use_postgres "true"
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.database_servername "\"postgres-cp4ba-rw.{{ meta.namespace }}.svc\""
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.database_port "\"5432\""
+                    ${YQ_CMD} w -i $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP spec.datasource_configuration.dc_ads_runtime_datasource.ssl_secret_name "\"{{ meta.name }}-pg-client-cert-secret\""
+                fi
+            fi
+        fi
+
         # 21.0.3
         # if select baw authoring, handles specific upgrades for versions and optional components related to BAW authoring
         if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $cr_version == "21.0.3" && (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "baw_authoring") ]]; then
@@ -1181,6 +1364,10 @@ function upgrade_deployment(){
         fi
 
         ${SED_COMMAND} "s/route_reencrypt: .*/route_reencrypt: $ZEN_ROUTE_REENCRYPT/g" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
+
+        # Function to detect if the Domain is configured with SCIM
+        # https://jsw.ibm.com/browse/DBACLD-157386 https://jsw.ibm.com/browse/DBACLD-178101 https://jsw.ibm.com/browse/DBACLD-177550 https://jsw.ibm.com/browse/DBACLD-177742
+        detect_scim_configuration "$deployment_project_name" "ibm-cp4ba-shared-info" "${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}"
 
         # for BAW authoring, base on initialize_configuration to set workflow_authoring_configuration.case.datasource_name_tos/connection_point_name_tos
         if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && ($cr_version == "21.0.3" || $cr_version == "22.0.2") ]]; then
@@ -1396,11 +1583,17 @@ function upgrade_deployment(){
             fi
         fi
 
-        # for 23.0.2.X release
         # for BAW authoring, set workflow_authoring_configuration.case.tos_list
         # Support multiple tos instance from $CP4BA_RELEASE_BASE
-        # We need to add logic for 24.0.0 to 24.0.1 scenario
-        if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && ( $cr_version == "23.0.2" || $cr_version == "24.0.0") ]]; then
+        # DBACLD-177124: Updated the logic to dynammically check if this is an ifix to ifix upgrade or not.  If not, then we'll set the is_baw_cr_updated_needed to true
+        # This condition is only needed for n-1 to n upgrade
+        is_baw_cr_updated_needed=false
+        if [[ "$is_ifix_to_ifix_upgrade" == false ]]; then
+                is_baw_cr_updated_needed=true
+        fi
+
+
+        if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $is_baw_cr_updated_needed == true ]]; then
             if [[ " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "baw_authoring" ]]; then
                 # Support multiple tos instance from $CP4BA_RELEASE_BASE
                 tos_instance_index=0
@@ -1540,11 +1733,11 @@ function upgrade_deployment(){
             fi
         fi
 
-        # for 23.0.2.X release
-        # for BAW Runtime, set baw_configuration.case.tos_list
+        # for BAW authoring, set workflow_authoring_configuration.case.tos_list
         # Support multiple tos instance from $CP4BA_RELEASE_BASE
-        # We need to add logic for 24.0.0 to 24.0.1 scenario
-        if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && ( $cr_version == "23.0.2" || $cr_version == "24.0.0") ]]; then
+        # DBACLD-177124: Updated the logic to dynammically check the version against the MINIMUM_SUPPORTED_UPGRADE_VERSIONS
+        # This condition is only needed for n-1 to n upgrade
+        if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $is_baw_cr_updated_needed == true ]]; then
             if [[ (! " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "baw_authoring") && (" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow" || " ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-workstreams") ]]; then
                 # Support multiple tos instance from $CP4BA_RELEASE_BASE
                 baw_instance_index=0
@@ -1701,18 +1894,9 @@ function upgrade_deployment(){
         if [[ "$allow_direct_upgrade" == 1 ]]; then
             # Only always set as false when upgrade from 21.0.3/22.0.2
             if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $cr_version != "23.0.2" ]]; then
-                # Set sc_restricted_internet_access always "false" in upgrade
-                info "${YELLOW_TEXT}Setting \"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\" to \"false\" when upgrade CP4BA deployment, you could change it according to your requirements of security.${RESET_TEXT}"
-                printf "\n"
-                ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access "false"
-
                 # Set shared_configuration.enable_fips always "false" in upgrade
                 info "${YELLOW_TEXT}Setting \"shared_configuration.enable_fips\" as \"false\" when upgrade CP4BA deployment, you could change it according to your requirements.${RESET_TEXT}"
                 ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.shared_configuration.enable_fips "false"
-                
-                # set sc_skip_ldap_config as false when upgrade from 21.0.3/22.0.2 to 24.0.0
-                info "${YELLOW_TEXT}Setting \"shared_configuration.sc_skip_ldap_config\" as \"false\" when upgrade CP4BA deployment from version \"$cr_version\".${RESET_TEXT}"
-                ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.shared_configuration.sc_skip_ldap_config "false"
             fi
         fi
 
@@ -1768,6 +1952,14 @@ function upgrade_deployment(){
         else
             ${SED_COMMAND} "s|sc_optional_components:.*|sc_optional_components: \"$opt_components_joined\"|g" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
         fi
+
+        # Function that will retrieve the network policies created in 24.0.1 by the operators and remove the references and re-apply them 
+        # For https://jsw.ibm.com/browse/DBACLD-167387
+        update_network_policies $deployment_project_name "ICP4ACluster" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
+
+        # Function that retrieves the networktype and network cidr range
+        # https://jsw.ibm.com/browse/DBACLD-173602
+        retrieve_network_details "upgrade" $deployment_project_name
 
         ${SED_COMMAND} "s|'\"|\"|g" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
         ${SED_COMMAND} "s|\"'|\"|g" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
@@ -1826,10 +2018,6 @@ function upgrade_deployment(){
             info "IMAGE TAGS ARE REMOVED FROM THE NEW VERSION OF THE CUSTOM RESOURCE \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\"."
             printf "\n"
         fi
-        if [[ "$allow_direct_upgrade" == 1 ]]; then
-            echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}DON'T SET ${RESET_TEXT}${RED_TEXT}\"shared_configuration.sc_egress_configuration.sc_restricted_internet_access\"${RESET_TEXT}${YELLOW_TEXT} TO ${RESET_TEXT}${RED_TEXT}\"true\"${RESET_TEXT}${YELLOW_TEXT} UNTIL AFTER YOU'VE COMPLETED THE CP4BA UPGRADE TO $CP4BA_RELEASE_BASE.${RESET_TEXT} ${GREEN_TEXT}(UNLESS YOU ALREADY HAD THIS SET TO \"true\" IN THE CP4BA $cr_version)${RESET_TEXT}"
-            prompt_press_any_key_to_continue
-        fi
         printf "\n"
         select_apply_cr $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR
 
@@ -1879,7 +2067,30 @@ function upgrade_deployment(){
                     step_num=$((step_num + 1))
                     printf "\n"
                 fi
-            done
+            done            
+            
+            # output info for upgrading ADS (from 24.0.1 to 25.0.0)
+            if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $cr_version == "24.0.1" && ${CP4BA_RELEASE_BASE} == "25.0.0" && (" ${EXISTING_PATTERN_ARR[@]} " =~ "decisions_ads") ]]; then
+                echo -e "\x1B[33;5m- Automation Decision Services capability is installed in this CP4BA deployment: \x1B[0m"
+                if [[ $upgrade_scenario == "edb-already-exists" ]]; then
+                        echo "        - You are upgrading from 24.0.1 to 25.0.0, and EDB Postgres instance \"$EDB_INSTANCE_CP4BA_NAME\" is already installed for IBM Cloud Pak for Business Automation.  Before proceeding, make sure you: "
+                        echo "            a. ${RED_TEXT}(Required)${RESET_TEXT} create ADS designer and/or runtime database(s) on this EDB Postgres instance. (from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-upgrading, navigate to \"Upgrading your IBM Cloud Pak deployment from 24.0.1 -> Option 1\" for the sample scripts)."
+                        echo "            b. ${RED_TEXT}(Required)${RESET_TEXT} create ADS database_instance_secret secret(s) for ADS designer/runtime database 's username and password. (from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-upgrading, navigate to \"Upgrading your IBM Cloud Pak deployment from 24.0.1 -> Option 1\" for the sample scripts)."
+                        echo "            c. ${RED_TEXT}(Required)${RESET_TEXT} review and modify dc_ads_designer_datasource and/or dc_ads_runtime_datasource section(s) in the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\" to match your EDB Postgres configuration."
+                        printf "\n"
+                elif [[ $upgrade_scenario == "external-postgres" ]]; then
+                        echo "        - You are upgrading from 24.0.1 to 25.0.0, and external PostgreSQL server ${icn_database_servername} is used for ICN database.  Before proceeding, make sure you: "
+                        echo "            a. ${RED_TEXT}(Required)${RESET_TEXT} create ADS designer and/or runtime database(s) on this external PostgreSQL. (from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-upgrading, navigate to \"Upgrading your IBM Cloud Pak deployment from 24.0.1 -> Option 2\" for the sample scripts)."
+                        echo "            b. ${RED_TEXT}(Required)${RESET_TEXT} create ADS database_instance_secret secret(s) for ADS designer/runtime database 's username and password. (from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-upgrading, navigate to \"Upgrading your IBM Cloud Pak deployment from 24.0.1 -> Option 2\" for the sample scripts)."
+                        echo "            c. ${RED_TEXT}(Required)${RESET_TEXT} review and modify dc_ads_designer_datasource and/or dc_ads_runtime_datasource section(s) in the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\" to match your external PostgreSQL configuration. "
+                        echo " ${RED_TEXT}[IMPORTANT]${RESET_TEXT} If you have set \"sc_restricted_internet_access\" to \"true\" in your applied custom resource file , you must follow the information detailed in https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=uycpdf2-option-2-upgrading-cp4ba-deployment-that-uses-external-postgresql to create any custom Network policies before applying the generated Custom Resource file."
+                        printf "\n"
+                elif [[ $upgrade_scenario == "new-edb" ]]; then
+                        echo "        - You are upgrading from 24.0.1 to 25.0.0, EDB Postgres instance \"$EDB_INSTANCE_CP4BA_NAME\" will be provisioned for ADS Designer/Runtime database.  Before proceeding, make sure you: "
+                        echo "            a. ${RED_TEXT}(Required)${RESET_TEXT} review and modify dc_ads_designer_datasource and/or dc_ads_runtime_datasource section(s) in the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\" to match your EDB Postgres configuration."
+                        printf "\n"
+                fi
+            fi
 
             # output info for upgrading document process databases
             if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") ]]; then
@@ -1888,17 +2099,51 @@ function upgrade_deployment(){
                 if [[ $allow_direct_upgrade == 1 ]]; then # only show the direct upgrade link if the user is allowed to do a direct upgrade
                     echo "    - If you are upgrading from 21.0.3 or 22.0.2, refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-your-automation-document-processing-databases"
                     echo "    - If you are upgrading from 23.0.2, refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=ucreciyd-upgrading-automation-document-processing#tasktask_upgrd_adp__postreq__1"
-                fi
                     echo "    - If you are upgrading from 24.0.0, refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-automation-document-processing#tasktask_upgrd_adp__postreq__1"
-                    step_num=$((step_num + 1))
-                    printf "\n"
+                fi
+                echo "        - If you are upgrading from 24.0.1, refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-automation-document-processing#tasktask_upgrd_adp__postreq__1"
+                step_num=$((step_num + 1))
+                printf "\n"
+                if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $cr_version == "24.0.1" && ${CP4BA_RELEASE_BASE} == "25.0.0" && (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "document_processing_designer")]]; then
+                    if [[ $upgrade_scenario == "edb-already-exists" ]]; then
+                        echo "        - You are upgrading from 24.0.1 to 25.0.0, and EDB Postgres instance \"$EDB_INSTANCE_CP4BA_NAME\" is already installed for IBM Cloud Pak for Business Automation.  Before proceeding, make sure you: "
+                        echo "            a. ${RED_TEXT}(Required)${RESET_TEXT} create ADPGG database on this EDB Postgres instance. (from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-upgrading, navigate to \"Upgrading your IBM Cloud Pak deployment from 24.0.1 -> Option 1\" for the sample scripts)."
+                        echo "            b. ${RED_TEXT}(Required)${RESET_TEXT} update ibm-adp-secret to include adpggDBUsername and adpggDBPassword (the ADPGG database 's username and password)."
+                        echo "            c. ${RED_TEXT}(Required)${RESET_TEXT} do NOT delete mongoUri key from ibm-adp-secret."
+                        echo "            d. ${RED_TEXT}(Required)${RESET_TEXT} review and modify dc_adp_datasource section in the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\" to match your Postgres configuration."
+                        printf "\n"
+                    elif [[ $upgrade_scenario == "external-postgres" ]]; then
+                        echo "        - You are upgrading from 24.0.1 to 25.0.0, and External PostgreSQL server ${cpe_database_servername} is used for CPE GCD database.  Before proceeding, make sure you: "
+                        echo "            a. ${RED_TEXT}(Required)${RESET_TEXT} create ADPGG database on this external PostgreSQL (from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-upgrading, navigate to \"Upgrading your IBM Cloud Pak deployment from 24.0.1 -> Option 2\" for the sample scripts)."
+                        echo "            b. ${RED_TEXT}(Required)${RESET_TEXT} update ibm-adp-secret to include adpggDBUsername and adpggDBPassword (the ADPGG database 's username and password). \n"
+                        echo "            c. ${RED_TEXT}(Required)${RESET_TEXT} do NOT delete mongoUri key from ibm-adp-secret. "
+                        echo "            d. ${RED_TEXT}(Required)${RESET_TEXT} review and modify dc_adp_datasource section in the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\" to match your Postgres configuration. "
+                        printf "\n"
+                    elif [[ $upgrade_scenario == "new-edb" ]]; then
+                        echo "        - You are upgrading from 24.0.1 to 25.0.0, EDB Postgres instance \"$EDB_INSTANCE_CP4BA_NAME\" will be provisioned for ADP Gitgateway.  Before proceeding, make sure you:"
+                        echo "            a. ${RED_TEXT}(Required)${RESET_TEXT} Do NOT delete mongoUri key from ibm-adp-secret."
+                        echo "            b. ${RED_TEXT}(Required)${RESET_TEXT} review and modify dc_adp_datasource section in the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\" to match your Postgres configuration."
+                        printf "\n"
+                    fi
+                fi
             fi
                 echo "${YELLOW_TEXT}- Refer to the Knowledge Center: \"Updating the custom resource for each capability in your deployment\" topic to complete REQUIRED steps for the installed pattern(s)."
+            
+            # Adding a statement to delete the old elastic search CR since we are updating the elastic search CR to switch the quiesce flag from false to true in 24.0.1 to 25.0.0 upgrade
+            # https://jsw.ibm.com/browse/DBACLD-166681
+            if [[ (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "bai") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "pfs") ]]; then
+                echo -e "\x1B[33;5m- Optional Components Business Automation Insights (BAI) or Data Collector and Data Indexer (PFS) are installed in this CP4BA deployment: \x1B[0m"
+                echo "${YELLOW_TEXT}[IMPORTANT]: ${RESET_TEXT}From ($CP4BA_RELEASE_BASE) ,CP4BA will be moving from Opensearch version 2.17.0 (kind: ElasticsearchCluster) to Opensearch version 2.19.x (kind: Cluster). The upgrade process will automatically migrate all the existing indices to new Opensearch version.After the upgrade is completed you must validate and verify all the existing indices are migrated successfully."
+                echo "Once you have verified that indices are migrated successfully you may delete the old Opensearch instance (kind: ElasticsearchCluster) by executing \"${GREEN_TEXT} ${CLI_CMD} delete ElasticsearchCluster opensearch -n $deployment_project_name${RESET_TEXT} \" . "
+                echo "${YELLOW_TEXT}[NOTE]: ${RESET_TEXT} There will be no functional impact of leaving the old Opensearch  (kind: ElasticsearchCluster) running in the cluster."
+                printf "\n"
+            fi
             if [[ $allow_direct_upgrade == 1 ]]; then
                 echo "  - If upgrading from 21.0.3 or 22.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpd-updating-custom-resource-each-capability-in-your-deployment]"
                 echo "  - If upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment] ${RESET_TEXT}"
-            fi
                 echo "  - If upgrading from 24.0.0: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment] ${RESET_TEXT}"
+            fi
+                echo "  - If upgrading from 24.0.1: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment] ${RESET_TEXT}"
                 echo "${YELLOW_TEXT}- After reviewing or modifying the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\", you need to follow the steps below to upgrade this CP4BA deployment.${RESET_TEXT}"
             # As a part of DBACLD-149126 solution we no longer needed the user to patch or annotate the custom resource file
             echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR} -n $deployment_project_name${RESET_TEXT}"  && step_num=$((step_num + 1))

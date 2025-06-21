@@ -1,0 +1,166 @@
+[✔] oc command available
+[✔] yq command available
+[✔] oc command logged in as kube:admin
+[✔] Channel v4.2 is valid
+[INFO] No ibm-common-service-operator found on the cluster, skipping delegation check
+[✗] Flag --enable-private-catalog is enabled, please make sure the CatalogSource is deployed in the same namespace as operator
+
+# Check migrating LTSR ibm-licensing-operator
+[INFO] No LTSR ibm-licensing-operator to migrate, skipping
+# Check migrating and deactivating LTSR ibm-cert-manager-operator
+[INFO] No cert-manager-webhook found, skipping migration
+# Installing cert-manager
+
+[INFO] There is no cert-manager-webhook pod running
+
+# Validate CatalogSource for operator ibm-cert-manager-operator in ibm-cert-manager namespace
+[✔] CatalogSource ibm-cert-manager-catalog from ibm-cert-manager CatalogSourceNamespace is available for ibm-cert-manager-operator in ibm-cert-manager namespace
+# Checking whether Namespace ibm-cert-manager exist...
+[✔] Namespace ibm-cert-manager already exists. Skip creating
+
+# Checking whether OperatorGroup in ibm-cert-manager exist...
+[INFO] Creating following OperatorGroup:
+
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: ibm-cert-manager-operator
+  namespace: ibm-cert-manager
+spec: {}
+
+operatorgroup.operators.coreos.com/ibm-cert-manager-operator created
+[INFO] Creating following Subscription:
+
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ibm-cert-manager-operator
+  namespace: ibm-cert-manager
+spec:
+  channel: v4.2
+  installPlanApproval: Automatic
+  name: ibm-cert-manager-operator
+  source: ibm-cert-manager-catalog
+  sourceNamespace: ibm-cert-manager
+
+subscription.operators.coreos.com/ibm-cert-manager-operator created
+[INFO] Waiting for operator ibm-cert-manager-operator CSV in namespace ibm-cert-manager to be bound to Subscription
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-cert-manager-operator.ibm-cert-manager='' -n ibm-cert-manager -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2024-12-09T22:19:45Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"}]
+
+[INFO] RETRYING: Waiting for operator ibm-cert-manager-operator CSV in namespace ibm-cert-manager to be bound to Subscription (180 left)
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-cert-manager-operator.ibm-cert-manager='' -n ibm-cert-manager -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2024-12-09T22:19:45Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"},{"lastTransitionTime":"2024-12-09T22:19:55Z","reason":"Installing","status":"True","type":"InstallPlanPending"}]
+
+[INFO] RETRYING: Waiting for operator ibm-cert-manager-operator CSV in namespace ibm-cert-manager to be bound to Subscription (179 left)
+[✔] Operator ibm-cert-manager-operator CSV in namespace ibm-cert-manager is bound to Subscription
+
+[INFO] Waiting for operator ibm-cert-manager-operator in namespace ibm-cert-manager to become available
+[✔] Operator ibm-cert-manager-operator in namespace ibm-cert-manager is available
+
+# Accepting license for certmanagerconfig.operator.ibm.com default in namespace ...
+[✔] License accepted for certmanagerconfig.operator.ibm.com default
+
+# Validate CatalogSource for operator ibm-licensing-operator-app in ibm-licensing namespace
+[✔] CatalogSource ibm-licensing-catalog from ibm-licensing CatalogSourceNamespace is available for ibm-licensing-operator-app in ibm-licensing namespace
+# Installing licensing
+
+[INFO] There is no ibm-licensing-operator-app Subscription installed
+
+# Checking whether Namespace ibm-licensing exist...
+[✔] Namespace ibm-licensing already exists. Skip creating
+
+# Checking whether OperatorGroup in ibm-licensing exist...
+[INFO] Creating following OperatorGroup:
+
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: ibm-licensing-operator-app
+  namespace: ibm-licensing
+spec:         
+  targetNamespaces:
+    - ibm-licensing
+
+operatorgroup.operators.coreos.com/ibm-licensing-operator-app created
+[INFO] Creating following Subscription:
+
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ibm-licensing-operator-app
+  namespace: ibm-licensing
+spec:
+  channel: v4.2
+  installPlanApproval: Automatic
+  name: ibm-licensing-operator-app
+  source: ibm-licensing-catalog
+  sourceNamespace: ibm-licensing
+
+subscription.operators.coreos.com/ibm-licensing-operator-app created
+[INFO] Waiting for operator ibm-licensing-operator-app CSV in namespace ibm-licensing to be bound to Subscription
+[DEBUG] oc get subscription.operators.coreos.com -l operators.coreos.com/ibm-licensing-operator-app.ibm-licensing='' -n ibm-licensing -o jsonpath='{.items[*].status.conditions}' -> 
+[{"lastTransitionTime":"2024-12-09T22:20:20Z","message":"all available catalogsources are healthy","reason":"AllCatalogSourcesHealthy","status":"False","type":"CatalogSourcesUnhealthy"},{"reason":"UnpackingInProgress","status":"True","type":"BundleUnpacking"},{"lastTransitionTime":"2024-12-09T22:20:30Z","reason":"Installing","status":"True","type":"InstallPlanPending"}]
+
+[INFO] RETRYING: Waiting for operator ibm-licensing-operator-app CSV in namespace ibm-licensing to be bound to Subscription (180 left)
+[✔] Operator ibm-licensing-operator-app CSV in namespace ibm-licensing is bound to Subscription
+
+[INFO] Waiting for operator ibm-licensing-operator in namespace ibm-licensing to become available
+[✔] Operator ibm-licensing-operator in namespace ibm-licensing is available
+
+[INFO] Waiting for ibmlicensing instance to be present.
+[INFO] RETRYING: Waiting for ibmlicensing instance to be present. (20 left)
+[✔] ibmlicensing instance present
+
+# Accepting license for ibmlicensing instance in namespace ...
+[✔] License accepted for ibmlicensing instance
+
+[INFO] Checking cert manager readiness.
+[INFO] Waiting for pod cert-manager-webhook to be running ...
+[✔] Pod cert-manager-webhook is running.
+
+#  Smoke test for Cert Manager existence...
+[DEBUG] Creating Issuer test-issuer in namespace ibm-cert-manager .
+[INFO] Creating following issuer:
+
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: test-issuer
+  namespace: ibm-cert-manager
+spec:
+  selfSigned: {}
+
+issuer.cert-manager.io/test-issuer created
+[DEBUG] Creating Certificate test-certificate in namespace ibm-cert-manager .
+[INFO] Creating following certificate:
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: test-certificate
+  namespace: ibm-cert-manager
+spec:
+  commonName: test-certificate
+  issuerRef:
+    kind: Issuer
+    name: test-issuer
+  secretName: test-certificate-secret
+
+certificate.cert-manager.io/test-certificate created
+[INFO] Waiting for Issuer test-issuer in namespace ibm-cert-manager to be Ready
+[✔] Issuer test-issuer in namespace ibm-cert-manager is Ready
+
+[INFO] Waiting for Certificate test-certificate in namespace ibm-cert-manager to be Ready
+[✔] Certificate test-certificate in namespace ibm-cert-manager is Ready
+
+[INFO] Deleting test-issuer Issuer ...
+issuer.cert-manager.io "test-issuer" deleted
+
+[INFO] Deleting test-certificate Certificate ...
+certificate.cert-manager.io "test-certificate" deleted
+
+[INFO] Deleting 7523secret_name Secret ...
+secret "test-certificate-secret" deleted
+
+[✔] Cert manager is ready.
