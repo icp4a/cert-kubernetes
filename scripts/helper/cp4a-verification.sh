@@ -68,7 +68,6 @@ EOF
 
 # verify ldap connection
 function verify_ldap_connection(){
-  set -x
   local LDAP_TEST_JAR_PATH=${CUR_DIR}/helper/verification/ldap
   local ldap_server=$1
   local ldap_port=$2
