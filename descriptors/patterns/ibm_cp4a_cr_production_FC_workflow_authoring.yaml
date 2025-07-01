@@ -89,16 +89,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer
-        tag: "24.0.1-IF002"
+        tag: "24.0.1-IF004"
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer
-        tag: "24.0.1-IF002"
+        tag: "24.0.1-IF004"
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: "24.0.1-IF002"
+        tag: "24.0.1-IF004"
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: "24.0.1-IF002"
+        tag: "24.0.1-IF004"
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -774,28 +774,28 @@ spec:
       ## Workflow Authoring image repository URL.
       repository: cp.icr.io/cp/cp4a/bas/workflow-authoring
       ## Image tag for Workflow Authoring container.
-      tag: "24.0.1-IF002"
+      tag: "24.0.1-IF004"
       ## Pull policy for Workflow Authoring container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pullPolicy: IfNotPresent
     upgrade_job:
       ## Workflow Authoring database handling image repository URL.
       repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
       ## Workflow Authoring database handling image repository tag.
-      tag: "24.0.1-IF002"
+      tag: "24.0.1-IF004"
       ## Pull policy for database handling. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pullPolicy: IfNotPresent
     bas_auto_import_job:
       ## Workflow Authoring Business Automation Studio toolkit init image repository URL.
       repository: cp.icr.io/cp/cp4a/baw/toolkit-installer
       ## Workflow Authoring Business Automation Studio toolkit init image repository tag.
-      tag: "24.0.1-IF002"
+      tag: "24.0.1-IF004"
       ## Pull policy for Workflow Authoring Business Automation Studio toolkit init image. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pullPolicy: IfNotPresent
     ibm_workplace_job:
       ## Workflow Authoring IBM Workplace deployment job image repository URL
       repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
       ## Workflow Authoring IBM Workplace deployment job image repository tag.
-      tag: "24.0.1-IF002"
+      tag: "24.0.1-IF004"
       ## Pull policy for Workflow Authoring IBM Workplace deployment job image. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pull_policy: IfNotPresent
 
@@ -805,7 +805,7 @@ spec:
         ## Image name for content integration container.
         repository: cp.icr.io/cp/cp4a/baw/iaws-ps-content-integration
         ## Image tag for content integration container.
-        tag: "24.0.1-IF002"
+        tag: "24.0.1-IF004"
         ## Pull policy for content integration container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
         pull_policy: IfNotPresent
       ## Domain name for content integration. The value must be the same as initialize_configuration.ic_domain_creation.domain_name.
@@ -823,7 +823,7 @@ spec:
         ## Image name for CASE init job container.
         repository: cp.icr.io/cp/cp4a/baw/workflow-server-case-initialization
         ## Image tag for CASE init job container.
-        tag: "24.0.1-IF002"
+        tag: "24.0.1-IF004"
         ## Pull policy for CASE init job container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
         pull_policy: IfNotPresent
 
@@ -1067,7 +1067,7 @@ spec:
       image:
         repository: cp.icr.io/cp/cp4a/baw/bui-task-prioritization
         ## Image tag for Intelligent Task Prioritization container
-        tag: "24.0.1-IF002"
+        tag: "24.0.1-IF004"
         pull_policy: IfNotPresent
       ## Resource configuration
       resources:
@@ -1111,7 +1111,7 @@ spec:
           initial_delay_seconds: 40
       image:
         repository: cp.icr.io/cp/cp4a/baw/workforce-insights
-        tag: "24.0.1-IF002"
+        tag: "24.0.1-IF004"
         pull_policy: IfNotPresent
       ## Resource configuration
       resources:
@@ -1222,11 +1222,17 @@ spec:
       ## it is recommended to have 2 or more.
       replica_count: 2
 
+      ## Rolling update settings for CPE deployment.  By default, max_unavailable is set to 99% and max_surge is set to 1.  This will help speeding up the CPE upgrade process.
+      ## Valid values for max_unavailable are 0-100% or 0-<number of replicas>.  Valid values for max_surge are 0-100% or 0-<number of replicas>.
+      rolling_update:
+        max_unavailable: 99%
+        max_surge: 1      
+
       ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.1-IF002"
+        tag: "24.0.1-IF004"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1377,7 +1383,7 @@ spec:
       #     pull_policy: IfNotPresent
       #     ## The default repository is the IBM Entitled Registry.
       #     repository: cp.icr.io/cp/cp4a/fncm/lscollector
-      #     tag: "24.0.1-IF002"
+      #     tag: "24.0.1-IF004"
       #   ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
       #   ## If more resources are needed, make the changes here to meet your requirement.
       #   resources:
@@ -1418,7 +1424,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.1-IF002"
+        tag: "24.0.1-IF004"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1544,7 +1550,7 @@ spec:
     #    pull_policy: IfNotPresent
     #    ## The default repository is the IBM Entitled Registry.
     #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-    #    tag: "24.0.1-IF002"
+    #    tag: "24.0.1-IF004"
     #  ## Below are the default LSReporter Production settings.
     #  ## Make the necessary changes as you see fit.
     #  product_settings:

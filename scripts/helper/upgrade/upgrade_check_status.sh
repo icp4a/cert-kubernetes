@@ -83,8 +83,8 @@ function check_cp4ba_operator_version(){
     local maxRetry=5
     info "Checking the version of IBM Cloud Pak for Business Automation Operator"
 
-    cp4a_operator_csv_name_target_ns=$(kubectl get csv -n $project_name --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
-    cp4a_operator_csv_name_allnamespace_ns=$(kubectl get csv -n $ALL_NAMESPACE_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
+    cp4a_operator_csv_name_target_ns=$(${CLI_CMD} get csv -n $project_name --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
+    cp4a_operator_csv_name_allnamespace_ns=$(${CLI_CMD} get csv -n $ALL_NAMESPACE_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
 
     if [[ -z $cp4a_operator_csv_name_allnamespace_ns && -z $cp4a_operator_csv_name_target_ns ]]; then
         fail "No IBM Cloud Pak for Business Automation Operator found in both \"$project_name\" and \"$ALL_NAMESPACE_NAME\" project."
@@ -97,14 +97,20 @@ function check_cp4ba_operator_version(){
             success "Found IBM Cloud Pak for Business Automation Operator deployed in the project \"$project_name\"."
             ALL_NAMESPACE_FLAG="No"
             TEMP_OPERATOR_PROJECT_NAME=$project_name
+            # We will only use the current csv versions for cp4ba and cpfs operators to perform any pre upgrade version checks.
+            # https://jsw.ibm.com/browse/DBACLD-180433
+            cp4a_operator_csv_version=$(${CLI_CMD} get csv $cp4a_operator_csv_name_target_ns -n $project_name --no-headers --ignore-not-found -o 'jsonpath={.spec.version}')
         elif [[ (! -z $cp4a_operator_csv_name_allnamespace_ns) && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
             success "Found IBM Cloud Pak for Business Automation Operator deployed as AllNamespace mode in the project \"$ALL_NAMESPACE_NAME\"."
             ALL_NAMESPACE_FLAG="Yes"
             project_name="openshift-operators"
             TEMP_OPERATOR_PROJECT_NAME="openshift-operators"
+            # We will only use the current csv versions for cp4ba and cpfs operators to perform any pre upgrade version checks.
+            # https://jsw.ibm.com/browse/DBACLD-180433
+            cp4a_operator_csv_version=$(${CLI_CMD} get csv $cp4a_operator_csv_name_allnamespace_ns -n $project_name --no-headers --ignore-not-found -o 'jsonpath={.spec.version}')
         fi
 
-        cp4a_operator_csv_version=$(kubectl get csv $cp4a_operator_csv_name_target_ns -n $project_name --no-headers --ignore-not-found -o 'jsonpath={.spec.version}')
+        
 
         if [[ ! -z $CP4BA_ORIGINAL_CSV_VERSION ]]; then
             CP4BA_ORIGINAL_CSV_VERSION=$(sed -e 's/^"//' -e 's/"$//' <<<"$CP4BA_ORIGINAL_CSV_VERSION")
@@ -140,27 +146,27 @@ function check_content_operator_version(){
         cp4a_content_operator_csv_name=$(kubectl get csv -n $project_name --no-headers --ignore-not-found | grep "IBM CP4BA FileNet Content Manager" | awk '{print $1}')
         cp4a_content_operator_csv_version=$(kubectl get csv $cp4a_content_operator_csv_name -n $project_name --no-headers --ignore-not-found -o 'jsonpath={.spec.version}')
 
-        if [[ "$cp4a_content_operator_csv_version" == "${CP4BA_PATTERN_OPR_CSV_VERSION//v/}" ]]; then
-            success "The current IBM CP4BA FileNet Content Manager Operator is already ${CP4BA_PATTERN_OPR_CSV_VERSION//v/}"
+        if [[ "$cp4a_content_operator_csv_version" == "${CP4BA_CSV_VERSION//v/}" ]]; then
+            success "The current IBM CP4BA FileNet Content Manager Operator is already ${CP4BA_CSV_VERSION//v/}"
             break
         elif [[ "$cp4a_content_operator_csv_version" == "22.2."* ]]; then
             cp4a_content_operator_csv=$(kubectl get csv $cp4a_content_operator_csv_name -n $project_name --no-headers --ignore-not-found -o 'jsonpath={.spec.version}')
             # cp4a_operator_csv="22.2.2"
             requiredver="22.2.2"
             if [ ! "$(printf '%s\n' "$requiredver" "$cp4a_content_operator_csv" | sort -V | head -n1)" = "$requiredver" ]; then
-                fail "Upgrade to CP4BA 22.0.2-IF002 or later iFix first before upgrading to CP4BA $CP4BA_PATTERN_OPR_CSV_VERSION"
+                fail "Upgrade to CP4BA 22.0.2-IF002 or later iFix first before upgrading to CP4BA $CP4BA_CSV_VERSION"
                 exit 1
             else
                 info "Found IBM CP4BA FileNet Content Manager Operator is \"$cp4a_content_operator_csv_version\" version."
                 break
             fi
         elif [[ "$cp4a_content_operator_csv_version" == "23.1."* ]]; then
-            fail "Upgrade to CP4BA 23.0.2 or later iFix first before upgrading to CP4BA $CP4BA_PATTERN_OPR_CSV_VERSION"
+            fail "Upgrade to CP4BA 23.0.2 or later iFix first before upgrading to CP4BA $CP4BA_CSV_VERSION"
             exit 1
         elif [[ "$cp4a_content_operator_csv_version" == "22.1."* ]]; then
-            fail "Upgrade to CP4BA 22.0.2 or later iFix first before upgrading to CP4BA $CP4BA_PATTERN_OPR_CSV_VERSION"
+            fail "Upgrade to CP4BA 22.0.2 or later iFix first before upgrading to CP4BA $CP4BA_CSV_VERSION"
             exit 1
-        elif [[ "$cp4a_content_operator_csv_version" != "${CP4BA_PATTERN_OPR_CSV_VERSION//v/}" ]]; then
+        elif [[ "$cp4a_content_operator_csv_version" != "${CP4BA_CSV_VERSION//v/}" ]]; then
             if [[ $retry -eq ${maxRetry} ]]; then
                 info "Timeout Checking for the version of IBM CP4BA FileNet Content Manager Operator in the project \"$project_name\""
                 exit 1
@@ -320,14 +326,14 @@ function check_operator_status(){
     echo "****************************************************************************"
     info "Checking for IBM CP4BA FileNet Content Manager operator pod initialization"
     for ((retry=0;retry<=${maxRetry};retry++)); do
-        isReady=$(kubectl get csv ibm-content-operator.$CP4BA_PATTERN_OPR_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
+        isReady=$(kubectl get csv ibm-content-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
         # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
         if [[ -z $isReady ]]; then
             csv_version=""
             csv_version=$(kubectl get csv $(kubectl get csv --no-headers --ignore-not-found -n $project_name | grep ibm-content-operator.v |awk '{print $1}') --no-headers --ignore-not-found -n $project_name -o jsonpath='{.spec.version}')
-            if [[ "v$csv_version" != $CP4BA_PATTERN_OPR_CSV_VERSION ]]; then
+            if [[ "v$csv_version" != $CP4BA_CSV_VERSION ]]; then
                 if [[ $retry -eq ${maxRetry} ]]; then
-                    fail "Failed to upgrade the IBM CP4BA FileNet Content Manager operator to ibm-content-operator.$CP4BA_PATTERN_OPR_CSV_VERSION in the project \"$project_name\"" 
+                    fail "Failed to upgrade the IBM CP4BA FileNet Content Manager operator to ibm-content-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
                     msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
                     exit 1
                 else
@@ -436,14 +442,14 @@ function check_operator_status(){
     echo "****************************************************************************"
     info "Checking for IBM CP4BA Automation Decision Service operator pod initialization"
     for ((retry=0;retry<=${maxRetry};retry++)); do
-        isReady=$(kubectl get csv ibm-ads-operator.$CP4BA_PATTERN_OPR_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
+        isReady=$(kubectl get csv ibm-ads-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
         # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
         if [[ -z $isReady ]]; then
             csv_version=""
             csv_version=$(kubectl get csv $(kubectl get csv --no-headers --ignore-not-found -n $project_name | grep ibm-ads-operator.v |awk '{print $1}') --no-headers --ignore-not-found -n $project_name -o jsonpath='{.spec.version}')
-            if [[ "v$csv_version" != $CP4BA_PATTERN_OPR_CSV_VERSION ]]; then
+            if [[ "v$csv_version" != $CP4BA_CSV_VERSION ]]; then
                 if [[ $retry -eq ${maxRetry} ]]; then
-                    fail "Failed to upgrade the IBM CP4BA Automation Decision Service operator to ibm-ads-operator.$CP4BA_PATTERN_OPR_CSV_VERSION in the project \"$project_name\"" 
+                    fail "Failed to upgrade the IBM CP4BA Automation Decision Service operator to ibm-ads-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
                     msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
                     exit 1
                 else
@@ -496,14 +502,14 @@ function check_operator_status(){
         echo "****************************************************************************"
         info "Checking for IBM Operational Decision Manager operator pod initialization"
         for ((retry=0;retry<=${maxRetry};retry++)); do
-            isReady=$(kubectl get csv ibm-odm-operator.$CP4BA_PATTERN_OPR_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
+            isReady=$(kubectl get csv ibm-odm-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
             # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
             if [[ -z $isReady ]]; then
                 csv_version=""
                 csv_version=$(kubectl get csv $(kubectl get csv --no-headers --ignore-not-found -n $project_name | grep ibm-odm-operator.v |awk '{print $1}') --no-headers --ignore-not-found -n $project_name -o jsonpath='{.spec.version}')
-                if [[ "v$csv_version" != $CP4BA_PATTERN_OPR_CSV_VERSION ]]; then
+                if [[ "v$csv_version" != $CP4BA_CSV_VERSION ]]; then
                     if [[ $retry -eq ${maxRetry} ]]; then
-                        fail "Failed to upgrade the IBM Operational Decision Manager operator to ibm-odm-operator.$CP4BA_PATTERN_OPR_CSV_VERSION in the project \"$project_name\"" 
+                        fail "Failed to upgrade the IBM Operational Decision Manager operator to ibm-odm-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
                         msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
                         exit 1
                     else
@@ -560,14 +566,14 @@ function check_operator_status(){
             echo "****************************************************************************"
             info "Checking for IBM Document Processing Engine operator pod initialization"
             for ((retry=0;retry<=${maxRetry};retry++)); do
-                isReady=$(kubectl get csv ibm-dpe-operator.$CP4BA_PATTERN_OPR_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
+                isReady=$(kubectl get csv ibm-dpe-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
                 # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
                 if [[ -z $isReady ]]; then
                     csv_version=""
                     csv_version=$(kubectl get csv $(kubectl get csv --no-headers --ignore-not-found -n $project_name | grep ibm-dpe-operator.v |awk '{print $1}') --no-headers --ignore-not-found -n $project_name -o jsonpath='{.spec.version}')
-                    if [[ "v$csv_version" != $CP4BA_PATTERN_OPR_CSV_VERSION ]]; then
+                    if [[ "v$csv_version" != $CP4BA_CSV_VERSION ]]; then
                         if [[ $retry -eq ${maxRetry} ]]; then
-                            fail "Failed to upgrade the IBM Document Processing Engine operator to ibm-dpe-operator.$CP4BA_PATTERN_OPR_CSV_VERSION in the project \"$project_name\"" 
+                            fail "Failed to upgrade the IBM Document Processing Engine operator to ibm-dpe-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
                             msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
                             exit 1
                         else
@@ -620,13 +626,13 @@ function check_operator_status(){
     echo "****************************************************************************"
     info "Checking for IBM CP4BA Workflow Process Service operator pod initialization"
     for ((retry=0;retry<=${maxRetry};retry++)); do
-        isReady=$(kubectl get csv ibm-cp4a-wfps-operator.$CP4BA_PATTERN_OPR_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
+        isReady=$(kubectl get csv ibm-cp4a-wfps-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
         if [[ -z $isReady ]]; then
             csv_version=""
             csv_version=$(kubectl get csv $(kubectl get csv --no-headers --ignore-not-found -n $project_name | grep ibm-cp4a-wfps-operator.v |awk '{print $1}') --no-headers --ignore-not-found -n $project_name -o jsonpath='{.spec.version}')
-            if [[ "v$csv_version" != $CP4BA_PATTERN_OPR_CSV_VERSION ]]; then
+            if [[ "v$csv_version" != $CP4BA_CSV_VERSION ]]; then
                 if [[ $retry -eq ${maxRetry} ]]; then
-                    fail "Failed to upgrade the IBM CP4BA Workflow Process Service operator to ibm-cp4a-wfps-operator.$CP4BA_PATTERN_OPR_CSV_VERSION in the project \"$project_name\"" 
+                    fail "Failed to upgrade the IBM CP4BA Workflow Process Service operator to ibm-cp4a-wfps-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
                     msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
                     exit 1
                 else
@@ -679,14 +685,14 @@ function check_operator_status(){
         echo "****************************************************************************"
         info "Checking for IBM CP4BA Insights Engine operator pod initialization"
         for ((retry=0;retry<=${maxRetry};retry++)); do
-            isReady=$(kubectl get csv ibm-insights-engine-operator.$CP4BA_PATTERN_OPR_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
+            isReady=$(kubectl get csv ibm-insights-engine-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
             # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
             if [[ -z $isReady ]]; then
                 csv_version=""
                 csv_version=$(kubectl get csv $(kubectl get csv --no-headers --ignore-not-found -n $project_name | grep ibm-insights-engine-operator.v |awk '{print $1}') --no-headers --ignore-not-found -n $project_name -o jsonpath='{.spec.version}')
-                if [[ "v$csv_version" != $CP4BA_PATTERN_OPR_CSV_VERSION ]]; then
+                if [[ "v$csv_version" != $CP4BA_CSV_VERSION ]]; then
                     if [[ $retry -eq ${maxRetry} ]]; then
-                        fail "Failed to upgrade the IBM CP4BA Insights Engine operator to ibm-insights-engine-operator.$CP4BA_PATTERN_OPR_CSV_VERSION in the project \"$project_name\"" 
+                        fail "Failed to upgrade the IBM CP4BA Insights Engine operator to ibm-insights-engine-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
                         msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
                         exit 1
                     else
@@ -738,14 +744,14 @@ function check_operator_status(){
     echo "****************************************************************************"
     info "Checking for IBM CP4BA Process Federation Server operator pod initialization"
     for ((retry=0;retry<=${maxRetry};retry++)); do
-        isReady=$(kubectl get csv ibm-pfs-operator.$CP4BA_PATTERN_OPR_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
+        isReady=$(kubectl get csv ibm-pfs-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
         # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
         if [[ -z $isReady ]]; then
             csv_version=""
             csv_version=$(kubectl get csv $(kubectl get csv --no-headers --ignore-not-found -n $project_name | grep ibm-pfs-operator.v |awk '{print $1}') --no-headers --ignore-not-found -n $project_name -o jsonpath='{.spec.version}')
-            if [[ "v$csv_version" != $CP4BA_PATTERN_OPR_CSV_VERSION ]]; then
+            if [[ "v$csv_version" != $CP4BA_CSV_VERSION ]]; then
                 if [[ $retry -eq ${maxRetry} ]]; then
-                    fail "Failed to upgrade the IBM CP4BA Process Federation Server operator to ibm-pfs-operator.$CP4BA_PATTERN_OPR_CSV_VERSION in the project \"$project_name\"" 
+                    fail "Failed to upgrade the IBM CP4BA Process Federation Server operator to ibm-pfs-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
                     msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
                     exit 1
                 else

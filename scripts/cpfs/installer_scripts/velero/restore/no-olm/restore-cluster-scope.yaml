@@ -1,7 +1,7 @@
 apiVersion: velero.io/v1
 kind: Restore
 metadata:
-  name: restore-licensing
+  name: restore-cluster-charts
   namespace: velero
 spec:
   backupName: __BACKUP_NAME__
@@ -15,11 +15,17 @@ spec:
   hooks: {}
   includedNamespaces:
   - '*'
+  includedResources:
+  - '*'
   orLabelSelectors:
   - matchExpressions:
     - key: foundationservices.cloudpak.ibm.com
       operator: In
       values:
-      - ls-cluster
-      - ls-chart
-      - licensing
+      - cs-cluster
+      - odlm-cluster
+      - ui-cluster
+      - zen-cluster
+      - edb-cluster
+      - iam-cluster
+      - nss-cluster

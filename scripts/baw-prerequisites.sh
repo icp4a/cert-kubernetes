@@ -633,21 +633,21 @@ function create_prerequisites() {
     # Create LDAP bind secret
     create_ldap_secret_template
     #  replace ldap user
-    tmp_dbuser="$(prop_ldap_property_file LDAP_BIND_DN)"
-    ${SED_COMMAND} "s|\"<LDAP_BIND_DN>\"|\"$tmp_dbuser\"|g" ${LDAP_SECRET_FILE}
+    tmp_ldapuser="$(prop_ldap_property_file LDAP_BIND_DN)"
+    ${YQ_CMD} w -i "${LDAP_SECRET_FILE}" "stringData.ldapUsername" "$tmp_ldapuser"
 
-    tmp_dbuserpwd="$(prop_ldap_property_file LDAP_BIND_DN_PASSWORD)"
-    ${SED_COMMAND} "s|\"<LDAP_PASSWORD>\"|\"$tmp_dbuserpwd\"|g" ${LDAP_SECRET_FILE}
+    tmp_ldapuserpwd="$(prop_ldap_property_file LDAP_BIND_DN_PASSWORD)"
+    update_secret_template_passwords "$tmp_ldapuserpwd" "ldapPassword" "$LDAP_SECRET_FILE"
 
     # Create LDAP bind secret for external share
     if [[ $SET_EXT_LDAP == "Yes" ]]; then
         create_ext_ldap_secret_template
         #  replace ldap user
-        tmp_dbuser="$(prop_ext_ldap_property_file LDAP_BIND_DN)"
-        ${SED_COMMAND} "s|\"<LDAP_BIND_DN>\"|\"$tmp_dbuser\"|g" ${EXT_LDAP_SECRET_FILE}
+        tmp_ldapuser="$(prop_ext_ldap_property_file LDAP_BIND_DN)"
+        ${YQ_CMD} w -i "${EXT_LDAP_SECRET_FILE}" "stringData.ldapUsername" "$tmp_ldapuser"
 
-        tmp_dbuserpwd="$(prop_ext_ldap_property_file LDAP_BIND_DN_PASSWORD)"
-        ${SED_COMMAND} "s|\"<LDAP_PASSWORD>\"|\"$tmp_dbuserpwd\"|g" ${EXT_LDAP_SECRET_FILE}
+        tmp_ldapuserpwd="$(prop_ext_ldap_property_file LDAP_BIND_DN_PASSWORD)"
+        update_secret_template_passwords "$tmp_ldapuserpwd" "ldapPassword" "$EXT_LDAP_SECRET_FILE"
     fi
 
     # Create FNCM secret

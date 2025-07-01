@@ -11,6 +11,8 @@
 set -o errtrace
 set -o nounset
 
+# ---------- Enable No OLM --------------
+NO_OLM="false"
 # ---------- Command arguments ----------
 OC=oc
 
@@ -51,16 +53,27 @@ source ${BASE_DIR}/env.properties
 function main() {
     parse_arguments "$@"
     pre_req
-    label_catalogsource
+    if [[ $NO_OLM == "false" ]]; then
+        label_catalogsource
+        label_subscription
+    else
+        label_helm_cluster_scope
+        label_helm_namespace_scope
+        if [[ $ENABLE_LICENSING -eq 1 ]]; then
+            label_helm_licensing
+        fi
+        if [[ $ENABLE_LSR -eq 1 ]]; then
+            label_helm_lsr
+        fi
+    fi
     label_ns_and_related 
     label_configmap
-    label_subscription
-    if [[ $ENABLE_LSR -eq 1 ]]; then
-        label_lsr
-    fi
     label_cs
     if [[ $SERVICES_NS != "" ]]; then
         label_nss
+    fi
+    if [[ $ENABLE_LSR -eq 1 ]]; then
+        label_lsr
     fi
     label_mcsp
     success "Successfully labeled all the resources"
@@ -88,6 +101,7 @@ function print_usage(){ #TODO update usage definition
     echo "   --enable-private-catalog       Optional. Specifying will look for catalog sources in the operator namespace. If enabled, will look for cert manager, licensing, and lsr catalogs in their respective namespaces."
     echo "   --enable-default-catalog-ns    Optional. Specifying will label all IBM published catalog sources in openshift-marketplace namespace."
     echo "   --additional-catalog-sources   Optional. Comma-delimted list of non-default catalog sources to be labeled."
+    echo "   --no-olm                       Optional. Toggles script to backup helm-based install resources instead of OLM-based resources. 4.12+"
     echo "   -h, --help                     Print usage information"
     echo ""
     
@@ -145,6 +159,9 @@ function parse_arguments() {
         --additional-catalog-sources)
             shift
             ADDITIONAL_SOURCES=$1
+            ;;
+        --no-olm)
+            NO_OLM="true"
             ;;
         -h | --help)
             print_usage
@@ -262,11 +279,14 @@ function label_ns_and_related() {
         # Label the namespace
         ${OC} label namespace "$namespace" foundationservices.cloudpak.ibm.com=namespace --overwrite=true 2>/dev/null
         
-        # Label the OperatorGroup
-        operator_group=$(${OC} get operatorgroup -n "$namespace" -o jsonpath='{.items[*].metadata.name}')
-        ${OC} label operatorgroup "$operator_group" foundationservices.cloudpak.ibm.com=operatorgroup -n "$namespace" --overwrite=true 2>/dev/null
-        
+        if [[ $NO_OLM == "false" ]]; then
+            # Label the OperatorGroup
+            operator_group=$(${OC} get operatorgroup -n "$namespace" -o jsonpath='{.items[*].metadata.name}')
+            ${OC} label operatorgroup "$operator_group" foundationservices.cloudpak.ibm.com=operatorgroup -n "$namespace" --overwrite=true 2>/dev/null
+        fi
+
         # Label the entitlement key
+        #TODO check for a the pull secret to be a different name in case of no olm, will be defined in one of the deployments
         ${OC} label secret ibm-entitlement-key foundationservices.cloudpak.ibm.com=entitlementkey -n "$namespace" --overwrite=true 2>/dev/null
         
         # Label the OperandRequest
@@ -288,10 +308,18 @@ function label_ns_and_related() {
         done <<< "$operand_requests"
 
         # Label the Zen Service
-        ${OC} label customresourcedefinition zenservices.zen.cpd.ibm.com foundationservices.cloudpak.ibm.com=zen --overwrite=true 2>/dev/null
+        if [[ $NO_OLM == "false" ]]; then
+            ${OC} label customresourcedefinition zenservices.zen.cpd.ibm.com zenextensions.zen.cpd.ibm.com foundationservices.cloudpak.ibm.com=zen --overwrite=true 2>/dev/null
+        else
+            ${OC} label customresourcedefinition zenservices.zen.cpd.ibm.com zenextensions.zen.cpd.ibm.com foundationservices.cloudpak.ibm.com=zen-cluster --overwrite=true 2>/dev/null
+        fi
         zen_services=$(${OC} get zenservice -n "$namespace" -o custom-columns=NAME:.metadata.name --no-headers)
         while IFS= read -r zen_service; do
-            ${OC} label zenservice $zen_service foundationservices.cloudpak.ibm.com=zen -n "$namespace" --overwrite=true 2>/dev/null
+            if [[ $NO_OLM == "false" ]]; then
+                ${OC} label zenservice $zen_service foundationservices.cloudpak.ibm.com=zen -n "$namespace" --overwrite=true 2>/dev/null
+            else
+                ${OC} label zenservice $zen_service foundationservices.cloudpak.ibm.com=zen-chart -n "$namespace" --overwrite=true 2>/dev/null
+            fi
         done <<< "$zen_services"
         echo ""
 
@@ -378,8 +406,26 @@ function label_nss(){
     title "Label Namespacescope resources"
     local nss_pm="ibm-namespace-scope-operator"
     # Using the same label as common service operator has for both sub and crd
-    ${OC} label subscriptions.operators.coreos.com $nss_pm foundationservices.cloudpak.ibm.com=subscription -n $OPERATOR_NS --overwrite=true 2>/dev/null
-    ${OC} label customresourcedefinition namespacescopes.operator.ibm.com foundationservices.cloudpak.ibm.com=crd --overwrite=true 2>/dev/null
+    if [[ $NO_OLM == "false" ]]; then
+        ${OC} label subscriptions.operators.coreos.com $nss_pm foundationservices.cloudpak.ibm.com=subscription -n $OPERATOR_NS --overwrite=true 2>/dev/null
+        ${OC} label customresourcedefinition namespacescopes.operator.ibm.com foundationservices.cloudpak.ibm.com=crd --overwrite=true 2>/dev/null
+    else
+        #cluster scoped resources
+        ${OC} label clusterrole ibm-namespace-scope-operator foundationservices.cloudpak.ibm.com=nss-cluster --overwrite=true 2>/dev/null
+        ${OC} label clusterrolebinding ibm-namespace-scope-operator foundationservices.cloudpak.ibm.com=nss-cluster --overwrite=true 2>/dev/null
+        ${OC} label customresourcedefinition namespacescopes.operator.ibm.com foundationservices.cloudpak.ibm.com=nss-cluster --overwrite=true 2>/dev/null
+        nss_cluster_release_name=$(${OC} get crd namespacescopes.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+        nss_cluster_release_namespace=$(${OC} get crd namespacescopes.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+        ${OC} label secret sh.helm.release.v1.$nss_cluster_release_name.v1 -n $nss_cluster_release_namespace foundationservices.cloudpak.ibm.com=nss-cluster  --overwrite=true 2>/dev/null
+        #namespace scoped resources
+        ${OC} label deployment ibm-namespace-scope-operator foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+        nss_release_name=$(${OC} get deploy ibm-namespace-scope-operator -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+        nss_release_namespace=$(${OC} get deploy ibm-namespace-scope-operator -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+        ${OC} label secret sh.helm.release.v1.$nss_release_name.v1 -n $nss_release_namespace foundationservices.cloudpak.ibm.com=nss  --overwrite=true 2>/dev/null
+        ${OC} label role ibm-namespace-scope-operator -n $OPERATOR_NS foundationservices.cloudpak.ibm.com=nss  --overwrite=true 2>/dev/null
+        ${OC} label rolebinding ibm-namespace-scope-operator -n $OPERATOR_NS foundationservices.cloudpak.ibm.com=nss  --overwrite=true 2>/dev/null
+    fi
+
     # The following resources are labeled with 'nss' are bundled together for backup
     ${OC} label namespacescopes.operator.ibm.com common-service foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label serviceaccount ibm-namespace-scope-operator foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
@@ -402,6 +448,207 @@ function label_mcsp(){
     title "Start to label mcsp resources"
     ${OC} label secret user-mgmt-bootstrap foundationservices.cloudpak.ibm.com=user-mgmt -n $SERVICES_NS --overwrite=true 2>/dev/null
     echo ""
+}
+
+function label_helm_cluster_scope(){
+    title "Begin labeling cluster scoped resources installed via helm..."
+    #TODO get name of helm secret for each chart
+    #odlm cluster resources (crds)
+    ${OC} label crd operandbindinfos.operator.ibm.com operandconfigs.operator.ibm.com operandregistries.operator.ibm.com operandrequests.operator.ibm.com operatorconfigs.operator.ibm.com foundationservices.cloudpak.ibm.com=odlm-cluster  --overwrite=true 2>/dev/null
+    #helm secret
+    odlm_release_name=$(${OC} get crd operandbindinfos.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    odlm_release_namespace=$(${OC} get crd operandbindinfos.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$odlm_release_name.v1 -n $odlm_release_namespace foundationservices.cloudpak.ibm.com=odlm-cluster  --overwrite=true 2>/dev/null
+
+    #cs operator cluster resources (crds, clusterrole, clusterrolebinding), crd covered elsewhere in script
+    ${OC} label clusterrole ibm-common-service-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding ibm-common-service-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
+    cs_release_name=$(${OC} get crd commonservices.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    cs_release_namespace=$(${OC} get crd commonservices.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$cs_release_name.v1 -n $cs_release_namespace foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
+
+    #IM operator cluster resources (crds, clusterrole, clusterrolebinding)
+    ${OC} label crd clients.oidc.security.ibm.com authentications.operator.ibm.com foundationservices.cloudpak.ibm.com=iam-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrole ibm-iam-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=iam-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding ibm-iam-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=iam-cluster  --overwrite=true 2>/dev/null
+    im_release_name=$(${OC} get crd authentications.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    im_release_namespace=$(${OC} get crd authentications.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$im_release_name.v1 -n $im_release_namespace foundationservices.cloudpak.ibm.com=iam-cluster  --overwrite=true 2>/dev/null
+
+    #UI (crds)
+    ${OC} label crd commonwebuis.operators.ibm.com navconfigurations.foundation.ibm.com switcheritems.operators.ibm.com foundationservices.cloudpak.ibm.com=ui-cluster  --overwrite=true 2>/dev/null
+    ui_release_name=$(${OC} get crd commonwebuis.operators.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    ui_release_namespace=$(${OC} get crd commonwebuis.operators.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$ui_release_name.v1 -n $ui_release_namespace foundationservices.cloudpak.ibm.com=ui-cluster  --overwrite=true 2>/dev/null
+
+    #edb (crds, clusterrole, clusterrolebinding, webhooks) 
+    #TODO verify none of this info changes
+    ${OC} label crd backups.postgresql.k8s.enterprisedb.io clusters.postgresql.k8s.enterprisedb.io poolers.postgresql.k8s.enterprisedb.io scheduledbackups.postgresql.k8s.enterprisedb.io clusterimagecatalogs.postgresql.k8s.enterprisedb.io imagecatalogs.postgresql.k8s.enterprisedb.io publications.postgresql.k8s.enterprisedb.io subscriptions.postgresql.k8s.enterprisedb.io databases.postgresql.k8s.enterprisedb.io foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
+    #still need the final name value for these items, will likely match the deployment name
+    ${OC} label clusterrole postgresql-operator-controller-manager-$OPERATOR_NS foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding postgresql-operator-controller-manager-$OPERATOR_NS foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
+    ${OC} label validatingwebhookconfiguration postgresql-operator-validating-webhook-configuration-$OPERATOR_NS foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
+    ${OC} label mutatingwebhookconfiguration postgresql-operator-mutating-webhook-configuration-$OPERATOR_NS foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
+    edb_release_name=$(${OC} get crd clusters.postgresql.k8s.enterprisedb.io -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    edb_release_namespace=$(${OC} get crd clusters.postgresql.k8s.enterprisedb.io -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$edb_release_name.v1 -n $edb_release_namespace foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
+
+    #zen? (crds, clusterrole, clusterrolebinding)
+    #assuming we are still responsible for zen
+    #CRD covered in label_ns_and_related function
+    ${OC} label clusterrole ibm-zen-operator-cluster-role-$OPERATOR_NS foundationservices.cloudpak.ibm.com=zen-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding ibm-zen-operator-cluster-role-binding-$OPERATOR_NS foundationservices.cloudpak.ibm.com=zen-cluster  --overwrite=true 2>/dev/null
+    zen_release_name=$(${OC} get clusterrole ibm-zen-operator-cluster-role -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    zen_release_namespace=$(${OC} get clusterrole ibm-zen-operator-cluster-role -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$zen_release_name.v1 -n $zen_release_namespace foundationservices.cloudpak.ibm.com=zen-cluster  --overwrite=true 2>/dev/null
+
+    success "Cluster scoped charts labeled."
+}
+
+function label_helm_namespace_scope(){
+    title "Begin labeling namespace scoped resources installed via helm..."
+    #label rbac and resources in operator and services namespace first
+    #odlm
+    ${OC} label deploy operand-deployment-lifecycle-manager foundationservices.cloudpak.ibm.com=odlm-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount operand-deployment-lifecycle-manager foundationservices.cloudpak.ibm.com=odlm-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role operand-deployment-lifecycle-manager foundationservices.cloudpak.ibm.com=odlm-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding operand-deployment-lifecycle-manager foundationservices.cloudpak.ibm.com=odlm-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role operand-deployment-lifecycle-manager foundationservices.cloudpak.ibm.com=odlm-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding operand-deployment-lifecycle-manager foundationservices.cloudpak.ibm.com=odlm-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
+    odlm_release_name=$(${OC} get deploy operand-deployment-lifecycle-manager -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    odlm_release_namespace=$(${OC} get deploy operand-deployment-lifecycle-manager -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$odlm_release_name.v1 -n $odlm_release_namespace foundationservices.cloudpak.ibm.com=odlm-chart  --overwrite=true 2>/dev/null
+
+    #cs operator
+    #cs CR handled in label_cs
+    ${OC} label deployment ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
+    cs_release_name=$(${OC} get deploy ibm-common-service-operator -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    cs_release_namespace=$(${OC} get deploy ibm-common-service-operator -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$cs_release_name.v1 -n $cs_release_namespace foundationservices.cloudpak.ibm.com=cs-chart  --overwrite=true 2>/dev/null
+
+    #ibm iam operator
+    ${OC} label deployment ibm-iam-operator foundationservices.cloudpak.ibm.com=iam-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount ibm-iam-operator foundationservices.cloudpak.ibm.com=iam-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role ibm-iam-operator foundationservices.cloudpak.ibm.com=iam-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-iam-operator foundationservices.cloudpak.ibm.com=iam-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role ibm-iam-operator foundationservices.cloudpak.ibm.com=iam-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-iam-operator foundationservices.cloudpak.ibm.com=iam-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
+    im_release_name=$(${OC} get deploy ibm-iam-operator -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    im_release_namespace=$(${OC} get deploy ibm-iam-operator -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$im_release_name.v1 -n $im_release_namespace foundationservices.cloudpak.ibm.com=iam-chart  --overwrite=true 2>/dev/null
+    
+    #common ui
+    ${OC} label deployment ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ui_release_name=$(${OC} get deploy ibm-commonui-operator -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    ui_release_namespace=$(${OC} get deploy ibm-commonui-operator -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$ui_release_name.v1 -n $ui_release_namespace foundationservices.cloudpak.ibm.com=ui-chart  --overwrite=true 2>/dev/null
+    
+    #edb
+    deploy=$(${OC} get deploy -n $OPERATOR_NS | grep postgresql-operator-controller-manager | awk '{print $1}')
+    ${OC} label deployment $deploy foundationservices.cloudpak.ibm.com=edb-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label configmap cloud-native-postgresql-image-list postgresql-operator-default-monitoring foundationservices.cloudpak.ibm.com=edb-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label service postgresql-operator-webhook-service foundationservices.cloudpak.ibm.com=edb-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount postgresql-operator-manager foundationservices.cloudpak.ibm.com=edb-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role postgresql-operator-controller-manager foundationservices.cloudpak.ibm.com=edb-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding postgresql-operator-controller-manager foundationservices.cloudpak.ibm.com=edb-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role postgresql-operator-controller-manager foundationservices.cloudpak.ibm.com=edb-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding postgresql-operator-controller-manager foundationservices.cloudpak.ibm.com=edb-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
+    edb_release_name=$(${OC} get deploy $deploy -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    edb_release_namespace=$(${OC} get deploy $deploy -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$edb_release_name.v1 -n $edb_release_namespace foundationservices.cloudpak.ibm.com=edb-chart  --overwrite=true 2>/dev/null
+
+    #zen
+    ${OC} label deploy ibm-zen-operator foundationservices.cloudpak.ibm.com=zen-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    #zenservice covered in label_ns_and_related function
+    ${OC} label role ibm-zen-operator-role foundationservices.cloudpak.ibm.com=zen-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-zen-operator-rolebinding foundationservices.cloudpak.ibm.com=zen-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount ibm-zen-operator-serviceaccount foundationservices.cloudpak.ibm.com=zen-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role ibm-zen-operator-role foundationservices.cloudpak.ibm.com=zen-chart  -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-zen-operator-rolebinding foundationservices.cloudpak.ibm.com=zen-chart  -n $SERVICES_NS --overwrite=true 2>/dev/null
+    zen_release_name=$(${OC} get deploy ibm-zen-operator -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    zen_release_namespace=$(${OC} get deploy ibm-zen-operator -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$zen_release_name.v1 -n $zen_release_namespace foundationservices.cloudpak.ibm.com=zen-chart  --overwrite=true 2>/dev/null
+
+    #loop through tethered namespaces to label remaining roles and rolebindings
+    if [[ $TETHERED_NS != "" ]]; then
+        for namespace in ${TETHERED_NS//,/ }
+        do
+            #ODLM
+            ${OC} label role operand-deployment-lifecycle-manager foundationservices.cloudpak.ibm.com=odlm-chart -n $namespace --overwrite=true 2>/dev/null
+            ${OC} label rolebinding operand-deployment-lifecycle-manager foundationservices.cloudpak.ibm.com=odlm-chart -n $namespace --overwrite=true 2>/dev/null
+            
+            #cs
+            ${OC} label role ibm-common-service-operator foundationservices.cloudpak.ibm.com=iam-chart -n $namespace --overwrite=true 2>/dev/null
+            ${OC} label rolebinding ibm-common-service-operator foundationservices.cloudpak.ibm.com=iam-chart -n $namespace --overwrite=true 2>/dev/null
+            
+            #im
+            ${OC} label role ibm-iam-operator foundationservices.cloudpak.ibm.com=iam-chart -n $namespace --overwrite=true 2>/dev/null
+            ${OC} label rolebinding ibm-iam-operator foundationservices.cloudpak.ibm.com=iam-chart -n $namespace --overwrite=true 2>/dev/null
+
+            #ui
+            ${OC} label role ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $namespace --overwrite=true 2>/dev/null
+            ${OC} label rolebinding ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $namespace --overwrite=true 2>/dev/null
+
+            #edb
+            ${OC} label role postgresql-operator-controller-manager foundationservices.cloudpak.ibm.com=edb-chart -n $namespace --overwrite=true 2>/dev/null
+            ${OC} label rolebinding postgresql-operator-controller-manager foundationservices.cloudpak.ibm.com=edb-chart -n $namespace --overwrite=true 2>/dev/null
+            
+            #zen
+            ${OC} label role ibm-zen-operator-role foundationservices.cloudpak.ibm.com=zen-chart -n $namespace --overwrite=true 2>/dev/null
+            ${OC} label rolebinding ibm-zen-operator-rolebinding foundationservices.cloudpak.ibm.com=zen-chart -n $namespace --overwrite=true 2>/dev/null
+        done
+    fi
+
+    success "Namespace scoped charts labeled."
+}
+
+function label_helm_licensing() {
+    title "Labeling Licensing cluster and namespace resources..."
+    ${OC} label clusterrole ibm-license-service ibm-license-service-restricted ibm-licensing-default-reader ibm-licensing-operator foundationservices.cloudpak.ibm.com=ls-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding ibm-license-service ibm-license-service-restricted ibm-licensing-default-reader ibm-licensing-operator ibm-license-service-cluster-monitoring-view foundationservices.cloudpak.ibm.com=ls-cluster  --overwrite=true 2>/dev/null
+    ${OC} label customresourcedefinition ibmlicensingdefinitions.operator.ibm.com ibmlicensingquerysources.operator.ibm.com ibmlicensings.operator.ibm.com foundationservices.cloudpak.ibm.com=ls-cluster  --overwrite=true 2>/dev/null
+
+    ${OC} label ibmlicensing instance -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=ls-chart --overwrite=true 2>/dev/null
+    ${OC} label deployment ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=ls-chart --overwrite=true 2>/dev/null
+    ${OC} label role ibm-license-service ibm-license-service-restricted ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=ls-chart --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-license-service ibm-license-service-restricted ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=ls-chart --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount ibm-license-service ibm-license-service-restricted ibm-licensing-default-reader ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=ls-chart --overwrite=true 2>/dev/null
+    
+    lis_release_name=$(${OC} get deploy ibm-licensing-operator -n $LICENSING_NAMESPACE -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    lis_release_namespace=$(${OC} get deploy ibm-licensing-operator -n $LICENSING_NAMESPACE -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$lis_release_name.v1 -n $lis_release_namespace foundationservices.cloudpak.ibm.com=ls-chart  --overwrite=true 2>/dev/null
+
+    success "Licensing resources labeled"
+
+}
+
+function label_helm_lsr() {
+    title "Labeling License Service Reporter cluster and namespace resources..."
+    ${OC} label clusterrole manager-role foundationservices.cloudpak.ibm.com=lsr-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding manager-rolebinding foundationservices.cloudpak.ibm.com=lsr-cluster  --overwrite=true 2>/dev/null
+    ${OC} label customresourcedefinition ibmlicenseservicereporters.operator.ibm.com foundationservices.cloudpak.ibm.com=lsr-cluster  --overwrite=true 2>/dev/null
+
+    ${OC} label ibmlicenseservicereporters.operator.ibm.com instance -n $LSR_NAMESPACE foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+    ${OC} label deployment ibm-license-service-reporter-operator -n $LSR_NAMESPACE foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+    ${OC} label role ibm-license-service-reporter leader-election-role manager-role -n $LSR_NAMESPACE foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-license-service-reporter leader-election-rolebinding manager-rolebinding -n $LSR_NAMESPACE foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount ibm-license-service-reporter ibm-license-service-reporter-operator -n $LSR_NAMESPACE foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+    
+    lsr_release_name=$(${OC} get deploy ibm-license-service-reporter-operator -n $LSR_NAMESPACE -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    lsr_release_namespace=$(${OC} get deploy ibm-license-service-reporter-operator -n $LSR_NAMESPACE -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$lsr_release_name.v1 -n $lsr_release_namespace foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+
+    success "LSR resources labeled"
 }
 
 # ---------- Info functions ----------#

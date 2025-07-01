@@ -296,11 +296,6 @@ function create_sf_resources(){
     sed -i -E "s/<s3 url>/$S3_URL/" ./templates/backup_storage_location.yaml
     ${OC} apply -f ./templates/backup_storage_location_secret.yaml -f ./templates/backup_storage_location.yaml || error "Unable to create backup storage location resources to namespace $SF_NAMESPACE."
     
-    change_ns="false"
-    if [[ $SF_NAMESPACE != "ibm-spectrum-fusion-ns" ]]; then
-        change_ns="true"
-    fi
-    
     #application
     info "Editing application resource..."
     sed -i -E "s/<operator namespace>/$OPERATOR_NS/" ./templates/application.yaml
@@ -310,9 +305,8 @@ function create_sf_resources(){
     sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/application.yaml
     sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" ./templates/application.yaml
     sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/application.yaml
-    if [[ $change_ns == "true" ]]; then
-        ${YQ} -i '.metadata.namespace = "'${SF_NAMESPACE}'"' ./templates/application.yaml || error "Could not update namespace value in application.yaml."
-    fi
+    sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" ./templates/application.yaml
+
     ${OC} apply -f ./templates/application.yaml || error "Unable to create application in namespace $SF_NAMESPACE."
 
     #backup policy
@@ -328,6 +322,8 @@ function create_sf_resources(){
     sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" ./templates/multi-ns-recipe.yaml
     sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/multi-ns-recipe.yaml
     sed -i -E "s/<zenservice name>/$ZENSERVICE_NAME/" ./templates/multi-ns-recipe.yaml
+    sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" ./templates/multi-ns-recipe.yaml
+    
     tethered_namespaces="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
     sed -i -E "s/<comma delimited \(no spaces\) list of Cloud Pak workload namespaces that use this foundational services instance>/$tethered_namespaces/" ./templates/multi-ns-recipe.yaml
     sed -i -E "s/<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc>/$CPFS_VERSION/" ./templates/multi-ns-recipe.yaml
@@ -344,9 +340,8 @@ function create_sf_resources(){
 
     #policyassignment
     info "Editing policy assignment resource..."
-    if [[ $change_ns == "true" ]]; then
-        ${YQ} -i '.metadata.namesace = "'${SF_NAMESPACE}'"' ./templates/policy_assignment.yaml || error "Could not update namespace value in policy_assignment.yaml."
-    fi
+    sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" ./templates/policy_assignment.yaml 
+
     ${OC} apply -f ./templates/policy_assignment.yaml || error "Unable to create policy assignment in namespace $SF_NAMESPACE."
 
     success "Spectrum Fusion BR resources created in namespace $SF_NAMESPACE."

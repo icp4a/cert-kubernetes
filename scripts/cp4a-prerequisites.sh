@@ -840,7 +840,8 @@ function select_pattern(){
     # echo -e "$msg"
 
     # 4Q: add workflow-workstream into pattern list when select both workflow-runtime and workstream
-    if [[ " ${pattern_cr_arr[@]} " =~ "workflow" && " ${pattern_cr_arr[@]} " =~ "workstreams" && "${DEPLOYMENT_TYPE}" == "production" ]]; then
+    # https://jsw.ibm.com/browse/DBACLD-174822 (modified if condition by changing workflow to workflow-runtime)
+    if [[ " ${pattern_cr_arr[@]} " =~ "workflow-runtime" && " ${pattern_cr_arr[@]} " =~ "workstreams" && "${DEPLOYMENT_TYPE}" == "production" ]]; then
         pattern_cr_arr=( "${pattern_cr_arr[@]}" "workflow-workstreams" )
         if [[ $PLATFORM_SELECTED == "other" ]]; then
             foundation_ww=("BAN" "RR" "UMS" "AE")
@@ -1582,8 +1583,7 @@ function check_missing_quotes(){
             continue
         fi
         #<https://jsw.ibm.com/browse/DBACLD-170488> Remove the return character that sometimes gets added on a linux machine
-        tmp_file=$(mktemp)
-        sed $'s/\r//g' "$input_file" > "$tmp_file" && mv "$tmp_file" "$input_file"
+        remove_return_characters "$input_file"
         # Array to store incorrect entries
         incorrect_values=()
 
@@ -3283,21 +3283,22 @@ function create_prerequisites() {
                 else
                     tmp_dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.DATABASE_SERVERNAME)")
                 fi
-                if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.POSTGRESQL_SSL_CLIENT_SERVER)")
-                    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
-                    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
-                        msgB "* You enabled PostgreSQL database with both server and client authentication, please get \"<your-server-certification: root.crt>\" \"<your-client-certification: client.crt>\" \"<your-client-key: client.key>\" on your local or remote database server \"$tmp_dbserver\", and copy them into folder \"$tmp_folder\" before you create the secret for PostgreSQL database SSL"
-                    elif [[ $tmp_flag == "false" || $tmp_flag == "no" || $tmp_flag == "n" || $tmp_flag == "" ]]; then
-                        msgB "* You enabled PostgreSQL database with server-only authentication, please get \"<your-server-certification: db-cert.crt>\"  on remote database server \"$tmp_dbserver\", and copy them into folder \"$tmp_folder\" before you create the secret for PostgreSQL database SSL"
-                    fi
-                else
-                    if [[ $DB_TYPE == "oracle" ]]; then
-                        msgB "* Get the certificate file \"db-cert.crt\" from the remote database server that uses the JDBC URL: \"$tmp_db_jdbc_url\", and copy it into the folder \"$tmp_folder\" before you create the Kubernetes secret for the database SSL"
-                    else
-                        msgB "* Get the certificate file \"db-cert.crt\" from the remote database server \"$tmp_dbserver\", and copy it into the folder \"$tmp_folder\" before you create the Kubernetes secret for the database SSL"
-                    fi
-                fi
+                # No longer needed as we share this info prior to generate mode 
+                #if [[ $DB_TYPE == "postgresql" ]]; then
+                #    tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.POSTGRESQL_SSL_CLIENT_SERVER)")
+                #    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+                #    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
+                #        msgB "* You enabled PostgreSQL database with both server and client authentication, please get \"<your-server-certification: root.crt>\" \"<your-client-certification: client.crt>\" \"<your-client-key: client.key>\" on your local or remote database server \"$tmp_dbserver\", and copy them into folder \"$tmp_folder\" before you create the secret for PostgreSQL database SSL"
+                #    elif [[ $tmp_flag == "false" || $tmp_flag == "no" || $tmp_flag == "n" || $tmp_flag == "" ]]; then
+                #        msgB "* You enabled PostgreSQL database with server-only authentication, please get \"<your-server-certification: db-cert.crt>\"  on remote database server \"$tmp_dbserver\", and copy them into folder \"$tmp_folder\" before you create the secret for PostgreSQL database SSL"
+                #    fi
+                #else
+                #    if [[ $DB_TYPE == "oracle" ]]; then
+                #        msgB "* Get the certificate file \"db-cert.crt\" from the remote database server that uses the JDBC URL: \"$tmp_db_jdbc_url\", and copy it into the folder \"$tmp_folder\" before you create the Kubernetes secret for the database SSL"
+                #    else
+                #        msgB "* Get the certificate file \"db-cert.crt\" from the remote database server \"$tmp_dbserver\", and copy it into the folder \"$tmp_folder\" before you create the Kubernetes secret for the database SSL"
+                #    fi
+                #fi
                 # check AE/APP for oracle
                 if [[ $DB_TYPE == "oracle" && (" ${pattern_cr_arr[@]}" =~ "application" || " ${pattern_cr_arr[@]}" =~ "workflow-workstreams" || " ${optional_component_cr_arr[@]}" =~ "app_designer" || " ${optional_component_cr_arr[@]}" =~ "ads_designer") ]]; then
                     tmp_folder=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.ORACLE_SSO_WALLET_CERT_FOLDER)")
@@ -3335,24 +3336,24 @@ function create_prerequisites() {
     done
 
     # LDAP: Show which certificate file should be copy into which folder
-    tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_ldap_property_file LDAP_SSL_ENABLED)")
-    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+    #tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_ldap_property_file LDAP_SSL_ENABLED)")
+    #tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
 
-    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
-        tmp_folder="$(prop_ldap_property_file LDAP_SSL_CERT_FILE_FOLDER)"
-        tmp_ldapserver="$(prop_ldap_property_file LDAP_SERVER)"
-        msgB "* Get the \"ldap-cert.crt\" from the remote LDAP server \"$tmp_ldapserver\", and copy it into the folder \"$tmp_folder\" before you create the Kubernetes secret for the LDAP SSL"
-    fi
+    #if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
+    #    tmp_folder="$(prop_ldap_property_file LDAP_SSL_CERT_FILE_FOLDER)"
+    #    tmp_ldapserver="$(prop_ldap_property_file LDAP_SERVER)"
+    #    msgB "* Get the \"ldap-cert.crt\" from the remote LDAP server \"$tmp_ldapserver\", and copy it into the folder \"$tmp_folder\" before you create the Kubernetes secret for the LDAP SSL"
+    #fi
 
-    if [[ $SET_EXT_LDAP == "Yes" ]]; then
-        tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_ext_ldap_property_file LDAP_SSL_ENABLED)")
-        tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
-        if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
-            tmp_folder="$(prop_ext_ldap_property_file LDAP_SSL_CERT_FILE_FOLDER)"
-            tmp_ldapserver="$(prop_ext_ldap_property_file LDAP_SERVER)"
-            msgB "* You enabled external LDAP SSL, so get the \"external-ldap-cert.crt\" from the remote LDAP server \"$tmp_ldapserver\", and copy it into the folder \"$tmp_folder\" before you create the secret for the external LDAP SSL"
-        fi
-    fi
+    #if [[ $SET_EXT_LDAP == "Yes" ]]; then
+    #    tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_ext_ldap_property_file LDAP_SSL_ENABLED)")
+    #   tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+    #    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
+    #        tmp_folder="$(prop_ext_ldap_property_file LDAP_SSL_CERT_FILE_FOLDER)"
+    #        tmp_ldapserver="$(prop_ext_ldap_property_file LDAP_SERVER)"
+    #        msgB "* You enabled external LDAP SSL, so get the \"external-ldap-cert.crt\" from the remote LDAP server \"$tmp_ldapserver\", and copy it into the folder \"$tmp_folder\" before you create the secret for the external LDAP SSL"
+    #    fi
+    #fi
 
     # show postgresql ssl setting tip for db secret
     if [[ $DB_TYPE == "postgresql" ]]; then
@@ -3960,12 +3961,13 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         rm -rf $IM_DB_SSL_CERT_FOLDER >/dev/null 2>&1
         mkdir -p $IM_DB_SSL_CERT_FOLDER >/dev/null 2>&1
         echo "## Configuration for external Postgres DB as IM metastore DB." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## YOU NEED TO CREATE THIS POSTGRES DB BY YOURSELF FISTLY BEFORE APPLY CP4BA CUSTOM RESOURCE." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "## YOU NEED TO CREATE THIS POSTGRES DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## NOTES: " >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "##   YOU NEED TO CREATE THIS POSTGRES DB BY YOURSELF FISTLY BEFORE APPLY CP4BA CUSTOM RESOURCE." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "##   YOU NEED TO CREATE THIS POSTGRES DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "##   1. Postgres version is 14.7 or higher and 16.x." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "##   2. Client certificate based authentication is configured on the DB server." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "##   3. Client certificate rotation is managed by the customer." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "##   4. Please ensure that the server certificate includes a Subject Alternative Name (SAN)." >> ${USER_PROFILE_PROPERTY_FILE}
 
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
@@ -3999,12 +4001,13 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         rm -rf $ZEN_DB_SSL_CERT_FOLDER >/dev/null 2>&1
         mkdir -p $ZEN_DB_SSL_CERT_FOLDER >/dev/null 2>&1
         echo "## Configuration for external Postgres DB as Zen metastore DB." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## YOU NEED TO CREATE THIS POSTGRES DB BY YOURSELF FISTLY BEFORE APPLY CP4BA CUSTOM RESOURCE." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "## YOU NEED TO CREATE THIS POSTGRES DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## NOTES: " >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "##   YOU NEED TO CREATE THIS POSTGRES DB BY YOURSELF FISTLY BEFORE APPLY CP4BA CUSTOM RESOURCE." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "##   YOU NEED TO CREATE THIS POSTGRES DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "##   1. Postgres version is 14.7 or higher and 16.x." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "##   2. Client certificate based authentication is configured on the DB server." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "##   3. Client certificate rotation is managed by the customer." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "##   4. Please ensure that the server certificate includes a Subject Alternative Name (SAN)." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
         # Name of the key in k8s secret ibm-zen-metastore-edb-secret do not need customized
@@ -4057,12 +4060,13 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         rm -rf $BTS_DB_SSL_CERT_FOLDER >/dev/null 2>&1
         mkdir -p $BTS_DB_SSL_CERT_FOLDER >/dev/null 2>&1
         echo "## Configuration for external Postgres DB as BTS metastore DB." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## YOU NEED TO CREATE THIS POSTGRES DB BY YOURSELF FISTLY BEFORE APPLY CP4BA CUSTOM RESOURCE." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "## YOU NEED TO CREATE THIS POSTGRES DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## NOTES: " >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "##   YOU NEED TO CREATE THIS POSTGRES DB BY YOURSELF FISTLY BEFORE APPLY CP4BA CUSTOM RESOURCE." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "##   YOU NEED TO CREATE THIS POSTGRES DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "##   1. Postgres version is 14.7 or higher and 16.x." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "##   2. Client certificate based authentication is configured on the DB server." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "##   3. Client certificate rotation is managed by the customer." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "##   4. Please ensure that the server certificate includes a Subject Alternative Name (SAN)." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
         echo "## Please get \"<your-server-certification: root.crt>\" \"<your-client-certification: client.crt>\" \"<your-client-key: client.key>\" from server and client, and copy into this directory.Default value is \"$BTS_DB_SSL_CERT_FOLDER\"." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -4956,33 +4960,44 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         echo "ADP.ENV_OWNER_USER_PASSWORD=\"{xor}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
-        # Recommend to provide an external MongoDB for production deployments.
-        echo "## IMPORTANT: It is recommended to use an external Enterprise MongoDB instance in a production environment. The embedded MongoDB is provided for demo purposes only when set this value as \"No\". The default vaule is \"Yes\"." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "ADP.USE_EXTERNAL_MONGODB=\"Yes\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+        
+        ## DBACLD-176663 (MongoDB Server details needs to be removed for ADP runtime)
+        #if [[ " ${optional_component_cr_arr[@]}" =~ "document_processing_runtime" ]]; then
+            # Recommend to provide an external MongoDB for production deployments.
+        #   echo "## IMPORTANT: It is recommended to use an external Enterprise MongoDB instance in a production environment. The embedded MongoDB is provided for demo purposes only when set this value as \"No\". The default vaule is \"Yes\"." >> ${USER_PROFILE_PROPERTY_FILE}
+        #   echo "ADP.USE_EXTERNAL_MONGODB=\"No\"" >> ${USER_PROFILE_PROPERTY_FILE}
+        #   echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+        #fi
+       
+       if [[ " ${optional_component_cr_arr[@]}" =~ "document_processing_designer" ]]; then
+            # Recommend to provide an external MongoDB for production deployments.
+            echo "## IMPORTANT: It is recommended to use an external Enterprise MongoDB instance in a production environment. The embedded MongoDB is provided for demo purposes only when set this value as \"No\". The default vaule is \"Yes\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "ADP.USE_EXTERNAL_MONGODB=\"Yes\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
-        # mongoUri/mongoUser/mongoPwd for ADP
-	echo "## Using an external MongoDB instance is strongly recommended for production environments, The default value is "Yes"." >> ${USER_PROFILE_PROPERTY_FILE}
-	echo "## When set to \"No\", all other parameters marked as \"<required>\" must be left empty." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## Provide the mongoURI, for example: \"mongodb://mongo:<mongoPwd>@<mongo_database_hostname>:<mongo_database_port>/<mongo_database_name>?authSource=admin&connectTimeoutMS=3000\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "ADP.EXTERNAL_MONGO_URI=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## Provide the user name for your own Enterprise MongoDB instance used by ADP. For example: \"admin\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "ADP.MONGO_USER_NAME=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## Provide the user password (if password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text) for your own Enterprise MongoDB instance used by ADP." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "ADP.MONGO_USER_PASSWORD=\"{Base64}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            # mongoUri/mongoUser/mongoPwd for ADP
+	        echo "## Using an external MongoDB instance is strongly recommended for production environments, The default value is "Yes"." >> ${USER_PROFILE_PROPERTY_FILE}
+	        echo "## When set to \"No\", all other parameters marked as \"<required>\" must be left empty." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## Provide the mongoURI, for example: \"mongodb://mongo:<mongoPwd>@<mongo_database_hostname>:<mongo_database_port>/<mongo_database_name>?authSource=admin&connectTimeoutMS=3000\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "ADP.EXTERNAL_MONGO_URI=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## Provide the user name for your own Enterprise MongoDB instance used by ADP. For example: \"admin\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "ADP.MONGO_USER_NAME=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## Provide the user password (if password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text) for your own Enterprise MongoDB instance used by ADP." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "ADP.MONGO_USER_PASSWORD=\"{Base64}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+        fi
 
-        if [[ " ${pattern_cr_arr[@]}" =~ "document_processing_runtime" ]]; then
+        if [[ " ${optional_component_cr_arr[@]}" =~ "document_processing_runtime" ]]; then
             # Add user property into user_profile for ADP when ADP Runtime Environment
             # The repository service url
             echo "## The repository service url." >> ${USER_PROFILE_PROPERTY_FILE}
             echo "## For a runtime environment update this value to point to your" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "## development cdra environment URL (not service endpoint)." >> ${USER_PROFILE_PROPERTY_FILE}
-            echo "## https://<Authoring Environment's CPD (Zen) Route>/adp/cdra/cdapi. This value for CPDS_REPO_SERVICE_URL will set the repo_service_url: \"<Required>\" value in the generated CR. " >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## https://<Authoring Environment's CPD (Zen) Route>/adp/cdra/cdapi. This value for CPDS_REPO_SERVICE_URL will set the REPO_SERVICE_URL: \"<Required>\" value in the generated CR. " >> ${USER_PROFILE_PROPERTY_FILE}
 
-            echo "ADP.repo_service_url=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "ADP.REPO_SERVICE_URL=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
             echo "## In 24.0.1, the feedback feature is enhanced to support 'distributed' for the 'runtime_type' parameter. The 'distributed' runtime type is only supported in the Runtime environment."  >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5778,13 +5793,42 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         echo -e  "  - Properties for database name and user name required by each component of the CP4BA deployment, such as GCD_DB_NAME/GCD_DB_USER_NAME/GCD_DB_USER_PASSWORD.\n"
         echo -e  "  - Change the prefix \"<DB_ALIAS_NAME>\" to assign which database is used by the component.\n"
         echo -e  "  - The value of \"<DB_ALIAS_NAME>\" must match the value of <DB_SERVER_LIST> that is defined in \"<DB_SERVER_LIST>\" of \"cp4ba_db_server.property\".\n"
+    
+        echo -e "\x1b[32m* [Database SSL Certificates]:\x1B[0m"
+        echo
+        # We want to inform the customer that the SSL certificates for Databases must be added into the property files folder prior to running generate mode
+        # This is because aca-basedb uses the ssl cert value and base64 encodes it into a string while generating the template.
+        # This is unlike the LDAP ssl secret which uses --from-file based format for the SSL certificates which allows the user to add the ssl certs to the folders even after the secret templates are generated.
+        # https://jsw.ibm.com/browse/DBACLD-179824
+        if [[ $DB_TYPE == "postgresql" ]]; then
+            echo -e " - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your PostgreSQL database server and SSL is configured with both server and client authentication, retrieve the following certificates from your database server: the server certificate, client certificate, and client private key. Copy them into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The files must be named root.crt, client.crt, and client.key respectively.$RESET_TEXT"
+            echo
+            echo -e "  - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your PostgreSQL database server and SSL is configured with server-only authentication, retrieve the server certificate from your database server and copy it into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named db-cert.crt $RESET_TEXT"
+            echo
+        else
+            echo -e "  - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your database server, retrieve the server certificate file from your remote database server and copy it into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named db-cert.crt. $RESET_TEXT"  
+            echo
+        fi
     fi
     if [[ ! ("${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "No") ]]; then
         echo -e  "\x1b[32m* [cp4ba_LDAP.property]:\x1B[0m"
         echo -e  "  - Properties for the LDAP server that is used by the CP4BA deployment, such as LDAP_SERVER/LDAP_PORT/LDAP_BASE_DN/LDAP_BIND_DN/LDAP_BIND_DN_PASSWORD.\n"
+        # We want to inform the customer that the SSL certificates for LDAP must be copied prior to running generate mode
+        # https://jsw.ibm.com/browse/DBACLD-179824
+        echo
+        echo -e "\x1b[32m* [LDAP SSL Certificates]:\x1B[0m"
+        echo
+        echo -e "  - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your LDAP server, retrieve the server certificate file from your remote LDAP server and copy it into the folder \"$LDAP_SSL_CERT_FOLDER\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named ldap-cert.crt. $RESET_TEXT"  
+        echo
+
         if [[ $SET_EXT_LDAP == "Yes" ]]; then
             echo -e  "\x1b[32m* [cp4ba_External_LDAP.property]:\x1B[0m"
             echo -e  "  - Properties for the External LDAP server that is used by External Share, such as LDAP_SERVER/LDAP_PORT/LDAP_BASE_DN/LDAP_BIND_DN/LDAP_BIND_DN_PASSWORD.\n"
+            echo
+            echo -e "\x1b[32m* [External LDAP SSL Certificates]:\x1B[0m"
+            echo
+            echo -e "  - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your external LDAP server, retrieve the server certificate file from your remote LDAP server and copy it into the folder \"$LDAP_SSL_CERT_FOLDER\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named external-ldap-cert.crt. $RESET_TEXT"  
+            echo
         fi
     fi
 
@@ -7186,6 +7230,9 @@ function create_db_script(){
         success "DB SQL statement file for Application Engine database has been created.\n"
     fi
 
+    # Cleaning all DB SQL files for any unwanted return characters
+    remove_carriage_returns_from_sql_files "${DB_SCRIPT_FOLDER}"
+
     tips ""
     msgB "* The DB SQL statement files for CP4BA are created under directory ${DB_SCRIPT_FOLDER}. You can modify them or use the default setting to create the databases.\n(NOTES: DO NOT CHANGE DBNAME/DBUSER/DBPASSWORD DIRECTLY in the DB SQL statement files. CHANGE THEM IN THE PROPERTY FILES IF NEEDED, AND THEN RUN [-m generate] AGAIN)"
 
@@ -7253,7 +7300,7 @@ function select_external_postgresdb_for_im(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLY CP4BA CUSTOM RESOURCE${RESET_TEXT}. ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.10?topic=im-setting-up-external-edb-postgresql-database-server#dbcreate${RESET_TEXT}] \x1B[1mas IM metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: IM service can use an external Postgres DB to store IM data. If select \"Yes\", IM service uses an external Postgres DB as IM metastore DB. If select \"No\", IM service uses an embedded cloud native postgresql DB as IM metastore DB.)${RESET_TEXT} (Yes/No, default: No): "
+        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE${RESET_TEXT}. ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.10?topic=im-setting-up-external-edb-postgresql-database-server#dbcreate${RESET_TEXT}] \x1B[1mas IM metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: IM service can use an external Postgres DB to store IM data. If select \"Yes\", IM service uses an external Postgres DB as IM metastore DB. If select \"No\", IM service uses an embedded cloud native postgresql DB as IM metastore DB.)${RESET_TEXT} (Yes/No, default: No): "
         read -rp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -7275,7 +7322,7 @@ function select_external_postgresdb_for_zen(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLY CP4BA CUSTOM RESOURCE${RESET_TEXT}. ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.10?topic=im-setting-up-external-edb-postgresql-database-server#dbcreate${RESET_TEXT}]\x1B[1m as Zen metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Zen stores all metadata such as users, groups, service instances, vault integration and secret references in metastore DB. If select \"Yes\", Zen service uses an external Postgres DB as Zen metastore DB. If select \"No\", Zen service uses an embedded cloud native postgresql DB as Zen metastore DB )${RESET_TEXT} (Yes/No, default: No): "
+        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE${RESET_TEXT}. ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.10?topic=im-setting-up-external-edb-postgresql-database-server#dbcreate${RESET_TEXT}]\x1B[1m as Zen metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Zen stores all metadata such as users, groups, service instances, vault integration and secret references in metastore DB. If select \"Yes\", Zen service uses an external Postgres DB as Zen metastore DB. If select \"No\", Zen service uses an embedded cloud native postgresql DB as Zen metastore DB )${RESET_TEXT} (Yes/No, default: No): "
         read -rp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -7297,7 +7344,7 @@ function select_external_postgresdb_for_bts(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLY CP4BA CUSTOM RESOURCE${RESET_TEXT}, ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.10?topic=service-external-database#configuring-an-external-database-with-the-bts-custom-resource${RESET_TEXT}]\x1B[1m as BTS metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: BTS service can use an external Postgres DB to store meta data. If select \"Yes\", BTS service uses an external Postgres DB as BTS metastore DB. If select \"No\", BTS service uses an embedded cloud native postgresql DB as BTS metastore DB )${RESET_TEXT} (Yes/No, default: No): "
+        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE${RESET_TEXT}, ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.10?topic=service-external-database#configuring-an-external-database-with-the-bts-custom-resource${RESET_TEXT}]\x1B[1m as BTS metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: BTS service can use an external Postgres DB to store meta data. If select \"Yes\", BTS service uses an external Postgres DB as BTS metastore DB. If select \"No\", BTS service uses an embedded cloud native postgresql DB as BTS metastore DB )${RESET_TEXT} (Yes/No, default: No): "
         read -rp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -8126,8 +8173,8 @@ function validate_prerequisites(){
         tmp_ldapssl="$(prop_ldap_property_file LDAP_SSL_ENABLED)"
         tmp_user=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapUsername | base64 --decode`
         ## <https://jsw.ibm.com/browse/DBACLD-172803> - We are now asking user to use {xor} for special characters in password, so we need to use decode_xor_password to get the password decoded before validation.
-        cp4a_operator=$( $CLI_CMD get pods -l name=ibm-cp4a-operator --no-headers --ignore-not-found -n $TARGET_PROJECT_NAME | awk '{print $1}' )
-        tmp_userpwd=$( decode_xor_password $( $CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapPassword | base64 --decode ) $TARGET_PROJECT_NAME $cp4a_operator | sed  's/\$/\\$/g' )
+        cp4a_operator=$( $CLI_CMD get pods -l name=ibm-cp4a-operator --no-headers --ignore-not-found -n $cp4ba_operators_namespace | awk '{print $1}' )
+        tmp_userpwd=$( decode_xor_password $( $CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapPassword | base64 --decode ) $cp4ba_operators_namespace $cp4a_operator | sed  's/\$/\\$/g' )
 
         tmp_servername=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_servername")
         tmp_serverport=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_serverport")
@@ -8158,8 +8205,8 @@ function validate_prerequisites(){
             tmp_ldapssl="$(prop_ext_ldap_property_file LDAP_SSL_ENABLED)"
             tmp_user=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l name=ext-ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapUsername | base64 --decode`
             ## <https://jsw.ibm.com/browse/DBACLD-172803> - We are now asking user to use {xor} for special characters in password, so we need to use decode_xor_password to get the password decoded before validation.
-            cp4a_operator=$( $CLI_CMD get pods -l name=ibm-cp4a-operator --no-headers --ignore-not-found -n $TARGET_PROJECT_NAME | awk '{print $1}' )
-            tmp_userpwd=$( decode_xor_password $( $CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapPassword | base64 --decode ) $TARGET_PROJECT_NAME $cp4a_operator | sed  's/\$/\\$/g' )
+            cp4a_operator=$( $CLI_CMD get pods -l name=ibm-cp4a-operator --no-headers --ignore-not-found -n $cp4ba_operators_namespace | awk '{print $1}' )
+            tmp_userpwd=$( decode_xor_password $( $CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapPassword | base64 --decode ) $cp4ba_operators_namespace $cp4a_operator | sed  's/\$/\\$/g' )
 
             tmp_servername=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_servername")
             tmp_serverport=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_serverport")

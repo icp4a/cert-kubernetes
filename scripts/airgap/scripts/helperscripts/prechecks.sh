@@ -12,7 +12,8 @@
 
 # This helper script is used for precheck validation of the packages required for cp4a-airgap-mirroring-images script
 
-validate_tools() {
+# Functio to validate the tools required for airgap mirroring
+function validate_tools() {
     # Function to compare version numbers (major.minor.patch)
     version_ge() { 
         # Normalize version strings to have three parts (major.minor.patch)
@@ -110,14 +111,14 @@ validate_tools() {
 
     echo
     echo_bold "Tools Validation Summary:"
-    echo "---------------------------------------------------------------------"
+    echo "------------------------------------------------------------------------"
     printf "%-35s | %-15s | %-20s\n" "Tool" "Required Version" "Current Version"
-    echo "---------------------------------------------------------------------"
+    echo "------------------------------------------------------------------------"
     for i in "${!tools[@]}"; do
         IFS=":" read -r tool_name required_version <<< "${tools[$i]}"
         printf "%-35s | %-15s | %-20s\n" "$tool_name" "$required_version" "${current_versions[$i]}"
     done
-    echo "-----------------------------------------"
+    echo "-------------------------------------------------------------------------"
     echo
     if [ "$validation_status" -eq 0 ]; then
         success "All required tools are installed with the correct versions."

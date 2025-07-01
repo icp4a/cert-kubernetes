@@ -153,34 +153,31 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 # Release/Patch version for CP4BA
 # CP4BA_RELEASE_BASE is for fetch content/foundation operator pod, only need to change for major release.
 CP4BA_RELEASE_BASE="24.0.1"
-CP4BA_PATCH_VERSION="IF003"
+CP4BA_PATCH_VERSION="IF004"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v24.1.3"
-# the above CSV_VERSION is for the cp4ba, foundation, workflow operators as those were refreshed after 24.0.1-IF002 was released
-# the below CSV_VERSION is for the pattern operators: content, insights-engine, ads, odm, workflow-ps, pfs etc 
-CP4BA_PATTERN_OPR_CSV_VERSION="v24.1.2"
+CP4BA_CSV_VERSION="v24.1.4"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
 CP4BA_CHANNEL_VERSION="v24.1"
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.11.0"
+CS_OPERATOR_VERSION="v4.12.0"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
-CS_CHANNEL_VERSION="v4.11"
+CS_CHANNEL_VERSION="v4.12"
 # CERT_LICENSE_OPERATOR_VERSION is for checking IBM cert-manager/licensing operator upgrade status, need to update for each IFIX
-CERT_LICENSE_OPERATOR_VERSION="v4.2.12"
+CERT_LICENSE_OPERATOR_VERSION="v4.2.13"
 # CERT_LICENSE_CHANNEL_VERSION is for for IBM cert-manager/licensing script -c option, need to update for each IFIX
 CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
-CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-11-0"
+CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-12-0"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v6.1.1"
+ZEN_OPERATOR_VERSION="v6.1.3"
 # BTS_CHANNEL_VERSION is for for BTS, need to update for each IFIX
 BTS_CHANNEL_VERSION="v3.35"
-# BTS_CATALOG_VERSION is for BTS 3.35.2.
+# BTS_CATALOG_VERSION is for BTS 3.35.4.
 BTS_CATALOG_VERSION="ibm-bts-operator-catalog-v3-35"
 # REQUIREDVER_BTS is for checking bts operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_BTS="3.35.2"
+REQUIREDVER_BTS="3.35.4"
 # REQUIREDVER_POSTGRESQL is for checking postgresql operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_POSTGRESQL="1.22.7"
+REQUIREDVER_POSTGRESQL="1.25.1"
 # EVENTS_OPERATOR_VERSION is for checking IBM Events operator upgrade status, need to update for each IFIX
 EVENTS_OPERATOR_VERSION="v5.0.1"
 # List of CP4BA versions that are supported for upgrade to $CP4BA_CSV_VERSION
@@ -954,4 +951,121 @@ function generate_truststore_password() {
         < /dev/urandom tr -dc "$pwd_charset" | cut -c1-"$pwd_length"
     fi
     echo
+}
+
+
+# Function to populate the os tablespace section for table index and lob storage
+# Takes in 6 parameters
+# 1. os_db_name is DB name
+# 2. db_type is DB type selected
+# 3. os_datasource_number is OS number in the initialize configuration section of the CR
+# 4 through 6 is the table , index , storage name provided in the property files
+
+# The function appends the OS name to each of the table , index , storage name provided in the property files and uses that value to populate the CR
+# This is because these values must be unique
+# https://jsw.ibm.com/browse/DBACLD-175710
+function populate_os_tablespaces(){   
+    local os_db_name=$1
+    local db_type=$2
+    local os_datasource_number=$3
+    local table_storage_location_prop=$4
+    local index_storage_location_prop=$5
+    local lob_storage_location_prop=$6
+
+    # All tablespaces are being generated with unique names by appending the OS DB Name in front of it
+    # This is because you cannot have same tablespaces
+    # https://jsw.ibm.com/browse/DBACLD-175710
+    
+    if [[ $table_storage_location_prop != "<Optional>" && $table_storage_location_prop != "" ]]; then
+        if [[ $db_type == "oracle" ]]; then
+            table_storage_location_prop="${os_db_name}${table_storage_location_prop}"
+        else
+            table_storage_location_prop="${os_db_name}_${table_storage_location_prop}"
+        fi
+        if [[ $db_type == "postgresql" ]]; then
+            table_storage_location_prop=$(echo $table_storage_location_prop | tr '[:upper:]' '[:lower:]')
+        fi
+        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$os_datasource_number].oc_cpe_obj_store_table_storage_location  "\"$table_storage_location_prop\""
+    fi
+
+    if [[ $index_storage_location_prop != "<Optional>" && $index_storage_location_prop != "" ]]; then
+        if [[ $db_type == "oracle" ]]; then
+            index_storage_location_prop="${os_db_name}${index_storage_location_prop}"
+        else
+            index_storage_location_prop="${os_db_name}_${index_storage_location_prop}"
+        fi
+        if [[ $db_type == "postgresql" ]]; then
+           index_storage_location_prop=$(echo $index_storage_location_prop | tr '[:upper:]' '[:lower:]')
+        fi
+        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$os_datasource_number].oc_cpe_obj_store_index_storage_location  "\"$index_storage_location_prop\""
+
+    fi
+    if [[ $lob_storage_location_prop != "<Optional>" && $lob_storage_location_prop != "" ]]; then
+        if [[ $db_type == "oracle" ]]; then
+            lob_storage_location_prop="${os_db_name}${lob_storage_location_prop}"
+        else
+            lob_storage_location_prop="${os_db_name}_${lob_storage_location_prop}"
+        fi
+        if [[ $db_type == "postgresql" ]]; then
+            lob_storage_location_prop=$(echo $lob_storage_location_prop | tr '[:upper:]' '[:lower:]')
+        fi
+        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$os_datasource_number].oc_cpe_obj_store_lob_storage_location  "\"$lob_storage_location_prop\""
+    fi
+}
+
+
+
+# Function that will delete certain cpfs operand requests that have not been removed after a deployment upgraded from 21.0.3
+# The problematic operand requests are "iaf-system" and "operandrequest-kafkauser-iaf-system"
+# We need to delete these operand requests before the operators are scaled up so they do not cause any impact during the upgrade of other required components
+# In 24.0.1 IF004 we are using a new version of events operator and these two operands try to use an older version which will interfere with a successful upgrade
+# https://jsw.ibm.com/browse/DBACLD-178674
+function delete_cpfs_operand_requests(){
+    local project_name=$1
+    to_delete_operand_requests=("iaf-system" "operandrequest-kafkauser-iaf-system")
+    current_operand_requests=($(${CLI_CMD} get operandrequests -n $project_name -o custom-columns=NAME:.metadata.name --no-headers))
+    # Loop through each operand request
+    for req in "${current_operand_requests[@]}"; do
+        delete=false
+        for to_delete_operand_request in "${to_delete_operand_requests[@]}"; do
+            if [[ "$req" == "$to_delete_operand_request" ]]; then
+            delete=true
+            break
+            fi
+        done
+
+        if [[ $delete == "true" ]]; then
+            echo
+            info "The operand request $req is no longer required in the CP4BA $CP4BA_RELEASE_BASE stream. To prevent any disruption in the upgrade, the script will delete the $req operand request."
+            info "Deleting operand request $req .. "
+            ${CLI_CMD} delete operandrequest "$req" -n $project_name --ignore-not-found
+            echo
+        fi
+    done
+}
+
+# Helper function that removes return characters from property and sql files
+# https://jsw.ibm.com/browse/DBACLD-179824
+function remove_return_characters(){
+    local file_name="$1"
+    #<https://jsw.ibm.com/browse/DBACLD-170488> Remove the return character that sometimes gets added on a linux machine
+    #tmp_file=$(mktemp)
+    #sed $'s/\r//g' "$file_name" > "$tmp_file" && mv "$tmp_file" "$file_name"
+    ${SED_COMMAND} $'s/\r//g' "$file_name"
+
+}
+
+# Function that loops over all SQL files generated and removes any potential ^M return characters from any of the SQL files generated by the script
+# https://jsw.ibm.com/browse/DBACLD-179824
+function remove_carriage_returns_from_sql_files() {
+    local dir_path="$1"
+
+    if [[ ! -d "$dir_path" ]]; then
+        echo "Directory not found: $dir_path"
+    else
+        find "$dir_path" -type f -name "*.sql" | while IFS= read -r file; do
+            #echo "Cleaning: $file"
+            remove_return_characters "$file"
+        done
+    fi
 }

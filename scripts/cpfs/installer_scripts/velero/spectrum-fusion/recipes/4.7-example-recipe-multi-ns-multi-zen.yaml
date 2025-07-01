@@ -2,7 +2,7 @@ apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
 kind: Recipe
 metadata:
   name: cs-recipe
-  namespace: ibm-spectrum-fusion-ns
+  namespace: <spectrum fusion ns>
 spec:
   appType: common-service
   groups:

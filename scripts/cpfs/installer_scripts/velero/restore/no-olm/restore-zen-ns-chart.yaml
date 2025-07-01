@@ -1,7 +1,7 @@
 apiVersion: velero.io/v1
 kind: Restore
 metadata:
-  name: restore-licensing
+  name: restore-zen-chart
   namespace: velero
 spec:
   backupName: __BACKUP_NAME__
@@ -15,11 +15,6 @@ spec:
   hooks: {}
   includedNamespaces:
   - '*'
-  orLabelSelectors:
-  - matchExpressions:
-    - key: foundationservices.cloudpak.ibm.com
-      operator: In
-      values:
-      - ls-cluster
-      - ls-chart
-      - licensing
+  labelSelector:
+    matchLabels:
+      foundationservices.cloudpak.ibm.com: zen-chart
