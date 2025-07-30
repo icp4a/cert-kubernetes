@@ -1,0 +1,66 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  name: child-cert-manager-recipe
+  namespace: <fusion ns>
+  labels:
+    dp.isf.ibm.com/parent-recipe: cpfs-singleton-parent-recipe
+    dp.isf.ibm.com/parent-recipe-namespace: <fusion ns>
+spec:
+  appType: singleton
+  groups:
+    - includeClusterResources: true
+      includedResourceTypes:
+        - certmanagerconfigs.operator.ibm.com
+        - customresourcedefinitions.apiextensions.k8s.io
+      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
+      name: cert-manager-resources
+      type: resource
+    - backupRef: cert-manager-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - customresourcedefinitions.apiextensions.k8s.io
+      name: cert-manager-crds
+      type: resource
+    - backupRef: cert-manager-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - certmanagerconfigs.operator.ibm.com
+      name: cert-manager-workload-resources
+      type: resource
+  hooks:
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      labelSelector: app.kubernetes.io/name=cert-manager
+      name: cert-manager-operator-check
+      namespace: <cert manager namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: cert-manager-webhook-check
+      nameSelector: cert-manager-webhook
+      namespace: <cert manager namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+  workflows:
+    - failOn: essential-error
+      name: singleton-resources-backup
+      sequence:
+        - group: cert-manager-resources
+    - failOn: essential-error
+      name: singleton-resources-restore
+      sequence:
+        - group: cert-manager-resources
+        - hook: cert-manager-operator-check/podReady
+        - hook: cert-manager-webhook-check/podReady

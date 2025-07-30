@@ -1,0 +1,115 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  labels:
+    dp.isf.ibm.com/parent-recipe: cpfs-parent-recipe
+    dp.isf.ibm.com/parent-recipe-namespace: <parent recipe namespace>
+  name: zen-child
+  namespace: <child recipe namespace>
+spec:
+  appType: common-service
+  groups:
+    - labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
+      name: zen-volume
+      type: volume
+    - includeClusterResources: true
+      includedResourceTypes:
+        - deployments
+        - serviceaccount
+        - role
+        - rolebinding
+        - configmaps
+      labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
+      name: zen-br-resources
+      type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        - zenservices.zen.cpd.ibm.com
+        - customresourcedefinitions.apiextensions.k8s.io
+      labelSelector: foundationservices.cloudpak.ibm.com=zen
+      name: zenservice
+      type: resource
+    - backupRef: zen-br-resources
+      labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
+      includeClusterResources: true
+      includedResourceTypes:
+        - serviceaccount
+        - role
+        - rolebinding
+        - configmaps
+      name: zen-pre-deploy
+      type: resource
+    - backupRef: zen-br-resources
+      includeClusterResources: true
+      labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
+      includedResourceTypes:
+        - deployments
+      name: zen-deployment
+      type: resource
+  hooks:
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 1200
+      labelSelector: 'k8s.enterprisedb.io/cluster=zen-metastore-edb,role=primary'
+      name: zen-metastore-edb-check
+      namespace: <child recipe namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 1200
+      type: check
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
+      name: zen5-deployment
+      namespace: <child recipe namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
+      name: zen5-data
+      namespace: <child recipe namespace>
+      onError: fail
+      ops:
+        - command: |
+            ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh <child recipe namespace>"]
+          container: zen5-backup-job
+          name: backup
+          timeout: 600
+        - command: |
+            ["/bin/bash", "-c", "/zen5/restore_zen5.sh <child recipe namespace> <zenservice name>"]
+          container: zen5-backup-job
+          name: restore
+          timeout: 3600
+      selectResource: pod
+      type: exec
+  workflows:
+    - name: pre-backup
+      priority: 2
+      sequence:
+        #zen
+        - hook: zen5-data/backup
+    - name: post-backup
+      priority: 0
+      sequence:
+        - group: zenservice
+        - group: zen-br-resources
+        #volumes (should happen at the end)
+        - group: zen-volume
+    - name: data-restore
+      priority: 1
+      sequence:
+        #zen
+        - group: zenservice
+        - hook: zen-metastore-edb-check/podReady
+        - group: zen-pre-deploy
+        - group: zen-volume
+        - group: zen-deployment
+        - hook: zen5-deployment/podReady
+        - hook: zen5-data/restore
+    

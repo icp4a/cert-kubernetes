@@ -16,18 +16,30 @@ PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 source ${CUR_DIR}/helper/common.sh
 
 function show_help() {
-    echo -e "Usage: "
-    echo -e "  ${CUR_DIR}/cp4a-deployment.sh -m [modetype] -n <CP4BA_NAMESPACE>"
-    echo -e "  OR"
-    echo -e "  ${CUR_DIR}/cp4a-deployment.sh -n <CP4BA_NAMESPACE>"
+    echo
+    echo "Usage:"
+    echo
+    echo " ${CUR_DIR}/cp4a-deployment.sh -m [modetype] -n <CP4BA_NAMESPACE>"
+    echo " ${CUR_DIR}/cp4a-deployment.sh -n <CP4BA_NAMESPACE>"
+    echo
     echo "Options:"
+    echo
     echo "  -h  Display the help."
+    echo
     echo "  -m  Optional: The valid mode types are:[upgradeOperator], [upgradeOperatorStatus], [upgradeDeployment] and [upgradeDeploymentStatus]."
-    # echo "  -s  The value of the update approval strategy. The valid values are: [automatic] and [manual]."
-    echo "  -n  Required: The target namespace of the CP4BA deployment.(If CP4BA is separate of operator and operand, the value is namespace of CP4BA operator)."
+    echo
+    echo "  -n  Required: The target namespace of the CP4BA deployment. "
+    echo "                If CP4BA is deployed using separate namespaces for operators and operands/services and the script is being used for upgrade, the value is the namespace where the CP4BA operators are deployed"
+    echo "                If CP4BA is deployed using separate namespaces for operators and operands/services and the script is being used for generating a custom resource file, the value is the namespace where CP4BA operands/services are to be deployed."
+    echo
     echo "  -i  Optional: Operator image name. By default, it is cp.icr.io/cp/cp4a/icp4a-operator:$CP4BA_RELEASE_BASE."
+    echo
     echo "  -p  Optional: Pull secret to use to connect to the registry. By default, it is ibm-entitlement-key."
+    echo
     echo "  --enable-private-catalog Optional: Set this flag to switch the CatalogSource from global to namespace-scoped. By default it is in openshift-marketplace namespace."
+    echo
+    echo "Additional Information:"
+    echo
     echo "  ${YELLOW_TEXT}* To create a custom resource file for a new CP4BA deployment, follow these steps:${RESET_TEXT}"
     echo "      - STEP 1: Run the script with \"-n <CP4BA_NAMESPACE>\"."
     echo "  ${YELLOW_TEXT}* Running the script to upgrade a CP4BA deployment from 21.0.3 IF031/22.0.2 IF006/23.0.2 IF003 or later IFIX to $CP4BA_RELEASE_BASE GA/$CP4BA_RELEASE_BASE.X. You must run the modes in the following order:${RESET_TEXT}"
@@ -1595,7 +1607,7 @@ function is_scim_enabled(){
       TARGET_PROJECT_NAME_CS="ibm-common-services"
     fi
 
-    IS_SCIM_ENABLED_RESPONSE=$( ${CLI_CMD} exec -i -n $TEMP_OPERATOR_PROJECT_NAME $EXEC_OPERATOR -- bash -c "java -cp \"${CLASS_PATH}\" -jar -Duser.language=en -Duser.country=US -Djavax.net.ssl.trustStore=$truststore -Djavax.net.ssl.trustStoreType=pkcs12  -Djavax.net.ssl.trustStorePassword=\"${key_store_pass}\" /tmp/${RUNNABLE_JAR_NAME} SCIMENABLED $cpe_svc_name.$TARGET_PROJECT_NAME.svc $CPE_SERVICE_PORT $app_login_user  $app_login_pwd  $TARGET_PROJECT_NAME_CS" )
+    IS_SCIM_ENABLED_RESPONSE=$( ${CLI_CMD} exec -i -n $TEMP_OPERATOR_PROJECT_NAME $EXEC_OPERATOR -- bash -c "java -cp \"${CLASS_PATH}\" -jar -Duser.language=en -Duser.country=US -Djavax.net.ssl.trustStore=$truststore -Djavax.net.ssl.trustStoreType=pkcs12  -Djavax.net.ssl.trustStorePassword=\"${key_store_pass}\" /tmp/${RUNNABLE_JAR_NAME} SCIMENABLED $cpe_svc_name.$CP4BA_SERVICES_NS.svc $CPE_SERVICE_PORT $app_login_user  $app_login_pwd  $TARGET_PROJECT_NAME_CS" )
     ## "TRUE : The p8domain is configured with a scim directory"
     if [[ $IS_SCIM_ENABLED_RESPONSE =~ "TRUE : The p8domain is configured with a scim directory" ]]; then
       IS_SCIM_ENABLED="True"
@@ -2602,7 +2614,8 @@ function select_pattern(){
     echo -e "$msg"
 
     # 4Q: add workflow-workstream into pattern list when select both workflow-runtime and workstream
-    if [[ " ${pattern_cr_arr[@]} " =~ "workflow" && " ${pattern_cr_arr[@]} " =~ "workstreams" && "${DEPLOYMENT_TYPE}" == "production" ]]; then
+    # https://jsw.ibm.com/browse/DBACLD-174822 (modified if condition by changing workflow to workflow-runtime)
+    if [[ " ${pattern_cr_arr[@]} " =~ "workflow-runtime" && " ${pattern_cr_arr[@]} " =~ "workstreams" && "${DEPLOYMENT_TYPE}" == "production" ]]; then
         pattern_cr_arr=( "${pattern_cr_arr[@]}" "workflow-workstreams" )
         if [[ $PLATFORM_SELECTED == "other" ]]; then
             foundation_ww=("BAN" "RR" "UMS" "AE")
@@ -5078,7 +5091,7 @@ function merge_pattern(){
                             ${SED_COMMAND} "s/  #  document_processing:/    document_processing:/g" ${ARIA_PATTERN_FILE_BAK}
                             ${SED_COMMAND} "s/  #    cpds:/      cpds:/g" ${ARIA_PATTERN_FILE_BAK}
                             ${SED_COMMAND} "s/  #      production_setting:/        production_setting:/g" ${ARIA_PATTERN_FILE_BAK}
-                            ${SED_COMMAND} "s/  #        repo_service_url: \"<Required>\"/          repo_service_url: \"<Required>\"/g" ${ARIA_PATTERN_FILE_BAK}
+                            ${SED_COMMAND} "s/  #        REPO_SERVICE_URL: \"<Required>\"/          REPO_SERVICE_URL: \"<Required>\"/g" ${ARIA_PATTERN_FILE_BAK}
                         fi
                     fi
                     ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${ARIA_PATTERN_FILE_BAK}
@@ -5847,6 +5860,11 @@ function sync_property_into_final_cr(){
         # apply oc_cpe_obj_store_admin_user_groups for FNCM OS
         for ((j=0;j<${content_os_number};j++))
         do
+            if [[ $DB_TYPE == "oracle" ]]; then
+                tmp_os_db_name="$(prop_db_name_user_property_file OS$((j+1))_DB_USER_NAME)"
+            else
+                tmp_os_db_name="$(prop_db_name_user_property_file OS$((j+1))_DB_NAME)"
+            fi
             OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn FNOS$((j+1))DS|cut -d':' -f1)
             if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
                 OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
@@ -5876,26 +5894,10 @@ function sync_property_into_final_cr(){
                 tmp_table_storage_location_prop="$(prop_db_name_user_property_file OS$((j+1))_DB_TABLE_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//' )"
                 tmp_index_storage_location_prop="$(prop_db_name_user_property_file OS$((j+1))_DB_INDEX_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//' )"
                 tmp_lob_storage_location_prop="$(prop_db_name_user_property_file OS$((j+1))_DB_LOB_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//')"
-                if [[ $tmp_table_storage_location_prop != "<Optional>" && $tmp_table_storage_location_prop != "" ]]; then
-                  if [[ $DB_TYPE == "postgresql" ]]; then
-                        tmp_table_storage_location_prop=$(echo $tmp_table_storage_location_prop | tr '[:upper:]' '[:lower:]')
-                  fi
-                  ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_table_storage_location  "\"$tmp_table_storage_location_prop\""
-                fi
-
-                if [[ $tmp_index_storage_location_prop != "<Optional>" && $tmp_index_storage_location_prop != "" ]]; then
-                  if [[ $DB_TYPE == "postgresql" ]]; then
-                        tmp_index_storage_location_prop=$(echo $tmp_index_storage_location_prop | tr '[:upper:]' '[:lower:]')
-                  fi
-                  ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_index_storage_location  "\"$tmp_index_storage_location_prop\""
-
-                fi
-                if [[ $tmp_lob_storage_location_prop != "<Optional>" && $tmp_lob_storage_location_prop != "" ]]; then
-                  if [[ $DB_TYPE == "postgresql" ]]; then
-                        tmp_lob_storage_location_prop=$(echo $tmp_lob_storage_location_prop | tr '[:upper:]' '[:lower:]')
-                  fi
-                  ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_lob_storage_location  "\"$tmp_lob_storage_location_prop\""
-                fi
+                # Function to populate the os tablespace section for table index and lob storage
+                # Function definition in common.sh
+                # https://jsw.ibm.com/browse/DBACLD-175710
+                populate_os_tablespaces "$tmp_os_db_name" "$DB_TYPE" "$OS_DATASOURCE_NUMBER" "$tmp_table_storage_location_prop" "$tmp_index_storage_location_prop" "$tmp_lob_storage_location_prop"
                 ## End of custom tables,index,lob tablespaces
 
 
@@ -5978,28 +5980,11 @@ function sync_property_into_final_cr(){
                 tmp_table_storage_location_prop="$(prop_db_name_user_property_file ${BAW_AUTH_OS_ARR[i]}_DB_TABLE_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//' )"
                 tmp_index_storage_location_prop="$(prop_db_name_user_property_file ${BAW_AUTH_OS_ARR[i]}_DB_INDEX_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//' )"
                 tmp_lob_storage_location_prop="$(prop_db_name_user_property_file ${BAW_AUTH_OS_ARR[i]}_DB_LOB_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//')"
-                if [[ $tmp_table_storage_location_prop != "<Optional>" && $tmp_table_storage_location_prop != "" ]]; then
-                  if [[ $DB_TYPE == "postgresql" ]]; then
-                        tmp_table_storage_location_prop=$(echo $tmp_table_storage_location_prop | tr '[:upper:]' '[:lower:]')
-                  fi
-                  ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_table_storage_location  "\"$tmp_table_storage_location_prop\""
-                fi
+                # Function to populate the os tablespace section for table index and lob storage
+                # Function definition in common.sh
+                # https://jsw.ibm.com/browse/DBACLD-175710
+                populate_os_tablespaces "$tmp_os_db_name" "$DB_TYPE" "$OS_DATASOURCE_NUMBER" "$tmp_table_storage_location_prop" "$tmp_index_storage_location_prop" "$tmp_lob_storage_location_prop"
 
-                if [[ $tmp_index_storage_location_prop != "<Optional>" && $tmp_index_storage_location_prop != "" ]]; then
-                  if [[ $DB_TYPE == "postgresql" ]]; then
-                        tmp_index_storage_location_prop=$(echo $tmp_index_storage_location_prop | tr '[:upper:]' '[:lower:]')
-                  fi
-                  ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_index_storage_location  "\"$tmp_index_storage_location_prop\""
-
-                fi
-                if [[ $tmp_lob_storage_location_prop != "<Optional>" && $tmp_lob_storage_location_prop != "" ]]; then
-                  if [[ $DB_TYPE == "postgresql" ]]; then
-                        tmp_lob_storage_location_prop=$(echo $tmp_lob_storage_location_prop | tr '[:upper:]' '[:lower:]')
-                  fi
-                  ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_lob_storage_location  "\"$tmp_lob_storage_location_prop\""
-                fi
-
-                # fi
             fi
         done
 
@@ -6132,26 +6117,10 @@ function sync_property_into_final_cr(){
                 tmp_table_storage_location_prop="$(prop_db_name_user_property_file ${BAW_AUTH_OS_ARR[i]}_DB_TABLE_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//' )"
                 tmp_index_storage_location_prop="$(prop_db_name_user_property_file ${BAW_AUTH_OS_ARR[i]}_DB_INDEX_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//' )"
                 tmp_lob_storage_location_prop="$(prop_db_name_user_property_file ${BAW_AUTH_OS_ARR[i]}_DB_LOB_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//')"
-                if [[ $tmp_table_storage_location_prop != "<Optional>" && $tmp_table_storage_location_prop != "" ]]; then
-                  if [[ $DB_TYPE == "postgresql" ]]; then
-                        tmp_table_storage_location_prop=$(echo $tmp_table_storage_location_prop | tr '[:upper:]' '[:lower:]')
-                  fi
-                  ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_table_storage_location  "\"$tmp_table_storage_location_prop\""
-                fi
-
-                if [[ $tmp_index_storage_location_prop != "<Optional>" && $tmp_index_storage_location_prop != "" ]]; then
-                  if [[ $DB_TYPE == "postgresql" ]]; then
-                        tmp_index_storage_location_prop=$(echo $tmp_index_storage_location_prop | tr '[:upper:]' '[:lower:]')
-                  fi
-                  ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_index_storage_location  "\"$tmp_index_storage_location_prop\""
-
-                fi
-                if [[ $tmp_lob_storage_location_prop != "<Optional>" && $tmp_lob_storage_location_prop != "" ]]; then
-                  if [[ $DB_TYPE == "postgresql" ]]; then
-                        tmp_lob_storage_location_prop=$(echo $tmp_lob_storage_location_prop | tr '[:upper:]' '[:lower:]')
-                  fi
-                  ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_lob_storage_location  "\"$tmp_lob_storage_location_prop\""
-                fi
+                # Function to populate the os tablespace section for table index and lob storage
+                # Function definition in common.sh
+                # https://jsw.ibm.com/browse/DBACLD-175710
+                populate_os_tablespaces "$tmp_os_db_name" "$DB_TYPE" "$OS_DATASOURCE_NUMBER" "$tmp_table_storage_location_prop" "$tmp_index_storage_location_prop" "$tmp_lob_storage_location_prop"
             fi
 
         done
@@ -6297,24 +6266,10 @@ function sync_property_into_final_cr(){
             tmp_table_storage_location_prop="$(prop_db_name_user_property_file AWSDOCS_DB_TABLE_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//' )"
             tmp_index_storage_location_prop="$(prop_db_name_user_property_file AWSDOCS_DB_INDEX_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//' )"
             tmp_lob_storage_location_prop="$(prop_db_name_user_property_file AWSDOCS_DB_LOB_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//')"
-            if [[ $tmp_table_storage_location_prop != "<Optional>" && $tmp_table_storage_location_prop != "" ]]; then
-              if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_table_storage_location_prop=$(echo $tmp_table_storage_location_prop | tr '[:upper:]' '[:lower:]')
-              fi
-              ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_table_storage_location  "\"$tmp_table_storage_location_prop\""
-            fi
-            if [[ $tmp_index_storage_location_prop != "<Optional>" && $tmp_index_storage_location_prop != "" ]]; then
-              if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_index_storage_location_prop=$(echo $tmp_index_storage_location_prop | tr '[:upper:]' '[:lower:]')
-              fi
-              ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_index_storage_location  "\"$tmp_index_storage_location_prop\""
-            fi
-            if [[ $tmp_lob_storage_location_prop != "<Optional>" && $tmp_lob_storage_location_prop != "" ]]; then
-              if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_lob_storage_location_prop=$(echo $tmp_lob_storage_location_prop | tr '[:upper:]' '[:lower:]')
-              fi
-              ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_lob_storage_location  "\"$tmp_lob_storage_location_prop\""
-            fi
+            # Function to populate the os tablespace section for table index and lob storage
+            # Function definition in common.sh
+            # https://jsw.ibm.com/browse/DBACLD-175710
+            populate_os_tablespaces "$tmp_os_db_name" "$DB_TYPE" "$OS_DATASOURCE_NUMBER" "$tmp_table_storage_location_prop" "$tmp_index_storage_location_prop" "$tmp_lob_storage_location_prop"
         fi
 
 
@@ -6412,25 +6367,11 @@ function sync_property_into_final_cr(){
             tmp_table_storage_location_prop="$(prop_db_name_user_property_file DEVOS_DB_TABLE_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//' )"
             tmp_index_storage_location_prop="$(prop_db_name_user_property_file DEVOS_DB_INDEX_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//' )"
             tmp_lob_storage_location_prop="$(prop_db_name_user_property_file DEVOS_DB_LOB_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//')"
-            if [[ $tmp_table_storage_location_prop != "<Optional>" && $tmp_table_storage_location_prop != "" ]]; then
-              if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_table_storage_location_prop=$(echo $tmp_table_storage_location_prop | tr '[:upper:]' '[:lower:]')
-              fi
-              ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_table_storage_location  "\"$tmp_table_storage_location_prop\""
-            fi
-            if [[ $tmp_index_storage_location_prop != "<Optional>" && $tmp_index_storage_location_prop != "" ]]; then
-              if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_index_storage_location_prop=$(echo $tmp_index_storage_location_prop | tr '[:upper:]' '[:lower:]')
-              fi
-              ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_index_storage_location  "\"$tmp_index_storage_location_prop\""
-            fi
-            if [[ $tmp_lob_storage_location_prop != "<Optional>" && $tmp_lob_storage_location_prop != "" ]]; then
-              if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_lob_storage_location_prop=$(echo $tmp_lob_storage_location_prop | tr '[:upper:]' '[:lower:]')
-              fi
-              ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_lob_storage_location  "\"$tmp_lob_storage_location_prop\""
-            fi
-        fi
+            # Function to populate the os tablespace section for table index and lob storage
+            # Function definition in common.sh
+            # https://jsw.ibm.com/browse/DBACLD-175710
+            populate_os_tablespaces "$tmp_os_db_name" "$DB_TYPE" "$OS_DATASOURCE_NUMBER" "$tmp_table_storage_location_prop" "$tmp_index_storage_location_prop" "$tmp_lob_storage_location_prop"
+    fi
 
     fi
 
@@ -6527,24 +6468,10 @@ function sync_property_into_final_cr(){
             tmp_table_storage_location_prop="$(prop_db_name_user_property_file AEOS_DB_TABLE_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//' )"
             tmp_index_storage_location_prop="$(prop_db_name_user_property_file AEOS_DB_INDEX_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//' )"
             tmp_lob_storage_location_prop="$(prop_db_name_user_property_file AEOS_DB_LOB_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//')"
-            if [[ $tmp_table_storage_location_prop != "<Optional>" && $tmp_table_storage_location_prop != "" ]]; then
-              if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_table_storage_location_prop=$(echo $tmp_table_storage_location_prop | tr '[:upper:]' '[:lower:]')
-              fi
-              ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_table_storage_location  "\"$tmp_table_storage_location_prop\""
-            fi
-            if [[ $tmp_index_storage_location_prop != "<Optional>" && $tmp_index_storage_location_prop != "" ]]; then
-              if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_index_storage_location_prop=$(echo $tmp_index_storage_location_prop | tr '[:upper:]' '[:lower:]')
-              fi
-              ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_index_storage_location  "\"$tmp_index_storage_location_prop\""
-            fi
-            if [[ $tmp_lob_storage_location_prop != "<Optional>" && $tmp_lob_storage_location_prop != "" ]]; then
-              if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_lob_storage_location_prop=$(echo $tmp_lob_storage_location_prop | tr '[:upper:]' '[:lower:]')
-              fi
-              ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_lob_storage_location  "\"$tmp_lob_storage_location_prop\""
-            fi
+            # Function to populate the os tablespace section for table index and lob storage
+            # Function definition in common.sh
+            # https://jsw.ibm.com/browse/DBACLD-175710
+            populate_os_tablespaces "$tmp_os_db_name" "$DB_TYPE" "$OS_DATASOURCE_NUMBER" "$tmp_table_storage_location_prop" "$tmp_index_storage_location_prop" "$tmp_lob_storage_location_prop"
         fi
 
 
@@ -7198,10 +7125,10 @@ function sync_property_into_final_cr(){
             fi
         fi
 
-        # Apply repo_service_url and CDRA route certificate and runtime_feedback if ADP runtime
+        # Apply REPO_SERVICE_URL and CDRA route certificate and runtime_feedback if ADP runtime
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing_runtime" ]]; then
-            tmp_repo_service_url="$(prop_user_profile_property_file ADP.repo_service_url)"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration.document_processing.cpds.production_setting.repo_service_url "\"$tmp_repo_service_url\""
+            tmp_REPO_SERVICE_URL="$(prop_user_profile_property_file ADP.REPO_SERVICE_URL)"
+            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration.document_processing.cpds.production_setting.repo_service_url "\"$tmp_REPO_SERVICE_URL\""
 
             tmp_cdra_secret_name="$(prop_user_profile_property_file ADP.CDRA_SSL_SECRET_NAME)"
             ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.trusted_certificate_list.[0] "\"$tmp_cdra_secret_name\""
@@ -7543,7 +7470,8 @@ function sync_property_into_final_cr(){
     # Applying value in scim property file into final CR
     set_scim_attr="true"
     if [[ "${set_scim_attr}" == "true" ]]; then
-      if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring" || " ${pattern_cr_arr[@]}" =~ "content" || " ${pattern_cr_arr[@]}" =~ "document_processing" || "${optional_component_cr_arr[@]}" =~ "ae_data_persistence" || (" ${pattern_cr_arr[@]}" =~ "workflow-process-service" && "${optional_component_cr_arr[@]}" =~ "wfps_authoring") ]]; then
+        # DBACLD-177513 scim_configuration_iam section should not be present in the generated CR when deploying WFPS authoring only without LDAP
+      if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring" || " ${pattern_cr_arr[@]}" =~ "content" || " ${pattern_cr_arr[@]}" =~ "document_processing" || "${optional_component_cr_arr[@]}" =~ "ae_data_persistence" || (" ${pattern_cr_arr[@]}" =~ "workflow-process-service" && "${optional_component_cr_arr[@]}" =~ "wfps_authoring" && $LDAP_WFPS_AUTHORING == "Yes") ]]; then
           for i in "${!SCIM_PROPERTY[@]}"; do
               ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${SCIM_CR_MAPPING[i]}" "\"$(prop_user_profile_property_file ${SCIM_PROPERTY[i]})\""
           done
@@ -9079,6 +9007,13 @@ function cncf_install(){
 save_log "cp4a-script-logs/project/$TARGET_PROJECT_NAME" "cp4a-deployment-log"
 trap cleanup_log EXIT
 
+if [[ -n "${RUNTIME_MODE}" ]]; then
+    info "The cp4a-deployment script is currently being executed in the ${RUNTIME_MODE} mode"
+else
+    info "The cp4a-deployment script is currently running in a mode designed to generate the custom resource (CR) file required for a CP4BA deployment"
+    printf "\n"
+fi
+
 # Import upgrade upgrade_check_version.sh script
 source ${CUR_DIR}/helper/upgrade/upgrade_check_status.sh
 
@@ -9504,6 +9439,8 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     info "Checking if the ibm-cp4ba-shared-info/ibm-cp4ba-content-shared-info configMap exists in the project \"$CP4BA_SERVICES_NS\""
     ibm_cp4ba_shared_info_cm=$(${CLI_CMD} get configmap ibm-cp4ba-shared-info --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath='{.data.cp4ba_operator_of_last_reconcile}')
     ibm_cp4ba_content_shared_info_cm=$(${CLI_CMD} get configmap ibm-cp4ba-content-shared-info --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath='{.data.content_operator_of_last_reconcile}')
+    # flag to track which shared-info configmap to use. By default this flag will be true, it will turn false only if it is a content based CR 
+    cp4ba_shared_info_used=true 
 
     # Create ibm-cp4ba-shared-info configMap if not exist
     icp4acluster_cr_name=$(${CLI_CMD} get icp4acluster -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
@@ -9543,6 +9480,8 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
             owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.ownerReferences.[0].kind)
             if [[ ${owner_ref} != "ICP4ACluster" ]]; then
+                # Setting this variable to false so that we know the cp4ba-content-shared-info is to be used
+                cp4ba_shared_info_used=false 
                 cr_version=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - spec.appVersion)
                 cr_uid=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.uid)
                 if [[ -z $ibm_cp4ba_content_shared_info_cm ]]; then
@@ -9821,7 +9760,9 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             fi
         fi
     fi
+    ######### START - THE Check to see if SCIM is configured in the Domain ########
 
+    # This check is only when Content pattern exists and can be skipped otherwise
     # checking whether executed cp4a-pre-upgrade-and-post-upgrade-optional.sh
     if [[ "$cp4a_operator_csv_version" != "24.0."* ]]; then
         if [[ $CONTENT_CR_EXIST == "Yes" || (" ${EXISTING_PATTERN_ARR[@]} " =~ "content") || ((" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow") && (! " ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-process-service")) || (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "baw_authoring") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "ae_data_persistence") ]]; then
@@ -9853,7 +9794,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             if [[ ! -z $CONTENT_DEPLOYMENT_NAME ]]; then
                 ${CLI_CMD} scale --replicas=1 deployment ibm-content-operator -n $TEMP_OPERATOR_PROJECT_NAME >/dev/null 2>&1
                 info "Waiting for ibm-content-operator pod to be ready in the project \"$TEMP_OPERATOR_PROJECT_NAME\"."
-                maxRetry=25
+                maxRetry=10
                 for ((retry=0;retry<=${maxRetry};retry++)); do
                     pod_name=$(${CLI_CMD} get pod -l=name=ibm-content-operator -n $TEMP_OPERATOR_PROJECT_NAME -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
                     if [[ -z $pod_name ]]; then
@@ -9864,7 +9805,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                             fi
                             exit 1
                         else
-                            sleep 30
+                            sleep 15
                             echo -n "..."
                             continue
                         fi
@@ -9874,6 +9815,19 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                 done
             fi
             is_scim_enabled
+            
+            # Based on the shared-info configmap we are using , we will patch the scim_configured value in that CM to later be used in upgradeDeployment mode
+            if [[ "$cp4ba_shared_info_used" == true ]]; then
+                shared_info_configmap="ibm-cp4ba-shared-info"
+            else
+                shared_info_configmap="ibm-cp4ba-content-shared-info"
+            fi
+            #Patching configmap with the SCIM configuration value
+            # https://jsw.ibm.com/browse/DBACLD-157386 https://jsw.ibm.com/browse/DBACLD-178101 https://jsw.ibm.com/browse/DBACLD-177550 https://jsw.ibm.com/browse/DBACLD-177742
+            if ! ${CLI_CMD} patch configmap "$shared_info_configmap" -n "$CP4BA_SERVICES_NS" --type=json -p="[{'op': 'add', 'path': '/data/scim_configured', 'value': '$(echo $IS_SCIM_ENABLED)'}]" >/dev/null 2>&1; then
+                warning "Failed to patch ConfigMap '$shared_info_configmap' in namespace '$CP4BA_SERVICES_NS' with the SCIM configuration details."
+            fi
+            
             if [[ $IS_SCIM_ENABLED == "True" ]]; then
                 if [[ "$cp4a_operator_csv_version" == "21.3."* && $UPGRADE_MODE == "shared2dedicated" ]]; then
                     printf "\n"
@@ -9927,6 +9881,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             fi
         fi
     fi
+    ######### END - THE Check to see if SCIM is configured in the Domain ########
 
     # if [[ "$cp4a_operator_csv_version" == "${CP4BA_CSV_VERSION//v/}" ]]; then
     #     warning "The CP4BA operator already is $CP4BA_CSV_VERSION."
@@ -10565,6 +10520,26 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         [ -f ${UPGRADE_DEPLOYMENT_FOLDER}/upgradeOperator.yaml ] && rm ${UPGRADE_DEPLOYMENT_FOLDER}/upgradeOperator.yaml
         cp ${CUR_DIR}/../descriptors/operator.yaml ${UPGRADE_DEPLOYMENT_FOLDER}/upgradeOperator.yaml
         cncf_install
+        # DBACLD-168537: need to re-create {{meta.name}}-fncm-custom-ssl-secret to add CSS DNSName (in case they are missing from previous deployment) which will be included in FNCM's keystores
+        cr_name=$(${CLI_CMD} get icp4acluster -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
+        if [[ -z $cr_name ]]; then
+            cr_name=$(${CLI_CMD} get content -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
+        fi
+        fncm_custom_ssl_secret=$(${CLI_CMD} get secret --no-headers --ignore-not-found ${cr_name}-fncm-custom-ssl-secret -n $CP4BA_SERVICES_NS | awk '{print $1}') 
+        if [[ -z $fncm_custom_ssl_secret ]]; then
+            info "${cr_name}-fncm-custom-ssl-secret is not found."
+        else
+            info "Found ${cr_name}-fncm-custom-ssl-secret and the script will now delete the secret."
+            ${CLI_CMD} delete secret ${cr_name}-fncm-custom-ssl-secret -n $CP4BA_SERVICES_NS
+        fi
+        # DBACLD-178263: need to re-create {{meta.name}}-ban-custom-ssl-secret to add localhost to Navigator's keystore
+        ban_custom_ssl_secret=$(${CLI_CMD} get secret --no-headers --ignore-not-found ${cr_name}-ban-custom-ssl-secret -n $CP4BA_SERVICES_NS | awk '{print $1}') 
+        if [[ -z $ban_custom_ssl_secret ]]; then
+            info "${cr_name}-ban-custom-ssl-secret is not found."
+        else
+            info "Found ${cr_name}-ban-custom-ssl-secret and the script will now delete the secret."
+            ${CLI_CMD} delete secret ${cr_name}-ban-custom-ssl-secret -n $CP4BA_SERVICES_NS
+        fi
     else
         #  Switch CP4BA Operator to private catalog source
         if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
@@ -12014,6 +11989,27 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         done
         success "Completed to check the channel of subscription for CP4BA operators"
 
+        # DBACLD-168537: need to re-create {{meta.name}}-fncm-custom-ssl-secret to add CSS DNSName (in case they are missing from previous deployment) which will be included in FNCM's keystores
+        cr_name=$(${CLI_CMD} get icp4acluster -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
+        if [[ -z $cr_name ]]; then
+            cr_name=$(${CLI_CMD} get content -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
+        fi
+        fncm_custom_ssl_secret=$(${CLI_CMD} get secret --no-headers --ignore-not-found ${cr_name}-fncm-custom-ssl-secret -n $CP4BA_SERVICES_NS | awk '{print $1}') 
+        if [[ -z $fncm_custom_ssl_secret ]]; then
+            info "${cr_name}-fncm-custom-ssl-secret is not found."
+        else
+            info "Found ${cr_name}-fncm-custom-ssl-secret and the script will now delete the secret."
+            ${CLI_CMD} delete secret ${cr_name}-fncm-custom-ssl-secret -n $CP4BA_SERVICES_NS
+        fi
+        # DBACLD-178263: need to re-create {{meta.name}}-ban-custom-ssl-secret to add localhost to Navigator's keystore
+        ban_custom_ssl_secret=$(${CLI_CMD} get secret --no-headers --ignore-not-found ${cr_name}-ban-custom-ssl-secret -n $CP4BA_SERVICES_NS | awk '{print $1}') 
+        if [[ -z $ban_custom_ssl_secret ]]; then
+            info "${cr_name}-ban-custom-ssl-secret is not found."
+        else
+            info "Found ${cr_name}-ban-custom-ssl-secret and the script will now delete the secret."
+            ${CLI_CMD} delete secret ${cr_name}-ban-custom-ssl-secret -n $CP4BA_SERVICES_NS
+        fi
+        
         if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "24.0."*) ]]; then
             info "Shutdown CP4BA Operators before upgrade CP4BA capabilities."
             shutdown_operator $TEMP_OPERATOR_PROJECT_NAME
@@ -12053,6 +12049,8 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             fi
         else
             # for upgrading IFIX by IFIX
+            # -- https://jsw.ibm.com/browse/DBACLD-177573 - <Incorrect Script Path in [NEXT ACTIONS] Output of cp4a-deployment.sh for 24.0.1 IFixes upgrade> Adding CUR_DIR in else statement as well
+            CUR_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
             printf "\n"
             echo "${YELLOW_TEXT}[NEXT ACTIONS]:${RESET_TEXT}"
             step_num=1
@@ -12068,12 +12066,10 @@ if [ "$RUNTIME_MODE" == "upgradeOperatorStatus" ]; then
     project_name=$TARGET_PROJECT_NAME
 
     # check current cp4ba version
-    check_cp4ba_operator_version $TARGET_PROJECT_NAME
+    # check_cp4ba_operator_version $TARGET_PROJECT_NAME
 
     # Check whether the CP4BA is separation of operators and operands.
-    if [[ "$cp4a_operator_csv_version" == "24.0."* ]]; then
-        check_cp4ba_separate_operand $TARGET_PROJECT_NAME
-    fi
+    check_cp4ba_separate_operand $TARGET_PROJECT_NAME
 
     UPGRADE_DEPLOYMENT_FOLDER=${CUR_DIR}/cp4ba-upgrade/project/$CP4BA_SERVICES_NS
     UPGRADE_DEPLOYMENT_CR=${UPGRADE_DEPLOYMENT_FOLDER}/custom_resource
@@ -12582,6 +12578,11 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
             fi
         fi
     fi
+
+    # Function to remove the old operands that will conflict with the new version of Events Operator
+    # Function defined in common.sh
+    # https://jsw.ibm.com/browse/DBACLD-178674
+    delete_cpfs_operand_requests "$TARGET_PROJECT_NAME"
 
     ${CLI_CMD} get crd | grep contents.icp4a.ibm.com >/dev/null 2>&1
     if [ $? -eq 0 ]; then

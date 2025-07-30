@@ -29,6 +29,7 @@ rules:
       - cronjobs
       - pods/exec
       - cronjob
+      - jobs
   - verbs:
       - get
       - list

@@ -471,13 +471,35 @@ function select_apply_cr(){
     # done
 }
 
+# Function to detect if the Domain is configured with SCIM
+# During upgradeOperator we check for SCIM configuration in the Domain and then save a boolean flag in the shared info configmap
+# This function retrieves the flag and accordingly sets the sc_skip_ldap_config flag in the CR
+# https://jsw.ibm.com/browse/DBACLD-157386 https://jsw.ibm.com/browse/DBACLD-178101 https://jsw.ibm.com/browse/DBACLD-177550 https://jsw.ibm.com/browse/DBACLD-177742
+function detect_scim_configuration(){
+    local namespace=$1
+    local configmap_name=$2
+    local cr_file=$3
+    #checking if the SCIM Value is in either ibm-cp4ba-content-shared-info or ibm-cp4ba-shared-info
+    scim_enabled=''
+    scim_enabled=$(${CLI_CMD} get cm "$configmap_name" -n $namespace -o yaml | ${YQ_CMD} r - data.scim_configured)
+    if [[ ! -z "$scim_enabled" ]]; then
+        echo "SCIM STATUS----$scim_enabled"
+        if [[ "$scim_enabled" == "True" ]]; then
+            info "${YELLOW_TEXT}When the Content Process Engine directory provider type is set to SCIM, the script will set \"shared_configuration.sc_skip_ldap_config\" as \"true\" while upgrading CP4BA deployment from version \"$cr_version\".${RESET_TEXT}"
+            ${YQ_CMD} w -i ${cr_file} spec.shared_configuration.sc_skip_ldap_config "true"
+        else
+            info "${YELLOW_TEXT}When Content Process Engine directory provider type is set to LDAP (not SCIM), setting \"shared_configuration.sc_skip_ldap_config\" as \"false\" while upgrading CP4BA deployment from version \"$cr_version\".${RESET_TEXT}"
+            ${YQ_CMD} w -i ${cr_file} spec.shared_configuration.sc_skip_ldap_config "false"
+        fi
+    fi
+}
+
 function upgrade_deployment(){
     local deployment_project_name=$1
     local operator_project_name=$2
     mkdir -p ${UPGRADE_DEPLOYMENT_CR} >/dev/null 2>&1
     # trap 'startup_operator $deployment_project_name' EXIT
     shutdown_operator $operator_project_name
-
     # Retrieve existing Content CR
     ${CLI_CMD} get crd |grep contents.icp4a.ibm.com >/dev/null 2>&1
     if [ $? -eq 0 ]; then
@@ -571,6 +593,10 @@ function upgrade_deployment(){
                 # ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} spec.verify_configuration
                 # ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} spec.initialize_configuration
 
+                # Function to detect if the Domain is configured with SCIM
+                # https://jsw.ibm.com/browse/DBACLD-157386 https://jsw.ibm.com/browse/DBACLD-178101 https://jsw.ibm.com/browse/DBACLD-177550 https://jsw.ibm.com/browse/DBACLD-177742
+                detect_scim_configuration "$deployment_project_name" "ibm-cp4ba-content-shared-info" "${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}"
+
                 # Only always set as false when upgrade from 21.0.3/22.0.2
                 if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $cr_version != "23.0.2" ]]; then
                     # Set sc_restricted_internet_access always "false" in upgrade
@@ -641,15 +667,6 @@ function upgrade_deployment(){
                 info "Scaling down Navigator Watcher deployment"
                 ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-navigator-watcher -n $deployment_project_name >/dev/null 2>&1
                 echo "Done!"
-
-                # DBACLD-168537: need to re-create {{meta.name}}-fncm-custom-ssl-secret to add CSS DNSName (in case they are missing from previous deployment) which will be included in FNCM's keystores
-                local fncm_custom_ssl_secret=$(${CLI_CMD} get secret --no-headers --ignore-not-found ${content_cr_name}-fncm-custom-ssl-secret -n $deployment_project_name | awk '{print $1}') 
-                if [[ -z $fncm_custom_ssl_secret ]]; then
-                	info "${content_cr_name}-fncm-custom-ssl-secret is not found."
-                else
-                        info "Found ${content_cr_name}-fncm-custom-ssl-secret and delete it."
-                        ${CLI_CMD} delete secret ${content_cr_name}-fncm-custom-ssl-secret -n $deployment_project_name
-                fi
 
                 # For jsw.ibm.com/browse/DBACLD-153103 where we need to update the datavolume section of the CR to be in the right format
                 if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && ($cr_version == "21.0.3") ]]; then
@@ -808,17 +825,17 @@ function upgrade_deployment(){
             info "Checking for IBM CP4BA Workflow Process Service operator pod initialization"
             maxRetry=10
             for ((retry=0;retry<=${maxRetry};retry++)); do
-                isReady=$(${CLI_CMD} get csv ibm-cp4a-wfps-operator.$CP4BA_CSV_VERSION -n $deployment_project_name -o jsonpath='{.status.phase}')
+                isReady=$(${CLI_CMD} get csv ibm-cp4a-wfps-operator.$CP4BA_CSV_VERSION -n $operator_project_name -o jsonpath='{.status.phase}')
                 # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $deployment_project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine $CP4BA_RELEASE_BASE")
                 if [[ $isReady != "Succeeded" ]]; then
                     if [[ $retry -eq ${maxRetry} ]]; then
                     printf "\n"
                     warning "Timeout waiting for IBM CP4BA Workflow Process Service operator to start"
                     echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
-                    echo "oc describe pod $(oc get pod -n $deployment_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $deployment_project_name"
+                    echo "oc describe pod $(oc get pod -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
                     printf "\n"
                     echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
-                    echo "oc describe rs $(oc get rs -n $deployment_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $deployment_project_name"
+                    echo "oc describe rs $(oc get rs -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
                     printf "\n"
                     exit 1
                     else
@@ -827,11 +844,11 @@ function upgrade_deployment(){
                     continue
                     fi
                 elif [[ $isReady == "Succeeded" ]]; then
-                    pod_name=$(${CLI_CMD} get pod -l=name=ibm-cp4a-wfps-operator -n $deployment_project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
+                    pod_name=$(${CLI_CMD} get pod -l=name=ibm-cp4a-wfps-operator -n $operator_project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
                     if [ -z $pod_name ]; then
                         warning "IBM CP4BA Workflow Process Service operator pod is NOT running"
                         info "Starting IBM CP4BA Workflow Process Service operator"
-                        ${CLI_CMD} scale --replicas=1 deployment ibm-cp4a-wfps-operator -n $deployment_project_name >/dev/null 2>&1
+                        ${CLI_CMD} scale --replicas=1 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
                         if [ $? -eq 0 ]; then
                             sleep 1
                         else
@@ -920,15 +937,6 @@ function upgrade_deployment(){
         # replace release/appVersion
         ${SED_COMMAND} "s|release: .*|release: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
         ${SED_COMMAND} "s|appVersion: .*|appVersion: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
-
-        # DBACLD-168537:  need to re-create {{meta.name}}-fncm-custom-ssl-secret to add CSS DNSName (in case they are missing from previous deployment) which will be included in FNCM's keystores
-        local fncm_custom_ssl_secret=$(${CLI_CMD} get secret --no-headers --ignore-not-found ${icp4acluster_cr_name}-fncm-custom-ssl-secret -n $deployment_project_name | awk '{print $1}') 
-        if [ -z $fncm_custom_ssl_secret ]; then
-        	info "${icp4acluster_cr_name}-fncm-custom-ssl-secret is not found."
-        else
-                info "Found ${icp4acluster_cr_name}-fncm-custom-ssl-secret and delete it."
-                ${CLI_CMD} delete secret ${icp4acluster_cr_name}-fncm-custom-ssl-secret -n $deployment_project_name
-        fi
 
         # 21.0.3
         # if select baw authoring
@@ -1067,6 +1075,10 @@ function upgrade_deployment(){
         fi
 
         ${SED_COMMAND} "s/route_reencrypt: .*/route_reencrypt: $ZEN_ROUTE_REENCRYPT/g" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
+
+        # Function to detect if the Domain is configured with SCIM
+        # https://jsw.ibm.com/browse/DBACLD-157386 https://jsw.ibm.com/browse/DBACLD-178101 https://jsw.ibm.com/browse/DBACLD-177550 https://jsw.ibm.com/browse/DBACLD-177742
+        detect_scim_configuration "$deployment_project_name" "ibm-cp4ba-shared-info" "${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}"
 
         # for BAW authoring, base on initialize_configuration to set workflow_authoring_configuration.case.datasource_name_tos/connection_point_name_tos
         if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && ($cr_version == "21.0.3" || $cr_version == "22.0.2") ]]; then
@@ -1580,7 +1592,7 @@ function upgrade_deployment(){
             ${CLI_CMD} scale --replicas=0 deployment ${cr_metaname}-navigator-watcher -n $deployment_project_name >/dev/null 2>&1
             echo "Done!"
         fi
-
+        
         # Only always set as false when upgrade from 21.0.3/22.0.2
         if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $cr_version != "23.0.2" ]]; then
             # Set sc_restricted_internet_access always "false" in upgrade
@@ -1590,12 +1602,17 @@ function upgrade_deployment(){
             # Set shared_configuration.enable_fips always "false" in upgrade
             info "${YELLOW_TEXT}Setting \"shared_configuration.enable_fips\" as \"false\" when upgrade CP4BA deployment, you could change it according to your requirements.${RESET_TEXT}"
             ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.shared_configuration.enable_fips "false"
-        fi
-
-        # set sc_skip_ldap_config as false when upgrade from 21.0.3/22.0.2 to 24.0.0
-        if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $cr_version != "23.0.2" ]]; then
-            info "${YELLOW_TEXT}Setting \"shared_configuration.sc_skip_ldap_config\" as \"false\" when upgrade CP4BA deployment from version \"$cr_version\".${RESET_TEXT}"
-            ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.shared_configuration.sc_skip_ldap_config "false"
+            
+            echo "Status of Content Process Engine SCIM configuration: $IS_SCIM_ENABLED"
+            # set sc_skip_ldap_config when upgrade from 21.0.3/22.0.2 to 24.0.0+
+            # DBACLD-157386: remove LDAP configuration when SCIM is configured
+            if [[ $IS_SCIM_ENABLED == "true" ]]; then
+                    info "${YELLOW_TEXT}When Content Process Engine directory provider type is set to SCIM, setting \"shared_configuration.sc_skip_ldap_config\" as \"true\" when upgrade CP4BA deployment from version \"$cr_version\".${RESET_TEXT}"
+                    ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.shared_configuration.sc_skip_ldap_config "true"
+            else
+                    info "${YELLOW_TEXT}When Content Process Engine directory provider type is set to LDAP (not SCIM), setting \"shared_configuration.sc_skip_ldap_config\" as \"false\" when upgrade CP4BA deployment from version \"$cr_version\".${RESET_TEXT}"
+                    ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.shared_configuration.sc_skip_ldap_config "false"
+            fi
         fi
         
         # For jsw.ibm.com/browse/DBACLD-153103 where we need to update the datavolume section of the CR to be in the right format

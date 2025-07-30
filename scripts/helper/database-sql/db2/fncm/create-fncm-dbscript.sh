@@ -107,20 +107,30 @@ function create_fncm_osdb_db2_sql_file(){
     if [ -z $5 ]; then
         tablespace="VWDATA_TS"
     fi
+
     if [[ $tablespace_table != "" ]]; then
-       tablespace_table_bufferpool="CREATE BUFFERPOOL ${dbname}_4_32K IMMEDIATE SIZE 1024 PAGESIZE 32K;"
-       tablespace_table_create="CREATE LARGE TABLESPACE ${tablespace_table} PAGESIZE 32 K MANAGED BY AUTOMATIC STORAGE BUFFERPOOL ${dbname}_4_32K;"
-       tablespace_table_grant="GRANT USE OF TABLESPACE ${tablespace_table} TO USER ${dbuser};"
+        # Tablespaces must be unique,to make it unique the DB name will be appended as a prefix to all tablespaces created
+        # https://jsw.ibm.com/browse/DBACLD-175710
+        tablespace_table="${dbname}_${tablespace_table}"
+        tablespace_table_bufferpool="CREATE BUFFERPOOL ${dbname}_4_32K IMMEDIATE SIZE 1024 PAGESIZE 32K;"
+        tablespace_table_create="CREATE LARGE TABLESPACE ${tablespace_table} PAGESIZE 32 K MANAGED BY AUTOMATIC STORAGE BUFFERPOOL ${dbname}_4_32K;"
+        tablespace_table_grant="GRANT USE OF TABLESPACE ${tablespace_table} TO USER ${dbuser};"
     fi
     if [[ $tablespace_index != "" ]]; then
-       tablespace_index_bufferpool="CREATE BUFFERPOOL ${dbname}_5_32K IMMEDIATE SIZE 1024 PAGESIZE 32K;"
-       tablespace_index_create="CREATE LARGE TABLESPACE ${tablespace_index} PAGESIZE 32 K MANAGED BY AUTOMATIC STORAGE BUFFERPOOL ${dbname}_5_32K;"
-       tablespace_index_grant="GRANT USE OF TABLESPACE ${tablespace_index} TO USER ${dbuser};"
+        # Tablespaces must be unique,to make it unique the DB name will be appended as a prefix to all tablespaces created
+        # https://jsw.ibm.com/browse/DBACLD-175710
+        tablespace_index="${dbname}_${tablespace_index}"
+        tablespace_index_bufferpool="CREATE BUFFERPOOL ${dbname}_5_32K IMMEDIATE SIZE 1024 PAGESIZE 32K;"
+        tablespace_index_create="CREATE LARGE TABLESPACE ${tablespace_index} PAGESIZE 32 K MANAGED BY AUTOMATIC STORAGE BUFFERPOOL ${dbname}_5_32K;"
+        tablespace_index_grant="GRANT USE OF TABLESPACE ${tablespace_index} TO USER ${dbuser};"
     fi
     if [[ $tablespace_lob != "" ]]; then
-       tablespace_lob_bufferpool="CREATE BUFFERPOOL ${dbname}_6_32K IMMEDIATE SIZE 1024 PAGESIZE 32K;"
-       tablespace_lob_create="CREATE LARGE TABLESPACE ${tablespace_lob} PAGESIZE 32 K MANAGED BY AUTOMATIC STORAGE BUFFERPOOL ${dbname}_6_32K;"
-       tablespace_lob_grant="GRANT USE OF TABLESPACE ${tablespace_lob} TO USER ${dbuser};"
+        # Tablespaces must be unique,to make it unique the DB name will be appended as a prefix to all tablespaces created
+        # https://jsw.ibm.com/browse/DBACLD-175710
+        tablespace_lob="${dbname}_${tablespace_lob}"
+        tablespace_lob_bufferpool="CREATE BUFFERPOOL ${dbname}_6_32K IMMEDIATE SIZE 1024 PAGESIZE 32K;"
+        tablespace_lob_create="CREATE LARGE TABLESPACE ${tablespace_lob} PAGESIZE 32 K MANAGED BY AUTOMATIC STORAGE BUFFERPOOL ${dbname}_6_32K;"
+        tablespace_lob_grant="GRANT USE OF TABLESPACE ${tablespace_lob} TO USER ${dbuser};"
     fi
 
     mkdir -p $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1

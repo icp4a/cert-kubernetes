@@ -44,3 +44,22 @@ spec:
         - keycloak-data #pgdump approach to BR keycloak data
         - keycloak #velero plugin approach to BR keycloak data
         - user-mgmt #non-data user-management operator resources
+        - nss
+        - cs-chart
+        - cs-cluster
+        - odlm-chart
+        - odlm-cluster
+        - ui-chart
+        - ui-cluster
+        - zen-chart
+        - zen-cluster
+        - edb-chart
+        - edb-cluster
+        - iam-chart
+        - iam-cluster
+        - nss-cluster
+        - ls-cluster
+        - ls-chart
+        - lsr-cluster
+        - lsr-chart
+        - ibm-cm-chart

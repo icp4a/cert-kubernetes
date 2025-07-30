@@ -165,7 +165,7 @@ function deploy_resources(){
     cp ${BASE_DIR}/common-service-db/cs-db-role.yaml tmp/common-service-db/cs-db-role.yaml
     cp ${BASE_DIR}/common-service-db/cs-db-rolebinding.yaml tmp/common-service-db/cs-db-rolebinding.yaml
     cp ${BASE_DIR}/common-service-db/cs-db-sa.yaml tmp/common-service-db/cs-db-sa.yaml
-    cp ${BASE_DIR}/common-service-db/cs-db-br-script-cm.yaml tmp/common-service-db/cs-db-br-script-cm.yaml
+    cp ${BASE_DIR}/common-service-db/cs-db-br-script-cm-4.6.10.4.11.yaml tmp/common-service-db/cs-db-br-script-cm.yaml
 
     sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" tmp/common-service-db/cs-db-backup-deployment.yaml
     sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" tmp/common-service-db/cs-db-backup-pvc.yaml

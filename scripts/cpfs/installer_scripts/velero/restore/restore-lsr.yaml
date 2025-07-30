@@ -15,6 +15,11 @@ spec:
   hooks: {}
   includedNamespaces:
   - '*'
-  labelSelector:
-    matchLabels:
-      foundationservices.cloudpak.ibm.com: lsr
+  orLabelSelectors:
+  - matchExpressions:
+    - key: foundationservices.cloudpak.ibm.com
+      operator: In
+      values:
+      - lsr-cluster
+      - lsr-chart
+      - lsr

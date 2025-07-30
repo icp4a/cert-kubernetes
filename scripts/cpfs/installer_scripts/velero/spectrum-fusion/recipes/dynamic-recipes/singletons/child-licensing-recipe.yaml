@@ -1,0 +1,24 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  name: child-licensing-recipe
+  namespace: <fusion ns>
+  labels:
+    dp.isf.ibm.com/parent-recipe: cpfs-singleton-parent-recipe
+    dp.isf.ibm.com/parent-recipe-namespace: <fusion ns> 
+spec:
+  appType: singleton
+  groups:
+    - labelSelector: foundationservices.cloudpak.ibm.com=licensing
+      name: licensing-resources
+      type: resource
+  workflows:
+    - failOn: any-error
+      name: singleton-resources-backup
+      sequence:
+        - group: licensing-resources
+    - failOn: any-error
+      name: singleton-resources-restore
+      sequence:
+        - group: licensing-resources
+    
