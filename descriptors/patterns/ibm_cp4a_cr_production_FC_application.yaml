@@ -196,11 +196,17 @@ spec:
   #     ## it is recommended to have 2 or more.
   #     replica_count: 2
 
+  #     ## Rolling update settings for CPE deployment.  By default, max_unavailable is set to 99% and max_surge is set to 1.  This will help speeding up the CPE upgrade process.
+  #     ## Valid values for max_unavailable are 0-100% or 0-<number of replicas>.  Valid values for max_surge are 0-100% or 0-<number of replicas>.
+  #      rolling_update:
+  #        max_unavailable: 99%
+  #        max_surge: 1
+
   #     ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/cpe
-  #       tag: "24.0.0-IF005"
+  #       tag: "24.0.0-IF006"
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
@@ -350,7 +356,7 @@ spec:
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/graphql
-  #       tag: "24.0.0-IF005"
+  #       tag: "24.0.0-IF006"
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
