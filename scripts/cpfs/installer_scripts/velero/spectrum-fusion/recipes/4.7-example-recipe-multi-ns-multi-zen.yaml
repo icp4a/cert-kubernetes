@@ -11,6 +11,7 @@ spec:
         - secrets
         - certificates.cert-manager.io
         - issuers.cert-manager.io
+        - certmanagerconfigs.operator.ibm.com
         - customresourcedefinitions.apiextensions.k8s.io
       labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
       name: cert-manager-resources
@@ -19,7 +20,18 @@ spec:
       includeClusterResources: true
       includedResourceTypes:
         - customresourcedefinitions.apiextensions.k8s.io
-      name: cert-manager-crd
+      name: cert-manager-crds
+      type: resource
+    - backupRef: cert-manager-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - secrets
+        - certificates.cert-manager.io
+        - issuers.cert-manager.io
+        - clusterissuers.cert-manager.io
+        - certmanagerconfigs.operator.ibm.com
+      name: cert-manager-workload-resources
+      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
       type: resource
     - includeClusterResources: true
       includedResourceTypes:
@@ -124,6 +136,11 @@ spec:
         - subscriptions.operators.coreos.com
       labelSelector: foundationservices.cloudpak.ibm.com=singleton-subscription
       name: singleton-subscriptions
+      type: resource
+    - includedResourceTypes:
+        - subscriptions.operators.coreos.com
+      labelSelector: foundationservices.cloudpak.ibm.com=singleton-subscription
+      name: cert-manager-subscription
       type: resource
     - includedResourceTypes:
         - subscriptions.operators.coreos.com
@@ -274,7 +291,7 @@ spec:
           timeout: 600
       labelSelector: app.kubernetes.io/name=cert-manager
       name: cert-manager-operator-check
-      namespace: ibm-cert-manager
+      namespace: <cert manager namespace>
       onError: fail
       selectResource: pod
       timeout: 600
@@ -286,7 +303,7 @@ spec:
           timeout: 600
       name: cert-manager-webhook-check
       nameSelector: cert-manager-webhook
-      namespace: ibm-cert-manager
+      namespace: <cert manager namespace>
       onError: fail
       selectResource: deployment
       timeout: 600
@@ -520,13 +537,14 @@ spec:
         - group: pull-secret
         - group: common-services-catalogs
         - group: common-services-operatorgroups
+        - group: cert-manager-subscription
+        - group: cert-manager-resources
         - group: common-services-configmaps
         - group: license-service-reporter-crd
         - group: commonservices-crd
         - group: commonservice-cr
         - group: nss-resources
         - group: singleton-subscriptions
-        - group: cert-manager-resources
         - group: license-service-reporter-subscriptions
         - group: common-services-subscriptions
         - group: operand-resources
@@ -543,12 +561,16 @@ spec:
         - group: ow-pull-secret
         - group: common-services-catalogs
         - group: common-services-operatorgroups
-        - group: cert-manager-crd
-        - group: license-service-reporter-crd
-        - group: singleton-subscriptions
+        - group: cert-manager-crds
+        - group: cert-manager-workload-resources
+        - group: cert-manager-subscription
         - hook: cert-manager-operator-check/podReady
         - hook: cert-manager-webhook-check/podReady
-        - group: cert-manager-resources
+        - group: license-service-reporter-crd
+        - group: singleton-subscriptions
+        - group: common-services-configmaps
+        - group: commonservice-crd
+        - group: commonservice-cr
         - group: licensing-resources
         - group: license-service-reporter-subscriptions
         - hook: license-service-reporter-check/podReady

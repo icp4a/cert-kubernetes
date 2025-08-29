@@ -21,12 +21,12 @@ AUTOMATION_DECISION_SERVICES="ibmcp4baProd,ibmcp4baADSImages,ibmcp4baBANImages,i
 AUTOMATION_DOCUMENT_PROCESSING="ibmcp4baProd,ibmcp4baADPImages,ibmcp4baFNCMImages,ibmcp4baBANImages,ibmcp4baBASImages,ibmcp4baAAEImages,ibmEdbStandard"
 AUTOMATION_WORKSTREAM_SERVICES="ibmcp4baProd,ibmcp4baBAWImages,ibmcp4baPFSImages,ibmcp4baFNCMImages,ibmcp4baBANImages,ibmcp4baBASImages,ibmcp4baAAEImages,ibmEdbStandard"
 BUSINESS_AUTOMATION_APPLICATION="ibmcp4baProd,ibmcp4baBASImages,ibmcp4baAAEImages,ibmEdbStandard"
-BUSINESS_AUTOMATION_WORKFLOW="ibmcp4baProd,ibmcp4baBAWImages,ibmcp4baFNCMImages,ibmcp4baBANImages,ibmcp4baBASImages,ibmcp4baAAEImages,ibmEdbStandard,ibmcp4baUMSImages"
-PROCESS_FEDERATION_SERVER="ibmcp4baProd,ibmcp4baPFSImages,ibmcp4baAAEImages"
+BUSINESS_AUTOMATION_WORKFLOW="ibmcp4baProd,ibmcp4baBAWImages,ibmcp4baFNCMImages,ibmcp4baBANImages,ibmcp4baBASImages,ibmcp4baAAEImages,ibmEdbStandard,ibmcp4baUMSImages,ibm_es_1_1_2470"
+PROCESS_FEDERATION_SERVER="ibmcp4baProd,ibmcp4baPFSImages,ibmcp4baAAEImages,ibm_es_1_1_2470"
 FILENET_CONTENT_MANAGER="ibmcp4baProd,ibmcp4baFNCMImages,ibmcp4baBANImages,ibmcp4baAAEImages,ibmEdbStandard"
 OPERATION_DECISION_MANAGER="ibmcp4baProd,ibmcp4baODMImages,ibmcp4baBASImages,ibmcp4baAAEImages,ibmEdbStandard"
-WORKFLOW_PROCESS_SERVICE="ibmcp4baProd,ibmcp4baAAEImages,ibmcp4baBASImages,ibmcp4baWFPSImages,ibmEdbStandard"
-BUSINESS_AUTOMATION_INSIGHTS_STANDALONE="ibmcp4baProd,ibmcp4baBAIImages,ibmEdbStandard"
+WORKFLOW_PROCESS_SERVICE="ibmcp4baProd,ibmcp4baAAEImages,ibmcp4baBASImages,ibmcp4baWFPSImages,ibmEdbStandard,ibm_es_1_1_2470"
+BUSINESS_AUTOMATION_INSIGHTS_STANDALONE="ibmcp4baProd,ibmcp4baBAIImages,ibmEdbStandard,ibm_es_1_1_2470"
 SELECTED_FILTER_OPTIONS=(0 0 0 0 0 0 0 0 0 0)
 IMAGE_MIRROR_FILTER=""
 
@@ -187,21 +187,96 @@ function prop_airgap_mirroring_file() {
     grep "^${2}=" ${1}|cut -d'"' -f2
 }
 
-base64_encode() {
+function base64_encode() {
     local input="$1"
     local encoded=$(echo -n "$input" | base64)
     eval "$2='$encoded'"
 }
 
-base64_decode() {
+function base64_decode() {
     local input="$1"
     local decoded=$(echo -n "$input" | base64 --decode)
     eval "$2='$decoded'"
 }
 
+# Function that checks if there are any missing quotes in the config file being used
+function check_missing_quotes(){
+    local input_file=$1
+    missing_quotes=0
+
+    tmp_file=$(mktemp)
+    sed $'s/\r//g' "$input_file" > "$tmp_file" && mv "$tmp_file" "$input_file"
+    # Array to store incorrect entries
+    incorrect_values=()
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Skip comment lines or empty lines
+        if [[ $line =~ ^[[:space:]]*# ]] || [[ -z $line ]]; then
+            continue
+        fi
+        
+        # Skip lines that are completely empty or contain only whitespace
+        if [[ "$line" =~ ^[[:space:]]*$ ]]; then
+            continue
+        fi
+
+        # Ensure the line contains '=' before processing
+        if [[ $line != *"="* ]]; then
+            continue
+        fi
+
+        # Extract the key and value
+        key=$(echo "$line" | cut -d'=' -f1)
+        value=$(echo "$line" | cut -d'=' -f2-)
+
+        # Check if the value is enclosed in quotes
+        if [[ ! $value =~ ^\".*\"$ ]]; then
+            # Add to the list of incorrect values
+            incorrect_values+=("$key")
+        fi
+    done < "$input_file"
+
+    # Output results
+    if [ ! ${#incorrect_values[@]} -eq 0 ]; then
+        missing_quotes=1
+        error "Validation of the config file has failed: The following values in the confile file located at \"${input_file}\" are not enclosed in quotes:"
+        printf "\n"
+        echo "---------------------------------------------------------------"
+        for entry in "${incorrect_values[@]}"; do
+            echo "  - $entry"
+        done
+        echo "---------------------------------------------------------------"
+
+    fi
+
+    if [[ "$missing_quotes" == 1 ]] ; then
+        info "[NEXT_STEPS]: Reference the table above and ensure all values in the config file are enclosed in quotes and re-run \"cp4a-airgap-mirroring-images.sh -c ${input_file} \" ."
+        exit 1
+    fi
+}
+
+# Function to validate the config file passed
+# Function checks if all values are filled and to make sure all values are enclosed in quotes
+function validate_config_file(){
+    local input_file=$1
+    check_missing_quotes $input_file
+    local empty_value_tag=0
+    value_empty=`grep '="<Required>"' "${input_file}" | wc -l`  >/dev/null 2>&1
+    if [ $value_empty -ne 0 ] ; then
+        #Extract the parameter name and include it to the error message when the property not defined in the file.
+        parameter_name=$(grep '="<Required>"' "${input_file}" | awk -F'=' '{print $1}'  | tr -d ' ' | paste -sd ',' -)
+        error "Found invalid value(s) \"<Required>\" found for parameter \"$parameter_name\" in the config file located at \"${input_file}\", please input the correct value."
+        empty_value_tag=1
+        exit 1
+    fi
+    success " Validation of config file located at \"$input_file\" successfully completed."
+    printf "\n"
+
+}
+
 
 #function to parse the image-set-config.yaml file
-display_image_set_config_file() {
+function display_image_set_config_file() {
     # Path to your YAML file
     yaml_file=$1
     
@@ -240,13 +315,12 @@ display_image_set_config_file() {
 
 
 #Function to edit the image-set-config.yaml file to keep only the latest channel
-edit_image_set_config_file(){
+function edit_image_set_config_file(){
 	# Define the original YAML file path and the new output file path
 	local original_yaml=$1
 	check_file_exists "$original_yaml" || exit 1
 	cp -f "$original_yaml" "$AIRGAP_FOLDER/image-set-config-backup.yaml" 
 	local new_yaml="$ibm_pak_home/.ibm-pak/data/mirror/$case_name/$case_version/image-set-config-new.yaml"
-	#local new_yaml="/Users/varunsriram/Documents/Work/CloudPak/CodeRepos/cert-kubernetes/image-set-config-new.yaml"
 	# Copy the original file to the new file
 	cp "$original_yaml" "$new_yaml"
 
@@ -266,7 +340,6 @@ edit_image_set_config_file(){
 			break
 		fi
 		
-		#echo "Processing operator $i with catalog $catalog"
 		
 		# Get the number of packages for the current operator
 		j=0
@@ -286,21 +359,17 @@ edit_image_set_config_file(){
 				j=$((j + 1))
 				continue
 			fi
-			
-			#echo "Processing package $package_name in operator $i"
 
 			# Get the channels for the current package
 			channels=$(${YQ_CMD} r "$original_yaml" "mirror.operators[$i].packages[$j].channels")
 			
 			# Check if channels exist
 			if [[ -z "$channels" ]]; then
-				#echo "No channels found for package $package_name in operator $i"
 				continue
 			fi
 			
 			# Extract the last channel from the channels
 			last_channel=$(${YQ_CMD} r "$original_yaml" "mirror.operators[$i].packages[$j].channels[-1].name")
-			#echo "Last channel for package $package_name: $last_channel"
 
 			# Remove all channels and set only the last channel in a proper format
 			${YQ_CMD} w -i "$new_yaml" "mirror.operators[$i].packages[$j].channels.name" ""
@@ -320,11 +389,14 @@ edit_image_set_config_file(){
 
 
 
-# Function to display menu and collect user input
-select_filter_options() {
+# Function to display menu with different patterns that can be deployed and collect user input
+# Multi select menu
+function select_filter_options() {
     while true; do
-        info "Select the CP4BA capabilities for which you would like to mirror images for. Press 'Enter' to finalize selections."
-        
+        info "Select the CP4BA capabilities for which you would like to mirror images for. Press 'Enter' to finalize selections.\n"
+        printf "[NOTE] If Business Automation Insights (BAI) is needed for FileNet Content Manager, Operational Decision Manager, Automation Decision Services, Business Automation Workflow, or Workflow Process Service, you must select option 10"
+        printf "/n"
+
         # Display menu with ticks for selected options
         echo "1) Automation Decision Services $(if [[ ${SELECTED_FILTER_OPTIONS[0]} -eq 1 ]]; then echo '✔'; fi)"
         echo "2) Automation Document Processing $(if [[ ${SELECTED_FILTER_OPTIONS[1]} -eq 1 ]]; then echo '✔'; fi)"
@@ -356,7 +428,7 @@ select_filter_options() {
 }
 
 # Function to build the final filter based on selected capabilities
-build_final_filter() {
+function build_final_filter() {
     IMAGE_MIRROR_FILTER=""
 	temp_values=()
 
@@ -434,7 +506,7 @@ function display_next_steps(){
 	info "${YELLOW_TEXT}- Follow the steps below to install the Cloud Pak catalog and operator instances.${RESET_TEXT}"
 	echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # Using the oc login command, log in to the Red Hat OpenShift Container Platform cluster where you plan to install the Cloud Pak catalog and operator instances. You can identify your specific oc login by clicking the user drop-down menu in the Red Hat OpenShift Container Platform console, then clicking Copy Login Command${RESET_TEXT}"  && step_num=$((step_num + 1))
 	echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # Update the global image pull secret for your Red Hat OpenShift cluster to have authentication credentials in place to pull images from your target registry as specified in the image-content-source-policy.yaml file. For more information, see [https://docs.openshift.com/container-platform/4.12/openshift_images/managing_images/using-image-pull-secrets.html#images-update-global-pull-secret_using-image-pull-secrets]${RESET_TEXT}"  && step_num=$((step_num + 1))
-	info "    NOTE : If there is an existing ImageContentsourcePolicy named ibm-cp-automation on the cluster, then on running the command, it overwrites the existing mirroring configuration due to which all deployments on the cluster are affected. To keep the existing mirroring configuration of the ImageContentsourcePolicy unchanged, you must update the existing ImageContentsourcePolicy manually with the mirroring configuration that is created in the file that is located at ${ICSP_CONFIG}"
+	info "${YELLOW_TEXT}NOTE : If there is an existing ImageContentsourcePolicy named ibm-cp-automation on the cluster, then on running the command, it overwrites the existing mirroring configuration due to which all deployments on the cluster are affected. To keep the existing mirroring configuration of the ImageContentsourcePolicy unchanged, you must update the existing ImageContentsourcePolicy manually with the mirroring configuration that is created in the file that is located at ${ICSP_CONFIG}${RESET_TEXT}"
 	echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT}  Run the following command to create ImageContentsourcePolicy ${RESET_TEXT}# oc apply -f ${ICSP_CONFIG} "  && step_num=$((step_num + 1))
 	echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT}  Verify that the ImageContentsourcePolicy resource is created ${RESET_TEXT}# oc get imageContentSourcePolicy "  && step_num=$((step_num + 1))
 	echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT}  Install the Cloud Pak catalog and operator instances by using the cluster admin script. For more information see [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=icpcoi-option-1-installing-cloud-pak-catalog-operator-instances-by-using-cluster-admin-script-recommended] ${RESET_TEXT}"  && step_num=$((step_num + 1))
@@ -444,7 +516,7 @@ function display_next_steps(){
 }
 
 # function to monitor mirroring
-monitor_mirroring() {
+function monitor_mirroring() {
     local log_file="$AIRGAP_FOLDER_MIRRORING_LOGS/$case_name-$case_version.txt" 
     local max_attempts=100
     local attempt=0
@@ -466,4 +538,86 @@ monitor_mirroring() {
 
     # If loop completes without finding the message, display a final message
     echo "Continue monitoring the logs at $log_file."
+}
+
+# Helper function used to find a file based on a start and end string
+function find_file(){
+    local start_string="$1"
+    local end_string="$2"
+    local folder="$3"
+
+    find "$folder" -maxdepth 1 -type f -name "${start_string}*${end_string}" | head -n 1
+
+}
+
+# Function to update metadata files for staging based dev mode i.e devstaging
+# Only for scenarios when the images are still in staging repository
+
+function modify_metadata_files(){
+    matched_file=$(find_file "ibm-cp-automation" "-airgap-metadata.yaml" "${WORKING_DIRECTORY}/data/cases/$case_name/$case_version")
+    echo "Updating the metadata file $matched_file"
+    ${SED_COMMAND} 's|icr.io/cpopen|cp.stg.icr.io/cp|g' "$matched_file"
+
+    matched_file=$(find_file "ibm-cp-fncm-case" "-airgap-metadata.yaml" "${WORKING_DIRECTORY}/data/cases/$case_name/$case_version")
+    echo "Updating the metadata file $matched_file"
+    ${SED_COMMAND} 's|icr.io/cpopen|cp.stg.icr.io/cp|g' "$matched_file"
+}
+
+
+# Function to update Image set configfile for staging based dev mode
+# IF images are still in staging the image set config file needs to be updated to use staging based catalog sources 
+# also we need to do a skopeo copy the staging image to "oci:///root/<catalog-source-name>" and use that image in the image-set-config yaml file
+function dev_mode_edit_image_set_config_file() {
+    # Step 1: Loop through operators
+    local YAML_FILE=$1
+    count=$(${YQ_CMD} r "$YAML_FILE" 'mirror.operators[*].catalog' | wc -l)
+
+    for i in $(seq 0 $((count - 1))); do
+        catalog=$(${YQ_CMD} r "$YAML_FILE" "mirror.operators[$i].catalog")
+        # For ibm-fncm-catalog or ibm-cp-automation-catalog we need to skopeo copy it and then update the image-set-config yaml
+        if echo "$catalog" | grep -qE "ibm-fncm-catalog|ibm-cp-automation-catalog"; then
+            new_catalog=$(echo "$catalog" | sed 's|icr.io/cpopen|cp.stg.icr.io/cp|')
+            now=$(date +"%Y%m%d%H%M") # this is for a unique image name
+            if echo "$new_catalog" | grep -qE "ibm-fncm-catalog"; then
+                copied_image="oci:///root/ibm-fncm-catalog$now"
+            else
+                copied_image="oci:///root/ibm-cp-automation-catalog$now"
+            fi
+            skopeo copy docker://${new_catalog} $copied_image --all --format v2s2
+            
+            ${YQ_CMD} w -i "$YAML_FILE" "mirror.operators[$i].catalog" "$copied_image"
+        fi
+    done
+
+    # Step 2: Loop through additionalImages and update matching names
+    img_count=$(${YQ_CMD} r "$YAML_FILE" 'mirror.additionalImages[*].name' | wc -l)
+
+    for j in $(seq 0 $((img_count - 1))); do
+        image=$(${YQ_CMD} r "$YAML_FILE" "mirror.additionalImages[$j].name")
+        if echo "$image" | grep -qE "ibm-fncm-catalog|ibm-cp-automation-catalog"; then
+            new_image=$(echo "$image" | sed 's|icr.io/cpopen|cp.stg.icr.io/cp|')
+            ${YQ_CMD} w -i "$YAML_FILE" "mirror.additionalImages[$j].name" "$new_image"
+        fi
+    done
+}
+
+# function that checks if all dev mode related env variables are set
+function check_required_dev_env_vars() {
+  local missing_vars=()
+
+  for var in "$@"; do
+    if [ -z "${!var}" ]; then
+      missing_vars+=("$var")
+    fi
+  done
+
+  if [ ${#missing_vars[@]} -ne 0 ]; then
+    error "All required environment variable(s) for internal airgap mirroring have not be set"
+    printf "\n"
+    echo "Error: The following required environment variable(s) for dev mode are not set:"
+    for var in "${missing_vars[@]}"; do
+      echo "  - $var"
+    done
+    env_present=false
+  fi
 }

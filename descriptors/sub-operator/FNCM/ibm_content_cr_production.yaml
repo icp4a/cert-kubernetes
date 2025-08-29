@@ -18,6 +18,7 @@ metadata:
     app.kubernetes.io/managed-by: ibm-dba-content
     app.kubernetes.io/name: ibm-dba-content
     release: 25.0.0
+    cp4ba.ibm.com/backup-type: mandatory
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
@@ -33,7 +34,7 @@ spec:
 
   ## The optional components to be installed if listed here.
   ## The optional components are: Content Manager Image Services (cmis), css (Content Search Services), es (External Share), tm (Task Manager),
-  ## IBM Enterprise Records (ier) and IBM Content Collector for SAP (iccsap)
+  ## IBM Enterprise Records (ier) , IBM Content Collector for SAP (iccsap) 
   ## NOTE: ier, and iccsap does NOT support integration with ums.
   ## NOTE: es does not work when using Zen and IAM for authentication.
   content_optional_components:
@@ -43,6 +44,7 @@ spec:
     iccsap: false
     ier: false
     tm: false
+    
   shared_configuration:
 
     ## FileNet Content Manager (FNCM) license and possible values are: user, concurrent-user, authorized-user, non-production, and production.
@@ -140,7 +142,7 @@ spec:
 
   ## The beginning section of LDAP configuration for CP4A
   ldap_configuration:
-    ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory"
+    ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory" or "PingDirectory Server"
     lc_selected_ldap_type: "<Required>"
 
     ## The name of the LDAP server to connect
@@ -161,30 +163,30 @@ spec:
     ## The name of the secret that contains the LDAP SSL/TLS certificate.
     lc_ldap_ssl_secret_name: "<Required>"
 
-    ## The LDAP user name attribute. Semicolon-separated list that must include the first RDN user distinguished names. One possible value is "*:uid" for TDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    ## The LDAP user name attribute. Semicolon-separated list that must include the first RDN user distinguished names. One possible value is "*:uid" for both TDS, PDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
     lc_ldap_user_name_attribute: "<Required>"
 
-    ## The LDAP user display name attribute. One possible value is "cn" for TDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    ## The LDAP user display name attribute. One possible value is "cn" for TDS, "uid" for PDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info.
     lc_ldap_user_display_name_attr: "<Required>"
 
     ## The LDAP group base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
     lc_ldap_group_base_dn: "<Required>"
 
-    ## The LDAP group name attribute. One possible value is "*:cn" for TDS and "*:cn" for AD. Refer to Knowledge Center for more info.
+    ## The LDAP group name attribute.  One possible value is "*:cn" for TDS, PDS and AD. Refer to Knowledge Center for more info.
     lc_ldap_group_name_attribute: "*:cn"
 
-    ## The LDAP group display name attribute. One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
+    ## The LDAP group display name attribute.  One possible value for TDS, PDS and AD is "cn". Refer to Knowledge Center for more info.
     lc_ldap_group_display_name_attr: "cn"
 
-    ## The LDAP group membership search filter string. One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS
-    ## and "(&(cn=%v)(objectcategory=group))" for AD.
+    ## The LDAP group membership search filter string.  One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS
+    ## and "(&(cn=%v)(objectcategory=group))" for AD and "(&(cn=%v)(objectClass=groupOfUniqueNames))" for PDS.
     lc_ldap_group_membership_search_filter: "<Required>"
 
-    ## The LDAP group membership ID map. One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
+    ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD and "groupOfUniqueNames:uniquemember" for PDS.
     lc_ldap_group_member_id_map: "<Required>"
 
     ## The User script will uncomment the section needed based on user's input from User script. If you are deploying without the User script,
-    ## uncomment the necessary section (depending if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
+    ## uncomment the necessary section (depending if you are using Active Directory (ad) or Tivoli Directory Service (tds) or PingDirectory Server (pds)) accordingly.
     # ad:
     #   lc_ad_gc_host: "<Required>"
     #   lc_ad_gc_port: "<Required>"
@@ -193,10 +195,13 @@ spec:
     # tds:
     #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+    # pds:
+    #   lc_user_filter: "(&(uid=%v)(objectclass=person))"
+    #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupOfUniqueNames)))"
 
   ## User script should only uncomment this section if External Share if selected as an optional component.
   ## If you are deploying without the User script, uncomment the necessary section (depending
-  ## if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
+  ## if you are using Active Directory (ad) or Tivoli Directory Service (tds) or PingDirectory Server (pds) accordingly.
   # ext_ldap_configuration:
   #   lc_selected_ldap_type: "<Required>"
   #   lc_ldap_server: "<Required>"
@@ -215,7 +220,7 @@ spec:
 
     ## User script will uncomment the section needed based on user's input from User script.
     ## If you are deploying without the User script, uncomment the necessary section (depending
-    ## if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
+    ## if you are using Active Directory (ad) or Tivoli Directory Service (tds) or PingDirectory Server (pds) accordingly.
     # ad:
     ## This is the Global Catalog port for the LDAP
     #   lc_ad_gc_host: "<Required>"
@@ -225,6 +230,9 @@ spec:
     # tds:
     #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+    # pds:
+    #   lc_user_filter: "(&(uid=%v)(objectclass=person))"
+    #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupOfUniqueNames)))"
 
   ## The beginning section of database configuration for CP4A
   datasource_configuration:
@@ -393,6 +401,7 @@ spec:
         add_desktop_is_default: false
         add_desktop_repo_id: "demo_repo1"
         add_desktop_repo_workflow_enable: false
+        
 
 
   ########################################################################

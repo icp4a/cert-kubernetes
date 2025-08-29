@@ -2,7 +2,7 @@ apiVersion: data-protection.isf.ibm.com/v1alpha1
 kind: Backup
 metadata:
   name: <backup name>
-  namespace: ibm-spectrum-fusion-ns
+  namespace: <fusion ns>
   finalizers:
     - backup
   labels:
@@ -14,3 +14,8 @@ spec:
   application: <application name>
   backupPolicy: <backup policy name>
   appCluster: <Cluster CR name only for backups on spoke cluster>
+  recipe:
+    name: <recipe name>
+    namespace: <recipe namespace>
+    apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+    kind: Recipe

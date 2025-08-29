@@ -29,7 +29,7 @@ spec:
     root_ca_secret: icp4a-root-ca
   # trusted_certificate_list: []
   ldap_configuration:
-    # the candidate value is "IBM Security Directory Server" or "Microsoft Active Directory"
+    # the candidate value is "IBM Security Directory Server" or "Microsoft Active Directory" or "PingDirectory Server"
     lc_selected_ldap_type: "IBM Security Directory Server"
     lc_ldap_server: "<Need Value>"
     lc_ldap_port: "389"
@@ -52,11 +52,14 @@ spec:
     tds:
       lc_user_filter: "(&(cn=%v)(objectclass=person))"
       lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+    pds:
+      lc_user_filter: "(&(uid=%v)(objectclass=person))"
+      lc_group_filter: "(&(cn=%v)(objectclass=groupOfUniqueNames))"
 
 ## The following external ldap configuration only needed if External share component is being deployed.
 
   ext_ldap_configuration:
-    # the candidate value is "IBM Security Directory Server" or "Microsoft Active Directory"
+    # the candidate value is "IBM Security Directory Server" or "Microsoft Active Directory" or "PingDirectory Server"
     lc_selected_ldap_type: "IBM Security Directory Server"
     lc_ldap_server: "<Need Value>"
     lc_ldap_port: "389"
@@ -79,6 +82,9 @@ spec:
     tds:
       lc_user_filter: "(&(cn=%v)(objectclass=person))"
       lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+    pds:
+      lc_user_filter: "(&(uid=%v)(objectclass=person))"
+      lc_group_filter: "(&(cn=%v)(objectclass=groupOfUniqueNames))"
   datasource_configuration:
     ## The dc_ssl_enabled parameter is used to support database connection over SSL for DB2/Oracle/PostgreSQL.
    # dc_ssl_enabled: true
@@ -189,7 +195,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -253,7 +259,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -304,7 +310,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -382,7 +388,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
         pull_policy: IfNotPresent
       ## resource
       resources:
@@ -440,7 +446,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
         pull_policy: IfNotPresent
       ## resource
       resources:
@@ -502,7 +508,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
         pull_policy: IfNotPresent
      ## LOGGING FOR WORKLOADS
       log:
@@ -571,7 +577,7 @@ spec:
     # run_as_user: 1000110001
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "25.0.0"
+      tag: "25.0.0-IF001"
       pull_policy: IfNotPresent
       arbitrary_uid_enabled: true
     ## Logging for workloads
@@ -731,6 +737,7 @@ spec:
         add_desktop_is_default: false
         add_desktop_repo_id: "demo_repo1"
         add_desktop_repo_workflow_enable: false
+        
       # - add_desktop_id: "demotest"
       #   add_desktop_name: "icn_desktop_demo"
       #   add_desktop_description: "Just Another desktop"

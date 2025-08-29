@@ -17,6 +17,7 @@ metadata:
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
     release: 25.0.0
+    cp4ba.ibm.com/backup-type: mandatory
 spec:
   appVersion: 25.0.0
 
@@ -53,7 +54,7 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
         pull_policy: IfNotPresent
         # The pull secret list
         # Examples:
@@ -63,7 +64,7 @@ spec:
         pull_secrets: []
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
         pull_policy: IfNotPresent
         # The pull secret list
         # Examples:
@@ -168,7 +169,7 @@ spec:
       ## The default repository is the IBM Entitled Registry.
       repository: cp.icr.io/cp/cp4a/baw/pfs-prod
       ## Process Federation Server image tag
-      tag: "25.0.0"
+      tag: "25.0.0-IF001"
       ## Process Federation Server image pull policy. This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
       # The pull secret list
@@ -363,7 +364,7 @@ spec:
     application_engine:
       workplace_image:
         repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
         pull_policy: IfNotPresent
         # The pull secret list
         # Examples:

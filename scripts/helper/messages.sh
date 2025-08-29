@@ -11,8 +11,6 @@
 #
 ###############################################################################
 ## This files contains various functions that contain messages used in the scripts
-CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 # Import common utilities and environment variables
 # source ${CUR_DIR}/common.sh
 

@@ -171,6 +171,13 @@ function label_all_resources(){
                 info "Secret platform-auth-idp-credentials not present in namespace $namespace. Skipping..."
             fi
 
+            um_namespace_list=$(oc get secret -n $namespace | grep user-mgmt-bootstrap | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " ")
+            if [[ $um_namespace_list != "" ]]; then
+                label_specified_secret $namespace user-mgmt-bootstrap
+            else
+                info "Secret user-mgmt-bootstrap not present in namespace $namespace. Skipping..."
+            fi
+
             #grab default scim credentials
             scim_secret_namespace_list=$(oc get secret -n $namespace | grep platform-auth-scim-credentials | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " ")
             if [[ $scim_secret_namespace_list != "" ]]; then
@@ -302,6 +309,16 @@ function label_all_resources(){
             done
         else
             info "Secret platform-auth-idp-credentials not present in namespace $auth_namespace. Skipping..."
+        fi
+
+        um_namespace_list=$(oc get secret -A | grep user-mgmt-bootstrap | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " ")
+        if [[ $um_namespace_list != "" ]]; then
+            for um_namespace in $um_namespace_list
+            do
+                label_specified_secret $um_namespace user-mgmt-bootstrap
+            done
+        else
+            info "Secret user-mgmt-bootstrap not present in namespace $um_namespace. Skipping..."
         fi
 
         #grab default scim credentials

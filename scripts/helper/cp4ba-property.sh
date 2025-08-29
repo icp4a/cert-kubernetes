@@ -63,7 +63,7 @@ EXT_LDAP_COMMON_CR_MAPPING=("spec.ext_ldap_configuration.lc_selected_ldap_type"
                             "spec.ext_ldap_configuration.lc_ldap_group_membership_search_filter"
                             "spec.ext_ldap_configuration.lc_ldap_group_member_id_map")
 
-COMMENTS_LDAP_PROPERTY=("## The possible values are: \"IBM Security Directory Server\" or \"Microsoft Active Directory\""
+COMMENTS_LDAP_PROPERTY=("## The possible values are: \"IBM Security Directory Server\" or \"Microsoft Active Directory\" or \"PingDirectory Server\""
                         "## The hostname of the LDAP server. (Only a hostname or an IPv4 address is supported for LDAP server. Do NOT specify an IPv6 address for this property.)"
                         "## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc."
                         "## The LDAP base DN.  For example, \"dc=example,dc=com\", \"dc=abc,dc=com\", etc"
@@ -72,13 +72,13 @@ COMMENTS_LDAP_PROPERTY=("## The possible values are: \"IBM Security Directory Se
                         "## Enable SSL/TLS for LDAP communication. Refer to Knowledge Center for more info."
                         "## The name of the secret that contains the LDAP SSL/TLS certificate."
                         "## If enabled LDAP SSL, you need copy the SSL certificate file (named ldap-cert.crt) into this directory. Default value is <LDAP_SSL_CERT_FOLDER>"
-                        "## The LDAP user name attribute. Semicolon-separated list that must include the first RDN user distinguished names. One possible value is \"*:uid\" for TDS and \"user:sAMAccountName\" for AD. Refer to Knowledge Center for more info."
-                        "## The LDAP user display name attribute. One possible value is \"cn\" for TDS and \"sAMAccountName\" for AD. Refer to Knowledge Center for more info."
+                        "## The LDAP user name attribute. Semicolon-separated list that must include the first RDN user distinguished names. One possible value is \"*:uid\" for both TDS,PDS and \"user:sAMAccountName\" for AD. Refer to Knowledge Center for more info."
+                        "## The LDAP user display name attribute. One possible value is \"cn\" for TDS, \"uid\" for PDS and \"sAMAccountName\" for AD. Refer to Knowledge Center for more info."
                         "## The LDAP group base DN.  For example, \"dc=example,dc=com\", \"dc=abc,dc=com\", etc"
-                        "## The LDAP group name attribute.  One possible value is \"*:cn\" for TDS and \"*:cn\" for AD. Refer to Knowledge Center for more info."
-                        "## The LDAP group display name attribute.  One possible value for both TDS and AD is \"cn\". Refer to Knowledge Center for more info."
-                        "## The LDAP group membership search filter string.  One possible value is \"(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))\" for TDS, and \"(&(cn=%v)(objectcategory=group))\" for AD."
-                        "## The LDAP group membership ID map.  One possible value is \"groupofnames:member\" for TDS and \"memberOf:member\" for AD."
+                        "## The LDAP group name attribute.  One possible value is \"*:cn\" for TDS,PDS and AD. Refer to Knowledge Center for more info."
+                        "## The LDAP group display name attribute.  One possible value for both TDS,PDS and AD is \"cn\". Refer to Knowledge Center for more info."
+                        "## The LDAP group membership search filter string.  One possible value is \"(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))\" for TDS, and \"(&(cn=%v)(objectcategory=group))\" for AD and \"(&(cn=%v)(objectClass=groupOfUniqueNames))\" for PDS."
+                        "## The LDAP group membership ID map.  One possible value is \"groupofnames:member\" for TDS and \"memberOf:member\" for AD and \"groupOfUniqueNames:uniquemember\" for PDS."
                        )
 
 AD_LDAP_PROPERTY=("LC_AD_GC_HOST"
@@ -112,6 +112,18 @@ EXT_TDS_LDAP_CR_MAPPING=("spec.ext_ldap_configuration.tds.lc_user_filter"
 
 COMMENTS_TDS_LDAP_PROPERTY=("## One possible value is \"(&(cn=%v)(objectclass=person))\""
                             "## One possible value is \"(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))\"")
+                            
+PDS_LDAP_PROPERTY=("LC_USER_FILTER"
+                  "LC_GROUP_FILTER")
+
+PDS_LDAP_CR_MAPPING=("spec.ldap_configuration.pds.lc_user_filter"
+                    "spec.ldap_configuration.pds.lc_group_filter")
+
+EXT_PDS_LDAP_CR_MAPPING=("spec.ext_ldap_configuration.pds.lc_user_filter"
+                        "spec.ext_ldap_configuration.pds.lc_group_filter")
+
+COMMENTS_PDS_LDAP_PROPERTY=("## One possible value is \"(&(uid=%v)(objectclass=person))\""
+                           "## One possible value is \"(&(cn=%v)(objectclass=groupOfUniqueNames))\"")
 
 # VARIABLES FOR DB PROPERTY FILE.
 # OVERALL PROPERTY for datasource_configuration
@@ -428,3 +440,4 @@ SCIM_CR_MAPPING=("spec.scim_configuration_iam.user_unique_id_attribute"
                         "spec.scim_configuration_iam.group_lastmodified_attribute"
                         "spec.scim_configuration_iam.group_object_class_attribute"
                         "spec.scim_configuration_iam.group_members_attribute")
+

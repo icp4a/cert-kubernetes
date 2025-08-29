@@ -22,11 +22,14 @@ BACKUP="false"
 RESTORE="false"
 APPLICATION="cs-application" 
 BACKUP_POLICY="cs-backup-policy"
-SF_NAMESPACE="ibm-spectrum-fusion-ns"
+SF_NAMESPACE="ibm-fusion"
 BACKUP_STORAGE_LOCATION_NAME="" #name of s3 storage
 ROUTE=""
 OC="oc"
 YQ="yq"
+SINGLETON="false"
+RECIPE_NAME="cpfs-parent-recipe"
+RECIPE_NAMESPACE=""
 
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 . ../cp3pt0-deployment/common/utils.sh
@@ -58,6 +61,7 @@ function print_usage(){
     echo "This script assumes the following:"
     echo "    * At least a Fusion Hub cluster setup with Fusion Backup and Restore Service and CPFS installed."
     echo "    * If 'spoke' selected for --cluster-type, Fusion Backup and Restore Agent Service installed and matching Storageclass to Hub cluster."
+    echo "    * Fusion setup was completed with the fusion-backup-setup.sh script"
     echo ""
     echo "Options:"
     echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH. Can also be set in env.properties."
@@ -68,10 +72,11 @@ function print_usage(){
     echo "   --restore-name                 Optional. Name of restore. It is necessary if --restore is enabled"
     echo "   --target-cluster               Optional. Name of target cluster, required when --cluster-type is set to 'spoke'"
     echo "   --cluster-type                 Necessary. Type of target cluster, either 'spoke' or 'hub'"
-    echo "   --sf-namespace                 Optional. Namespace of IBM Spectrum Fusion Operator. Default is 'ibm-spectrum-fusion-ns'"
+    echo "   --sf-namespace                 Optional. Namespace of IBM Spectrum Fusion Operator. Default is 'ibm-fusion'"
     echo "   --application                  Optional. Name of Fusion Application CR on hub cluster. Default is 'cs-application'"
     echo "   --backup-policy                Optional. Name of Fusion Backup Policy CR on hub cluster. Default is 'cs-backup-policy'"
     echo "   --storage-location             Necessary. Name of Fusion Backup Storage Location CR on hub cluster."
+    echo "   --singleton                    Optional. Use this flag to specify singleton components for backup or restore."
     echo "   -h, --help                     Print usage information"
     echo ""
 }
@@ -130,6 +135,9 @@ function parse_arguments() {
             shift
             BACKUP_STORAGE_LOCATION_NAME=$1
             ;;
+        --singleton)
+            SINGLETON="true"
+            ;;
         -h | --help)
             print_usage
             exit 1
@@ -165,6 +173,12 @@ function prereq() {
     if [[ $BACKUP == "true" ]]; then
         if [[ $BACKUP_NAME == "" ]]; then
             error "Backup name is necessary if --backup parameter is enabled"
+        fi
+        if [[ $SINGLETON == "false" ]]; then
+            RECIPE_NAMESPACE=$OPERATOR_NAMESPACE
+        else
+            RECIPE_NAME="cpfs-singleton-parent-recipe"
+            RECIPE_NAMESPACE=$SF_NAMESPACE
         fi
     elif [[ $RESTORE == "true" ]]; then
         if [[ $RESTORE_NAME == "" ]]; then
@@ -220,13 +234,13 @@ function create_br() {
         sed -i -E "s/<application name>/$APPLICATION/" ./templates/sf-backup.yaml
         sed -i -E "s/<backup policy name>/$BACKUP_POLICY/" ./templates/sf-backup.yaml
         sed -i -E "s/<backup name>/$BACKUP_NAME/" ./templates/sf-backup.yaml
+        sed -i -E "s/<recipe name>/$RECIPE_NAME/" ./templates/sf-backup.yaml
+        sed -i -E "s/<recipe namespace>/$RECIPE_NAMESPACE/" ./templates/sf-backup.yaml
+        sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/sf-backup.yaml
         if [[ $clustertype == "spoke" ]]; then
             sed -i -E "s/<Cluster CR name only for backups on spoke cluster>/$TARGET_CLUSTER/" ./templates/sf-backup.yaml
         else
             ${YQ} -i 'del(.spec.appCluster)' ./templates/sf-backup.yaml || error "Could not remove appCluster field from backup yaml."
-        fi
-        if [[ $SF_NAMESPACE != "ibm-spectrum-fusion-ns" ]]; then
-            ${YQ} -i '.metadata.namesace = "'${SF_NAMESPACE}'"' ./templates/sf-backup.yaml || error "Could not update namespace value to $SF_NAMESPACE in backup yaml."
         fi
 
         ${OC} apply -f ./templates/sf-backup.yaml || error "Failed to apply backup yaml."
@@ -235,25 +249,28 @@ function create_br() {
     fi
     
     if [[ $brtype == "restore.data-protection.isf.ibm.com" ]]; then
-        cp ../velero/spectrum-fusion/templates/sf-restore.yaml ./templates/sf-restore.yaml
+        if [[ $SINGLETON == "false" ]]; then
+            cp ../velero/spectrum-fusion/templates/sf-restore-core.yaml ./templates/sf-restore.yaml
+            info "Editing restore yaml..."
+            sed -i -E "s/<operator_ns>/$OPERATOR_NS/" ./templates/sf-restore.yaml
+            sed -i -E "s/<services_ns>/$SERVICES_NS/" ./templates/sf-restore.yaml
+        else
+            cp ../velero/spectrum-fusion/templates/sf-restore-singleton.yaml ./templates/sf-restore.yaml
+            info "Editing restore yaml..."
+            sed -i -E "s/<lsr_ns>/$LSR_NAMESPACE/" ./templates/sf-restore.yaml
+        fi
 
-        info "Editing restore yaml..."
         sed -i -E "s/<backup storage location name>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/sf-restore.yaml
         sed -i -E "s/<application name>/$APPLICATION/" ./templates/sf-restore.yaml
         sed -i -E "s/<backup policy name>/$BACKUP_POLICY/" ./templates/sf-restore.yaml
         sed -i -E "s/<restore name>/$RESTORE_NAME/" ./templates/sf-restore.yaml
         sed -i -E "s/<backup name>/$BACKUP_NAME/" ./templates/sf-restore.yaml
-        sed -i -E "s/<operator_ns>/$OPERATOR_NS/" ./templates/sf-restore.yaml
-        sed -i -E "s/<services_ns>/$SERVICES_NS/" ./templates/sf-restore.yaml
-        sed -i -E "s/<lsr_ns>/$LSR_NAMESPACE/" ./templates/sf-restore.yaml
+        sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/sf-restore.yaml
 
         if [[ $clustertype == "spoke" ]]; then
             sed -i -E "s/<Cluster CR name only for restores to spoke cluster>/$TARGET_CLUSTER/" ./templates/sf-restore.yaml
         else
             ${YQ} -i 'del(.spec.targetCluster)' ./templates/sf-restore.yaml || error "Could not remove targetCluster field from restore yaml."
-        fi
-        if [[ $SF_NAMESPACE != "ibm-spectrum-fusion-ns" ]]; then
-            ${YQ} -i '.metadata.namesace = "'${SF_NAMESPACE}'"' ./templates/sf-restore.yaml || error "Could not update namespace value to $SF_NAMESPACE in restore yaml."
         fi
 
         ${OC} apply -f ./templates/sf-restore.yaml || error "Failed to apply restore yaml."

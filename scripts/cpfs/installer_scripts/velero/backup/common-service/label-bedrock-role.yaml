@@ -32,5 +32,7 @@ rules:
       - roles
       - rolebindings
       - serviceaccount
+      - ibmusagemeterings
+      - ibmservicemeterdefinitions
       #not necessary for cpd
       #- ibmlicenseservicereporters.operator.ibm.com

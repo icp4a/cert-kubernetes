@@ -3,6 +3,8 @@ apiVersion: networking.k8s.io/v1
 metadata:
   name: egress-ibm-opensearch-operand
   namespace: "opensearchNamespace"
+  labels:
+    component: cpfs3
 spec:
   podSelector: 
     matchLabels:

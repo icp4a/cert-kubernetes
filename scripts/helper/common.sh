@@ -45,6 +45,7 @@ PLAYBACK_REDIS_SSL_CERT_FOLDER=${DB_SSL_CERT_FOLDER}/redis-playback
 ADP_GIT_SSL_CERT_FOLDER=${PROPERTY_FILE_FOLDER}/cert/adp_git
 ADP_CDRA_CERT_FOLDER=${PROPERTY_FILE_FOLDER}/cert/adp_cdra
 
+
 TEMPORARY_PROPERTY_FILE=${TEMP_FOLDER}/.TEMPORARY.property
 LDAP_PROPERTY_FILE=${PROPERTY_FILE_FOLDER}/cp4ba_LDAP.property
 EXTERNAL_LDAP_PROPERTY_FILE=${PROPERTY_FILE_FOLDER}/cp4ba_External_LDAP.property
@@ -52,6 +53,7 @@ EXTERNAL_LDAP_PROPERTY_FILE=${PROPERTY_FILE_FOLDER}/cp4ba_External_LDAP.property
 DB_NAME_USER_PROPERTY_FILE=${PROPERTY_FILE_FOLDER}/cp4ba_db_name_user.property
 DB_SERVER_INFO_PROPERTY_FILE=${PROPERTY_FILE_FOLDER}/cp4ba_db_server.property
 USER_PROFILE_PROPERTY_FILE=${PROPERTY_FILE_FOLDER}/cp4ba_user_profile.property
+
 
 BAW_AUTH_OS_ARR=("BAWDOCS" "BAWDOS" "BAWTOS")
 AEOS=("AEOS")
@@ -75,6 +77,7 @@ DB_SSL_SECRET_FOLDER=${SECRET_FILE_FOLDER}/cp4ba_db_ssl_secret
 LDAP_SSL_SECRET_FOLDER=${SECRET_FILE_FOLDER}/cp4ba_ldap_ssl_secret
 REDIS_SSL_SECRET_FOLDER=${SECRET_FILE_FOLDER}/cp4ba_redis_ssl_secret
 
+
 CP4A_DB_SSL_SECRET_FILE=${DB_SSL_SECRET_FOLDER}/ibm-cp4ba-db-ssl-cert-secret.sh
 CP4A_AE_REDIS_SSL_SECRET_FILE=${REDIS_SSL_SECRET_FOLDER}/ibm-cp4ba-ae-redis-ssl-cert-secret.sh
 CP4A_PLAYBACK_REDIS_SSL_SECRET_FILE=${REDIS_SSL_SECRET_FOLDER}/ibm-cp4ba-playback-redis-ssl-cert-secret.sh
@@ -92,6 +95,7 @@ FNCM_ICC_SECRET_FILE=${FNCM_SECRET_FOLDER}/ibm-fncm-icc-secret.yaml
 FNCM_ICCSAP_SECRET_FILE=${FNCM_SECRET_FOLDER}/ibm-fncm-iccsap-secret.yaml
 FNCM_IER_SECRET_FILE=${FNCM_SECRET_FOLDER}/ibm-fncm-ier-secret.yaml
 FNCM_DB_SSL_SECRET_FILE=${FNCM_SECRET_FOLDER}/ibm-fncm-db-ssl-cert-secret.sh
+
 
 BAN_SECRET_FOLDER=${SECRET_FILE_FOLDER}/ban
 BAN_SECRET_FILE=${BAN_SECRET_FOLDER}/ibm-ban-secret.yaml
@@ -161,33 +165,33 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 CP4BA_RELEASE_BASE="25.0.0"
 # CP4BA_RELEASE_BASE_MAJOR_VERSION is used in certain checks where we used to hardcode to see if a upgrade is not ifix to ifix,change this only for major release
 CP4BA_RELEASE_BASE_MAJOR_VERSION="25.0"
-CP4BA_PATCH_VERSION="GA"
+CP4BA_PATCH_VERSION="IF001"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v25.0.0"
+CP4BA_CSV_VERSION="v25.0.1"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
 CP4BA_CHANNEL_VERSION="v25.0"
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.12.0"
+CS_OPERATOR_VERSION="v4.14.0"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
-CS_CHANNEL_VERSION="v4.12"
+CS_CHANNEL_VERSION="v4.14"
 # CS CHANNEL VERSION that is used in the KC
-CS_CHANNEL_KC="4.12.0"
+CS_CHANNEL_KC="4.14.0"
 # CERT_LICENSE_OPERATOR_VERSION is for checking IBM cert-manager/licensing operator upgrade status, need to update for each IFIX
-CERT_LICENSE_OPERATOR_VERSION="v4.2.13"
+CERT_LICENSE_OPERATOR_VERSION="v4.2.15"
 # CERT_LICENSE_CHANNEL_VERSION is for for IBM cert-manager/licensing script -c option, need to update for each IFIX
 CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
-CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-12-0"
+CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-14-0"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v6.1.3"
+ZEN_OPERATOR_VERSION="v6.2.1"
 # BTS_CHANNEL_VERSION is for for BTS, need to update for each IFIX
 BTS_CHANNEL_VERSION="v3.35"
 # BTS_CATALOG_VERSION is for BTS 3.35.4.
 BTS_CATALOG_VERSION="ibm-bts-operator-catalog-v3-35"
 # REQUIREDVER_BTS is for checking bts operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_BTS="3.35.4"
+REQUIREDVER_BTS="3.35.5"
 # REQUIREDVER_POSTGRESQL is for checking postgresql operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_POSTGRESQL="1.25.1"
+REQUIREDVER_POSTGRESQL="1.25.2"
 # EVENTS_OPERATOR_VERSION is for checking IBM Events operator upgrade status, need to update for each IFIX
 EVENTS_OPERATOR_VERSION="v5.1.2"
 #This is the list where we further restricted the versions that are supported for upgrade to $CP4BA_CSV_VERSION.  
@@ -222,6 +226,15 @@ CP4BA_OPERATOR_LIST="ibm-cp4a-operator ibm-content-operator icp4a-foundation-ope
 
 # CP4BA EDB default instance name
 EDB_INSTANCE_CP4BA_NAME="postgres-cp4ba"
+
+# Becomes true if any SSL certificate validation fails (Used in the validate_ssl_certificates function and it's helper functions)
+SSL_CERT_ERROR_TAG=false
+
+# Becomes true if any required parameters are null or empty (Used in validate_property_file_required_fields)
+MISSING_REQUIRED_PARAMETERS=false
+
+# Global array to store all optional parameter keys
+OPTIONAL_PARAMETERS_LIST=()
 
 # set CLI_CMD var
 if which oc >/dev/null 2>&1; then
@@ -570,22 +583,20 @@ function check_platform_version(){
 }
 
 ## <https://jsw.ibm.com/browse/DBACLD-161428> - Create a common function to check cluster login for all related scripts.
+## <https://jsw.ibm.com/browse/DBACLD-187651> - Simplified check_cluster_login()
 #############################
 # Check Cluster Login
 #############################
 function check_cluster_login() {
     if [[ "$CLI_CMD" == "oc" ]]; then
         oc whoami >/dev/null 2>&1
-        if [ $? -gt 0 ]; then
-            error "Not logged in to a cluster. Please login to a cluster before running this script."
-            exit 1
-        fi
-    elif [[ "$CLI_CMD" == "kubectl" ]]; then
+    else
         kubectl auth whoami >/dev/null 2>&1
-        if [ $? -gt 0 ]; then
-            error "Not logged in to a cluster. Please login to a cluster before running this script."
-            exit 1
-        fi
+    fi
+    
+    if [ $? -gt 0 ]; then
+        error "Not logged in to a cluster. Please login to a cluster before running this script."
+        exit 1
     fi
 }
 
@@ -1145,3 +1156,505 @@ function remove_carriage_returns_from_sql_files() {
         done
     fi
 }
+
+
+# Function that cleans up temporary files created during the execution of a specific script
+# Moved this function to the common.sh so it can be used by cp4a-content-assistant.sh script and cp4a-prerequisites.sh  -> https://jsw.ibm.com/browse/DBACLD-185712
+function clean_up_temp_file(){
+    local files=()
+    files=($(find $PREREQUISITES_FOLDER -name '*.*""'))
+    for item in ${files[*]}
+    do
+        rm -rf $item >/dev/null 2>&1
+    done
+
+    files=($(find $TEMP_FOLDER -name '*.*""'))
+    for item in ${files[*]}
+    do
+        rm -rf $item >/dev/null 2>&1
+    done
+}
+
+# Helper function for (validate_ssl_certificates) to check a single SSL certificate
+# check type -> either certificate or key as the validation command for both are different
+# config_name -> the configuration for which we are doing the check for i.e LDAP or DB etc
+# cert_path -> full cert path including the required name of the cert to check for
+# missing_msg -> display message if the cert is not found
+# invalid_msg -> display message if the cert is invalid
+# valid_msg -> display message if the cert is valid
+function check_ssl_cert() {
+    local check_type="$1"
+    local config_name="$2"
+    local cert_path="$3"
+    local missing_msg="$4"
+    local invalid_msg="$5"
+    local valid_msg="$6"
+
+    
+    if [[ ! -f "$cert_path" ]]; then
+        MISSING_CERTS+=("$config_name|$cert_path")
+        error "$missing_msg"
+    else
+        # If we are checking for a certificate the open ssl command is different from that of private key
+        if [[ "$check_type" == "certificate" ]]; then
+            if openssl x509 -in "$cert_path" -noout -text >/dev/null 2>&1; then
+                success "$valid_msg"
+            else
+                error "$invalid_msg"
+                FAILING_CERTS+=("$config_name|$cert_path")
+            fi
+        else
+            #openssl pkcs8 -in "$key_path" -inform PEM -nocrypt -noout
+            if openssl pkcs8 -in "$cert_path" -inform PEM -nocrypt >/dev/null 2>&1; then
+                success "$valid_msg"
+            else
+                error "$invalid_msg"
+                FAILING_CERTS+=("$config_name|$cert_path")
+            fi
+        fi
+    fi
+    
+}
+
+# Helper function for (validate_ssl_certificates) to print summary of cert check results
+function print_cert_summary() {
+    if [[ ${#MISSING_CERTS[@]} -gt 0 ]]; then
+        error "The following SSL certificates are missing or incorrectly named. Please ensure these files are present and correctly named before proceeding:\n"
+        printf "%-28s | %-80s\n" "Configuration" "Missing Certificate Path"
+        printf -- "-----------------------------------------------------------------------------------------------------------------------------------------------\n"
+        for entry in "${MISSING_CERTS[@]}"; do
+            IFS="|" read -r config path <<< "$entry"
+            printf "%-28s | %-80s\n" "$config" "$path"
+        done
+    fi
+    if [[ ${#FAILING_CERTS[@]} -gt 0 ]]; then
+        error "The following SSL certificates are present but failed validation. Please check the certificate files and replace them if necessary:\n"
+        printf "%-28s | %-80s\n" "Configuration" "Invalid Certificate Path"
+        printf -- "-----------------------------------------------------------------------------------------------------------------------------------------------\n"
+        for entry in "${FAILING_CERTS[@]}"; do
+            IFS="|" read -r config path <<< "$entry"
+            printf "%-28s | %-80s\n" "$config" "$path"
+        done
+    fi
+    if [[ ${#MISSING_CERTS[@]} -gt 0 || ${#FAILING_CERTS[@]} -gt 0 ]]; then
+        error "Resolve the above SSL certificate issues before continuing with the \"generate\" mode of the cp4a-prerequisites.sh script."
+        SSL_CERT_ERROR_TAG=true
+    else
+        success "All required SSL certificates are present and valid."
+        SSL_CERT_ERROR_TAG=false
+        echo
+    fi
+}
+
+# Validates the presence and format of required DB and LDAP SSL certificates.
+# Logs status for each cert, and prints a summary table of any missing or invalid ones before exiting.
+# https://jsw.ibm.com/browse/DBACLD-180201
+function validate_ssl_certificates() {
+    INFO "Checking if all required SSL certificates have been copied and are in a valid format"
+
+    SSL_CERT_ERROR_TAG=false
+
+    MISSING_CERTS=()
+    FAILING_CERTS=()
+
+    # Build the list of DB aliases from DB_SERVER_LIST
+    tmp_db_array=$(prop_db_server_property_file DB_SERVER_LIST)
+    tmp_db_array=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_array")
+    OIFS=$IFS
+    IFS=',' read -ra db_server_array <<< "$tmp_db_array"
+    IFS=$OIFS
+
+    # Read LDAP SSL flag
+    ldap_ssl_enabled=$(prop_ldap_property_file LDAP_SSL_ENABLED | tr '[:upper:]' '[:lower:]')
+
+    # Determine if any DB has SSL enabled
+    db_ssl_any="false"
+    for db_alias in "${db_server_array[@]}"; do
+        flag=$(prop_db_server_property_file "${db_alias}.DATABASE_SSL_ENABLE" | tr '[:upper:]' '[:lower:]')
+        if [[ "$flag" == "true" ]]; then
+            db_ssl_any="true"
+            break
+        fi
+    done
+
+    # Early exit if LDAP is SSL-enabled
+    if [[ "$ldap_ssl_enabled" != "true" ]]; then
+        info "Skipping SSL certificate validation for the selected LDAP, as SSL is not enabled in the current LDAP configuration."
+        #SSL_CERT_ERROR_TAG=false
+    else 
+        # LDAP cert check
+        check_ssl_cert \
+        "certificate" \
+        "LDAP" \
+        "${LDAP_SSL_CERT_FOLDER}/ldap-cert.crt" \
+        "SSL certificate for the LDAP is missing." \
+        "SSL certificate for the LDAP is invalid." \
+        "SSL certificate for the LDAP is valid."
+    fi
+
+    # Early exit if DB is SSL-enabled
+    if [[ "$db_ssl_any" != "true" ]]; then
+        info "Skipping SSL certificate validation for the chosen database, as either SSL is not enabled in the current Database configuration or EDB Postgres (deployed by the CP4BA Operator) has been chosen in the current Database configuration. "
+        #SSL_CERT_ERROR_TAG=false
+    else
+        # DB cert checks
+        for db_alias in "${db_server_array[@]}"; do
+            db_ssl_enabled=$(prop_db_server_property_file "${db_alias}.DATABASE_SSL_ENABLE" |
+            tr '[:upper:]' '[:lower:]')
+            db_type=$(prop_db_server_property_file "${db_alias}.DATABASE_TYPE" |
+            tr '[:upper:]' '[:lower:]')
+            # If the DB type is postgres-edb then we do not check for SSL certificate as there no requirement for it
+            if [[ "$db_type" != "postgresql-edb" ]]; then
+                # IF the DB type is postgresql then the user can have client side SSL enabled or not and if so there are different number of certificates and the naming is also different
+                if [[ "$db_type" == "postgresql" ]]; then
+                    client_server_ssl_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $db_alias.POSTGRESQL_SSL_CLIENT_SERVER)")
+                    client_server_ssl_flag=$(echo $client_server_ssl_flag | tr '[:upper:]' '[:lower:]')
+                    # if the client side SSL is disabled , there is only SSL certificate expected and just like other DBs it must be named db-cert
+                    # The reason for this requirement is when we generate the SSL secrets we have specify the full path and that is hardcoded
+                    if [[ $client_server_ssl_flag == "no" || $client_server_ssl_flag == "false" || $client_server_ssl_flag == "" || -z $client_server_ssl_flag ]]; then
+                        check_ssl_cert \
+                        "certificate" \
+                        "Database Server - $db_alias" \
+                        "${DB_SSL_CERT_FOLDER}/${db_alias}/db-cert.crt" \
+                        "SSL certificate for Database server \"$db_alias\" is missing." \
+                        "SSL certificate for Database server \"$db_alias\" is invalid." \
+                        "SSL certificate for Database server \"$db_alias\" is valid."
+                    # if the client side SSL is enabled , there 3 certificates are expected client.key, client.crt and root.crt
+                    # The reason for this requirement is when we generate the SSL secrets we have specify the full path and that is hardcoded
+                    else
+                        check_ssl_cert \
+                        "certificate" \
+                        "Database Server - $db_alias" \
+                        "${DB_SSL_CERT_FOLDER}/${db_alias}/client.crt" \
+                        "Client SSL certificate for Database server \"$db_alias\" is missing." \
+                        "Client SSL certificate for Database server \"$db_alias\" is invalid." \
+                        "Client SSL certificate for Database server \"$db_alias\" is valid."
+
+                        check_ssl_cert \
+                        "key" \
+                        "Database Server - $db_alias" \
+                        "${DB_SSL_CERT_FOLDER}/${db_alias}/client.key" \
+                        "Client Key for Database server \"$db_alias\" is missing." \
+                        "Client Key for Database server \"$db_alias\" is invalid." \
+                        "Client Key for Database server \"$db_alias\" is valid."
+
+                        check_ssl_cert \
+                        "certificate" \
+                        "Database Server - $db_alias" \
+                        "${DB_SSL_CERT_FOLDER}/${db_alias}/root.crt" \
+                        "SSL certificate for Database server \"$db_alias\" is missing." \
+                        "SSL certificate for Database server \"$db_alias\" is invalid." \
+                        "SSL certificate for Database server \"$db_alias\" is valid."
+                    fi
+                # For other DB types other than postgres and postgres-edb
+                else
+                    check_ssl_cert \
+                    "certificate" \
+                    "Database Server - $db_alias" \
+                    "${DB_SSL_CERT_FOLDER}/${db_alias}/db-cert.crt" \
+                    "SSL certificate for Database server \"$db_alias\" is missing." \
+                    "SSL certificate for Database server \"$db_alias\" is invalid." \
+                    "SSL certificate for Database server \"$db_alias\" is valid."
+                fi
+            fi
+        done
+    fi
+
+
+
+    # External PostgreSQL cert checks for IM, ZEN, BTS
+    for ext_db in IM ZEN BTS; do
+        flag_var="EXTERNAL_POSTGRESDB_FOR_${ext_db}_FLAG"
+        external_flag=$(prop_tmp_property_file "$flag_var" \
+                        | tr -d '"' \
+                        | tr '[:upper:]' '[:lower:]')
+
+        # If the flag is true, we must have a valid cert
+        # External postgres DB for BTS/IM/ZEN if enabled should have three certs root.crt, client.crt and client.key
+        if [[ "$external_flag" == "true" ]]; then
+
+            cert_folder_var="${ext_db}_DB_SSL_CERT_FOLDER"
+            cert_folder="${!cert_folder_var}"
+            server_cert_path="${cert_folder}/root.crt"
+            clientkey_cert_path="${cert_folder}/client.key"
+            client_cert_path="${cert_folder}/client.crt"
+
+            check_ssl_cert \
+            "certificate" \
+            "External Postgres for $ext_db" \
+            "$server_cert_path" \
+            "SSL certificate for the external database to be used by $ext_db is missing." \
+            "SSL certificate for the external database to be used by $ext_db is invalid." \
+            "SSL certificate for the external database to be used by $ext_db is valid."
+            
+            check_ssl_cert \
+            "key" \
+            "External Postgres for $ext_db" \
+            "$clientkey_cert_path" \
+            "Client Key for the external database to be used by $ext_db is missing." \
+            "Client Key for the external database to be used by $ext_db is invalid." \
+            "Client Key for the external database to be used by $ext_db is valid."
+            
+            check_ssl_cert \
+            "certificate" \
+            "External Postgres for $ext_db" \
+            "$client_cert_path" \
+            "Client SSL certificate for the external database to be used by $ext_db is missing." \
+            "Client SSL certificate for the external database to be used by $ext_db is invalid." \
+            "Client SSL certificate for the external database to be used by $ext_db is valid."
+
+        else
+            info "Skipping SSL certificate validation for external Postgres for ${ext_db}, as external Postgres for ${ext_db} is not enabled in the current setup."
+        fi
+    done
+
+    
+
+    print_cert_summary
+}
+
+
+# Fixes: https://jsw.ibm.com/browse/DBACLD
+# Validates that all required fields in a property file have valid values.
+# Marks all entries in "OPTIONAL_PARAMETERS_LIST" as optional by appending them to the TEMPORARY_PROPERTY_FILE under "OPTIONAL_PARAMETERS:"
+# These optional parameters are skipped in validate_property_file_required_fields()
+function mark_optional() {
+  if grep -q '^OPTIONAL_PARAMETERS:' "$TEMPORARY_PROPERTY_FILE"; then
+    for key in "${OPTIONAL_PARAMETERS_LIST[@]}"; do
+      sed "/^OPTIONAL_PARAMETERS:/ s|$|,${key}|" "$TEMPORARY_PROPERTY_FILE" > "$TEMPORARY_PROPERTY_FILE.tmp" && 
+      mv "$TEMPORARY_PROPERTY_FILE.tmp" "$TEMPORARY_PROPERTY_FILE"
+    done
+  else
+    local joined_keys
+    joined_keys=$(printf '%s,' "${OPTIONAL_PARAMETERS_LIST[@]}")
+    joined_keys=${joined_keys%,}
+    printf 'OPTIONAL_PARAMETERS:%s\n' "$joined_keys" >> "$TEMPORARY_PROPERTY_FILE"
+  fi
+}
+
+# Empty values, single commas, {Base64}, and {xor} are considered invalid.
+# For comma-separated values, each part must be non-empty.
+function validate_property_file_required_fields() {
+
+    local property_file="$1"
+
+    # Load optional parameters from file
+    local optional_line
+    optional_line=$(grep '^OPTIONAL_PARAMETERS:' "$TEMPORARY_PROPERTY_FILE" | sed 's/^OPTIONAL_PARAMETERS://')
+    
+    # Split into array
+    local OPTIONAL_PARAMETERS=()
+    if [[ -n "$optional_line" ]]; then
+        local IFS=','
+        for param in $optional_line; do
+            OPTIONAL_PARAMETERS+=("$param")
+        done
+    fi
+
+    # Find all non-comment, non-blank property keys that are empty and not optional
+    local missing_required=()
+
+    while IFS='=' read -r key value; do
+        # Remove whitespace and quotes
+        key=$(echo "$key" | sed -e 's/^ *//' -e 's/ *$//')
+        value=$(echo "$value" | sed -e 's/^ *//' -e 's/"//g' -e 's/ *$//')
+
+        # Skip comments and blank lines
+        [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
+
+        # Skip if key is in OPTIONAL_PARAMETERS
+        local is_optional=false
+        for optional_param in "${OPTIONAL_PARAMETERS[@]}"; do
+            if [[ "$optional_param" == "$key" ]]; then
+                is_optional=true
+                break
+            fi
+        done
+        
+        if [[ "$is_optional" == true ]]; then
+            continue
+        fi
+
+        # Fail early if value is <Required>, <youruser1>, <yourpassword>
+        if [[ "$value" == "<Required>" || "$value" == "<youruser1>" || "$value" == "<yourpassword>" ]]; then
+            MISSING_REQUIRED_PARAMETERS=true
+            break
+        fi
+
+        # Consider as empty: empty, ",...", "...,", "{Base64}", or "{xor}" (case-insensitive, with or without quotes, and only if value is exactly those tokens)
+        # Also, if value contains commas, any empty or whitespace only entry is invalid
+        #val_lc="${value,,}"
+        val_lc=$(echo "$value" | tr '[:upper:]' '[:lower:]')
+        local invalid=0
+        if [[ -z "$val_lc" || "$val_lc" == "," || "$val_lc" == "{base64}" || "$val_lc" == "{xor}" ]]; then
+            invalid=1
+        elif [[ "$value" == *","* ]]; then
+            local IFS=','
+            local parts=()
+            for part in $value; do
+                parts+=("$part")
+            done
+            for part in "${parts[@]}"; do
+                local part_trimmed="${part}"
+                # Trim whitespace using parameter expansion
+                part_trimmed="${part_trimmed#"${part_trimmed%%[![:space:]]*}"}"
+                part_trimmed="${part_trimmed%"${part_trimmed##*[![:space:]]}"}"
+                if [[ -z "$part_trimmed" ]]; then
+                    invalid=1
+                    break
+                fi
+            done
+        fi
+
+        if [[ $invalid -eq 1 ]]; then
+            missing_required+=("$key")
+        fi
+    done < "$property_file"
+
+    if [[ "$MISSING_REQUIRED_PARAMETERS" != true ]]; then
+        if (( ${#missing_required[@]} )); then
+            local uniq_missing=()
+            local temp_file="/tmp/validate_temp.$$"
+            printf "%s\n" "${missing_required[@]}" | sort -u > "$temp_file"
+            while IFS= read -r line; do
+                uniq_missing+=("$line")
+            done < "$temp_file"
+            rm -f "$temp_file"
+            
+            error "The following required properties are missing values in $property_file:"
+            INFO "Parameter Name"
+            for param in "${uniq_missing[@]}"; do
+                printf "$param\n"
+            done
+            error "Please provide a non-empty value for each of the above parameters."
+            MISSING_REQUIRED_PARAMETERS=true
+        else
+            success "All required properties in $property_file have valid values."
+        fi
+    fi
+}
+
+# Function that checks if there are any missing quotes in any property files after the user updates the property files
+# Moved this function to the common.sh so it can be used by cp4a-content-assistant.sh script and cp4a-prerequisites.sh  -> https://jsw.ibm.com/browse/DBACLD-185712
+function check_missing_quotes(){
+    missing_quotes=0
+    property_files=("${USER_PROFILE_PROPERTY_FILE}" "${DB_SERVER_INFO_PROPERTY_FILE}" "${DB_NAME_USER_PROPERTY_FILE}" "${LDAP_PROPERTY_FILE}" "${EXTERNAL_LDAP_PROPERTY_FILE}")
+    for input_file in "${property_files[@]}"; do
+        # Check if the property file exists
+        if [ ! -f "$input_file" ]; then
+            continue
+        fi
+        #<https://jsw.ibm.com/browse/DBACLD-170488> Remove the return character that sometimes gets added on a linux machine
+        remove_return_characters "$input_file"
+        # Array to store incorrect entries
+        incorrect_values=()
+
+        while IFS= read -r line || [ -n "$line" ]; do
+            # Skip comment lines or empty lines
+            if [[ $line =~ ^[[:space:]]*# ]] || [[ -z $line ]]; then
+                continue
+            fi
+            
+            # Skip lines that are completely empty or contain only whitespace
+            if [[ "$line" =~ ^[[:space:]]*$ ]]; then
+                continue
+            fi
+
+            # Ensure the line contains '=' before processing
+            if [[ $line != *"="* ]]; then
+                continue
+            fi
+
+            # Extract the key and value
+            key=$(echo "$line" | cut -d'=' -f1)
+            value=$(echo "$line" | cut -d'=' -f2-)
+
+            # Check if the value is enclosed in quotes
+            if [[ ! $value =~ ^\".*\"$ ]]; then
+                # Add to the list of incorrect values
+                incorrect_values+=("$key")
+            fi
+        done < "$input_file"
+
+        # Output results
+        if [ ! ${#incorrect_values[@]} -eq 0 ]; then
+            missing_quotes=1
+            error "Validation failed: The following values in the property file located at \"${input_file}\" are not enclosed in quotes:"
+            printf "\n"
+            echo "---------------------------------------------------------------"
+            for entry in "${incorrect_values[@]}"; do
+                echo "  - $entry"
+            done
+            echo "---------------------------------------------------------------"
+
+        fi
+    done
+    if [[ "$missing_quotes" == 1 ]] ; then
+        info "[NEXT_STEPS]: Reference the table above and ensure all values in all property files are enclosed in quotes and re-run cp4a-prerequisites.sh script in generate mode."
+        exit 1
+    fi
+}
+
+## -- https://jsw.ibm.com/browse/DBACLD-172803 - Function created to improve code
+# Function to check for unfilled <Required> parameters, takes two arguments:
+# 1) The style of <Required> filed, e.g. {Base}<Required>, {xor}<Required>
+# 2) The property file name to check.
+# Moved this function to the common.sh so it can be used by cp4a-content-assistant.sh script and cp4a-prerequisites.sh  -> https://jsw.ibm.com/browse/DBACLD-185712
+
+function check_required_values(){
+    required_field=$1
+    property_file=$2
+    search_text="=\"${required_field}\""
+    value_empty=$(grep "${search_text}" "${property_file}" | wc -l)
+    if [ $value_empty -ne 0 ] ; then
+        #Extract ALL the parameter names and include them in a comma separated list to the error message when the parameters are not properly filled out.
+        parameter_name=$(grep "${search_text}" "${property_file}" | awk -F'=' '{print $1}'  | tr -d ' ' | paste -sd ',' -)
+        error "Found invalid value(s) \"$required_field\" for parameter \"$parameter_name\" in property file \"${property_file}\", please input the correct value."
+        empty_value_tag=1
+    fi
+}
+
+# Function that generates the create_secret.sh script
+function generate_create_secret_script(){
+    local files=()
+    local CREATE_SECRET_SCRIPT_FILE_TMP=$TEMP_FOLDER/create_secret.sh
+    > ${CREATE_SECRET_SCRIPT_FILE_TMP}
+    > ${CREATE_SECRET_SCRIPT_FILE}
+
+    # Check if secret_template folder is created
+    if [ -d $SECRET_FILE_FOLDER ]; then
+        files=($(find $SECRET_FILE_FOLDER -name '*.yaml'))
+
+        for item in ${files[*]}
+        do
+            echo "echo \"****************************************************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+            echo "echo \"******************************* START **************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+            echo "echo \"[INFO] Applying YAML template file:$item\"">> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+            echo "kubectl apply -f \"$item\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+            echo "echo \"******************************** END ***************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+            echo "echo \"****************************************************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+            echo "printf \"\\n\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+            echo "" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+        done
+
+        files=($(find $SECRET_FILE_FOLDER -name '*.sh'))
+        
+        for item in ${files[*]}
+        do
+            echo "echo \"****************************************************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+            echo "echo \"******************************* START **************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+            echo "echo \"[INFO] Executing shell script:$item\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+            echo "$item" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+            echo "echo \"******************************** END ***************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+            echo "echo \"****************************************************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+            echo "printf \"\\n\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+            echo "" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+        done
+        ${COPY_CMD} -rf ${CREATE_SECRET_SCRIPT_FILE_TMP} ${CREATE_SECRET_SCRIPT_FILE}
+        chmod 755 $CREATE_SECRET_SCRIPT_FILE
+    else
+        success "No secret is needed for the selected configuration. Skipping this step."
+        rm -f $CREATE_SECRET_SCRIPT_FILE
+    fi  
+}
+

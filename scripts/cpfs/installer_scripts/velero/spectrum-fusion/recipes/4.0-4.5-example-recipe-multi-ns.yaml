@@ -32,7 +32,7 @@ spec:
       includeClusterResources: true
       includedResourceTypes:
         - customresourcedefinitions.apiextensions.k8s.io
-      name: cert-manager-crd
+      name: cert-manager-crds
       type: resource
     - labelSelector: foundationservices.cloudpak.ibm.com=licensing
       name: licensing-resources
@@ -88,6 +88,11 @@ spec:
         - subscriptions.operators.coreos.com
       labelSelector: foundationservices.cloudpak.ibm.com=singleton-subscription
       name: singleton-subscriptions
+      type: resource
+    - includedResourceTypes:
+        - subscriptions.operators.coreos.com
+      labelSelector: foundationservices.cloudpak.ibm.com=singleton-subscription
+      name: cert-manager-subscription
       type: resource
     - includeClusterResources: true
       includedResourceTypes:
@@ -369,15 +374,15 @@ spec:
         - group: pull-secret
         - group: common-services-catalogs
         - group: common-services-operatorgroups
+        - group: cert-manager-subscription
+        - group: cert-manager-resources
         - group: common-services-configmaps
         - group: commonservices-crd
         - group: commonservice-cr
         - group: nss-resources
         - group: cs-operator-permissions
         - group: singleton-subscriptions
-        - group: cert-manager-resources
         - group: common-services-subscriptions
-        - group: cert-manager-workload-resources
         - group: operand-resources
         - group: odlm-resources
         - group: licensing-resources
@@ -390,11 +395,15 @@ spec:
         - group: ow-pull-secret
         - group: common-services-catalogs
         - group: common-services-operatorgroups
-        - group: cert-manager-crd
-        - group: singleton-subscriptions
+        - group: cert-manager-crds
+        - group: cert-manager-workload-resources
+        - group: cert-manager-subscription
         - hook: cert-manager-operator-check/podReady
         - hook: cert-manager-webhook-check/podReady
-        - group: cert-manager-workload-resources
+        - group: singleton-subscriptions
+        - group: common-services-configmaps
+        - group: commonservice-crd
+        - group: commonservice-cr
         - group: licensing-resources
         # restore common services
         - group: common-services-configmaps

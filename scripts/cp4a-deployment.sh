@@ -4,7 +4,7 @@
 #
 # Licensed Materials - Property of IBM
 #
-# (C) Copyright IBM Corp. 2024. All Rights Reserved.
+# (C) Copyright IBM Corp. 2024, 2025. All Rights Reserved.
 #
 # US Government Users Restricted Rights - Use, duplication or
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -69,7 +69,7 @@ function parse_arguments() {
                 echo -n
             else
                 echo -e "Provide a valid argument for -m: [upgradeOperator] or [upgradeOperatorStatus] or [upgradeDeployment] or [upgradeDeploymentStatus]"
-                exit -1
+                exit 1
             fi
             ;;
         -n)
@@ -82,15 +82,15 @@ function parse_arguments() {
             case "$TARGET_PROJECT_NAME" in
             "")
                 echo -e "\x1B[1;31mEnter a valid namespace name, namespace name can not be blank\x1B[0m"
-                exit -1
+                exit 1
                 ;;
             "openshift"*)
                 echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
-                exit -1
+                exit 1
                 ;;
             "kube"*)
                 echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
-                exit -1
+                exit 1
                 ;;
             *)
                 # Check cluster login
@@ -287,7 +287,7 @@ function prompt_license(){
         echo -e "\x1B[1;31mIMPORTANT: Review the IBM Cloud Pak for Business Automation license information here: \n\x1B[0m"
         echo -e "\x1B[1;31mhttps://www.ibm.com/support/customer/csol/terms/?id=L-LDYZ-7V4YJ4&lc=en\n\x1B[0m"
         echo -e "\x1B[1mIf you are selecting BAW capabilities, please refer to the additional license agreement here: \n\x1B[0m"
-        echo -e "\x1B[1;31mhttps://www.ibm.com/support/customer/csol/terms/?id=L-FWZS-PUAT9S\n\x1B[0m"
+        echo -e "\x1B[1;31mhttps://www.ibm.com/support/customer/csol/terms/?id=L-PMMB-HLZTES\n\x1B[0m"
         INSTALL_BAW_ONLY="No"
     fi
 
@@ -300,7 +300,7 @@ function prompt_license(){
         fi
         if  [[ $CP4BA_LICENSE_ACCEPT == "Accept" || $CP4BA_LICENSE_ACCEPT == "accept" || $CP4BA_LICENSE_ACCEPT == "ACCEPT"   ]]; then
             ans='Yes'
-            IBM_LICENS='Accept'
+            IBM_LICENSE='Accept'
         else
             read -rp "" ans
         fi
@@ -337,7 +337,7 @@ function prompt_license(){
                     esac
                 done
             echo -e "Starting to Install the Cloud Pak for Business Automation Operator...\n"
-            IBM_LICENS="Accept"
+            IBM_LICENSE="Accept"
             validate_cli
             break
             ;;
@@ -3908,7 +3908,7 @@ function select_ldap_type(){
     printf "\n"
     COLUMNS=12
     echo -e "\x1B[1mWhat is the LDAP type that is used for this deployment? \x1B[0m"
-    options=("Microsoft Active Directory" "IBM Tivoli Directory Server / Security Directory Server")
+    options=("Microsoft Active Directory" "IBM Tivoli Directory Server / Security Directory Server" "PingDirectory Server")
     PS3='Enter a valid option [1 to 2]: '
     select opt in "${options[@]}"
     do
@@ -3919,6 +3919,10 @@ function select_ldap_type(){
                 ;;
             "IBM Tivoli"*)
                 LDAP_TYPE="TDS"
+                break
+                ;;
+            "PingDirectory Server")
+                LDAP_TYPE="PDS"
                 break
                 ;;
             *) echo "invalid option $REPLY";;
@@ -3933,8 +3937,10 @@ function set_ldap_type_foundation(){
 
         if [[ "$LDAP_TYPE" == "AD" ]]; then
             content_start="$(grep -n "ad:" ${CP4A_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
-        else
+        elif [[ "$LDAP_TYPE" == "TDS" ]]; then
             content_start="$(grep -n "tds:" ${CP4A_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
+        elif [[ "$LDAP_TYPE" == "PDS" ]]; then
+            content_start="$(grep -n "pds:" ${CP4A_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
         fi
         content_stop="$(tail -n +$content_start < ${CP4A_PATTERN_FILE_TMP} | grep -n "lc_group_filter:" | head -n1 | cut -d: -f1)"
         content_stop=$(( $content_stop + $content_start - 1))
@@ -3948,14 +3954,15 @@ function set_ldap_type_content_pattern(){
     if [[ $DEPLOYMENT_TYPE == "production" ]] ;
     then
         ${COPY_CMD} -rf ${CONTENT_PATTERN_FILE_BAK} ${CONTENT_PATTERN_FILE_TMP}
-
         if [[ "$LDAP_TYPE" == "AD" ]]; then
+            content_start="$(grep -n "## The User script will uncomment" ${CONTENT_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
+        elif [[ "$LDAP_TYPE" == "TDS" ]]; then
             content_start="$(grep -n "## The User script will uncomment" ${CONTENT_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
         else
             content_start="$(grep -n "## The User script will uncomment" ${CONTENT_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
         fi
         content_stop="$(tail -n +$content_start < ${CONTENT_PATTERN_FILE_TMP} | grep -n "lc_group_filter:" | head -n1 | cut -d: -f1)"
-        content_stop=$(( $content_stop + $content_start + 2))
+        content_stop=$(( $content_stop + $content_start + 5))
         vi ${CONTENT_PATTERN_FILE_TMP} -c ':'"${content_start}"','"${content_stop}"'d' -c ':wq' >/dev/null 2>&1
 
         ${COPY_CMD} -rf ${CONTENT_PATTERN_FILE_TMP} ${CONTENT_PATTERN_FILE_BAK}
@@ -3968,6 +3975,8 @@ function set_ldap_type_adp_pattern(){
         ${COPY_CMD} -rf ${ARIA_PATTERN_FILE_BAK} ${ARIA_PATTERN_FILE_TMP}
 
         if [[ "$LDAP_TYPE" == "AD" ]]; then
+            content_start="$(grep -n "## The User script will uncomment" ${ARIA_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
+        elif [[ "$LDAP_TYPE" == "TDS" ]]; then
             content_start="$(grep -n "## The User script will uncomment" ${ARIA_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
         else
             content_start="$(grep -n "## The User script will uncomment" ${ARIA_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
@@ -3987,8 +3996,10 @@ function set_ldap_type_workstreams_pattern(){
 
         if [[ "$LDAP_TYPE" == "AD" ]]; then
             content_start="$(grep -n "ad:" ${WORKSTREAMS_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
-        else
+        elif [[ "$LDAP_TYPE" == "TDS" ]]; then
             content_start="$(grep -n "tds:" ${WORKSTREAMS_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
+        elif [[ "$LDAP_TYPE" == "PDS" ]]; then
+            content_start="$(grep -n "pds:" ${WORKSTREAMS_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
         fi
         content_stop="$(tail -n +$content_start < ${WORKSTREAMS_PATTERN_FILE_TMP} | grep -n "lc_group_filter:" | head -n1 | cut -d: -f1)"
         content_stop=$(( $content_stop + $content_start - 1))
@@ -4005,8 +4016,10 @@ function set_ldap_type_workflow_pattern(){
 
         if [[ "$LDAP_TYPE" == "AD" ]]; then
             content_start="$(grep -n "ad:" ${WORKFLOW_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
-        else
+        elif [[ "$LDAP_TYPE" == "TDS" ]]; then
             content_start="$(grep -n "tds:" ${WORKFLOW_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
+        elif [[ "$LDAP_TYPE" == "PDS" ]]; then
+            content_start="$(grep -n "pds:" ${WORKFLOW_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
         fi
         content_stop="$(tail -n +$content_start < ${WORKFLOW_PATTERN_FILE_TMP} | grep -n "lc_group_filter:" | head -n1 | cut -d: -f1)"
         content_stop=$(( $content_stop + $content_start - 1))
@@ -4023,8 +4036,10 @@ function set_ldap_type_ww_pattern(){
 
         if [[ "$LDAP_TYPE" == "AD" ]]; then
             content_start="$(grep -n "ad:" ${WW_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
-        else
+        elif [[ "$LDAP_TYPE" == "TDS" ]]; then
             content_start="$(grep -n "tds:" ${WW_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
+        else
+            content_start="$(grep -n "pds:" ${WW_PATTERN_FILE_TMP} | head -n 1 | cut -d: -f1)"
         fi
         content_stop="$(tail -n +$content_start < ${WW_PATTERN_FILE_TMP} | grep -n "lc_group_filter:" | head -n1 | cut -d: -f1)"
         content_stop=$(( $content_stop + $content_start - 1))
@@ -4074,9 +4089,12 @@ function set_external_share_content_pattern(){
                 if [[ "$LDAP_TYPE" == "AD" ]]; then
                     # content_start="$(grep -n "ad:" ${CONTENT_PATTERN_FILE_TMP} | awk 'NR==2{print $1}' | cut -d: -f1)"
                     content_start="$(grep -n "ad:" ${CONTENT_PATTERN_FILE_TMP} | cut -d: -f1)"
-                else
+                elif [[ "$LDAP_TYPE" == "TDS" ]]; then
                     # content_start="$(grep -n "tds:" ${CONTENT_PATTERN_FILE_TMP} | awk 'NR==2{print $1}' | cut -d: -f1)"
                     content_start="$(grep -n "tds:" ${CONTENT_PATTERN_FILE_TMP} | cut -d: -f1)"
+                elif [[ "$LDAP_TYPE" == "PDS" ]]; then
+                    # content_start="$(grep -n "pds:" ${CONTENT_PATTERN_FILE_TMP} | awk 'NR==2{print $1}' | cut -d: -f1)"
+                    content_start="$(grep -n "pds:" ${CONTENT_PATTERN_FILE_TMP} | cut -d: -f1)"
                 fi
             elif [[ $DEPLOYMENT_TYPE == "production" && $DEPLOYMENT_WITH_PROPERTY == "Yes" ]]; then
                 tmp_ldap_type="$(prop_ext_ldap_property_file LDAP_TYPE)"
@@ -4087,8 +4105,11 @@ function set_external_share_content_pattern(){
                 elif [[ $tmp_ldap_type == "IBM Security Directory Server" ]]; then
                     # content_start="$(grep -n "tds:" ${CONTENT_PATTERN_FILE_TMP} | awk 'NR==2{print $1}' | cut -d: -f1)"
                     content_start="$(grep -n "tds:" ${CONTENT_PATTERN_FILE_TMP} | cut -d: -f1)"
+                elif [[ $tmp_ldap_type == "PingDirectory Server" ]]; then
+                    # content_start="$(grep -n "pds:" ${CONTENT_PATTERN_FILE_TMP} | awk 'NR==2{print $1}' | cut -d: -f1)"
+                    content_start="$(grep -n "pds:" ${CONTENT_PATTERN_FILE_TMP} | cut -d: -f1)"
                 else
-                    fail "The value for \"LDAP_TYPE\" in the property file \"${EXTERNAL_LDAP_PROPERTY_FILE}\" is not valid. The possible values are: \"IBM Security Directory Server\" or \"Microsoft Active Directory\""
+                    fail "The value for \"LDAP_TYPE\" in the property file \"${EXTERNAL_LDAP_PROPERTY_FILE}\" is not valid. The possible values are: \"IBM Security Directory Server\" or \"Microsoft Active Directory\" or \"PingDirectory Server\""
                     exit 1
                 fi
             fi
@@ -4605,6 +4626,9 @@ function input_information(){
         elif [[ "$existing_ldap_type" == "IBM Security Directory Server" ]]
         then
             LDAP_TYPE="TDS"
+        elif [[ "$existing_ldap_type" == "PingDirectory Server" ]]
+        then
+            LDAP_TYPE="PDS"
         fi
         existing_docker_reg_server=`cat $CP4A_EXISTING_BAK | ${YQ_CMD} r - spec.shared_configuration.sc_image_repository`
         if [[ "$existing_docker_reg_server" == *"icr.io"* ]]; then
@@ -4658,7 +4682,7 @@ function input_information(){
         fi
     fi
     if [[ ! (" ${PATTERNS_CR_SELECTED[@]} " =~ "content" && "${#PATTERNS_CR_SELECTED[@]}" -eq "1") ]]; then
-        if [[ $IBM_LICENS == "Accept" ]]; then
+        if [[ $IBM_LICENSE == "Accept" ]]; then
             ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ibm_license "accept"
         else
             ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ibm_license ""
@@ -5066,7 +5090,7 @@ function merge_pattern(){
     done
 }
 
-function merge_optional_components(){
+function merge_optional_components(){    
     # ${COPY_CMD} -rf ${CP4A_PATTERN_FILE_BAK} ${CP4A_PATTERN_FILE_TMP}
     for item in "${OPTIONAL_COMPONENT_DELETE_LIST[@]}"; do
         while true; do
@@ -7683,11 +7707,17 @@ function sync_property_into_final_cr(){
         for i in "${!AD_LDAP_CR_MAPPING[@]}"; do
             ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${AD_LDAP_CR_MAPPING[i]}" "\"$(prop_ldap_property_file ${AD_LDAP_PROPERTY[i]})\""
         done
-    else
+    elif [[ $LDAP_TYPE == "TDS" ]]; then
         for i in "${!TDS_LDAP_CR_MAPPING[@]}"; do
             ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${TDS_LDAP_CR_MAPPING[i]}" "\"$(prop_ldap_property_file ${TDS_LDAP_PROPERTY[i]})\""
         done
+
+    elif [[ $LDAP_TYPE == "PDS" ]]; then
+        for i in "${!PDS_LDAP_CR_MAPPING[@]}"; do
+            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${PDS_LDAP_CR_MAPPING[i]}" "\"$(prop_ldap_property_file ${PDS_LDAP_PROPERTY[i]})\""
+        done
     fi
+
     # set lc_bind_secret
     # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
     tmp_secret_name=`kubectl get secret -l name=ldap-bind-secret -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
@@ -7713,8 +7743,12 @@ function sync_property_into_final_cr(){
             for i in "${!TDS_LDAP_CR_MAPPING[@]}"; do
                 ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${EXT_TDS_LDAP_CR_MAPPING[i]}" "\"$(prop_ext_ldap_property_file ${TDS_LDAP_PROPERTY[i]})\""
             done
+        elif [[ $tmp_ldap_type == "PingDirectory Server" ]]; then
+            for i in "${!PDS_LDAP_CR_MAPPING[@]}"; do
+                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${EXT_PDS_LDAP_CR_MAPPING[i]}" "\"$(prop_ext_ldap_property_file ${PDS_LDAP_PROPERTY[i]})\""
+            done
         else
-            fail "The value for \"LDAP_TYPE\" in the property file \"${EXTERNAL_LDAP_PROPERTY_FILE}\" is not valid. The possible values are: \"IBM Security Directory Server\" or \"Microsoft Active Directory\""
+            fail "The value for \"LDAP_TYPE\" in the property file \"${EXTERNAL_LDAP_PROPERTY_FILE}\" is not valid. The possible values are: \"IBM Security Directory Server\" or \"Microsoft Active Directory\" or \"PingDirectory Server\""
             exit 1
         fi
 
@@ -7730,7 +7764,8 @@ function sync_property_into_final_cr(){
     # Applying value in scim property file into final CR
     set_scim_attr="true"
     if [[ "${set_scim_attr}" == "true" ]]; then
-      if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring" || " ${pattern_cr_arr[@]}" =~ "content" || " ${pattern_cr_arr[@]}" =~ "document_processing" || "${optional_component_cr_arr[@]}" =~ "ae_data_persistence" || (" ${pattern_cr_arr[@]}" =~ "workflow-process-service" && "${optional_component_cr_arr[@]}" =~ "wfps_authoring") ]]; then
+        # DBACLD-181399 scim_configuration_iam section should not be present in the generated CR when deploying WFPS authoring only without LDAP (for 25.0.0 maintenance and 25.0.1)
+      if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring" || " ${pattern_cr_arr[@]}" =~ "content" || " ${pattern_cr_arr[@]}" =~ "document_processing" || "${optional_component_cr_arr[@]}" =~ "ae_data_persistence" || (" ${pattern_cr_arr[@]}" =~ "workflow-process-service" && "${optional_component_cr_arr[@]}" =~ "wfps_authoring" && $LDAP_WFPS_AUTHORING == "Yes") ]]; then
           for i in "${!SCIM_PROPERTY[@]}"; do
               ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${SCIM_CR_MAPPING[i]}" "\"$(prop_user_profile_property_file ${SCIM_PROPERTY[i]})\""
           done
@@ -7792,8 +7827,8 @@ function sync_property_into_final_cr(){
         ${SED_COMMAND} "s|nodelabel_value:.*|nodelabel_value: \"$nodelabel_value\"|g" ${CP4A_PATTERN_FILE_TMP}
     fi
     # ${COPY_CMD} -rf ${CP4A_PATTERN_FILE_TMP} ${CP4A_PATTERN_FILE_BAK}
-    success "Applied value in property file into final CR under $FINAL_CR_FOLDER"
-    msgB "Confirm final custom resource under $FINAL_CR_FOLDER"
+    # "Applied value in property file into final CR under $FINAL_CR_FOLDER"
+    success "The CP4BA Custom Resource file has been generated and can be found under $FINAL_CR_FOLDER"
 }
 
 # Begin - Modify FOUNDATION pattern yaml according patterns/components selected
@@ -8135,6 +8170,10 @@ function apply_pattern_cr(){
         then
             # ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ldap_configuration.lc_selected_ldap_type "IBM Security Directory Server"
             ${SED_COMMAND} "s|lc_selected_ldap_type:.*|lc_selected_ldap_type: \"IBM Security Directory Server\"|g" ${CP4A_PATTERN_FILE_TMP}
+        elif [[ $LDAP_TYPE == "PDS" ]]
+        then
+            # ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ldap_configuration.lc_selected_ldap_type "PingDirectory Server"
+            ${SED_COMMAND} "s|lc_selected_ldap_type:.*|lc_selected_ldap_type: \"PingDirectory Server\"|g" ${CP4A_PATTERN_FILE_TMP}
         fi
     fi
 
@@ -8485,6 +8524,8 @@ function apply_pattern_cr(){
         sync_property_into_final_cr
     fi
 
+    
+    
     # Format value
     ${SED_COMMAND} "s|'\"|\"|g" ${CP4A_PATTERN_FILE_TMP}
     ${SED_COMMAND} "s|\"'|\"|g" ${CP4A_PATTERN_FILE_TMP}
@@ -8690,6 +8731,7 @@ function apply_pattern_cr(){
         printf "\n"
         echo -e "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1mIf the cluster is running a Linux on Z (s390x)/Power architecture, remove the \x1B[0m\x1B[1;31mbaml_configuration\x1B[0m \x1B[1msection from \"${CP4A_PATTERN_FILE_BAK}\" before applying the custom resource. Business Automation Machine Learning Server (BAML) is not supported on this architecture.\n\x1B[0m"
     fi
+    
     printf "\n"
     echo -e "\x1B[1mTo monitor the deployment status, follow the Operator logs.\x1B[0m"
     echo -e "\x1B[1mFor details, refer to the troubleshooting section in Knowledge Center here: \x1B[0m"
@@ -8795,7 +8837,7 @@ function show_summary_pattern_selected(){
         done
     fi
     echo -e "\x1B[1m*******************************************************\x1B[0m"
-    info "Above CP4BA capabilities is already selected in the cp4a-prerequisites.sh script"
+    info "Above CP4BA capabilities have been selected during the execution of the cp4a-prerequisites.sh script"
     prompt_press_any_key_to_continue
 }
 
@@ -9293,6 +9335,13 @@ function determine_upgrade_mode () {
 save_log "cp4a-script-logs/project/$TARGET_PROJECT_NAME" "cp4a-deployment-log"
 trap cleanup_log EXIT
 
+if [[ -n "${RUNTIME_MODE}" ]]; then
+    info "The cp4a-deployment script is currently being executed in the ${RUNTIME_MODE} mode"
+else
+    info "The cp4a-deployment script is currently running in a mode designed to generate the custom resource (CR) file required for a CP4BA deployment"
+    printf "\n"
+fi
+
 # Import upgrade upgrade_check_version.sh script
 source ${CUR_DIR}/helper/upgrade/upgrade_check_status.sh
 
@@ -9729,8 +9778,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             read -rp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
-                displayUpgradeOperatorMessage '' $TARGET_PROJECT_NAME $cp4a_operator_csv_version
-                exit 1
+                # if the user is running the upgradeOperator command with --cpfs-upgrade-mode dedicated2dedicated --original-cp4ba-csv-ver 25.0.1 flags that means the user is explicitly trying to re-run upgrade
+                # In that scenario we should not exit out and allow upgrade to continue
+                # For https://jsw.ibm.com/browse/DBACLD-186019
+                if [[ -z $CP4BA_ORIGINAL_CSV_VERSION ]]; then
+                    displayUpgradeOperatorMessage '' $TARGET_PROJECT_NAME $cp4a_operator_csv_version
+                    exit 1
+                else
+                    break
+                fi
                 ;;
             "n"|"N"|"no"|"No"|"NO"|"")
                 echo "Exiting..."
@@ -10692,7 +10748,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         
         # DBACLD-168537: need to re-create {{meta.name}}-fncm-custom-ssl-secret to add CSS DNSName (in case they are missing from previous deployment) which will be included in FNCM's keystores
         cr_name=$(${CLI_CMD} get icp4acluster -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
-        if [[ -z $cp4ba_cr_name ]]; then
+        if [[ -z $cr_name ]]; then
             cr_name=$(${CLI_CMD} get content -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
         fi
         local fncm_custom_ssl_secret=$(${CLI_CMD} get secret --no-headers --ignore-not-found ${cr_name}-fncm-custom-ssl-secret -n $CP4BA_SERVICES_NS | awk '{print $1}') 
@@ -11318,15 +11374,31 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         fi
 
         # Migrate CPfs from 3.x to 4.6 for upgrade CP4BA 21.0.3.x/22.0.2 to latest
-        if [[ "$cp4a_operator_csv_version" == "21.3."* && (("$ibm_bts_operator_ready" == "Yes" && "$cloud_native_postgresql_ready" == "Yes" )) && "$ibm_cp4a_wfps_operator_ready" == "Yes" ]]; then
-            READY_FOR_DIRECT_UPGRADE="Yes"
-        elif [[ "$cp4a_operator_csv_version" == "22.2."* && (("$ibm_bts_operator_ready" == "Yes" && "$cloud_native_postgresql_ready" == "Yes" )) && "$ibm_cp4a_wfps_operator_ready" == "Yes" && "$ibm_cp4a_pfs_operator_ready" == "Yes" && "$ibm_cp4a_ads_operator_ready" == "Yes" && "$ibm_cp4a_content_operator_ready" == "Yes" && "$ibm_cp4a_foundation_operator_ready" == "Yes" ]]; then
-            READY_FOR_DIRECT_UPGRADE="Yes"
-        elif [[ "$cp4a_operator_csv_version" == "23.2."* || "$cp4a_operator_csv_version" == "24."* ]]; then
-            READY_FOR_DIRECT_UPGRADE="Yes"
-        else
+        #instead of having multiple conditions that evaluate and set READY_FOR_DIRECT_UPGRADE="Yes" , it makes more sense to have 1 condition that results to setting READY_FOR_DIRECT_UPGRADE="No"
+        # we were checking for csv version and a bunch other flags for 21.0.3 and 22.0.2 which I converted to the negative condition to set READY_FOR_DIRECT_UPGRADE to no
+        # For versions higher than 22.0.2 we didnt have those flags to check so basically we had to add a new condition each release to care of the release csv version
+        # instead of having to update this block every release, it made sense to check for the only case you would not be ready for upgrade
+        # Commented out the old block so its easier for everyone to undestand
+        
+        ### START of OLD CONDITION ####
+        #if [[ "$cp4a_operator_csv_version" == "21.3."* && (("$ibm_bts_operator_ready" == "Yes" && "$cloud_native_postgresql_ready" == "Yes" )) && "$ibm_cp4a_wfps_operator_ready" == "Yes" ]]; then
+        #    READY_FOR_DIRECT_UPGRADE="Yes"
+        #elif [[ "$cp4a_operator_csv_version" == "22.2."* && (("$ibm_bts_operator_ready" == "Yes" && "$cloud_native_postgresql_ready" == "Yes" )) && "$ibm_cp4a_wfps_operator_ready" == "Yes" && "$ibm_cp4a_pfs_operator_ready" == "Yes" && "$ibm_cp4a_ads_operator_ready" == "Yes" && "$ibm_cp4a_content_operator_ready" == "Yes" && "$ibm_cp4a_foundation_operator_ready" == "Yes" ]]; then
+        #    READY_FOR_DIRECT_UPGRADE="Yes"
+        #elif [[ "$cp4a_operator_csv_version" == "23.2."* || "$cp4a_operator_csv_version" == "24."* ]]; then
+        #    READY_FOR_DIRECT_UPGRADE="Yes"
+        #else
+        #    READY_FOR_DIRECT_UPGRADE="No"
+        #    fail "Prerequisite for upgrade did not complete, exiting..."
+        ### END of OLD CONDITION ####
+        
+        # For https://jsw.ibm.com/browse/DBACLD-186019
+
+        if [[ ( "$cp4a_operator_csv_version" == "21.3."* && ( "$ibm_bts_operator_ready" != "Yes" || "$cloud_native_postgresql_ready" != "Yes" || "$ibm_cp4a_wfps_operator_ready" != "Yes" ) ) || ( "$cp4a_operator_csv_version" == "22.2."* && ( "$ibm_bts_operator_ready" != "Yes" || "$cloud_native_postgresql_ready" != "Yes" || "$ibm_cp4a_wfps_operator_ready" != "Yes" || "$ibm_cp4a_pfs_operator_ready" != "Yes" || "$ibm_cp4a_ads_operator_ready" != "Yes" || "$ibm_cp4a_content_operator_ready" != "Yes" || "$ibm_cp4a_foundation_operator_ready" != "Yes" ) ) ]]; then
             READY_FOR_DIRECT_UPGRADE="No"
             fail "Prerequisite for upgrade did not complete, exiting..."
+        else
+            READY_FOR_DIRECT_UPGRADE="Yes"
         fi
 
         if [[ $READY_FOR_DIRECT_UPGRADE == "Yes" ]]; then
@@ -11646,7 +11718,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         exit 1
                     fi
                 fi
-            elif [[ "$cp4a_operator_csv_version" == "23.2."* || "$cp4a_operator_csv_version" == "24.0."* || "$cp4a_operator_csv_version" == "24.1."* ]]; then
+            # The previous condition was basically checking for any version newer than 22.0.2
+            # It did it by listing each version newer than 22.0.2 and explicitly listing each of them
+            # This would also need to be updated each release and instead it made sense to use the negation so that we never have to constantly update the conditon with the new version each release
+            # This was the old condition
+            ###### START of OLD CONDTION #####
+            # elif [[ "$cp4a_operator_csv_version" == "23.2."* || "$cp4a_operator_csv_version" == "24.0."* || "$cp4a_operator_csv_version" == "24.1."* ]]; then
+            ###### END of OLD CONDTION #####
+            # For https://jsw.ibm.com/browse/DBACLD-186019
+            elif [[ "$cp4a_operator_csv_version" != "21.0."* || "$cp4a_operator_csv_version" != "22.2."* ]]; then
                 info "Starting to upgrade IBM Cloud Pak foundational services to $CS_OPERATOR_VERSION"
                 # Check if without option --enable-private-catalog, the catalog is in target project, set the private catalog as default.
                 info "Checking ibm-cp4a-operator-catalog catalog source is global or private namespace scoped"
@@ -11950,7 +12030,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
 
         # DBACLD-168537: need to re-create {{meta.name}}-fncm-custom-ssl-secret to add CSS DNSName (in case they are missing from previous deployment) which will be included in FNCM's keystores
         cr_name=$(${CLI_CMD} get icp4acluster -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
-        if [[ -z $cp4ba_cr_name ]]; then
+        if [[ -z $cr_name ]]; then
             cr_name=$(${CLI_CMD} get content -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
         fi
         fncm_custom_ssl_secret=$(${CLI_CMD} get secret --no-headers --ignore-not-found ${cr_name}-fncm-custom-ssl-secret -n $CP4BA_SERVICES_NS | awk '{print $1}') 
@@ -12008,6 +12088,8 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${CUR_DIR}/cp4a-deployment.sh -m upgradeDeploymentStatus -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to check whether the upgrade of the CP4BA deployment was successful."
         else
             # for upgrading IFIX by IFIX
+	    ## -- https://jsw.ibm.com/browse/DBACLD-186607 - <To fix the incorrect script path while running the deployment script in the upgrade mode>
+            CUR_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
             printf "\n"
             echo "${YELLOW_TEXT}[NEXT ACTIONS]:${RESET_TEXT}"
             step_num=1
@@ -12736,7 +12818,16 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
             echo "zenService Progress       : ${RED_TEXT}$isProgressDone${RESET_TEXT}"
         fi
 
-        if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "24."*) && "$ALLOW_DIRECT_UPGRADE" == 1 ]]; then
+        # Another example of where script was checking for each version newer than 23.0.2 and explicitly mentioning it in the condition
+        # Instead of we can just check for the finite list of versions prior to and including 23.0.2
+        # IF you see the old condition we would have to add 25.* and then 26.* and so on
+        
+        #### START of OLD CONDITION #####
+        # if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "24."*) && "$ALLOW_DIRECT_UPGRADE" == 1 ]]; then
+        #### END of OLD CONDITION #####
+        
+        # For https://jsw.ibm.com/browse/DBACLD-186019
+        if [[ ( "$cp4ba_original_csv_ver_for_upgrade_script" == "21."* || "$cp4ba_original_csv_ver_for_upgrade_script" == "22."* || "$cp4ba_original_csv_ver_for_upgrade_script" == "23."* ) && "$ALLOW_DIRECT_UPGRADE" == 1 ]]; then
             ## Create tow route after zenService ready
             TARGET_PROJECT_NAME_CS=$(${CLI_CMD} get route --no-headers --ignore-not-found  -A |grep  cp-console-iam-provider|awk '{print $1}')
             if [[ -z $TARGET_PROJECT_NAME_CS ]]; then

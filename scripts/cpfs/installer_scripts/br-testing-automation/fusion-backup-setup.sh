@@ -276,8 +276,7 @@ function create_sf_resources(){
     cp ../velero/spectrum-fusion/backup_storage_location.yaml ./templates/backup_storage_location.yaml
     cp ../velero/spectrum-fusion/policy_assignment.yaml ./templates/policy_assignment.yaml
     cp ../velero/spectrum-fusion/policy.yaml ./templates/policy.yaml
-    cp ../velero/spectrum-fusion/recipes/4.7-example-recipe-multi-ns.yaml ./templates/multi-ns-recipe.yaml
-    
+
     info "Editing backup storage location resources..."
     #backup storage secret
     sed -i -E "s/<location name>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/backup_storage_location_secret.yaml
@@ -314,36 +313,125 @@ function create_sf_resources(){
     sed -i -E "s/<storage_location>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/policy.yaml
     ${OC} apply -f ./templates/policy.yaml -n $SF_NAMESPACE || error "Unable to create policy in namespace $SF_NAMESPACE."
 
-    #recipe
-    info "Editing recipe resource..."
-    sed -i -E "s/<operator namespace>/$OPERATOR_NS/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<service namespace>/$SERVICES_NS/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<zenservice name>/$ZENSERVICE_NAME/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" ./templates/multi-ns-recipe.yaml
-    
-    tethered_namespaces="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
-    sed -i -E "s/<comma delimited \(no spaces\) list of Cloud Pak workload namespaces that use this foundational services instance>/$tethered_namespaces/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc>/$CPFS_VERSION/" ./templates/multi-ns-recipe.yaml
-    size=$(${OC} get commonservice common-service -n $OPERATOR_NS -o jsonpath='{.spec.size}')
-    sed -i -E "s/<.spec.size value from commonservice cr>/$size/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<install mode, either Manual or Automatic>/Automatic/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<catalog source name>/$CS_CATALOG_SOURCE/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<catalog source namespace>/$CAT_SRC_NS/" ./templates/multi-ns-recipe.yaml
-
-    if [[ $change_ns == "true" ]]; then
-        ${YQ} -i '.metadata.namesace = "'${SF_NAMESPACE}'"' ./templates/multi-ns-recipe.yaml || error "Could not update namespace value in multi-ns-recipe.yaml."
-    fi
-    ${OC} apply -f ./templates/multi-ns-recipe.yaml || error "Unable to create recipe in namespace $SF_NAMESPACE."
-
     #policyassignment
     info "Editing policy assignment resource..."
-    sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" ./templates/policy_assignment.yaml 
-
+    sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" ./templates/policy_assignment.yaml
+    if [[ $DYNAMIC == "true" ]]; then
+        recipe_name="cpfs-parent-recipe"
+        sed -i -E "s/<recipe namespace>/$OPERATOR_NS/" ./templates/policy_assignment.yaml
+        sed -i -E "s/<recipe name>/$recipe_name/" ./templates/policy_assignment.yaml
+    else
+        recipe_name="cs-recipe"
+        sed -i -E "s/<recipe namespace>/$SF_NAMESPACE/" ./templates/policy_assignment.yaml
+        sed -i -E "s/<recipe name>/$recipe_name/" ./templates/policy_assignment.yaml
+    fi
     ${OC} apply -f ./templates/policy_assignment.yaml || error "Unable to create policy assignment in namespace $SF_NAMESPACE."
 
+    if [[ $DYNAMIC == "true" ]]; then
+        #core recipes
+        cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-csdb-recipe-2.10.0.yaml ./templates/child-csdb-recipe.yaml
+        cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-zen-recipe-2.10.0.yaml ./templates/child-zen-recipe.yaml
+        cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-nss-recipe.yaml ./templates/child-nss-recipe.yaml
+        cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/parent-cpfs-recipe.yaml ./templates/parent-cpfs-recipe.yaml
+        
+        info "Editing recipe resources..."
+        #parent
+        sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/parent-cpfs-recipe.yaml
+        #im
+        sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-csdb-recipe.yaml
+        sed -i -E "s/<child recipe namespace>/$SERVICES_NS/" ./templates/child-csdb-recipe.yaml
+        #nss
+        sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-nss-recipe.yaml
+        sed -i -E "s/<child recipe namespace>/$SERVICES_NS/" ./templates/child-nss-recipe.yaml
+        #zen
+        sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-zen-recipe.yaml
+        sed -i -E "s/<zenservice name>/$ZENSERVICE_NAME/" ./templates/child-zen-recipe.yaml
+        sed -i -E "s/<child recipe namespace>/$SERVICES_NS/" ./templates/child-zen-recipe.yaml
+
+        #apply recipes
+        ${OC} apply -f ./templates/parent-cpfs-recipe.yaml || error "Unable to create core parent recipe in namespace $OPERATOR_NS."
+        if [[ $IM_ENABLED == "true" ]]; then
+            ${OC} apply -f ./templates/child-csdb-recipe.yaml || error "Unable to create IM child recipe in namespace $SERVICES_NS."
+        fi
+        if [[ $ZEN_ENABLED == "true" ]]; then
+            ${OC} apply -f ./templates/child-zen-recipe.yaml || error "Unable to create Zen child recipe in namespace $SERVICES_NS."
+        fi
+        if [[ $NSS_ENABLED == "true" ]]; then
+            ${OC} apply -f ./templates/child-nss-recipe.yaml || error "Unable to create NSS child recipe in namespace $SERVICES_NS."
+        fi
+
+        #singleton recipes
+        if [[ $ENABLE_CERT_MANAGER == 1 ]] || [[ $ENABLE_LICENSING == 1 ]] || [[ $ENABLE_LSR == 1 ]]; then
+            info "Editing singleton fusion resources..."
+            cp ../velero/spectrum-fusion/recipes/dynamic-recipes/singletons/parent-singleton-recipe.yaml ./templates/parent-singleton-recipe.yaml
+            cp ../velero/spectrum-fusion/recipes/dynamic-recipes/singletons/peripheral-resources.yaml ./templates/peripheral-resources.yaml
+            #edit parent recipe
+            sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/parent-singleton-recipe.yaml
+            #edit peripheral resources
+            sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/peripheral-resources.yaml
+            sed -i -E "s/<location name>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/peripheral-resources.yaml
+            sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/peripheral-resources.yaml
+            sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" ./templates/peripheral-resources.yaml
+            sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/peripheral-resources.yaml
+            sed -i -E "s/<s3 url>/$S3_URL/" ./templates/peripheral-resources.yaml
+
+            encoded_access_key=$(echo $STORAGE_SECRET_ACCESS_KEY | tr -d '\n' | base64 -w 0)
+            sed -i -E "s/<base 64 encoded secret access key>/$encoded_access_key/" ./templates/peripheral-resources.yaml
+            encoded_access_key_id=$(echo $STORAGE_SECRET_ACCESS_KEY_ID | tr -d '\n' | base64 -w 0)
+            sed -i -E "s/<base 64 encoded access key id>/$encoded_access_key_id/" ./templates/peripheral-resources.yaml
+            
+            ${OC} apply -f ./templates/parent-singleton-recipe.yaml || error "Unable to create singleton parent recipe in namespace $SF_NAMESPACE."
+            ${OC} apply -f ./templates/peripheral-resources.yaml || error "Unable to create singleton peripheral resources in namespace $SF_NAMESPACE."
+            
+            if [[ $ENABLE_CERT_MANAGER == 1 ]]; then
+                cp ../velero/spectrum-fusion/recipes/dynamic-recipes/singletons/child-cert-manager-recipe.yaml ./templates/child-cert-manager-recipe.yaml
+                #edit cm child recipe
+                sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/child-cert-manager-recipe.yaml
+                sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/child-cert-manager-recipe.yaml
+                ${OC} apply -f ./templates/child-cert-manager-recipe.yaml || error "Unable to create cert manager child recipe in namespace $CERT_MANAGER_NAMESPACE."
+            fi
+            if [[ $ENABLE_LICENSING == 1 ]]; then
+                cp ../velero/spectrum-fusion/recipes/dynamic-recipes/singletons/child-licensing-recipe.yaml ./templates/child-licensing-recipe.yaml
+                #edit licensing child recipe
+                sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" ./templates/child-licensing-recipe.yaml
+                sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/child-licensing-recipe.yaml
+                ${OC} apply -f ./templates/child-licensing-recipe.yaml || error "Unable to create licensing child recipe in namespace $LICENSING_NAMESPACE."
+            fi
+            if [[ $ENABLE_LSR == 1 ]]; then
+                cp ../velero/spectrum-fusion/recipes/dynamic-recipes/singletons/child-ls-reporter-recipe.yaml ./templates/child-ls-reporter-recipe.yaml
+                #edit lsr child recipe
+                sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/child-ls-reporter-recipe.yaml
+                sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/child-ls-reporter-recipe.yaml
+                ${OC} apply -f ./templates/child-ls-reporter-recipe.yaml || error "Unable to create license service reporter child recipe in namespace $LSR_NAMESPACE."
+            fi
+        fi
+    else
+        cp ../velero/spectrum-fusion/recipes/4.7-example-recipe-multi-ns.yaml ./templates/multi-ns-recipe.yaml
+        #non-dynamic recipe
+        info "Editing recipe resource..."
+        sed -i -E "s/<operator namespace>/$OPERATOR_NS/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<service namespace>/$SERVICES_NS/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<zenservice name>/$ZENSERVICE_NAME/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" ./templates/multi-ns-recipe.yaml
+        
+        tethered_namespaces="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
+        sed -i -E "s/<comma delimited \(no spaces\) list of Cloud Pak workload namespaces that use this foundational services instance>/$tethered_namespaces/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc>/$CPFS_VERSION/" ./templates/multi-ns-recipe.yaml
+        size=$(${OC} get commonservice common-service -n $OPERATOR_NS -o jsonpath='{.spec.size}')
+        sed -i -E "s/<.spec.size value from commonservice cr>/$size/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<install mode, either Manual or Automatic>/Automatic/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<catalog source name>/$CS_CATALOG_SOURCE/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<catalog source namespace>/$CAT_SRC_NS/" ./templates/multi-ns-recipe.yaml
+
+        if [[ $change_ns == "true" ]]; then
+            ${YQ} -i '.metadata.namesace = "'${SF_NAMESPACE}'"' ./templates/multi-ns-recipe.yaml || error "Could not update namespace value in multi-ns-recipe.yaml."
+        fi
+        ${OC} apply -f ./templates/multi-ns-recipe.yaml || error "Unable to create recipe in namespace $SF_NAMESPACE."
+    fi
+    
     success "Spectrum Fusion BR resources created in namespace $SF_NAMESPACE."
 
 }
@@ -371,7 +459,7 @@ function label_cs_resources() {
     cp env.properties ../velero/backup/common-service/env.properties
     export TETHERED_NS="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
     info "Labeling remaining CPFS resources..."
-    ./../velero/backup/common-service/label-common-service.sh || error "Unable to complete labeling of CPFS resources."
+    ./../velero/backup/common-service/label-common-service.sh --operator-ns $OPERATOR_NS --services-ns $SERVICES_NS --tethered-ns $TETHERED_NS --cert-manager-ns $CERT_MANAGER_NAMESPACE --licensing-ns $LICENSING_NAMESPACE --lsr-ns $LSR_NAMESPACE --enable-default-catalog-ns --enable-private-catalog --additional-catalog-sources $ADDITIONAL_SOURCES || error "Unable to complete labeling of CPFS resources."
 
     success "CPFS resources labeled."
 }

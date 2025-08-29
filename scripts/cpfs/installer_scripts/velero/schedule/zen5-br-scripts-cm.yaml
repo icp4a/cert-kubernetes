@@ -218,16 +218,16 @@ data:
         
         #[2.2.3] Reset platform metadata and configuration data
         #[2.2.3.1] Reset database
-        return_value=""
-        return_value=$(oc get cm ibm-zen-metastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED_DATABASE}{"\n"}')
-        if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
-            info "Value IS_EMBEDDED_DATABASE marked true in configmap ibm-zen-metastore-edb-cm, resetting zen-metastore-edb"
-            info "Reset platform metadata and configuration data"
-            info "Prepping database..."
-            CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}" -n $ZEN_NAMESPACE` && oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "DROP DATABASE IF EXISTS zen;"  -c "DROP USER IF EXISTS zen_user;" -c "CREATE DATABASE zen;" -c "CREATE USER zen_user;" -c "GRANT CONNECT ON DATABASE zen TO public;" -c "ALTER DATABASE zen OWNER TO zen_user;" -c "GRANT ALL PRIVILEGES ON DATABASE zen to zen_user;"
-        else
-            info "IS_EMBEDDED_DATABASE value false, skipping metastoredb reset."
-        fi
+        # return_value=""
+        # return_value=$(oc get cm ibm-zen-metastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED_DATABASE}{"\n"}')
+        # if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
+        #     info "Value IS_EMBEDDED_DATABASE marked true in configmap ibm-zen-metastore-edb-cm, resetting zen-metastore-edb"
+        #     info "Reset platform metadata and configuration data"
+        #     info "Prepping database..."
+        #     CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}" -n $ZEN_NAMESPACE` && oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "DROP DATABASE IF EXISTS zen;"  -c "DROP USER IF EXISTS zen_user;" -c "CREATE DATABASE zen;" -c "CREATE USER zen_user;" -c "GRANT CONNECT ON DATABASE zen TO public;" -c "ALTER DATABASE zen OWNER TO zen_user;" -c "GRANT ALL PRIVILEGES ON DATABASE zen to zen_user;"
+        # else
+        #     info "IS_EMBEDDED_DATABASE value false, skipping metastoredb reset."
+        # fi
 
         #[2.2.3.2] reset object storage
         #[2.2.3.2.1] read object storage connection and credentials
@@ -368,17 +368,17 @@ data:
         info "Waiting for zenservice $ZENSERVICE_NAME to complete in namespace $ZEN_NAMESPACE."
         zenservice_exists=$(oc get zenservice $ZENSERVICE_NAME -n $ZEN_NAMESPACE --no-headers || echo fail)
         if [[ $zenservice_exists != "fail" ]]; then
-            completed=$(oc get zenservice $ZENSERVICE_NAME -n $ZEN_NAMESPACE -o jsonpath='{.status.zenStatus}')
+            completed=$(oc get zenservice $ZENSERVICE_NAME -n $ZEN_NAMESPACE -o jsonpath='{.status.progress}')
             retry_count=60
-            while [[ $completed != "Completed" ]] && [[ $retry_count > 0 ]]
+            while [[ $completed != "100%" ]] && [[ $retry_count > 0 ]]
             do
-                info "Wait for zenservice $ZENSERVICE_NAME to complete. Try again in 60s."
+                info "Wait for zenservice $ZENSERVICE_NAME to complete. Completion % is $completed. Try again in 60s."
                 sleep 60
-                completed=$(oc get zenservice $ZENSERVICE_NAME -n $ZEN_NAMESPACE -o jsonpath='{.status.zenStatus}')
-                retry_count=$retry_count-1
+                completed=$(oc get zenservice $ZENSERVICE_NAME -n $ZEN_NAMESPACE -o jsonpath='{.status.progress}')
+                retry_count=$((retry_count-1))
             done
 
-            if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
+            if [[ $retry_count == 0 ]] && [[ $completed != "100%" ]]; then
                 error "Timed out waiting for zenservice $ZENSERVICE_NAME."
             else
                 info "Zenservice $ZENSERVICE_NAME ready."
@@ -395,15 +395,15 @@ data:
         if [[ $job_exists != "fail" ]]; then
             completed=$(oc get job $job_name -n $ZEN_NAMESPACE --no-headers | awk '{print $2}')
             retry_count=20
-            while [[ $completed != "1/1" ]] && [[ $retry_count > 0 ]]
+            while ([[ $completed != "1/1" ]] && [[ $completed != "Complete" ]]) && [[ $retry_count > 0 ]]
             do
                 info "Wait for job $job_name to complete. Try again in 15s."
                 sleep 15
                 completed=$(oc get job $job_name -n $ZEN_NAMESPACE --no-headers | awk '{print $2}')
-                retry_count=$retry_count-1
+                retry_count=$((retry_count-1))
             done
 
-            if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
+            if [[ $retry_count == 0 ]] && ([[ $completed != "1/1" ]] && [[ $completed != "Complete" ]]); then
                 error "Timed out waiting for job $job_name."
             else
                 info "Job $job_name completed."

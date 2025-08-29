@@ -129,7 +129,7 @@ LICENSE_PRODUCTION="production"
 PURCHASED_PRODUCT_BAW="BAW"
 PURCHASED_PRODUCT_CP4A="CP4A"
 
-LICENSE_BAW_URL="https://www14.software.ibm.com/cgi-bin/weblap/lap.pl?li_formnum=L-MVWM-ZKAC6A"
+LICENSE_BAW_URL="https://www.ibm.com/support/customer/csol/terms/?id=L-PMMB-HLZTES&lc=en"
 LICENSE_CP4A_URL="https://www.ibm.com/support/customer/csol/terms/?id=L-LDYZ-7V4YJ4&lc=en"
 
 

@@ -3,6 +3,8 @@ apiVersion: networking.k8s.io/v1
 metadata:
   name: egress-ibm-flink-operator
   namespace: "opNamespace"
+  labels:
+    component: cpfs3
 spec:
   podSelector: 
     matchLabels:

@@ -44,7 +44,7 @@ function parse_arguments() {
                 echo
             else
                 msg "Use a valid value: -m [property] or [generate] or [validate]"
-                exit -1
+                exit 1
             fi
             ;;
         -n)
@@ -57,15 +57,15 @@ function parse_arguments() {
             case "$TARGET_PROJECT_NAME" in
             "")
                 echo -e "\x1B[1;31mEnter a valid namespace name, namespace name can not be blank\x1B[0m"
-                exit -1
+                exit 1
                 ;;
             "openshift"*)
                 echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
-                exit -1
+                exit 1
                 ;;
             "kube"*)
                 echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
-                exit -1
+                exit 1
                 ;;
             *)
                 # Check cluster login
@@ -108,13 +108,17 @@ fi
 
 save_log "cp4a-script-logs/project/$TARGET_PROJECT_NAME" "cp4a-prerequisites-log"
 trap cleanup_log EXIT
-IBM_LICENS="Accept"
+
+info "The cp4a-prerequisite script is currently being executed in the ${RUNTIME_MODE} mode"
+printf "\n"
+
+IBM_LICENSE="Accept"
 INSTALL_BAW_ONLY="No"
 
 # Import common utilities and environment variables
 source ${CUR_DIR}/helper/common.sh $TARGET_PROJECT_NAME
 
-# Import verification func
+# Import verification functions
 source ${CUR_DIR}/helper/cp4a-verification.sh
 
 # Import variables for property file
@@ -193,7 +197,7 @@ function prompt_license(){
             # echo -e "**** Starting to prepare DB script for CP4BA ... ****"
             # echo -e "*****************************************************"
             # sleep 2
-            IBM_LICENS="Accept"
+            IBM_LICENSE="Accept"
             validate_cli
             break
             ;;
@@ -1574,88 +1578,21 @@ function check_dbserver_name_valid(){
     fi
 }
 
-# Function that checks if there are any missing quotes in any property files after the user updates the property files
-function check_missing_quotes(){
-    missing_quotes=0
-    property_files=("${USER_PROFILE_PROPERTY_FILE}" "${DB_SERVER_INFO_PROPERTY_FILE}" "${DB_NAME_USER_PROPERTY_FILE}" "${LDAP_PROPERTY_FILE}" "${EXTERNAL_LDAP_PROPERTY_FILE}")
-    for input_file in "${property_files[@]}"; do
-        # Check if the property file exists
-        if [ ! -f "$input_file" ]; then
-            continue
-        fi
-        #<https://jsw.ibm.com/browse/DBACLD-170488> Remove the return character that sometimes gets added on a linux machine
-        remove_return_characters "$input_file"
-        # Array to store incorrect entries
-        incorrect_values=()
 
-        while IFS= read -r line || [ -n "$line" ]; do
-            # Skip comment lines or empty lines
-            if [[ $line =~ ^[[:space:]]*# ]] || [[ -z $line ]]; then
-                continue
-            fi
-            
-            # Skip lines that are completely empty or contain only whitespace
-            if [[ "$line" =~ ^[[:space:]]*$ ]]; then
-                continue
-            fi
-
-            # Ensure the line contains '=' before processing
-            if [[ $line != *"="* ]]; then
-                continue
-            fi
-
-            # Extract the key and value
-            key=$(echo "$line" | cut -d'=' -f1)
-            value=$(echo "$line" | cut -d'=' -f2-)
-
-            # Check if the value is enclosed in quotes
-            if [[ ! $value =~ ^\".*\"$ ]]; then
-                # Add to the list of incorrect values
-                incorrect_values+=("$key")
-            fi
-        done < "$input_file"
-
-        # Output results
-        if [ ! ${#incorrect_values[@]} -eq 0 ]; then
-            missing_quotes=1
-            error "Validation failed: The following values in the property file located at \"${input_file}\" are not enclosed in quotes:"
-            printf "\n"
-            echo "---------------------------------------------------------------"
-            for entry in "${incorrect_values[@]}"; do
-                echo "  - $entry"
-            done
-            echo "---------------------------------------------------------------"
-
-        fi
-    done
-    if [[ "$missing_quotes" == 1 ]] ; then
-        info "[NEXT_STEPS]: Reference the table above and ensure all values in all property files are enclosed in quotes and re-run cp4a-prerequisites.sh script in generate mode."
-        exit 1
-    fi
-}
-
-## -- https://jsw.ibm.com/browse/DBACLD-172803 - Function created to improve code
-# Function to check for unfilled <Required> parameters, takes two arguments:
-# 1) The style of <Required> filed, e.g. {Base}<Required>, {xor}<Required>
-# 2) The property file name to check.
-function check_required_values(){
-    required_field=$1
-    property_file=$2
-    search_text="=\"${required_field}\""
-    value_empty=$(grep "${search_text}" "${property_file}" | wc -l)
-    if [ $value_empty -ne 0 ] ; then
-        #Extract ALL the parameter names and include them in a comma separated list to the error message when the parameters are not properly filled out.
-        parameter_name=$(grep "${search_text}" "${property_file}" | awk -F'=' '{print $1}'  | tr -d ' ' | paste -sd ',' -)
-        error "Found invalid value(s) \"$required_field\" for parameter \"$parameter_name\" in property file \"${property_file}\", please input the correct value."
-        empty_value_tag=1
-    fi
-}
 
 function check_property_file(){
+
+    # Function to check for valid certificates (LDAP, DB, IM, ZEN, BTS)
+    # For https://jsw.ibm.com/browse/DBACLD-180201
+    validate_ssl_certificates
+
     # Function to check for missing quotes in any of the property files
     # For https://jsw.ibm.com/browse/DBACLD-161426
     check_missing_quotes
     local empty_value_tag=0
+
+    # Validate required properties in configuration files
+    INFO "Validating required properties in configuration files"
 
     # Check <Required> values for cp4ba_user_profile.property
     check_required_values "<Required>" "${USER_PROFILE_PROPERTY_FILE}"
@@ -1664,8 +1601,14 @@ function check_property_file(){
     ## -- https://jsw.ibm.com/browse/DBACLD-172803 - We are now asking user to use {xor} for special characters in password for some parameters, so we need to check if the "{xor}<Required>" is not filled out.
     check_required_values "{xor}<Required>" "${USER_PROFILE_PROPERTY_FILE}"
 
+    # Check for empty values in the user profile property file
+    validate_property_file_required_fields "${USER_PROFILE_PROPERTY_FILE}"
+
     # Check <Required> values for cp4ba_db_server.property 
     check_required_values "<Required>" "${DB_SERVER_INFO_PROPERTY_FILE}"
+
+    # Check for empty values in the db server info property file
+    validate_property_file_required_fields "${DB_SERVER_INFO_PROPERTY_FILE}"
 
     value_empty=`grep '^<DB_ALIAS_NAME>.' "${DB_NAME_USER_PROPERTY_FILE}" | wc -l`  >/dev/null 2>&1
     if [ $value_empty -ne 0 ] ; then
@@ -1697,6 +1640,9 @@ function check_property_file(){
     # Check <Required> values for cp4ba_db_name_user.property 
     check_required_values "<Required>" "${DB_NAME_USER_PROPERTY_FILE}"
 
+    # Check for empty values in the db name user property file
+    validate_property_file_required_fields "${DB_NAME_USER_PROPERTY_FILE}"
+
     ##--https://jsw.ibm.com/browse/DBACLD-168735 <- ## Ensure that only uncommented parameters trigger errors, while commented ones are ignored.
     value_empty=`grep -E '^[[:space:]]*[^#[:space:]]+.*="<yourpassword>"' "${DB_NAME_USER_PROPERTY_FILE}" | wc -l`  >/dev/null 2>&1
     if [ $value_empty -ne 0 ] ; then
@@ -1726,9 +1672,13 @@ function check_property_file(){
     check_required_values "<Required>" "${LDAP_PROPERTY_FILE}"
     ## -- https://jsw.ibm.com/browse/DBACLD-172803 - We are now asking user to use {xor} for special characters in password for some parameters, so we need to check if the "{xor}<Required>" is not filled out.
     check_required_values "{xor}<Required>" "${LDAP_PROPERTY_FILE}"
+    # Check for empty values in the ldap property file
+    validate_property_file_required_fields "${LDAP_PROPERTY_FILE}"
 
     if [[ $SET_EXT_LDAP == "Yes" ]]; then
         check_required_values "<Required>" "${EXTERNAL_LDAP_PROPERTY_FILE}"
+        # Check for empty values in the external ldap property file
+        validate_property_file_required_fields "${EXTERNAL_LDAP_PROPERTY_FILE}"
     fi
 
     # check prefix in db property is correct element of DB_SERVER_LIST
@@ -1777,8 +1727,10 @@ function check_property_file(){
     done
 
     if [[ "$empty_value_tag" == "1" ]]; then
+        clean_up_temp_file
         exit 1
     fi
+
 
     # Check the PostgreSQL DATABASE_SSL_ENABLE/POSTGRESQL_SSL_CLIENT_SERVER
     for item in ${db_server_array[*]}
@@ -1820,12 +1772,6 @@ function check_property_file(){
             elif [[ ${server_name:0:1} == "[" ]] ; then
                 # For IPv4 addresses, make sure they have not included brackets
                 error "The IPv4 address ${server_name} should NOT be enclosed with square brackets ([...]) for the property DATABASE_SERVERNAME in the file \"${DB_SERVER_INFO_PROPERTY_FILE}\""
-                error_value_tag=1
-            fi
-        else
-            db_check=$(echo $db_type | tr '[:upper:]' '[:lower:]')
-            if [[ $db_check != 'oracle' ]]; then
-                error "The value is NULL for the property DATABASE_SERVERNAME in the file \"${DB_SERVER_INFO_PROPERTY_FILE}\""
                 error_value_tag=1
             fi
         fi
@@ -1985,7 +1931,8 @@ function check_property_file(){
 
     fi
 
-    if [[ "$error_value_tag" == "1" ]]; then
+    if [[ "$error_value_tag" == "1" || "$SSL_CERT_ERROR_TAG" == "true" || "$MISSING_REQUIRED_PARAMETERS" == "true" ]]; then
+        clean_up_temp_file
         exit 1
     fi
 }
@@ -2004,7 +1951,7 @@ function check_single_quotes_password() {
 
 function create_prerequisites() {
     rm -rf $SECRET_FILE_FOLDER
-    INFO "Generating YAML template for secret required by CP4BA deployment based on property file."
+    INFO "Generating YAML templates for all secrets required by CP4BA deployment based on patterns and components selected as part of property mode."
     printf "\n"
     wait_msg "Creating YAML templates for secrets"
 
@@ -2347,6 +2294,7 @@ function create_prerequisites() {
         fi
     fi
 
+
     # Create BAN secret
     if [[ " ${foundation_component_arr[@]}" =~ "BAN" ]]; then
         if [[ ! (" ${pattern_cr_arr[@]} " =~ "workstreams" && "${#pattern_cr_arr[@]}" -eq "1") ]]; then
@@ -2424,6 +2372,7 @@ function create_prerequisites() {
             success "ibm-ban-secret secret YAML template for CP4BA has been created.\n"
         fi
     fi
+
     # create DPE DB secret
     if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" ]]; then
         # get server/instance for DPE
@@ -3446,34 +3395,13 @@ function create_prerequisites() {
             tmp_flag=$(echo $postgresql_flag | tr '[:upper:]' '[:lower:]')
             if [[ $tmp_flag == "yes" || $tmp_flag == "true" || $tmp_flag == "y"  ]]; then
                 CP4A_DB_SSL_SECRET_FILE_TMP=${DB_SSL_SECRET_FOLDER}/$item/ibm-cp4ba-db-ssl-cert-secret-for-${item}.sh
-                msgB "* Found \"POSTGRESQL_SSL_CLIENT_SERVER\" is \"$postgresql_flag\" for database server \"$postgresql_server\" in property file \"${DB_SERVER_INFO_PROPERTY_FILE}\".\n  Set the \"sslmode\" parameter in the script \"${CP4A_DB_SSL_SECRET_FILE_TMP}\" to select which sslmode=[require|verify-ca|verify-full] that you want it."
+                msgB "* Detected \"POSTGRESQL_SSL_CLIENT_SERVER\" is set to \"$postgresql_flag\" for database server \"$postgresql_server\" in the property file \"${DB_SERVER_INFO_PROPERTY_FILE}\".\n Please set the \"sslmode\" parameter in the script \"${CP4A_DB_SSL_SECRET_FILE_TMP}\" to one of the following values: [require, verify-ca, verify-full], depending on your desired SSL configuration."
             fi
         done
     fi
 
-    # show tips for IM metastore external Postgres DB
-    tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_IM_FLAG)")
-    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
-    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
-        msgB "* You have enabled IM metastore external Postgres DB, please get \"<your-server-certification: root.crt>\" \"<your-client-certification: client.crt>\" \"<your-client-key: client.key>\" from your local or remote database server \"$im_external_db_host_name\", and copy them into folder \"$im_external_db_cert_folder\" before you create the secret for PostgreSQL database SSL"
-    fi
-
-    # show tips for Zen metastore external Postgres DB
-    tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_ZEN_FLAG)")
-    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
-    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
-        msgB "* You have enabled Zen metastore external Postgres DB, please get \"<your-server-certification: root.crt>\" \"<your-client-certification: client.crt>\" \"<your-client-key: client.key>\" from your local or remote database server \"$zen_external_db_host_name\", and copy them into folder \"$zen_external_db_cert_folder\" before you create the secret for PostgreSQL database SSL"
-    fi
-
-    # show tips for BTS metastore external Postgres DB
-    tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_BTS_FLAG)")
-    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
-    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
-        msgB "* You have enabled BTS metastore external Postgres DB, please get \"<your-server-certification: root.crt>\" \"<your-client-certification: client.crt>\" \"<your-client-key: client.key>\" from your local or remote database server \"$im_external_db_host_name\", and copy them into folder \"$im_external_db_cert_folder\" before you create the secret for PostgreSQL database SSL"
-    fi
-
-    msgB "* You can use this shell script to create the secret automatically (NOTE: In case separation of operators and operands is selected - SWITCH TO CP4BA DEPLOYMENT PROJECT): $CREATE_SECRET_SCRIPT_FILE"
-    msgB "* Create the databases and Kubernetes secrets manually based on your modified \"DB SQL statement file\" and \"YAML template for secret\".\n* And then run the  \"cp4a-prerequisites.sh -m validate\" command to verify that the databases and secrets are created correctly"
+    msgB "* You can use this shell script to create the secret automatically (NOTE: In the scenario that separation of operators and operands is selected , you must switch to the CP4BA DEPLOYMENT PROJECT first): $CREATE_SECRET_SCRIPT_FILE"
+    msgB "* Create the databases and Kubernetes secrets manually based on your modified \"DB SQL statement file\" and \"YAML template for secret\".\n* And then run the command  \"./cp4a-prerequisites.sh -m validate -n $CP4BA_SERVICES_NS\" to verify all configurations selected for this deployment and also verify that all required secrets have been created correctly."
     # msgB "And then run cp4a-prerequisites.sh -m validate script to validate prerequisites"
 }
 
@@ -3880,11 +3808,18 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                 echo "${AD_LDAP_PROPERTY[i]}=\"\"" >> ${LDAP_PROPERTY_FILE}
                 echo "" >> ${LDAP_PROPERTY_FILE}
             done
-        else
+        elif [[ $LDAP_TYPE == "TDS" ]]; then
             ${SED_COMMAND} "s|LDAP_TYPE=\"\"|LDAP_TYPE=\"IBM Security Directory Server\"|g" ${LDAP_PROPERTY_FILE}
             for i in "${!TDS_LDAP_PROPERTY[@]}"; do
                 echo "${COMMENTS_TDS_LDAP_PROPERTY[i]}" >> ${LDAP_PROPERTY_FILE}
                 echo "${TDS_LDAP_PROPERTY[i]}=\"\"" >> ${LDAP_PROPERTY_FILE}
+                echo "" >> ${LDAP_PROPERTY_FILE}
+            done
+        else
+            ${SED_COMMAND} "s|LDAP_TYPE=\"\"|LDAP_TYPE=\"PingDirectory Server\"|g" ${LDAP_PROPERTY_FILE}
+            for i in "${!PDS_LDAP_PROPERTY[@]}"; do
+                echo "${COMMENTS_PDS_LDAP_PROPERTY[i]}" >> ${LDAP_PROPERTY_FILE}
+                echo "${PDS_LDAP_PROPERTY[i]}=\"\"" >> ${LDAP_PROPERTY_FILE}
                 echo "" >> ${LDAP_PROPERTY_FILE}
             done
         fi
@@ -3902,7 +3837,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             ${SED_COMMAND} "s|LDAP_GROUP_MEMBER_ID_MAP=\"\"|LDAP_GROUP_MEMBER_ID_MAP=\"memberOf:member\"|g" ${LDAP_PROPERTY_FILE}
             ${SED_COMMAND} "s|LC_USER_FILTER=\"\"|LC_USER_FILTER=\"(\&(sAMAccountName=%v)(objectcategory=user))\"|g" ${LDAP_PROPERTY_FILE}
             ${SED_COMMAND} "s|LC_GROUP_FILTER=\"\"|LC_GROUP_FILTER=\"(\&(cn=%v)(objectcategory=group))\"|g" ${LDAP_PROPERTY_FILE}
-        else
+        elif [[ $LDAP_TYPE == "TDS" ]]; then
             ${SED_COMMAND} "s|LDAP_USER_NAME_ATTRIBUTE=\"\"|LDAP_USER_NAME_ATTRIBUTE=\"*:uid\"|g" ${LDAP_PROPERTY_FILE}
             ${SED_COMMAND} "s|LDAP_USER_DISPLAY_NAME_ATTR=\"\"|LDAP_USER_DISPLAY_NAME_ATTR=\"cn\"|g" ${LDAP_PROPERTY_FILE}
             ${SED_COMMAND} "s|LDAP_GROUP_NAME_ATTRIBUTE=\"\"|LDAP_GROUP_NAME_ATTRIBUTE=\"*:cn\"|g" ${LDAP_PROPERTY_FILE}
@@ -3911,6 +3846,15 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             ${SED_COMMAND} "s|LDAP_GROUP_MEMBER_ID_MAP=\"\"|LDAP_GROUP_MEMBER_ID_MAP=\"groupofnames:member\"|g" ${LDAP_PROPERTY_FILE}
             ${SED_COMMAND} "s|LC_USER_FILTER=\"\"|LC_USER_FILTER=\"(\&(cn=%v)(objectclass=person))\"|g" ${LDAP_PROPERTY_FILE}
             ${SED_COMMAND} "s|LC_GROUP_FILTER=\"\"|LC_GROUP_FILTER=\"(\&(cn=%v)(\|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))\"|g" ${LDAP_PROPERTY_FILE}
+        else
+            ${SED_COMMAND} "s|LDAP_USER_NAME_ATTRIBUTE=\"\"|LDAP_USER_NAME_ATTRIBUTE=\"*:uid\"|g" ${LDAP_PROPERTY_FILE}
+            ${SED_COMMAND} "s|LDAP_USER_DISPLAY_NAME_ATTR=\"\"|LDAP_USER_DISPLAY_NAME_ATTR=\"uid\"|g" ${LDAP_PROPERTY_FILE}
+            ${SED_COMMAND} "s|LDAP_GROUP_NAME_ATTRIBUTE=\"\"|LDAP_GROUP_NAME_ATTRIBUTE=\"*:cn\"|g" ${LDAP_PROPERTY_FILE}
+            ${SED_COMMAND} "s|LDAP_GROUP_DISPLAY_NAME_ATTR=\"\"|LDAP_GROUP_DISPLAY_NAME_ATTR=\"cn\"|g" ${LDAP_PROPERTY_FILE}
+            ${SED_COMMAND} "s|LDAP_GROUP_MEMBERSHIP_SEARCH_FILTER=\"\"|LDAP_GROUP_MEMBERSHIP_SEARCH_FILTER=\"(\&(cn=%v)(objectClass=groupOfUniqueNames))\"|g" ${LDAP_PROPERTY_FILE}
+            ${SED_COMMAND} "s|LDAP_GROUP_MEMBER_ID_MAP=\"\"|LDAP_GROUP_MEMBER_ID_MAP=\"groupOfUniqueNames:uniquemember\"|g" ${LDAP_PROPERTY_FILE}
+            ${SED_COMMAND} "s|LC_USER_FILTER=\"\"|LC_USER_FILTER=\"(\&(uid=%v)(objectclass=person))\"|g" ${LDAP_PROPERTY_FILE}
+            ${SED_COMMAND} "s|LC_GROUP_FILTER=\"\"|LC_GROUP_FILTER=\"(\&(cn=%v)(\|(objectclass=groupOfUniqueNames)))\"|g" ${LDAP_PROPERTY_FILE}
         fi
         success "LDAP Server property file for CP4BA has been created.\n"
     fi
@@ -3935,11 +3879,18 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                 echo "${AD_LDAP_PROPERTY[i]}=\"\"" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
                 echo "" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
             done
-        else
+        elif [[ $LDAP_TYPE == "TDS" ]]; then
             # ${SED_COMMAND} "s|LDAP_TYPE=\"\"|LDAP_TYPE=\"IBM Security Directory Server\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
             for i in "${!TDS_LDAP_PROPERTY[@]}"; do
                 echo "${COMMENTS_TDS_LDAP_PROPERTY[i]}" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
                 echo "${TDS_LDAP_PROPERTY[i]}=\"\"" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
+                echo "" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
+            done
+        else
+            # ${SED_COMMAND} "s|LDAP_TYPE=\"\"|LDAP_TYPE=\"PingDirectory Server\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
+            for i in "${!PDS_LDAP_PROPERTY[@]}"; do
+                echo "${COMMENTS_PDS_LDAP_PROPERTY[i]}" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
+                echo "${PDS_LDAP_PROPERTY[i]}=\"\"" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
                 echo "" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
             done
         fi
@@ -3958,7 +3909,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             ${SED_COMMAND} "s|LDAP_GROUP_MEMBER_ID_MAP=\"\"|LDAP_GROUP_MEMBER_ID_MAP=\"memberOf:member\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
             ${SED_COMMAND} "s|LC_USER_FILTER=\"\"|LC_USER_FILTER=\"(\&(sAMAccountName=%v)(objectcategory=user))\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
             ${SED_COMMAND} "s|LC_GROUP_FILTER=\"\"|LC_GROUP_FILTER=\"(\&(cn=%v)(objectcategory=group))\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
-        else
+        elif [[ $LDAP_TYPE == "TDS" ]]; then
             ${SED_COMMAND} "s|LDAP_USER_NAME_ATTRIBUTE=\"\"|LDAP_USER_NAME_ATTRIBUTE=\"*:uid\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
             ${SED_COMMAND} "s|LDAP_USER_DISPLAY_NAME_ATTR=\"\"|LDAP_USER_DISPLAY_NAME_ATTR=\"cn\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
             ${SED_COMMAND} "s|LDAP_GROUP_NAME_ATTRIBUTE=\"\"|LDAP_GROUP_NAME_ATTRIBUTE=\"*:cn\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
@@ -3967,6 +3918,15 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             ${SED_COMMAND} "s|LDAP_GROUP_MEMBER_ID_MAP=\"\"|LDAP_GROUP_MEMBER_ID_MAP=\"groupofnames:member\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
             ${SED_COMMAND} "s|LC_USER_FILTER=\"\"|LC_USER_FILTER=\"(\&(cn=%v)(objectclass=person))\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
             ${SED_COMMAND} "s|LC_GROUP_FILTER=\"\"|LC_GROUP_FILTER=\"(\&(cn=%v)(\|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
+        else
+            ${SED_COMMAND} "s|LDAP_USER_NAME_ATTRIBUTE=\"\"|LDAP_USER_NAME_ATTRIBUTE=\"*:uid\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
+            ${SED_COMMAND} "s|LDAP_USER_DISPLAY_NAME_ATTR=\"\"|LDAP_USER_DISPLAY_NAME_ATTR=\"uid\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
+            ${SED_COMMAND} "s|LDAP_GROUP_NAME_ATTRIBUTE=\"\"|LDAP_GROUP_NAME_ATTRIBUTE=\"*:cn\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
+            ${SED_COMMAND} "s|LDAP_GROUP_DISPLAY_NAME_ATTR=\"\"|LDAP_GROUP_DISPLAY_NAME_ATTR=\"cn\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
+            ${SED_COMMAND} "s|LDAP_GROUP_MEMBERSHIP_SEARCH_FILTER=\"\"|LDAP_GROUP_MEMBERSHIP_SEARCH_FILTER=\"(\&(cn=%v)(objectClass=groupOfUniqueNames))\"|g" ${LDAP_PROPERTY_FILE}
+            ${SED_COMMAND} "s|LDAP_GROUP_MEMBER_ID_MAP=\"\"|LDAP_GROUP_MEMBER_ID_MAP=\"groupOfUniqueNames:uniquemember\"|g"  ${EXTERNAL_LDAP_PROPERTY_FILE}
+            ${SED_COMMAND} "s|LC_USER_FILTER=\"\"|LC_USER_FILTER=\"(\&(uid=%v)(objectclass=person))\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
+            ${SED_COMMAND} "s|LC_GROUP_FILTER=\"\"|LC_GROUP_FILTER=\"(\&(cn=%v)(\|(objectclass=groupOfUniqueNames)))\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
         fi
         success "External LDAP property file for CP4BA has been created.\n"
     else
@@ -4210,6 +4170,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                     echo "## For DB2, the schema name is case-sensitive, and must be specified in uppercase characters." >> ${DB_NAME_USER_PROPERTY_FILE}
                 fi
                 echo "$DB_SERVER_PREFIX.GCD_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.GCD_DB_CURRENT_SCHEMA")
                 # fi
             else
                 echo "## The designated name of the database on the EDB Postgres for the GCD of P8Domain. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4228,6 +4189,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         else
             echo "## Provide database schema name. This parameter is optional. If not set, the schema name is the same as database user name." >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.GCD_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.GCD_DB_CURRENT_SCHEMA")
             echo "## Provide the user name of the database for the GCD of P8Domain. For example: \"GCDDB\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.GCD_DB_USER_NAME=\"GCDDB\"" >> ${DB_NAME_USER_PROPERTY_FILE}
         fi
@@ -4380,15 +4342,18 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                                 echo "## For DB2, the schema name is case-sensitive, and must be specified in uppercase characters." >> ${DB_NAME_USER_PROPERTY_FILE}
                             fi
                             echo "$DB_SERVER_PREFIX.OS$((j+1))_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.OS$((j+1))_DB_CURRENT_SCHEMA")
                             ## These new properties are being added to support creating the object stores with index, table and/or LOB storage location.
                             ## This also mimics to what the user whould see when creating the object store from the ACCE object store wizard.
                             echo "## Provide database index storage location. This parameter is optional. If not set, the database index storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                             echo "$DB_SERVER_PREFIX.OS$((j+1))_DB_INDEX_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.OS$((j+1))_DB_INDEX_STORAGE_LOCATION")
                             echo "## Provide database table storage location. This parameter is optional. If not set, the database table storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                             echo "$DB_SERVER_PREFIX.OS$((j+1))_DB_TABLE_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.OS$((j+1))_DB_TABLE_STORAGE_LOCATION")
                             echo "## Provide database LOB storage location. This parameter is optional. If not set, the database LOB storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                             echo "$DB_SERVER_PREFIX.OS$((j+1))_DB_LOB_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-
+                            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.OS$((j+1))_DB_LOB_STORAGE_LOCATION")
                             # fi
                             echo "## Provide the user name of the database for the Object Store of P8Domain. For example: \"dbuser1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                             echo "$DB_SERVER_PREFIX.OS$((j+1))_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4401,15 +4366,18 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                     else
                         echo "## Provide database schema name. This parameter is optional. If not set, the schema name is the same as database user name." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.OS$((j+1))_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.OS$((j+1))_DB_CURRENT_SCHEMA")
                         ## These new properties are being added to support creating the object stores with index, table and/or LOB storage location.
                         ## This also mimics to what the user whould see when creating the object store from the ACCE object store wizard.
                         echo "## Provide database index storage location. This parameter is optional. If not set, the database index storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.OS$((j+1))_DB_INDEX_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.OS$((j+1))_DB_INDEX_STORAGE_LOCATION")
                         echo "## Provide database table storage location. This parameter is optional. If not set, the database table storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.OS$((j+1))_DB_TABLE_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.OS$((j+1))_DB_TABLE_STORAGE_LOCATION")
                         echo "## Provide database LOB storage location. This parameter is optional. If not set, the database LOB storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.OS$((j+1))_DB_LOB_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.OS$((j+1))_DB_LOB_STORAGE_LOCATION")
 
                         echo "## Provide the user name of the database for the Object Store of P8Domain. For example: \"OS$((j+1))DB\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.OS$((j+1))_DB_USER_NAME=\"OS$((j+1))DB\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4454,15 +4422,19 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                                 echo "## For DB2, the schema name is case-sensitive, and must be specified in uppercase characters." >> ${DB_NAME_USER_PROPERTY_FILE}
                             fi
                             echo "$DB_SERVER_PREFIX.${BAW_AUTH_OS_ARR[i]}_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.${BAW_AUTH_OS_ARR[i]}_DB_CURRENT_SCHEMA")
 
                             ## These new properties are being added to support creating the object stores with index, table and/or LOB storage location.
                             ## This also mimics to what the user whould see when creating the object store from the ACCE object store wizard.
                             echo "## Provide database index storage location. This parameter is optional. If not set, the database index storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                             echo "$DB_SERVER_PREFIX.${BAW_AUTH_OS_ARR[i]}_DB_INDEX_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.${BAW_AUTH_OS_ARR[i]}_DB_INDEX_STORAGE_LOCATION")
                             echo "## Provide database table storage location. This parameter is optional. If not set, the database table storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                             echo "$DB_SERVER_PREFIX.${BAW_AUTH_OS_ARR[i]}_DB_TABLE_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.${BAW_AUTH_OS_ARR[i]}_DB_TABLE_STORAGE_LOCATION")
                             echo "## Provide database LOB storage location. This parameter is optional. If not set, the database LOB storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                             echo "$DB_SERVER_PREFIX.${BAW_AUTH_OS_ARR[i]}_DB_LOB_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.${BAW_AUTH_OS_ARR[i]}_DB_LOB_STORAGE_LOCATION")
                             # fi
                             echo "## Provide the user name for the object store database required by BAW authoring or BAW Runtime. For example: \"dbuser1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                             echo "$DB_SERVER_PREFIX.${BAW_AUTH_OS_ARR[i]}_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4476,15 +4448,19 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                     else
                         echo "## Provide database schema name. This parameter is optional. If not set, the schema name is the same as database user name." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.${BAW_AUTH_OS_ARR[i]}_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.${BAW_AUTH_OS_ARR[i]}_DB_CURRENT_SCHEMA")
 
                         ## These new properties are being added to support creating the object stores with index, table and/or LOB storage location.
                         ## This also mimics to what the user whould see when creating the object store from the ACCE object store wizard.
                         echo "## Provide database index storage location. This parameter is optional. If not set, the database index storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.${BAW_AUTH_OS_ARR[i]}_DB_INDEX_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.${BAW_AUTH_OS_ARR[i]}_DB_INDEX_STORAGE_LOCATION")
                         echo "## Provide database table storage location. This parameter is optional. If not set, the database table storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.${BAW_AUTH_OS_ARR[i]}_DB_TABLE_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.${BAW_AUTH_OS_ARR[i]}_DB_TABLE_STORAGE_LOCATION")
                         echo "## Provide database LOB storage location. This parameter is optional. If not set, the database LOB storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.${BAW_AUTH_OS_ARR[i]}_DB_LOB_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.${BAW_AUTH_OS_ARR[i]}_DB_LOB_STORAGE_LOCATION")
 
                         echo "## Provide the user name for the object store database required by BAW authoring or BAW Runtime. For example: \"${BAW_AUTH_OS_ARR[i]}\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.${BAW_AUTH_OS_ARR[i]}_DB_USER_NAME=\"${BAW_AUTH_OS_ARR[i]}\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4519,6 +4495,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                             echo "## For DB2, the schema name is case-sensitive, and must be specified in uppercase characters." >> ${DB_NAME_USER_PROPERTY_FILE}
                         fi
                         echo "# $DB_SERVER_PREFIX.CHOS_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.CHOS_DB_CURRENT_SCHEMA")
                         # fi
                         echo "## Provide the user name for the object store database required by Case History when Case History Emitter is enabled. For example: \"dbuser1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "# $DB_SERVER_PREFIX.CHOS_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4531,6 +4508,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                 else
                     echo "## Provide database schema name. This parameter is optional. If not set, the schema name is the same as database user name." >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.CHOS_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.CHOS_DB_CURRENT_SCHEMA")
 
                     echo "## Provide the user name for the object store database required by Case History when Case History Emitter is enabled. For example: \"CHOS\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "# $DB_SERVER_PREFIX.CHOS_DB_USER_NAME=\"CHOS\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4565,14 +4543,18 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                             echo "## For DB2, the schema name is case-sensitive, and must be specified in uppercase characters." >> ${DB_NAME_USER_PROPERTY_FILE}
                         fi
                         echo "$DB_SERVER_PREFIX.AWSDOCS_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWSDOCS_DB_CURRENT_SCHEMA")
                         ## These new properties are being added to support creating the object stores with index, table and/or LOB storage location.
                         ## This also mimics to what the user whould see when creating the object store from the ACCE object store wizard.
                         echo "## Provide database index storage location. This parameter is optional. If not set, the database index storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.AWSDOCS_DB_INDEX_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWSDOCS_DB_INDEX_STORAGE_LOCATION")
                         echo "## Provide database table storage location. This parameter is optional. If not set, the database table storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.AWSDOCS_DB_TABLE_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWSDOCS_DB_TABLE_STORAGE_LOCATION")
                         echo "## Provide database LOB storage location. This parameter is optional. If not set, the database LOB storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.AWSDOCS_DB_LOB_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWSDOCS_DB_LOB_STORAGE_LOCATION")
 
                         # fi
                         echo "## Provide the user name for the object store database required by AWS. For example: \"dbuser1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4586,15 +4568,19 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                 else
                     echo "## Provide database schema name. This parameter is optional. If not set, the schema name is the same as database user name." >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.AWSDOCS_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWSDOCS_DB_CURRENT_SCHEMA")
 
                     ## These new properties are being added to support creating the object stores with index, table and/or LOB storage location.
                     ## This also mimics to what the user whould see when creating the object store from the ACCE object store wizard.
                     echo "## Provide database index storage location. This parameter is optional. If not set, the database index storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.AWSDOCS_DB_INDEX_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWSDOCS_DB_INDEX_STORAGE_LOCATION")
                     echo "## Provide database table storage location. This parameter is optional. If not set, the database table storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.AWSDOCS_DB_TABLE_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWSDOCS_DB_TABLE_STORAGE_LOCATION")
                     echo "## Provide database LOB storage location. This parameter is optional. If not set, the database LOB storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.AWSDOCS_DB_LOB_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWSDOCS_DB_LOB_STORAGE_LOCATION")
 
                     echo "## Provide the user name for the object store database required by AWS. For example: \"AWSDOCS\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.AWSDOCS_DB_USER_NAME=\"AWSDOCS\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4633,15 +4619,18 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                             echo "## For DB2, the schema name is case-sensitive, and must be specified in uppercase characters." >> ${DB_NAME_USER_PROPERTY_FILE}
                         fi
                         echo "$DB_SERVER_PREFIX.DEVOS_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.DEVOS_DB_CURRENT_SCHEMA")
                         ## These new properties are being added to support creating the object stores with index, table and/or LOB storage location.
                         ## This also mimics to what the user whould see when creating the object store from the ACCE object store wizard.
                         echo "## Provide database index storage location. This parameter is optional. If not set, the database index storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.DEVOS_DB_INDEX_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.DEVOS_DB_INDEX_STORAGE_LOCATION")
                         echo "## Provide database table storage location. This parameter is optional. If not set, the database table storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.DEVOS_DB_TABLE_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.DEVOS_DB_TABLE_STORAGE_LOCATION")
                         echo "## Provide database LOB storage location. This parameter is optional. If not set, the database LOB storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.DEVOS_DB_LOB_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.DEVOS_DB_LOB_STORAGE_LOCATION")
 
                         # fi
                         echo "## Provide the user name for the object store database required by ADP. For example: \"dbuser1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4655,14 +4644,18 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                 else
                     echo "## Provide database schema name. This parameter is optional. If not set, the schema name is the same as database user name." >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.DEVOS_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.DEVOS_DB_CURRENT_SCHEMA")
                     ## These new properties are being added to support creating the object stores with index, table and/or LOB storage location.
                     ## This also mimics to what the user whould see when creating the object store from the ACCE object store wizard.
                     echo "## Provide database index storage location. This parameter is optional. If not set, the database index storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.DEVOS_DB_INDEX_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.DEVOS_DB_INDEX_STORAGE_LOCATION")
                     echo "## Provide database table storage location. This parameter is optional. If not set, the database table storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.DEVOS_DB_TABLE_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.DEVOS_DB_TABLE_STORAGE_LOCATION")
                     echo "## Provide database LOB storage location. This parameter is optional. If not set, the database LOB storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.DEVOS_DB_LOB_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.DEVOS_DB_LOB_STORAGE_LOCATION")
 
                     echo "## Provide the user name for the object store database required by ADP. For example: \"DEVOS1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.DEVOS_DB_USER_NAME=\"DEVOS1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4702,14 +4695,18 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                                 echo "## For DB2, the schema name is case-sensitive, and must be specified in uppercase characters." >> ${DB_NAME_USER_PROPERTY_FILE}
                             fi
                             echo "$DB_SERVER_PREFIX.${AEOS[i]}_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.${AEOS[i]}_DB_CURRENT_SCHEMA")
                             ## These new properties are being added to support creating the object stores with index, table and/or LOB storage location.
                             ## This also mimics to what the user whould see when creating the object store from the ACCE object store wizard.
                             echo "## Provide database index storage location. This parameter is optional. If not set, the database index storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                             echo "$DB_SERVER_PREFIX.${AEOS[i]}_DB_INDEX_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.${AEOS[i]}_DB_INDEX_STORAGE_LOCATION")
                             echo "## Provide database table storage location. This parameter is optional. If not set, the database table storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                             echo "$DB_SERVER_PREFIX.${AEOS[i]}_DB_TABLE_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.${AEOS[i]}_DB_TABLE_STORAGE_LOCATION")
                             echo "## Provide database LOB storage location. This parameter is optional. If not set, the database LOB storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                             echo "$DB_SERVER_PREFIX.${AEOS[i]}_DB_LOB_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.${AEOS[i]}_DB_LOB_STORAGE_LOCATION")
 
                             # fi
                             echo "## Provide the user name of the database for the object store required by AE Data Persistent. For example: \"dbuser1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4723,14 +4720,18 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                     else
                         echo "## Provide database schema name. This parameter is optional. If not set, the schema name is the same as database user name." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.${AEOS[i]}_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.${AEOS[i]}_DB_CURRENT_SCHEMA")
                         ## These new properties are being added to support creating the object stores with index, table and/or LOB storage location.
                         ## This also mimics to what the user whould see when creating the object store from the ACCE object store wizard.
                         echo "## Provide database index storage location. This parameter is optional. If not set, the database index storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.${AEOS[i]}_DB_INDEX_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.${AEOS[i]}_DB_INDEX_STORAGE_LOCATION")
                         echo "## Provide database table storage location. This parameter is optional. If not set, the database table storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.${AEOS[i]}_DB_TABLE_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.${AEOS[i]}_DB_TABLE_STORAGE_LOCATION")
                         echo "## Provide database LOB storage location. This parameter is optional. If not set, the database LOB storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.${AEOS[i]}_DB_LOB_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.${AEOS[i]}_DB_LOB_STORAGE_LOCATION")
 
                         echo "## Provide the user name of the database for the object store required by AE Data Persistent. For example: \"${AEOS[i]}\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                         echo "$DB_SERVER_PREFIX.${AEOS[i]}_DB_USER_NAME=\"${AEOS[i]}\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4783,6 +4784,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                         echo "## For DB2, the schema name is case-sensitive, and must be specified in uppercase characters." >> ${DB_NAME_USER_PROPERTY_FILE}
                     fi
                     echo "$DB_SERVER_PREFIX.ICN_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.ICN_DB_CURRENT_SCHEMA")
                     # fi
                 else
                     echo "## The designated name of the database on the EDB Postgres for ICN (Navigator). (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4800,6 +4802,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             else
                 echo "## Provide database schema name. This parameter is optional. If not set, the schema name is the same as database user name." >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "$DB_SERVER_PREFIX.ICN_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.ICN_DB_CURRENT_SCHEMA")
 
                 echo "## Provide the user name of the database for ICN (Navigator). For example: \"ICNDB\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "$DB_SERVER_PREFIX.ICN_DB_USER_NAME=\"ICNDB\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4841,9 +4844,11 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             # jMailUsername/jMailPassword for BAN
             echo "## Provide the user name for jMail used by BAN. For example: \"jMailAdmin\"" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "BAN.JMAIL_USER_NAME=\"<Optional>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("BAN.JMAIL_USER_NAME")
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "## Provide the user password for jMail used by BAN." >> ${USER_PROFILE_PROPERTY_FILE}
             echo "BAN.JMAIL_USER_PASSWORD=\"<Optional>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("BAN.JMAIL_USER_PASSWORD")
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
             success "Property file for IBM Business Automation Navigator has been created.\n"
@@ -4877,6 +4882,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                 #         echo "## For DB2, the schema name is case-sensitive, and must be specified in uppercase characters." >> ${DB_NAME_USER_PROPERTY_FILE}
                 #     fi
                 #     echo "$DB_SERVER_PREFIX.ODM_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                #     OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.ODM_DB_CURRENT_SCHEMA")
                 # fi
             else
                 echo "## The designated name of the database on the EDB Postgres for ODM. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4962,6 +4968,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             #         echo "## For DB2, the schema name is case-sensitive, and must be specified in uppercase characters." >> ${DB_NAME_USER_PROPERTY_FILE}
             #     fi
             #     echo "$DB_SERVER_PREFIX.ADP_BASE_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            #     OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.ADP_BASE_DB_CURRENT_SCHEMA")
             # fi
             echo "## Provide the user name for the Document Processing Engine Base database. Must be an existing user. For example: \"dbuser1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.ADP_BASE_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5050,6 +5057,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             echo "## Provide the name of the database for ADS. For example: \"adpggdb\" (Notes: the database name must be lowercase)" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.ADP_GG_DB_NAME=\"adpggdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.ADP_GG_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.ADP_GG_DB_CURRENT_SCHEMA")
             echo "## Provide the user name of the database for the ADP Git Gateway of P8Domain. For example: \"dbuser1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.ADP_GG_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## Provide the password (if password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text) of the database user for the ADS of P8Domain." >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5130,9 +5138,11 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "## The name of API. This is required if runtime_feedback.enabled is true and runtime_type is 'distributed'." >> ${USER_PROFILE_PROPERTY_FILE}
             echo "ADP.RUNTIME_FEEDBACK_DESIGN_API_USER=\"<Optional>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("ADP.RUNTIME_FEEDBACK_DESIGN_API_USER")
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "## The content of ZenAPIKey. This is required if runtime_feedback.enabled is true and runtime_type is 'distributed'." >> ${USER_PROFILE_PROPERTY_FILE}
             echo "ADP.RUNTIME_FEEDBACK_DESIGN_ZEN_API_KEY=\"<Optional>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("ADP.RUNTIME_FEEDBACK_DESIGN_ZEN_API_KEY")
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
             echo "## The secret name that contains the TLS certificate and key for the design API. This is required if runtime_feedback.enabled is true and runtime_type is 'distributed' (Default is 'adp-cdra-tls-secret' the same secret used for CDRA_SSL_SECRET_NAME)." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5193,6 +5203,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                         echo "## For DB2, the schema name is case-sensitive, and must be specified in uppercase characters." >> ${DB_NAME_USER_PROPERTY_FILE}
                     fi
                     echo "$DB_SERVER_PREFIX.APP_ENGINE_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.APP_ENGINE_DB_CURRENT_SCHEMA")
                 fi
             else
                 echo "## The designated database name on the EDB Postgres for runtime application engine. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5211,6 +5222,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         else
             echo "## Provide database schema name. This parameter is optional. If not set, the schema name is the same as database user name." >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.APP_ENGINE_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.APP_ENGINE_DB_CURRENT_SCHEMA")
 
             echo "## Provide the user name of the database for the Application Engine database. For example: \"AAEDB\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.APP_ENGINE_DB_USER_NAME=\"AAEDB\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5248,9 +5260,11 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## Your external redis host/ip" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "APP_ENGINE.SESSION_REDIS_HOST=\"<Optional>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+        OPTIONAL_PARAMETERS_LIST+=("APP_ENGINE.SESSION_REDIS_HOST")
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## Your external redis port" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "APP_ENGINE.SESSION_REDIS_PORT=\"<Optional>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+        OPTIONAL_PARAMETERS_LIST+=("APP_ENGINE.SESSION_REDIS_PORT")
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## If your redis enabled TLS connection set this to true, You should add redis server CA certificate in tls_trust_list or trusted_certificate_list" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## The default value is \"false\"" >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5267,6 +5281,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         echo "## If you are using Redis V6 and above with username fill in this field. Otherwise leave this field as empty" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## The default value is empty \"\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "APP_ENGINE.SESSION_REDIS_USERNAME=\"\"" >> ${USER_PROFILE_PROPERTY_FILE}
+        OPTIONAL_PARAMETERS_LIST+=("APP_ENGINE.SESSION_REDIS_USERNAME")
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
         success "Property file for Application Engine has been created.\n"
@@ -5325,14 +5340,18 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                         echo "## For DB2, the schema name is case-sensitive, and must be specified in uppercase characters." >> ${DB_NAME_USER_PROPERTY_FILE}
                     fi
                     echo "$DB_SERVER_PREFIX.BAW_RUNTIME_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.BAW_RUNTIME_DB_CURRENT_SCHEMA")
                     ## These new properties are being added to support creating the object stores with index, table and/or LOB storage location.
                     ## This also mimics to what the user whould see when creating the object store from the ACCE object store wizard.
                     echo "## Provide database index storage location. This parameter is optional. If not set, the database index storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.BAW_RUNTIME_DB_INDEX_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.BAW_RUNTIME_DB_INDEX_STORAGE_LOCATION")
                     echo "## Provide database table storage location. This parameter is optional. If not set, the database table storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.BAW_RUNTIME_DB_TABLE_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.BAW_RUNTIME_DB_TABLE_STORAGE_LOCATION")
                     echo "## Provide database LOB storage location. This parameter is optional. If not set, the database LOB storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.BAW_RUNTIME_DB_LOB_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.BAW_RUNTIME_DB_LOB_STORAGE_LOCATION")
                 fi
                 echo "## Provide the user name of the database for Business Automation Workflow Runtime. For example: \"dbuser1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "$DB_SERVER_PREFIX.BAW_RUNTIME_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5354,18 +5373,23 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             #     echo "## Provide the schema name that is used to qualify unqualified database objects in dynamically prepared SQL statements when" >> ${DB_NAME_USER_PROPERTY_FILE}
             #     echo "## the schema name is different from the user name of the database for Business Automation Workflow." >> ${DB_NAME_USER_PROPERTY_FILE}
             #     echo "$DB_SERVER_PREFIX.BAW_RUNTIME_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            #     OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.BAW_RUNTIME_DB_CURRENT_SCHEMA")
             # fi
         else
             echo "## Provide database schema name. This parameter is optional. If not set, the schema name is the same as database user name." >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.BAW_RUNTIME_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.BAW_RUNTIME_DB_CURRENT_SCHEMA")
             ## These new properties are being added to support creating the object stores with index, table and/or LOB storage location.
             ## This also mimics to what the user whould see when creating the object store from the ACCE object store wizard.
             echo "## Provide database index storage location. This parameter is optional. If not set, the database index storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.BAW_RUNTIME_DB_INDEX_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.BAW_RUNTIME_DB_INDEX_STORAGE_LOCATION")
             echo "## Provide database table storage location. This parameter is optional. If not set, the database table storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.BAW_RUNTIME_DB_TABLE_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.BAW_RUNTIME_DB_TABLE_STORAGE_LOCATION")
             echo "## Provide database LOB storage location. This parameter is optional. If not set, the database LOB storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.BAW_RUNTIME_DB_LOB_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.BAW_RUNTIME_DB_LOB_STORAGE_LOCATION")
 
             echo "## Provide the database name for Business Automation Workflow Runtime. For example: \"BAWDB\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.BAW_RUNTIME_DB_USER_NAME=\"BAWDB\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5413,14 +5437,18 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                         echo "## For DB2, the schema name is case-sensitive, and must be specified in uppercase characters." >> ${DB_NAME_USER_PROPERTY_FILE}
                     fi
                     echo "$DB_SERVER_PREFIX.AWS_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWS_DB_CURRENT_SCHEMA")
                     ## These new properties are being added to support creating the object stores with index, table and/or LOB storage location.
                     ## This also mimics to what the user whould see when creating the object store from the ACCE object store wizard.
                     echo "## Provide database index storage location. This parameter is optional. If not set, the database index storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.AWS_DB_INDEX_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWS_DB_INDEX_STORAGE_LOCATION")
                     echo "## Provide database table storage location. This parameter is optional. If not set, the database table storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.AWS_DB_TABLE_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWS_DB_TABLE_STORAGE_LOCATION")
                     echo "## Provide database LOB storage location. This parameter is optional. If not set, the database LOB storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
                     echo "$DB_SERVER_PREFIX.AWS_DB_LOB_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWS_DB_LOB_STORAGE_LOCATION")
                 fi
                 echo "## Provide the user name of the database for Automation Workstream Services. For example: \"dbuser1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "$DB_SERVER_PREFIX.AWS_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5442,18 +5470,23 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             #     echo "## Provide the schema name that is used to qualify unqualified database objects in dynamically prepared SQL statements when" >> ${DB_NAME_USER_PROPERTY_FILE}
             #     echo "## the schema name is different from the user name of the database for Automation Workstream Services." >> ${DB_NAME_USER_PROPERTY_FILE}
             #     echo "$DB_SERVER_PREFIX.AWS_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            #     OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWS_DB_CURRENT_SCHEMA")
             # fi
         else
             echo "## Provide database schema name. This parameter is optional. If not set, the schema name is the same as database user name." >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.AWS_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWS_DB_CURRENT_SCHEMA")
             ## These new properties are being added to support creating the object stores with index, table and/or LOB storage location.
             ## This also mimics to what the user whould see when creating the object store from the ACCE object store wizard.
             echo "## Provide database index storage location. This parameter is optional. If not set, the database index storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.AWS_DB_INDEX_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWS_DB_INDEX_STORAGE_LOCATION")
             echo "## Provide database table storage location. This parameter is optional. If not set, the database table storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.AWS_DB_TABLE_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWS_DB_TABLE_STORAGE_LOCATION")
             echo "## Provide database LOB storage location. This parameter is optional. If not set, the database LOB storage location will not be set when creating the object store." >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.AWS_DB_LOB_STORAGE_LOCATION=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.AWS_DB_LOB_STORAGE_LOCATION")
 
             echo "## Provide the database name for Automation Workstream Services. For example: \"AWSDB\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.AWS_DB_USER_NAME=\"AWSDB\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5501,6 +5534,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                         echo "## For DB2, the schema name is case-sensitive, and must be specified in uppercase characters." >> ${DB_NAME_USER_PROPERTY_FILE}
                     fi
                     echo "$DB_SERVER_PREFIX.APP_PLAYBACK_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.APP_PLAYBACK_DB_CURRENT_SCHEMA")
                 fi
                 echo "## Provide the user name of the database for Application Engine Playback database . For example: \"dbuser1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "$DB_SERVER_PREFIX.APP_PLAYBACK_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5513,6 +5547,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         else
             echo "## Provide database schema name. This parameter is optional. If not set, the schema name is the same as database user name." >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.APP_PLAYBACK_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.APP_PLAYBACK_DB_CURRENT_SCHEMA")
 
             echo "## Provide the user name of the database for Application Engine Playback database . For example: \"APPDB\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.APP_PLAYBACK_DB_USER_NAME=\"APPDB\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5548,9 +5583,11 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## Your external redis host/ip" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "APP_PLAYBACK.SESSION_REDIS_HOST=\"<Optional>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+        OPTIONAL_PARAMETERS_LIST+=("APP_PLAYBACK.SESSION_REDIS_HOST")
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## Your external redis port" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "APP_PLAYBACK.SESSION_REDIS_PORT=\"<Optional>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+        OPTIONAL_PARAMETERS_LIST+=("APP_PLAYBACK.SESSION_REDIS_PORT")
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## If your redis enabled TLS connection set this to true, You should add redis server CA certificate in tls_trust_list or trusted_certificate_list" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## The default value is \"false\"" >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5567,6 +5604,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         echo "## If you are using Redis V6 and above with username fill in this field. Otherwise leave this field as empty" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## The default value is empty \"\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "APP_PLAYBACK.SESSION_REDIS_USERNAME=\"\"" >> ${USER_PROFILE_PROPERTY_FILE}
+        OPTIONAL_PARAMETERS_LIST+=("APP_PLAYBACK.SESSION_REDIS_USERNAME")
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
         success "Property file for Application Playback Server has been created.\n"
@@ -5636,6 +5674,7 @@ fi
                         echo "## For DB2, the schema name is case-sensitive, and must be specified in uppercase characters." >> ${DB_NAME_USER_PROPERTY_FILE}
                     fi
                     echo "$DB_SERVER_PREFIX.STUDIO_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.STUDIO_DB_CURRENT_SCHEMA")
                 fi
                 echo "## Provide the user name of the database for the Business Automation Studio database. For example: \"dbuser1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "$DB_SERVER_PREFIX.STUDIO_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5648,6 +5687,7 @@ fi
         else
             echo "## Provide database schema name. This parameter is optional. If not set, the schema name is the same as database user name." >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.STUDIO_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.STUDIO_DB_CURRENT_SCHEMA")
 
             echo "## Provide the user name of the database for the Business Automation Studio database. For example: \"BASDB\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.STUDIO_DB_USER_NAME=\"BASDB\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5776,7 +5816,7 @@ if [[ "${pattern_cr_arr[@]}" =~ "decisions_ads" && "$DB_TYPE" != "postgresql-edb
     success "Property file for Automation Decision Services has been created\n"
 fi
 
-    # Create USER_PROFILE_PROPERTY for IM SCIM attribute mappings for SDS/MSAD
+    # Create USER_PROFILE_PROPERTY for IM SCIM attribute mappings for SDS/MSAD/PDS
     set_scim_attr="true"
     if [[ "${set_scim_attr}" == "true" ]]; then
         ## <https://jsw.ibm.com/browse/DBACLD-158645> -  Added checks when workflow-process-service, wfps_authoring selected and LDAP_WFPS_AUTHORING == "Yes".
@@ -5785,6 +5825,8 @@ fi
                 LDAP_NAME="Microsoft Active Directory"
             elif [[ $LDAP_TYPE == "TDS" ]]; then
                 LDAP_NAME="IBM Security Directory Server"
+            elif [[ $LDAP_TYPE == "PDS" ]]; then
+                LDAP_NAME="PingDirectory Server"
             fi
 
             # user profile SCMI User section
@@ -5806,6 +5848,8 @@ fi
                 tmp_val="sAMAccountName"
             elif [[ $LDAP_TYPE == "TDS" ]]; then
                 tmp_val="ibm-entryuuid"
+            elif [[ $LDAP_TYPE == "PDS" ]]; then
+                tmp_val="entryUUID"
             fi
 
             echo "## Provide the user unique id attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5817,7 +5861,10 @@ fi
                 tmp_val="sAMAccountName"
             elif [[ $LDAP_TYPE == "TDS" ]]; then
                 tmp_val="uid"
+            elif [[ $LDAP_TYPE == "PDS" ]]; then
+                tmp_val="uid"
             fi
+            
             echo "## Provide the user name attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
             echo "SCIM.USER_NAME_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5831,6 +5878,8 @@ fi
                 tmp_val="displayName"
             elif [[ $LDAP_TYPE == "TDS" ]]; then
                 tmp_val="cn"
+            elif [[ $LDAP_TYPE == "PDS" ]]; then
+                tmp_val="cn"
             fi
             echo "## Provide the user display name attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
             echo "SCIM.USER_DISPLAY_NAME_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5840,6 +5889,8 @@ fi
                 tmp_val="givenName"
             elif [[ $LDAP_TYPE == "TDS" ]]; then
                 tmp_val="cn"
+            elif [[ $LDAP_TYPE == "PDS" ]]; then
+                tmp_val="givenName"
             fi
             echo "## Provide the user given name attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
             echo "SCIM.USER_GIVEN_NAME_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5865,6 +5916,8 @@ fi
                 tmp_val="whenCreated"
             elif [[ $LDAP_TYPE == "TDS" ]]; then
                 tmp_val="createTimestamp"
+            elif [[ $LDAP_TYPE == "PDS" ]]; then
+                tmp_val="createTimestamp"
             fi
             echo "## Provide the user created attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
             echo "SCIM.USER_CREATED_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5873,6 +5926,8 @@ fi
             if [[ $LDAP_TYPE == "AD" ]]; then
                 tmp_val="whenChanged"
             elif [[ $LDAP_TYPE == "TDS" ]]; then
+                tmp_val="modifyTimestamp"
+            elif [[ $LDAP_TYPE == "PDS" ]]; then
                 tmp_val="modifyTimestamp"
             fi
             echo "## Provide the user lastModified attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5908,6 +5963,8 @@ fi
                 tmp_val="sAMAccountName"
             elif [[ $LDAP_TYPE == "TDS" ]]; then
                 tmp_val="ibm-entryuuid"
+            elif [[ $LDAP_TYPE == "PDS" ]]; then
+                tmp_val="entryUUID"
             fi
 
             echo "## Provide the group unique id attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5935,6 +5992,8 @@ fi
                 tmp_val="whenCreated"
             elif [[ $LDAP_TYPE == "TDS" ]]; then
                 tmp_val="createTimestamp"
+            elif [[ $LDAP_TYPE == "PDS" ]]; then
+                tmp_val="createTimestamp"
             fi
             echo "## Provide the group created attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
             echo "SCIM.GROUP_CREATED_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5943,6 +6002,8 @@ fi
             if [[ $LDAP_TYPE == "AD" ]]; then
                 tmp_val="whenChanged"
             elif [[ $LDAP_TYPE == "TDS" ]]; then
+                tmp_val="modifyTimestamp"
+            elif [[ $LDAP_TYPE == "PDS" ]]; then
                 tmp_val="modifyTimestamp"
             fi
             echo "## Provide the group lastModified attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5953,6 +6014,8 @@ fi
                 tmp_val="group"
             elif [[ $LDAP_TYPE == "TDS" ]]; then
                 tmp_val="groupOfUniqueNames"
+            elif [[ $LDAP_TYPE == "PDS" ]]; then
+                tmp_val="groupOfUniqueNames"
             fi
             echo "## Provide the group object class attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
             echo "SCIM.GROUP_OBJECT_CLASS_ATTRIBUTE=\"$tmp_val\"" >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5961,6 +6024,8 @@ fi
             if [[ $LDAP_TYPE == "AD" ]]; then
                 tmp_val="member"
             elif [[ $LDAP_TYPE == "TDS" ]]; then
+                tmp_val="uniqueMember"
+            elif [[ $LDAP_TYPE == "PDS" ]]; then
                 tmp_val="uniqueMember"
             fi
             echo "## Provide the group members attribute, the default value \"$tmp_val\" for \"$LDAP_NAME\"." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5977,7 +6042,16 @@ fi
         #set DB2 HADR as optional
         if [[ $DB_TYPE != "db2hadr" && $DB_TYPE != "db2rdshadr" ]]; then
             ${SED_COMMAND} "s|HADR_STANDBY_SERVERNAME=\"<Required>\"|HADR_STANDBY_SERVERNAME=\"<Optional>\"|g" ${DB_SERVER_INFO_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.HADR_STANDBY_SERVERNAME")
             ${SED_COMMAND} "s|HADR_STANDBY_PORT=\"<Required>\"|HADR_STANDBY_PORT=\"<Optional>\"|g" ${DB_SERVER_INFO_PROPERTY_FILE}
+            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.HADR_STANDBY_PORT")
+        ### https://jsw.ibm.com/browse/DBACLD-177020 - Remove HADR_STANDBY_SERVERNAME and HADR_STANDBY_PORT from property file as db2rdshadr is not applicable.
+        elif [[ $DB_TYPE == "db2rdshadr" ]]; then
+            ${SED_COMMAND} "/HADR_STANDBY_SERVERNAME=\"<Required>\"/d" ${DB_SERVER_INFO_PROPERTY_FILE}
+            ${SED_COMMAND} "/HADR_STANDBY_PORT=\"<Required>\"/d" ${DB_SERVER_INFO_PROPERTY_FILE}
+            ${SED_COMMAND} "/If the database type is Db2 HADR, then complete the rest of the parameters below. Provide the database server name or IP address of the standby database server./d" ${DB_SERVER_INFO_PROPERTY_FILE}
+            ${SED_COMMAND} "/Provide the standby database server port./d" ${DB_SERVER_INFO_PROPERTY_FILE}
+            ${SED_COMMAND} $'$a\\\n## For Amazon RDS for Db2, High Availability Disaster Recovery (HADR) is handle by AWS, please refer to AWS documentation: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Db2.Concepts.FeatureSupport.html#db2-unsupported-features' ${DB_SERVER_INFO_PROPERTY_FILE}
         fi
     fi
 
@@ -5985,16 +6059,24 @@ fi
         ${SED_COMMAND} "s|LDAP_BIND_DN_PASSWORD=\"\"|LDAP_BIND_DN_PASSWORD=\"{xor}<Required>\"|g" ${LDAP_PROPERTY_FILE}
         ${SED_COMMAND} "s|=\"\"|=\"<Required>\"|g" ${LDAP_PROPERTY_FILE}
         ${SED_COMMAND} 's/LC_AD_GC_HOST="<Required>"/LC_AD_GC_HOST=""/g' ${LDAP_PROPERTY_FILE}
+        OPTIONAL_PARAMETERS_LIST+=("LC_AD_GC_HOST")
         ${SED_COMMAND} 's/LC_AD_GC_PORT="<Required>"/LC_AD_GC_PORT=""/g' ${LDAP_PROPERTY_FILE}
-
+        OPTIONAL_PARAMETERS_LIST+=("LC_AD_GC_PORT")
     fi
 
     if [[ $SET_EXT_LDAP == "Yes" ]]; then
         ${SED_COMMAND} "s|LDAP_BIND_DN_PASSWORD=\"\"|LDAP_BIND_DN_PASSWORD=\"{xor}<Required>\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
         ${SED_COMMAND} "s|=\"\"|=\"<Required>\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
         ${SED_COMMAND} 's/LC_AD_GC_HOST="<Required>"/LC_AD_GC_HOST=""/g' ${EXTERNAL_LDAP_PROPERTY_FILE}
+        OPTIONAL_PARAMETERS_LIST+=("LC_AD_GC_HOST")
         ${SED_COMMAND} 's/LC_AD_GC_PORT="<Required>"/LC_AD_GC_PORT=""/g' ${EXTERNAL_LDAP_PROPERTY_FILE}
+        OPTIONAL_PARAMETERS_LIST+=("LC_AD_GC_PORT")
     fi
+
+    
+
+    # Marks all entries in "OPTIONAL_PARAMETERS_LIST" as optional by appending them to the TEMPORARY_PROPERTY_FILE under "OPTIONAL_PARAMETERS:"
+    mark_optional
 
     INFO "All property files for CP4BA has been created."
 
@@ -6005,7 +6087,8 @@ fi
     msgRed   "The value in the property file must be within double quotes."
     msgRed   "The value for User/Password in [cp4ba_db_name_user.property] [cp4ba_user_profile.property] file should NOT include special characters: single quotation \"'\""
     msgRed   "The value in [cp4ba_LDAP.property] or [cp4ba_External_LDAP.property] [cp4ba_user_profile.property] file should NOT include special character '\"'"
-
+    
+    
     if (( db_server_number > 0 )); then
         echo -e  "\x1b[32m* [cp4ba_db_server.property]:\x1B[0m"
         echo -e  "  - Properties for database server used by CP4BA deployment, such as DATABASE_SERVERNAME/DATABASE_PORT/DATABASE_SSL_ENABLE.\n"
@@ -6025,10 +6108,10 @@ fi
         if [[ $DB_TYPE == "postgresql" ]]; then
             echo -e " - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your PostgreSQL database server and SSL is configured with both server and client authentication, retrieve the following certificates from your database server: the server certificate, client certificate, and client private key. Copy them into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The files must be named root.crt, client.crt, and client.key respectively.$RESET_TEXT"
             echo
-            echo -e "  - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your PostgreSQL database server and SSL is configured with server-only authentication, retrieve the server certificate from your database server and copy it into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named db-cert.crt $RESET_TEXT"
+            echo -e " - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your PostgreSQL database server and SSL is configured with server-only authentication, retrieve the server certificate from your database server and copy it into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named db-cert.crt $RESET_TEXT"
             echo
         else
-            echo -e "  - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your database server, retrieve the server certificate file from your remote database server and copy it into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named db-cert.crt. $RESET_TEXT"  
+            echo -e " - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your database server, retrieve the server certificate file from your remote database server and copy it into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named db-cert.crt. $RESET_TEXT"  
             echo
         fi
     fi
@@ -6053,6 +6136,21 @@ fi
             echo -e "  - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your external LDAP server, retrieve the server certificate file from your remote LDAP server and copy it into the folder \"$LDAP_SSL_CERT_FOLDER\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named external-ldap-cert.crt. $RESET_TEXT"  
             echo
         fi
+    fi
+
+    # show tips for IM metastore external Postgres DB
+    if [[ $EXTERNAL_POSTGRESDB_FOR_IM == "true" ]]; then
+        msgB "* You have enabled IM metastore external Postgres DB, please get \"<your-server-certification: root.crt>\" \"<your-client-certification: client.crt>\" \"<your-client-key: client.key>\" from your local or remote database server, and copy them into folder \"$IM_DB_SSL_CERT_FOLDER\" before you execute the generate mode of cp4a-prerequisites.sh script."
+    fi
+
+    # show tips for Zen metastore external Postgres DB
+    if [[ $EXTERNAL_POSTGRESDB_FOR_ZEN == "true"  ]]; then
+        msgB "* You have enabled Zen metastore external Postgres DB, please get \"<your-server-certification: root.crt>\" \"<your-client-certification: client.crt>\" \"<your-client-key: client.key>\" from your local or remote database server, and copy them into folder \"$ZEN_DB_SSL_CERT_FOLDER\" before you execute the generate mode of cp4a-prerequisites.sh script."
+    fi
+
+    # show tips for BTS metastore external Postgres DB
+    if [[ $EXTERNAL_POSTGRESDB_FOR_BTS == "true" ]]; then
+        msgB "* You have enabled BTS metastore external Postgres DB, please get \"<your-server-certification: root.crt>\" \"<your-client-certification: client.crt>\" \"<your-client-key: client.key>\" from your local or remote database server, and copy them into folder \"$BTS_DB_SSL_CERT_FOLDER\" before you execute the generate mode of cp4a-prerequisites.sh script."
     fi
 
     echo -e  "\x1b[32m* [cp4ba_user_profile.property]:\x1B[0m"
@@ -6132,7 +6230,9 @@ function load_property_before_generate(){
     IFS=',' read -ra foundation_component_arr <<< "$foundation_list"
     IFS=$OIFS
 
+
     # load db_name_full_array and db_user_full_array
+    
     db_name_list="$(prop_tmp_property_file DB_NAME_LIST)"
     db_user_list="$(prop_tmp_property_file DB_USER_LIST)"
     db_user_pwd_list="$(prop_tmp_property_file DB_USER_PWD_LIST)"
@@ -6333,7 +6433,6 @@ function create_db_script(){
         for ((j=1;j<=${content_os_number};j++))
         do
             wait_msg "Creating the DB SQL statement file for FNCM Object store database: os${j}db"
-            clear
 
             ## Retrieving the tables,index, and lob storage location from the properties files
             ## to be passed to the helper functions to create the sql files.
@@ -7967,8 +8066,8 @@ function select_ldap_type(){
     COLUMNS=12
 
     echo -e "\x1B[1mWhat is the LDAP type that is used for this deployment? \x1B[0m"
-    options=("Microsoft Active Directory" "IBM Tivoli Directory Server / Security Directory Server")
-    PS3='Enter a valid option [1 to 2]: '
+    options=("Microsoft Active Directory" "IBM Tivoli Directory Server / Security Directory Server" "PingDirectory Server")
+    PS3='Enter a valid option [1 to 3]: '
     select opt in "${options[@]}"
     do
         case $opt in
@@ -7978,6 +8077,10 @@ function select_ldap_type(){
                 ;;
             "IBM Tivoli"*)
                 LDAP_TYPE="TDS"
+                break
+                ;;
+            "PingDirectory Server")
+                LDAP_TYPE="PDS"
                 break
                 ;;
             *) echo "invalid option $REPLY";;
@@ -8034,7 +8137,7 @@ function select_db_type(){
     if [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "document_processing" ]]; then
         # if [[ $PROFILE_TYPE == "small" ]]; then
         ## -- https://jsw.ibm.com/browse/DBACLD-170077 <updating the name of the DB type of PostgreSQL>
-        options=("IBM Db2 Database" "IBM Db2 HADR" "IBM Db2 RDS" "IBM Db2 RDS HADR" "External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("IBM Db2 Database" "IBM Db2 HADR" "Amazon RDS for Db2" "Amazon RDS for Db2 HADR" "External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 6]: '
         # else
         #     options=("IBM Db2 Database" "PostgreSQL")
@@ -8066,7 +8169,7 @@ function select_db_type(){
         # fi
     elif [[ ("${PATTERNS_CR_SELECTED[@]}" =~ "workflow-authoring" || " ${optional_component_cr_arr[@]}" =~ "app_designer" || " ${optional_component_cr_arr[@]}" =~ "ads_designer") && " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-process-service" ]]; then
         # if [[ $PROFILE_TYPE == "small" ]]; then
-        options=("IBM Db2 Database" "IBM Db2 HADR" "IBM Db2 RDS" "IBM Db2 RDS HADR" "Oracle" "Microsoft SQL Server" "External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("IBM Db2 Database" "IBM Db2 HADR" "Amazon RDS for Db2" "Amazon RDS for Db2 HADR" "Oracle" "Microsoft SQL Server" "External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 8]: '
         # else
         #     options=("IBM Db2 Database" "Oracle" "Microsoft SQL Server" "PostgreSQL")
@@ -8082,7 +8185,7 @@ function select_db_type(){
         # fi
     else
         # if [[ $PROFILE_TYPE == "small" ]]; then
-        options=("IBM Db2 Database" "IBM Db2 HADR" "IBM Db2 RDS" "IBM Db2 RDS HADR" "Oracle" "Microsoft SQL Server" "External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("IBM Db2 Database" "IBM Db2 HADR" "Amazon RDS for Db2" "Amazon RDS for Db2 HADR" "Oracle" "Microsoft SQL Server" "External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 8]: '
         # else
         #     options=("IBM Db2 Database" "Oracle" "Microsoft SQL Server" "PostgreSQL")
@@ -8100,11 +8203,11 @@ function select_db_type(){
                 DB_TYPE="db2hadr"
                 break
                 ;;
-            "IBM Db2 RDS")
+            "Amazon RDS for Db2")
                 DB_TYPE="db2rds"
                 break
                 ;;
-            "IBM Db2 RDS HADR")
+            "Amazon RDS for Db2 HADR")
                 DB_TYPE="db2rdshadr"
                 break
                 ;;
@@ -8347,6 +8450,8 @@ function input_information(){
         select_fips_enable
     fi
 
+    
+
     if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]]; then
         generate_sample_network_policies
         ### <https://jsw.ibm.com/browse/DBACLD-170742> - We only prompt the user to ask if they want to use external PostgreSQL for Zen and IM when external PostgreSQL is selected.
@@ -8485,147 +8590,6 @@ function get_db_server_list(){
 }
 
 
-
-function clean_up_temp_file(){
-    local files=()
-    files=($(find $PREREQUISITES_FOLDER -name '*.*""'))
-    for item in ${files[*]}
-    do
-        rm -rf $item >/dev/null 2>&1
-    done
-
-    files=($(find $TEMP_FOLDER -name '*.*""'))
-    for item in ${files[*]}
-    do
-        rm -rf $item >/dev/null 2>&1
-    done
-}
-
-function generate_create_secret_script(){
-    local files=()
-    local CREATE_SECRET_SCRIPT_FILE_TMP=$TEMP_FOLDER/create_secret.sh
-    > ${CREATE_SECRET_SCRIPT_FILE_TMP}
-    > ${CREATE_SECRET_SCRIPT_FILE}
-    # Check if secret_template folder is created
-    if [ -d $SECRET_FILE_FOLDER ]; then
-        files=($(find $SECRET_FILE_FOLDER -name '*.yaml'))
-        for item in ${files[*]}
-        do
-            echo "echo \"****************************************************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-            echo "echo \"******************************* START **************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-            echo "echo \"[INFO] Applying YAML template file:$item\"">> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-            echo "kubectl apply -f \"$item\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-            echo "echo \"******************************** END ***************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-            echo "echo \"****************************************************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-            echo "printf \"\\n\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-            echo "" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-        done
-
-        files=($(find $SECRET_FILE_FOLDER -name '*.sh'))
-        for item in ${files[*]}
-        do
-            echo "echo \"****************************************************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-            echo "echo \"******************************* START **************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-            echo "echo \"[INFO] Executing shell script:$item\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-            echo "$item" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-            echo "echo \"******************************** END ***************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-            echo "echo \"****************************************************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-            echo "printf \"\\n\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-            echo "" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-        done
-        ${COPY_CMD} -rf ${CREATE_SECRET_SCRIPT_FILE_TMP} ${CREATE_SECRET_SCRIPT_FILE}
-        chmod 755 $CREATE_SECRET_SCRIPT_FILE
-    else
-        success "No secret is needed for the selected configuration. Skipping this step."
-        rm -f $CREATE_SECRET_SCRIPT_FILE
-    fi  
-}
-
-
-function validate_secret_in_cluster(){
-    INFO "Checking the Kubernetes secret required by CP4BA existing in cluster or not"
-    local files=()
-    SECRET_CREATE_PASSED="true"
-    # Check if secret_template folder is created
-    if [ -d $SECRET_FILE_FOLDER ]; then
-        files=($(find $SECRET_FILE_FOLDER -name '*.yaml'))
-        for item in ${files[*]}
-        do
-            secret_name_tmp=`cat $item | ${YQ_CMD} r - metadata.name`
-            if [ -z "$secret_name_tmp" ]; then
-                error "Secret name in YAML file not found: \"$item\"! Please check and fix it"
-                exit 1
-            else
-                secret_name_tmp=$(sed -e 's/^"//' -e 's/"$//' <<<"$secret_name_tmp")
-                # need to check ibm-zen-metastore-edb-cm/im-datastore-edb-cm for Zen/IM and ibm-bts-config-extension external postgresql db support
-                if [[ $secret_name_tmp != "ibm-zen-metastore-edb-cm" && $secret_name_tmp != "im-datastore-edb-cm" && $secret_name_tmp != "ibm-bts-config-extension" && $secret_name_tmp != "cp4ba-tls-issuer" ]]; then
-                    secret_exists=`kubectl get secret $secret_name_tmp -n "$CP4BA_SERVICES_NS" --ignore-not-found | wc -l`  >/dev/null 2>&1
-                    if [ "$secret_exists" -ne 2 ] ; then
-                        error "Secret \"$secret_name_tmp\" not found in Kubernetes cluster! please create it first before deployment CP4BA"
-                        SECRET_CREATE_PASSED="false"
-                    else
-                        success "Secret \"$secret_name_tmp\" found in Kubernetes cluster, PASSED!"
-                    fi
-                else
-                    if [[ $secret_name_tmp == "cp4ba-tls-issuer" ]]; then
-                        secret_exists=`kubectl get Issuer $secret_name_tmp -n "$CP4BA_SERVICES_NS" --ignore-not-found | wc -l`  >/dev/null 2>&1
-                        if [ "$secret_exists" -ne 2 ] ; then
-                            error "Issuer \"$secret_name_tmp\" not found in Kubernetes cluster! please create it first before deployment CP4BA"
-                            SECRET_CREATE_PASSED="false"
-                        else
-                            success "Issuer \"$secret_name_tmp\" found in Kubernetes cluster, PASSED!"
-                        fi
-                    else
-                        secret_exists=`kubectl get configmap $secret_name_tmp -n "$CP4BA_SERVICES_NS" --ignore-not-found | wc -l`  >/dev/null 2>&1
-                        if [ "$secret_exists" -ne 2 ] ; then
-                            error "ConfigMap \"$secret_name_tmp\" not found in Kubernetes cluster! please create it first before deployment CP4BA"
-                            SECRET_CREATE_PASSED="false"
-                        else
-                            success "ConfigMap \"$secret_name_tmp\" found in Kubernetes cluster, PASSED!"
-                        fi
-                    fi
-                fi
-            fi
-        done
-
-        files=($(find $SECRET_FILE_FOLDER -name '*.sh'))
-        for item in ${files[*]}
-        do
-            if [[ "$machine" == "Mac" ]]; then
-                secret_name_tmp=`grep ' create secret generic' $item | tail -1 | cut -d'"' -f2`
-
-                # for DPE secret format specially
-                if [ -z "$secret_name_tmp" ]; then
-                    secret_name_tmp=`grep ' create secret generic' $item | tail -1 | cut -d'"' -f2`
-                fi
-            else
-                # extract secret name by grabbing string btw "create secret generic" and the next whitespace
-                secret_name_tmp=`cat $item | grep -oP '(?<=create secret generic ).*?(?=\s)' | tail -1`
-            fi
-            if [ -z "$secret_name_tmp" ]; then
-                error "Secret name in shell script file not found: \"$item\"! Please check and fix it"
-                exit 1
-            else
-                secret_name_tmp=$(sed -e 's/^"//' -e 's/"$//' <<<"$secret_name_tmp")
-                secret_exists=`kubectl get secret $secret_name_tmp -n "$CP4BA_SERVICES_NS" --ignore-not-found | wc -l`  >/dev/null 2>&1
-                if [ "$secret_exists" -ne 2 ] ; then
-                    error "Secret \"$secret_name_tmp\" not found in Kubernetes cluster! please create it first before deployment CP4BA"
-                    SECRET_CREATE_PASSED="false"
-                else
-                    success "Secret \"$secret_name_tmp\" found in Kubernetes cluster, PASSED!"
-                fi
-            fi
-        done
-        if [[ $SECRET_CREATE_PASSED == "false" ]]; then
-            info "Please create secret in Kubernetes cluster correctly, exiting..."
-            exit 1
-        else
-            INFO "All secrets created in Kubernetes cluster, PASSED!"
-        fi
-    else
-        success "No secret is needed for the selected configuration. Skipping this step."
-    fi
-}
 
 function validate_prerequisites(){
     # check FIPS enabled or disabled

@@ -344,6 +344,17 @@ spec:
                       lc_group_filter: 
                         type: string
                         nullable: true
+                  pds:
+                    type: object
+                    description: Provide below info if you use PingDirectory Service (pds)
+                    x-kubernetes-preserve-unknown-fields: true
+                    properties:
+                      lc_user_filter:
+                        type: string
+                        nullable: true
+                      lc_group_filter:
+                        type: string 
+                        nullable: true
               datasource_configuration:
                 type: object
                 description: Datasource Configuration for CP4A

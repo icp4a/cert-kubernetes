@@ -33,6 +33,9 @@ process_config_file() {
     CONFIG_FILE=$1
     if [ -f "$CONFIG_FILE" ]; then
         echo "Config file found: $CONFIG_FILE"
+        info "Validating the config file located at \"$CONFIG_FILE\"...."
+        printf "\n"
+        validate_config_file $CONFIG_FILE
         ENTITLEMENT_KEY=$(prop_airgap_mirroring_file  "$CONFIG_FILE" ENTITLEMENT_KEY)
         PRIVATE_REGISTRY_HOST=$(prop_airgap_mirroring_file  "$CONFIG_FILE" PRIVATE_REGISTRY_HOST)
         PRIVATE_REGISTRY_PORT=$(prop_airgap_mirroring_file  "$CONFIG_FILE" PRIVATE_REGISTRY_PORT)

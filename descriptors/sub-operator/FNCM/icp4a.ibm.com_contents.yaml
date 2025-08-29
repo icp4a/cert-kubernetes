@@ -77,7 +77,7 @@ spec:
                   ier: 
                     type: boolean 
                   iccsap: 
-                    type: boolean 
+                    type: boolean
               shared_configuration:
                 description: Shared Configuration for CP4A
                 required:
@@ -188,6 +188,17 @@ spec:
                   tds:
                     type: object
                     description: Provide below info if you use Tivoli Directory Service (tds)
+                    x-kubernetes-preserve-unknown-fields: true
+                    properties:
+                      lc_user_filter: 
+                        type: string
+                        nullable: true
+                      lc_group_filter: 
+                        type: string
+                        nullable: true
+                  pds:
+                    type: object
+                    description: Provide below info if you use PingDirectory Service (pds)
                     x-kubernetes-preserve-unknown-fields: true
                     properties:
                       lc_user_filter: 

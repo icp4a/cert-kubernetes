@@ -18,6 +18,7 @@ metadata:
     app.kubernetes.io/managed-by: ibm-dba-content
     app.kubernetes.io/name: ibm-dba-content
     release: 25.0.0
+    cp4ba.ibm.com/backup-type: mandatory
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
@@ -33,7 +34,7 @@ spec:
 
   ## The optional components to be installed if listed here.
   ## The optional components are: Content Manager Image Services (cmis), css (Content Search Services), es (External Share), tm (Task Manager),
-  ## IBM Enterprise Records (ier) and IBM Content Collector for SAP (iccsap)
+  ## IBM Enterprise Records (ier) , IBM Content Collector for SAP (iccsap) 
   ## NOTE: ier, and iccsap does NOT support integration with ums.
   ## NOTE: es does not work when using Zen and IAM for authentication.
   content_optional_components:
@@ -105,7 +106,7 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/common/dba-keytool-initcontainer
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
 
     ## The platform to be deployed specified by the user. Possible values are: OCP, ROKS, and other. This is normally populated by the User script
     ## based on input from the user.
@@ -192,6 +193,8 @@ spec:
     ## you must set "sc_skip_ldap_config: false".  If you are performing fresh install using 23.0.2-IF004 or later, you can also set
     ## "sc_skip_ldap_config: false" in order to have the FileNet Content Manager P8 domain to be configured with direct LDAP bind
     ## as opposed to the default SCIM configuration.
+    ## NOTE: Setting 'sc_skip_ldap_config' to false is not supported when 'PingDirectory' is selected as the LDAP type.
+    ## Ensure this parameter remains set to 'true' when using PingDirectory.
     sc_skip_ldap_config: true
 
     ## Enable/disable FIPS mode for the deployment (default value is "false")
@@ -241,7 +244,7 @@ spec:
 
   ## The beginning section of LDAP configuration for CP4A
   ldap_configuration:
-    ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory" or "Custom"
+    ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory" or "PingDirectory Server" or "Custom"
     lc_selected_ldap_type: "<Required>"
 
     ## The name of the LDAP server to connect
@@ -262,26 +265,26 @@ spec:
     ## The name of the secret that contains the LDAP SSL/TLS certificate.
     lc_ldap_ssl_secret_name: "<Required>"
 
-    ## The LDAP user name attribute. Semicolon-separated list that must include the first RDN user distinguished names. One possible value is "*:uid" for TDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    ## The LDAP user name attribute. Semicolon-separated list that must include the first RDN user distinguished names. One possible value is "*:uid" for both TDS, PDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
     lc_ldap_user_name_attribute: "<Required>"
 
-    ## The LDAP user display name attribute. One possible value is "cn" for TDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    ## The LDAP user display name attribute. One possible value is "cn" for TDS, "uid" for PDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info.
     lc_ldap_user_display_name_attr: "<Required>"
 
     ## The LDAP group base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
     lc_ldap_group_base_dn: "<Required>"
 
-    ## The LDAP group name attribute.  One possible value is "*:cn" for TDS and "*:cn" for AD. Refer to Knowledge Center for more info.
+    ## The LDAP group name attribute.  One possible value is "*:cn" for TDS, PDS and AD. Refer to Knowledge Center for more info.
     lc_ldap_group_name_attribute: "*:cn"
 
-    ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
+    ## The LDAP group display name attribute.  One possible value for TDS, PDS  and AD is "cn". Refer to Knowledge Center for more info.
     lc_ldap_group_display_name_attr: "cn"
 
     ## The LDAP group membership search filter string.  One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS
-    ## and "(&(cn=%v)(objectcategory=group))" for AD.
+    ## and "(&(cn=%v)(objectcategory=group))" for AD and "(&(cn=%v)(objectClass=groupOfUniqueNames))" for PDS.
     lc_ldap_group_membership_search_filter: "<Required>"
 
-    ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
+    ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD and "groupOfUniqueNames:uniquemember" for PDS.
     lc_ldap_group_member_id_map: "<Required>"
 
     ## Set to true if you want to enable LDAP nested search in IAM, by default it is false
@@ -306,7 +309,7 @@ spec:
     # lc_ldap_precheck: true
 
     ## The User script will uncomment the section needed based on user's input from User script.  If you are deploying without the User script,
-    ## uncomment the necessary section (depending if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
+    ## uncomment the necessary section (depending if you are using Active Directory (ad) or Tivoli Directory Service (tds) or PingDirectory Server (pds)) accordingly.
     # ad:
     #   lc_ad_gc_host: "<Required>"
     #   lc_ad_gc_port: "<Required>"
@@ -318,39 +321,39 @@ spec:
     # custom:
     #   lc_user_filter: "(&(objectClass=person)(cn=%v))"
     #   lc_group_filter:  "(&(objectClass=group)(cn=%v))"
+    # pds:
+    #   lc_user_filter: "(&(uid=%v)(objectclass=person))"
+    #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupOfUniqueNames)))"
 
-    ## This is to add customized IAM SCIM LDAP attributes for this LDAP configuration, If you only add 'scim_configuration_iam', we will create SCIM LDAP attributes mapping using default values and the default value meant for IBM Security Directory Server only. Comment the whole section if you don't want this to be configured.
+    ## This is to add customized IAM SCIM LDAP attributes for this LDAP configuration, If you add 'scim_configuration_iam' section to the CR, the operator will create the SCIM LDAP attributes mapping using values defined in that section. If you do not add 'scim_configuration_iam' section to the CR, the operator will create the SCIM LDAP attributes using the default value meant for Microsoft Active Directory. The sample section below consists of the default values that will be used for creating the SCIM LDAP attributes for Microsoft Active Directory.
     # scim_configuration_iam:
-    #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
-    #   user_unique_id_attribute: ibm-entryuuid
-    #   user_external_id_attribute: dn
-    #   user_emails_attribute: mail
-    #   user_name_attribute: uid
-    #   user_display_name_attribute: cn
-    #   user_groups_attribute: memberOf
-    #   user_object_class_attribute: person
-    #   user_principal_name_attribute: uid
-    #   user_given_name_attribute: cn
-    #   user_family_name_attribute: sn
-    #   user_full_name_attribute: cn
-    #   ## Optional:  Uncomment 'user_custom_mapping' and add any custom mapping below
-    #   # user_custom_mapping:
-    #     # <scim_attr_name> : <ldap attr name>
-    #     # like below
-    #     # ibmentryuuid : ibm-entryuuid
-    #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
-    #   group_unique_id_attribute: ibm-entryuuid
-    #   group_external_id_attribute: dn
-    #   group_display_name_attribute : cn
-    #   group_members_attribute: member
-    #   group_object_class_attribute: groupOfNames
-    #   group_name_attribute: cn
-    #   group_principal_name_attribute: cn
-    #   ## Optional:  Uncomment 'group_custom_mapping' and add any custom mapping below
-    #   # group_custom_mapping:
-    #     # <scim_attr_name> : <ldap attr name>
-    #     # like below
-    #     # ibmentryuuid : ibm-entryuuid
+    #   user_unique_id_attribute: "sAMAccountName"
+    #   user_name_attribute: "sAMAccountName"
+    #   user_principal_name_attribute: "sAMAccountName"
+    #   user_display_name_attribute: "displayName"
+    #   user_given_name_attribute: "givenName"
+    #   user_family_name_attribute: "sn"
+    #   user_full_name_attribute: "cn"
+    #   user_external_id_attribute: "dn"
+    #   user_emails_attribute: "mail"
+    #   user_created_attribute: "whenCreated"
+    #   user_lastmodified_attribute: "whenChanged"
+    #   user_phonenumbers:
+    #   - value: "mobile"
+    #     type: "mobile"
+    #   - value: "telephoneNumber"
+    #     type: "work"
+    #   user_object_class_attribute: "person"
+    #   user_groups_attribute: "memberOf"
+    #   group_unique_id_attribute: "sAMAccountName"
+    #   group_name_attribute: "cn"
+    #   group_principal_name_attribute: "cn"
+    #   group_display_name_attribute: "cn"
+    #   group_external_id_attribute: "dn"
+    #   group_created_attribute: "whenCreated"
+    #   group_lastmodified_attribute: "whenChanged"
+    #   group_object_class_attribute: "group"
+    #   group_members_attribute: "member"
 
     ## This section allows to enhance the ldap configuration for the UMS SCIM capability. If lc_user_filter or lc_group_filter cannot handle a custom LDAP filter for user or group searches this section should be enabled.
     ## optional: enables the liberty ldapEntityType configuration and disables the usage of lc_user_filter, lc_group_filter, lc_ldap_group_member_id_map, lc_ldap_user_name_attribute and lc_ldap_group_name_attribute in the UMS capabilities.
@@ -391,7 +394,7 @@ spec:
   ## The beginning section of multi ldap configuration for CP4BA
   # ldap_configuration_<id_name>:
     #lc_ldap_id: <id_name>
-    ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory" or "Custom"
+    ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory" or "PingDirectory Server" or  "Custom"
     #lc_selected_ldap_type: "<Required>"
 
     ## The name of the LDAP server to connect
@@ -412,25 +415,26 @@ spec:
     ## The name of the secret that contains the LDAP SSL/TLS certificate.
     #lc_ldap_ssl_secret_name: "<Required>"
 
-    ## The LDAP user name attribute.  One possible value is "*:cn" for TDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    ## The LDAP user name attribute. Semicolon-separated list that must include the first RDN user distinguished names. One possible value is "*:uid" for both TDS, PDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
     #lc_ldap_user_name_attribute: "<Required>"
 
-    ## The LDAP user display name attribute. One possible value is "cn" for TDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info.
+    ## The LDAP user display name attribute. One possible value is "cn" for TDS, "uid" for PDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info. 
     #lc_ldap_user_display_name_attr: "<Required>"
 
     ## The LDAP group base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
     #lc_ldap_group_base_dn: "<Required>"
 
-    ## The LDAP group name attribute.  One possible value is "*:cn" for TDS and "*:cn" for AD. Refer to Knowledge Center for more info.
+    ## The LDAP group name attribute.  One possible value is "*:cn" for TDS, PDS and AD. Refer to Knowledge Center for more info.
     #lc_ldap_group_name_attribute: "*:cn"
 
-    ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
+    ## The LDAP group display name attribute.  One possible value for TDS, PDS and AD is "cn". Refer to Knowledge Center for more info.
     #lc_ldap_group_display_name_attr: "cn"
 
-    ## The LDAP group membership search filter string.  One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS and AD
+    ## The LDAP group membership search filter string.  One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS
+    ## and "(&(cn=%v)(objectcategory=group))" for AD and (&(cn=%v)(objectClass=groupOfUniqueNames)) for PDS.   
     #lc_ldap_group_membership_search_filter: "<Required>"
 
-    ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
+    ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD and "groupOfUniqueNames:uniquemember" for PDS.
     #lc_ldap_group_member_id_map: "<Required>"
 
     ## The lc_ldap_precheck parameter is used to enable or disable LDAP connection check.
@@ -438,7 +442,7 @@ spec:
     ## if set to "false", then LDAP connection check will not be enabled.
     #lc_ldap_precheck: true
 
-    ## Uncomment the necessary section (depending if you are using Active Directory (ad) or Tivoli Directory Service (tds) or custom for other LDAP type) accordingly.
+    ## Uncomment the necessary section (depending if you are using Active Directory (ad) or Tivoli Directory Service (tds) or PingDirectory Server (pds) or custom for other LDAP type) accordingly.
     #ad:
     #  lc_ad_gc_host: "<Required>"
     #  lc_ad_gc_port: "<Required>"
@@ -450,40 +454,69 @@ spec:
     #custom:
     #  lc_user_filter: "(&(objectClass=person)(cn=%v))"
     #  lc_group_filter:  "(&(objectClass=group)(cn=%v))"
+    #pds:
+    #  lc_user_filter: "(&(uid=%v)(objectclass=person))"
+    #  lc_group_filter: "(&(cn=%v)(|(objectclass=groupOfUniqueNames)))"
 
-    ## This is to add customized IAM SCIM LDAP attributes for this LDAP configuration, If you only add 'scim_configuration_iam', we will create SCIM LDAP attributes mapping using default values and the default value meant for IBM Security Directory Server only. Comment the whole section if you don't want this to be configured.
+    ## This is to add customized IAM SCIM LDAP attributes for this LDAP configuration, If you add 'scim_configuration_iam' section to the CR, the operator will create the SCIM LDAP attributes mapping using values defined in that section. If you do not add 'scim_configuration_iam' section to the CR, the operator will create the SCIM LDAP attributes using the default value meant for IBM Security Directory Server. The sample section below consists of the default values that will be used for creating the SCIM LDAP attributes for IBM Security Directory Server.
     # scim_configuration_iam:
-    #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
-    #   user_unique_id_attribute: ibm-entryuuid
-    #   user_external_id_attribute: dn
-    #   user_emails_attribute: mail
-    #   user_name_attribute: uid
-    #   user_display_name_attribute: cn
-    #   user_groups_attribute: memberOf
-    #   user_object_class_attribute: person
-    #   user_principal_name_attribute: uid
-    #   user_given_name_attribute: cn
-    #   user_family_name_attribute: sn
-    #   user_full_name_attribute: cn
-    #   ## Optional:  Uncomment 'user_custom_mapping' and add any custom mapping below
-    #   # user_custom_mapping:
-    #     # <scim_attr_name> : <ldap attr name>
-    #     # like below
-    #     # ibmentryuuid : ibm-entryuuid
-    #   ## This attribute MUST be set to an LDAP attribute that is unique and immutable
-    #   group_unique_id_attribute: ibm-entryuuid
-    #   group_external_id_attribute: dn
-    #   group_display_name_attribute : cn
-    #   group_members_attribute: member
-    #   group_object_class_attribute: groupOfNames
-    #   group_name_attribute: cn
-    #   group_principal_name_attribute: cn
-    #   ## Optional:  Uncomment 'group_custom_mapping' and add any custom mapping below
-    #   # group_custom_mapping:
-    #     # <scim_attr_name> : <ldap attr name>
-    #     # like below
-    #     # ibmentryuuid : ibm-entryuuid
+    #   user_unique_id_attribute: "ibm-entryuuid"
+    #   user_name_attribute: "uid"
+    #   user_principal_name_attribute: "uid"
+    #   user_display_name_attribute: "cn"
+    #   user_given_name_attribute: "cn"
+    #   user_family_name_attribute: "sn"
+    #   user_full_name_attribute: "cn"
+    #   user_external_id_attribute: "dn"
+    #   user_emails_attribute: "mail"
+    #   user_created_attribute: "createTimestamp"
+    #   user_lastmodified_attribute: "modifyTimestamp"
+    #   user_phonenumbers:
+    #   - value: "mobile"
+    #     type: "mobile"
+    #   - value: "telephoneNumber"
+    #     type: "work"
+    #   user_object_class_attribute: "person"
+    #   user_groups_attribute: "memberOf"
+    #   group_unique_id_attribute: "ibm-entryuuid"
+    #   group_name_attribute: "cn"
+    #   group_principal_name_attribute: "cn"
+    #   group_display_name_attribute: "cn"
+    #   group_external_id_attribute: "dn"
+    #   group_created_attribute: "createTimestamp"
+    #   group_lastmodified_attribute: "modifyTimestamp"
+    #   group_object_class_attribute: "groupOfUniqueNames"
+    #   group_members_attribute: "uniqueMember"
 
+    ## This is to add customized IAM SCIM LDAP attributes for this LDAP configuration, If you add 'scim_configuration_iam' section to the CR, the operator will create the SCIM LDAP attributes mapping using values defined in that section. If you do not add 'scim_configuration_iam' section to the CR, the operator will create the SCIM LDAP attributes using the default value meant for PingDirectory Server. The sample section below consists of the default values that will be used for creating the SCIM LDAP attributes for PingDirectory Server.
+    # scim_configuration_iam:
+    #   user_unique_id_attribute: "entryUUID"
+    #   user_name_attribute: "uid"
+    #   user_principal_name_attribute: "uid"
+    #   user_display_name_attribute: "cn"
+    #   user_given_name_attribute: "cn"
+    #   user_family_name_attribute: "sn"
+    #   user_full_name_attribute: "cn"
+    #   user_external_id_attribute: "dn"
+    #   user_emails_attribute: "mail"
+    #   user_created_attribute: "createTimestamp"
+    #   user_lastmodified_attribute: "modifyTimestamp"
+    #   user_phonenumbers:
+    #   - value: "mobile"
+    #     type: "mobile"
+    #   - value: "telephoneNumber"
+    #     type: "work"
+    #   user_object_class_attribute: "person"
+    #   user_groups_attribute: "memberOf"
+    #   group_unique_id_attribute: "entryUUID"
+    #   group_name_attribute: "cn"
+    #   group_principal_name_attribute: "cn"
+    #   group_display_name_attribute: "cn"
+    #   group_external_id_attribute: "dn"
+    #   group_created_attribute: "createTimestamp"
+    #   group_lastmodified_attribute: "modifyTimestamp"
+    #   group_object_class_attribute: "groupOfUniqueNames"
+    #   group_members_attribute: "uniqueMember"
 
   ## User script should only uncomment this section if External Share if selected as an optional component.
   ## If you are deploying without the User script, uncomment the necessary section (depending
@@ -511,7 +544,7 @@ spec:
 
     ## User script will uncomment the section needed based on user's input from User script.
     ## If you are deploying without the User script, uncomment the necessary section (depending
-    ## if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
+    ## if you are using Active Directory (ad) or Tivoli Directory Service (tds) or PingDirectory Server (pds) accordingly.
     # ad:
     ## This is the Global Catalog port for the LDAP
     #   lc_ad_gc_host: "<Required>"
@@ -521,6 +554,9 @@ spec:
     # tds:
     #   lc_user_filter: "(&(cn=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupofnames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+    # pds:
+    #   lc_user_filter: "(&(uid=%v)(objectclass=person))"
+    #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupOfUniqueNames)))"
 
   ## The idp_iam_configuration is meant when you have an identity provider configured in iam that isn't a directory provider service
   ## Such as Okta or Microsoft Entra ID configured in IAM as the identity provider.
@@ -875,7 +911,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1028,7 +1064,7 @@ spec:
       #     pull_policy: IfNotPresent
       #     ## The default repository is the IBM Entitled Registry.
       #     repository: cp.icr.io/cp/cp4a/fncm/lscollector
-      #     tag: "25.0.0"
+      #     tag: "25.0.0-IF001"
       #   ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
       #   ## If more resources are needed, make the changes here to meet your requirement.
       #   resources:
@@ -1069,7 +1105,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1166,7 +1202,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1328,7 +1364,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1448,7 +1484,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1556,7 +1592,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1682,7 +1718,7 @@ spec:
     #    pull_policy: IfNotPresent
     #    ## The default repository is the IBM Entitled Registry.
     #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-    #    tag: "25.0.0"
+    #    tag: "25.0.0-IF001"
     #
     #  ## Below are the default LSReporter Production settings.
     #  ## Make the necessary changes as you see fit.
@@ -1770,7 +1806,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "25.0.0"
+      tag: "25.0.0-IF001"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2115,6 +2151,7 @@ spec:
         add_desktop_is_default: false
         add_desktop_repo_id: "demo_repo1"
         add_desktop_repo_workflow_enable: false
+        
 
   ########################################################################
   ######## IBM FileNet Content Manager Verification configuration ######
@@ -2161,7 +2198,7 @@ spec:
 
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: "25.0.0"
+        tag: "25.0.0-IF001"
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -2282,7 +2319,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: "25.0.0"
+      tag: "25.0.0-IF001"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent

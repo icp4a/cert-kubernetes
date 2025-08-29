@@ -104,7 +104,7 @@ function print_usage() {
     script_name=`basename ${0}`
     echo "Usage: ${script_name} [OPTIONS]..."
     echo ""
-    echo "Install IBM Common Services NetworkPolicies"
+    echo "Install IBM Common Services NetworkPolicies. By default only ingress NetworkPolicies are installed."
     echo ""
     echo "Options:"
     echo "   -n, --namespace string                               IBM Common Services operand namespace. No default value"
@@ -115,8 +115,8 @@ function print_usage() {
     echo "   -lsr, --licensing-svc-reporter-namespace string      License Service Reporter namespace. No default value"
     echo "   -flink, --flink-namespace string                     Flink namespace. No default value"
     echo "   -opensearch, --opensearch-namespace string           Opensearch namespace. No default value"
-    echo "   -u, --uninstall                                      Uninstall IBM Common Services Network Policies"
-    echo "   -e, --egress                                         Deploy egress NetworkPolicies"
+    echo "   -u, --uninstall                                      Uninstall both ingress and egress IBM Common Services Network Policies"
+    echo "   -e, --egress                                         Deploy egress NetworkPolicies. Without this option, only ingress NetworkPolicies are deployed"
     echo "   -h, --help                                           Print usage information"
     echo ""
 }

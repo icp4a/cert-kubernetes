@@ -19,7 +19,7 @@ metadata:
     app.kubernetes.io/name: ibm-dba
     release: 25.0.0
 rules:
-  - apigroups:
+  - apiGroups:
     - ''
     resources:
     - pods

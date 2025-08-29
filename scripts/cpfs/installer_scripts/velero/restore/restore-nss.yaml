@@ -12,9 +12,15 @@ spec:
   - backups.velero.io
   - restores.velero.io
   - resticrepositories.velero.io
+  - roles.authorization.openshift.io
+  - rolebindings.authorization.openshift.io
   hooks: {}
   includedNamespaces:
   - '*'
-  labelSelector:
-    matchLabels:
-      foundationservices.cloudpak.ibm.com: nss
+  orLabelSelectors:
+  - matchExpressions:
+    - key: foundationservices.cloudpak.ibm.com
+      operator: In
+      values:
+      - nss-cluster
+      - nss

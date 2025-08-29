@@ -74,6 +74,7 @@ function main() {
       copy_resource "secret" "mongodb-root-ca-cert"
       copy_resource "secret" "icp-mongodb-admin"
       #any extra config
+      success "Preload data from $FROM_NAMESPACE to $TO_NAMESPACE completed successfully."
     else
       info "Cleanup selected. Cleaning MongoDB in services namespace $TO_NAMESPACE"
       cleanup
@@ -336,10 +337,18 @@ function patch_cm() {
 
 
     migration=$(${OC} get statefulset icp-mongodb -n $FROM_NAMESPACE -o=jsonpath='{.spec.template.metadata.labels.migrating}')
-    if [[ $migration != "" ]]; then 
-      # scale down icp-mongodb statefulset
-      ${OC} scale statefulSet -n ${FROM_NAMESPACE} icp-mongodb --replicas=0
-    fi
+
+    # scale down icp-mongodb statefulset
+    # and wait for it to terminate
+    ${OC} scale statefulSet -n ${FROM_NAMESPACE} icp-mongodb --replicas=0
+    mongodb_pod_count="3"
+    while [[ "$mongodb_pod_count" -ne "0" ]]
+    do
+      info "Waiting for MongoDB pod to terminate"
+      ${OC} get statefulset icp-mongodb -n ${FROM_NAMESPACE}
+      mongodb_pod_count=$(${OC} get pods -n ${FROM_NAMESPACE} -l app=icp-mongodb --no-headers | wc -l)
+      sleep 10
+    done
     
     # update icp-mongodb-init configmap
     cat << EOF | ${OC} apply -n $FROM_NAMESPACE -f -
@@ -705,13 +714,21 @@ EOF
 
 
     # trigger a rolling upgrade
-    if [[ $migration != "" ]]; then 
-      # scale down icp-mongodb statefulset
-      ${OC} scale statefulSet -n ${FROM_NAMESPACE} icp-mongodb --replicas=${replicas}
-    else
+    if [[ $migration == "" ]]; then 
       ${OC} patch statefulSet icp-mongodb -n ${FROM_NAMESPACE}  -p '{"spec":{"template":{"metadata":{"labels":{"migrating": "'true'"}}}}}'
     fi
+    # add a label to the statefulSet to indicate the time it is being migrated
+    current_date_time="`date +%Y%m%d%H%M%S`"
+    ${OC} patch statefulSet icp-mongodb -n ${FROM_NAMESPACE}  -p '{"spec":{"template":{"metadata":{"labels":{"migrating-time": "'${current_date_time}'"}}}}}'
 
+    # make sure icp-mongodb pod is running
+    if [[ "$replicas" -eq 0 ]]; then
+      replicas=1
+    fi
+
+    # scale up icp-mongodb statefulset
+    ${OC} scale statefulSet -n ${FROM_NAMESPACE} icp-mongodb --replicas=${replicas}
+    
     # wait for mongodb statefulSet ready
     readyReplicas="0"
     while [[ "$replicas" != "$readyReplicas" ]]
