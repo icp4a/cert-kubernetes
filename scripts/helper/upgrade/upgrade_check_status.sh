@@ -234,6 +234,50 @@ function check_content_operator_version(){
     # success "Found the IBM CP4BA FileNet Content Manager Operator $cp4a_content_operator_csv_version \n"
 }
 
+# TODO: Workaround function to fix the Workflow operator Crash
+# https://jsw.ibm.com/browse/DBACLD-190784
+function patch_workflow_operator_csv() {
+  local namespace=$1
+  local kind="workflowruntime"
+
+  pods=$("${CLI_CMD}" get pods -n "$namespace" | grep workflow-operator  | grep CrashLoopBackOff | awk '{print $1}')
+
+  if [[ -z "$pods" ]]; then
+    echo "No workflow-operator pods Crash found in namespace $namespace"
+    return 0
+  fi
+
+  instances=$("${CLI_CMD}" get "$kind" -n "$namespace" -o jsonpath='{.items[*].metadata.name}')
+
+  if [[ -z "$instances" ]]; then
+    info "No instances of kind $kind found in namespace $namespace"
+    return 0
+  fi
+
+  info "Patching $kind instances in namespace $namespace ..."
+  for instance in $instances; do
+    info "Patching $instance"
+    "${CLI_CMD}" patch "$kind" "$instance" -n "$namespace" --type=merge -p '{
+      "spec": {
+        "zen_performance": {
+          "keepalive": "512",
+          "keepalive_requests": "500",
+          "keepalive_timeout": "30s",
+          "proxy_buffer_size": "256k",
+          "proxy_buffers": "8 512k",
+          "proxy_busy_buffers_size": "512k",
+          "proxy_connect_timeout": "300",
+          "proxy_read_timeout": "300",
+          "proxy_send_timeout": "300"
+        }
+      }
+    }'
+  done
+
+  ${CLI_CMD} delete pod  $pods
+  success "The $kind instances has been patched successfully!"
+}
+
 function check_operator_status(){
     local maxRetry=60
     local project_name=$1
@@ -857,6 +901,9 @@ function check_operator_status(){
     echo "****************************************************************************"
     info "Checking for IBM CP4BA Workflow operator pod initialization"
     for ((retry=0;retry<=${maxRetry};retry++)); do
+
+        patch_workflow_operator_csv $project_name
+
         isReady=$(kubectl get csv ibm-workflow-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
         # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
         if [[ -z $isReady ]]; then
