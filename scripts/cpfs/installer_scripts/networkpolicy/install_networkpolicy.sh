@@ -86,13 +86,13 @@ function print_usage() {
     script_name=`basename ${0}`
     echo "Usage: ${script_name} [OPTIONS]..."
     echo ""
-    echo "Install IBM Common Services NetworkPolicies"
+    echo "Install IBM Common Services NetworkPolicies. By default only ingress NetworkPolicies are installed."
     echo ""
     echo "Options:"
     echo "   -n, --namespace string       IBM Common Services namespace. Default is same namespace as IBM Common Services"
     echo "   -z, --zen-namespace string   Zen namespace. Default is same namespace as IBM Common Services"
-    echo "   -u, --uninstall              Uninstall IBM Common Services Network Policies"
-    echo "   -e, --egress                 Deploy egress NetworkPolicies"
+    echo "   -u, --uninstall              Uninstall both ingress and egress IBM Common Services Network Policies"
+    echo "   -e, --egress                 Deploy only egress NetworkPolicies. Without this option, only ingress NetworkPolicies are deployed"
     echo "   -h, --help                   Print usage information"
     echo ""
 }

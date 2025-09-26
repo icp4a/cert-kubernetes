@@ -29,10 +29,14 @@ data:
 
     function main {
         if [[ $MODE == "backup" ]]; then
+            save_log "logs" "backup_log"
+            trap cleanup_log EXIT
             info "Mode set to backup, beginning backup process."
             backup
             success "Backup completed successfully."
         elif [[ $MODE == "restore" ]]; then
+            save_log "logs" "restore_log"
+            trap cleanup_log EXIT
             info "Mode is set to restore, beginning restore process."
             restore
             success "Restore completed successfully."
@@ -54,11 +58,59 @@ data:
 
     function restore {
         CNPG_PRIMARY_POD=`oc get pods -n $LSR_NAMESPACE | grep ibm-license-service-reporter-instance | awk '{print $1}'`
+        wait_for_ls_reporter $CNPG_PRIMARY_POD
         oc exec $CNPG_PRIMARY_POD -n $LSR_NAMESPACE -- mkdir -p /run/lsr_backup
         oc cp $BACKUP_DIR/database/lsr_db_backup.dump $LSR_NAMESPACE/$CNPG_PRIMARY_POD:/run/lsr_backup/lsr_db_backup.dump
         oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- psql -U postgres -c "\list" -c "\dn" -c "\du"
         oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- pg_restore -U postgres --dbname postgres --format=c --clean -v /run/lsr_backup/lsr_db_backup.dump
         oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+    }
+
+    function wait_for_ls_reporter() {
+        CNPG_PRIMARY_POD=$1
+        ready=$(oc get pod/$CNPG_PRIMARY_POD -n $LSR_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='ContainersReady')].status}")
+        if [[ $ready != "True" ]]; then
+            retry_count=60
+            while [[ $ready != "True" ]] && [[ retry_count > 0 ]]
+            do
+                info "Waiting for License Service Reporter instance to come ready. ConatinersReady status for pod $CNPG_PRIMARY_POD is: $ready"
+                sleep 15
+                ready=$(oc get pod/$CNPG_PRIMARY_POD -n $LSR_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='ContainersReady')].status}")
+                retry_count=$((retry_count-1))
+            done
+        else
+            info "Pod $CNPG_PRIMARY_POD is now ready, proceeding with restore..."
+        fi
+    }
+
+    function save_log(){
+        local LOG_DIR="$BACKUP_DIR/$1"
+        LOG_FILE="$LOG_DIR/$2_$(date +'%Y%m%d%H%M%S').log"
+
+        if [[ ! -d $LOG_DIR ]]; then
+            mkdir -p "$LOG_DIR"
+        fi
+
+        # Create a named pipe
+        PIPE=$(mktemp -u)
+        mkfifo "$PIPE"
+
+        # Tee the output to both the log file and the terminal
+        tee "$LOG_FILE" < "$PIPE" &
+
+        # Redirect stdout and stderr to the named pipe
+        exec > "$PIPE" 2>&1
+
+        # Remove the named pipe
+        rm "$PIPE"
+    }
+
+    function cleanup_log() {
+        # Check if the log file already exists
+        if [[ -e $LOG_FILE ]]; then
+            # Remove ANSI escape sequences from log file
+            sed -E 's/\x1B\[[0-9;]+[A-Za-z]//g' "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
+        fi
     }
 
     function msg() {

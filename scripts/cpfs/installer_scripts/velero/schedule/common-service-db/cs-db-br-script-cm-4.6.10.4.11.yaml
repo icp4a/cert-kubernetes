@@ -53,8 +53,6 @@ data:
             mkdir -p $BACKUP_DIR/database
             CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` && \
             oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- mkdir -p /run/cs-db_backup && \
-            info "Beginning backup of cloudpak database..."
-            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=cloudpak -f /run/cs-db_backup/cs-db_cloudpak_backup.dump --format=c
             info "Beginning backup of im database..."
             oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=im -f /run/cs-db_backup/cs-db_im_backup.dump --format=c
             info "Beginning backup of zen database..."
@@ -67,7 +65,6 @@ data:
 
             #Move backup to backup location
             info "Copy backup file."
-            oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_cloudpak_backup.dump $BACKUP_DIR/database/cs-db_cloudpak_backup.dump
             oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump $BACKUP_DIR/database/cs-db_im_backup.dump
             oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump $BACKUP_DIR/database/cs-db_zen_backup.dump
             if [[ $ACCOUNT_IAM != "False" ]]; then
@@ -86,7 +83,6 @@ data:
             wait_for_cluster_cr
             CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` 
             oc exec $CNPG_PRIMARY_POD -n $CSDB_NAMESPACE -- mkdir -p /run/cs-db_backup
-            oc cp $BACKUP_DIR/database/cs-db_cloudpak_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_cloudpak_backup.dump
             oc cp $BACKUP_DIR/database/cs-db_im_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump
             oc cp $BACKUP_DIR/database/cs-db_zen_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump
             ACCOUNT_IAM=$(ls $BACKUP_DIR/database/ | grep "cs-db_account_iam_backup.dump" || echo False)
@@ -95,8 +91,6 @@ data:
             fi
             
             oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-            info "Beginning restore of cloudpak database..."
-            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname cloudpak --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_cloudpak_backup.dump
             info "Beginning restore of im database..."
             oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname im --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_im_backup.dump
             info "Beginning restore of zen database..."
@@ -126,17 +120,17 @@ data:
         info "Waiting for job $job_name to complete in namespace $CSDB_NAMESPACE."
         job_exists=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers || echo fail)
         if [[ $job_exists != "fail" ]]; then
-            completed=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers | awk '{print $2}')
+            completed=$(oc get job/$job_name -n $CSDB_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='Complete')].type}")
             retry_count=20
-            while [[ $completed != "1/1" ]] && [[ $retry_count > 0 ]]
+            while [[ $completed != "Complete" ]] && [[ $retry_count > 0 ]]
             do
                 info "Wait for job $job_name to complete. Try again in 15s."
                 sleep 15
-                completed=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers | awk '{print $2}')
-                retry_count=$retry_count-1
+                completed=$(oc get job/$job_name -n $CSDB_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='Complete')].type}")
+                retry_count=$((retry_count-1))
             done
 
-            if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
+            if [[ $retry_count == 0 ]] && [[ $completed != "Complete" ]]; then
                 error "Timed out waiting for job $job_name."
             else
                 info "Job $job_name completed."

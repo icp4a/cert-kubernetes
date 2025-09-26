@@ -18,6 +18,7 @@ metadata:
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
     release: 24.0.1
+    cp4ba.ibm.com/backup-type: mandatory
 spec:
   ## CP4A application version
   appVersion: 24.0.1

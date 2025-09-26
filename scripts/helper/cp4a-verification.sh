@@ -140,17 +140,15 @@ function verify_ldap_connection(){
 
     openssl x509 -outform der -in $tmp_cert_folder/ldap-cert.crt -out /tmp/ldap.der 2>&1 </dev/null
     keytool -import -alias cp4baLdapCerts -keystore /tmp/ldap-truststore.jks -file /tmp/ldap.der -storepass "$ldap_truststore_password" -storetype JKS -noprompt 2>&1 </dev/null
-    msg "Checking connection for LDAP server \"$ldap_server\" using Bind DN \"$ldap_binddn\".."
+    msg "Checking connection for LDAP server \"$ldap_server\" using BindDN \"$ldap_binddn\".."
 
     output=$(java -Dsemeru.fips=$fips_flag -Djavax.net.ssl.trustStore=/tmp/ldap-truststore.jks -Djavax.net.ssl.trustStorePassword=$ldap_truststore_password -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u "ldaps://$ldap_server:$ldap_port" -b "$ldap_basedn" -D "$ldap_binddn" -w "$ldap_binddn_pwd" -additionalvalidation -gdn "$ldap_group_basedn" -upl "$ldap_user_password_list" -gl "$ldap_group_list" -uf "$ldap_user_filter" -gf "$ldap_group_filter" 2>&1)
-    retVal_verify_ldap_tmp=$?
-    if [[ "$output" == *"Error while binding to LDAP"* ]]; then
-      warning "Execute: java -Dsemeru.fips=$fips_flag -Djavax.net.ssl.trustStore=/tmp/ldap-truststore.jks -Djavax.net.ssl.trustStorePassword=$ldap_truststore_password -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u \"ldaps://$ldap_server:$ldap_port\" -b \"$ldap_basedn\" -D \"$ldap_binddn\" -w \"******\"" && \
-      fail "Unable to connect to LDAP server \"$ldap_server\" using Bind DN \"$ldap_binddn\", please check configuration in ldap property again."
-    else
+    # https://jsw.ibm.com/browse/DBACLD-192983 Check for successful connection - ONLY consider it successful if:
+    # The output contains "Connected to: ldaps://$ldap_server:$ldap_port" (indicating successful connection)
+    if [[ "$output" == *"Connected to: ldaps://$ldap_server:$ldap_port"* ]]; then
       # Moving all additional validation checks to be displayed only if we get a successful connection
       #For https://jsw.ibm.com/browse/DBACLD-158315
-      success "Connected to LDAP \"$ldap_server\" using BindDN:\"$ldap_binddn\" successfuly, PASSED!"
+      success "Connected to LDAP \"$ldap_server\" using BindDN:\"$ldap_binddn\" successfully, PASSED!"
       printf "\n"
       connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
       if [[ ! -z $connection_time ]]; then
@@ -167,18 +165,19 @@ function verify_ldap_connection(){
       fi
       echo "$ldap_validation_table"
       printf "\n"
+    else
+      warning "Execution: java -Dsemeru.fips=$fips_flag -Djavax.net.ssl.trustStore=/tmp/ldap-truststore.jks -Djavax.net.ssl.trustStorePassword=$ldap_truststore_password -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u \"ldaps://$ldap_server:$ldap_port\" -b \"$ldap_basedn\" -D \"$ldap_binddn\" -w \"******\"" && \
+      fail "Unable to connect to LDAP server \"$ldap_server\" using BindDN \"$ldap_binddn\", please check configuration in LDAP property again."
     fi
   else
-    msg "Checking connection for LDAP server \"$ldap_server\" using Bind DN \"$ldap_binddn\".."
+    msg "Checking connection for LDAP server \"$ldap_server\" using BindDN \"$ldap_binddn\".."
     output=$(java -Dsemeru.fips=$fips_flag -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u "ldap://$ldap_server:$ldap_port" -b "$ldap_basedn" -D "$ldap_binddn" -w "$ldap_binddn_pwd" -additionalvalidation -gdn "$ldap_group_basedn" -upl "$ldap_user_password_list" -gl "$ldap_group_list" -uf "$ldap_user_filter" -gf "$ldap_group_filter" 2>&1)
-    retVal_verify_ldap_tmp=$?
-    if [[ "$output" == *"Error while binding to LDAP"* ]]; then
-      warning "Execution: java -Dsemeru.fips=$fips_flag -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u \"ldap://$ldap_server:$ldap_port\" -b \"$ldap_basedn\" -D \"$ldap_binddn\" -w \"******\"" && \
-      fail "Unable to connect to LDAP server \"$ldap_server\" using Bind DN \"$ldap_binddn\", please check configuration in ldap property again."
-    else
+    # https://jsw.ibm.com/browse/DBACLD-192983 Check for successful connection - ONLY consider it successful if:
+    # The output contains "Connected to: ldap://$ldap_server:$ldap_port" (indicating successful connection)
+    if [[ "$output" == *"Connected to: ldap://$ldap_server:$ldap_port"* ]]; then
       # Moving all additional validation checks to be displayed only if we get a successful connection
       #For https://jsw.ibm.com/browse/DBACLD-158315
-      success "Connected to LDAP \"$ldap_server\" using BindDN:\"$ldap_binddn\" successfuly, PASSED!"
+      success "Connected to LDAP \"$ldap_server\" using BindDN:\"$ldap_binddn\" successfully, PASSED!"
       printf "\n"
       connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
       if [[ ! -z $connection_time ]]; then
@@ -194,7 +193,10 @@ function verify_ldap_connection(){
         ldap_validation_table=$(echo "$output" | awk '/LDAP Users Summary/ {flag=1} /Total time taken/ {flag=0} flag')
       fi
       echo "$ldap_validation_table"
-      printf "\n" 
+      printf "\n"
+    else
+      warning "Execution: java -Dsemeru.fips=$fips_flag -jar ${LDAP_TEST_JAR_PATH}/LdapTest.jar -u \"ldap://$ldap_server:$ldap_port\" -b \"$ldap_basedn\" -D \"$ldap_binddn\" -w \"******\"" && \
+      fail "Unable to connect to LDAP server \"$ldap_server\" using BindDN \"$ldap_binddn\", please check configuration in LDAP property again." 
     fi
   fi 
 }

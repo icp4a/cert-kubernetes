@@ -17,7 +17,7 @@ YQ=yq
 ENABLE_LICENSING=0
 MINIMAL_RBAC_ENABLED=0
 MINIMAL_RBAC=""
-CHANNEL="v4.10"
+CHANNEL="v4.13"
 MAINTAINED_CHANNEL="v4.2"
 SOURCE="opencloud-operators"
 SOURCE_NS="openshift-marketplace"
@@ -264,13 +264,16 @@ function pre_req() {
         error "Must provide additional namespaces for --tethered-namespaces, different from operator-namespace and services-namespace"
     fi
 
-    # When Common Service channel info is less then maintained channel, update maintained channel for backward compatibility e.g., v4.1 and v4.0
-    # Otherwise, maintained channel is pinned at v4.2
+    # When Common Service channel is less than v4.2, maintained channel is the same as CS channel (e.g., v4.1 or v4.0)
+    # When Common Service channel is between v4.2 and v4.12, maintained channel is pinned at v4.2
+    # When Common Service  channel is greater than v4.12, maintained channel is pinned at v4.3
     IFS='.' read -r channel_major channel_minor <<< "${CHANNEL#v}"
     IFS='.' read -r maintained_major maintained_minor <<< "${MAINTAINED_CHANNEL#v}"
 
     if (( channel_major < maintained_major )) || { (( channel_major == maintained_major )) && (( channel_minor < maintained_minor )); }; then
         MAINTAINED_CHANNEL="$CHANNEL"
+    elif (( channel_major == 4 )) && (( channel_minor > 12 )); then
+        MAINTAINED_CHANNEL="v4.3"
     fi
 
     # Check if the file path to the minimal RBAC permissions exists
@@ -752,6 +755,14 @@ EOF
                 retries=$((retries-1))
                 continue
             fi
+        fi
+
+        # Get the resource version of the CommonService CR from the cluster
+        # and update the resource version in the file
+        local resource_version=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o jsonpath='{.metadata.resourceVersion}' --ignore-not-found)
+        if [[ -n "${resource_version}" ]]; then
+            debug1 "Updating resourceVersion in commonservice.yaml to ${resource_version}\n"
+            ${YQ} -i eval '.metadata.resourceVersion = "'${resource_version}'"' ${PREVIEW_DIR}/commonservice.yaml    
         fi
 
         cat "${PREVIEW_DIR}/commonservice.yaml" | ${OC_CMD} apply -f -

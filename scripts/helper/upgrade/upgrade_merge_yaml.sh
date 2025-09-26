@@ -158,7 +158,8 @@ function add_quotes_to_values(){
     jvm_options_paths=$(${YQ_CMD} r "${input_yaml}" --printMode p '**.jvm_customize_options')
     for path in $jvm_options_paths; do
         current_value=$(${YQ_CMD} r "${input_yaml}" "$path")
-        ${YQ_CMD} w -i "${input_yaml}" "$path" \"$current_value\"
+        #Quote the value in jvm_customize_options so that shell does not expand the string if it has spaces. If it expands the string, YQ thinks there are more than 3 values being passed and throws a syntax error 
+        ${YQ_CMD} w -i "${input_yaml}" "$path" "\"$current_value\""
     done
 
     annotations_paths=$(${YQ_CMD} r "${input_yaml}" --printMode p '**.custom_annotations')
@@ -171,7 +172,7 @@ function add_quotes_to_values(){
             key_path="$path.\"$key\""
             current_value=$(${YQ_CMD} r "${input_yaml}" "$key_path")
             if [[ $current_value == true || $current_value == false ]]; then
-                ${YQ_CMD} w -i "${input_yaml}" "$key_path" \"$current_value\"
+                ${YQ_CMD} w -i "${input_yaml}" "$key_path" "\"$current_value\""
             fi
         done
     done
@@ -886,6 +887,9 @@ function upgrade_deployment(){
             kubectl scale --replicas=1 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
             wait_for_pod $operator_project_name ibm-cp4a-wfps-operator
             #Validate the CR by performing a dry run
+            #additional sleep time added so that we can make sure that the wfps operator is completely ready prior to applying new CR
+            # DBACLD-190320
+            sleep 25
             dryrun $UPGRADE_DEPLOYMENT_WFPS_CR_TMP $deployment_project_name
             #applying the latest tmp CR so that we can update the kubectl.kubernetes.io/last-applied-configuration section to include any potential user edits
             kubectl apply -f ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} -n $deployment_project_name >/dev/null 2>&1

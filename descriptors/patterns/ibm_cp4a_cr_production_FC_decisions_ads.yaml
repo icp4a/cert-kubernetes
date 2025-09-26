@@ -17,6 +17,7 @@ metadata:
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
     release: 24.0.1
+    cp4ba.ibm.com/backup-type: mandatory
 spec:
   appVersion: 24.0.1
 
@@ -181,7 +182,7 @@ spec:
     rr_integration:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
-        tag: "24.0.1-IF004"
+        tag: "24.0.1-IF005"
 
       resources:
         requests:
@@ -199,7 +200,7 @@ spec:
       admin_secret_name: ibm-dba-ads-mongo-secret
       image:
         repository: cp.icr.io/cp/cp4a/ads/mongo
-        tag: 6.0.22
+        tag: 6.0.24
 
       persistence:
         use_dynamic_provisioning: true
@@ -221,7 +222,7 @@ spec:
     rest_api:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-restapi
-        tag: "24.0.1-IF004"
+        tag: "24.0.1-IF005"
       replica_count: 1
 
       resources:
@@ -237,7 +238,7 @@ spec:
     credentials_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-credentials
-        tag: "24.0.1-IF004"
+        tag: "24.0.1-IF005"
       replica_count: 1
 
       resources:
@@ -251,7 +252,7 @@ spec:
     git_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
-        tag: "24.0.1-IF004"
+        tag: "24.0.1-IF005"
       replica_count: 1
 
       resources:
@@ -265,7 +266,7 @@ spec:
     parsing_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-parsing
-        tag: "24.0.1-IF004"
+        tag: "24.0.1-IF005"
       replica_count: 1
 
       resources:
@@ -285,7 +286,7 @@ spec:
     run_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-run
-        tag: "24.0.1-IF004"
+        tag: "24.0.1-IF005"
       replica_count: 1
 
       resources:
@@ -305,7 +306,7 @@ spec:
     decision_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: "24.0.1-IF004"
+        tag: "24.0.1-IF005"
       replica_count: 1
 
       # Whether the decision runtime should include an exception stack trace when an incident occurs.

@@ -1207,8 +1207,8 @@ function verify_existing_csv(){
 
     else
         if [[ !(" ${exist_csv_project_array[@]} " =~ "${project_name}") && !(" ${exist_csv_project_array[@]} " =~ "${PROJ_NAME_ALL_NAMESPACE}") && "${ALL_NAMESPACE}" == "No" ]] ; then
+            info "Found the existing $CP4BA_FULL_NAME Operator (Pod, CSV, Subscription) in different project \"${exist_csv_project_array[*]}\"!"
             printf "\n"
-            echo -e "\x1B[1;31mFound the existing $CP4BA_FULL_NAME Operator (Pod, CSV, Subscription) in different project \"${exist_csv_project_array[*]}\"! \x1B[0m\n"
 
             if [ -z "$CP4BA_AUTO_NAMESPACE" ]; then
                 while true; do
@@ -1236,8 +1236,8 @@ function verify_existing_csv(){
             echo -e "\x1B[1;31mFound the existing $CP4BA_FULL_NAME Operator in \"${PROJ_NAME_ALL_NAMESPACE}\", it already supports All Namespaces! \x1B[0m\nExit..."
             exit 1
         elif [[ !(" ${exist_csv_project_array[@]} " =~ "${PROJ_NAME_ALL_NAMESPACE}") && "${ALL_NAMESPACE}" == "Yes" ]] ; then
+            info "Found the existing $CP4BA_FULL_NAME Operator (Pod, CSV, Subscription) in different project \"${exist_csv_project_array[*]}\"!"
             printf "\n"
-            echo -e "\x1B[1;31mFound the existing $CP4BA_FULL_NAME Operator (Pod, CSV, Subscription) in different project \"${exist_csv_project_array[*]}\"! \x1B[0m"
             echo -e "\x1B[1;31mSwitching to All Namespaces is not supported! \x1B[0m\n"
             exit 1
         fi

@@ -1,0 +1,19 @@
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata: 
+  name: access-to-ibm-usage-metering-instance
+  namespace: "csNamespace"
+  labels:
+    component: cpfs3
+spec: 
+  podSelector: 
+    matchLabels: 
+      app.kubernetes.io/component: ibm-usage-metering-instance
+  ingress: 
+    - ports: 
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8081
+  policyTypes: 
+    - Ingress

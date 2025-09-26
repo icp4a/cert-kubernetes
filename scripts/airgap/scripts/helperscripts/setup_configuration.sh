@@ -51,8 +51,8 @@ configure_ibm_pak_cli(){
     echo "$repo_config"
 
     # Check if the required URL is present
-    if ! echo "$repo_config" | grep -q "$REPO_NAME"; then
-        info "$REPO_NAME is NOT present in the CASE Repo URL."
+    if ! echo "$repo_config" | grep -q "$REPO"; then
+        info "$REPO_NAME is NOT configured with $REPO in the CASE Repo URL."
         info "Configuring $REPO_NAME with ibm-pak CLI tool...\n"
         if ! output=$(oc ibm-pak config repo "$REPO_NAME" -r $REPO --enable); then
             error "Error: Failed to enable the repository '$REPO_NAME'."

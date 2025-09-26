@@ -278,6 +278,13 @@ SCANNER_UTILS_PATH="/opt/ibm/content_emitter/${SCANNER_UTILS_NAME}"
 CPE_TRUSTSTORE_PATH="/opt/ibm/wlp/usr/servers/defaultServer/resources/security/${TRUSTSTORE_NAME}"
 POST_UPGRADE_CPE_TRUSTSTORE_PATH="/shared/tls/truststore/pkcs12/${POST_UPGRADE_TRUSTSTORE_NAME}"
 
+validate_java_for_deploy
+rc=$?
+if [[ $rc -ne 0 ]]; then
+    echo "Java validation failed (code $rc). Exiting."
+    exit 1
+fi
+
 function prompt_license(){
     clear
 
@@ -3591,40 +3598,62 @@ function select_installation_type(){
     fi
 }
 
-function select_iam_default_admin(){
-    printf "\n"
-    while true; do
-        echo -e "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;31mIf you are unable to use [cpadmin] as the default IAM admin user due to it having the same username in your LDAP Directory, you need to change the Cloud Pak administrator username. See: \"https://www.ibm.com/docs/en/cpfs?topic=configurations-changing-cloud-pak-administrator-access-credentials#user-name\"\x1B[0m"
-        printf "\x1B[1mDo you want to use the default IAM admin user: [cpadmin] (Yes/No, default: Yes): \x1B[0m"
-        read -rp "" ans
-        case "$ans" in
-        "y"|"Y"|"yes"|"Yes"|"YES"|"")
-            USE_DEFAULT_IAM_ADMIN="Yes"
-            break
-            ;;
-        "n"|"N"|"no"|"No"|"NO")
-            USE_DEFAULT_IAM_ADMIN="No"
-            while [[ $NON_DEFAULT_IAM_ADMIN == "" ]];
-            do
-                printf "\n"
-                echo -e "\x1B[1mWhat is the non default IAM admin user you renamed?\x1B[0m"
-                read -p "Enter the admin user name: " NON_DEFAULT_IAM_ADMIN
+# Validate custom IAM Admin user using deployment script and change automatically if there is a conflict
+# https://jsw.ibm.com/browse/DBACLD-189095
+function select_iam_default_admin() {
+  printf "\n"
 
-                if [ -z "$NON_DEFAULT_IAM_ADMIN" ]; then
-                    echo -e "\x1B[1;31mEnter a valid admin username, username can not be blank\x1B[0m"
-                    NON_DEFAULT_IAM_ADMIN=""
-                elif [[ "$NON_DEFAULT_IAM_ADMIN" == "cpadmin" ]]; then
-                    echo -e "\x1B[1;31mEnter a valid admin username, username should not be 'cpadmin'\x1B[0m"
-                    NON_DEFAULT_IAM_ADMIN=""
-                fi
-            done
-            break
-            ;;
-        *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
-            ;;
-        esac
-    done
+  local default_user="cpadmin"
+  local fallback_user="cp4ba-admin"
+  local selected_user="" suffix=1
+
+  while true; do
+    echo -e "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;31mIf 'cpadmin' already exists in your LDAP, you must choose a different IM admin username (local-only).\x1B[0m"
+    printf "\x1B[1mDo you want to use the default IM admin user: [cpadmin] (Yes/No, default: Yes): \x1B[0m"
+    read -r ans
+    case "$ans" in
+      "y"|"Y"|"yes"|"Yes"|"YES"|"")
+        if iam_user_validation "$default_user"; then
+          echo -e "\x1B[33m[WARNING]:\x1B[0m \x1B[1mUsername '$default_user' exists in LDAP\x1B[0m — \x1B[1;31mSwitching IM admin username to '$fallback_user'\x1B[0m"
+          selected_user="$fallback_user"
+          while iam_user_validation "$selected_user"; do
+            selected_user="${fallback_user}-${suffix}"
+            ((suffix++))
+          done
+          USE_DEFAULT_IAM_ADMIN="No"
+        else
+          echo -e "\x1B[32m[INFO]:\x1B[0m Username '$default_user' not found in LDAP, using it as IM admin."
+          selected_user="$default_user"
+          USE_DEFAULT_IAM_ADMIN="Yes"
+        fi
+        break
+        ;;
+      "n"|"N"|"no"|"No"|"NO")
+        while true; do
+          printf "\nEnter non-default LOCAL IM admin username (must not exist in LDAP): "
+          read -r NON_DEFAULT_IAM_ADMIN
+          if [[ -z "$NON_DEFAULT_IAM_ADMIN" || "$NON_DEFAULT_IAM_ADMIN" == "$default_user" ]]; then
+            echo -e "\x1B[1;31mEnter a valid username (cannot be blank or '$default_user').\x1B[0m"
+            continue
+          fi
+          if iam_user_validation "$NON_DEFAULT_IAM_ADMIN"; then
+            echo -e "\x1B[1;31mUsername '$NON_DEFAULT_IAM_ADMIN' already exists in LDAP. Choose another.\x1B[0m"
+            continue
+          fi
+          selected_user="$NON_DEFAULT_IAM_ADMIN"
+          USE_DEFAULT_IAM_ADMIN="No"
+          break
+        done
+        break
+        ;;
+      *)
+        echo -e "Answer must be \"Yes\" or \"No\"\n"
+        ;;
+    esac
+  done
+  
+  DEFAULT_ADMIN_USERNAME="$selected_user"
+  NON_DEFAULT_IAM_ADMIN="$selected_user"
 }
 
 function select_profile_type(){
@@ -8953,6 +8982,13 @@ function determine_upgrade_mode () {
 save_log "cp4a-script-logs/project/$TARGET_PROJECT_NAME" "cp4a-deployment-log"
 trap cleanup_log EXIT
 
+if [[ -n "${RUNTIME_MODE}" ]]; then
+    info "The cp4a-deployment script is currently being executed in the ${RUNTIME_MODE} mode"
+else
+    info "The cp4a-deployment script is currently running in a mode designed to generate the custom resource (CR) file required for a CP4BA deployment"
+    printf "\n"
+fi
+
 # Import upgrade upgrade_check_version.sh script
 source ${CUR_DIR}/helper/upgrade/upgrade_check_status.sh
 
@@ -10343,7 +10379,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         cncf_install
         # DBACLD-168537: need to re-create {{meta.name}}-fncm-custom-ssl-secret to add CSS DNSName (in case they are missing from previous deployment) which will be included in FNCM's keystores
         cr_name=$(${CLI_CMD} get icp4acluster -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
-        if [[ -z $cp4ba_cr_name ]]; then
+        if [[ -z $cr_name ]]; then
             cr_name=$(${CLI_CMD} get content -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
         fi
         fncm_custom_ssl_secret=$(${CLI_CMD} get secret --no-headers --ignore-not-found ${cr_name}-fncm-custom-ssl-secret -n $CP4BA_SERVICES_NS | awk '{print $1}') 
@@ -11609,7 +11645,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         
         # DBACLD-168537: need to re-create {{meta.name}}-fncm-custom-ssl-secret to add CSS DNSName (in case they are missing from previous deployment) which will be included in FNCM's keystores
         cr_name=$(${CLI_CMD} get icp4acluster -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
-        if [[ -z $cp4ba_cr_name ]]; then
+        if [[ -z $cr_name ]]; then
             cr_name=$(${CLI_CMD} get content -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
         fi
         fncm_custom_ssl_secret=$(${CLI_CMD} get secret --no-headers --ignore-not-found ${cr_name}-fncm-custom-ssl-secret -n $CP4BA_SERVICES_NS | awk '{print $1}') 
