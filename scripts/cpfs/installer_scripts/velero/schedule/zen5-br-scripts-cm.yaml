@@ -217,7 +217,15 @@ data:
         done
         
         #[2.2.3] Reset platform metadata and configuration data
-        #[2.2.3.1] Reset database
+        #[2.2.3.1] Remove active connections
+        CNPG_PRIMARY_POD=`oc -n ${ZEN_NAMESPACE} get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}"` && \
+        oc -n ${ZEN_NAMESPACE} exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = 'zen' AND pid <> pg_backend_pid();" && \
+        oc -n ${ZEN_NAMESPACE} exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "SELECT * FROM pg_stat_activity WHERE datname = 'zen';"
+
+        #we no longer do this step because we are using pgdump/pgrestore
+        #dropping the database like this will cause pgrestore to fail since it expects the database and its structure to already be there
+        #keeping the comment for cross referencing what is done in zen team docs
+        #[2.2.3.2] Reset database
         # return_value=""
         # return_value=$(oc get cm ibm-zen-metastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED_DATABASE}{"\n"}')
         # if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
@@ -229,8 +237,8 @@ data:
         #     info "IS_EMBEDDED_DATABASE value false, skipping metastoredb reset."
         # fi
 
-        #[2.2.3.2] reset object storage
-        #[2.2.3.2.1] read object storage connection and credentials
+        #[2.2.3.3] reset object storage
+        #[2.2.3.3.1] read object storage connection and credentials
         return_value=""
         return_value=$(oc -n $ZEN_NAMESPACE get cm ibm-zen-objectstore-cm -o jsonpath='{.data.IS_EMBEDDED_OBJECTSTORE}{"\n"}')
         if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
@@ -240,7 +248,7 @@ data:
             OBJECTSTORE_ENDPOINT=$(oc get cm ibm-zen-objectstore-cm -o jsonpath="{.data.OBJECTSTORE_ENDPOINT}" -n $ZEN_NAMESPACE)
             oc -n $ZEN_NAMESPACE extract secret/ibm-zen-objectstore-secret --to=$BACKUP_DIR/workspace --confirm
 
-            #[2.2.3.2.2] Remove and recreate Zen bucket
+            #[2.2.3.3.2] Remove and recreate Zen bucket
             info "Remove and recreate Zen bucket."
             oc -n $ZEN_NAMESPACE exec -t zen-minio-0 -- bash -c "rm -rf /workdir/home/.minio/backup && mkdir -p /workdir/home/.minio/backup && export HOME=/workdir/home/.minio && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/workdir/home/.minio/.mc --insecure && /workdir/bin/mc ls zenobjstore/${IBM_ZEN_BUCKET_NAME} --insecure && /workdir/bin/mc rb zenobjstore/${IBM_ZEN_BUCKET_NAME} --force --dangerous --insecure && /workdir/bin/mc mb zenobjstore/${IBM_ZEN_BUCKET_NAME} --insecure"
         else

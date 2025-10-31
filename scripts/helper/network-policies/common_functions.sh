@@ -188,8 +188,8 @@ function install_delete_network_policies() {
         echo " - ${action_message} network policy file ${file} ..."
         
         #retrieving the name and namespace from each template, this will be later used to check if a NP has been successfully installed/patched/deleted
-        np_name=$(${YQ_CMD} r "${file}" "metadata.name")
-        np_namespace=$(${YQ_CMD} r "${file}" "metadata.namespace")
+        np_name=$(${YQ_CMD} ".metadata.name // \"\"" "${file}")
+        np_namespace=$(${YQ_CMD} ".metadata.namespace // \"\"" "${file}")
 
         # For some reason there are certain components that are not generating templates with the namespace field and for those we use the namespace folder where the NP is saved
         if [[ -z $np_namespace ]]; then
@@ -329,14 +329,14 @@ function remove_owner_reference() {
       echo
       echo " - Removing owner reference from network policy file ${file} ..."
         # Remove the specified metadata fields
-        ${YQ_CMD} d -i "${file}" metadata.ownerReferences >> "${LOG_FILE}" 2>&1
-        ${YQ_CMD} d -i "${file}" metadata.creationTimestamp >> "${LOG_FILE}" 2>&1
-        ${YQ_CMD} d -i "${file}" metadata.generation >> "${LOG_FILE}" 2>&1
-        ${YQ_CMD} d -i "${file}" metadata.managedFields >> "${LOG_FILE}" 2>&1
-        ${YQ_CMD} d -i "${file}" metadata.resourceVersion >> "${LOG_FILE}" 2>&1
-        ${YQ_CMD} d -i "${file}" metadata.selfLink >> "${LOG_FILE}" 2>&1
-        ${YQ_CMD} d -i "${file}" metadata.uid >> "${LOG_FILE}" 2>&1
-        ${YQ_CMD} d -i "${file}" status >> "${LOG_FILE}" 2>&1
+        ${YQ_CMD} -i 'del(.metadata.ownerReferences)' "${file}" >> "${LOG_FILE}" 2>&1
+        ${YQ_CMD} -i 'del(.metadata.creationTimestamp)' "${file}" >> "${LOG_FILE}" 2>&1
+        ${YQ_CMD} -i 'del(.metadata.generation)' "${file}" >> "${LOG_FILE}" 2>&1
+        ${YQ_CMD} -i 'del(.metadata.managedFields)' "${file}" >> "${LOG_FILE}" 2>&1
+        ${YQ_CMD} -i 'del(.metadata.resourceVersion)' "${file}" >> "${LOG_FILE}" 2>&1
+        ${YQ_CMD} -i 'del(.metadata.selfLink)' "${file}" >> "${LOG_FILE}" 2>&1
+        ${YQ_CMD} -i 'del(.metadata.uid)' "${file}" >> "${LOG_FILE}" 2>&1
+        ${YQ_CMD} -i 'del(.status)' "${file}" >> "${LOG_FILE}" 2>&1
         
         echo " - Removed owner reference and metadata from ${file}."
     done

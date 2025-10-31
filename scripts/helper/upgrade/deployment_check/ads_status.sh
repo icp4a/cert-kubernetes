@@ -10,7 +10,7 @@
 ###############################################################################
 #################### ADS #######################
 # Check adsCredentialsService upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.adsCredentialsService.adsCredentialsServiceDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.adsCredentialsService.adsCredentialsServiceDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ADS_CREDENTIALS_SERVICE_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -26,7 +26,7 @@ elif [ -z "${isInstalled}"  ]; then
 fi
 
 # Check adsGitService upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.adsGitService.adsGitServiceDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.adsGitService.adsGitServiceDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ADS_GIT_SERVICE_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -42,7 +42,7 @@ elif [ -z "${isInstalled}"  ]; then
 fi
 
 # Check adsLtpaCreation upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.adsLtpaCreation.adsLtpaCreationJob`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.adsLtpaCreation.adsLtpaCreationJob // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ADS_LTPA_CREATION_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -58,7 +58,7 @@ elif [ -z "${isInstalled}"  ]; then
 fi
 
 # Check adsParsingService upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.adsParsingService.adsParsingServiceDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.adsParsingService.adsParsingServiceDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ADS_PARSING_SERVICE_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -74,7 +74,7 @@ elif [ -z "${isInstalled}"  ]; then
 fi
 
 # Check adsRestApi upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.adsRestApi.adsRestApiDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.adsRestApi.adsRestApiDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ADS_RESTAPI_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -90,7 +90,7 @@ elif [ -z "${isInstalled}"  ]; then
 fi
 
 # Check adsRrRegistration upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.adsRrRegistration.adsRrRegistrationJob`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.adsRrRegistration.adsRrRegistrationJob // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ADS_RRREGISTRATION_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -106,7 +106,7 @@ elif [ -z "${isInstalled}"  ]; then
 fi
 
 # Check adsRunService upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.adsRunService.adsRunServiceDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.adsRunService.adsRunServiceDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ADS_RUN_SERVICE_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -122,7 +122,7 @@ elif [ -z "${isInstalled}"  ]; then
 fi
 
 # Check adsRuntimeService upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.adsRuntimeService.adsRuntimeServiceDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.adsRuntimeService.adsRuntimeServiceDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ADS_RUNTIME_SERVICE_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then

@@ -68,14 +68,15 @@ data:
 
     function wait_for_ls_reporter() {
         CNPG_PRIMARY_POD=$1
-        ready=$(oc get pod/$CNPG_PRIMARY_POD -n $LSR_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='ContainersReady')].status}")
+        echo $CNPG_PRIMARY_POD
+        ready=$(oc get pod $CNPG_PRIMARY_POD -n $LSR_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='ContainersReady')].status}")
         if [[ $ready != "True" ]]; then
             retry_count=60
             while [[ $ready != "True" ]] && [[ retry_count > 0 ]]
             do
                 info "Waiting for License Service Reporter instance to come ready. ConatinersReady status for pod $CNPG_PRIMARY_POD is: $ready"
                 sleep 15
-                ready=$(oc get pod/$CNPG_PRIMARY_POD -n $LSR_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='ContainersReady')].status}")
+                ready=$(oc get pod $CNPG_PRIMARY_POD -n $LSR_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='ContainersReady')].status}")
                 retry_count=$((retry_count-1))
             done
         else

@@ -1,0 +1,50 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  labels:
+    dp.isf.ibm.com/parent-recipe: cpfs-parent-recipe
+    dp.isf.ibm.com/parent-recipe-namespace: <parent recipe namespace>
+  name: ums-child
+  namespace: <child recipe namespace>
+spec:
+  appType: common-service
+  groups:
+    - includeClusterResources: true
+      includedResourceTypes:
+        - customresourcedefinitions.apiextensions.k8s.io
+      labelSelector: foundationservices.cloudpak.ibm.com=ums
+      name: ums-crd
+      type: resource
+    - includedResourceTypes:
+        - configmaps
+        - ibmservicemeterdefinitions.operator.ibm.com
+        - ibmusagemeterings.operator.ibm.com
+        - subscriptions.operators.coreos.com
+      labelSelector: foundationservices.cloudpak.ibm.com=ums
+      name: ums-resources
+      type: resource
+  hooks:
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      labelSelector: app.kubernetes.io/name=ibm-usage-metering
+      name: ums-operator-check
+      namespace: <ums operator namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+  workflows:
+    - name: post-backup
+      sequence:
+        # UMS resources
+        - group: ums-crd
+        - group: ums-resources
+    - name: data-restore
+      sequence:
+        # UMS restore
+        - group: ums-crd
+        - group: ums-resources
+        - hook: ums-operator-check/podReady

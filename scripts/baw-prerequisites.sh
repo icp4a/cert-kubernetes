@@ -2519,7 +2519,7 @@ function validate_secret_in_cluster(){
     files=($(find $SECRET_FILE_FOLDER -name '*.yaml'))
     for item in ${files[*]}
     do
-        secret_name_tmp=`cat $item | ${YQ_CMD} r - metadata.name`
+        secret_name_tmp=`${YQ_CMD} ".metadata.name // \"\"" "$item"`
         if [ -z "$secret_name_tmp" ]; then
             error "Secret name not found in YAML file: \"$item\"! Check and fix it"
             exit 1
@@ -2602,8 +2602,8 @@ function validate_prerequisites(){
     tmp_serverport="$(prop_ldap_property_file LDAP_PORT)"
     tmp_basdn="$(prop_ldap_property_file LDAP_BASE_DN)"
     tmp_ldapssl="$(prop_ldap_property_file LDAP_SSL_ENABLED)"
-    tmp_user=`kubectl get secret -l name=ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapUsername | base64 --decode`
-    tmp_userpwd=`kubectl get secret -l name=ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapPassword | base64 --decode`
+    tmp_user=`kubectl get secret -l name=ldap-bind-secret -o yaml | ${YQ_CMD} '.items[0].data.ldapUsername' - | base64 --decode`
+    tmp_userpwd=`kubectl get secret -l name=ldap-bind-secret -o yaml | ${YQ_CMD} '.items[0].data.ldapPassword' - | base64 --decode`
 
     tmp_servername=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_servername")
     tmp_serverport=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_serverport")
@@ -2622,8 +2622,8 @@ function validate_prerequisites(){
         tmp_serverport="$(prop_ext_ldap_property_file LDAP_PORT)"
         tmp_basdn="$(prop_ext_ldap_property_file LDAP_BASE_DN)"
         tmp_ldapssl="$(prop_ext_ldap_property_file LDAP_SSL_ENABLED)"
-        tmp_user=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapUsername | base64 --decode`
-        tmp_userpwd=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapPassword | base64 --decode`
+        tmp_user=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml | ${YQ_CMD} '.items[0].data.ldapUsername' - | base64 --decode`
+        tmp_userpwd=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml | ${YQ_CMD} '.items[0].data.ldapPassword' - | base64 --decode`
 
         tmp_servername=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_servername")
         tmp_serverport=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_serverport")
@@ -2643,9 +2643,9 @@ function validate_prerequisites(){
     # check db connection for GCDDB
    
     # check DBNAME/DBUSER for GCDDB
-    tmp_dbserver=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.gcd-db-server`
-    tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.gcdDBUsername | base64 --decode`
-    tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.gcdDBPassword | base64 --decode`        
+    tmp_dbserver=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.gcd-db-server' -`
+    tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.gcdDBUsername' - | base64 --decode`
+    tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.gcdDBPassword' - | base64 --decode`
 
     if [[ $DB_TYPE != "oracle" ]]; then
         tmp_dbname="$(prop_db_name_user_property_file $tmp_dbserver.GCD_DB_NAME)"
@@ -2668,8 +2668,8 @@ function validate_prerequisites(){
             # tmp_dbserver=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.os-db-server`
             tmp_dbserver="$(prop_db_name_user_property_file_for_server_name OS$((j+1))_DB_USER_NAME)"
             check_dbserver_name_valid $tmp_dbserver "OS$((j+1))_DB_USER_NAME"
-            tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.os$((j+1))DBUsername | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.os$((j+1))DBPassword | base64 --decode`        
+            tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.os$((j+1))DBUsername" - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.os$((j+1))DBPassword" - | base64 --decode`
 
             if [[ $DB_TYPE != "oracle" ]]; then
                 tmp_dbname="$(prop_db_name_user_property_file $tmp_dbserver.OS$((j+1))_DB_NAME)"
@@ -2692,8 +2692,8 @@ function validate_prerequisites(){
         tmp_dbserver="$(prop_db_name_user_property_file_for_server_name ${BAW_STD_OS_ARR[i]}_DB_USER_NAME)"
         check_dbserver_name_valid $tmp_dbserver "${BAW_STD_OS_ARR[i]}_DB_USER_NAME"
         tmp_label=$(echo ${BAW_STD_OS_ARR[i]}| tr '[:upper:]' '[:lower:]')
-        tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBUsername | base64 --decode`
-        tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBPassword | base64 --decode`        
+        tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBUsername" - | base64 --decode`
+        tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBPassword" - | base64 --decode`
 
         if [[ $DB_TYPE != "oracle" ]]; then
             tmp_dbname="$(prop_db_name_user_property_file $tmp_dbserver.${BAW_STD_OS_ARR[i]}_DB_NAME)"
@@ -2717,9 +2717,9 @@ function validate_prerequisites(){
     fi
     tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-    tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-    tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.navigatorDBUsername | base64 --decode`
-    tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.navigatorDBPassword | base64 --decode`        
+    tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+    tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.navigatorDBUsername' - | base64 --decode`
+    tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.navigatorDBPassword' - | base64 --decode`
 
     # Check DB non-SSL and SSL
     if [[ $DB_TYPE == "oracle" ]]; then
@@ -2737,9 +2737,9 @@ function validate_prerequisites(){
     fi
     tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-    tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-    tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.dbUser | base64 --decode`
-    tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.password | base64 --decode`        
+    tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+    tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUser' - | base64 --decode`
+    tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
 
     # Check DB non-SSL and SSL
     if [[ $DB_TYPE == "oracle" ]]; then
@@ -2756,9 +2756,9 @@ function validate_prerequisites(){
     fi
     tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-    tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-    tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.oauthDBUser | base64 --decode`
-    tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.oauthDBPassword | base64 --decode`        
+    tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+    tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.oauthDBUser' - | base64 --decode`
+    tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.oauthDBPassword' - | base64 --decode`
 
     # Check DB non-SSL and SSL
     if [[ $DB_TYPE == "oracle" ]]; then

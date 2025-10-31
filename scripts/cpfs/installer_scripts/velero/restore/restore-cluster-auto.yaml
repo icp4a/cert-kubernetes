@@ -1,0 +1,57 @@
+apiVersion: velero.io/v1
+kind: Restore
+metadata:
+  name: restore-cluster-auto
+  namespace: velero
+spec:
+  backupName: __BACKUP_NAME__
+  excludedResources:
+  - nodes
+  - events
+  - events.events.k8s.io
+  - backups.velero.io
+  - restores.velero.io
+  - resticrepositories.velero.io
+  - deployments
+  - serviceaccounts
+  - role.rbac.authorization.k8s.io
+  - rolebindings.rbac.authorization.k8s.io
+  - roles.authorization.openshift.io
+  - rolebindings.authorization.openshift.io
+  - namespacescopes.operator.ibm.com
+  - zenservices.zen.cpd.ibm.com 
+  - subscription.operators.coreos.com
+  - secrets
+  - commonservices.operator.ibm.com 
+  - configmaps
+  - issuers.cert-manager.io 
+  - certificates.cert-manager.io
+  - ibmlicensings.operator.ibm.com
+  - ibmlicenseservicereporters.operator.ibm.com
+  includeResources:
+  - customresourcedefinitions.apiextensions.k8s.io
+  - clusterrole.rbac.authorization.k8s.io
+  - clusterrolebinding.rbac.authorization.k8s.io
+  - validatingwebhookconfiguration.admissionregistration.k8s.io
+  - mutatingwebhookconfiguration.admissionregistration.k8s.io
+  hooks: {}
+  includedNamespaces:
+  - '*'
+  orLabelSelectors:
+  - matchExpressions:
+    - key: foundationservices.cloudpak.ibm.com
+      operator: In
+      values:
+      - crd
+      - nss-cluster
+      - nss
+      - ui-chart
+      - edb-chart
+      - iam-chart
+      - cs-chart
+      - odlm-chart
+      - zen-chart
+      - zen
+      - ls-cluster
+      - ls-chart
+      - licensing

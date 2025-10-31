@@ -1,0 +1,124 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  labels:
+    dp.isf.ibm.com/parent-recipe: cpfs-parent-recipe
+    dp.isf.ibm.com/parent-recipe-namespace: <parent recipe namespace>
+  name: im-ui-child-recipe
+  namespace: <child recipe namespace>
+spec:
+  appType: common-service
+  groups:
+    - includeClusterResources: true
+      includedResourceTypes:
+        - clusterrole
+        - clusterrolebinding
+        - customresourcedefinitions.apiextensions.k8s.io
+      labelSelector: foundationservices.cloudpak.ibm.com=iam-cluster
+      name: im-cluster-resources
+      type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        # - clusterrole
+        # - clusterrolebinding
+        - customresourcedefinitions.apiextensions.k8s.io
+      labelSelector: foundationservices.cloudpak.ibm.com=ui-cluster
+      name: ui-cluster-resources
+      type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        - role
+        - rolebinding
+        - serviceaccount
+        - deployments
+        - secrets
+      labelSelector: foundationservices.cloudpak.ibm.com=iam-chart
+      name: im-resources
+      type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        - role
+        - rolebinding
+        - serviceaccount
+        - deployments
+      labelSelector: foundationservices.cloudpak.ibm.com=ui-chart
+      name: ui-resources
+      type: resource
+    - backupRef: im-resources
+      includedResourceTypes:
+        - serviceaccount
+        - role
+        - rolebinding
+        - secrets
+      name: im-rbac-resources
+      type: resource
+    - backupRef: ui-resources
+      includedResourceTypes:
+        - serviceaccount
+        - role
+        - rolebinding
+        - secrets
+      name: ui-rbac-resources
+      type: resource
+    - backupRef: im-resources
+      includedResourceTypes:
+        - commonservices.operator.ibm.com
+      name: im-cr
+      type: resource
+    - backupRef: im-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - deployments
+      name: im-deployment
+      type: resource
+    - backupRef: ui-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - deployments
+      name: ui-deployment
+      type: resource
+  hooks:
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: im-check
+      nameSelector: ibm-iam-operator
+      namespace: <operator_ns>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: ui-check
+      nameSelector: ibm-commonui-operator
+      namespace: <operator_ns>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+  workflows:
+    - name: chart-backup
+      priority: 0
+      sequence:
+        - group: im-cluster-resources
+        - group: im-resources
+        - group: ui-cluster-resources
+        - group: ui-resources
+    - name: chart-restore
+      priority: 4
+      sequence:
+        - group: im-cluster-resources
+        - group: im-rbac-resources
+        - group: im-cr
+        - group: im-deployment
+        - hook: im-check/podReady
+        - group: ui-cluster-resources
+        - group: ui-rbac-resources
+        - group: ui-deployment
+        - hook: ui-check/podReady

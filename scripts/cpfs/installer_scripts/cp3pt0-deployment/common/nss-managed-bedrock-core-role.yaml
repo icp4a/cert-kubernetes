@@ -182,6 +182,7 @@ rules:
       - patch
       - update
       - watch
+      - list
     apiGroups:
       - postgresql.k8s.enterprisedb.io
     resources:
@@ -1670,3 +1671,69 @@ rules:
       - db2uengines
     apiGroups:
       - db2u.databases.ibm.com
+  - verbs:
+      - get
+      - list
+      - watch
+    resources:
+      - secretproviderclasses
+    apiGroups:
+      - secrets-store.csi.x-k8s.io
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - ''
+    resources:
+      - leases
+  - verbs:
+      - create
+      - patch
+      - update
+    apiGroups:
+      - certmanager.k8s.io
+    resources:
+      - certificaterequests
+      - challenges
+      - orders
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - operator.ibm.com
+    resources:
+      - businessteamsservices
+  - verbs:
+      - update
+    apiGroups:
+      - operator.ibm.com
+    resources:
+      - businessteamsservices/finalizers
+  - verbs:
+      - get
+      - patch
+      - update
+    apiGroups:
+      - operator.ibm.com
+    resources:
+      - businessteamsservices/status
+  - verbs:
+      - create
+      - delete
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - storage.k8s.io
+    resources:
+      - storageclasses

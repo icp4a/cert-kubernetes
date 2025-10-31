@@ -73,16 +73,18 @@ function main() {
     fi
     label_ns_and_related 
     label_configmap
-    label_subscription
-    if [[ $ENABLE_CERT_MANAGER -eq 1 ]]; then
-        label_cert_manager
+    if [[ $NO_OLM == "false" ]]; then
+        if [[ $ENABLE_CERT_MANAGER -eq 1 ]]; then
+            label_cert_manager
+        fi
+        if [[ $ENABLE_LSR -eq 1 ]]; then
+            label_lsr
+        fi
+        label_cs
     fi
-    if [[ $ENABLE_LSR -eq 1 ]]; then
-        label_lsr
-    fi
-    label_cs
+
     if [[ $SERVICES_NS != "" ]]; then
-        label_nss
+        label_nss    
     fi
     label_mcsp
     success "Successfully labeled all the resources"
@@ -267,7 +269,15 @@ function label_ibm_catalogsources() {
 function label_ns_and_related() {
 
     title "Start to label the namespaces, operatorgroups and secrets... "
-    namespaces=$(${OC} get configmap namespace-scope -n $OPERATOR_NS -oyaml | awk '/^data:/ {flag=1; next} /^  namespaces:/ {print $2; next} flag && /^  [^ ]+: / {flag=0}')
+    # namespaces=$(${OC} get configmap namespace-scope -n $OPERATOR_NS -oyaml | awk '/^data:/ {flag=1; next} /^  namespaces:/ {print $2; next} flag && /^  [^ ]+: / {flag=0}')
+    namespaces=${OPERATOR_NS}
+    if [[ $SERVICES_NS != "" ]]; then
+        namespaces+=",$SERVICES_NS"
+    fi
+
+    if [[ $TETHERED_NS != "" ]]; then
+        namespaces+=",$TETHERED_NS"
+    fi
     # add cert-manager namespace and licensing namespace and lsr namespace into the list with comma separated
     if [[ $CONTROL_NS != "" ]]; then
         namespaces+=",$CONTROL_NS"
@@ -515,6 +525,7 @@ function label_helm_cluster_scope(){
     ${OC} label secret sh.helm.release.v1.$odlm_release_name.v1 -n $odlm_release_namespace foundationservices.cloudpak.ibm.com=odlm-cluster  --overwrite=true 2>/dev/null
 
     #cs operator cluster resources (crds, clusterrole, clusterrolebinding), crd covered elsewhere in script
+    ${OC} label customresourcedefinition commonservices.operator.ibm.com foundationservices.cloudpak.ibm.com=crd --overwrite=true 2>/dev/null
     ${OC} label clusterrole ibm-common-service-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
     ${OC} label clusterrolebinding ibm-common-service-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
     cs_release_name=$(${OC} get crd commonservices.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
@@ -571,7 +582,7 @@ function label_helm_namespace_scope(){
     ${OC} label rolebinding operand-deployment-lifecycle-manager foundationservices.cloudpak.ibm.com=odlm-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
     
     #cs operator
-    #cs CR handled in label_cs
+    ${OC} label commonservices common-service foundationservices.cloudpak.ibm.com=commonservice -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label deployment ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label serviceaccount ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label role ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null

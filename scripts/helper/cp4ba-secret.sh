@@ -231,21 +231,6 @@ else
 cat << EOF > ${CP4A_DB_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-cp4a-db-ssl-cert-secret
-value_empty=`cat "$0" | grep "sslmode=\[require|verify-ca|verify-full\]" | wc -l`  >/dev/null 2>&1
-if [ $value_empty -ne 0 ] ; then
-  echo -e "\x1B[1;31mPlease change line 25# in above script, modify \"--from-literal=sslmode\" to use [require or verify-ca or verify-full].\x1B[0m\n"
-  
-  echo -e "######################### Example ###################################"
-  echo -e "# If DATABASE_SSL_ENABLE=\"True\" and POSTGRESQL_SSL_CLIENT_SERVER=\"True\""
-  echo -e "# set '--from-literal=sslmode=require'"
-  echo -e "# or"
-  echo -e "# set '--from-literal=sslmode=verify-ca'"
-  echo -e "# or"
-  echo -e "# set '--from-literal=sslmode=verify-full'"
-  echo -e "######################### Example ###################################"
-    
-  exit 1
-fi
 
 if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-local>/client.crt" && -f "<cp4a-db-crt-file-in-local>/client.key" ]]; then
   kubectl delete secret "<cp4a-db-ssl-secret-name>" -n "${CP4BA_SERVICES_NS}" >/dev/null 2>&1
@@ -255,12 +240,6 @@ if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-loca
   --from-file=tls.key="<cp4a-db-crt-file-in-local>/client.key" \
   --from-literal=sslmode=[require|verify-ca|verify-full] -n "${CP4BA_SERVICES_NS}"
   kubectl label secret "<cp4a-db-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
-  # If DATABASE_SSL_ENABLE="True" and POSTGRESQL_SSL_CLIENT_SERVER="False"
-  # set '--from-literal=sslmode=require'
-  # If DATABASE_SSL_ENABLE="True" and POSTGRESQL_SSL_CLIENT_SERVER="True"
-  # set '--from-literal=sslmode=verify-ca'
-  # or
-  # set '--from-literal=sslmode=verify-full'
 else
   echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
@@ -454,7 +433,7 @@ function create_aca_db_secret_template(){
     #  Add basedb user
     local tmp_basedbuser="$(prop_db_name_user_property_file ADP_BASE_DB_USER_NAME)"
     local tmp_basedbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_basedbuser")
-    ${YQ_CMD} w -i "$ADP_BASE_DB_SECRET_YAML_FILE" "stringData.BASE_DB_USER" "$tmp_basedbuser"
+    ${YQ_CMD} -i ".stringData.BASE_DB_USER = \"$tmp_basedbuser\"" "$ADP_BASE_DB_SECRET_YAML_FILE"
 
     # Add basedb pwd
     local tmp_basedbuserpwd="$(prop_db_name_user_property_file ADP_BASE_DB_USER_PASSWORD)"
@@ -501,19 +480,19 @@ function create_aca_db_secret_template(){
                 tmp_postgresql_client_flag=$(echo $tmp_postgresql_client_flag | tr '[:upper:]' '[:lower:]') 
                 if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then       
                     base64_clientcrt=$(encode_crt_file_to_base64 "${ssl_folder_path}/client.crt")
-                    ${YQ_CMD} w -i "$ADP_BASE_DB_SECRET_YAML_FILE" "data.CERT" "$base64_clientcrt"
+                    ${YQ_CMD} -i ".data.CERT = \"$base64_clientcrt\"" "$ADP_BASE_DB_SECRET_YAML_FILE"
                     base64_clientkey=$(encode_crt_file_to_base64 "${ssl_folder_path}/client.key")
-                    ${YQ_CMD} w -i "$ADP_BASE_DB_SECRET_YAML_FILE" "data.KEY" "$base64_clientkey"
+                    ${YQ_CMD} -i ".data.KEY = \"$base64_clientkey\"" "$ADP_BASE_DB_SECRET_YAML_FILE"
                     base64_rootcrt=$(encode_crt_file_to_base64 "${ssl_folder_path}/root.crt")
-                    ${YQ_CMD} w -i "$ADP_BASE_DB_SECRET_YAML_FILE" "data.ROOTCERT" "$base64_rootcrt"
+                    ${YQ_CMD} -i ".data.ROOTCERT = \"$base64_rootcrt\"" "$ADP_BASE_DB_SECRET_YAML_FILE"
                 else
                     # when POSTGRESQL_SSL_CLIENT_SERVER=false, only root cert is needed.  in this situation the scripts seem to expect "db-cert.crt" as the filename
                     base64_dbcrt=$(encode_crt_file_to_base64 "${ssl_folder_path}/db-cert.crt")
-                    ${YQ_CMD} w -i "$ADP_BASE_DB_SECRET_YAML_FILE" "data.ROOTCERT" "$base64_dbcrt"
+                    ${YQ_CMD} -i ".data.ROOTCERT = \"$base64_dbcrt\"" "$ADP_BASE_DB_SECRET_YAML_FILE"
                 fi
             else
                 base64_dbcrt=$(encode_crt_file_to_base64 "${ssl_folder_path}/db-cert.crt")
-                ${YQ_CMD} w -i "$ADP_BASE_DB_SECRET_YAML_FILE" "data.CERT" "$base64_dbcrt"
+                ${YQ_CMD} -i ".data.CERT = \"$base64_dbcrt\"" "$ADP_BASE_DB_SECRET_YAML_FILE"
             fi
             
         fi

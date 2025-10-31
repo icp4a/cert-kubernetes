@@ -1,36 +1,36 @@
 name: ibm-cp-automation
-version: 25.0.1
-description: Generated from CASE ibm-cp-automation version 25.0.1 on 2025-24-08 06:24:59
+version: 25.0.2
+description: Generated from CASE ibm-cp-automation version 25.0.1 on 2025-24-09 06:24:59
   PDT
 cases:
 - name: ibm-cp-automation
-  version: 25.0.1
+  version: 25.0.2
   launch: true
   catalogGeneration:
     ocMirror:
       disableMerge: true
 - name: ibm-bts-bundle
-  version: 1.0.31
+  version: 1.0.32
   catalogGeneration:
     ocMirror:
       disableMerge: true
 - name: ibm-cloud-native-postgresql
-  version: 5.16.0+20250722.134758.2626
+  version: 5.22.0+20251001.142254.2660
   catalogGeneration:
     ocMirror:
       disableMerge: true
 - name: ibm-cs-install
-  version: 4.14.0
+  version: 4.15.0
   catalogGeneration:
     ocMirror:
       disableMerge: true
 - name: ibm-cs-iam
-  version: 4.13.0
+  version: 4.14.0
   catalogGeneration:
     ocMirror:
       disableMerge: true
 - name: ibm-events-operator
-  version: 5.1.2
+  version: 5.2.1
   catalogGeneration:
     ocMirror:
       disableMerge: true
@@ -45,22 +45,22 @@ cases:
     ocMirror:
       disableMerge: true
 - name: ibm-cert-manager
-  version: 4.2.15
+  version: 4.2.17
   catalogGeneration:
     ocMirror:
       disableMerge: true
 - name: ibm-zen
-  version: 6.2.1+20250818.110231.113
+  version: 6.2.2+20251007.000309.45
   catalogGeneration:
     ocMirror:
       disableMerge: true
 - name: ibm-licensing
-  version: 4.2.15
+  version: 4.2.17
   catalogGeneration:
     ocMirror:
       disableMerge: true
 - name: ibm-cp-fncm-case
-  version: 5.7.0
+  version: 5.7.1
   catalogGeneration:
     ocMirror:
       disableMerge: true

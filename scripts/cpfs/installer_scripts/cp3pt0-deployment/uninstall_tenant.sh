@@ -19,6 +19,7 @@ OPERATOR_NS_LIST=""
 CONTROL_NS=""
 FORCE_DELETE=0
 DEBUG=0
+RETAIN="false"
 
 # ---------- Command variables ----------
 
@@ -46,7 +47,11 @@ function main() {
     delete_rbac_resource
     delete_webhook
     delete_unavailable_apiservice
-    delete_tenant_ns
+    if [[ $RETAIN == "false" ]]; then
+        delete_tenant_ns
+    else
+        cleanup_extra_resources
+    fi
 }
 
 function parse_arguments() {
@@ -69,8 +74,10 @@ function parse_arguments() {
             shift
             OPERATOR_NS=$1
             ;;
+        --retain-ns)
+            RETAIN="true"
+            ;;
         -f)
-            shift
             FORCE_DELETE=1
             ;;
         -v | --debug)
@@ -102,6 +109,7 @@ function print_usage() {
     echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH"
     echo "   --operator-namespace string    Required. Namespace to uninstall Foundational services operators and the whole tenant."
     echo "   -f                             Optional. Enable force delete. It will take much more time if you add this label, we suggest run this script without -f label first"
+    echo "   --retain-ns                    Optional. Prevents script from deleting tenant namespaces during uninstall."
     echo "   -v, --debug integer            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                     Print usage information"
     echo ""
@@ -394,6 +402,22 @@ function cleanup_cs_control() {
         fi
     fi
 
+}
+
+function cleanup_extra_resources() {
+    info "Deleting excess resources while retaining tenant namespaces..."
+    for ns in ${TENANT_NAMESPACES//,/ }; do
+        ${OC} delete issuer cs-ss-issuer cs-ca-issuer -n $ns --ignore-not-found
+        ${OC} delete certificate cs-ca-certificate -n $ns --ignore-not-found
+        ${OC} delete configmap cloud-native-postgresql-image-list ibm-cpp-config -n $ns --ignore-not-found
+        ${OC} delete secret common-service-db-im-tls-secret postgresql-operator-controller-manager-config cs-ca-certificate-secret common-service-db-tls-secret common-service-db-replica-tls-secret common-service-db-zen-tls-secret -n $ns --ignore-not-found
+        ${OC} delete commonservice common-service -n $ns --ignore-not-found
+        ${OC} delete operandconfig common-service -n $ns --ignore-not-found
+        ${OC} delete operandregistry common-service -n $ns --ignore-not-found
+        info "Remaining resources (minus package manifests and events) in namespace $ns:"
+        ${OC} get "$(${OC} api-resources --namespaced=true --verbs=list -o name | awk '{printf "%s%s",sep,$0;sep=","}')"  --ignore-not-found -n $ns -o=custom-columns=KIND:.kind,NAME:.metadata.name --sort-by='kind' | grep -v PackageManifest | grep -v Event
+    done
+    success "Excess resources cleaned up in retained tenant namespaces."
 }
 
 

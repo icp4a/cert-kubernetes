@@ -234,50 +234,6 @@ function check_content_operator_version(){
     # success "Found the IBM CP4BA FileNet Content Manager Operator $cp4a_content_operator_csv_version \n"
 }
 
-# TODO: Workaround function to fix the Workflow operator Crash
-# https://jsw.ibm.com/browse/DBACLD-190784
-function patch_workflow_operator_csv() {
-  local namespace=$1
-  local kind="workflowruntime"
-
-  pods=$("${CLI_CMD}" get pods -n "$namespace" | grep workflow-operator  | grep CrashLoopBackOff | awk '{print $1}')
-
-  if [[ -z "$pods" ]]; then
-    echo "No workflow-operator pods Crash found in namespace $namespace"
-    return 0
-  fi
-
-  instances=$("${CLI_CMD}" get "$kind" -n "$namespace" -o jsonpath='{.items[*].metadata.name}')
-
-  if [[ -z "$instances" ]]; then
-    info "No instances of kind $kind found in namespace $namespace"
-    return 0
-  fi
-
-  info "Patching $kind instances in namespace $namespace ..."
-  for instance in $instances; do
-    info "Patching $instance"
-    "${CLI_CMD}" patch "$kind" "$instance" -n "$namespace" --type=merge -p '{
-      "spec": {
-        "zen_performance": {
-          "keepalive": "512",
-          "keepalive_requests": "500",
-          "keepalive_timeout": "30s",
-          "proxy_buffer_size": "256k",
-          "proxy_buffers": "8 512k",
-          "proxy_busy_buffers_size": "512k",
-          "proxy_connect_timeout": "300",
-          "proxy_read_timeout": "300",
-          "proxy_send_timeout": "300"
-        }
-      }
-    }'
-  done
-
-  ${CLI_CMD} delete pod  $pods
-  success "The $kind instances has been patched successfully!"
-}
-
 function check_operator_status(){
     local maxRetry=60
     local project_name=$1
@@ -901,9 +857,6 @@ function check_operator_status(){
     echo "****************************************************************************"
     info "Checking for IBM CP4BA Workflow operator pod initialization"
     for ((retry=0;retry<=${maxRetry};retry++)); do
-
-        patch_workflow_operator_csv $project_name
-
         isReady=$(kubectl get csv ibm-workflow-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
         # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
         if [[ -z $isReady ]]; then
@@ -976,13 +929,13 @@ function check_cp4ba_deployment_status(){
 
     cp4ba_cr_name=$(kubectl get icp4acluster -n $project_name --no-headers --ignore-not-found | awk '{print $1}')
     if [ ! -z "$cp4ba_cr_name" ]; then
-        cp4ba_cr_metaname=$(kubectl get icp4acluster $cp4ba_cr_name -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} r - metadata.name)
+        cp4ba_cr_metaname=$(kubectl get icp4acluster $cp4ba_cr_name -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} '.metadata.name' -)
         kubectl get icp4acluster $cp4ba_cr_name -n ${project_name} --no-headers --ignore-not-found -o yaml > ${UPGRADE_STATUS_CP4BA_FILE}
     fi
 
     content_cr_name=$(kubectl get content -n $project_name --no-headers --ignore-not-found | awk '{print $1}')
     if [ ! -z "$content_cr_name" ]; then
-        content_cr_metaname=$(kubectl get content $content_cr_name -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} r - metadata.name)
+        content_cr_metaname=$(kubectl get content $content_cr_name -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} '.metadata.name' -)
         kubectl get content $content_cr_name -n ${project_name} --no-headers --ignore-not-found -o yaml > ${UPGRADE_STATUS_CONTENT_FILE}
     fi
 
@@ -999,21 +952,21 @@ function check_cp4ba_deployment_status(){
     
     if [[ ( ! -z "${content_cr_name}" ) || ( ! -z "${cp4ba_cr_name}" ) ]]; then
         if [[ ! -z "${content_cr_name}" ]]; then
-            owner_ref=$(kubectl get content $content_cr_name -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} r - metadata.ownerReferences.[0].kind)
+            owner_ref=$(kubectl get content $content_cr_name -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} '.metadata.ownerReferences.[0].kind // ""' -)
             #################### FNCM #######################
             if [[ -z "${owner_ref}" ]]; then
                 #this variable is being used to check what the version of CP4BA was used before upgrade and is used later in a check if some alert message is to be printed
                 # initial_app_version=`cat $UPGRADE_DEPLOYMENT_CONTENT_CR_BAK | ${YQ_CMD} r - spec.appVersion`
                 CONTENT_CR_EXIST="Yes"
                 source ${CUR_DIR}/helper/upgrade/deployment_check/fncm_status.sh
-                bai_flag=`cat $UPGRADE_STATUS_FILE | ${YQ_CMD} r - spec.content_optional_components.bai`
+                bai_flag=`${YQ_CMD} ".spec.content_optional_components.bai // \"\"" "$UPGRADE_STATUS_FILE"`
                 if [[ ! -z "$bai_flag" ]]; then
                     bai_flag=$(echo "$bai_flag" | tr '[:upper:]' '[:lower:]')
                     if [[ "${bai_flag}" == "true" ]]; then
                         source ${CUR_DIR}/helper/upgrade/deployment_check/bai_status.sh
                     fi
                 fi
-                css_flag=`cat $UPGRADE_STATUS_FILE | ${YQ_CMD} r - spec.content_optional_components.css`
+                css_flag=`${YQ_CMD} ".spec.content_optional_components.css" "$UPGRADE_STATUS_FILE"`
                 css_flag=$(echo $css_flag | tr '[:upper:]' '[:lower:]')
             else
                 CONTENT_CR_EXIST="No"
@@ -1028,8 +981,8 @@ function check_cp4ba_deployment_status(){
                 existing_opt_component_list=""
                 EXISTING_PATTERN_ARR=()
                 EXISTING_OPT_COMPONENT_ARR=()
-                existing_pattern_list=`cat $UPGRADE_STATUS_FILE | ${YQ_CMD} r - spec.shared_configuration.sc_deployment_patterns`
-                existing_opt_component_list=`cat $UPGRADE_STATUS_FILE | ${YQ_CMD} r - spec.shared_configuration.sc_optional_components`
+                existing_pattern_list=`${YQ_CMD} ".spec.shared_configuration.sc_deployment_patterns" "$UPGRADE_STATUS_FILE"`
+                existing_opt_component_list=`${YQ_CMD} ".spec.shared_configuration.sc_optional_components" "$UPGRADE_STATUS_FILE"`
 
                 OIFS=$IFS
                 IFS=',' read -r -a EXISTING_PATTERN_ARR <<< "$existing_pattern_list"
@@ -1062,12 +1015,12 @@ function check_cp4ba_deployment_status(){
             source ${CUR_DIR}/helper/upgrade/deployment_check/rr_status.sh
 
             #################### BAA AE Multiple instance #######################
-            AE_ENGINE_DEPLOYMENT=`cat $UPGRADE_STATUS_FILE | ${YQ_CMD} r - spec.application_engine_configuration`
-            cr_metaname=`cat $UPGRADE_STATUS_FILE | ${YQ_CMD} r - metadata.name`
+            AE_ENGINE_DEPLOYMENT=`${YQ_CMD} ".spec.application_engine_configuration // \"\"" "$UPGRADE_STATUS_FILE"`
+            cr_metaname=`${YQ_CMD} ".metadata.name" "$UPGRADE_STATUS_FILE"`
             if [[ ! -z "$AE_ENGINE_DEPLOYMENT" ]]; then
                 item=0
                 while true; do
-                    ae_config_name=`cat $UPGRADE_STATUS_FILE | ${YQ_CMD} r - spec.application_engine_configuration.[${item}].name`
+                    ae_config_name=`${YQ_CMD} ".spec.application_engine_configuration.[${item}].name // \"\"" "$UPGRADE_STATUS_FILE"`
                     if [[ -z "$ae_config_name" ]]; then
                         break
                     else
@@ -1077,7 +1030,7 @@ function check_cp4ba_deployment_status(){
                 done
             fi
             #################### BAStudio #######################
-            BASTUDIO_DEPLOYMENT=`cat $UPGRADE_STATUS_FILE | ${YQ_CMD} r - spec.bastudio_configuration.admin_user`
+            BASTUDIO_DEPLOYMENT=`${YQ_CMD} ".spec.bastudio_configuration.admin_user // \"\"" "$UPGRADE_STATUS_FILE"`
             if [[ ! -z "$BASTUDIO_DEPLOYMENT" ]]; then
                 source ${CUR_DIR}/helper/upgrade/deployment_check/bastudio_status.sh
             fi
@@ -1087,18 +1040,18 @@ function check_cp4ba_deployment_status(){
             fi
 
             #################### BAML #######################
-            BAML_DEPLOYMENT=`cat $UPGRADE_STATUS_FILE | ${YQ_CMD} r - spec.baml_configuration`
+            BAML_DEPLOYMENT=`${YQ_CMD} ".spec.baml_configuration // \"\"" "$UPGRADE_STATUS_FILE"`
             if [[ ! -z "$BAML_DEPLOYMENT" ]]; then
                 source ${CUR_DIR}/helper/upgrade/deployment_check/baml_status.sh
             fi
 
             #################### BAW runtime Multiple instance #######################
-            BAW_DEPLOYMENT=`cat $UPGRADE_STATUS_FILE | ${YQ_CMD} r - spec.baw_configuration`
-            cr_metaname=`cat $UPGRADE_STATUS_FILE | ${YQ_CMD} r - metadata.name`
+            BAW_DEPLOYMENT=`${YQ_CMD} ".spec.baw_configuration // \"\"" "$UPGRADE_STATUS_FILE"`
+            cr_metaname=`${YQ_CMD} ".metadata.name" "$UPGRADE_STATUS_FILE"`
             if [[ ! -z "$BAW_DEPLOYMENT" ]]; then
                 item=0
                 while true; do
-                    baw_instance_name=`cat $UPGRADE_STATUS_FILE | ${YQ_CMD} r - spec.baw_configuration.[${item}].name`
+                    baw_instance_name=`${YQ_CMD} ".spec.baw_configuration.[${item}].name // \"\"" "$UPGRADE_STATUS_FILE"`
                     if [[ -z "$baw_instance_name" ]]; then
                         break
                     else
@@ -1115,7 +1068,7 @@ function check_cp4ba_deployment_status(){
         for item in "${exist_wfps_cr_array[@]}"
         do
             cr_type="WfPSRuntime"
-            cr_metaname=$(kubectl get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} r - metadata.name)
+            cr_metaname=$(kubectl get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} '.metadata.name' -)
             kubectl get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml > ${UPGRADE_STATUS_FILE}
             #################### WfPS #######################
             source ${CUR_DIR}/helper/upgrade/deployment_check/wfps_status.sh
@@ -1128,7 +1081,7 @@ function check_cp4ba_deployment_status(){
         for item in "${exist_pfs_cr_array[@]}"
         do
             cr_type="ProcessFederationServer"
-            cr_metaname=$(kubectl get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} r - metadata.name)
+            cr_metaname=$(kubectl get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} '.metadata.name' -)
             kubectl get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml > ${UPGRADE_STATUS_FILE}
             #################### WfPS #######################
             source ${CUR_DIR}/helper/upgrade/deployment_check/pfs_status.sh
@@ -1139,8 +1092,7 @@ function check_cp4ba_deployment_status(){
 }
 
 function show_cp4ba_upgrade_status() {
-    printf '%s %s\n' "$(date)" "[refresh interval: 30s]"
-    echo -en "[Press Ctrl+C to exit] \t\t"
+    printf '%s %s\n' "$(date)"
     check_cp4ba_deployment_status "${CP4BA_SERVICES_NS}"
     _original_cr_version=${original_cr_version:-"PREVIOUS"}
     ## <https://jsw.ibm.com/browse/DBACLD-177133> - Change the upgrade version to CP4BA_RELEASE_BASE_MAJOR_VERSION, so we don't need to update the version here when we move to a later version.
@@ -1148,7 +1100,7 @@ function show_cp4ba_upgrade_status() {
         printf "\n"
         step_num=1
         echo "${YELLOW_TEXT}[NEXT ACTION]${RESET_TEXT}:"
-        echo "${YELLOW_TEXT}  * After the status of upgrade for CP4BA components shows as ${RESET_TEXT}${GREEN_TEXT}\"Done\"${RESET_TEXT}${YELLOW_TEXT}, follow below${RESET_TEXT}:"
+        echo "${YELLOW_TEXT}  * The status above will be refreshing every 30 seconds.  You can continue to monitor and when all the status for the CP4BA components is ${RESET_TEXT}${GREEN_TEXT}\"Done\"${RESET_TEXT}${YELLOW_TEXT}, you can press CTRL+C to exit anytime and then follow the steps below.${RESET_TEXT}:"
 
         if [[ $css_flag == "true" || " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "css" ]]; then
             echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You have Content Search Services (CSS) installed. Make sure you start the IBM Content Search Services index dispatcher. Refer to the FileNet P8 Platform Documentation for more details."
@@ -1190,6 +1142,12 @@ function show_cp4ba_upgrade_status() {
     #         step_num=$((step_num + 1))
     #     fi
     ######
+    else
+        printf "\n"
+        step_num=1
+        echo "${YELLOW_TEXT}[NEXT ACTION]${RESET_TEXT}:"
+        echo "${YELLOW_TEXT}  * The status above will be refreshing every 30 seconds.  You can continue to monitor and when all the status for the CP4BA components is ${RESET_TEXT}${GREEN_TEXT}\"Done\"${RESET_TEXT}${YELLOW_TEXT}, you can press CTRL+C to exit anytime.${RESET_TEXT}"
+        printf "\n"
     fi
 }
 

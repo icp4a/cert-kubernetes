@@ -98,6 +98,9 @@ data:
             if [[ $ACCOUNT_IAM != "False" ]]; then
                 info "Beginning restore of account_iam database..."
                 oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname account_iam --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_account_iam_backup.dump        
+                
+                # Update IDP configuration with actual cluster domain
+                update_idp_config
             fi
             oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
         else
@@ -113,6 +116,94 @@ data:
         oc apply -f /tmp/oidc-client-registration.yaml
         rm -f /tmp/oidc-client-registration.yaml
         wait_for_oidc
+    }
+
+    function update_idp_config {
+        info "Updating IDP configuration with actual cluster domain..."
+        
+        # Get the cluster domain from ibmcloud-cluster-info configmap
+        CLUSTER_DOMAIN=$(oc get cm ibmcloud-cluster-info -n $CSDB_NAMESPACE -o jsonpath='{.data.cluster_address}' 2>/dev/null || echo "")
+        
+        if [[ -z $CLUSTER_DOMAIN ]]; then
+            error "❌ Could not determine cluster domain from ibmcloud-cluster-info configmap. Please update IDP configuration manually."
+            return 1
+        fi
+        
+        info "✅ Detected cluster domain: $CLUSTER_DOMAIN"
+        
+        NEW_IDP_URL="https://${CLUSTER_DOMAIN}/idprovider/v1/auth"
+        
+        info "🎯 Target IDP URL: $NEW_IDP_URL"
+        
+        # Check if account_iam database exists
+        ACCOUNT_IAM_EXISTS=$(oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" | grep "account_iam" || echo False)
+        
+        if [[ $ACCOUNT_IAM_EXISTS != "False" ]]; then
+            # Check current IDP configuration
+            CURRENT_IDP=$(oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d account_iam -t -c "SELECT TRIM(idp) FROM accountiam.idp_config WHERE idp LIKE '%/idprovider/v1/%' LIMIT 1;" 2>/dev/null | head -n1 | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || echo "")
+            info "🌐 Current IDP URL: $CURRENT_IDP"
+            echo ""
+            
+            if [[ -n $CURRENT_IDP ]] && [[ $CURRENT_IDP != $NEW_IDP_URL ]]; then
+                info "🔄 Updating IDP configuration..."
+                
+                oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d account_iam -c "
+                    UPDATE accountiam.idp_config 
+                    SET idp = '$NEW_IDP_URL', 
+                        modified_ts = NOW()
+                    WHERE idp LIKE '%/idprovider/v1/%';
+                "
+                echo ""
+                info "Verifying IDP configuration update..."
+                oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d account_iam -c "
+                    SELECT uid, realm, idp, modified_ts 
+                    FROM accountiam.idp_config 
+                    ORDER BY modified_ts DESC;
+                "
+                
+                success "IDP configuration updated successfully in account_iam database."
+                
+                # Restart account-iam pod to pick up the new configuration
+                info "🔄 Restarting account-iam pod to apply new IDP configuration..."
+                ACCOUNT_IAM_POD=$(oc get pods -n $CSDB_NAMESPACE -l app.kubernetes.io/name=account-iam --no-headers -o custom-columns=":metadata.name" | head -n1 || echo "")
+                
+                if [[ -n $ACCOUNT_IAM_POD ]]; then
+                    info "Found account-iam pod: $ACCOUNT_IAM_POD"
+                    oc delete pod $ACCOUNT_IAM_POD -n $CSDB_NAMESPACE
+                    
+                    info "⏳ Waiting for new account-iam pod to be ready..."
+                    # Wait for new pod to be running and ready
+                    retry_count=30
+                    while [[ $retry_count > 0 ]]; do
+                        NEW_POD=$(oc get pods -n $CSDB_NAMESPACE -l app.kubernetes.io/name=account-iam --no-headers -o custom-columns=":metadata.name,:status.phase" | grep Running | head -n1)
+                        if [[ -n $NEW_POD ]]; then
+                            POD_NAME=$(echo $NEW_POD | awk '{print $1}')
+                            READY_STATUS=$(oc get pod $POD_NAME -n $CSDB_NAMESPACE -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+                            if [[ $READY_STATUS == "True" ]]; then
+                                info "✅ New account-iam pod is ready: $POD_NAME"
+                                break
+                            fi
+                        fi
+                        sleep 2
+                        retry_count=$((retry_count-1))
+                    done
+                    
+                    if [[ $retry_count == 0 ]]; then
+                        warning "⚠️ Timeout waiting for new account-iam pod to be ready"
+                    fi
+                    
+                    info "✅ Account-iam pod restart completed"
+                else
+                    warning "⚠️ Could not find account-iam pod to restart. Please restart manually if needed."
+                fi
+            elif [[ $CURRENT_IDP == $NEW_IDP_URL ]]; then
+                info "✅ IDP configuration already matches target URL, no update needed."
+            else
+                info "No IDP configuration found in database, skipping update."
+            fi
+        else
+            info "account_iam database not found, IDP configuration update not applicable."
+        fi
     }
 
     function wait_for_oidc {

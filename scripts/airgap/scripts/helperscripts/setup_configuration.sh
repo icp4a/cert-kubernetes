@@ -83,8 +83,8 @@ configure_ibm_pak_cli(){
 print_cases_table() {
     # Use yq to extract the cases list
     #echo ${YQ_CMD}
-    names=$(${YQ_CMD} r "$TO_BE_MIRRORED_FILE" 'cases[*].name')
-    versions=$(${YQ_CMD} r "$TO_BE_MIRRORED_FILE" 'cases[*].version')
+    names=$(${YQ_CMD} ".cases[*].name" "$TO_BE_MIRRORED_FILE")
+    versions=$(${YQ_CMD} ".cases[*].version" "$TO_BE_MIRRORED_FILE")
 
 
     # Check if yq command was successful
@@ -145,8 +145,8 @@ configure_ibm_pak_home(){
 configure_case_version(){
     # Use yq to extract the cases list
     #echo ${YQ_CMD}
-    case_names=$(${YQ_CMD} r "$TO_BE_MIRRORED_FILE" 'cases[*].name')
-    versions=$(${YQ_CMD} r "$TO_BE_MIRRORED_FILE" 'cases[*].version')
+    case_names=$(${YQ_CMD} ".cases[*].name" "$TO_BE_MIRRORED_FILE")
+    versions=$(${YQ_CMD} ".cases[*].version" "$TO_BE_MIRRORED_FILE")
     # Convert names and versions into arrays
     IFS=$'\n' read -r -d '' -a name_array <<< "$case_names"
     IFS=$'\n' read -r -d '' -a version_array <<< "$versions"

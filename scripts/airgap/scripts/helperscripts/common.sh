@@ -281,7 +281,7 @@ function display_image_set_config_file() {
     yaml_file=$1
     
     # Extract all package names
-    package_names=$(${YQ_CMD} r "$yaml_file" 'mirror.operators[*].packages[*].name')
+    package_names=$(${YQ_CMD} ".mirror.operators[*].packages[*].name" "$yaml_file")
 
     # Print the header
 	#info "For each package listed in the first columnn of the table below, the script will mirror images corresponding to the channels listed in the second column of the table \n"
@@ -291,7 +291,7 @@ function display_image_set_config_file() {
     # Iterate over each package name
     while IFS= read -r package_name; do
         # Extract the channels associated with the current package
-        channels=$(${YQ_CMD} r "$yaml_file" "mirror.operators[*].packages(name==$package_name).channels[*].name")
+        channels=$(${YQ_CMD} ".mirror.operators[*].packages(name==$package_name).channels[*].name" "$yaml_file")
 
         # Print the package name
         printf "%-30s " "$package_name"
@@ -325,7 +325,7 @@ function edit_image_set_config_file(){
 	cp "$original_yaml" "$new_yaml"
 
 	# Check if operators exist
-	operators=$(${YQ_CMD} r "$original_yaml" 'mirror.operators[*].catalog')
+	operators=$(${YQ_CMD} ".mirror.operators[*].catalog // \"\"" "$original_yaml")
 	if [[ -z "$operators" ]]; then
 		#echo "No operators found!"
 		return
@@ -335,7 +335,7 @@ function edit_image_set_config_file(){
 	i=0
 	while true; do
 		# Get the catalog for the current operator
-		catalog=$(${YQ_CMD} r "$original_yaml" "mirror.operators[$i].catalog")
+		catalog=$(${YQ_CMD} ".mirror.operators[$i].catalog // \"\"" "$original_yaml")
 		if [[ -z "$catalog" ]]; then
 			break
 		fi
@@ -345,7 +345,7 @@ function edit_image_set_config_file(){
 		j=0
 		while true; do
 			# Get the package name for the current package
-			package_name=$(${YQ_CMD} r "$original_yaml" "mirror.operators[$i].packages[$j].name")
+			package_name=$(${YQ_CMD} ".mirror.operators[$i].packages[$j].name // \"\"" "$original_yaml")
 			if [[ -z "$package_name" ]]; then
 				break
 			fi
@@ -361,7 +361,7 @@ function edit_image_set_config_file(){
 			fi
 
 			# Get the channels for the current package
-			channels=$(${YQ_CMD} r "$original_yaml" "mirror.operators[$i].packages[$j].channels")
+			channels=$(${YQ_CMD} ".mirror.operators[$i].packages[$j].channels // \"\"" "$original_yaml")
 			
 			# Check if channels exist
 			if [[ -z "$channels" ]]; then
@@ -369,11 +369,11 @@ function edit_image_set_config_file(){
 			fi
 			
 			# Extract the last channel from the channels
-			last_channel=$(${YQ_CMD} r "$original_yaml" "mirror.operators[$i].packages[$j].channels[-1].name")
+			last_channel=$(${YQ_CMD} ".mirror.operators[$i].packages[$j].channels[-1].name" "$original_yaml")
 
 			# Remove all channels and set only the last channel in a proper format
-			${YQ_CMD} w -i "$new_yaml" "mirror.operators[$i].packages[$j].channels.name" ""
-			${YQ_CMD} w -i "$new_yaml" "mirror.operators[$i].packages[$j].channels[0].name" "$last_channel"
+			${YQ_CMD} -i ".mirror.operators[$i].packages[$j].channels.name = \"\"" "$new_yaml"
+			${YQ_CMD} -i ".mirror.operators[$i].packages[$j].channels[0].name = \"$last_channel\"" "$new_yaml"
 			#echo "Updated package $package_name with last channel: $last_channel"
 
 			j=$((j + 1))
@@ -570,10 +570,10 @@ function modify_metadata_files(){
 function dev_mode_edit_image_set_config_file() {
     # Step 1: Loop through operators
     local YAML_FILE=$1
-    count=$(${YQ_CMD} r "$YAML_FILE" 'mirror.operators[*].catalog' | wc -l)
+    count=$(${YQ_CMD} '.'mirror.operators[*].catalog'' $YAML_FILE | wc -l)
 
     for i in $(seq 0 $((count - 1))); do
-        catalog=$(${YQ_CMD} r "$YAML_FILE" "mirror.operators[$i].catalog")
+        catalog=$(${YQ_CMD} ".mirror.operators[$i].catalog" "$YAML_FILE")
         # For ibm-fncm-catalog or ibm-cp-automation-catalog we need to skopeo copy it and then update the image-set-config yaml
         if echo "$catalog" | grep -qE "ibm-fncm-catalog|ibm-cp-automation-catalog"; then
             new_catalog=$(echo "$catalog" | sed 's|icr.io/cpopen|cp.stg.icr.io/cp|')
@@ -585,18 +585,18 @@ function dev_mode_edit_image_set_config_file() {
             fi
             skopeo copy docker://${new_catalog} $copied_image --all --format v2s2
             
-            ${YQ_CMD} w -i "$YAML_FILE" "mirror.operators[$i].catalog" "$copied_image"
+            ${YQ_CMD} -i ".mirror.operators[$i].catalog = \"$copied_image\"" "$YAML_FILE"
         fi
     done
 
     # Step 2: Loop through additionalImages and update matching names
-    img_count=$(${YQ_CMD} r "$YAML_FILE" 'mirror.additionalImages[*].name' | wc -l)
+    img_count=$(${YQ_CMD} '.'mirror.additionalImages[*].name'' $YAML_FILE | wc -l)
 
     for j in $(seq 0 $((img_count - 1))); do
-        image=$(${YQ_CMD} r "$YAML_FILE" "mirror.additionalImages[$j].name")
+        image=$(${YQ_CMD} ".mirror.additionalImages[$j].name" "$YAML_FILE")
         if echo "$image" | grep -qE "ibm-fncm-catalog|ibm-cp-automation-catalog"; then
             new_image=$(echo "$image" | sed 's|icr.io/cpopen|cp.stg.icr.io/cp|')
-            ${YQ_CMD} w -i "$YAML_FILE" "mirror.additionalImages[$j].name" "$new_image"
+            ${YQ_CMD} -i ".mirror.additionalImages[$j].name = \"$new_image\"" "$YAML_FILE"
         fi
     done
 }

@@ -11,7 +11,7 @@ spec:
           - sh
           - -c
           - /cs-db/br_cs-db.sh restore <cs-db namespace>
-          image: icr.io/cpopen/cpfs/cpfs-utils:4.3.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
+          image: icr.io/cpopen/cpfs/cpfs-utils:4.6.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
           imagePullPolicy: Always
           name: cs-db-restore-job
           resources:

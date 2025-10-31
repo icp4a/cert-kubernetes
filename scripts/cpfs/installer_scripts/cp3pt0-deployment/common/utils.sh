@@ -473,11 +473,11 @@ function patch_watch_namespace() {
 function wait_for_deployment() {
     local namespace=$1
     local name=$2
+    local retries="${3:-10}"
     local needReplicas=$(${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.spec.replicas}' | awk '{print $1}')
     local readyReplicas="${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '${needReplicas}'"
     local replicas="${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.replicas}' | grep '${needReplicas}'"
     local condition="(${readyReplicas} && ${replicas})"
-    local retries=10
     local sleep_time=30
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for Deployment ${name} to be ready"

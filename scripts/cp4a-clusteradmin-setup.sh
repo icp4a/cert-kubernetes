@@ -1529,7 +1529,7 @@ function prepare_olm_install() {
       sed -i "s/REPLACE_CATALOG_SOURCE_NAMESPACE/$CATALOG_NAMESPACE/g" ${OLM_SUBSCRIPTION_TMP}
     fi
 
-    ${YQ_CMD} w -i ${OLM_SUBSCRIPTION_TMP} spec.source "$online_source"
+    ${YQ_CMD} -i ".spec.source = \"$online_source\"" ${OLM_SUBSCRIPTION_TMP}
 
     ${CLI_CMD} apply -f ${OLM_SUBSCRIPTION_TMP}
     if [ $? -eq 0 ]
@@ -3448,12 +3448,17 @@ if [[ $SCRIPT_MODE == "OLM" ]];then
             if [[ $CNCF_DOMAIN_NAME != "" ]]; then
 
             ${CLI_CMD} get cm ${COMMON_SERVICES_CM_DEDICATED_NAME} -n ${COMMON_SERVICES_CM_NAMESPACE} -o jsonpath='{ .data.common-service-maps\.yaml}' > ${TEMP_FOLDER}/cm-data.yaml
-            dedicate_tmp=$(${YQ_CMD} r ${TEMP_FOLDER}/cm-data.yaml  --printMode p "namespaceMapping[*].requested-from-namespace.(.==$DEDICATED_PROJECT)")
+            dedicate_tmp=$(${YQ_CMD} '.namespaceMapping[]."requested-from-namespace"
+                | select(.==strenv(DEDICATED_PROJECT))
+                | path
+                | ( .[] | select((. | tag) == "!!int") |= (["[", tostring, "]"] | join("")) )
+                | join(".")
+                | sub("\\.\\[","[")' "${TEMP_FOLDER}/cm-data.yaml")
             if [[ $dedicate_tmp == "" ]]; then
                 echo -e "\x1B[1;31mCan not find namespace $DEDICATED_PROJECT in the configmap ${COMMON_SERVICES_CM_DEDICATED_NAME} in the namespace ${COMMON_SERVICES_CM_NAMESPACE}  .\n\x1B[0m"
                 exit 1
             fi
-            DEDICATED_COMMON_PROJECT=$(${YQ_CMD} r ${TEMP_FOLDER}/cm-data.yaml "${dedicate_tmp:0:20}.map-to-common-service-namespace")
+            DEDICATED_COMMON_PROJECT=$(${YQ_CMD} ".${dedicate_tmp:0:20}.map-to-common-service-namespace" ${TEMP_FOLDER}/cm-data.yaml)
 
             rm -fr ${TEMP_FOLDER}/cm-data.yaml >> ${LOG_FILE}
 

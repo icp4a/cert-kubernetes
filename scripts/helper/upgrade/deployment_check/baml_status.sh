@@ -9,9 +9,9 @@
 #
 ######################## BAML #######################
 # Check bamlDeployStatus upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.baml.bamlDeployStatus`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.baml.bamlDeployStatus // ""' -`
 if [ -z "${isInstalled}"  ]; then
-    isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.baml.bamlCustomResource`
+    isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.baml.bamlCustomResource // ""' -`
 fi
 
 if [ "$isInstalled" == "NotInstalled" ]; then

@@ -55,8 +55,8 @@ function extract_image_list_from_CR(){
   for item in "${CR_FILES[@]}"
   do
     echo "Extracting images from $item..."
-    ${YQ_CMD} r ${item} "**.repository" >> ${IMAGE_REPOSITORY_LIST_FILE}
-    ${YQ_CMD} r ${item} "**.tag" >> ${IMAGE_TAG_LIST_FILE}
+    ${YQ_CMD} '.. | select(has("repository")) | .repository' "${item}" >> "${IMAGE_REPOSITORY_LIST_FILE}"
+    ${YQ_CMD} '.. | select(has("tag")) | .tag' "${item}" >> "${IMAGE_TAG_LIST_FILE}"
   done
 
   # For debug purpose, dev would pull from staging image registry
