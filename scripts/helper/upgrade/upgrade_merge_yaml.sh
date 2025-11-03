@@ -1491,23 +1491,25 @@ function upgrade_deployment(){
                 if [[ ! -z "$baw_instance_flag" ]]; then
                     ## https://jsw.ibm.com/browse/DBACLD-154386
                     ## Referencing the object store name instead of datasource name                
-                    baw_event_emitter_tos_name=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.object_store_name_tos" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
-                    baw_event_emitter_connection_point_name=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.connection_point_name_tos" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
-                    baw_event_emitter_date_sql=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.event_emitter.date_sql" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
-                    baw_event_emitter_logical_unique_id=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.event_emitter.logical_unique_id" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
-                    baw_event_emitter_solution_list=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.event_emitter.solution_list" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
-                    baw_event_emitter_casetype_list=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.event_emitter.casetype_list" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
-                    baw_event_emitter_emitter_batch_size=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.event_emitter.emitter_batch_size" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
-                    baw_event_emitter_process_pe_events=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.event_emitter.process_pe_events" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                    baw_event_emitter_tos_name=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.object_store_name_tos // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                    baw_event_emitter_connection_point_name=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.connection_point_name_tos // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                    baw_event_emitter_date_sql=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.event_emitter.date_sql // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                    baw_event_emitter_logical_unique_id=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.event_emitter.logical_unique_id // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                    baw_event_emitter_solution_list=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.event_emitter.solution_list // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                    baw_event_emitter_casetype_list=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.event_emitter.casetype_list // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                    baw_event_emitter_emitter_batch_size=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.event_emitter.emitter_batch_size // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                    baw_event_emitter_process_pe_events=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.event_emitter.process_pe_events // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
 
-                    ${YQ_CMD} -i ".spec.workflow_authoring_configuration.case.event_emitter[0].tos_name = \"$baw_event_emitter_tos_name\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
-                    ${YQ_CMD} -i ".spec.workflow_authoring_configuration.case.event_emitter[0].connection_point_name = \"$baw_event_emitter_connection_point_name\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
-                    ${YQ_CMD} -i ".spec.workflow_authoring_configuration.case.event_emitter[0].date_sql = \"$baw_event_emitter_date_sql\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
-                    ${YQ_CMD} -i ".spec.workflow_authoring_configuration.case.event_emitter[0].logical_unique_id = \"$baw_event_emitter_logical_unique_id\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
-                    ${YQ_CMD} -i ".spec.workflow_authoring_configuration.case.event_emitter[0].solution_list = \"$baw_event_emitter_solution_list\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
-                    ${YQ_CMD} -i ".spec.workflow_authoring_configuration.case.event_emitter[0].casetype_list = \"$baw_event_emitter_casetype_list\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
-                    ${YQ_CMD} -i ".spec.workflow_authoring_configuration.case.event_emitter[0].emitter_batch_size = \"$baw_event_emitter_emitter_batch_size\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
-                    ${YQ_CMD} -i ".spec.workflow_authoring_configuration.case.event_emitter[0].process_pe_events = \"$baw_event_emitter_process_pe_events\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
+                    ${YQ_CMD} -i ".spec.workflow_authoring_configuration.case.event_emitter = [{
+                    \"tos_name\": \"$baw_event_emitter_tos_name\",
+                    \"connection_point_name\": \"$baw_event_emitter_connection_point_name\",
+                    \"date_sql\": \"$baw_event_emitter_date_sql\",
+                    \"logical_unique_id\": \"$baw_event_emitter_logical_unique_id\",
+                    \"solution_list\": \"$baw_event_emitter_solution_list\",
+                    \"casetype_list\": \"$baw_event_emitter_casetype_list\",
+                    \"emitter_batch_size\": \"$baw_event_emitter_emitter_batch_size\",
+                    \"process_pe_events\": \"$baw_event_emitter_process_pe_events\"
+                    }]" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
 
                     ${CLI_CMD} patch icp4acluster $icp4acluster_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/workflow_authoring_configuration/case/event_emitter/tos_name"}]' >/dev/null 2>&1
                     ${CLI_CMD} patch icp4acluster $icp4acluster_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/workflow_authoring_configuration/case/event_emitter/connection_point_name"}]' >/dev/null 2>&1
@@ -1531,23 +1533,25 @@ function upgrade_deployment(){
                     if [[ ! -z "$baw_instance_flag" ]]; then
                         ## https://jsw.ibm.com/browse/DBACLD-154386
                         ## Referencing the object store name instead of datasource name                    
-                        baw_event_emitter_tos_name=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.object_store_name_tos" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
-                        baw_event_emitter_connection_point_name=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.connection_point_name_tos" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
-                        baw_event_emitter_date_sql=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.event_emitter.date_sql" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
-                        baw_event_emitter_logical_unique_id=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.event_emitter.logical_unique_id" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
-                        baw_event_emitter_solution_list=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.event_emitter.solution_list" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
-                        baw_event_emitter_casetype_list=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.event_emitter.casetype_list" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
-                        baw_event_emitter_emitter_batch_size=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.event_emitter.emitter_batch_size" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
-                        baw_event_emitter_process_pe_events=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.event_emitter.process_pe_events" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                        baw_event_emitter_tos_name=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.object_store_name_tos // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                        baw_event_emitter_connection_point_name=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.connection_point_name_tos // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                        baw_event_emitter_date_sql=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.event_emitter.date_sql // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                        baw_event_emitter_logical_unique_id=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.event_emitter.logical_unique_id // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                        baw_event_emitter_solution_list=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.event_emitter.solution_list // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                        baw_event_emitter_casetype_list=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.event_emitter.casetype_list // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                        baw_event_emitter_emitter_batch_size=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.event_emitter.emitter_batch_size // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                        baw_event_emitter_process_pe_events=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.event_emitter.process_pe_events // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
 
-                        ${YQ_CMD} -i ".spec.baw_configuration[${baw_instance_index}].case.event_emitter[0].tos_name = \"$baw_event_emitter_tos_name\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
-                        ${YQ_CMD} -i ".spec.baw_configuration[${baw_instance_index}].case.event_emitter[0].connection_point_name = \"$baw_event_emitter_connection_point_name\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
-                        ${YQ_CMD} -i ".spec.baw_configuration[${baw_instance_index}].case.event_emitter[0].date_sql = \"$baw_event_emitter_date_sql\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
-                        ${YQ_CMD} -i ".spec.baw_configuration[${baw_instance_index}].case.event_emitter[0].logical_unique_id = \"$baw_event_emitter_logical_unique_id\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
-                        ${YQ_CMD} -i ".spec.baw_configuration[${baw_instance_index}].case.event_emitter[0].solution_list = \"$baw_event_emitter_solution_list\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
-                        ${YQ_CMD} -i ".spec.baw_configuration[${baw_instance_index}].case.event_emitter[0].casetype_list = \"$baw_event_emitter_casetype_list\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
-                        ${YQ_CMD} -i ".spec.baw_configuration[${baw_instance_index}].case.event_emitter[0].emitter_batch_size = \"$baw_event_emitter_emitter_batch_size\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
-                        ${YQ_CMD} -i ".spec.baw_configuration[${baw_instance_index}].case.event_emitter[0].process_pe_events = \"$baw_event_emitter_process_pe_events\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
+                        ${YQ_CMD} -i ".spec.baw_configuration[${baw_instance_index}].case.event_emitter = [{
+                        \"tos_name\": \"$baw_event_emitter_tos_name\",
+                        \"connection_point_name\": \"$baw_event_emitter_connection_point_name\",
+                        \"date_sql\": \"$baw_event_emitter_date_sql\",
+                        \"logical_unique_id\": \"$baw_event_emitter_logical_unique_id\",
+                        \"solution_list\": \"$baw_event_emitter_solution_list\",
+                        \"casetype_list\": \"$baw_event_emitter_casetype_list\",
+                        \"emitter_batch_size\": \"$baw_event_emitter_emitter_batch_size\",
+                        \"process_pe_events\": \"$baw_event_emitter_process_pe_events\"
+                        }]" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
 
                         ${CLI_CMD} patch icp4acluster $icp4acluster_cr_name -n $deployment_project_name --type=json -p="[{\"op\": \"remove\", \"path\": \"/spec/baw_configuration/${baw_instance_index}/case/event_emitter/tos_name\"}]" >/dev/null 2>&1
                         ${CLI_CMD} patch icp4acluster $icp4acluster_cr_name -n $deployment_project_name --type=json -p="[{\"op\": \"remove\", \"path\": \"/spec/baw_configuration/${baw_instance_index}/case/event_emitter/connection_point_name\"}]" >/dev/null 2>&1
