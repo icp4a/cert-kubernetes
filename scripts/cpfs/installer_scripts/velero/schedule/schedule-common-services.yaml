@@ -63,3 +63,4 @@ spec:
         - lsr-cluster
         - lsr-chart
         - ibm-cm-chart
+        - ums

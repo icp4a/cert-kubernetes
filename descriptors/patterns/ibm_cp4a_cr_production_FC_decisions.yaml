@@ -17,6 +17,7 @@ metadata:
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
     release: 24.0.0
+    cp4ba.ibm.com/backup-type: mandatory
 spec:
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
@@ -199,7 +200,7 @@ spec:
 
     image:
       # Specify to override the tag docker images in case of an interim fix.
-      tag: "24.0.0-IF006"
+      tag: "24.0.0-IF007"
       # Specify the pull policy for the Docker images. See Kuberntes documentation for more inforations.
       # Possible values : IfNotPresent, Always, Never
       pullPolicy: IfNotPresent

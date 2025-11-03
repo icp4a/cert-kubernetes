@@ -3,7 +3,7 @@ kind: Recipe
 metadata:
   labels:
     dp.isf.ibm.com/parent-recipe: cpfs-parent-recipe
-    dp.isf.ibm.com/parent-recipe-namespace: <fusion namespace>
+    dp.isf.ibm.com/parent-recipe-namespace: <parent recipe namespace>
   name: csdb-child
   namespace: <child recipe namespace>
 spec:

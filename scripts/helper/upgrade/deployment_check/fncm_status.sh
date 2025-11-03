@@ -10,7 +10,7 @@
 ###############################################################################
 #################### FNCM #######################
 # Check CPE upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.cpe.cpeDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.cpe.cpeDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_CPE_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -26,7 +26,7 @@ elif [ -z "${isInstalled}"  ]; then
 fi
 
 # Check graphql upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.graphql.graphqlDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.graphql.graphqlDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_GRAPHQL_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -41,7 +41,7 @@ elif [ -z "${isInstalled}"  ]; then
     CP4BA_GRAPHQL_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 fi
 # Check CSS upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.css.cssDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.css.cssDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_CSS_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -54,7 +54,7 @@ elif [ -z "${isInstalled}"  ]; then
     CP4BA_CSS_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 fi
 # Check CMIS upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.cmis.cmisDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.cmis.cmisDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_CMIS_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -69,7 +69,7 @@ elif [ -z "${isInstalled}"  ]; then
     CP4BA_CMIS_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 fi
 # Check IER upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.ier.ierDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.ier.ierDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_IER_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -84,7 +84,7 @@ elif [ -z "${isInstalled}"  ]; then
     CP4BA_IER_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 fi
 # Check ICCSAP upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.iccsap.iccsapDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.iccsap.iccsapDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ICC_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -99,7 +99,7 @@ elif [ -z "${isInstalled}"  ]; then
     CP4BA_ICC_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 fi
 # Check TaskManager upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.tm.tmDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.tm.tmDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_TM_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -114,7 +114,7 @@ elif [ -z "${isInstalled}"  ]; then
     CP4BA_TM_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 fi
 # Check BAN upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.navigator.navigatorDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.navigator.navigatorDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_BAN_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -129,7 +129,7 @@ elif [ -z "${isInstalled}"  ]; then
     CP4BA_BAN_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 fi
 # Check ExternalShare upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.extshare.extshareDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.extshare.extshareDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ES_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then

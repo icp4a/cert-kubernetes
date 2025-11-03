@@ -33,6 +33,7 @@ CLEAN_CPFS="true"
 CLEAN_CRDS="false"
 SEPARATION_DUTY="false"
 ALL_NAMESPACE="false"
+IS_SHARED_CPFS="false"
 
 while getopts 'n:hsa' OPTION; do
 	case "$OPTION" in
@@ -132,9 +133,9 @@ CP4BA_CM_CONFIG=$(${CLI_CMD} get configmap ibm-cp4ba-common-config -n ${CP4BA_NA
 CP4BA_CM_CONFIG_YAML=$(mktemp)
 echo "$CP4BA_CM_CONFIG" > "$CP4BA_CM_CONFIG_YAML"
 # get operators namespace
-CP4BA_OPERATORS_NAMESPACE=$(${YQ_CMD} r "$CP4BA_CM_CONFIG_YAML" "operators_namespace")
+CP4BA_OPERATORS_NAMESPACE=$(${YQ_CMD} ".operators_namespace" "$CP4BA_CM_CONFIG_YAML")
 # get services namespace (Same as the CP4BA namespace)
-CP4BA_SERVICES_NAMESPACE=$(${YQ_CMD} r "$CP4BA_CM_CONFIG_YAML" "services_namespace")
+CP4BA_SERVICES_NAMESPACE=$(${YQ_CMD} ".services_namespace" "$CP4BA_CM_CONFIG_YAML")
 
 if [[ "$CP4BA_OPERATORS_NAMESPACE" == "openshift-operators" ]]; then
 	ALL_NAMESPACE="true"
@@ -159,24 +160,25 @@ if [[ "$ALL_NAMESPACE" == "false" ]]; then
 	else
 		CS_MAPS_YAML=$(mktemp) 
 		echo "$CS_MAP" > "$CS_MAPS_YAML"
-		CS_NAMESPACE_COUNT=$(${YQ_CMD} r "$CS_MAPS_YAML" "namespaceMapping" -l)
+		CS_NAMESPACE_COUNT=$(${YQ_CMD} eval '.namespaceMapping | length' "$CS_MAPS_YAML")
 		for(( i = 0; i < $CS_NAMESPACE_COUNT; i++ ))
 		do
 			# Get CS namespace
-			CS_NS=$(${YQ_CMD} r "$CS_MAPS_YAML" "namespaceMapping[${i}].map-to-common-service-namespace")
+			CS_NS=$(${YQ_CMD} ".namespaceMapping[${i}].map-to-common-service-namespace" "$CS_MAPS_YAML")
 			# Get CS control namespace
-			CPFS_CONTROL_NAMESPACE=$(${YQ_CMD} r "$CS_MAPS_YAML" "controlNamespace")
+			CPFS_CONTROL_NAMESPACE=$(${YQ_CMD} ".controlNamespace" "$CS_MAPS_YAML")
 			# Get Shared namespace count
-			SHARED_NAMESPACE_COUNT=$(${YQ_CMD} r "$CS_MAPS_YAML" "namespaceMapping[${i}].requested-from-namespace" -l)
+			SHARED_NAMESPACE_COUNT=$(${YQ_CMD} eval '.namespaceMapping['"${i}"'].requested-from-namespace | length' "$CS_MAPS_YAML")
 			# Check if the Entered CP4BA namespace is in the list
 			for((j = 0; j < $SHARED_NAMESPACE_COUNT; j++))
 			do
 				# Get Cloud Pak namespace
-				CP_NS=$(${YQ_CMD} r "$CS_MAPS_YAML" "namespaceMapping[${i}].requested-from-namespace[${j}]")
+				CP_NS=$(${YQ_CMD} ".namespaceMapping[${i}].requested-from-namespace[${j}]" "$CS_MAPS_YAML")
 				if [[ "$CP_NS" == "$CP4BA_NAMESPACE" ]];then
-					NAMESPACES_MAPPED_TO_CS=$(${YQ_CMD} r "$CS_MAPS_YAML" "namespaceMapping[${i}].requested-from-namespace")
-					CPFS_SHARED_NAMESPACE=$(${YQ_CMD} r "$CS_MAPS_YAML" "namespaceMapping[${i}].map-to-common-service-namespace")
+					NAMESPACES_MAPPED_TO_CS=$(${YQ_CMD} ".namespaceMapping[${i}].requested-from-namespace" "$CS_MAPS_YAML")
+					CPFS_SHARED_NAMESPACE=$(${YQ_CMD} ".namespaceMapping[${i}].map-to-common-service-namespace // \"\"" "$CS_MAPS_YAML")
 					CS_MAP_INDEX="${i}"
+					REQUEST_NS_INDEX="${j}"
 					# Found and break out of nested loop
 					break 2
 				fi
@@ -199,11 +201,13 @@ if [[ "$ALL_NAMESPACE" == "false" ]]; then
 			if [[ "${SHARED_NAMESPACE_COUNT}" -gt 1 && "${SEPARATION_DUTY}" == "false" ]]; then
 				info "Multiple namespaces are sharing the same Cloud Pak foundational services. This script does not support cleaning up shared Cloud Pak foundational services. The script will only clean up Cloud Pak for Business Automation namespace."
 				CLEAN_CPFS="false"
+				IS_SHARED_CPFS="true"
 			fi
 
 			if [[ "${SHARED_NAMESPACE_COUNT}" -gt 2 && "${SEPARATION_DUTY}" == "true" ]]; then
 				info "Multiple namespaces are sharing the same Cloud Pak foundational services. This script does not support cleaning up shared Cloud Pak foundational services. The script will only clean up Cloud Pak for Business Automation namespace."
 				CLEAN_CPFS="false"
+				IS_SHARED_CPFS="true"
 			fi
 		fi
 	fi
@@ -229,7 +233,7 @@ while true; do
 	warning "Answer must be 'Yes' or 'No'"
 	esac
 done
-s
+
 # Get Resource function
 function get_resource() {
 	local RESOURCE_NAME=$1
@@ -327,6 +331,7 @@ CP4BA_RESOURCES=(
 	"flinkdeployments.flink.apache.org"
 	"secret"
 	"kafkatopics.ibmevents.ibm.com"
+	"endpoints"
 )
 
 if [[ "$SEPARATION_DUTY" == "true" ]]; then
@@ -635,11 +640,30 @@ if [[ $CLEAN_CPFS == "true" ]]; then
 	fi
 fi
 
+### <https://jsw.ibm.com/browse/DBACLD-185523> - Check if shared CPfs and update common-service-maps accordingly
 # Update/delete configmaps in kube-public
-if [[ "$CS_NAMESPACE_COUNT" -gt 1 ]]; then
+if [[ $IS_SHARED_CPFS == "true" ]]; then
 	INFO "Remove mapping from ${COMMON_SERVICES_CM_NAMESPACE} namespace"
 	# Remove mapping from common-service-maps.yaml and apply it back
-	NEW_CS_MAPS=$(${YQ_CMD} d "$CS_MAPS_YAML" "namespaceMapping[${CS_MAP_INDEX}]")
+	NEW_CS_MAPS=$(${YQ_CMD} -i "del(.namespaceMapping[${CS_MAP_INDEX}].requested-from-namespace[${REQUEST_NS_INDEX}])" "$CS_MAPS_YAML")
+	padded_yaml=$(echo "$NEW_CS_MAPS" | awk '$0="    "$0')
+	NEW_CS_MAPS_YAML="$(
+	cat <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: common-service-maps
+  namespace: kube-public
+data:
+  common-service-maps.yaml: |
+${padded_yaml}
+EOF
+)"
+	echo "$NEW_CS_MAPS_YAML" | ${CLI_CMD} apply -f -
+else
+	INFO "Remove mapping from ${COMMON_SERVICES_CM_NAMESPACE} namespace"
+	# Remove mapping from common-service-maps.yaml and apply it back
+	NEW_CS_MAPS=$(${YQ_CMD} -i "del(.namespaceMapping[${CS_MAP_INDEX}])" "$CS_MAPS_YAML")
 	padded_yaml=$(echo "$NEW_CS_MAPS" | awk '$0="    "$0')
 	NEW_CS_MAPS_YAML="$(
 		cat <<EOF
@@ -654,9 +678,6 @@ ${padded_yaml}
 EOF
 )"
 	echo "$NEW_CS_MAPS_YAML" | ${CLI_CMD} apply -f -
-else
-	INFO "Delete configmaps from ${COMMON_SERVICES_CM_NAMESPACE} namespace"
-	${CLI_CMD} delete cm common-service-maps ibm-common-services-status -n "${COMMON_SERVICES_CM_NAMESPACE}" --ignore-not-found
 fi
 
 # Delete resource in openshift-operator namespace

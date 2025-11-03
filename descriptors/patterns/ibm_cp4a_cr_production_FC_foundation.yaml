@@ -17,6 +17,7 @@ metadata:
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
     release: 24.0.0
+    cp4ba.ibm.com/backup-type: mandatory
 spec:
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
@@ -77,16 +78,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -526,7 +527,7 @@ spec:
 
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: "24.0.0-IF006"
+      tag: "24.0.0-IF007"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -710,7 +711,7 @@ spec:
       pull_policy: IfNotPresent
       resource_registry:
         repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
     admin_secret_name: resource-registry-admin-secret
     replica_size: 1
     probe:
@@ -809,7 +810,7 @@ spec:
       pull_policy: IfNotPresent
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
     #Adjust this one if you created the secret with name other than the default
     admin_secret_name: "{{ meta.name }}-bas-admin-secret"
     #-----------------------------------------------------------------------
@@ -1089,10 +1090,10 @@ spec:
         pull_policy: IfNotPresent
         db_job:
           repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-          tag: "24.0.0-IF006"
+          tag: "24.0.0-IF007"
         solution_server:
           repository: cp.icr.io/cp/cp4a/aae/solution-server
-          tag: "24.0.0-IF006"
+          tag: "24.0.0-IF007"
       # For most cases, you don't need to input hostname and port here. They can be calculated with your environment informations
       # And all the endpoints can be visit through unified external URL
       # With none zen mode. If you want to customize external hostname and port. Update values here. They will be used as application playback server external visit hostname and port.
@@ -1369,6 +1370,21 @@ spec:
     # If not set, shared_configuration.images.pull_policy is used.
     image_pull_policy: "IfNotPresent"
 
+    ## Values in this field will be used as annotations in all BAI pods and it must be valid annotation key value pairs.
+    # Example:
+    # customAnnotationKey: customAnnotationValue
+    ## This can be overwritten by componenent level definitions:
+    # "bai_configuration.cockpit.custom_annotations", "bai_configuration.management.custom_annotations"
+    # "bai_configuration.flink.custom_annotations", "bai_configuration.application_setup.custom_annotations"
+    custom_annotations: {}
+    ## Values in this field will be used as labels in all BAI pods and it must be valid label key value pairs
+    # Example:
+    # customLabelKey: customLabelValue
+    ## This can be overwritten by componenent level definitions:
+    # "bai_configuration.cockpit.custom_labels", "bai_configuration.management.custom_labels"
+    # "bai_configuration.flink.custom_labels", "bai_configuration.application_setup.custom_labels"
+    custom_labels: {}
+
     ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower.
     ## For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
     ## NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start.  This custom profile should be created at the worker nodes.
@@ -1406,7 +1422,7 @@ spec:
     application_setup:
       image:
         repository: cp.icr.io/cp/cp4a/bai/insights-engine-application-setup
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
       # The back-off limit property specifies the number of retries before the setup job is considered failed. Default: 6.
       backoff_limit: 7
       resources:
@@ -1430,7 +1446,7 @@ spec:
     setup:
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-setup
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
       # The back-off limit property specifies the number of retries before the setup job is considered failed. Default: 6.
       backoff_limit: 7
       resources:
@@ -1453,11 +1469,11 @@ spec:
     management:
       image:
         repository: cp.icr.io/cp/cp4a/bai/insights-engine-management
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
       backend:
         image:
           repository: cp.icr.io/cp/cp4a/bai/insights-engine-management-backend
-          tag: "24.0.0-IF006"
+          tag: "24.0.0-IF007"
       # You can use this parameter to customize the hostname of the management service route.
       # If not set, the value of shared_configuration.sc_deployment_hostname_suffix is used.
       hostname: "management.bai.{{ shared_configuration.sc_deployment_hostname_suffix }}"
@@ -1572,7 +1588,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-bpmn
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1610,7 +1626,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-bawadv
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1642,7 +1658,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-icm
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1680,7 +1696,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-flink
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1712,7 +1728,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-flink
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1744,7 +1760,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-flink
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1777,7 +1793,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-flink
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1809,13 +1825,13 @@ spec:
     init_image:
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-init
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
 
     # Business data dashboarding.
     business_performance_center:
       image:
         repository: cp.icr.io/cp/cp4a/bai/insights-engine-cockpit
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
       # Set to false to disable Business Performance Center. Default: true.
 
       # add this to set workforce_insights configuration properties
@@ -1837,7 +1853,7 @@ spec:
       init_ums:
         image:
           repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
-          tag: "24.0.0-IF006"
+          tag: "24.0.0-IF007"
       ## For SaaS
       oidc:
         # The internal communication with single-sign-on (SSO) service.
@@ -1937,10 +1953,10 @@ spec:
       pull_policy: IfNotPresent
       solution_server:
         repository: cp.icr.io/cp/cp4a/aae/solution-server
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
       db_job:
         repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
     # If you inputed hostname and port here. They will be used always
     # If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value)
     # Then you don't need to fill the hostname and port. It will use shared_configuration.sc_deployment_hostname_suffix to generate one

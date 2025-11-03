@@ -14,7 +14,7 @@ spec:
         - rolebindings
         - serviceaccounts
         - namespacescopes.operator.ibm.com
-        #- subscriptions.operators.coreos.com TODO change labeling script to label nss sub as nss, verify matches manual labeling instructions
+        - subscriptions.operators.coreos.com #TODO change labeling script to label nss sub as nss, verify matches manual labeling instructions
       labelSelector: foundationservices.cloudpak.ibm.com=nss
       name: nss-resources
       type: resource
@@ -26,7 +26,7 @@ spec:
           timeout: 600
       name: nss-check
       nameSelector: ibm-namespace-scope-operator
-      namespace: cs-op
+      namespace: <child recipe namespace>
       onError: fail
       selectResource: deployment
       timeout: 600

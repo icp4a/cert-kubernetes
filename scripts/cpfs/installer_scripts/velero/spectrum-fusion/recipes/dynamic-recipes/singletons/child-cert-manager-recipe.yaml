@@ -2,7 +2,7 @@ apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
 kind: Recipe
 metadata:
   name: child-cert-manager-recipe
-  namespace: <fusion ns>
+  namespace: <cert manager namespace>
   labels:
     dp.isf.ibm.com/parent-recipe: cpfs-singleton-parent-recipe
     dp.isf.ibm.com/parent-recipe-namespace: <fusion ns>

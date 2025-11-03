@@ -141,7 +141,7 @@ function get_default_cp_console_route() {
   if [ -n $tmp_cp_console  ]; then
     echo -e "${BLUE}Creating backup yaml for route $CP_CONSOLE${COLOR_OFF}"
     ${CLI_CMD} get route $CP_CONSOLE -o yaml -n $TARGET_PROJECT_NAME_CS > $TEMP_CP_CONSOLE_FILE
-    CP_CONSOLE_HOST=$(${YQ_CMD} r $TEMP_CP_CONSOLE_FILE spec.host )
+    CP_CONSOLE_HOST=$(${YQ_CMD} ".spec.host" $TEMP_CP_CONSOLE_FILE)
     ID_MGMT_CP_CONSOLE=$( echo "id-mgmt-${CP_CONSOLE_HOST}" | sed   "s/-$TARGET_PROJECT_NAME_CS//g" )
     ID_PROVIDER_CP_CONSOLE=$( echo "id-provider-${CP_CONSOLE_HOST}" | sed  "s/-$TARGET_PROJECT_NAME_CS//g")
     cp $TEMP_CP_CONSOLE_FILE $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
@@ -158,23 +158,23 @@ function create_custom_idprovider_route() {
 
   if [ -a ${TEMP_CP_CONSOLE_FILE_ID_PROVIDER} ]; then
 
-    ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER metadata.name "$ID_PROVIDER_ROUTE_NAME"
-    ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER spec.path "$ID_PROVIDER_PATH"
-    ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER spec.host "$ID_PROVIDER_CP_CONSOLE"
-    ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER metadata.labels.path "idprovider"
+    ${YQ_CMD} -i ".metadata.name = \"$ID_PROVIDER_ROUTE_NAME\"" $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
+    ${YQ_CMD} -i ".spec.path = \"$ID_PROVIDER_PATH\"" $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
+    ${YQ_CMD} -i ".spec.host = \"$ID_PROVIDER_CP_CONSOLE\"" $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
+    ${YQ_CMD} -i '.metadata.labels.path = "idprovider"' $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
 
 
-    ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER metadata.ownerReferences
-    ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER metadata.uid
-    ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER metadata.resourceVersion
-    ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER status
-    ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER metadata.creationTimestamp
+    ${YQ_CMD} -i 'del(.metadata.ownerReferences)' "$TEMP_CP_CONSOLE_FILE_ID_PROVIDER"
+    ${YQ_CMD} -i 'del(.metadata.uid)' "$TEMP_CP_CONSOLE_FILE_ID_PROVIDER"
+    ${YQ_CMD} -i 'del(.metadata.resourceVersion)' "$TEMP_CP_CONSOLE_FILE_ID_PROVIDER"
+    ${YQ_CMD} -i 'del(.status)' "$TEMP_CP_CONSOLE_FILE_ID_PROVIDER"
+    ${YQ_CMD} -i 'del(.metadata.creationTimestamp)' "$TEMP_CP_CONSOLE_FILE_ID_PROVIDER"
 
     if [[ "$1" == "platform-identity-provider" ]]; then
       sed -i "s/-$TARGET_PROJECT_NAME_CS//g" $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
-      ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER spec.to.name "platform-identity-provider"
-      ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER spec.port.targetPort "4300"
-      ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER 'metadata.annotations."haproxy.router.openshift.io/rewrite-target"' '/'
+      ${YQ_CMD} -i '.spec.to.name = "platform-identity-provider"' $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
+      ${YQ_CMD} -i '.spec.port.targetPort = 4300' $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
+      ${YQ_CMD} -i '.metadata.annotations."haproxy.router.openshift.io/rewrite-target" = "/"' $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
     fi
 
     echo -e "Creating new route named $ID_PROVIDER_ROUTE_NAME"
@@ -192,22 +192,22 @@ function create_custom_idmgmt_route() {
 
   if [ -a ${TEMP_CP_CONSOLE_FILE_ID_MGMT} ]; then
 
-    ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_MGMT metadata.name "$ID_MGMT_ROUTE_NAME"
-    ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_MGMT metadata.labels.path "idmgmt"
-    ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_MGMT spec.path "$ID_MGMT_PATH"
-    ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_MGMT spec.host "$ID_MGMT_CP_CONSOLE"
+    ${YQ_CMD} -i ".metadata.name = \"$ID_MGMT_ROUTE_NAME\"" $TEMP_CP_CONSOLE_FILE_ID_MGMT
+    ${YQ_CMD} -i '.metadata.labels.path = "idmgmt"' $TEMP_CP_CONSOLE_FILE_ID_MGMT
+    ${YQ_CMD} -i ".spec.path = \"$ID_MGMT_PATH\"" $TEMP_CP_CONSOLE_FILE_ID_MGMT
+    ${YQ_CMD} -i ".spec.host = \"$ID_MGMT_CP_CONSOLE\"" $TEMP_CP_CONSOLE_FILE_ID_MGMT
 
-    ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_MGMT metadata.ownerReferences
-    ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_MGMT metadata.uid
-    ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_MGMT metadata.resourceVersion
-    ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_MGMT status
-    ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_MGMT metadata.creationTimestamp
+    ${YQ_CMD} -i 'del(.metadata.ownerReferences)' "$TEMP_CP_CONSOLE_FILE_ID_MGMT"
+    ${YQ_CMD} -i 'del(.metadata.uid)' "$TEMP_CP_CONSOLE_FILE_ID_MGMT"
+    ${YQ_CMD} -i 'del(.metadata.resourceVersion)' "$TEMP_CP_CONSOLE_FILE_ID_MGMT"
+    ${YQ_CMD} -i 'del(.status)' "$TEMP_CP_CONSOLE_FILE_ID_MGMT"
+    ${YQ_CMD} -i 'del(.metadata.creationTimestamp)' "$TEMP_CP_CONSOLE_FILE_ID_MGMT"
 
     if [[ "$1" == "platform-identity-management" ]]; then
        sed -i "s/-$TARGET_PROJECT_NAME_CS//g" $TEMP_CP_CONSOLE_FILE_ID_MGMT
-       ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_MGMT spec.to.name "platform-identity-management"
-       ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_MGMT spec.port.targetPort "4500"
-       ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_MGMT 'metadata.annotations."haproxy.router.openshift.io/rewrite-target"' '/'
+       ${YQ_CMD} -i '.spec.to.name = "platform-identity-management"' $TEMP_CP_CONSOLE_FILE_ID_MGMT
+       ${YQ_CMD} -i '.spec.port.targetPort = 4500' $TEMP_CP_CONSOLE_FILE_ID_MGMT
+       ${YQ_CMD} -i '.metadata.annotations."haproxy.router.openshift.io/rewrite-target" = "/"' $TEMP_CP_CONSOLE_FILE_ID_MGMT
 
     fi
 
@@ -231,7 +231,7 @@ function validate_new_routes() {
 
   local json=$( curl -k -X POST -s -H 'Content-Type: application/x-www-form-urlencoded;charset=UTF-8' "https://$ID_PROVIDER_CP_CONSOLE/idprovider/v1/auth/identitytoken" --data-urlencode "grant_type=password" --data-urlencode "scope=openid" --data-urlencode "username=$app_login_user" --data-urlencode "password=$app_login_pwd" )
 
-  local access_token=$(echo $json |  ${YQ_CMD} r -P - 'access_token')
+  local access_token=$(echo "$json" | ${YQ_CMD} e -p=json -r '.access_token // ""' -)
 
   if [[ $access_token != "" ]]; then
 
@@ -241,7 +241,7 @@ function validate_new_routes() {
     echo -e "${BLUE}With the access_token, we're going to verify if we're able to make a scim call with the host $ID_MGMT_CP_CONSOLE${COLOR_OFF}"
 
     local scim=$(  curl -H "Authorization: Bearer ${access_token}" -k -X GET -s  "https://$ID_MGMT_CP_CONSOLE/idmgmt/identity/api/v1/scim/Users?filter=userName%20eq%20%22${app_login_user}%22&attributes=displayName,name,externalId,groups,id,userName&count=1&searchScope=sp"  )
-    local totalResults=$(echo $scim | ${YQ_CMD} r -P - 'totalResults')
+    local totalResults=$(echo "$scim" | ${YQ_CMD} e -p=json -r '.totalResults // "0"' -)
 
     if [[ $totalResults == "1" ]]; then
       echo -e "${BLUE}Successfuly retrieve user by using the $ID_MGMT_CP_CONSOLE${COLOR_OFF}"

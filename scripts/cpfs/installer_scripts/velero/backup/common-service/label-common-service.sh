@@ -30,7 +30,7 @@ ENABLE_PRIVATE_CATALOG=0
 ENABLE_CERT_MANAGER=0
 ENABLE_LICENSING=0
 ENABLE_LSR=0
-ENABLE_DEEFAULT_CS=0
+ENABLE_DEFAULT_CS=0
 CS_SOURCE_NS="openshift-marketplace"
 CM_SOURCE_NS="openshift-marketplace"
 LIS_SOURCE_NS="openshift-marketplace"
@@ -57,6 +57,7 @@ function main() {
     if [[ $NO_OLM == "false" ]]; then
         label_catalogsource
         label_subscription
+        label_ums
     else
         label_helm_cluster_scope
         label_helm_namespace_scope
@@ -162,7 +163,7 @@ function parse_arguments() {
             ENABLE_PRIVATE_CATALOG=1
             ;;
         --enable-default-catalog-ns)
-            ENABLE_DEEFAULT_CS=1
+            ENABLE_DEFAULT_CS=1
             ;;
         --additional-catalog-sources)
             shift
@@ -235,7 +236,7 @@ function label_catalogsource() {
             label_ibm_catalogsources "$namespace"
         done <<< "$private_namespaces"
     fi
-    if [[ $ENABLE_DEEFAULT_CS -eq 1 ]]; then
+    if [[ $ENABLE_DEFAULT_CS -eq 1 ]]; then
         label_ibm_catalogsources "$DEFAULT_SOURCE_NS"
     fi
     echo ""
@@ -356,6 +357,7 @@ function label_subscription() {
     local cs_pm="ibm-common-service-operator"
     local cm_pm="ibm-cert-manager-operator"
     local lis_pm="ibm-licensing-operator-app"
+    local new_lis_pm="ibm-licensing-operator"
     local lsr_pm="ibm-license-service-reporter-operator"
     
     ${OC} label subscriptions.operators.coreos.com $cs_pm foundationservices.cloudpak.ibm.com=subscription -n $OPERATOR_NS --overwrite=true 2>/dev/null
@@ -364,6 +366,7 @@ function label_subscription() {
     fi
     if [[ $ENABLE_LICENSING -eq 1 ]]; then
         ${OC} label subscriptions.operators.coreos.com $lis_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LICENSING_NAMESPACE --overwrite=true 2>/dev/null
+        ${OC} label subscriptions.operators.coreos.com $new_lis_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LICENSING_NAMESPACE --overwrite=true 2>/dev/null
     fi
     if [[ $ENABLE_LSR -eq 1 ]]; then
         ${OC} label subscriptions.operators.coreos.com $lsr_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
@@ -412,6 +415,37 @@ function label_lsr() {
     done
 
     echo ""
+}
+
+function label_ums(){
+    ums_exists=$(${OC} get crd | grep ibmusagemeterings.operator.ibm.com)
+    if [[ -z $ums_exists ]]; then
+        info "No UMS CRD found on cluster, skipping..."
+    else
+        title "Start labeling Usage Metering Service resources..."
+        namespaces=$(${OC} get configmap namespace-scope -n $OPERATOR_NS -oyaml | awk '/^data:/ {flag=1; next} /^  namespaces:/ {print $2; next} flag && /^  [^ ]+: / {flag=0}')
+        namespaces=$(echo "$namespaces" | tr ',' '\n')
+
+        ${OC} label customresourcedefinition ibmservicemeterdefinitions.operator.ibm.com ibmusagemeterings.operator.ibm.com foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null
+
+        #UMS resources since its possible they are present in namespaces other than the services namespace
+        while IFS= read -r namespace; do 
+            ${OC} label configmap ibm-usage-metering-events -n $namespace foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null
+            service_meter_crs=$(${OC} get ibmservicemeterdefinitions.operator.ibm.com -n $namespace -o custom-columns=NAME:.metadata.name --no-headers)
+            while IFS= read -r servicemeterCR; do
+                ${OC} label ibmservicemeterdefinitions.operator.ibm.com $servicemeterCR -n $namespace foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null
+            done <<< "$service_meter_crs"
+            ums_cr=$(${OC} get ibmusagemeterings.operator.ibm.com -n $namespace -o custom-columns=NAME:.metadata.name --no-headers | awk '{print $1}')
+            if [[ ! -z $ums_cr ]]; then
+                ${OC} label ibmusagemeterings.operator.ibm.com $ums_cr -n $namespace foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null
+            fi
+            sub=$(${OC} get subscriptions.operators.coreos.com -n $namespace -o custom-columns=NAME:.spec.name --no-headers | grep ibm-usage-metering)
+            if [[ ! -z $sub ]]; then
+                ${OC} label subscriptions.operators.coreos.com $sub -n $namespace foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null
+            fi
+        done <<< "$namespaces"
+        success "UMS resources labeled successfully."
+    fi
 }
 
 function label_cs(){
@@ -466,7 +500,7 @@ function label_nss(){
 function label_mcsp(){
 
     title "Start to label mcsp resources"
-    ${OC} label secret user-mgmt-bootstrap foundationservices.cloudpak.ibm.com=user-mgmt -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label secret user-mgmt-bootstrap foundationservices.cloudpak.ibm.com=cert-manager -n $SERVICES_NS --overwrite=true 2>/dev/null
     echo ""
 }
 

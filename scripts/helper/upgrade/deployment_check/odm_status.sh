@@ -10,7 +10,7 @@
 ###############################################################################
 #################### ODM #######################
 # Check odmDecisionCenterDeployment upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.odm.odmDecisionCenterDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.odm.odmDecisionCenterDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ODM_DECISION_CENTER_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -26,7 +26,7 @@ elif [ -z "${isInstalled}"  ]; then
 fi
 
 # Check odmDecisionRunnerDeployment upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.odm.odmDecisionRunnerDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.odm.odmDecisionRunnerDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ODM_DECISION_RUNNER_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -42,7 +42,7 @@ elif [ -z "${isInstalled}"  ]; then
 fi
 
 # Check odmDecisionServerConsoleDeployment upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.odm.odmDecisionServerConsoleDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.odm.odmDecisionServerConsoleDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ODM_DECISIONSERVER_CONSOLE_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -58,7 +58,7 @@ elif [ -z "${isInstalled}"  ]; then
 fi
 
 # Check odmDecisionServerRuntimeDeployment upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.odm.odmDecisionServerRuntimeDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.odm.odmDecisionServerRuntimeDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ODM_DECISIONSERVER_RUNTIME_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then

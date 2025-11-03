@@ -9,5 +9,5 @@ spec:
   runNow: false
   recipe:
     apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
-    name: cs-recipe
-    namespace: <spectrum fusion ns>
+    name: <recipe name>
+    namespace: <recipe namespace>

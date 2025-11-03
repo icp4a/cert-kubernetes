@@ -2,7 +2,7 @@ apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
 kind: Recipe
 metadata:
   name: child-license-reporter-recipe
-  namespace: <fusion ns>
+  namespace: <lsr namespace>
   labels:
     dp.isf.ibm.com/parent-recipe: cpfs-singleton-parent-recipe
     dp.isf.ibm.com/parent-recipe-namespace: <fusion ns>
@@ -30,8 +30,6 @@ spec:
         - role
         - rolebinding
         - configmaps
-        - clusterrole
-        - clusterrolebinding
       name: lsr-pre-deploy
       type: resource
       labelSelector: foundationservices.cloudpak.ibm.com=lsr-data

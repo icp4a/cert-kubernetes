@@ -1,10 +1,10 @@
 name: ibm-cp-automation
-version: 24.0.6
-description: Generated from CASE ibm-cp-automation version 24.0.6 on 2025-16-07 07:24:59
+version: 24.0.7
+description: Generated from CASE ibm-cp-automation version 24.0.7 on 2025-16-10 07:24:59
   PDT
 cases:
 - name: ibm-cp-automation
-  version: 24.0.6
+  version: 24.0.7
   launch: true
   catalogGeneration:
     ocMirror:
@@ -20,17 +20,17 @@ cases:
     ocMirror:
       disableMerge: true
 - name: ibm-cs-install
-  version: 4.6.16
+  version: 4.6.18
   catalogGeneration:
     ocMirror:
       disableMerge: true
 - name: ibm-cs-iam
-  version: 4.5.14
+  version: 4.5.15
   catalogGeneration:
     ocMirror:
       disableMerge: true
 - name: ibm-events-operator
-  version: 5.0.1
+  version: 5.2.1
   catalogGeneration:
     ocMirror:
       disableMerge: true
@@ -50,7 +50,7 @@ cases:
     ocMirror:
       disableMerge: true
 - name: ibm-zen
-  version: 3.1.17
+  version: 3.1.18
   catalogGeneration:
     ocMirror:
       disableMerge: true
@@ -60,7 +60,7 @@ cases:
     ocMirror:
       disableMerge: true
 - name: ibm-cp-fncm-case
-  version: 5.6.6
+  version: 5.6.7
   catalogGeneration:
     ocMirror:
       disableMerge: true

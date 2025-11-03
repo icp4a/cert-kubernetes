@@ -138,8 +138,8 @@ ZEN_SECRET_FILE=${ZEN_SECRET_FOLDER}/ibm-zen-metastore-edb-secret.sh
 ZEN_CONFIGMAP_FILE=${ZEN_SECRET_FOLDER}/ibm-zen-metastore-edb-cm.yaml
 
 IM_SECRET_FOLDER=${SECRET_FILE_FOLDER}/im_external_db
-IM_SECRET_FILE=${IM_SECRET_FOLDER}/ibm-im-metastore-edb-secret.sh
-IM_CONFIGMAP_FILE=${IM_SECRET_FOLDER}/ibm-im-metastore-edb-cm.yaml
+IM_SECRET_FILE=${IM_SECRET_FOLDER}/ibm-im-datastore-edb-secret.sh
+IM_CONFIGMAP_FILE=${IM_SECRET_FOLDER}/ibm-im-datastore-edb-cm.yaml
 
 BTS_SECRET_FOLDER=${SECRET_FILE_FOLDER}/bts_external_db
 BTS_SSL_SECRET_FILE=${BTS_SECRET_FOLDER}/ibm-bts-metastore-edb-ssl-secret.sh
@@ -153,13 +153,13 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 # Release/Patch version for CP4BA
 # CP4BA_RELEASE_BASE is for fetch content/foundation operator pod, only need to change for major release.
 CP4BA_RELEASE_BASE="24.0.0"
-CP4BA_PATCH_VERSION="IF006"
+CP4BA_PATCH_VERSION="IF007"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v24.0.6"
+CP4BA_CSV_VERSION="v24.0.7"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
 CP4BA_CHANNEL_VERSION="v24.0"
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.6.16"
+CS_OPERATOR_VERSION="v4.6.18"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
 CS_CHANNEL_VERSION="v4.6"
 # CERT_LICENSE_OPERATOR_VERSION is for checking IBM cert-manager/licensing operator upgrade status, need to update for each IFIX
@@ -167,9 +167,9 @@ CERT_LICENSE_OPERATOR_VERSION="v4.2.13"
 # CERT_LICENSE_CHANNEL_VERSION is for for IBM cert-manager/licensing script -c option, need to update for each IFIX
 CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
-CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-6-16"
+CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-6-18"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v5.1.16"
+ZEN_OPERATOR_VERSION="v5.1.17"
 # BTS_CHANNEL_VERSION is for for BTS, need to update for each IFIX
 BTS_CHANNEL_VERSION="v3.35"
 # BTS_CATALOG_VERSION is for BTS 3.35.4.
@@ -179,7 +179,7 @@ REQUIREDVER_BTS="3.35.4"
 # REQUIREDVER_POSTGRESQL is for checking postgresql operator upgrade status before run removal_iaf.sh, need to update for each IFIX
 REQUIREDVER_POSTGRESQL="1.25.1"
 # EVENTS_OPERATOR_VERSION is for checking IBM Events operator upgrade status, need to update for each IFIX
-EVENTS_OPERATOR_VERSION="v5.0.1"
+EVENTS_OPERATOR_VERSION="v5.2.1"
 # List of CP4BA versions that are supported for upgrade to $CP4BA_CSV_VERSION
 MINIMUM_SUPPORTED_UPGRADE_VERSIONS=("21.3.31" "22.2.6" "23.2.6" )
 #DBADCLD-162192. This is a list of minimum 21.0.3 CP4BA version that BAS (authoring) supports for upgrade due to schema changes.
@@ -562,22 +562,20 @@ function check_platform_version(){
 }
 
 ## <https://jsw.ibm.com/browse/DBACLD-161428> - Create a common function to check cluster login for all related scripts.
+## <https://jsw.ibm.com/browse/DBACLD-187651> - Simplified check_cluster_login()
 #############################
 # Check cluster Login
 #############################
 function check_cluster_login() {
     if [[ "$CLI_CMD" == "oc" ]]; then
         oc whoami >/dev/null 2>&1
-        if [ $? -gt 0 ]; then
-            error "Not logged in to a cluster. Please login to a cluster before running this script."
-            exit 1
-        fi
-    elif [[ "$CLI_CMD" == "kubectl" ]]; then
+    else
         kubectl auth whoami >/dev/null 2>&1
-        if [ $? -gt 0 ]; then
-            error "Not logged in to a cluster. Please login to a cluster before running this script."
-            exit 1
-        fi
+    fi
+    
+    if [ $? -gt 0 ]; then
+        error "Not logged in to a cluster. Please login to a cluster before running this script."
+        exit 1
     fi
 }
 
@@ -739,10 +737,10 @@ function update_secret_template_passwords(){
     # Remove the field from stringData and add it to data with the new encoded value
     # Use yq to delete and add the field in a more compatible way without eval
     if [[ "$secret_template_field" != "osDBPassword" && "$secret_template_field" != "mongoPwd" ]]; then
-        ${YQ_CMD} w -i "$secret_file" "data.$secret_template_field" "$temp_val"
-        ${YQ_CMD} d -i "$secret_file" "stringData.$secret_template_field"
+        ${YQ_CMD} -i ".data.$secret_template_field = \"$temp_val\"" "$secret_file"
+        ${YQ_CMD} -i "del(.stringData.\"${secret_template_field}\")" "$secret_file"
     else
-        ${YQ_CMD} w -i "$secret_file" "data.$new_secret_template_field" "$temp_val"
+        ${YQ_CMD} -i ".data.$new_secret_template_field = \"$temp_val\"" "$secret_file"
     fi
 }
 
@@ -975,7 +973,7 @@ function populate_os_tablespaces(){
         if [[ $db_type == "postgresql" ]]; then
             table_storage_location_prop=$(echo $table_storage_location_prop | tr '[:upper:]' '[:lower:]')
         fi
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$os_datasource_number].oc_cpe_obj_store_table_storage_location  "\"$table_storage_location_prop\""
+        ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$os_datasource_number].oc_cpe_obj_store_table_storage_location = \"$table_storage_location_prop\"" ${CP4A_PATTERN_FILE_TMP}
     fi
 
     if [[ $index_storage_location_prop != "<Optional>" && $index_storage_location_prop != "" ]]; then
@@ -987,7 +985,7 @@ function populate_os_tablespaces(){
         if [[ $db_type == "postgresql" ]]; then
            index_storage_location_prop=$(echo $index_storage_location_prop | tr '[:upper:]' '[:lower:]')
         fi
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$os_datasource_number].oc_cpe_obj_store_index_storage_location  "\"$index_storage_location_prop\""
+        ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$os_datasource_number].oc_cpe_obj_store_index_storage_location = \"$index_storage_location_prop\"" ${CP4A_PATTERN_FILE_TMP}
 
     fi
     if [[ $lob_storage_location_prop != "<Optional>" && $lob_storage_location_prop != "" ]]; then
@@ -999,7 +997,7 @@ function populate_os_tablespaces(){
         if [[ $db_type == "postgresql" ]]; then
             lob_storage_location_prop=$(echo $lob_storage_location_prop | tr '[:upper:]' '[:lower:]')
         fi
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$os_datasource_number].oc_cpe_obj_store_lob_storage_location  "\"$lob_storage_location_prop\""
+        ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$os_datasource_number].oc_cpe_obj_store_lob_storage_location = \"$lob_storage_location_prop\"" ${CP4A_PATTERN_FILE_TMP}
     fi
 }
 
@@ -1088,8 +1086,9 @@ function check_ssl_cert() {
                 FAILING_CERTS+=("$config_name|$cert_path")
             fi
         else
-            #openssl pkcs8 -in "$key_path" -inform PEM -nocrypt -noout
-            if openssl pkcs8 -in "$cert_path" -inform PEM -nocrypt >/dev/null 2>&1; then
+            #https://jsw.ibm.com/browse/DBACLD-194329
+            # Updated command that will tackle all types of formats of a private key
+            if openssl rsa -in "$cert_path" -check -noout >/dev/null 2>&1 || openssl ec -in "$cert_path" -check -noout >/dev/null 2>&1 || openssl pkcs8 -in "$cert_path" -inform PEM -nocrypt -noout >/dev/null 2>&1; then
                 success "$valid_msg"
             else
                 error "$invalid_msg"
@@ -1300,15 +1299,46 @@ function validate_ssl_certificates() {
 # These optional parameters are skipped in validate_property_file_required_fields()
 function mark_optional() {
   if grep -q '^OPTIONAL_PARAMETERS:' "$TEMPORARY_PROPERTY_FILE"; then
+    # Get the existing line and remove SSL parameters from it
+    local existing_line=$(grep '^OPTIONAL_PARAMETERS:' "$TEMPORARY_PROPERTY_FILE")
+    local existing_params=$(echo "$existing_line" | sed 's/^OPTIONAL_PARAMETERS://')
+    
+    # Remove SSL parameters from existing params
+    local cleaned_params=$(echo "$existing_params" | sed 's/,LDAP_SSL_SECRET_NAME//g' | sed 's/LDAP_SSL_SECRET_NAME,//g' | sed 's/LDAP_SSL_SECRET_NAME//g')
+    cleaned_params=$(echo "$cleaned_params" | sed 's/,LDAP_SSL_CERT_FILE_FOLDER//g' | sed 's/LDAP_SSL_CERT_FILE_FOLDER,//g' | sed 's/LDAP_SSL_CERT_FILE_FOLDER//g')
+    cleaned_params=$(echo "$cleaned_params" | sed 's/,EXT_LDAP_SSL_SECRET_NAME//g' | sed 's/EXT_LDAP_SSL_SECRET_NAME,//g' | sed 's/EXT_LDAP_SSL_SECRET_NAME//g')
+    cleaned_params=$(echo "$cleaned_params" | sed 's/,EXT_LDAP_SSL_CERT_FILE_FOLDER//g' | sed 's/EXT_LDAP_SSL_CERT_FILE_FOLDER,//g' | sed 's/EXT_LDAP_SSL_CERT_FILE_FOLDER//g')
+    
+    # Remove database SSL parameters from existing params (using regex to match any database alias)
+    cleaned_params=$(echo "$cleaned_params" | sed 's/,[^,]*\.DATABASE_SSL_SECRET_NAME//g' | sed 's/^[^,]*\.DATABASE_SSL_SECRET_NAME,//g' | sed 's/^[^,]*\.DATABASE_SSL_SECRET_NAME$//g')
+    cleaned_params=$(echo "$cleaned_params" | sed 's/,[^,]*\.DATABASE_SSL_CERT_FILE_FOLDER//g' | sed 's/^[^,]*\.DATABASE_SSL_CERT_FILE_FOLDER,//g' | sed 's/^[^,]*\.DATABASE_SSL_CERT_FILE_FOLDER$//g')
+    cleaned_params=$(echo "$cleaned_params" | sed 's/,[^,]*\.POSTGRESQL_SSL_CLIENT_SERVER//g' | sed 's/^[^,]*\.POSTGRESQL_SSL_CLIENT_SERVER,//g' | sed 's/^[^,]*\.POSTGRESQL_SSL_CLIENT_SERVER$//g')
+    
+    # Remove the old line
+    sed -i '/^OPTIONAL_PARAMETERS:/d' "$TEMPORARY_PROPERTY_FILE"
+    
+    # Add new parameters to the cleaned list
+    local final_params="$cleaned_params"
     for key in "${OPTIONAL_PARAMETERS_LIST[@]}"; do
-      sed "/^OPTIONAL_PARAMETERS:/ s|$|,${key}|" "$TEMPORARY_PROPERTY_FILE" > "$TEMPORARY_PROPERTY_FILE.tmp" && 
-      mv "$TEMPORARY_PROPERTY_FILE.tmp" "$TEMPORARY_PROPERTY_FILE"
+      if [[ -n "$final_params" ]]; then
+        final_params="$final_params,$key"
+      else
+        final_params="$key"
+      fi
     done
+    
+    # Remove leading/trailing commas and write the new line
+    final_params=$(echo "$final_params" | sed 's/^,//' | sed 's/,$//')
+    if [[ -n "$final_params" ]]; then
+      printf 'OPTIONAL_PARAMETERS:%s\n' "$final_params" >> "$TEMPORARY_PROPERTY_FILE"
+    fi
   else
-    local joined_keys
-    joined_keys=$(printf '%s,' "${OPTIONAL_PARAMETERS_LIST[@]}")
-    joined_keys=${joined_keys%,}
-    printf 'OPTIONAL_PARAMETERS:%s\n' "$joined_keys" >> "$TEMPORARY_PROPERTY_FILE"
+    if [[ ${#OPTIONAL_PARAMETERS_LIST[@]} -gt 0 ]]; then
+      local joined_keys
+      joined_keys=$(printf '%s,' "${OPTIONAL_PARAMETERS_LIST[@]}")
+      joined_keys=${joined_keys%,}
+      printf 'OPTIONAL_PARAMETERS:%s\n' "$joined_keys" >> "$TEMPORARY_PROPERTY_FILE"
+    fi
   fi
 }
 
@@ -1410,5 +1440,89 @@ function validate_property_file_required_fields() {
         else
             success "All required properties in $property_file have valid values."
         fi
+    fi
+}
+
+# This function is to patch the kafka strimzi podset for an upgrade to a version having Events Operator 5.2 or higher
+# The function checks if events operator subscription is on channel 5.2 and if so gets the kafka strimzi podset and replaces an annotation which will allow the zen upgrade to complete
+# The subscription for events operator is updated after the new CR is applied and the cp4a-operator/foundation-operator applies the new operand request, so this function is called during upgradeDeploymentStatus
+# For https://jsw.ibm.com/browse/DBACLD-199163 https://jsw.ibm.com/browse/DBACLD-199093
+function patch_strimzi_podset(){
+    local operator_namespace=$1
+    local services_namespace=$2
+
+    echo "Checking ibm-events-operator subscription channel..."
+    # Check if the subscription exists
+    events_operator_subscription_exists=$(${CLI_CMD} get subscription ibm-events-operator -n $operator_namespace -o name --no-headers 2>/dev/null || echo "")
+
+    if [[ -z "$events_operator_subscription_exists" ]]; then
+        echo "Subscription 'ibm-events-operator' not found, skipping"
+        strimzi_patched=true
+        return
+    fi
+
+    # Get the subscription channel
+    events_operator_channel=$(${CLI_CMD} get subscription ibm-events-operator -n $operator_namespace -o yaml | ${YQ_CMD} '.spec.channel')
+
+    echo "Current channel: $events_operator_channel"
+
+    #if [[ "$events_operator_channel" =~ ^v5\.[3-9]$ || "$events_operator_channel" =~ ^v[6-9] || "$events_operator_channel" =~ ^v[1-9][0-9] ]]; then
+    #    # This handles v5.3-v5.9, v6-v9, and v10+ versions
+    #    echo "Channel is $events_operator_channel (v5.3 or newer), setting patch flag to true"
+    #    strimzi_patched=true
+    #    return 0
+    #fi
+    # Check if channel is v5.2
+    if [[ "$events_operator_channel" == "v5.2" ]]; then
+        echo "Events Operator Channel is v5.2, proceeding to check if the events operator is running..."
+
+        # Find the operator pod that starts with ibm-events-operator-v5.2
+        events_operator_pod=$(${CLI_CMD} get pods --no-headers -n $operator_namespace -o custom-columns=":metadata.name" | grep "^ibm-events-operator-v5.2" || echo "")
+
+        if [[ -z "$events_operator_pod" ]]; then
+            echo "'ibm-events-operator-v5.2' pod is not found"
+            return
+        fi
+
+        echo "Found operator pod: $events_operator_pod"
+
+        # Check if the pod is in Ready state
+        events_operator_pod_ready=$(${CLI_CMD} get pod "$events_operator_pod" -n $operator_namespace -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+
+        if [[ "$events_operator_pod_ready" != "True" ]]; then
+            echo "Operator pod '$events_operator_pod' is not in Ready state"
+            return
+        fi
+
+        # Get the StrimziPodSet resource
+        kafka_podset_exists=$(${CLI_CMD} get strimzipodset iaf-system-kafka -n $services_namespace -o name --no-headers 2>/dev/null || echo "")
+
+        if [[ -z "$kafka_podset_exists" ]]; then
+            echo "StrimziPodSet 'iaf-system-kafka' not found"
+            return
+        fi
+
+        echo "Found StrimziPodSet 'iaf-system-kafka'"
+
+        # Get the current kafka version from the annotation
+        kafka_annotation_value=$(${CLI_CMD} get strimzipodset iaf-system-kafka -n $services_namespace -o yaml | ${YQ_CMD} '.metadata.annotations."strimzi.io/kafka-version"')
+
+        if [[ -z "$kafka_annotation_value" || "$kafka_annotation_value" == "null" ]]; then
+            strimzi_patched=true
+            return
+        fi
+
+        echo "Current kafka version: $kafka_annotation_value"
+
+        # Apply the patch directly
+        echo "Applying patch to update annotations..."
+        ${CLI_CMD} patch strimzipodset iaf-system-kafka -n $services_namespace --type=merge -p "{\"metadata\":{\"annotations\":{\"strimzi.io/kafka-version\":null,\"ibmevents.ibm.com/kafka-version\":\"$kafka_annotation_value\"}}}"
+
+        echo "Successfully updated annotations:"
+        echo "- Removed: strimzi.io/kafka-version"
+        echo "- Added: ibmevents.ibm.com/kafka-version: $kafka_annotation_value"
+        strimzi_patched=true
+    else
+        echo "Events operator is not at channel v5.2"
     fi
 }

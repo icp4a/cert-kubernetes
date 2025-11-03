@@ -18,6 +18,7 @@ metadata:
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
     release: 24.0.0
+    cp4ba.ibm.com/backup-type: mandatory
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
@@ -926,7 +927,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1081,7 +1082,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1178,7 +1179,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1336,7 +1337,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1461,7 +1462,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1568,7 +1569,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1710,7 +1711,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/mongo_adp
-          tag: 6.0.22
+          tag: 7.0.23
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1761,7 +1762,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/gitgateway
-          tag: "24.0.0-IF006"
+          tag: "24.0.0-IF007"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1824,7 +1825,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cds
-          tag: "24.0.0-IF006"
+          tag: "24.0.0-IF007"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1897,7 +1898,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cdra
-          tag: "24.0.0-IF006"
+          tag: "24.0.0-IF007"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1989,7 +1990,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cpds
-          tag: "24.0.0-IF006"
+          tag: "24.0.0-IF007"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2086,7 +2087,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/viewone
-          tag: "24.0.0-IF006"
+          tag: "24.0.0-IF007"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2207,7 +2208,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "24.0.0-IF006"
+      tag: "24.0.0-IF007"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2487,7 +2488,7 @@ spec:
         max_replicas: "<Required>"  # Required if enable set to "true"
       image:
         repository: "cp.icr.io/cp/cp4a/iadp"
-        tag: "24.0.0-IF006"
+        tag: "24.0.0-IF007"
         pull_policy: "IfNotPresent"
 ## Overwrite the default SHA digest for Document Processing engine containers by providing the SHA for each containers below.  To use SHA digest, you must comment out the `tag` parameter or leave it blank and you must use entilement registry as the repository.
         doc_processing_digest:

@@ -1683,6 +1683,40 @@ function check_property_file(){
         mark_optional
     fi
 
+    # Change for DBACLD-190482: Mark Database SSL params optional if SSL is disabled
+    # Add Database SSL parameters to OPTIONAL_PARAMETERS_LIST if DATABASE_SSL_ENABLE is "False" for each database server
+    tmp_db_array=$(prop_db_server_property_file DB_SERVER_LIST)
+    tmp_db_array=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_array")
+    if [[ -n "$tmp_db_array" ]]; then
+        OIFS=$IFS
+        IFS=',' read -ra db_server_array <<< "$tmp_db_array"
+        IFS=$OIFS
+
+        # Remove any existing database SSL parameters from the optional list to handle toggling
+        OPTIONAL_PARAMETERS_LIST=($(printf '%s\n' "${OPTIONAL_PARAMETERS_LIST[@]}" | grep -v "^.*\.DATABASE_SSL_SECRET_NAME$" | grep -v "^.*\.DATABASE_SSL_CERT_FILE_FOLDER$" | grep -v "^.*\.POSTGRESQL_SSL_CLIENT_SERVER$"))
+
+        # Check each database server's SSL configuration
+        for db_alias in "${db_server_array[@]}"; do
+            db_ssl_enabled=$(prop_db_server_property_file "${db_alias}.DATABASE_SSL_ENABLE" | tr '[:upper:]' '[:lower:]')
+            if [[ ${db_ssl_enabled} =~ ^(no|n|false)$ ]]; then
+                OPTIONAL_PARAMETERS_LIST+=("${db_alias}.DATABASE_SSL_SECRET_NAME")
+                OPTIONAL_PARAMETERS_LIST+=("${db_alias}.DATABASE_SSL_CERT_FILE_FOLDER")
+                
+                # For PostgreSQL, also check client-server SSL flag
+                db_type=$(prop_db_server_property_file "${db_alias}.DATABASE_TYPE" | tr '[:upper:]' '[:lower:]')
+                if [[ "$db_type" == "postgresql" ]]; then
+                    postgresql_ssl_client_server=$(prop_db_server_property_file "${db_alias}.POSTGRESQL_SSL_CLIENT_SERVER" | tr '[:upper:]' '[:lower:]')
+                    if [[ ${postgresql_ssl_client_server} =~ ^(no|n|false)$ ]]; then
+                        OPTIONAL_PARAMETERS_LIST+=("${db_alias}.POSTGRESQL_SSL_CLIENT_SERVER")
+                    fi
+                fi
+            fi
+        done
+        
+        # Mark the database SSL parameters as optional
+        mark_optional
+    fi
+
     # Check for empty values in the user profile property file
     validate_property_file_required_fields "${USER_PROFILE_PROPERTY_FILE}"
 
@@ -2050,7 +2084,7 @@ function create_prerequisites() {
         create_ldap_secret_template
         #  replace ldap user
         tmp_ldapuser="$(prop_ldap_property_file LDAP_BIND_DN)"
-        ${YQ_CMD} w -i "${LDAP_SECRET_FILE}" "stringData.ldapUsername" "$tmp_ldapuser"
+        ${YQ_CMD} -i ".stringData.ldapUsername = \"$tmp_ldapuser\"" "${LDAP_SECRET_FILE}"
 
         tmp_ldapuserpwd="$(prop_ldap_property_file LDAP_BIND_DN_PASSWORD)"
         # For https://jsw.ibm.com/browse/DBACLD-157020
@@ -2069,7 +2103,7 @@ function create_prerequisites() {
             # For https://jsw.ibm.com/browse/DBACLD-157020
             # Function that updates the secret template with the base64 password
             update_secret_template_passwords "$tmp_ldapuserpwd" "ldapPassword" "$EXT_LDAP_SECRET_FILE"
-            ${YQ_CMD} w -i "${EXT_LDAP_SECRET_FILE}" "stringData.ldapUsername" "$tmp_ldapuser"
+            ${YQ_CMD} -i ".stringData.ldapUsername = \"$tmp_ldapuser\"" "${EXT_LDAP_SECRET_FILE}"
 
         fi
     fi
@@ -2095,7 +2129,7 @@ function create_prerequisites() {
         # replace appLoginUsername/appLoginPassword
         tmp_appuser="$(prop_user_profile_property_file CONTENT.APPLOGIN_USER)"
         tmp_apppwd="$(prop_user_profile_property_file CONTENT.APPLOGIN_PASSWORD)"
-        ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.appLoginUsername" "$tmp_appuser"
+        ${YQ_CMD} -i ".stringData.appLoginUsername = \"$tmp_appuser\"" "${FNCM_SECRET_FILE}"
         # For https://jsw.ibm.com/browse/DBACLD-157020
         # Function that updates the secret template with the base64 password
         update_secret_template_passwords "$tmp_apppwd" "appLoginPassword" "$FNCM_SECRET_FILE"
@@ -2110,7 +2144,7 @@ function create_prerequisites() {
 
         #  replace gcddb user
         tmp_dbuser="$(prop_db_name_user_property_file GCD_DB_USER_NAME)"
-        ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.gcdDBUsername" "$tmp_dbuser"
+        ${YQ_CMD} -i ".stringData.gcdDBUsername = \"$tmp_dbuser\"" "${FNCM_SECRET_FILE}"
 
         # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
         if [[ $DB_TYPE = "postgresql" ]]; then
@@ -2160,7 +2194,7 @@ function create_prerequisites() {
                     # Function that updates the secret template with the base64 password
                     update_secret_template_passwords "$tmp_dbuserpwd" "osDBPassword" "$FNCM_SECRET_FILE" "os$((j+1))DBPassword"
                 fi
-                ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.os$((j+1))DBUsername" "$tmp_dbuser"
+                ${YQ_CMD} -i ".stringData.os$((j+1))DBUsername = \"$tmp_dbuser\"" "${FNCM_SECRET_FILE}"
             done
         fi
         # add aeos
@@ -2189,7 +2223,7 @@ function create_prerequisites() {
                 # Function that updates the secret template with the base64 password
                 update_secret_template_passwords "$tmp_dbuserpwd" "osDBPassword" "$FNCM_SECRET_FILE" "aeosDBPassword"
             fi
-            ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.aeosDBUsername" "$tmp_dbuser"
+            ${YQ_CMD} -i ".stringData.aeosDBUsername = \"$tmp_dbuser\"" "${FNCM_SECRET_FILE}"
         fi
 
         # add baw authoring/ baw runtime / bas+ aws os
@@ -2219,7 +2253,7 @@ function create_prerequisites() {
                     # Function that updates the secret template with the base64 password
                     update_secret_template_passwords "$tmp_dbuserpwd" "osDBPassword" "$FNCM_SECRET_FILE" "${tmp_val}DBPassword"
                 fi
-                ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.${tmp_val}DBUsername" "$tmp_dbuser"
+                ${YQ_CMD} -i ".stringData.${tmp_val}DBUsername = \"$tmp_dbuser\"" "${FNCM_SECRET_FILE}"
             done
             if [[ " ${pattern_cr_arr[@]}" =~ "workflow-workstreams" ]]; then
                 # get server/instance for OS
@@ -2244,7 +2278,7 @@ function create_prerequisites() {
                     # Function that updates the secret template with the base64 password
                     update_secret_template_passwords "$tmp_dbuserpwd" "osDBPassword" "$FNCM_SECRET_FILE" "awsdocsDBPassword"
                 fi
-                ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.awsdocsDBUsername" "$tmp_dbuser"
+                ${YQ_CMD} -i ".stringData.awsdocsDBUsername = \"$tmp_dbuser\"" "${FNCM_SECRET_FILE}"
             fi
         fi
 
@@ -2273,7 +2307,7 @@ function create_prerequisites() {
                 # Function that updates the secret template with the base64 password
                 update_secret_template_passwords "$tmp_dbuserpwd" "osDBPassword" "$FNCM_SECRET_FILE" "awsdocsDBPassword"
             fi
-            ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.awsdocsDBUsername" "$tmp_dbuser"
+            ${YQ_CMD} -i ".stringData.awsdocsDBUsername = \"$tmp_dbuser\"" "${FNCM_SECRET_FILE}"
         fi
 
             # add Case History os
@@ -2303,7 +2337,7 @@ function create_prerequisites() {
                     # Function that updates the secret template with the base64 password
                     update_secret_template_passwords "$tmp_dbuserpwd" "osDBPassword" "$FNCM_SECRET_FILE" "chDBPassword"
                 fi
-                ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.chDBUsername" "$tmp_dbuser"
+                ${YQ_CMD} -i ".stringData.chDBUsername = \"$tmp_dbuser\"" "${FNCM_SECRET_FILE}"
             fi
         fi
 
@@ -2332,7 +2366,7 @@ function create_prerequisites() {
                 # Function that updates the secret template with the base64 password
                 update_secret_template_passwords "$tmp_dbuserpwd" "osDBPassword" "$FNCM_SECRET_FILE" "devos1DBPassword"
             fi
-            ${YQ_CMD} w -i "${FNCM_SECRET_FILE}" "stringData.devos1DBUsername" "$tmp_dbuser"
+            ${YQ_CMD} -i ".stringData.devos1DBUsername = \"$tmp_dbuser\"" "${FNCM_SECRET_FILE}"
         fi
         ${SED_COMMAND} '/^  osDBUsername/d' ${FNCM_SECRET_FILE}
         ${SED_COMMAND} '/^  osDBPassword/d' ${FNCM_SECRET_FILE}
@@ -2357,7 +2391,7 @@ function create_prerequisites() {
 
             # replace keystorePassword for ICCSAP
             tmp_archive_id="$(prop_user_profile_property_file CONTENT.ARCHIVE_USER_ID)"
-            ${YQ_CMD} w -i "${FNCM_ICC_SECRET_FILE}" "stringData.archiveUserId" "$tmp_archive_id"
+            ${YQ_CMD} -i ".stringData.archiveUserId = \"$tmp_archive_id\"" "${FNCM_ICC_SECRET_FILE}"
 
             tmp_archive_pwd="$(prop_user_profile_property_file CONTENT.ARCHIVE_USER_PASSWORD)"
             # For https://jsw.ibm.com/browse/DBACLD-157020
@@ -2413,7 +2447,7 @@ function create_prerequisites() {
             # replace appLoginUsername/appLoginPassword
             tmp_appuser="$(prop_user_profile_property_file BAN.APPLOGIN_USER)"
             tmp_apppwd="$(prop_user_profile_property_file BAN.APPLOGIN_PASSWORD)"
-            ${YQ_CMD} w -i "${BAN_SECRET_FILE}" "stringData.appLoginUsername" "$tmp_appuser"
+            ${YQ_CMD} -i ".stringData.appLoginUsername = \"$tmp_appuser\"" "${BAN_SECRET_FILE}"
             # For https://jsw.ibm.com/browse/DBACLD-157020
             # Function that updates the secret template with the base64 password
             update_secret_template_passwords "$tmp_apppwd" "appLoginPassword" "$BAN_SECRET_FILE"
@@ -2435,7 +2469,7 @@ function create_prerequisites() {
             tmp_apppwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_apppwd")
 
             if [[ ! ($tmp_appuser == "<Optional>" || $tmp_appuser == "<Optional>") ]]; then
-                ${YQ_CMD} w -i "${BAN_SECRET_FILE}" "stringData.jMailUsername" "$tmp_appuser"
+                ${YQ_CMD} -i ".stringData.jMailUsername = \"$tmp_appuser\"" "${BAN_SECRET_FILE}"
                 # For https://jsw.ibm.com/browse/DBACLD-157020
                 # Function that updates the secret template with the base64 password
                 update_secret_template_passwords "$tmp_apppwd" "jMailPassword" "$BAN_SECRET_FILE"
@@ -2443,7 +2477,7 @@ function create_prerequisites() {
 
             #  replace icndb user
             tmp_dbuser="$(prop_db_name_user_property_file ICN_DB_USER_NAME)"
-            ${YQ_CMD} w -i "${BAN_SECRET_FILE}" "stringData.navigatorDBUsername" "$tmp_dbuser"
+            ${YQ_CMD} -i ".stringData.navigatorDBUsername = \"$tmp_dbuser\"" "${BAN_SECRET_FILE}"
 
             # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
             if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
@@ -2477,7 +2511,7 @@ function create_prerequisites() {
         # replace serviceUser/servicePwd for ADP
         tmp_username="$(prop_user_profile_property_file ADP.SERVICE_USER_NAME)"
         tmp_userpwd="$(prop_user_profile_property_file ADP.SERVICE_USER_PASSWORD)"
-        ${YQ_CMD} w -i "${ADP_SECRET_FILE}" "stringData.serviceUser" "$tmp_username"
+        ${YQ_CMD} -i ".stringData.serviceUser = \"$tmp_username\"" "${ADP_SECRET_FILE}"
         # For https://jsw.ibm.com/browse/DBACLD-157020
         # Function that updates the secret template with the base64 password
         update_secret_template_passwords "$tmp_userpwd" "servicePwd" "$ADP_SECRET_FILE"
@@ -2485,7 +2519,7 @@ function create_prerequisites() {
         # replace serviceUserBas/servicePwdBas for ADP
         tmp_username="$(prop_user_profile_property_file ADP.SERVICE_USER_NAME_BASE)"
         tmp_userpwd="$(prop_user_profile_property_file ADP.SERVICE_USER_PASSWORD_BASE)"
-        ${YQ_CMD} w -i "${ADP_SECRET_FILE}" "stringData.serviceUserBas" "$tmp_username"
+        ${YQ_CMD} -i ".stringData.serviceUserBas = \"$tmp_username\"" "${ADP_SECRET_FILE}"
         # For https://jsw.ibm.com/browse/DBACLD-157020
         # Function that updates the secret template with the base64 password
         update_secret_template_passwords "$tmp_userpwd" "servicePwdBas" "$ADP_SECRET_FILE"
@@ -2493,7 +2527,7 @@ function create_prerequisites() {
         # replace serviceUserCa/servicePwdCa for ADP
         tmp_username="$(prop_user_profile_property_file ADP.SERVICE_USER_NAME_CA)"
         tmp_userpwd="$(prop_user_profile_property_file ADP.SERVICE_USER_PASSWORD_CA)"
-        ${YQ_CMD} w -i "${ADP_SECRET_FILE}" "stringData.serviceUserCa" "$tmp_username"
+        ${YQ_CMD} -i ".stringData.serviceUserCa = \"$tmp_username\"" "${ADP_SECRET_FILE}"
         # For https://jsw.ibm.com/browse/DBACLD-157020
         # Function that updates the secret template with the base64 password
         update_secret_template_passwords "$tmp_userpwd" "servicePwdCa" "$ADP_SECRET_FILE"
@@ -2501,7 +2535,7 @@ function create_prerequisites() {
         # replace envOwnerUser/envOwnerPwd for ADP
         tmp_username="$(prop_user_profile_property_file ADP.ENV_OWNER_USER_NAME)"
         tmp_userpwd="$(prop_user_profile_property_file ADP.ENV_OWNER_USER_PASSWORD)"
-        ${YQ_CMD} w -i "${ADP_SECRET_FILE}" "stringData.envOwnerUser" "$tmp_username"
+        ${YQ_CMD} -i ".stringData.envOwnerUser = \"$tmp_username\"" "${ADP_SECRET_FILE}"
         # For https://jsw.ibm.com/browse/DBACLD-157020
         # Function that updates the secret template with the base64 password
         update_secret_template_passwords "$tmp_userpwd" "envOwnerPwd" "$ADP_SECRET_FILE"
@@ -2514,9 +2548,9 @@ function create_prerequisites() {
             tmp_mongo_uri="$(prop_user_profile_property_file ADP.EXTERNAL_MONGO_URI)"
             tmp_username="$(prop_user_profile_property_file ADP.MONGO_USER_NAME)"
             tmp_userpwd="$(prop_user_profile_property_file ADP.MONGO_USER_PASSWORD)"
-            ${YQ_CMD} w -i ${ADP_SECRET_FILE} stringData.mongoUri "$tmp_mongo_uri"
+            ${YQ_CMD} -i ".stringData.mongoUri = \"$tmp_mongo_uri\"" ${ADP_SECRET_FILE}
             # ${SED_COMMAND} "s|# mongoUri:.*|mongoUri: \"$tmp_mongo_uri\"|g" ${ADP_SECRET_FILE}
-            ${YQ_CMD} w -i ${ADP_SECRET_FILE} stringData.mongoUser "$tmp_username"
+            ${YQ_CMD} -i ".stringData.mongoUser = \"$tmp_username\"" ${ADP_SECRET_FILE}
             # For https://jsw.ibm.com/browse/DBACLD-157020
             # Function that updates the secret template with the base64 password
             update_secret_template_passwords "$tmp_userpwd" "mongoPwd" "$ADP_SECRET_FILE" "mongoPwd"
@@ -2646,7 +2680,7 @@ function create_prerequisites() {
         create_app_engine_secret_template $tmp_dbname $tmp_dbservername
         #  replace APP Engine DB user
         tmp_dbuser="$(prop_db_name_user_property_file APP_ENGINE_DB_USER_NAME)"
-        ${YQ_CMD} w -i ${APP_ENGINE_SECRET_FILE} stringData.AE_DATABASE_USER "$tmp_dbuser"
+        ${YQ_CMD} -i ".stringData.AE_DATABASE_USER = \"$tmp_dbuser\"" ${APP_ENGINE_SECRET_FILE}
 
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
         if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
@@ -2709,7 +2743,7 @@ function create_prerequisites() {
         create_odm_secret_template $tmp_dbname $tmp_dbservername
         #  replace basedb user
         tmp_dbuser="$(prop_db_name_user_property_file ODM_DB_USER_NAME)"
-        ${YQ_CMD} w -i ${ODM_SECRET_FILE} stringData.db-user "$tmp_dbuser"
+        ${YQ_CMD} -i ".stringData.db-user = \"$tmp_dbuser\"" ${ODM_SECRET_FILE}
 
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
         if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
@@ -2747,7 +2781,7 @@ function create_prerequisites() {
         create_bas_secret_template $tmp_dbname $tmp_dbservername
         #  replace BAStudio DB user
         tmp_dbuser="$(prop_db_name_user_property_file STUDIO_DB_USER_NAME)"
-        ${YQ_CMD} w -i ${BAS_SECRET_FILE} stringData.dbUsername "$tmp_dbuser"
+        ${YQ_CMD} -i ".stringData.dbUsername = \"$tmp_dbuser\"" ${BAS_SECRET_FILE}
 
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
         if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
@@ -2785,7 +2819,7 @@ function create_prerequisites() {
         create_ae_playback_secret_template $tmp_dbname $tmp_dbservername
         #  replace ae playback db user
         tmp_dbuser="$(prop_db_name_user_property_file APP_PLAYBACK_DB_USER_NAME)"
-        ${YQ_CMD} w -i ${APP_ENGINE_PLAYBACK_SECRET_FILE} stringData.AE_DATABASE_USER "$tmp_dbuser"
+        ${YQ_CMD} -i ".stringData.AE_DATABASE_USER = \"$tmp_dbuser\"" ${APP_ENGINE_PLAYBACK_SECRET_FILE}
 
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
         if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
@@ -2864,7 +2898,7 @@ function create_prerequisites() {
 
         #  replace baw db user
         tmp_dbuser="$(prop_db_name_user_property_file BAW_RUNTIME_DB_USER_NAME)"
-        ${YQ_CMD} w -i ${BAW_RUNTIME_SECRET_FILE} stringData.dbUser "$tmp_dbuser"
+        ${YQ_CMD} -i ".stringData.dbUser = \"$tmp_dbuser\"" ${BAW_RUNTIME_SECRET_FILE}
 
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
         if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
@@ -2902,7 +2936,7 @@ function create_prerequisites() {
         create_baw_aws_secret_template $tmp_dbname $tmp_dbservername
 
         tmp_dbuser="$(prop_db_name_user_property_file AWS_DB_USER_NAME)"
-        ${YQ_CMD} w -i ${BAW_AWS_SECRET_FILE} stringData.dbUser "$tmp_dbuser"
+        ${YQ_CMD} -i ".stringData.dbUser = \"$tmp_dbuser\"" ${BAW_AWS_SECRET_FILE}
 
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
         if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
@@ -2936,7 +2970,7 @@ function create_prerequisites() {
         create_baw_runtime_secret_template $tmp_dbname $tmp_dbservername
         #  replace baw db user
         tmp_dbuser="$(prop_db_name_user_property_file BAW_RUNTIME_DB_USER_NAME)"
-        ${YQ_CMD} w -i ${BAW_RUNTIME_SECRET_FILE} stringData.dbUser "$tmp_dbuser"
+        ${YQ_CMD} -i ".stringData.dbUser = \"$tmp_dbuser\"" ${BAW_RUNTIME_SECRET_FILE}
 
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
         if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
@@ -2970,7 +3004,7 @@ function create_prerequisites() {
         create_baw_aws_secret_template $tmp_dbname $tmp_dbservername
         #  replace aws db user
         tmp_dbuser="$(prop_db_name_user_property_file AWS_DB_USER_NAME)"
-        ${YQ_CMD} w -i ${BAW_AWS_SECRET_FILE} stringData.dbUser "$tmp_dbuser"
+        ${YQ_CMD} -i ".stringData.dbUser = \"$tmp_dbuser\"" ${BAW_AWS_SECRET_FILE}
         
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
         if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
@@ -2991,13 +3025,13 @@ function create_prerequisites() {
             create_ads_secret_template
             # replace gitMongoUri/mongoHistoryUri/runtimeMongoUri for ADS
             tmp_uri="$(prop_user_profile_property_file ADS.EXTERNAL_GIT_MONGO_URI)"
-            ${YQ_CMD} w -i ${ADS_SECRET_FILE} stringData.gitMongoUri "$tmp_uri"
+            ${YQ_CMD} -i ".stringData.gitMongoUri = \"$tmp_uri\"" ${ADS_SECRET_FILE}
             tmp_uri="$(prop_user_profile_property_file ADS.EXTERNAL_MONGO_URI)"
-            ${YQ_CMD} w -i ${ADS_SECRET_FILE} stringData.mongoUri "$tmp_uri"
+            ${YQ_CMD} -i ".stringData.mongoUri = \"$tmp_uri\"" ${ADS_SECRET_FILE}
             tmp_uri="$(prop_user_profile_property_file ADS.EXTERNAL_MONGO_HISTORY_URI)"
-            ${YQ_CMD} w -i ${ADS_SECRET_FILE} stringData.mongoHistoryUri "$tmp_uri"
+            ${YQ_CMD} -i ".stringData.mongoHistoryUri = \"$tmp_uri\"" ${ADS_SECRET_FILE}
             tmp_uri="$(prop_user_profile_property_file ADS.EXTERNAL_RUNTIME_MONGO_URI)"
-            ${YQ_CMD} w -i ${ADS_SECRET_FILE} stringData.runtimeMongoUri "$tmp_uri"
+            ${YQ_CMD} -i ".stringData.runtimeMongoUri = \"$tmp_uri\"" ${ADS_SECRET_FILE}
             ${SED_COMMAND} "s|'\"|\"|g" ${ADS_SECRET_FILE}
             ${SED_COMMAND} "s|\"'|\"|g" ${ADS_SECRET_FILE}
         fi
@@ -3311,22 +3345,6 @@ function create_prerequisites() {
                 else
                     tmp_dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.DATABASE_SERVERNAME)")
                 fi
-                # No longer needed as we share this info prior to generate mode 
-                #if [[ $DB_TYPE == "postgresql" ]]; then
-                #    tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.POSTGRESQL_SSL_CLIENT_SERVER)")
-                #    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
-                #    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
-                #        msgB "* You enabled PostgreSQL database with both server and client authentication, please get \"<your-server-certification: root.crt>\" \"<your-client-certification: client.crt>\" \"<your-client-key: client.key>\" on your local or remote database server \"$tmp_dbserver\", and copy them into folder \"$tmp_folder\" before you create the secret for PostgreSQL database SSL"
-                #    elif [[ $tmp_flag == "false" || $tmp_flag == "no" || $tmp_flag == "n" || $tmp_flag == "" ]]; then
-                #        msgB "* You enabled PostgreSQL database with server-only authentication, please get \"<your-server-certification: db-cert.crt>\"  on remote database server \"$tmp_dbserver\", and copy them into folder \"$tmp_folder\" before you create the secret for PostgreSQL database SSL"
-                #    fi
-                #else
-                #    if [[ $DB_TYPE == "oracle" ]]; then
-                #        msgB "* Get the certificate file \"db-cert.crt\" from the remote database server that uses the JDBC URL: \"$tmp_db_jdbc_url\", and copy it into the folder \"$tmp_folder\" before you create the Kubernetes secret for the database SSL"
-                #    else
-                #        msgB "* Get the certificate file \"db-cert.crt\" from the remote database server \"$tmp_dbserver\", and copy it into the folder \"$tmp_folder\" before you create the Kubernetes secret for the database SSL"
-                #    fi
-                #fi
                 # check AE/APP for oracle
                 if [[ $DB_TYPE == "oracle" && (" ${pattern_cr_arr[@]}" =~ "application" || " ${pattern_cr_arr[@]}" =~ "workflow-workstreams" || " ${optional_component_cr_arr[@]}" =~ "app_designer" || " ${optional_component_cr_arr[@]}" =~ "ads_designer") ]]; then
                     tmp_folder=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.ORACLE_SSO_WALLET_CERT_FOLDER)")
@@ -3363,49 +3381,10 @@ function create_prerequisites() {
 
     done
 
-    # LDAP: Show which certificate file should be copy into which folder
-    #tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_ldap_property_file LDAP_SSL_ENABLED)")
-    #tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
-
-    #if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
-    #    tmp_folder="$(prop_ldap_property_file LDAP_SSL_CERT_FILE_FOLDER)"
-    #    tmp_ldapserver="$(prop_ldap_property_file LDAP_SERVER)"
-    #    msgB "* Get the \"ldap-cert.crt\" from the remote LDAP server \"$tmp_ldapserver\", and copy it into the folder \"$tmp_folder\" before you create the Kubernetes secret for the LDAP SSL"
-    #fi
-
-    #if [[ $SET_EXT_LDAP == "Yes" ]]; then
-    #    tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_ext_ldap_property_file LDAP_SSL_ENABLED)")
-    #   tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
-    #    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
-    #        tmp_folder="$(prop_ext_ldap_property_file LDAP_SSL_CERT_FILE_FOLDER)"
-    #        tmp_ldapserver="$(prop_ext_ldap_property_file LDAP_SERVER)"
-    #        msgB "* You enabled external LDAP SSL, so get the \"external-ldap-cert.crt\" from the remote LDAP server \"$tmp_ldapserver\", and copy it into the folder \"$tmp_folder\" before you create the secret for the external LDAP SSL"
-    #    fi
-    #fi
-
-    # show postgresql ssl setting tip for db secret
-    if [[ $DB_TYPE == "postgresql" ]]; then
-        tmp_db_array=$(prop_db_server_property_file DB_SERVER_LIST)
-        tmp_db_array=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_array")
-        OIFS=$IFS
-        IFS=',' read -ra db_server_array <<< "$tmp_db_array"
-        IFS=$OIFS
-
-        for item in "${db_server_array[@]}"; do
-            postgresql_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.POSTGRESQL_SSL_CLIENT_SERVER)")
-            postgresql_server=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.DATABASE_SERVERNAME)")
-            tmp_flag=$(echo $postgresql_flag | tr '[:upper:]' '[:lower:]')
-            if [[ $tmp_flag == "yes" || $tmp_flag == "true" || $tmp_flag == "y"  ]]; then
-                CP4A_DB_SSL_SECRET_FILE_TMP=${DB_SSL_SECRET_FOLDER}/$item/ibm-cp4ba-db-ssl-cert-secret-for-${item}.sh
-                msgB "* Detected \"POSTGRESQL_SSL_CLIENT_SERVER\" is set to \"$postgresql_flag\" for database server \"$postgresql_server\" in the property file \"${DB_SERVER_INFO_PROPERTY_FILE}\".\n Please set the \"sslmode\" parameter in the script \"${CP4A_DB_SSL_SECRET_FILE_TMP}\" to one of the following values: [require, verify-ca, verify-full], depending on your desired SSL configuration."
-            fi
-        done
-    fi
-
 
     msgB "* You can use this shell script to create the secret automatically (NOTE: In case separation of operators and operands is selected - SWITCH TO CP4BA DEPLOYMENT PROJECT): $CREATE_SECRET_SCRIPT_FILE"
     msgB "* Create the databases and Kubernetes secrets manually based on your modified \"DB SQL statement file\" and \"YAML template for secret\".\n* And then run the  \"cp4a-prerequisites.sh -m validate\" command to verify that the databases and secrets are created correctly"
-    # msgB "And then run cp4a-prerequisites.sh -m validate script to validate prerequisites"
+
 }
 
 function create_temp_property_file(){
@@ -4183,18 +4162,18 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
         # ltpaPassword/keystorePassword for FNCM
         echo "## Provide a string for ltpaPassword in the ibm-fncm-secret that will be used when creating the ltpakey." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## If password has special characters then xor encoded with {xor} prefix, otherwise use plain text. (NOTES: CONTENT.LTPA_PASSWORD must match BAN.LTPA_PASSWORD)" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "CONTENT.LTPA_PASSWORD=\"{xor}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "## If password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text. (NOTES: CONTENT.LTPA_PASSWORD must match BAN.LTPA_PASSWORD)" >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "CONTENT.LTPA_PASSWORD=\"{Base64}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## Provide a string for keystorePassword in the ibm-fncm-secret that will be used when creating the keystore." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## If password has special characters then xor encoded with {xor} prefix, otherwise use plain text. (NOTES: CONTENT.KEYSTORE_PASSWORD must exceed 16 characters when fips enabled.)" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "CONTENT.KEYSTORE_PASSWORD=\"{xor}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "## If password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text. (NOTES: CONTENT.KEYSTORE_PASSWORD must exceed 16 characters when fips enabled.)" >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "CONTENT.KEYSTORE_PASSWORD=\"{Base64}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
         # If select ICCSAP, add keystorePassword
         if [[ " ${optional_component_cr_arr[@]} " =~ "iccsap" ]]; then
             echo "## Provide a string for keystorePassword in the ibm-iccsap-secret that will be used when creating the keystore." >> ${USER_PROFILE_PROPERTY_FILE}
-            echo "## If password has special characters then xor encoded with {xor} prefix, otherwise use plain text. (NOTES: ICCSAP.KEYSTORE_PASSWORD must exceed 16 characters when fips enabled.)" >> ${USER_PROFILE_PROPERTY_FILE}
-            echo "ICCSAP.KEYSTORE_PASSWORD=\"{xor}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## If password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text. (NOTES: ICCSAP.KEYSTORE_PASSWORD must exceed 16 characters when fips enabled.)" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "ICCSAP.KEYSTORE_PASSWORD=\"{Base64}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
         fi
         # If select ICC Archive, add ARCHIVE_USERID/ARCHIVE_PASSWORD
@@ -4211,8 +4190,8 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         # if select IER
         if [[ " ${optional_component_cr_arr[@]} " =~ "ier" ]]; then
             echo "## Provide a string for keystorePassword in the ibm-ier-secret that will be used when creating the keystore." >> ${USER_PROFILE_PROPERTY_FILE}
-            echo "## If password has special characters then xor encoded with {xor} prefix, otherwise use plain text. (NOTES: IER.KEYSTORE_PASSWORD must exceed 16 characters when fips enabled.)" >> ${USER_PROFILE_PROPERTY_FILE}
-            echo "IER.KEYSTORE_PASSWORD=\"{xor}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## If password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text. (NOTES: IER.KEYSTORE_PASSWORD must exceed 16 characters when fips enabled.)" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "IER.KEYSTORE_PASSWORD=\"{Base64}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
         fi
 
@@ -4795,12 +4774,12 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
             # ltpaPassword/keystorePassword for BAN
             echo "## Provide a string for ltpaPassword in the ibm-ban-secret that will be used when creating the ltpakey." >> ${USER_PROFILE_PROPERTY_FILE}
-            echo "## If password has special characters then xor encoded with {xor} prefix, otherwise use plain text.(NOTES: BAN.LTPA_PASSWORD must match CONTENT.LTPA_PASSWORD)" >> ${USER_PROFILE_PROPERTY_FILE}
-            echo "BAN.LTPA_PASSWORD=\"{xor}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## If password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text.(NOTES: BAN.LTPA_PASSWORD must match CONTENT.LTPA_PASSWORD)" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "BAN.LTPA_PASSWORD=\"{Base64}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "## Provide a string for keystorePassword in the ibm-ban-secret that will be used when creating the keystore." >> ${USER_PROFILE_PROPERTY_FILE}
-            echo "## If password has special characters then xor encoded with {xor} prefix, otherwise use plain text. (NOTES: BAN.KEYSTORE_PASSWORD must exceed 16 characters when fips enabled.)" >> ${USER_PROFILE_PROPERTY_FILE}
-            echo "BAN.KEYSTORE_PASSWORD=\"{xor}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## If password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text. (NOTES: BAN.KEYSTORE_PASSWORD must exceed 16 characters when fips enabled.)" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "BAN.KEYSTORE_PASSWORD=\"{Base64}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
             # jMailUsername/jMailPassword for BAN
@@ -4985,16 +4964,16 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         echo "## Provide the service user name for ADP. For example: \"CN=sampleServiceUser,DC=sampleDC,DC=com\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "ADP.SERVICE_USER_NAME=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## Provide the service user password (if password has special characters then xor encoded with {xor} prefix, otherwise use plain text) for ADP." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "ADP.SERVICE_USER_PASSWORD=\"{xor}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "## Provide the service user password (if password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text) for ADP." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "ADP.SERVICE_USER_PASSWORD=\"{Base64}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
         # serviceUserBas/servicePwdBas for ADP
 	echo "## Fully Qualified Distinguished Name (FQDN) for the user is required for this setting." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## Provide the service base name for ADP. For example: \"CN=sampleBaseUser,DC=sampleDC,DC=com\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "ADP.SERVICE_USER_NAME_BASE=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## Provide the service base password (if password has special characters then xor encoded with {xor} prefix, otherwise use plain text) for ADP." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "ADP.SERVICE_USER_PASSWORD_BASE=\"{xor}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "## Provide the service base password (if password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text) for ADP." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "ADP.SERVICE_USER_PASSWORD_BASE=\"{Base64}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
         # serviceUserCa/servicePwdCa for ADP
@@ -5002,8 +4981,8 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         echo "## Provide the service ca name for ADP. For example: \"CN=sampleCAUser,DC=sampleDC,DC=com\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "ADP.SERVICE_USER_NAME_CA=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## Provide the service ca password (if password has special characters then xor encoded with {xor} prefix, otherwise use plain text) for ADP." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "ADP.SERVICE_USER_PASSWORD_CA=\"{xor}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "## Provide the service ca password (if password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text) for ADP." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "ADP.SERVICE_USER_PASSWORD_CA=\"{Base64}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
         # envOwnerUser/envOwnerPwd for ADP
@@ -5011,8 +4990,8 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         echo "## Provide the environment owner name for ADP. For example: \"CN=sampleOwnerUser,DC=sampleDC,DC=com\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "ADP.ENV_OWNER_USER_NAME=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## Provide the environment owner password (if password has special characters then xor encoded with {xor} prefix, otherwise use plain text) for ADP." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "ADP.ENV_OWNER_USER_PASSWORD=\"{xor}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "## Provide the environment owner password (if password has special characters then xor encoded with {Base64} prefix, otherwise use plain text) for ADP." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "ADP.ENV_OWNER_USER_PASSWORD=\"{Base64}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
         ## DBACLD-176663 (MongoDB Server details needs to be removed for ADP runtime)
@@ -5847,7 +5826,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
     fi
 
     if [[ ! ("${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "No") ]]; then
-        ${SED_COMMAND} "s|LDAP_BIND_DN_PASSWORD=\"\"|LDAP_BIND_DN_PASSWORD=\"{xor}<Required>\"|g" ${LDAP_PROPERTY_FILE}
+        ${SED_COMMAND} "s|LDAP_BIND_DN_PASSWORD=\"\"|LDAP_BIND_DN_PASSWORD=\"{Base64}<Required>\"|g" ${LDAP_PROPERTY_FILE}
         ${SED_COMMAND} "s|=\"\"|=\"<Required>\"|g" ${LDAP_PROPERTY_FILE}
         ${SED_COMMAND} 's/LC_AD_GC_HOST="<Required>"/LC_AD_GC_HOST=""/g' ${LDAP_PROPERTY_FILE}
         OPTIONAL_PARAMETERS_LIST+=("LC_AD_GC_HOST")
@@ -5857,7 +5836,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
     fi
 
     if [[ $SET_EXT_LDAP == "Yes" ]]; then
-        ${SED_COMMAND} "s|LDAP_BIND_DN_PASSWORD=\"\"|LDAP_BIND_DN_PASSWORD=\"{xor}<Required>\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
+        ${SED_COMMAND} "s|LDAP_BIND_DN_PASSWORD=\"\"|LDAP_BIND_DN_PASSWORD=\"{Base64}<Required>\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
         ${SED_COMMAND} "s|=\"\"|=\"<Required>\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
         ${SED_COMMAND} 's/LC_AD_GC_HOST="<Required>"/LC_AD_GC_HOST=""/g' ${EXTERNAL_LDAP_PROPERTY_FILE}
         OPTIONAL_PARAMETERS_LIST+=("LC_AD_GC_HOST")
@@ -5942,6 +5921,11 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
     echo -e  "\x1b[32m* [cp4ba_user_profile.property]:\x1B[0m"
     echo -e  "  - Properties for the global value used by the CP4BA deployment, such as \"sc_deployment_license\".\n"
     echo -e  "  - properties for the value used by each component of CP4BA, such as <APPLOGIN_USER>/<APPLOGIN_PASSWORD>\n"
+
+    #DBACLD-196427 - clear next-step instruction after running with -m property mode
+    echo -e "\x1b[32m* [Next Step]:\x1B[0m"
+    echo -e "  - When all the required certificates and property files are prepared, run the following command to generate the database scripts and secret YAML files:"
+    echo -e "    $RED_TEXT\"./cp4a-prerequisites.sh -m generate -n $CP4BA_SERVICES_NS\"${RESET_TEXT}"
 }
 
 function select_storage_class(){
@@ -6044,6 +6028,37 @@ function load_property_before_generate(){
     # load LDAP/DB required flag for wfps
     LDAP_WFPS_AUTHORING=$(prop_tmp_property_file LDAP_WFPS_AUTHORING_FLAG)
     EXTERNAL_DB_WFPS_AUTHORING=$(prop_tmp_property_file EXTERNAL_DB_WFPS_AUTHORING_FLAG)
+
+    # Change for DBACLD-190482: Mark LDAP SSL params optional if SSL is disabled
+    SELECTED_LDAP="No"
+    if [[ " ${pattern_cr_arr[@]} " =~ "content" || " ${pattern_cr_arr[@]} " =~ "workflow-runtime" || " ${pattern_cr_arr[@]} " =~ "workstreams" || " ${pattern_cr_arr[@]} " =~ "document_processing" ]]; then
+        SELECTED_LDAP="Yes"
+    fi
+
+    # Conditionally mark LDAP SSL params optional AFTER loading all variables
+    OPTIONAL_PARAMETERS_LIST=($(printf '%s\n' "${OPTIONAL_PARAMETERS_LIST[@]}" | grep -v "^LDAP_SSL_SECRET_NAME$" | grep -v "^LDAP_SSL_CERT_FILE_FOLDER$" | grep -v "^EXT_LDAP_SSL_SECRET_NAME$" | grep -v "^EXT_LDAP_SSL_CERT_FILE_FOLDER$"))
+
+    # Handle LDAP SSL parameters
+    if [[ $SELECTED_LDAP == "Yes" ]]; then
+        tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_ldap_property_file LDAP_SSL_ENABLED)")
+        tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+        if [[ ${tmp_flag} =~ ^(no|n|false)$ ]]; then
+            OPTIONAL_PARAMETERS_LIST+=("LDAP_SSL_SECRET_NAME")
+            OPTIONAL_PARAMETERS_LIST+=("LDAP_SSL_CERT_FILE_FOLDER")
+        fi
+    fi
+
+    if [[ $SET_EXT_LDAP == "Yes" ]]; then
+        tmp_ext_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_ext_ldap_property_file LDAP_SSL_ENABLED)")
+        tmp_ext_flag=$(echo $tmp_ext_flag | tr '[:upper:]' '[:lower:]')
+        if [[ ${tmp_ext_flag} =~ ^(no|n|false)$ ]]; then
+            OPTIONAL_PARAMETERS_LIST+=("EXT_LDAP_SSL_SECRET_NAME")
+            OPTIONAL_PARAMETERS_LIST+=("EXT_LDAP_SSL_CERT_FILE_FOLDER")
+        fi
+    fi
+
+    # Mark the LDAP SSL parameters as optional
+    mark_optional
 }
 
 function create_db_script(){
@@ -8156,7 +8171,7 @@ function validate_secret_in_cluster(){
         files=($(find $SECRET_FILE_FOLDER -name '*.yaml'))
         for item in ${files[*]}
         do
-            secret_name_tmp=`cat $item | ${YQ_CMD} r - metadata.name`
+            secret_name_tmp=`${YQ_CMD} ".metadata.name // \"\"" "$item"`
             if [ -z "$secret_name_tmp" ]; then
                 error "Secret name not found in YAML file: \"$item\"! Please check and fix it"
                 exit 1
@@ -8280,11 +8295,13 @@ function validate_prerequisites(){
         tmp_serverport="$(prop_ldap_property_file LDAP_PORT)"
         tmp_basdn="$(prop_ldap_property_file LDAP_BASE_DN)"
         tmp_ldapssl="$(prop_ldap_property_file LDAP_SSL_ENABLED)"
-        tmp_user=$( $CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapUsername | base64 --decode )
+        tmp_user=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o jsonpath='{.items[0].data.ldapUsername}' | base64 -w 0 --decode)
         ## <https://jsw.ibm.com/browse/DBACLD-172803> - We are now asking user to use {xor} for special characters in password, so we need to use decode_xor_password to get the password decoded before validation.
         cp4a_operator=$( $CLI_CMD get pods -l name=ibm-cp4a-operator --no-headers --ignore-not-found -n $cp4ba_operators_namespace | awk '{print $1}' )
-        tmp_userpwd=$( decode_xor_password $( $CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapPassword | base64 --decode ) $cp4ba_operators_namespace $cp4a_operator | sed  's/\$/\\$/g' )
-
+        tmp_userpwd=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o jsonpath='{.items[0].data.ldapPassword}' | base64 -w 0 --decode)
+        if [[ "$tmp_userpwd" =~ "{xor}" ]]; then
+            tmp_userpwd=$(decode_xor_password $tmp_userpwd $cp4ba_operators_namespace $cp4a_operator)
+        fi
         tmp_servername=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_servername")
         tmp_serverport=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_serverport")
         tmp_basdn=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_basdn")
@@ -8312,11 +8329,13 @@ function validate_prerequisites(){
             tmp_serverport="$(prop_ext_ldap_property_file LDAP_PORT)"
             tmp_basdn="$(prop_ext_ldap_property_file LDAP_BASE_DN)"
             tmp_ldapssl="$(prop_ext_ldap_property_file LDAP_SSL_ENABLED)"
-            tmp_user=$( $CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ext-ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapUsername | base64 --decode )
+            tmp_user=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ext-ldap-bind-secret -o jsonpath='{.items[0].data.ldapUsername}' | base64 -w 0 --decode)
             ## <https://jsw.ibm.com/browse/DBACLD-172803> - We are now asking user to use {xor} for special characters in password, so we need to use decode_xor_password to get the password decoded before validation.
             cp4a_operator=$( $CLI_CMD get pods -l name=ibm-cp4a-operator --no-headers --ignore-not-found -n $cp4ba_operators_namespace | awk '{print $1}' )
-            tmp_userpwd=$( decode_xor_password $( $CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapPassword | base64 --decode ) $cp4ba_operators_namespace $cp4a_operator | sed  's/\$/\\$/g' )
-
+            tmp_userpwd=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ext-ldap-bind-secret -o jsonpath='{.items[0].data.ldapPassword}' | base64 -w 0 --decode)
+            if [[ "$tmp_userpwd" =~ "{xor}" ]]; then
+                tmp_userpwd=$(decode_xor_password $tmp_userpwd $cp4ba_operators_namespace $cp4a_operator)
+            fi
             tmp_servername=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_servername")
             tmp_serverport=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_serverport")
             tmp_basdn=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_basdn")
@@ -8324,6 +8343,7 @@ function validate_prerequisites(){
             tmp_ldapssl=$(echo $tmp_ldapssl | tr '[:upper:]' '[:lower:]')
             tmp_user=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_user")
             tmp_userpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_userpwd")
+
 
             verify_ldap_connection "$tmp_servername" "$tmp_serverport" "$tmp_basdn" "$tmp_user" "$tmp_userpwd" "$tmp_ldapssl"
 
@@ -8338,9 +8358,9 @@ function validate_prerequisites(){
         # check db connection for GCDDB
         if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring" || " ${pattern_cr_arr[@]}" =~ "workstreams" || " ${pattern_cr_arr[@]}" =~ "content" || " ${pattern_cr_arr[@]}" =~ "document_processing" || "${optional_component_cr_arr[@]}" =~ "ae_data_persistence" ]]; then
             # check DBNAME/DBUSER for GCDDB
-            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.gcd-db-server`
-            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.gcdDBUsername | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.gcdDBPassword | base64 --decode`
+            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.gcd-db-server' -`
+            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.gcdDBUsername' - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.gcdDBPassword' - | base64 --decode`
 
             if [[ $DB_TYPE != "oracle" ]]; then
                 tmp_dbname="$(prop_db_name_user_property_file $tmp_dbserver.GCD_DB_NAME)"
@@ -8365,8 +8385,8 @@ function validate_prerequisites(){
                     # tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.os-db-server`
                     tmp_dbserver="$(prop_db_name_user_property_file_for_server_name OS$((j+1))_DB_USER_NAME)"
                     check_dbserver_name_valid $tmp_dbserver "OS$((j+1))_DB_USER_NAME"
-                    tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.os$((j+1))DBUsername | base64 --decode`
-                    tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.os$((j+1))DBPassword | base64 --decode`
+                    tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.os$((j+1))DBUsername" - | base64 --decode`
+                    tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.os$((j+1))DBPassword" - | base64 --decode`
 
                     if [[ $DB_TYPE != "oracle" ]]; then
                         tmp_dbname="$(prop_db_name_user_property_file $tmp_dbserver.OS$((j+1))_DB_NAME)"
@@ -8392,8 +8412,8 @@ function validate_prerequisites(){
                     tmp_dbserver="$(prop_db_name_user_property_file_for_server_name ${BAW_AUTH_OS_ARR[i]}_DB_USER_NAME)"
                     check_dbserver_name_valid $tmp_dbserver "${BAW_AUTH_OS_ARR[i]}_DB_USER_NAME"
                     tmp_label=$(echo ${BAW_AUTH_OS_ARR[i]}| tr '[:upper:]' '[:lower:]')
-                    tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBUsername | base64 --decode`
-                    tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBPassword | base64 --decode`
+                    tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBUsername" - | base64 --decode`
+                    tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBPassword" - | base64 --decode`
 
                     if [[ $DB_TYPE != "oracle" ]]; then
                         tmp_dbname="$(prop_db_name_user_property_file $tmp_dbserver.${BAW_AUTH_OS_ARR[i]}_DB_NAME)"
@@ -8417,8 +8437,8 @@ function validate_prerequisites(){
                 if [[ $tmp_dbserver != \#* ]] ; then
                     check_dbserver_name_valid $tmp_dbserver "CHOS_DB_USER_NAME"
                     # tmp_label=$(echo ${BAW_AUTH_OS_ARR[i]}| tr '[:upper:]' '[:lower:]')
-                    tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.chDBUsername | base64 --decode`
-                    tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.chDBPassword | base64 --decode`
+                    tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.chDBUsername' - | base64 --decode`
+                    tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.chDBPassword' - | base64 --decode`
 
                     if [[ $DB_TYPE != "oracle" ]]; then
                         tmp_dbname="$(prop_db_name_user_property_file $tmp_dbserver.CHOS_DB_NAME)"
@@ -8442,8 +8462,8 @@ function validate_prerequisites(){
                 # tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.os-db-server`
                 tmp_dbserver="$(prop_db_name_user_property_file_for_server_name AWSDOCS_DB_USER_NAME)"
                 check_dbserver_name_valid $tmp_dbserver "AWSDOCS_DB_USER_NAME"
-                tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.awsdocsDBUsername | base64 --decode`
-                tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.awsdocsDBPassword | base64 --decode`
+                tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.awsdocsDBUsername' - | base64 --decode`
+                tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.awsdocsDBPassword' - | base64 --decode`
 
                 if [[ $DB_TYPE != "oracle" ]]; then
                     tmp_dbname="$(prop_db_name_user_property_file $tmp_dbserver.AWSDOCS_DB_NAME)"
@@ -8468,8 +8488,8 @@ function validate_prerequisites(){
                     tmp_dbserver="$(prop_db_name_user_property_file_for_server_name AEOS_DB_USER_NAME)"
                     check_dbserver_name_valid $tmp_dbserver "AEOS_DB_USER_NAME"
                     # tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.os-db-server`
-                    tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.aeosDBUsername | base64 --decode`
-                    tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.aeosDBPassword | base64 --decode`
+                    tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.aeosDBUsername' - | base64 --decode`
+                    tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.aeosDBPassword' - | base64 --decode`
 
                     if [[ $DB_TYPE != "oracle" ]]; then
                         tmp_dbname="$(prop_db_name_user_property_file $tmp_dbserver.AEOS_DB_NAME)"
@@ -8493,8 +8513,8 @@ function validate_prerequisites(){
                 # tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.os-db-server`
                 tmp_dbserver="$(prop_db_name_user_property_file_for_server_name DEVOS_DB_USER_NAME)"
                 check_dbserver_name_valid $tmp_dbserver "DEVOS_DB_USER_NAME"
-                tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.devos1DBUsername | base64 --decode`
-                tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.devos1DBPassword | base64 --decode`
+                tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.devos1DBUsername' - | base64 --decode`
+                tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.devos1DBPassword' - | base64 --decode`
 
                 if [[ $DB_TYPE != "oracle" ]]; then
                     tmp_dbname="$(prop_db_name_user_property_file $tmp_dbserver.DEVOS_DB_NAME)"
@@ -8523,9 +8543,9 @@ function validate_prerequisites(){
                 fi
                 tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-                tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-                tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.navigatorDBUsername | base64 --decode`
-                tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.navigatorDBPassword | base64 --decode`
+                tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+                tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.navigatorDBUsername' - | base64 --decode`
+                tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.navigatorDBPassword' - | base64 --decode`
 
                 # Check DB non-SSL and SSL
                 if [[ $DB_TYPE == "oracle" ]]; then
@@ -8549,9 +8569,9 @@ function validate_prerequisites(){
             fi
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.db-user | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.db-password | base64 --decode`
+            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.db-user' - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.db-password' - | base64 --decode`
 
             # Check DB non-SSL and SSL
             if [[ $DB_TYPE == "oracle" ]]; then
@@ -8572,9 +8592,9 @@ function validate_prerequisites(){
             fi
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l base-db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.base-db-server`
-            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l base-db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.BASE_DB_USER | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l base-db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.BASE_DB_CONFIG | base64 --decode`
+            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l base-db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.base-db-server' -`
+            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l base-db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.BASE_DB_USER' - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l base-db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.BASE_DB_CONFIG' - | base64 --decode`
 
             # Check DB non-SSL and SSL
             if [[ $DB_TYPE == "oracle" ]]; then
@@ -8630,7 +8650,7 @@ function validate_prerequisites(){
                     tmp_dbusername=${db_user_array[num]}
                     # tmp_dbuserpassword=${db_userpwd_array[num]}
                     tmp_dbname_caps=$(echo $tmp_dbname | tr '[:lower:]' '[:upper:]')
-                    tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l base-db-name=${tmp_base_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_dbname_caps}_DB_CONFIG | base64 --decode`
+                    tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l base-db-name=${tmp_base_dbname} -o yaml | ${YQ_CMD} ".items[0].data.${tmp_dbname_caps}_DB_CONFIG" - | base64 --decode`
                     tmp_dbserver=${db_server_array[num]}
 
                     # Check DB non-SSL and SSL and SSL
@@ -8654,9 +8674,9 @@ function validate_prerequisites(){
             fi
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.AE_DATABASE_USER | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.AE_DATABASE_PWD | base64 --decode`
+            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.AE_DATABASE_USER' - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.AE_DATABASE_PWD' - | base64 --decode`
 
             # Check DB non-SSL and SSL and SSL
             if [[ $DB_TYPE == "oracle" ]]; then
@@ -8701,9 +8721,9 @@ function validate_prerequisites(){
             fi
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.dbUser | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.password | base64 --decode`
+            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUser' - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
 
             # Check DB non-SSL and SSL
             if [[ $DB_TYPE == "oracle" ]]; then
@@ -8722,9 +8742,9 @@ function validate_prerequisites(){
             fi
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.dbUser | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.password | base64 --decode`
+            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUser' - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
 
             # Check DB non-SSL and SSL
             if [[ $DB_TYPE == "oracle" ]]; then
@@ -8743,9 +8763,9 @@ function validate_prerequisites(){
             fi
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.dbUser | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.password | base64 --decode`
+            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUser' - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
 
             # Check DB non-SSL and SSL
             if [[ $DB_TYPE == "oracle" ]]; then
@@ -8764,9 +8784,9 @@ function validate_prerequisites(){
             fi
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.dbUser | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.password | base64 --decode`
+            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUser' - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
 
             # Check DB non-SSL and SSL
             if [[ $DB_TYPE == "oracle" ]]; then
@@ -8787,9 +8807,9 @@ function validate_prerequisites(){
             fi
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.AE_DATABASE_USER | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.AE_DATABASE_PWD | base64 --decode`
+            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.AE_DATABASE_USER' - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.AE_DATABASE_PWD' - | base64 --decode`
 
             # Check DB non-SSL and SSL
             if [[ $DB_TYPE == "oracle" ]]; then
@@ -8810,9 +8830,9 @@ function validate_prerequisites(){
             fi
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.dbUsername | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.dbPassword | base64 --decode`
+            tmp_dbserver=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+            tmp_dbusername=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUsername' - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbPassword' - | base64 --decode`
             # Check DB non-SSL and SSL
             if [[ $DB_TYPE == "oracle" ]]; then
                 verify_db_connection "${tmp_dbusername}" "${tmp_dbuserpassword}" "${tmp_dbserver}"

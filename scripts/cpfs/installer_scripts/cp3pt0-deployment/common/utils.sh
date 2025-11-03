@@ -616,6 +616,28 @@ function get_catalogsource() {
         # Extracting the values using string manipulation
         catalog_source=$(echo "$result" | awk -F': ' '{print $2}' | awk -F',' '{print $1}')
         catalog_namespace=$(echo "$result" | awk -F': ' '{print $NF}')
+    elif [[ count -eq 2 ]]; then
+        # If there are two catalog sources, 
+        # case 1: "catalog_source_1" and "catalog_source_2", we return both of them
+        # case 2: "certified-operators" and "catalog_source_2", we only return "catalog_source_2"
+        # Split the result into lines
+        IFS=$'\n' read -rd '' -a lines <<< "$result"
+
+        for ((i = 0; i < ${#lines[@]}; i+=2)); do
+            name_line=${lines[$i]}
+            ns_line=${lines[$i+1]}
+            name=$(echo "$name_line" | awk -F': ' '{print $2}')
+            ns=$(echo "$ns_line" | awk -F': ' '{print $2}')
+            # If the catalog source is not "certified-operators", we use it
+            if [[ "$name" != "certified-operators" ]]; then
+                catalog_source=$name
+                catalog_namespace=$ns
+            else
+                # If the catalog source is "certified-operators", we skip it
+                count=1
+                continue
+            fi
+        done
     fi
     echo "$count $catalog_source $catalog_namespace"
 }

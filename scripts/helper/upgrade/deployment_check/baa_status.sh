@@ -9,7 +9,7 @@
 #
 ######################## BAA #######################
 # Check ae-icp4adeploy-workspace-aae upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.ae-${cr_metaname}-${ae_config_name}-aae.service`
+isInstalled=$(cat "${UPGRADE_STATUS_FILE}" | ${YQ_CMD} ".status.components[\"ae-${cr_metaname}-${ae_config_name}-aae\"].service // \"\"" -)
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_BAA_WORKSPACE_AAE_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then

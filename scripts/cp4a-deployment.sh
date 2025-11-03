@@ -164,6 +164,7 @@ parse_arguments "$@"
 # fi
 if [[ -z "$TARGET_PROJECT_NAME" ]]; then
     echo -e "\x1B[1;31mInput value for \"-n <CP4BA_NAMESPACE>\" option.\n\x1B[0m"
+    show_help
     exit 1
 fi
 
@@ -795,26 +796,26 @@ function setup_opensearch_cr(){
     # retrieve the elasticsearch cr metaname
     elasticsearch_cr_name=$(${CLI_CMD} get elasticsearch.elastic.automation.ibm.com -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
     if [[ ! -z $elasticsearch_cr_name ]]; then
-        cr_metaname=$(${CLI_CMD} get elasticsearch.elastic.automation.ibm.com $elasticsearch_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
+        cr_metaname=$(${CLI_CMD} get elasticsearch.elastic.automation.ibm.com $elasticsearch_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
 
-        es_storage_class_node=$(${CLI_CMD} get elasticsearch.elastic.automation.ibm.com $elasticsearch_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - spec.nodegroupspecs.[0].storage.class)
+        es_storage_class_node=$(${CLI_CMD} get elasticsearch.elastic.automation.ibm.com $elasticsearch_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.spec.nodegroupspecs.[0].storage.class // ""' -)
         if [ -z $es_storage_class_node ]; then
             fail "Can NOT get value for \"storage.class\" from the existing Elasticsearch custom resource \"$elasticsearch_cr_name\" in the project \"$CP4BA_SERVICES_NS\"."
             exit 1
         fi
 
-        es_storage_size_node=$(${CLI_CMD} get elasticsearch.elastic.automation.ibm.com $elasticsearch_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - spec.nodegroupspecs.[0].storage.size)
+        es_storage_size_node=$(${CLI_CMD} get elasticsearch.elastic.automation.ibm.com $elasticsearch_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.spec.nodegroupspecs.[0].storage.size // ""' -)
         if [ -z $es_storage_size_node ]; then
             fail "Can NOT get value for \"storage.size\" from the existing Elasticsearch custom resource \"$elasticsearch_cr_name\" in the project \"$CP4BA_SERVICES_NS\"."
             exit 1
         fi
-        es_storage_class_snapshot=$(${CLI_CMD} get elasticsearch.elastic.automation.ibm.com $elasticsearch_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - spec.snapshotStores.[0].storage.class)
+        es_storage_class_snapshot=$(${CLI_CMD} get elasticsearch.elastic.automation.ibm.com $elasticsearch_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.spec.snapshotStores.[0].storage.class // ""' -)
         if [ -z $es_storage_class_snapshot ]; then
             fail "Can NOT get value for \"storage.class\" from the existing Elasticsearch custom resource \"$elasticsearch_cr_name\" in the project \"$CP4BA_SERVICES_NS\"."
             exit 1
         fi
 
-        es_storage_size_snapshot=$(${CLI_CMD} get elasticsearch.elastic.automation.ibm.com $elasticsearch_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - spec.snapshotStores.[0].storage.size)
+        es_storage_size_snapshot=$(${CLI_CMD} get elasticsearch.elastic.automation.ibm.com $elasticsearch_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.spec.snapshotStores.[0].storage.size // ""' -)
         if [ -z $es_storage_size_snapshot ]; then
             fail "Can NOT get value for \"storage.size\" from the existing Elasticsearch custom resource \"$elasticsearch_cr_name\" in the project \"$CP4BA_SERVICES_NS\"."
             exit 1
@@ -822,7 +823,7 @@ function setup_opensearch_cr(){
 
         es_secret_name="${cr_metaname}-elasticsearch-es-client-cert-kp"
 
-        es_route_hostname=$(${CLI_CMD} get Route ${elasticsearch_cr_name}-es -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - spec.host)
+        es_route_hostname=$(${CLI_CMD} get Route ${elasticsearch_cr_name}-es -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.spec.host' -)
     else
         fail "Elasticsearch custom resource not found in the project \"$CP4BA_SERVICES_NS\"."
         exit 1
@@ -1179,14 +1180,14 @@ function setup_opensearch(){
         elif [[ "$cs_dedicated" != "" && "$cs_shared" != "" && "$control_namespace" != "" ]]; then
             ${CLI_CMD} get cm ${COMMON_SERVICES_CM_DEDICATED_NAME} --no-headers --ignore-not-found -n ${COMMON_SERVICES_CM_NAMESPACE} -o jsonpath='{ .data.common-service-maps\.yaml }' > /tmp/common-service-maps.yaml
             index=0
-            common_service_namespace=`cat /tmp/common-service-maps.yaml | ${YQ_CMD} r - namespaceMapping.[$index].map-to-common-service-namespace`
+            common_service_namespace=`${YQ_CMD} ".namespaceMapping.[$index].map-to-common-service-namespace // \"\"" "/tmp/common-service-maps.yaml"`
             while [[ ! -z $common_service_namespace ]]
             do
                 if [[ $common_service_namespace == "ibm-common-services" ]]; then
                     # listing all the requested namespaces that are in shared mode
                     # If the CP4BA_SERVICES_NS is in this list under ibm-common-services then it is shared otherwise it means CP4BA_SERVICES_NS is dedicated but there are other deployments in shared mode. Just checking if ibm-common-services is listed in namespaceMapping.map-to-common-service-namespace is not sufficient.
                     # For https://jsw.ibm.com/browse/DBACLD-168119
-                    common_service_requested_namespace=`cat /tmp/common-service-maps.yaml | ${YQ_CMD} r - namespaceMapping.[$index].requested-from-namespace`
+                    common_service_requested_namespace=`${YQ_CMD} ".namespaceMapping.[$index].requested-from-namespace" "/tmp/common-service-maps.yaml"`
                     if echo "$common_service_requested_namespace" | grep -q "$CP4BA_SERVICES_NS"; then
                         info "IBM Cloud Pak foundational services is working in \"Cluster-scoped\"."
                         # select_upgrade_mode
@@ -1202,7 +1203,7 @@ function setup_opensearch(){
                     fi
                 fi
                 ((index++))
-                common_service_namespace=`cat /tmp/common-service-maps.yaml | ${YQ_CMD} r - namespaceMapping.[$index].map-to-common-service-namespace`
+                common_service_namespace=`${YQ_CMD} ".namespaceMapping.[$index].map-to-common-service-namespace // \"\"" "/tmp/common-service-maps.yaml"`
                 if [[ -z $common_service_namespace ]]; then
                     info "IBM Cloud Pak foundational services are working in \"Namespace-scoped\"."
                     UPGRADE_MODE="dedicated2dedicated"
@@ -1368,7 +1369,7 @@ function check_es_to_os_migration(){
                 opensearch_cr_name=$(${CLI_CMD} get ElasticsearchCluster -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
             fi
             if [[ ! -z $opensearch_cr_name ]]; then
-                os_cr_metaname=$(${CLI_CMD} get ElasticsearchCluster $opensearch_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
+                os_cr_metaname=$(${CLI_CMD} get ElasticsearchCluster $opensearch_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name // ""' -)
                 if [[ ! -z $os_cr_metaname ]]; then
                     success "ElasticsearchCluster custom resource \"$os_cr_metaname\" was found in the project \"$CP4BA_SERVICES_NS\""
                 fi
@@ -1775,7 +1776,7 @@ function containsObjectStore(){
     os_num=0
     os_index_array=()
     while true; do
-        object_name_tmp=`cat $FILE | ${YQ_CMD} r - spec.datasource_configuration.dc_os_datasources.[$os_num].dc_common_os_datasource_name`
+        object_name_tmp=`${YQ_CMD} ".spec.datasource_configuration.dc_os_datasources.[$os_num].dc_common_os_datasource_name // \"\"" "$FILE"`
 
         if [ -z "$object_name_tmp" ]; then
             break
@@ -1797,7 +1798,7 @@ function getTotalFNCMObjectStore(){
     do
         os_num=0
         while true; do
-            object_name_tmp=`cat $FILE | ${YQ_CMD} r - spec.datasource_configuration.dc_os_datasources.[$os_num].dc_common_os_datasource_name`
+            object_name_tmp=`${YQ_CMD} ".spec.datasource_configuration.dc_os_datasources.[$os_num].dc_common_os_datasource_name // \"\"" "$FILE"`
             if [ -z "$object_name_tmp" ]; then
                 break
             else
@@ -1817,7 +1818,7 @@ function containsInitObjectStore(){
     os_num=0
     os_index_array=()
     while true; do
-        object_name_tmp=`cat $FILE | ${YQ_CMD} r - spec.initialize_configuration.ic_obj_store_creation.object_stores.[$os_num].oc_cpe_obj_store_display_name`
+        object_name_tmp=`${YQ_CMD} ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$os_num].oc_cpe_obj_store_display_name // \"\"" "$FILE"`
         if [ -z "$object_name_tmp" ]; then
             break
         else
@@ -1834,7 +1835,7 @@ function containsInitLDAPGroups(){
     ldap_num=0
     ldap_groups_index_array=()
     while true; do
-        name_tmp=`cat $FILE | ${YQ_CMD} r - spec.initialize_configuration.ic_ldap_creation.ic_ldap_admins_groups_name.[$ldap_num]`
+        name_tmp=`${YQ_CMD} ".spec.initialize_configuration.ic_ldap_creation.ic_ldap_admins_groups_name.[$ldap_num] // \"\"" "$FILE"`
         if [ -z "$name_tmp" ]; then
             break
         else
@@ -1849,7 +1850,7 @@ function containsInitLDAPUsers(){
     ldap_num=0
     ldap_users_index_array=()
     while true; do
-        name_tmp=`cat $FILE | ${YQ_CMD} r - spec.initialize_configuration.ic_ldap_creation.ic_ldap_admin_user_name.[$ldap_num]`
+        name_tmp=`${YQ_CMD} ".spec.initialize_configuration.ic_ldap_creation.ic_ldap_admin_user_name.[$ldap_num] // \"\"" "$FILE"`
         if [ -z "$name_tmp" ]; then
             break
         else
@@ -1865,7 +1866,7 @@ function containsBAWInstance(){
     baw_instance_num=0
     baw_index_array=()
     while true; do
-        name_tmp=`cat $FILE | ${YQ_CMD} r - spec.baw_configuration.[$baw_instance_num].name`
+        name_tmp=`${YQ_CMD} ".spec.baw_configuration.[$baw_instance_num].name // \"\"" "$FILE"`
         if [ -z "$name_tmp" ]; then
             break
         else
@@ -1882,7 +1883,7 @@ function containsAEInstance(){
     ae_instance_num=0
     ae_index_array=()
     while true; do
-        name_tmp=`cat $FILE | ${YQ_CMD} r - spec.application_engine_configuration.[$ae_instance_num].name`
+        name_tmp=`${YQ_CMD} ".spec.application_engine_configuration.[$ae_instance_num].name // \"\"" "$FILE"`
         if [ -z "$name_tmp" ]; then
             break
         else
@@ -1897,7 +1898,7 @@ function containsICNRepos(){
     icn_repo_instance_num=0
     icn_repo_index_array=()
     while true; do
-        name_tmp=`cat $FILE | ${YQ_CMD} r - spec.initialize_configuration.ic_icn_init_info.icn_repos.[$icn_repo_instance_num].add_repo_id`
+        name_tmp=`${YQ_CMD} ".spec.initialize_configuration.ic_icn_init_info.icn_repos.[$icn_repo_instance_num].add_repo_id // \"\"" "$FILE"`
         if [ -z "$name_tmp" ]; then
             break
         else
@@ -1912,7 +1913,7 @@ function containsICNDesktop(){
     icn_desktop_instance_num=0
     icn_desktop_index_array=()
     while true; do
-        name_tmp=`cat $FILE | ${YQ_CMD} r - spec.initialize_configuration.ic_icn_init_info.icn_desktop.[$icn_desktop_instance_num].add_desktop_id`
+        name_tmp=`${YQ_CMD} ".spec.initialize_configuration.ic_icn_init_info.icn_desktop.[$icn_desktop_instance_num].add_desktop_id // \"\"" "$FILE"`
         if [ -z "$name_tmp" ]; then
             break
         else
@@ -1927,7 +1928,7 @@ function containsTenantDB(){
     tenant_db_instance_num=0
     tenant_db_index_array=()
     while true; do
-        name_tmp=`cat $FILE | ${YQ_CMD} r - spec.datasource_configuration.dc_ca_datasource.tenant_databases.[$tenant_db_instance_num]`
+        name_tmp=`${YQ_CMD} ".spec.datasource_configuration.dc_ca_datasource.tenant_databases.[$tenant_db_instance_num] // \"\"" "$FILE"`
         if [ -z "$name_tmp" ]; then
             break
         else
@@ -4185,8 +4186,8 @@ function set_object_store_content_pattern(){
             for ((j=1;j<${content_os_number};j++))
             do
                 ((obj_num=j+1))
-                ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[${j}].dc_common_os_datasource_name "\"FNOS${obj_num}DS\""
-                ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[${j}].dc_common_os_xa_datasource_name "\"FNOS${obj_num}DSXA\""
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[${j}].dc_common_os_datasource_name = \"FNOS${obj_num}DS\"" ${CONTENT_PATTERN_FILE_TMP}
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[${j}].dc_common_os_xa_datasource_name = \"FNOS${obj_num}DSXA\"" ${CONTENT_PATTERN_FILE_TMP}
             done
 
             # Add additional OS into initialize_configuration
@@ -4207,15 +4208,15 @@ function set_object_store_content_pattern(){
             do
                 ((obj_num=j+1))
                 if [[ $obj_num -lt "10" ]]; then
-                    ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[${j}].oc_cpe_obj_store_display_name "\"OS0${obj_num}\""
-                    ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[${j}].oc_cpe_obj_store_symb_name "\"OS0${obj_num}\""
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[${j}].oc_cpe_obj_store_display_name = \"OS0${obj_num}\"" ${CONTENT_PATTERN_FILE_TMP}
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[${j}].oc_cpe_obj_store_symb_name = \"OS0${obj_num}\"" ${CONTENT_PATTERN_FILE_TMP}
                 else
-                    ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[${j}].oc_cpe_obj_store_display_name "\"OS${obj_num}\""
-                    ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[${j}].oc_cpe_obj_store_symb_name "\"OS${obj_num}\""
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[${j}].oc_cpe_obj_store_display_name = \"OS${obj_num}\"" ${CONTENT_PATTERN_FILE_TMP}
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[${j}].oc_cpe_obj_store_symb_name = \"OS${obj_num}\"" ${CONTENT_PATTERN_FILE_TMP}
                 fi
-                ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[${j}].oc_cpe_obj_store_conn.name "\"objectstore${obj_num}_connection\""
-                ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[${j}].oc_cpe_obj_store_conn.dc_os_datasource_name "\"FNOS${obj_num}DS\""
-                ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[${j}].oc_cpe_obj_store_conn.dc_os_xa_datasource_name "\"FNOS${obj_num}DSXA\""
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[${j}].oc_cpe_obj_store_conn.name = \"objectstore${obj_num}_connection\"" ${CONTENT_PATTERN_FILE_TMP}
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[${j}].oc_cpe_obj_store_conn.dc_os_datasource_name = \"FNOS${obj_num}DS\"" ${CONTENT_PATTERN_FILE_TMP}
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[${j}].oc_cpe_obj_store_conn.dc_os_xa_datasource_name = \"FNOS${obj_num}DSXA\"" ${CONTENT_PATTERN_FILE_TMP}
             done
 
             if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" && $DEPLOYMENT_WITH_PROPERTY == "Yes" ]]; then
@@ -4225,7 +4226,7 @@ function set_object_store_content_pattern(){
                     tmp_os_db_enable_adp="$(prop_db_name_user_property_file OS${obj_num}_ENABLE_DOCUMENT_PROCESSING)"
                     tmp_os_db_enable_adp=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_os_db_enable_adp")
                     if [[ $tmp_os_db_enable_adp == "Yes" || $tmp_os_db_enable_adp == "YES" || $tmp_os_db_enable_adp == "Y" || $tmp_os_db_enable_adp == "True" || $tmp_os_db_enable_adp == "true" ]]; then
-                        ${YQ_CMD} w -i ${CONTENT_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[${j}].oc_cpe_obj_store_enable_document_processing "true"
+                        ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[${j}].oc_cpe_obj_store_enable_document_processing = \"true\"" ${CONTENT_PATTERN_FILE_TMP}
                     fi
                 done
             fi
@@ -4256,8 +4257,8 @@ function set_object_store_adp_pattern(){
             for ((j=1;j<${content_os_number};j++))
             do
                 ((obj_num=j+1))
-                ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[${j}].dc_common_os_datasource_name "\"FNOS${obj_num}DS\""
-                ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[${j}].dc_common_os_xa_datasource_name "\"FNOS${obj_num}DSXA\""
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[${j}].dc_common_os_datasource_name = \"FNOS${obj_num}DS\"" ${ARIA_PATTERN_FILE_TMP}
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[${j}].dc_common_os_xa_datasource_name = \"FNOS${obj_num}DSXA\"" ${ARIA_PATTERN_FILE_TMP}
             done
 
             # Add additional OS into initialize_configuration
@@ -4278,15 +4279,15 @@ function set_object_store_adp_pattern(){
             do
                 ((obj_num=j+1))
                 if [[ $obj_num -lt "10" ]]; then
-                    ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[${j}].oc_cpe_obj_store_display_name "\"OS0${obj_num}\""
-                    ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[${j}].oc_cpe_obj_store_symb_name "\"OS0${obj_num}\""
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[${j}].oc_cpe_obj_store_display_name = \"OS0${obj_num}\"" ${ARIA_PATTERN_FILE_TMP}
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[${j}].oc_cpe_obj_store_symb_name = \"OS0${obj_num}\"" ${ARIA_PATTERN_FILE_TMP}
                 else
-                    ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[${j}].oc_cpe_obj_store_display_name "\"OS${obj_num}\""
-                    ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[${j}].oc_cpe_obj_store_symb_name "\"OS${obj_num}\""
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[${j}].oc_cpe_obj_store_display_name = \"OS${obj_num}\"" ${ARIA_PATTERN_FILE_TMP}
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[${j}].oc_cpe_obj_store_symb_name = \"OS${obj_num}\"" ${ARIA_PATTERN_FILE_TMP}
                 fi
-                ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[${j}].oc_cpe_obj_store_conn.name "\"objectstore${obj_num}_connection\""
-                ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[${j}].oc_cpe_obj_store_conn.dc_os_datasource_name "\"FNOS${obj_num}DS\""
-                ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[${j}].oc_cpe_obj_store_conn.dc_os_xa_datasource_name "\"FNOS${obj_num}DSXA\""
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[${j}].oc_cpe_obj_store_conn.name = \"objectstore${obj_num}_connection\"" ${ARIA_PATTERN_FILE_TMP}
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[${j}].oc_cpe_obj_store_conn.dc_os_datasource_name = \"FNOS${obj_num}DS\"" ${ARIA_PATTERN_FILE_TMP}
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[${j}].oc_cpe_obj_store_conn.dc_os_xa_datasource_name = \"FNOS${obj_num}DSXA\"" ${ARIA_PATTERN_FILE_TMP}
             done
 
             if [[ $DEPLOYMENT_WITH_PROPERTY == "Yes" ]]; then
@@ -4296,7 +4297,7 @@ function set_object_store_adp_pattern(){
                     tmp_os_db_enable_adp="$(prop_db_name_user_property_file OS${obj_num}_ENABLE_DOCUMENT_PROCESSING)"
                     tmp_os_db_enable_adp=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_os_db_enable_adp")
                     if [[ $tmp_os_db_enable_adp == "Yes" || $tmp_os_db_enable_adp == "YES" || $tmp_os_db_enable_adp == "Y" || $tmp_os_db_enable_adp == "True" || $tmp_os_db_enable_adp == "true" ]]; then
-                        ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[${j}].oc_cpe_obj_store_enable_document_processing "true"
+                        ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[${j}].oc_cpe_obj_store_enable_document_processing = \"true\"" ${ARIA_PATTERN_FILE_TMP}
                     fi
                 done
             fi
@@ -4314,7 +4315,7 @@ function set_aca_tenant_pattern(){
             echo -e "\x1B[1;31mNot any element in ACA tenant list found\x1B[0m:\x1B[1m"
         else
             for i in ${!aca_tenant_arr[@]}; do
-               ${YQ_CMD} w -i ${ACA_PATTERN_FILE_TMP} spec.datasource_configuration.dc_ca_datasource.tenant_databases.[${i}] "${aca_tenant_arr[i]}"
+               ${YQ_CMD} -i ".spec.datasource_configuration.dc_ca_datasource.tenant_databases[${i}] = \"${aca_tenant_arr[$i]}\"" ${ACA_PATTERN_FILE_TMP}
              done
         fi
         ${COPY_CMD} -rf ${ACA_PATTERN_FILE_TMP} ${ACA_PATTERN_FILE_BAK}
@@ -4654,12 +4655,12 @@ function input_information(){
         fi
     elif [[ "$INSTALLATION_TYPE" == "existing" ]]
     then
-        existing_infra_name=`cat $CP4A_EXISTING_BAK | ${YQ_CMD} r - spec.shared_configuration.sc_deployment_hostname_suffix`
+        existing_infra_name=`${YQ_CMD} ".spec.shared_configuration.sc_deployment_hostname_suffix // \"\"" "$CP4A_EXISTING_BAK"`
         if [ ! -z "$existing_infra_name" ]; then
             chrlen=${#existing_infra_name}
             INFRA_NAME=${existing_infra_name:21:chrlen}
         fi
-        existing_ldap_type=`cat $CP4A_EXISTING_BAK | ${YQ_CMD} r - spec.ldap_configuration.lc_selected_ldap_type`
+        existing_ldap_type=`${YQ_CMD} ".spec.ldap_configuration.lc_selected_ldap_type" "$CP4A_EXISTING_BAK"`
         if [[ "$existing_ldap_type" == "Microsoft Active Directory" ]];then
             LDAP_TYPE="AD"
 
@@ -4667,12 +4668,12 @@ function input_information(){
         then
             LDAP_TYPE="TDS"
         fi
-        existing_docker_reg_server=`cat $CP4A_EXISTING_BAK | ${YQ_CMD} r - spec.shared_configuration.sc_image_repository`
+        existing_docker_reg_server=`${YQ_CMD} ".spec.shared_configuration.sc_image_repository" "$CP4A_EXISTING_BAK"`
         if [[ "$existing_docker_reg_server" == *"icr.io"* ]]; then
             use_entitlement="yes"
         fi
 
-        local_registry_server=`cat $CP4A_EXISTING_BAK | ${YQ_CMD} r - spec.shared_configuration.sc_image_repository`
+        local_registry_server=`${YQ_CMD} ".spec.shared_configuration.sc_image_repository" "$CP4A_EXISTING_BAK"`
         DOCKER_REG_SERVER="${existing_docker_reg_server}"
         LOCAL_REGISTRY_SERVER=${local_registry_server}
         OIFS=$IFS
@@ -4685,12 +4686,12 @@ function input_information(){
         done
         IFS=$OIFS
         CONVERT_LOCAL_REGISTRY_SERVER=${joined}
-        DOCKER_RES_SECRET_NAME=`cat $CP4A_EXISTING_BAK | ${YQ_CMD} r - spec.shared_configuration.image_pull_secrets.[0]`
-        STORAGE_CLASS_NAME=`cat $CP4A_EXISTING_BAK | ${YQ_CMD} r - spec.shared_configuration.storage_configuration.sc_dynamic_storage_classname`
-        SLOW_STORAGE_CLASS_NAME=`cat $CP4A_EXISTING_BAK | ${YQ_CMD} r - spec.shared_configuration.storage_configuration.sc_slow_file_storage_classname`
-        MEDIUM_STORAGE_CLASS_NAME=`cat $CP4A_EXISTING_BAK | ${YQ_CMD} r - spec.shared_configuration.storage_configuration.sc_medium_file_storage_classname`
-        FAST_STORAGE_CLASS_NAME=`cat $CP4A_EXISTING_BAK | ${YQ_CMD} r - spec.shared_configuration.storage_configuration.sc_fast_file_storage_classname`
-        BLOCK_STORAGE_CLASS_NAME=`cat $CP4A_EXISTING_BAK | ${YQ_CMD} r - spec.shared_configuration.storage_configuration.sc_block_storage_classname`
+        DOCKER_RES_SECRET_NAME=`${YQ_CMD} ".spec.shared_configuration.image_pull_secrets.[0]" "$CP4A_EXISTING_BAK"`
+        STORAGE_CLASS_NAME=`${YQ_CMD} ".spec.shared_configuration.storage_configuration.sc_dynamic_storage_classname" "$CP4A_EXISTING_BAK"`
+        SLOW_STORAGE_CLASS_NAME=`${YQ_CMD} ".spec.shared_configuration.storage_configuration.sc_slow_file_storage_classname" "$CP4A_EXISTING_BAK"`
+        MEDIUM_STORAGE_CLASS_NAME=`${YQ_CMD} ".spec.shared_configuration.storage_configuration.sc_medium_file_storage_classname" "$CP4A_EXISTING_BAK"`
+        FAST_STORAGE_CLASS_NAME=`${YQ_CMD} ".spec.shared_configuration.storage_configuration.sc_fast_file_storage_classname" "$CP4A_EXISTING_BAK"`
+        BLOCK_STORAGE_CLASS_NAME=`${YQ_CMD} ".spec.shared_configuration.storage_configuration.sc_block_storage_classname" "$CP4A_EXISTING_BAK"`
     fi
 
     if [[ "$DEPLOYMENT_TYPE" == "production" && $DEPLOYMENT_WITH_PROPERTY == "No" ]]; then
@@ -4720,9 +4721,9 @@ function input_information(){
     fi
     if [[ ! (" ${PATTERNS_CR_SELECTED[@]} " =~ "content" && "${#PATTERNS_CR_SELECTED[@]}" -eq "1") ]]; then
         if [[ $IBM_LICENS == "Accept" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ibm_license "accept"
+            ${YQ_CMD} -i '.spec.ibm_license = "accept"' ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ibm_license ""
+            ${YQ_CMD} -i '.spec.ibm_license = ""' ${CP4A_PATTERN_FILE_TMP}
         fi
     fi
 }
@@ -4880,24 +4881,24 @@ function set_foundation_components(){
 
         for item in "${FOUNDATION_DELETE_LIST[@]}"; do
             if [[ "$item" == "BAS" ]];then
-                ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration
+                ${YQ_CMD} -i 'del(.spec.bastudio_configuration)' "${CP4A_PATTERN_FILE_TMP}"
             fi
             if [[ "$item" == "UMS" ]];then
-                ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ums_configuration
-                ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_ums_datasource
+                ${YQ_CMD} -i 'del(.spec.ums_configuration)' "${CP4A_PATTERN_FILE_TMP}"
+                ${YQ_CMD} -i 'del(.spec.datasource_configuration.dc_ums_datasource)' "${CP4A_PATTERN_FILE_TMP}"
             fi
             if [[ "$item" == "BAN" ]];then
                 if [[ " ${optional_component_cr_arr[@]} " =~ "case" ]]; then
                     break
                 else
-                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.navigator_configuration
+                    ${YQ_CMD} -i 'del(.spec.navigator_configuration)' "${CP4A_PATTERN_FILE_TMP}"
                 fi
             fi
             if [[ "$item" == "RR" ]];then
-                ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.resource_registry_configuration
+                ${YQ_CMD} -i 'del(.spec.resource_registry_configuration)' "${CP4A_PATTERN_FILE_TMP}"
             fi
             if [[ "$item" == "AE" ]];then
-                ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration
+                ${YQ_CMD} -i 'del(.spec.application_engine_configuration)' "${CP4A_PATTERN_FILE_TMP}"
             fi
         done
     fi
@@ -4937,19 +4938,19 @@ function merge_pattern(){
                     if [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "content" && "${#PATTERNS_CR_SELECTED[@]}" -eq "1" ]]; then
                         ${COPY_CMD} -rf "${CONTENT_PATTERN_FILE_BAK}" "${CP4A_PATTERN_FILE_TMP}"
                     else
-                        ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${CONTENT_PATTERN_FILE_BAK}
+                        ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${CONTENT_PATTERN_FILE_BAK}
                     fi
                     break
                     ;;
                 "contentanalyzer")
                     set_aca_tenant_pattern
-                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_ca_datasource.tenant_databases
-                    ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${ACA_PATTERN_FILE_BAK}
+                    ${YQ_CMD} -i 'del(.spec.datasource_configuration.dc_ca_datasource.tenant_databases)' "${CP4A_PATTERN_FILE_TMP}"
+                    ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${ACA_PATTERN_FILE_BAK}
                     break
                     ;;
                 "decisions")
                     set_decision_feature
-                    ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${DECISIONS_PATTERN_FILE_BAK}
+                    ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${DECISIONS_PATTERN_FILE_BAK}
                     break
                     ;;
                 "workflow")
@@ -4963,14 +4964,14 @@ function merge_pattern(){
                             #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.bastudio_configuration
                             #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.baw_configuration
                             # fi
-                            ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${WORKFLOW_PATTERN_FILE_BAK}
+                            ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WORKFLOW_PATTERN_FILE_BAK}
                         elif [[ $DEPLOYMENT_TYPE == "starter" ]]
                         then
                             # if [[ $INSTALLATION_TYPE == "existing" && (" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow") ]]; then
                             #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.baw_configuration
                             # fi
-                            ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${WORKFLOW_PATTERN_FILE_BAK}
-                            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration
+                            ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WORKFLOW_PATTERN_FILE_BAK}
+                            ${YQ_CMD} -i 'del(.spec.bastudio_configuration)' "${CP4A_PATTERN_FILE_TMP}"
                         fi
                     fi
                     break
@@ -4981,7 +4982,7 @@ function merge_pattern(){
                     # if [[ "$AE_DATA_PERSISTENCE_ENABLE" == "Yes" ]]; then
                     #     enable_ae_data_persistence_workflow_authoring
                     # fi
-                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration
+                    ${YQ_CMD} -i 'del(.spec.baw_configuration)' "${CP4A_PATTERN_FILE_TMP}"
 
 
                     if [[ $DEPLOYMENT_TYPE == "production" ]];then
@@ -4990,7 +4991,7 @@ function merge_pattern(){
                         #     ${YQ_CMD} d -i ${WORKFLOW_AUTHOR_PATTERN_FILE_BAK} spec.initialize_configuration
                         #     ${YQ_CMD} d -i ${WORKFLOW_AUTHOR_PATTERN_FILE_BAK} spec.bastudio_configuration
                         # fi
-                        ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${WORKFLOW_AUTHOR_PATTERN_FILE_BAK}
+                        ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WORKFLOW_AUTHOR_PATTERN_FILE_BAK}
                     fi
                     break
                     ;;
@@ -5007,18 +5008,18 @@ function merge_pattern(){
                             #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.datasource_configuration.dc_os_datasources
                             #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.initialize_configuration
                             # fi
-                            ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${WORKFLOW_PATTERN_FILE_BAK}
+                            ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WORKFLOW_PATTERN_FILE_BAK}
                         fi
                     elif [[ $DEPLOYMENT_TYPE == "starter" ]]
                     then
-                        ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${WORKFLOW_PATTERN_FILE_BAK}
-                        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration
+                        ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WORKFLOW_PATTERN_FILE_BAK}
+                        ${YQ_CMD} -i 'del(.spec.bastudio_configuration)' "${CP4A_PATTERN_FILE_TMP}"
                     fi
                     break
                     ;;
                 "workstreams")
                     # set_ldap_type_workstreams_pattern
-                    ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${WORKSTREAMS_PATTERN_FILE_BAK}
+                    ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WORKSTREAMS_PATTERN_FILE_BAK}
                     break
                     ;;
                 "workflow-workstreams")
@@ -5038,15 +5039,15 @@ function merge_pattern(){
                             #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.initialize_configuration.ic_obj_store_creation.object_stores.[3]
                             #     ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${WORKFLOW_PATTERN_FILE_BAK}
                             # fi
-                            ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${WW_PATTERN_FILE_BAK}
+                            ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WW_PATTERN_FILE_BAK}
                         else
-                            ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${WW_PATTERN_FILE_BAK}
+                            ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WW_PATTERN_FILE_BAK}
 
                         fi
                     elif [[ $DEPLOYMENT_TYPE == "starter" ]]
                     then
-                        ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${WW_PATTERN_FILE_BAK}
-                        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration
+                        ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WW_PATTERN_FILE_BAK}
+                        ${YQ_CMD} -i 'del(.spec.application_engine_configuration)' "${CP4A_PATTERN_FILE_TMP}"
                     fi
                     break
                     ;;
@@ -5055,16 +5056,16 @@ function merge_pattern(){
                     if [[ "$AE_DATA_PERSISTENCE_ENABLE" == "Yes" || " ${OPT_COMPONENTS_CR_SELECTED[@]} " =~ "ae_data_persistence" ]]; then
                         enable_ae_data_persistence_baa
                     fi
-                    ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${APPLICATION_PATTERN_FILE_BAK}
+                    ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${APPLICATION_PATTERN_FILE_BAK}
                     break
                     ;;
                 "digitalworker")
-                    ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${ADW_PATTERN_FILE_BAK}
+                    ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${ADW_PATTERN_FILE_BAK}
                     break
                     ;;
                 "decisions_ads")
                     set_ads_designer_runtime
-                    ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${ADS_PATTERN_FILE_BAK}
+                    ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${ADS_PATTERN_FILE_BAK}
                     break
                     ;;
                 "document_processing")
@@ -5074,15 +5075,15 @@ function merge_pattern(){
                         if [[ $content_os_number -gt 0 && "${pattern_cr_arr[@]}" =~ "document_processing" && (! "${pattern_cr_arr[@]}" =~ "content") ]]; then
                             set_object_store_adp_pattern
                         else
-                            OS_DATASOURCE_NUMBER=$(grep "^      dc_common_os_datasource_name: " ${ARIA_PATTERN_FILE_BAK} | grep -Fn 'FNOS1DS'|cut -d':' -f1)
+                            OS_DATASOURCE_NUMBER=$(grep "^        dc_common_os_datasource_name: " ${ARIA_PATTERN_FILE_BAK} | grep -Fn 'FNOS1DS'|cut -d':' -f1)
                             if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
                                 OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
-                                ${YQ_CMD} d -i ${ARIA_PATTERN_FILE_BAK} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER]
+                                ${YQ_CMD} -i "del(.spec.datasource_configuration.dc_os_datasources[\"${OS_DATASOURCE_NUMBER}\"])" "${ARIA_PATTERN_FILE_BAK}"
                             fi
-                            OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${ARIA_PATTERN_FILE_BAK} | grep -Fn 'FNOS1DS'|cut -d':' -f1)
+                            OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${ARIA_PATTERN_FILE_BAK} | grep -Fn 'FNOS1DS'|cut -d':' -f1)
                             if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
                                 OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
-                                ${YQ_CMD} d -i ${ARIA_PATTERN_FILE_BAK} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER]
+                                ${YQ_CMD} -i "del(.spec.initialize_configuration.ic_obj_store_creation.object_stores[\"${OS_DATASOURCE_NUMBER}\"])" "${ARIA_PATTERN_FILE_BAK}"
                             fi
 
                         fi
@@ -5094,7 +5095,7 @@ function merge_pattern(){
                             ${SED_COMMAND} "s/  #        REPO_SERVICE_URL: \"<Required>\"/          REPO_SERVICE_URL: \"<Required>\"/g" ${ARIA_PATTERN_FILE_BAK}
                         fi
                     fi
-                    ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${ARIA_PATTERN_FILE_BAK}
+                    ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${ARIA_PATTERN_FILE_BAK}
                     break
                     ;;
                 "document_processing_runtime")
@@ -5104,7 +5105,7 @@ function merge_pattern(){
                     break
                     ;;
                 "workflow-process-service")
-                    ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${WFPS_AUTHOR_PATTERN_FILE_BAK}
+                    ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WFPS_AUTHOR_PATTERN_FILE_BAK}
                     break
                     ;;
                 "foundation")
@@ -5113,6 +5114,49 @@ function merge_pattern(){
             esac
         done
     done
+    # Tidying up final CR file after merging (required after upgrading to yq v4)
+    if [[ ! (" ${PATTERNS_CR_SELECTED[@]} " =~ "content" && "${#PATTERNS_CR_SELECTED[@]}" -eq "1") ]]; then
+        if [[ $IBM_LICENS == "Accept" ]]; then
+            ${YQ_CMD} -i '.spec.ibm_license = "accept"' ${CP4A_PATTERN_FILE_TMP}
+        else
+            ${YQ_CMD} -i '.spec.ibm_license = ""' ${CP4A_PATTERN_FILE_TMP}
+        fi
+    fi
+    # YQ v4 adds ALL the comments from the other pattern yaml files, this will remove the excess and keep the last one, as before
+    clean_license_block "${CP4A_PATTERN_FILE_TMP}"
+}
+
+function clean_license_block() {
+    local file="$1"
+    awk '
+        BEGIN { in_block = 0; block = ""; content = ""; last_block = "" }
+        /^#{79}$/ {
+            if (in_block) {
+                block = block $0 "\n"
+                last_block = block
+                block = ""
+                in_block = 0
+            } else {
+                block = $0 "\n"
+                in_block = 1
+            }
+            next
+        }
+        in_block {
+            block = block $0 "\n"
+            next
+        }
+        {
+            content = content $0 "\n"
+        }
+        END {
+            printf "%s%s", last_block, rtrim(content)
+        }
+        function rtrim(s) {
+            sub(/[[:space:]]+$/, "", s)
+            return s
+        }
+    ' "$file" > "${file}.cleaned" && mv "${file}.cleaned" "$file"
 }
 
 function merge_optional_components(){
@@ -5121,7 +5165,7 @@ function merge_optional_components(){
         while true; do
             case $item in
                 "bas")
-                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration
+                    ${YQ_CMD} -i 'del(.spec.bastudio_configuration)' "${CP4A_PATTERN_FILE_TMP}"
                     break
                     ;;
                 "ums")
@@ -5129,37 +5173,37 @@ function merge_optional_components(){
                         containsElement "bai" "${optional_component_cr_arr[@]}"
                         retVal=$?
                         if [[ $retVal -eq 1 ]]; then
-                            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ums_configuration
-                            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_ums_datasource
+                            ${YQ_CMD} -i 'del(.spec.ums_configuration)' "${CP4A_PATTERN_FILE_TMP}"
+                            ${YQ_CMD} -i 'del(.spec.datasource_configuration.dc_ums_datasource)' "${CP4A_PATTERN_FILE_TMP}"
                         fi
                     else
-                        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ums_configuration
-                        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_ums_datasource
+                        ${YQ_CMD} -i 'del(.spec.ums_configuration)' "${CP4A_PATTERN_FILE_TMP}"
+                        ${YQ_CMD} -i 'del(.spec.datasource_configuration.dc_ums_datasource)' "${CP4A_PATTERN_FILE_TMP}"
                     fi
                     break
                     ;;
                 "cmis")
-                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration.cmis
+                    ${YQ_CMD} -i 'del(.spec.ecm_configuration.cmis)' "${CP4A_PATTERN_FILE_TMP}"
                     break
                     ;;
                 "css")
-                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration.css
+                    ${YQ_CMD} -i 'del(.spec.ecm_configuration.css)' "${CP4A_PATTERN_FILE_TMP}"
                     break
                     ;;
                 "es")
-                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration.es
+                    ${YQ_CMD} -i 'del(.spec.ecm_configuration.es)' "${CP4A_PATTERN_FILE_TMP}"
                     break
                     ;;
                 "tm")
-                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration.tm
+                    ${YQ_CMD} -i 'del(.spec.ecm_configuration.tm)' "${CP4A_PATTERN_FILE_TMP}"
                     break
                     ;;
                 "ier")
-                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ier_configuration
+                    ${YQ_CMD} -i 'del(.spec.ier_configuration)' "${CP4A_PATTERN_FILE_TMP}"
                     break
                     ;;
                 "iccsap")
-                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.iccsap_configuration
+                    ${YQ_CMD} -i 'del(.spec.iccsap_configuration)' "${CP4A_PATTERN_FILE_TMP}"
                     break
                     ;;
                 "ban")
@@ -5167,19 +5211,19 @@ function merge_optional_components(){
                     ;;
                 "case")
                     if [[ "${DEPLOYMENT_TYPE}" == "starter" && (" ${OPTIONAL_COMPONENT_DELETE_LIST[@]} " =~ "workstreams") && (" ${OPTIONAL_COMPONENT_DELETE_LIST[@]} " =~ "content_integration") && (" ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-workstreams") ]]; then
-                        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration
+                        ${YQ_CMD} -i 'del(.spec.ecm_configuration)' "${CP4A_PATTERN_FILE_TMP}"
                     fi
                     break
                     ;;
                 "workstreams")
                     if [[ "${DEPLOYMENT_TYPE}" == "starter" && (" ${OPTIONAL_COMPONENT_DELETE_LIST[@]} " =~ "case") && (" ${OPTIONAL_COMPONENT_DELETE_LIST[@]} " =~ "content_integration") && (" ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-workstreams") ]]; then
-                        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration
+                        ${YQ_CMD} -i 'del(.spec.ecm_configuration)' "${CP4A_PATTERN_FILE_TMP}"
                     fi
                     break
                     ;;
                 "content_integration")
                     if [[ "${DEPLOYMENT_TYPE}" == "starter" && (" ${OPTIONAL_COMPONENT_DELETE_LIST[@]} " =~ "workstreams") && (" ${OPTIONAL_COMPONENT_DELETE_LIST[@]} " =~ "case") && (" ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-workstreams") ]]; then
-                        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration
+                        ${YQ_CMD} -i 'del(.spec.ecm_configuration)' "${CP4A_PATTERN_FILE_TMP}"
                     fi
                     break
                     ;;
@@ -5189,19 +5233,19 @@ function merge_optional_components(){
                     elif [[ "${DEPLOYMENT_TYPE}" == "starter" && (" ${OPT_COMPONENTS_CR_SELECTED[@]} " =~ "baml") && (" ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-workstreams") ]]; then
                         break
                     else
-                        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.bai_configuration
+                        ${YQ_CMD} -i 'del(.spec.bai_configuration)' "${CP4A_PATTERN_FILE_TMP}"
                         break
                     fi
                     ;;
                 "pfs")
                     if [[ "${DEPLOYMENT_TYPE}" == "starter" && (" ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-workstreams") ]]; then
-                        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.pfs_configuration
+                        ${YQ_CMD} -i 'del(.spec.pfs_configuration)' "${CP4A_PATTERN_FILE_TMP}"
                     fi
                     break
                     ;;
                 "baml")
                     if [[ "${DEPLOYMENT_TYPE}" == "starter" && (" ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-workstreams") ]]; then
-                        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.baml_configuration
+                        ${YQ_CMD} -i 'del(.spec.baml_configuration)' "${CP4A_PATTERN_FILE_TMP}"
                     fi
                     break
                     ;;
@@ -5284,7 +5328,7 @@ function get_existing_pattern_name(){
         read -p "[Default=$pattern_file_bak]: " existing_pattern_cr_name
         : ${existing_pattern_cr_name:=$pattern_file_bak}
         if [ -f "$existing_pattern_cr_name" ]; then
-            existing_cr_type=`cat $existing_pattern_cr_name | ${YQ_CMD} r - kind`
+            existing_cr_type=`${YQ_CMD} ".kind" "$existing_pattern_cr_name"`
             existing_cr_type=$(echo "${existing_cr_type}" | tr '[:upper:]' '[:lower:]')
             # IF the CR kind is content , then some of the parameters are different compared to what we have for an ICP4ACluster type CR
             # The next if else block addresses this
@@ -5292,13 +5336,13 @@ function get_existing_pattern_name(){
             if [[ "$existing_cr_type" == "content" ]];then
                 # For content kind CR the deployment type is under content_deployment_type
                 # For https://jsw.ibm.com/browse/DBACLD-159390
-                existing_deployment_type=`cat $existing_pattern_cr_name | ${YQ_CMD} r - spec.content_deployment_type`
+                existing_deployment_type=`${YQ_CMD} ".spec.content_deployment_type" "$existing_pattern_cr_name"`
                 # For content kind CR the pattern list is foundation,content
                 # For https://jsw.ibm.com/browse/DBACLD-159390
                 existing_pattern_list="foundation,content"
                 existing_opt_component_list=""
                 # Loop through the keys and values of spec.content_optional_components which will give us the list of optional components selected
-                optional_components_section=$(${YQ_CMD} r "$existing_pattern_cr_name" "spec.content_optional_components")
+                optional_components_section=$(${YQ_CMD} ".spec.content_optional_components" "$existing_pattern_cr_name")
                 while IFS=: read -r key value; do
                     key=$(echo "$key" | xargs)       
                     value=$(echo "$value" | xargs)
@@ -5312,22 +5356,22 @@ function get_existing_pattern_name(){
             else
                 # IF the CR is generated from the from UI then the sc_deployment_type is not a key that will be in the CR , it will be under olm_deployment_type
                 # For https://jsw.ibm.com/browse/DBACLD-159390
-                key_value=$(${YQ_CMD} r $existing_pattern_cr_name 'spec.shared_configuration.sc_deployment_type' 2>/dev/null)
+                key_value=$(${YQ_CMD} '.spec.shared_configuration.sc_deployment_type' "$existing_pattern_cr_name" 2>/dev/null)
                 if [[ "$key_value" ]]; then
-                    existing_deployment_type=`cat $existing_pattern_cr_name | ${YQ_CMD} r - spec.shared_configuration.sc_deployment_type`
+                    existing_deployment_type=`${YQ_CMD} ".spec.shared_configuration.sc_deployment_type" "$existing_pattern_cr_name"`
                 else
-                    existing_deployment_type=`cat $existing_pattern_cr_name | ${YQ_CMD} r - spec.olm_deployment_type`
+                    existing_deployment_type=`${YQ_CMD} ".spec.olm_deployment_type" "$existing_pattern_cr_name"`
                 fi
-                key_value=$(${YQ_CMD} r $existing_pattern_cr_name 'spec.shared_configuration.sc_deployment_patterns' 2>/dev/null)
+                key_value=$(${YQ_CMD} '.spec.shared_configuration.sc_deployment_patterns' "$existing_pattern_cr_name" 2>/dev/null)
                 if [[ "$key_value" ]]; then
-                    existing_pattern_list=`cat $existing_pattern_cr_name | ${YQ_CMD} r - spec.shared_configuration.sc_deployment_patterns`
+                    existing_pattern_list=`${YQ_CMD} ".spec.shared_configuration.sc_deployment_patterns // \"\"" "$existing_pattern_cr_name"`
                 else
                     # IF the CR is generated from the from UI then the sc_deployment_patterns is not a key that will be in the CR , the patterns selected will be mapped to the list of keys below by being set to true for a specific pattern key
                     # For https://jsw.ibm.com/browse/DBACLD-159390
                     keys=("olm_starter_application" "olm_starter_content" "olm_starter_decisions" "olm_starter_decisions_ads" "olm_starter_document_processing" "olm_starter_workflow")
                     for key in "${keys[@]}"; do
                         # Get the value of the current key from the YAML file
-                        value=$(${YQ_CMD} r "$existing_pattern_cr_name" "spec.$key")
+                        value=$(${YQ_CMD} ".spec.$key" "$existing_pattern_cr_name")
                         value=$(echo "$value" | xargs)
                         if [[ "$value" == "true" && "$key" == olm_starter_* ]]; then
                             part_after_prefix="${key#olm_starter_}"
@@ -5340,15 +5384,15 @@ function get_existing_pattern_name(){
                     done
                 fi
                 
-                key_value=$(${YQ_CMD} r $existing_pattern_cr_name 'spec.shared_configuration.sc_optional_components' 2>/dev/null)
+                key_value=$(${YQ_CMD} '.spec.shared_configuration.sc_optional_components' "$existing_pattern_cr_name" 2>/dev/null)
                 if [[ "$key_value" ]]; then
-                    existing_opt_component_list=`cat $existing_pattern_cr_name | ${YQ_CMD} r - spec.shared_configuration.sc_optional_components`
+                    existing_opt_component_list=`${YQ_CMD} ".spec.shared_configuration.sc_optional_components" "$existing_pattern_cr_name"`
                 else
                     # IF the CR is generated from the from UI then the sc_deployment_patterns is not a key that will be in the CR , the patterns selected will be mapped to the olm_starter_option section by being set to true for a specific component key
                     # For https://jsw.ibm.com/browse/DBACLD-159390
                     existing_opt_component_list=""
                     # Loop through the keys and values
-                    optional_components_section=$(${YQ_CMD} r "$existing_pattern_cr_name" "spec.olm_starter_option")
+                    optional_components_section=$(${YQ_CMD} ".spec.olm_starter_option" "$existing_pattern_cr_name")
                     while IFS=: read -r key value; do
                         # Extract key and value using shell parameter expansion
                         key=$(echo "$key" | xargs)       # Trim whitespace from the key
@@ -5363,8 +5407,8 @@ function get_existing_pattern_name(){
                 fi 
             fi
 
-            existing_platform_type=`cat $existing_pattern_cr_name | ${YQ_CMD} r - spec.shared_configuration.sc_deployment_platform`
-            existing_profile_type=`cat $existing_pattern_cr_name | ${YQ_CMD} r - spec.shared_configuration.sc_deployment_profile_size`
+            existing_platform_type=`${YQ_CMD} ".spec.shared_configuration.sc_deployment_platform" "$existing_pattern_cr_name"`
+            existing_profile_type=`${YQ_CMD} ".spec.shared_configuration.sc_deployment_profile_size" "$existing_pattern_cr_name"`
 
             if [[ $existing_deployment_type == "demo" ]];then
                 existing_deployment_type="Starter"
@@ -5552,8 +5596,8 @@ function set_ads_designer_runtime(){
     ${COPY_CMD} -rf ${ADS_PATTERN_FILE_BAK} ${ADS_PATTERN_FILE_TMP}
     if [[ $DEPLOYMENT_TYPE == "starter"  ]] ;
     then
-        ${YQ_CMD} w -i ${ADS_PATTERN_FILE_TMP} spec.ads_configuration.decision_designer.enabled "true"
-        ${YQ_CMD} w -i ${ADS_PATTERN_FILE_TMP} spec.ads_configuration.decision_runtime.enabled "true"
+        ${YQ_CMD} -i '.spec.ads_configuration.decision_designer.enabled = true' ${ADS_PATTERN_FILE_TMP}
+        ${YQ_CMD} -i '.spec.ads_configuration.decision_runtime.enabled = true' ${ADS_PATTERN_FILE_TMP}
         foundation_ads=("BAS")
         foundation_component_arr=( "${foundation_component_arr[@]}" "${foundation_ads[@]}" )
 
@@ -5562,18 +5606,18 @@ function set_ads_designer_runtime(){
         containsElement "ads_designer" "${OPT_COMPONENTS_CR_SELECTED[@]}"
         retVal=$?
         if [[ $retVal -eq 0 ]]; then
-            ${YQ_CMD} w -i ${ADS_PATTERN_FILE_TMP} spec.ads_configuration.decision_designer.enabled "true"
+            ${YQ_CMD} -i '.spec.ads_configuration.decision_designer.enabled = true' ${ADS_PATTERN_FILE_TMP}
             foundation_ads=("BAS")
             foundation_component_arr=( "${foundation_component_arr[@]}" "${foundation_ads[@]}" )
         else
-            ${YQ_CMD} w -i ${ADS_PATTERN_FILE_TMP} spec.ads_configuration.decision_designer.enabled "false"
+            ${YQ_CMD} -i '.spec.ads_configuration.decision_designer.enabled = false' ${ADS_PATTERN_FILE_TMP}
         fi
         containsElement "ads_runtime" "${OPT_COMPONENTS_CR_SELECTED[@]}"
         retVal=$?
         if [[ $retVal -eq 0 ]]; then
-            ${YQ_CMD} w -i ${ADS_PATTERN_FILE_TMP} spec.ads_configuration.decision_runtime.enabled "true"
+            ${YQ_CMD} -i '.spec.ads_configuration.decision_runtime.enabled = true' ${ADS_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${ADS_PATTERN_FILE_TMP} spec.ads_configuration.decision_runtime.enabled "false"
+            ${YQ_CMD} -i '.spec.ads_configuration.decision_runtime.enabled = false' ${ADS_PATTERN_FILE_TMP}
         fi
 
     fi
@@ -5585,31 +5629,31 @@ function set_decision_feature(){
     ${COPY_CMD} -rf ${DECISIONS_PATTERN_FILE_BAK} ${DECISIONS_PATTERN_FILE_TMP}
     if [[ $DEPLOYMENT_TYPE == "starter"  ]] ;
     then
-        ${YQ_CMD} w -i ${DECISIONS_PATTERN_FILE_TMP} spec.odm_configuration.decisionCenter.enabled "true"
-        ${YQ_CMD} w -i ${DECISIONS_PATTERN_FILE_TMP} spec.odm_configuration.decisionServerRuntime.enabled "true"
-        ${YQ_CMD} w -i ${DECISIONS_PATTERN_FILE_TMP} spec.odm_configuration.decisionRunner.enabled "true"
+        ${YQ_CMD} -i '.spec.odm_configuration.decisionCenter.enabled = true' ${DECISIONS_PATTERN_FILE_TMP}
+        ${YQ_CMD} -i '.spec.odm_configuration.decisionServerRuntime.enabled = true' ${DECISIONS_PATTERN_FILE_TMP}
+        ${YQ_CMD} -i '.spec.odm_configuration.decisionRunner.enabled = true' ${DECISIONS_PATTERN_FILE_TMP}
     elif [[ $DEPLOYMENT_TYPE == "production" ]]
     then
         containsElement "decisionCenter" "${OPT_COMPONENTS_CR_SELECTED[@]}"
         retVal=$?
         if [[ $retVal -eq 0 ]]; then
-            ${YQ_CMD} w -i ${DECISIONS_PATTERN_FILE_TMP} spec.odm_configuration.decisionCenter.enabled "true"
+            ${YQ_CMD} -i '.spec.odm_configuration.decisionCenter.enabled = true' ${DECISIONS_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${DECISIONS_PATTERN_FILE_TMP} spec.odm_configuration.decisionCenter.enabled "false"
+            ${YQ_CMD} -i '.spec.odm_configuration.decisionCenter.enabled = false' ${DECISIONS_PATTERN_FILE_TMP}
         fi
         containsElement "decisionServerRuntime" "${OPT_COMPONENTS_CR_SELECTED[@]}"
         retVal=$?
         if [[ $retVal -eq 0 ]]; then
-            ${YQ_CMD} w -i ${DECISIONS_PATTERN_FILE_TMP} spec.odm_configuration.decisionServerRuntime.enabled "true"
+            ${YQ_CMD} -i '.spec.odm_configuration.decisionServerRuntime.enabled = true' ${DECISIONS_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${DECISIONS_PATTERN_FILE_TMP} spec.odm_configuration.decisionServerRuntime.enabled "false"
+            ${YQ_CMD} -i '.spec.odm_configuration.decisionServerRuntime.enabled = false' ${DECISIONS_PATTERN_FILE_TMP}
         fi
         containsElement "decisionRunner" "${OPT_COMPONENTS_CR_SELECTED[@]}"
         retVal=$?
         if [[ $retVal -eq 0 ]]; then
-            ${YQ_CMD} w -i ${DECISIONS_PATTERN_FILE_TMP} spec.odm_configuration.decisionRunner.enabled "true"
+            ${YQ_CMD} -i '.spec.odm_configuration.decisionRunner.enabled = true' ${DECISIONS_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${DECISIONS_PATTERN_FILE_TMP} spec.odm_configuration.decisionRunner.enabled "false"
+            ${YQ_CMD} -i '.spec.odm_configuration.decisionRunner.enabled = false' ${DECISIONS_PATTERN_FILE_TMP}
         fi
     fi
     ${COPY_CMD} -rf ${DECISIONS_PATTERN_FILE_TMP} ${DECISIONS_PATTERN_FILE_BAK}
@@ -5620,7 +5664,7 @@ function set_aria_gpu(){
     if [[ ($DEPLOYMENT_TYPE == "production" && (" ${PATTERNS_CR_SELECTED[@]} " =~ "document_processing_designer")) || $DEPLOYMENT_TYPE == "starter" ]] ;
     then
         if [[ "$ENABLE_GPU_ARIA" == "Yes" ]]; then
-            ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.ca_configuration.deeplearning.gpu_enabled "true"
+            ${YQ_CMD} -i '.spec.ca_configuration.deeplearning.gpu_enabled = true' ${ARIA_PATTERN_FILE_TMP}
             # ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.ca_configuration.deeplearning.nodelabel_key "$nodelabel_key"
             ${SED_COMMAND} "s|nodelabel_key:.*|nodelabel_key: \"$nodelabel_key\"|g" ${ARIA_PATTERN_FILE_TMP}
             # ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.ca_configuration.deeplearning.nodelabel_value "$nodelabel_value"
@@ -5628,19 +5672,19 @@ function set_aria_gpu(){
 
         elif [[ "$ENABLE_GPU_ARIA" == "No" ]]
         then
-            ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.ca_configuration.deeplearning.gpu_enabled "false"
+            ${YQ_CMD} -i '.spec.ca_configuration.deeplearning.gpu_enabled = false' ${ARIA_PATTERN_FILE_TMP}
         fi
     else
-        ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.ca_configuration.deeplearning.gpu_enabled "false"
+        ${YQ_CMD} -i '.spec.ca_configuration.deeplearning.gpu_enabled = false' ${ARIA_PATTERN_FILE_TMP}
     fi
 
     if [[ $DEPLOYMENT_TYPE == "starter" ]] ;
     then
         if [[ "$ADP_DL_ENABLED" == "Yes" ]]; then
-            ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.ca_configuration.ocrextraction.deep_learning_object_detection.enabled "true"
+            ${YQ_CMD} -i '.spec.ca_configuration.ocrextraction.deep_learning_object_detection.enabled = true' ${ARIA_PATTERN_FILE_TMP}
         elif [[ "$ADP_DL_ENABLED" == "No" ]]
         then
-            ${YQ_CMD} w -i ${ARIA_PATTERN_FILE_TMP} spec.ca_configuration.ocrextraction.deep_learning_object_detection.enabled "false"
+            ${YQ_CMD} -i '.spec.ca_configuration.ocrextraction.deep_learning_object_detection.enabled = false' ${ARIA_PATTERN_FILE_TMP}
         fi
     fi
     ${COPY_CMD} -rf ${ARIA_PATTERN_FILE_TMP} ${ARIA_PATTERN_FILE_BAK}
@@ -5704,7 +5748,7 @@ function sync_property_into_final_cr(){
             tmp_value="$(prop_user_profile_property_file CP4BA.BAW_LICENSE)"
             ${SED_COMMAND} "s|sc_deployment_baw_license:.*|sc_deployment_baw_license: \"$tmp_value\"|g" ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_deployment_baw_license
+            ${YQ_CMD} -i 'del(.spec.shared_configuration.sc_deployment_baw_license)' "${CP4A_PATTERN_FILE_TMP}"
         fi
         # Applying value in GCDDB property file into final CR
         tmp_gcd_db_servername="$(prop_db_name_user_property_file_for_server_name GCD_DB_USER_NAME)"
@@ -5724,7 +5768,7 @@ function sync_property_into_final_cr(){
         # Initialize the isfalse variable to validate spec.datasource_configuration.dc_ssl_enabled is true or false
         isfalse=false
         for i in "${!GCDDB_CR_MAPPING[@]}"; do
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${GCDDB_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_gcd_db_servername.${GCDDB_COMMON_PROPERTY[i]})\""
+            ${YQ_CMD} -i ".${GCDDB_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_gcd_db_servername.${GCDDB_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
                 # Check if we are updating spec.datasource_configuration.dc_ssl_enabled value is False
                 if [ "${GCDDB_CR_MAPPING[i]}" == "spec.datasource_configuration.dc_ssl_enabled" ] && [[ "$(prop_db_server_property_file $tmp_gcd_db_servername.${GCDDB_COMMON_PROPERTY[i]})" =~ ^[fF]alse$ ]]; then
                     # Set isfalse to true if the value is False
@@ -5734,7 +5778,7 @@ function sync_property_into_final_cr(){
                 if [ "${GCDDB_CR_MAPPING[i]}" == "spec.datasource_configuration.dc_gcd_datasource.database_ssl_secret_name" ]; then
                     if [ "$isfalse" == "true" ]; then
                         # If isfalse is true, set the value to ""
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.datasource_configuration.dc_gcd_datasource.database_ssl_secret_name" "\"\""
+                        ${YQ_CMD} -i ".spec.datasource_configuration.dc_gcd_datasource.database_ssl_secret_name = \"\"" ${CP4A_PATTERN_FILE_TMP}
                     fi
                 fi
         done
@@ -5743,16 +5787,16 @@ function sync_property_into_final_cr(){
         if [[ $DB_TYPE == "oracle" ]]; then
             get_oracle_service_name $(prop_db_server_property_file $tmp_gcd_db_servername.ORACLE_JDBC_URL)
             if [[ ! -z "$ORACLE_SERVICE_NAME" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_gcd_datasource.database_name "\"${ORACLE_SERVICE_NAME}GCD\""
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_gcd_datasource.database_name = \"${ORACLE_SERVICE_NAME}GCD\"" ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_gcd_datasource.database_name "\"<Required>\""
+                ${YQ_CMD} -i '.spec.datasource_configuration.dc_gcd_datasource.database_name = "<Required>"' ${CP4A_PATTERN_FILE_TMP}
             fi
             # ${SED_COMMAND} "s|database_name: '\"<Remove>\"'|# database_name: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_gcd_datasource.database_name "\"$tmp_gcd_db_name\""
+            ${YQ_CMD} -i ".spec.datasource_configuration.dc_gcd_datasource.database_name = \"$tmp_gcd_db_name\"" ${CP4A_PATTERN_FILE_TMP}
             if [[ $DB_TYPE == "postgresql-edb" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_gcd_datasource.dc_database_type "postgresql"
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_gcd_datasource.dc_use_postgres "true"
+                ${YQ_CMD} -i '.spec.datasource_configuration.dc_gcd_datasource.dc_database_type = "postgresql"' ${CP4A_PATTERN_FILE_TMP}
+                ${YQ_CMD} -i '.spec.datasource_configuration.dc_gcd_datasource.dc_use_postgres = true' ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
 
@@ -5763,14 +5807,14 @@ function sync_property_into_final_cr(){
             if [[ $DB_TYPE == "postgresql" ]]; then
                 tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
             fi
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration.cpe_production_setting.gcd_schema  "\"${tmp_schema_name}\""
+            ${YQ_CMD} -i ".spec.ecm_configuration.cpe_production_setting.gcd_schema = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
         fi
 
         # Applying user profile for CONTENT INITIONLIZATION
         tmp_init_flag="$(prop_user_profile_property_file CONTENT_INITIALIZATION.ENABLE)"
         tmp_init_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_init_flag")
         if [[ $tmp_init_flag == "Yes" || $tmp_init_flag == "YES" || $tmp_init_flag == "Y" || $tmp_init_flag == "True" || $tmp_init_flag == "true" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_content_initialization "true"
+            ${YQ_CMD} -i '.spec.shared_configuration.sc_content_initialization = true' ${CP4A_PATTERN_FILE_TMP}
 
             # Set initialize_configuration.ic_ldap_creation
             tmp_admin_user_name=$(prop_user_profile_property_file CONTENT_INITIALIZATION.LDAP_ADMIN_USER_NAME)
@@ -5785,17 +5829,17 @@ function sync_property_into_final_cr(){
             IFS=$OIFS
 
             for num in "${!admin_user_name_array[@]}"; do
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_ldap_creation.ic_ldap_admin_user_name.[$((num))] "\"${admin_user_name_array[num]}\""
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_ldap_creation.ic_ldap_admin_user_name[$((num))] = \"${admin_user_name_array[$num]}\"" ${CP4A_PATTERN_FILE_TMP}
             done
 
             for num in "${!admin_group_name_array[@]}"; do
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_ldap_creation.ic_ldap_admins_groups_name.[$((num))] "\"${admin_group_name_array[num]}\""
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_ldap_creation.ic_ldap_admins_groups_name[$((num))] = \"${admin_group_name_array[$num]}\"" ${CP4A_PATTERN_FILE_TMP}
             done
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_content_initialization "false"
+            ${YQ_CMD} -i '.spec.shared_configuration.sc_content_initialization = false' ${CP4A_PATTERN_FILE_TMP}
         fi
     else
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_deployment_fncm_license
+        ${YQ_CMD} -i 'del(.spec.shared_configuration.sc_deployment_fncm_license)' "${CP4A_PATTERN_FILE_TMP}"
     fi
 
     # Applying value in FNCM OSDB property file into final CR
@@ -5814,7 +5858,7 @@ function sync_property_into_final_cr(){
                 tmp_os_db_name=$(echo $tmp_os_db_name | tr '[:upper:]' '[:lower:]')
             fi
 
-            OS_DATASOURCE_NUMBER=$(grep "^      dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn "FNOS$((j+1))DS"|cut -d':' -f1)
+            OS_DATASOURCE_NUMBER=$(grep "^        dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn "FNOS$((j+1))DS"|cut -d':' -f1)
             if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
                 OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
 
@@ -5822,7 +5866,7 @@ function sync_property_into_final_cr(){
                 # Initialize the isfalse variable to validate dc_ssl_enabled is true or false
                 isfalse=false
                 for i in "${!OSDB_CR_MAPPING[@]}"; do
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].${OSDB_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[i]})\""
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].${OSDB_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
 
                      # Check if we are updating database_ssl_enable value is False
                     if [ "${OSDB_CR_MAPPING[i]}" == "database_ssl_enable" ] && [[ "$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[i]})" =~ ^[fF]alse$ ]]; then
@@ -5832,26 +5876,26 @@ function sync_property_into_final_cr(){
                     if [ "${OSDB_CR_MAPPING[i]}" == "database_ssl_secret_name" ]; then
                         if [ "$isfalse" == "true" ]; then
                             # If isfalse is true, set the value to ""
-                            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_ssl_secret_name" "\"\""
+                            ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_ssl_secret_name = \"\"" ${CP4A_PATTERN_FILE_TMP}
                         fi
                     fi
                 done
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_os_label "\"os$((j+1))\""
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_os_label = \"os$((j+1))\"" ${CP4A_PATTERN_FILE_TMP}
 
                 # remove database_name if oracle
                 if [[ $DB_TYPE == "oracle" ]]; then
                     get_oracle_service_name $(prop_db_server_property_file $tmp_os_db_servername.ORACLE_JDBC_URL)
                     if [[ ! -z "$ORACLE_SERVICE_NAME" ]]; then
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name "\"${ORACLE_SERVICE_NAME}OS$((j+1))\""
+                        ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"${ORACLE_SERVICE_NAME}OS$((j+1))\"" ${CP4A_PATTERN_FILE_TMP}
                     else
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name "\"<Required>\""
+                        ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"<Required>\"" ${CP4A_PATTERN_FILE_TMP}
                     fi
                     # ${SED_COMMAND} "s|database_name: '\"<Remove>\"'|# database_name: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
                 else
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name $tmp_os_db_name
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"$tmp_os_db_name\"" ${CP4A_PATTERN_FILE_TMP}
                     if [[ $DB_TYPE == "postgresql-edb" ]]; then
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_database_type "postgresql"
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_use_postgres "true"
+                        ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_database_type = \"postgresql\"" ${CP4A_PATTERN_FILE_TMP}
+                        ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_use_postgres = \"true\"" ${CP4A_PATTERN_FILE_TMP}
                     fi
                 fi
             fi
@@ -5865,7 +5909,7 @@ function sync_property_into_final_cr(){
             else
                 tmp_os_db_name="$(prop_db_name_user_property_file OS$((j+1))_DB_NAME)"
             fi
-            OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn FNOS$((j+1))DS|cut -d':' -f1)
+            OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn FNOS$((j+1))DS|cut -d':' -f1)
             if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
                 OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
                 tmp_user_group=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_ADMIN_USER_GROUPS)
@@ -5875,7 +5919,7 @@ function sync_property_into_final_cr(){
                 IFS=$OIFS
 
                 for num in "${!admin_user_group_array[@]}"; do
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_admin_user_groups.[$((num))]  "\"${admin_user_group_array[num]}\""
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_admin_user_groups[$((num))] = \"${admin_user_group_array[$num]}\"" ${CP4A_PATTERN_FILE_TMP}
                 done
                 # Apply customized schema
                 # if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
@@ -5885,7 +5929,7 @@ function sync_property_into_final_cr(){
                     if [[ $DB_TYPE == "postgresql" ]]; then
                         tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
                     fi
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name  "\"${tmp_schema_name}\""
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
                 # fi
                 ## Applying custom table, index, log tablespaces for objectstore creation.
@@ -5908,7 +5952,7 @@ function sync_property_into_final_cr(){
     # Apply value in FNCM OS required by BAW authoring property file into final CR
     if [[ " ${pattern_cr_arr[@]}" =~ "workflow-authoring" ]]; then
         for i in "${!BAW_AUTH_OS_ARR[@]}"; do
-            OS_DATASOURCE_NUMBER=$(grep "^      dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn ${BAW_AUTH_OS_ARR[i]}|cut -d':' -f1)
+            OS_DATASOURCE_NUMBER=$(grep "^        dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn ${BAW_AUTH_OS_ARR[i]}|cut -d':' -f1)
             if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
                 OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
                 tmp_os_db_servername="$(prop_db_name_user_property_file_for_server_name ${BAW_AUTH_OS_ARR[i]}_DB_USER_NAME)"
@@ -5926,7 +5970,7 @@ function sync_property_into_final_cr(){
                 # Initialize the isfalse variable to validate dc_ssl_enabled is true or false
                 isfalse=false
                 for j in "${!OSDB_CR_MAPPING[@]}"; do
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].${OSDB_CR_MAPPING[j]}" "\"$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[j]})\""
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].${OSDB_CR_MAPPING[j]} = \"$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[$j]})\"" ${CP4A_PATTERN_FILE_TMP}
 
                     # Check if we are updating database_ssl_enable value is False
                     if [ "${OSDB_CR_MAPPING[j]}" == "database_ssl_enable" ] && [[ "$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[j]})" =~ ^[fF]alse$ ]]; then
@@ -5936,32 +5980,32 @@ function sync_property_into_final_cr(){
                     if [ "${OSDB_CR_MAPPING[j]}" == "database_ssl_secret_name" ]; then
                         if [ "$isfalse" == "true" ]; then
                             # If isfalse is true, set the value to ""
-                            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_ssl_secret_name" "\"\""
+                            ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_ssl_secret_name = \"\"" ${CP4A_PATTERN_FILE_TMP}
                         fi
                     fi
                 done
 
                 tmp_label=$(echo ${BAW_AUTH_OS_ARR[i]} | tr '[:upper:]' '[:lower:]')
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_os_label "\"$tmp_label\""
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_os_label = \"$tmp_label\"" ${CP4A_PATTERN_FILE_TMP}
                 # remove database_name if oracle
                 if [[ $DB_TYPE == "oracle" ]]; then
                     get_oracle_service_name $(prop_db_server_property_file $tmp_os_db_servername.ORACLE_JDBC_URL)
                     if [[ ! -z "$ORACLE_SERVICE_NAME" ]]; then
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name "\"${ORACLE_SERVICE_NAME}${BAW_AUTH_OS_ARR[i]}\""
+                        ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"${ORACLE_SERVICE_NAME}${BAW_AUTH_OS_ARR[$i]}\"" ${CP4A_PATTERN_FILE_TMP}
                     else
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name "\"<Required>\""
+                        ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"<Required>\"" ${CP4A_PATTERN_FILE_TMP}
                     fi
                     # ${SED_COMMAND} "s|database_name: '\"<Remove>\"'|# database_name: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
                 else
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name $tmp_os_db_name
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"$tmp_os_db_name\"" ${CP4A_PATTERN_FILE_TMP}
                     if [[ $DB_TYPE == "postgresql-edb" ]]; then
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_database_type "postgresql"
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_use_postgres "true"
+                        ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_database_type = \"postgresql\"" ${CP4A_PATTERN_FILE_TMP}
+                        ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_use_postgres = \"true\"" ${CP4A_PATTERN_FILE_TMP}
                     fi
                 fi
             fi
             # Apply customized schema
-            OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn ${BAW_AUTH_OS_ARR[i]} |cut -d':' -f1)
+            OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn ${BAW_AUTH_OS_ARR[i]} |cut -d':' -f1)
             if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
                 OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
                 # if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
@@ -5971,7 +6015,7 @@ function sync_property_into_final_cr(){
                     if [[ $DB_TYPE == "postgresql" ]]; then
                         tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
                     fi
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name  "\"${tmp_schema_name}\""
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
 
                 ## Applying custom table, index, log tablespaces for objectstore creation.
@@ -5990,7 +6034,7 @@ function sync_property_into_final_cr(){
 
         # apply oc_cpe_obj_store_admin_user_groups for FNCM OS used by BAW authoring
         for i in "${!BAW_AUTH_OS_ARR[@]}"; do
-            OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn ${BAW_AUTH_OS_ARR[i]}|cut -d':' -f1)
+            OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn ${BAW_AUTH_OS_ARR[i]}|cut -d':' -f1)
             if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
                 OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
                 tmp_user_group=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_ADMIN_USER_GROUPS)
@@ -6000,7 +6044,7 @@ function sync_property_into_final_cr(){
                 IFS=$OIFS
 
                 for num in "${!admin_user_group_array[@]}"; do
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_admin_user_groups.[$((num))]  "\"${admin_user_group_array[num]}\""
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_admin_user_groups[$((num))] = \"${admin_user_group_array[$num]}\"" ${CP4A_PATTERN_FILE_TMP}
                 done
             fi
         done
@@ -6017,19 +6061,19 @@ function sync_property_into_final_cr(){
                 elif [[ $DB_TYPE == "oracle" ]]; then
                     tmp_val=$(echo $tmp_val | tr '[:lower:]' '[:upper:]')
                 fi
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_data_tbl_space  "\"$tmp_val\""
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_data_tbl_space = \"$tmp_val\"" ${CP4A_PATTERN_FILE_TMP}
 
                 tmp_val=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_WORKFLOW_ADMIN_GROUP)
                 tmp_val=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_val")
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_admin_group  "\"$tmp_val\""
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_admin_group = \"$tmp_val\"" ${CP4A_PATTERN_FILE_TMP}
 
                 tmp_val=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_WORKFLOW_CONFIG_GROUP)
                 tmp_val=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_val")
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_config_group  "\"$tmp_val\""
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_config_group = \"$tmp_val\"" ${CP4A_PATTERN_FILE_TMP}
 
                 tmp_val=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_WORKFLOW_PE_CONN_POINT_NAME)
                 tmp_val=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_val")
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_pe_conn_point_name  "\"$tmp_val\""
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_pe_conn_point_name = \"$tmp_val\"" ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
 
@@ -6039,7 +6083,7 @@ function sync_property_into_final_cr(){
     if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" ]]; then
         BAW_RUNTIME_OS_ARR=("BAWINS1DOCS" "BAWINS1DOS" "BAWINS1TOS")
         for i in "${!BAW_AUTH_OS_ARR[@]}"; do
-            OS_DATASOURCE_NUMBER=$(grep "^      dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn ${BAW_RUNTIME_OS_ARR[i]}|cut -d':' -f1)
+            OS_DATASOURCE_NUMBER=$(grep "^        dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn ${BAW_RUNTIME_OS_ARR[i]}|cut -d':' -f1)
             if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
                 OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
                 tmp_os_db_servername="$(prop_db_name_user_property_file_for_server_name ${BAW_AUTH_OS_ARR[i]}_DB_USER_NAME)"
@@ -6057,7 +6101,7 @@ function sync_property_into_final_cr(){
                 # Initialize the isfalse variable to validate dc_ssl_enabled is true or false for BAWDOCS
                 isfalse=false
                 for j in "${!OSDB_CR_MAPPING[@]}"; do
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].${OSDB_CR_MAPPING[j]}" "\"$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[j]})\""
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].${OSDB_CR_MAPPING[j]} = \"$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[$j]})\"" ${CP4A_PATTERN_FILE_TMP}
                 # Check if we are updating database_ssl_enable value to False
                 if [ "${OSDB_CR_MAPPING[j]}" == "database_ssl_enable" ] && [[ "$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[j]})" =~ ^[fF]alse$ ]]; then
                     isfalse=true
@@ -6066,35 +6110,35 @@ function sync_property_into_final_cr(){
                 if [ "${OSDB_CR_MAPPING[j]}" == "database_ssl_secret_name" ]; then
                     if [ "$isfalse" == "true" ]; then
                         # If isfalse is true, set the value to ""
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_ssl_secret_name" "\"\""
+                        ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_ssl_secret_name = \"\"" ${CP4A_PATTERN_FILE_TMP}
                     fi
                 fi
                 done
 
                 tmp_label=$(echo ${BAW_AUTH_OS_ARR[i]} | tr '[:upper:]' '[:lower:]')
 
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_os_label "\"$tmp_label\""
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_os_label = \"$tmp_label\"" ${CP4A_PATTERN_FILE_TMP}
 
                 # remove database_name if oracle
                 if [[ $DB_TYPE == "oracle" ]]; then
                     get_oracle_service_name $(prop_db_server_property_file $tmp_os_db_servername.ORACLE_JDBC_URL)
                     if [[ ! -z "$ORACLE_SERVICE_NAME" ]]; then
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name "\"${ORACLE_SERVICE_NAME}${BAW_AUTH_OS_ARR[i]}\""
+                        ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"${ORACLE_SERVICE_NAME}${BAW_AUTH_OS_ARR[$i]}\"" ${CP4A_PATTERN_FILE_TMP}
                     else
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name "\"<Required>\""
+                        ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"<Required>\"" ${CP4A_PATTERN_FILE_TMP}
                     fi
                     # ${SED_COMMAND} "s|database_name: '\"<Remove>\"'|# database_name: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
                 else
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name $tmp_os_db_name
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"$tmp_os_db_name\"" ${CP4A_PATTERN_FILE_TMP}
                     if [[ $DB_TYPE == "postgresql-edb" ]]; then
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_database_type "postgresql"
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_use_postgres "true"
+                        ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_database_type = \"postgresql\"" ${CP4A_PATTERN_FILE_TMP}
+                        ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_use_postgres = \"true\"" ${CP4A_PATTERN_FILE_TMP}
                     fi
                 fi
             fi
 
             # Apply customized schema
-            OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn ${BAW_RUNTIME_OS_ARR[i]} |cut -d':' -f1)
+            OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn ${BAW_RUNTIME_OS_ARR[i]} |cut -d':' -f1)
             if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
                 OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
                 # if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
@@ -6104,14 +6148,14 @@ function sync_property_into_final_cr(){
                     if [[ $DB_TYPE == "postgresql" ]]; then
                         tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
                     fi
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name  "\"${tmp_schema_name}\""
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
                 # fi
             fi
             ## Applying custom table, index, log tablespaces for objectstore creation.
             ## Retrieving the tables,index, and lob storage location from the properties files
             ## to be passed to the helper functions to create the sql files.
-            OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn ${BAW_RUNTIME_OS_ARR[i]} |cut -d':' -f1)
+            OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn ${BAW_RUNTIME_OS_ARR[i]} |cut -d':' -f1)
             if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
                 OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
                 tmp_table_storage_location_prop="$(prop_db_name_user_property_file ${BAW_AUTH_OS_ARR[i]}_DB_TABLE_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//' )"
@@ -6127,7 +6171,7 @@ function sync_property_into_final_cr(){
 
         # apply oc_cpe_obj_store_admin_user_groups for FNCM OS used by BAW runtime
         for i in "${!BAW_RUNTIME_OS_ARR[@]}"; do
-            OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn ${BAW_RUNTIME_OS_ARR[i]}|cut -d':' -f1)
+            OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn ${BAW_RUNTIME_OS_ARR[i]}|cut -d':' -f1)
             if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
                 OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
                 tmp_user_group=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_ADMIN_USER_GROUPS)
@@ -6137,7 +6181,7 @@ function sync_property_into_final_cr(){
                 IFS=$OIFS
 
                 for num in "${!admin_user_group_array[@]}"; do
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_admin_user_groups.[$((num))]  "\"${admin_user_group_array[num]}\""
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_admin_user_groups[$((num))] = \"${admin_user_group_array[$num]}\"" ${CP4A_PATTERN_FILE_TMP}
                 done
             fi
             # apply property for workflow initionlization into final cr
@@ -6152,19 +6196,19 @@ function sync_property_into_final_cr(){
                     elif [[ $DB_TYPE == "oracle" ]]; then
                         tmp_val=$(echo $tmp_val | tr '[:lower:]' '[:upper:]')
                     fi
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_data_tbl_space  "\"$tmp_val\""
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_data_tbl_space = \"$tmp_val\"" ${CP4A_PATTERN_FILE_TMP}
 
                     tmp_val=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_WORKFLOW_ADMIN_GROUP)
                     tmp_val=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_val")
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_admin_group  "\"$tmp_val\""
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_admin_group = \"$tmp_val\"" ${CP4A_PATTERN_FILE_TMP}
 
                     tmp_val=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_WORKFLOW_CONFIG_GROUP)
                     tmp_val=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_val")
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_config_group  "\"$tmp_val\""
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_config_group = \"$tmp_val\"" ${CP4A_PATTERN_FILE_TMP}
 
                     tmp_val=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_WORKFLOW_PE_CONN_POINT_NAME)
                     tmp_val=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_val")
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_pe_conn_point_name  "\"$tmp_val\""
+                    ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_pe_conn_point_name = \"$tmp_val\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
             fi
         done
@@ -6173,7 +6217,7 @@ function sync_property_into_final_cr(){
 
     # Apply value in FNCM OS required by AWS property file into final CR
     if [[ " ${pattern_cr_arr[@]}" =~ "workstreams" ]]; then
-        OS_DATASOURCE_NUMBER=$(grep "^      dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AWSINS1DOCS'|cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^        dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AWSINS1DOCS'|cut -d':' -f1)
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
             OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
             tmp_os_db_servername="$(prop_db_name_user_property_file_for_server_name AWSDOCS_DB_USER_NAME)"
@@ -6191,7 +6235,7 @@ function sync_property_into_final_cr(){
             # Initialize the isfalse variable to validate dc_ssl_enabled is true or false for AWSDOCS
             isfalse=false
             for i in "${!OSDB_CR_MAPPING[@]}"; do
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].${OSDB_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[i]})\""
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].${OSDB_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
             # Check if we are updating database_ssl_enable value is False
             if [ "${OSDB_CR_MAPPING[i]}" == "database_ssl_enable" ] && [[ "$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[i]})" =~ ^[fF]alse$ ]]; then
                 isfalse=true
@@ -6200,33 +6244,33 @@ function sync_property_into_final_cr(){
             if [ "${OSDB_CR_MAPPING[i]}" == "database_ssl_secret_name" ]; then
                 if [ "$isfalse" == "true" ]; then
                     # If isfalse is true, set the value to ""
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_ssl_secret_name" "\"\""
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_ssl_secret_name = \"\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
             fi
             done
 
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_os_label "\"awsdocs\""
+            ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_os_label = \"awsdocs\"" ${CP4A_PATTERN_FILE_TMP}
 
             # remove database_name if oracle
             if [[ $DB_TYPE == "oracle" ]]; then
                 get_oracle_service_name $(prop_db_server_property_file $tmp_os_db_servername.ORACLE_JDBC_URL)
                 if [[ ! -z "$ORACLE_SERVICE_NAME" ]]; then
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name "\"${ORACLE_SERVICE_NAME}AWSDOCS\""
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"${ORACLE_SERVICE_NAME}AWSDOCS\"" ${CP4A_PATTERN_FILE_TMP}
                 else
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name "\"<Required>\""
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"<Required>\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
                 # ${SED_COMMAND} "s|database_name: '\"<Remove>\"'|# database_name: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name $tmp_os_db_name
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"$tmp_os_db_name\"" ${CP4A_PATTERN_FILE_TMP}
                 if [[ $DB_TYPE == "postgresql-edb" ]]; then
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_database_type "postgresql"
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_use_postgres "true"
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_database_type = \"postgresql\"" ${CP4A_PATTERN_FILE_TMP}
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_use_postgres = \"true\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
             fi
         fi
 
         # Apply customized schema
-        OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AWSINS1DOCS' |cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AWSINS1DOCS' |cut -d':' -f1)
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
             OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
             # if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
@@ -6236,13 +6280,13 @@ function sync_property_into_final_cr(){
                 if [[ $DB_TYPE == "postgresql" ]]; then
                     tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
                 fi
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name  "\"${tmp_schema_name}\""
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
             fi
             # fi
         fi
 
         # apply oc_cpe_obj_store_admin_user_groups for FNCM OS used by workstreams
-        OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AWSINS1DOCS'|cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AWSINS1DOCS'|cut -d':' -f1)
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
             OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
             tmp_user_group=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_ADMIN_USER_GROUPS)
@@ -6252,7 +6296,7 @@ function sync_property_into_final_cr(){
             IFS=$OIFS
 
             for num in "${!admin_user_group_array[@]}"; do
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_admin_user_groups.[$((num))]  "\"${admin_user_group_array[num]}\""
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_admin_user_groups[$((num))] = \"${admin_user_group_array[$num]}\"" ${CP4A_PATTERN_FILE_TMP}
             done
         fi
 
@@ -6260,7 +6304,7 @@ function sync_property_into_final_cr(){
         ## Applying custom table, index, log tablespaces for objectstore creation.
         ## Retrieving the tables,index, and lob storage location from the properties files
         ## to be passed to the helper functions to create the sql files.
-        OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AWSINS1DOCS' |cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AWSINS1DOCS' |cut -d':' -f1)
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
             OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
             tmp_table_storage_location_prop="$(prop_db_name_user_property_file AWSDOCS_DB_TABLE_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//' )"
@@ -6277,7 +6321,7 @@ function sync_property_into_final_cr(){
 
     # Apply value in DEVOS1 property file into final CR
     if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" ]]; then
-        OS_DATASOURCE_NUMBER=$(grep "^      dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'DEVOS1DS'|cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^        dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'DEVOS1DS'|cut -d':' -f1)
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
             OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
             tmp_os_db_servername="$(prop_db_name_user_property_file_for_server_name DEVOS_DB_USER_NAME)"
@@ -6296,7 +6340,7 @@ function sync_property_into_final_cr(){
             # Initialize the isfalse variable to validate dc_ssl_enabled is true or false for DEVOS1 
             isfalse=false
             for i in "${!OSDB_CR_MAPPING[@]}"; do
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].${OSDB_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[i]})\""
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].${OSDB_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
             # Check if we are updating database_ssl_enable value is False
             if [ "${OSDB_CR_MAPPING[i]}" == "database_ssl_enable" ] && [[ "$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[i]})" =~ ^[fF]alse$ ]]; then
                 isfalse=true
@@ -6305,30 +6349,30 @@ function sync_property_into_final_cr(){
             if [ "${OSDB_CR_MAPPING[i]}" == "database_ssl_secret_name" ]; then
                 if [ "$isfalse" == "true" ]; then
                     # If isfalse is true, set the value to ""
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_ssl_secret_name" "\"\""
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_ssl_secret_name = \"\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
             fi
             done
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_os_label "\"devos1\""
+            ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_os_label = \"devos1\"" ${CP4A_PATTERN_FILE_TMP}
             # remove database_name if oracle
             if [[ $DB_TYPE == "oracle" ]]; then
                 get_oracle_service_name $(prop_db_server_property_file $tmp_os_db_servername.ORACLE_JDBC_URL)
                 if [[ ! -z "$ORACLE_SERVICE_NAME" ]]; then
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name "\"${ORACLE_SERVICE_NAME}DEVOS\""
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"${ORACLE_SERVICE_NAME}DEVOS\"" ${CP4A_PATTERN_FILE_TMP}
                 else
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name "\"<Required>\""
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"<Required>\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
                 # ${SED_COMMAND} "s|database_name: '\"<Remove>\"'|# database_name: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name $tmp_os_db_name
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"$tmp_os_db_name\"" ${CP4A_PATTERN_FILE_TMP}
                 if [[ $DB_TYPE == "postgresql-edb" ]]; then
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_database_type "postgresql"
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_use_postgres "true"
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_database_type = \"postgresql\"" ${CP4A_PATTERN_FILE_TMP}
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_use_postgres = \"true\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
             fi
         fi
         # apply oc_cpe_obj_store_admin_user_groups for FNCM OS used by DEVOS1
-        OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'DEVOS1DS'|cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'DEVOS1DS'|cut -d':' -f1)
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
             OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
             tmp_user_group=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_ADMIN_USER_GROUPS)
@@ -6336,14 +6380,14 @@ function sync_property_into_final_cr(){
             OIFS=$IFS
             IFS=',' read -ra admin_user_group_array <<< "$tmp_user_group"
             IFS=$OIFS
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_admin_user_groups
+            ${YQ_CMD} -i "del(.spec.initialize_configuration.ic_obj_store_creation.object_stores[\"${OS_DATASOURCE_NUMBER}\"].oc_cpe_obj_store_admin_user_groups)" "${CP4A_PATTERN_FILE_TMP}"
             for num in "${!admin_user_group_array[@]}"; do
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_admin_user_groups.[$((num))]  "\"${admin_user_group_array[num]}\""
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_admin_user_groups[$((num))] = \"${admin_user_group_array[$num]}\"" ${CP4A_PATTERN_FILE_TMP}
             done
         fi
 
         # Apply customized schema
-        OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'DEVOS1DS' |cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'DEVOS1DS' |cut -d':' -f1)
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
             OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
             # if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
@@ -6353,7 +6397,7 @@ function sync_property_into_final_cr(){
                 if [[ $DB_TYPE == "postgresql" ]]; then
                     tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
                 fi
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name  "\"${tmp_schema_name}\""
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
             fi
             # fi
         fi
@@ -6361,7 +6405,7 @@ function sync_property_into_final_cr(){
         ## Applying custom table, index, log tablespaces for objectstore creation.
         ## Retrieving the tables,index, and lob storage location from the properties files
         ## to be passed to the helper functions to create the sql files.
-        OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'DEVOS1DS' |cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'DEVOS1DS' |cut -d':' -f1)
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
             OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
             tmp_table_storage_location_prop="$(prop_db_name_user_property_file DEVOS_DB_TABLE_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//' )"
@@ -6377,7 +6421,7 @@ function sync_property_into_final_cr(){
 
     # Apply value in FNCM OS required by AE data persistent property file into final CR
     if [[ "${optional_component_cr_arr[@]}" =~ "ae_data_persistence" ]]; then
-        OS_DATASOURCE_NUMBER=$(grep "^      dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AEOS'|cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^        dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AEOS'|cut -d':' -f1)
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
             OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
             tmp_os_db_servername="$(prop_db_name_user_property_file_for_server_name AEOS_DB_USER_NAME)"
@@ -6396,7 +6440,7 @@ function sync_property_into_final_cr(){
             # Initialize the isfalse variable to validate dc_ssl_enabled is true or false for AEOS
             isfalse=false
             for i in "${!OSDB_CR_MAPPING[@]}"; do
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].${OSDB_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[i]})\""
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].${OSDB_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
             # Check if we are updating database_ssl_enable value is False
             if [ "${OSDB_CR_MAPPING[i]}" == "database_ssl_enable" ] && [[ "$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[i]})" =~ ^[fF]alse$ ]]; then
                 isfalse=true
@@ -6405,31 +6449,31 @@ function sync_property_into_final_cr(){
             if [ "${OSDB_CR_MAPPING[i]}" == "database_ssl_secret_name" ]; then
                 if [ "$isfalse" == "true" ]; then
                     # If isfalse is true, set the value to ""
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_ssl_secret_name" "\"\""
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_ssl_secret_name = \"\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
             fi
             done
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_os_label "\"aeos\""
+            ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_os_label = \"aeos\"" ${CP4A_PATTERN_FILE_TMP}
             # remove database_name if oracle
             if [[ $DB_TYPE == "oracle" ]]; then
                 get_oracle_service_name $(prop_db_server_property_file $tmp_os_db_servername.ORACLE_JDBC_URL)
                 if [[ ! -z "$ORACLE_SERVICE_NAME" ]]; then
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name "\"${ORACLE_SERVICE_NAME}AEOS\""
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"${ORACLE_SERVICE_NAME}AEOS\"" ${CP4A_PATTERN_FILE_TMP}
                 else
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name "\"<Required>\""
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"<Required>\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
                 # ${SED_COMMAND} "s|database_name: '\"<Remove>\"'|# database_name: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name $tmp_os_db_name
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"$tmp_os_db_name\"" ${CP4A_PATTERN_FILE_TMP}
                 if [[ $DB_TYPE == "postgresql-edb" ]]; then
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_database_type "postgresql"
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_use_postgres "true"
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_database_type = \"postgresql\"" ${CP4A_PATTERN_FILE_TMP}
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_use_postgres = \"true\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
             fi
         fi
 
         # Apply customized schema
-        OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AEOS' |cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AEOS' |cut -d':' -f1)
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
             OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
             # if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
@@ -6439,13 +6483,13 @@ function sync_property_into_final_cr(){
                 if [[ $DB_TYPE == "postgresql" ]]; then
                     tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
                 fi
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name  "\"${tmp_schema_name}\""
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
             fi
             # fi
         fi
 
         # apply oc_cpe_obj_store_admin_user_groups for FNCM OS used by AE data persistent
-        OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AEOS'|cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AEOS'|cut -d':' -f1)
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
             OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
             tmp_user_group=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_ADMIN_USER_GROUPS)
@@ -6455,14 +6499,14 @@ function sync_property_into_final_cr(){
             IFS=$OIFS
 
             for num in "${!admin_user_group_array[@]}"; do
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_admin_user_groups.[$((num))]  "\"${admin_user_group_array[num]}\""
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_admin_user_groups[$((num))] = \"${admin_user_group_array[$num]}\"" ${CP4A_PATTERN_FILE_TMP}
             done
         fi
 
         ## Applying custom table, index, log tablespaces for objectstore creation.
         ## Retrieving the tables,index, and lob storage location from the properties files
         ## to be passed to the helper functions to create the sql files.
-        OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AEOS' |cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AEOS' |cut -d':' -f1)
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
             OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
             tmp_table_storage_location_prop="$(prop_db_name_user_property_file AEOS_DB_TABLE_STORAGE_LOCATION | sed -e 's/^"//' -e 's/"$//' )"
@@ -6479,7 +6523,7 @@ function sync_property_into_final_cr(){
 
     # Apply value in FNCM OS required by Case history property file into final CR
     if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring" || " ${pattern_cr_arr[@]}" =~ "workstreams" ]]; then
-        OS_DATASOURCE_NUMBER=$(grep "^      dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'CHOS'|cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^        dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'CHOS'|cut -d':' -f1)
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
             OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
             tmp_os_db_servername="$(prop_db_name_user_property_file_for_server_name CHOS_DB_USER_NAME)"
@@ -6495,30 +6539,30 @@ function sync_property_into_final_cr(){
                 tmp_os_db_name=$(echo $tmp_os_db_name | tr '[:upper:]' '[:lower:]')
             fi
             for i in "${!OSDB_CR_MAPPING[@]}"; do
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].${OSDB_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[i]})\""
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].${OSDB_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
             done
 
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_os_label "\"ch\""
+            ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_os_label = \"ch\"" ${CP4A_PATTERN_FILE_TMP}
 
             # remove database_name if oracle
             if [[ $DB_TYPE == "oracle" ]]; then
                 get_oracle_service_name $(prop_db_server_property_file $tmp_os_db_servername.ORACLE_JDBC_URL)
                 if [[ ! -z "$ORACLE_SERVICE_NAME" ]]; then
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name "\"${ORACLE_SERVICE_NAME}CHOS\""
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"${ORACLE_SERVICE_NAME}CHOS\"" ${CP4A_PATTERN_FILE_TMP}
                 else
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name "\"<Required>\""
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"<Required>\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
                 # ${SED_COMMAND} "s|database_name: '\"<Remove>\"'|# database_name: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].database_name $tmp_os_db_name
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].database_name = \"$tmp_os_db_name\"" ${CP4A_PATTERN_FILE_TMP}
                 if [[ $DB_TYPE == "postgresql-edb" ]]; then
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_database_type "postgresql"
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_use_postgres "true"
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_database_type = \"postgresql\"" ${CP4A_PATTERN_FILE_TMP}
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].dc_use_postgres = \"true\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
             fi
         fi
         # Apply customized schema
-        OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'CHOS' |cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'CHOS' |cut -d':' -f1)
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
             OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
             # if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
@@ -6528,7 +6572,7 @@ function sync_property_into_final_cr(){
                 if [[ $DB_TYPE == "postgresql" ]]; then
                     tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
                 fi
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name  "\"${tmp_schema_name}\""
+                ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
             fi
             # fi
         fi
@@ -6554,14 +6598,14 @@ function sync_property_into_final_cr(){
             # Initialize the isfalse variable to validate dc_ssl_enabled is true or false
             isfalse=false
             for i in "${!ICNDB_CR_MAPPING[@]}"; do
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${ICNDB_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_icn_db_servername.${ICNDB_COMMON_PROPERTY[i]})\""
+                ${YQ_CMD} -i ".${ICNDB_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_icn_db_servername.${ICNDB_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
                  # Check if we are updating spec.datasource_configuration.dc_ssl_enabled value is false    
                 if [ "${ICNDB_CR_MAPPING[i]}" == "spec.datasource_configuration.dc_ssl_enabled" ] && [[ "$(prop_db_server_property_file $tmp_icn_db_servername.${ICNDB_COMMON_PROPERTY[i]})" =~ ^[fF]alse$ ]]; then
                     isfalse=true
                 fi
                 if [ "${ICNDB_CR_MAPPING[i]}" == "spec.datasource_configuration.dc_icn_datasource.database_ssl_secret_name" ] && [ "$isfalse" == "true" ]; then
                     # Set the value to "" if isfalse is true
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.datasource_configuration.dc_icn_datasource.database_ssl_secret_name" "\"\""
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_icn_datasource.database_ssl_secret_name = \"\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
                 # ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${ICNDB_CR_MAPPING[i]}" "\"$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_icn_db_servername.${ICNDB_COMMON_PROPERTY[i]})")\""
             done
@@ -6570,16 +6614,16 @@ function sync_property_into_final_cr(){
             if [[ $DB_TYPE == "oracle" ]]; then
                 get_oracle_service_name $(prop_db_server_property_file $tmp_icn_db_servername.ORACLE_JDBC_URL)
                 if [[ ! -z "$ORACLE_SERVICE_NAME" ]]; then
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_icn_datasource.database_name "\"${ORACLE_SERVICE_NAME}ICN\""
+                    ${YQ_CMD} -i ".spec.datasource_configuration.dc_icn_datasource.database_name = \"${ORACLE_SERVICE_NAME}ICN\"" ${CP4A_PATTERN_FILE_TMP}
                 else
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_icn_datasource.database_name "\"<Required>\""
+                    ${YQ_CMD} -i '.spec.datasource_configuration.dc_icn_datasource.database_name = "<Required>"' ${CP4A_PATTERN_FILE_TMP}
                 fi
                 # ${SED_COMMAND} "s|database_name: '\"<Remove>\"'|# database_name: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_icn_datasource.database_name $tmp_icn_db_name
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_icn_datasource.database_name = \"$tmp_icn_db_name\"" ${CP4A_PATTERN_FILE_TMP}
                 if [[ $DB_TYPE == "postgresql-edb" ]]; then
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_icn_datasource.dc_database_type "postgresql"
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_icn_datasource.dc_use_postgres "true"
+                    ${YQ_CMD} -i '.spec.datasource_configuration.dc_icn_datasource.dc_database_type = "postgresql"' ${CP4A_PATTERN_FILE_TMP}
+                    ${YQ_CMD} -i '.spec.datasource_configuration.dc_icn_datasource.dc_use_postgres = true' ${CP4A_PATTERN_FILE_TMP}
                 fi
             fi
             # Apply customized schema for GCDDB
@@ -6589,7 +6633,7 @@ function sync_property_into_final_cr(){
                 if [[ $DB_TYPE == "postgresql" ]]; then
                     tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
                 fi
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.navigator_configuration.icn_production_setting.icn_schema  "\"${tmp_schema_name}\""
+                ${YQ_CMD} -i ".spec.navigator_configuration.icn_production_setting.icn_schema = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
     fi
@@ -6609,15 +6653,15 @@ function sync_property_into_final_cr(){
         tmp_odm_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_odm_db_name")
 
         for i in "${!ODMDB_CR_MAPPING[@]}"; do
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${ODMDB_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_odm_db_servername.${ODMDB_COMMON_PROPERTY[i]})\""
+            ${YQ_CMD} -i ".${ODMDB_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_odm_db_servername.${ODMDB_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
         done
         if [[ $DB_TYPE == "postgresql-edb" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_odm_datasource.dc_database_type "postgresql"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_odm_datasource.dc_use_postgres "true"
+            ${YQ_CMD} -i '.spec.datasource_configuration.dc_odm_datasource.dc_database_type = "postgresql"' ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i '.spec.datasource_configuration.dc_odm_datasource.dc_use_postgres = true' ${CP4A_PATTERN_FILE_TMP}
             # set dc_common_ssl_enabled always true for postgresql-edb
-            ds_cfg_val=`cat $CP4A_PATTERN_FILE_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_odm_datasource`
+            ds_cfg_val=`${YQ_CMD} ".spec.datasource_configuration.dc_odm_datasource // \"\"" "$CP4A_PATTERN_FILE_TMP"`
             if [[ ! -z "$ds_cfg_val" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_odm_datasource.dc_common_ssl_enabled "true"
+                ${YQ_CMD} -i '.spec.datasource_configuration.dc_odm_datasource.dc_common_ssl_enabled = true' ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
         # For ODM, set dc_ssl_secret_name only when db is db2/oracle/postgresql with clientAuth
@@ -6641,25 +6685,25 @@ function sync_property_into_final_cr(){
             tmp_ssl_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_odm_db_servername.DATABASE_SSL_ENABLE)")
             tmp_ssl_flag=$(echo $tmp_ssl_flag | tr '[:upper:]' '[:lower:]')
             if [[ $tmp_ssl_flag == "yes" || $tmp_ssl_flag == "true" || $tmp_ssl_flag == "y" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_odm_datasource.dc_ssl_secret_name "$(prop_db_server_property_file $tmp_odm_db_servername.DATABASE_SSL_SECRET_NAME)"
+                ${YQ_CMD} -i ".spec.datasource_configuration.dc_odm_datasource.dc_ssl_secret_name = \"$(prop_db_server_property_file $tmp_odm_db_servername.DATABASE_SSL_SECRET_NAME)\"" ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_odm_datasource.dc_ssl_secret_name "\"\""
+                ${YQ_CMD} -i '.spec.datasource_configuration.dc_odm_datasource.dc_ssl_secret_name = ""' ${CP4A_PATTERN_FILE_TMP}
             fi
         else
             ${SED_COMMAND} "s|dc_ssl_secret_name: |# dc_ssl_secret_name: |g" ${CP4A_PATTERN_FILE_TMP}
         fi
 
         # set dc_odm_datasource.dc_common_database_instance_secret
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_odm_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_odm_datasource.dc_common_database_instance_secret "\"$tmp_secret_name\""
+        tmp_secret_name=`kubectl get secret -l db-name=${tmp_odm_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        ${YQ_CMD} -i ".spec.datasource_configuration.dc_odm_datasource.dc_common_database_instance_secret = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
 
         if [[ $DB_TYPE == "postgresql" ]]; then
             tmp_odm_db_name=$(echo $tmp_odm_db_name | tr '[:upper:]' '[:lower:]')
         fi
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_odm_datasource.dc_common_database_name "\"$tmp_odm_db_name\""
+        ${YQ_CMD} -i ".spec.datasource_configuration.dc_odm_datasource.dc_common_database_name = \"$tmp_odm_db_name\"" ${CP4A_PATTERN_FILE_TMP}
         if [[ $DB_TYPE == "oracle" ]]; then
             tmp_odm_db_jdbc_url=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_odm_db_servername.ORACLE_JDBC_URL)")
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_odm_datasource.dc_common_database_url "\"$tmp_odm_db_jdbc_url\""
+            ${YQ_CMD} -i ".spec.datasource_configuration.dc_odm_datasource.dc_common_database_url = \"$tmp_odm_db_jdbc_url\"" ${CP4A_PATTERN_FILE_TMP}
         fi
     fi
 
@@ -6732,46 +6776,46 @@ function sync_property_into_final_cr(){
         isfalse=false
         for i in "${!BAW_RUNTIME_CR_MAPPING[@]}"; do
             if [[ ("${BAW_RUNTIME_COMMON_PROPERTY[i]}" == "DATABASE_SERVERNAME"  || "${BAW_RUNTIME_COMMON_PROPERTY[i]}" == "DATABASE_PORT") && $DB_TYPE == "oracle" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${BAW_RUNTIME_CR_MAPPING[i]}" "\"<Remove>\""
+                ${YQ_CMD} -i ".${BAW_RUNTIME_CR_MAPPING[i]} = \"<Remove>\"" ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${BAW_RUNTIME_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_baw_runtime_db_servername.${BAW_RUNTIME_COMMON_PROPERTY[i]})\""
+                ${YQ_CMD} -i ".${BAW_RUNTIME_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_baw_runtime_db_servername.${BAW_RUNTIME_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
                 # Check if we are updating spec.datasource_configuration.dc_ssl_enabled value to false
                 if [ "${BAW_RUNTIME_CR_MAPPING[i]}" == "spec.baw_configuration.[0].database.enable_ssl" ] && [[ "$(prop_db_server_property_file $tmp_baw_runtime_db_servername.${BAW_RUNTIME_COMMON_PROPERTY[i]})" =~ ^[fF]alse$ ]]; then
                     isfalse=true
                 fi
                 # If SSL is disabled, set the database_ssl_secret_name to ""
                 if [ "${BAW_RUNTIME_CR_MAPPING[i]}" == "spec.baw_configuration.[0].database.db_cert_secret_name" ] && [ "$isfalse" == "true" ]; then
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.baw_configuration.[0].database.db_cert_secret_name" "\"\""
+                    ${YQ_CMD} -i ".spec.baw_configuration[0].database.db_cert_secret_name = \"\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_baw_runtime_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
+        tmp_secret_name=`kubectl get secret -l db-name=${tmp_baw_runtime_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
 
         # set baw_configuration
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.secret_name "\"$tmp_secret_name\""
+        ${YQ_CMD} -i ".spec.baw_configuration.[0].database.secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         if [[ $DB_TYPE == "postgresql" ]]; then
             tmp_baw_runtime_db_name=$(echo $tmp_baw_runtime_db_name | tr '[:upper:]' '[:lower:]')
         fi
 
         # remove database_name if oracle
         if [[ $DB_TYPE == "oracle" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.database_name "\"<Remove>\""
+            ${YQ_CMD} -i '.spec.baw_configuration[0].database.database_name = "<Remove>"' ${CP4A_PATTERN_FILE_TMP}
             # ${SED_COMMAND} "s|database_name: '\"<Remove>\"'|# database_name: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.database_name "\"$tmp_baw_runtime_db_name\""
+            ${YQ_CMD} -i ".spec.baw_configuration.[0].database.database_name = \"$tmp_baw_runtime_db_name\"" ${CP4A_PATTERN_FILE_TMP}
         fi
 
         if [[ $DB_TYPE == "oracle" ]]; then
             tmp_baw_runtime_db_jdbc_url="$(prop_db_server_property_file $tmp_baw_runtime_db_servername.ORACLE_JDBC_URL)"
             tmp_baw_runtime_db_jdbc_url=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_baw_runtime_db_jdbc_url")
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.jdbc_url "\"$tmp_baw_runtime_db_jdbc_url\""
+            ${YQ_CMD} -i ".spec.baw_configuration.[0].database.jdbc_url = \"$tmp_baw_runtime_db_jdbc_url\"" ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.jdbc_url "\"<Remove>\""
-            ${SED_COMMAND} "s|jdbc_url: '\"<Remove>\"'|# jdbc_url: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i '.spec.baw_configuration[0].database.jdbc_url = "<Remove>"' ${CP4A_PATTERN_FILE_TMP}
+            ${SED_COMMAND} 's|jdbc_url: "<Remove>"|# jdbc_url: ""|g' ${CP4A_PATTERN_FILE_TMP}
         fi
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.custom_jdbc_pvc "\"<Remove>\""
-        ${SED_COMMAND} "s|custom_jdbc_pvc: '\"<Remove>\"'|# custom_jdbc_pvc: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
+        ${YQ_CMD} -i '.spec.baw_configuration[0].database.custom_jdbc_pvc = "<Remove>"' ${CP4A_PATTERN_FILE_TMP}
+        ${SED_COMMAND} 's|custom_jdbc_pvc: "<Remove>"|# custom_jdbc_pvc: ""|g' ${CP4A_PATTERN_FILE_TMP}
 
         # set current schema name for db2 and postgresql
         if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
@@ -6781,24 +6825,24 @@ function sync_property_into_final_cr(){
                 if [[ $DB_TYPE == "postgresql" ]]; then
                     tmp_baw_runtime_db_current_schema_name=$(echo $tmp_baw_runtime_db_current_schema_name | tr '[:upper:]' '[:lower:]')
                 fi
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.current_schema "\"$tmp_baw_runtime_db_current_schema_name\""
+                ${YQ_CMD} -i ".spec.baw_configuration.[0].database.current_schema = \"$tmp_baw_runtime_db_current_schema_name\"" ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
         if [[ $DB_TYPE == "postgresql-edb" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.type "postgresql"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.dc_use_postgres "true"
+            ${YQ_CMD} -i '.spec.baw_configuration[0].database.type = "postgresql"' ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i '.spec.baw_configuration[0].database.dc_use_postgres = true' ${CP4A_PATTERN_FILE_TMP}
             # always use default schema for EDB Postgres
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.current_schema
+            ${YQ_CMD} -i 'del(.spec.baw_configuration.[0].database.current_schema)' "${CP4A_PATTERN_FILE_TMP}"
             # set dc_ssl_enabled always true for postgresql-edb
-            ds_cfg_val=`cat $CP4A_PATTERN_FILE_TMP | ${YQ_CMD} r - spec.baw_configuration.[0].database`
+            ds_cfg_val=`${YQ_CMD} ".spec.baw_configuration.[0].database // \"\"" "$CP4A_PATTERN_FILE_TMP"`
             if [[ ! -z "$ds_cfg_val" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.enable_ssl "true"
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.db_cert_secret_name "{{ meta.name }}-pg-client-cert-secret"
+                ${YQ_CMD} -i '.spec.baw_configuration[0].database.enable_ssl = true' ${CP4A_PATTERN_FILE_TMP}
+                ${YQ_CMD} -i '.spec.baw_configuration[0].database.db_cert_secret_name = "{{ meta.name }}-pg-client-cert-secret"' ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
         # Applying user profile for BAW runtime
         tmp_baw_runtime_admin="$(prop_user_profile_property_file BAW_RUNTIME.ADMIN_USER)"
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].admin_user "\"$tmp_baw_runtime_admin\""
+        ${YQ_CMD} -i ".spec.baw_configuration.[0].admin_user = \"$tmp_baw_runtime_admin\"" ${CP4A_PATTERN_FILE_TMP}
     fi
 
     # Applying value in BAW Runtime+Workstreams property file into final CR
@@ -6818,45 +6862,45 @@ function sync_property_into_final_cr(){
         isfalse=false
         for i in "${!BAW_RUNTIME_CR_MAPPING[@]}"; do
             if [[ ("${BAW_RUNTIME_COMMON_PROPERTY[i]}" == "DATABASE_SERVERNAME"  || "${BAW_RUNTIME_COMMON_PROPERTY[i]}" == "DATABASE_PORT") && $DB_TYPE == "oracle" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${BAW_RUNTIME_CR_MAPPING[i]}" "\"<Remove>\""
+                ${YQ_CMD} -i ".${BAW_RUNTIME_CR_MAPPING[i]} = \"<Remove>\"" ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${BAW_RUNTIME_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_baw_runtime_db_servername.${BAW_RUNTIME_COMMON_PROPERTY[i]})\""
+                ${YQ_CMD} -i ".${BAW_RUNTIME_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_baw_runtime_db_servername.${BAW_RUNTIME_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
                 # Check if we are updating spec.datasource_configuration.dc_ssl_enabled value to false
                 if [ "${BAW_RUNTIME_CR_MAPPING[i]}" == "spec.baw_configuration.[0].database.enable_ssl" ] && [[ "$(prop_db_server_property_file $tmp_baw_runtime_db_servername.${BAW_RUNTIME_COMMON_PROPERTY[i]})" =~ ^[fF]alse$ ]]; then
                     isfalse=true
                 fi
                 # If SSL is disabled, set the database_ssl_secret_name to ""
                 if [ "${BAW_RUNTIME_CR_MAPPING[i]}" == "spec.baw_configuration.[0].database.db_cert_secret_name" ] && [ "$isfalse" == "true" ]; then
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.baw_configuration.[0].database.db_cert_secret_name" "\"\""
+                    ${YQ_CMD} -i ".spec.baw_configuration[0].database.db_cert_secret_name = \"\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_baw_runtime_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
+        tmp_secret_name=`kubectl get secret -l db-name=${tmp_baw_runtime_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
 
         # set baw_configuration
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.secret_name "\"$tmp_secret_name\""
+        ${YQ_CMD} -i ".spec.baw_configuration.[0].database.secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         if [[ $DB_TYPE == "postgresql" ]]; then
             tmp_baw_runtime_db_name=$(echo $tmp_baw_runtime_db_name | tr '[:upper:]' '[:lower:]')
         fi
 
         if [[ $DB_TYPE == "oracle" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.database_name "\"<Remove>\""
+            ${YQ_CMD} -i '.spec.baw_configuration[0].database.database_name = "<Remove>"' ${CP4A_PATTERN_FILE_TMP}
             # ${SED_COMMAND} "s|database_name: '\"<Remove>\"'|# database_name: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.database_name "\"$tmp_baw_runtime_db_name\""
+            ${YQ_CMD} -i ".spec.baw_configuration.[0].database.database_name = \"$tmp_baw_runtime_db_name\"" ${CP4A_PATTERN_FILE_TMP}
         fi
 
         if [[ $DB_TYPE == "oracle" ]]; then
             tmp_baw_runtime_db_jdbc_url="$(prop_db_server_property_file $tmp_baw_runtime_db_servername.ORACLE_JDBC_URL)"
             tmp_baw_runtime_db_jdbc_url=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_baw_runtime_db_jdbc_url")
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.jdbc_url "\"$tmp_baw_runtime_db_jdbc_url\""
+            ${YQ_CMD} -i ".spec.baw_configuration.[0].database.jdbc_url = \"$tmp_baw_runtime_db_jdbc_url\"" ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.jdbc_url "\"<Remove>\""
-            ${SED_COMMAND} "s|jdbc_url: '\"<Remove>\"'|# jdbc_url: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i '.spec.baw_configuration[0].database.jdbc_url = "<Remove>"' ${CP4A_PATTERN_FILE_TMP}
+            ${SED_COMMAND} 's|jdbc_url: "<Remove>"|# jdbc_url: ""|g' ${CP4A_PATTERN_FILE_TMP}
         fi
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.custom_jdbc_pvc "\"<Remove>\""
-        ${SED_COMMAND} "s|custom_jdbc_pvc: '\"<Remove>\"'|# custom_jdbc_pvc: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
+        ${YQ_CMD} -i '.spec.baw_configuration[0].database.custom_jdbc_pvc = "<Remove>"' ${CP4A_PATTERN_FILE_TMP}
+        ${SED_COMMAND} 's|custom_jdbc_pvc: "<Remove>"|# custom_jdbc_pvc: ""|g' ${CP4A_PATTERN_FILE_TMP}
 
         # set current schema name for db2 and postgresql
         if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
@@ -6867,19 +6911,19 @@ function sync_property_into_final_cr(){
                     tmp_baw_runtime_db_current_schema_name=$(echo $tmp_baw_runtime_db_current_schema_name | tr '[:upper:]' '[:lower:]')
                 fi
 
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.current_schema "\"$tmp_baw_runtime_db_current_schema_name\""
+                ${YQ_CMD} -i ".spec.baw_configuration.[0].database.current_schema = \"$tmp_baw_runtime_db_current_schema_name\"" ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
         if [[ $DB_TYPE == "postgresql-edb" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.type "postgresql"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.dc_use_postgres "true"
+            ${YQ_CMD} -i '.spec.baw_configuration[0].database.type = "postgresql"' ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i '.spec.baw_configuration[0].database.dc_use_postgres = true' ${CP4A_PATTERN_FILE_TMP}
             # always use default schema for EDB Postgres
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.current_schema
+            ${YQ_CMD} -i 'del(.spec.baw_configuration.[0].database.current_schema)' "${CP4A_PATTERN_FILE_TMP}"
             # set dc_ssl_enabled always true for postgresql-edb
-            ds_cfg_val=`cat $CP4A_PATTERN_FILE_TMP | ${YQ_CMD} r - spec.baw_configuration.[0].database`
+            ds_cfg_val=`${YQ_CMD} ".spec.baw_configuration.[0].database // \"\"" "$CP4A_PATTERN_FILE_TMP"`
             if [[ ! -z "$ds_cfg_val" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.enable_ssl "true"
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.db_cert_secret_name "{{ meta.name }}-pg-client-cert-secret"
+                ${YQ_CMD} -i '.spec.baw_configuration[0].database.enable_ssl = true' ${CP4A_PATTERN_FILE_TMP}
+                ${YQ_CMD} -i '.spec.baw_configuration[0].database.db_cert_secret_name = "{{ meta.name }}-pg-client-cert-secret"' ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
 
@@ -6896,45 +6940,45 @@ function sync_property_into_final_cr(){
         isfalse=false
         for i in "${!AWS_CR_MAPPING[@]}"; do
             if [[ ("${AWS_COMMON_PROPERTY[i]}" == "DATABASE_SERVERNAME"  || "${AWS_COMMON_PROPERTY[i]}" == "DATABASE_PORT") && $DB_TYPE == "oracle" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${AWS_CR_MAPPING[i]}" "\"<Remove>\""
+                ${YQ_CMD} -i ".${AWS_CR_MAPPING[i]} = \"<Remove>\"" ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${AWS_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_aws_db_servername.${AWS_COMMON_PROPERTY[i]})\""
+                ${YQ_CMD} -i ".${AWS_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_aws_db_servername.${AWS_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
                 # Check if we are updating spec.datasource_configuration.dc_ssl_enabled value to false
                 if [ "${AWS_CR_MAPPING[i]}" == "spec.baw_configuration.[1].database.enable_ssl" ] && [[ "$(prop_db_server_property_file $tmp_aws_db_servername.${AWS_COMMON_PROPERTY[i]})" =~ ^[fF]alse$ ]]; then
                     isfalse=true
                 fi
                 # If SSL is disabled, set the database_ssl_secret_name to ""
                 if [ "${AWS_CR_MAPPING[i]}" == "spec.baw_configuration.[1].database.db_cert_secret_name" ] && [ "$isfalse" == "true" ]; then
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.baw_configuration.[1].database.db_cert_secret_name" "\"\""
+                    ${YQ_CMD} -i ".spec.baw_configuration[1].database.db_cert_secret_name = \"\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_aws_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
+        tmp_secret_name=`kubectl get secret -l db-name=${tmp_aws_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
 
         # set baw_configuration
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].database.secret_name "\"$tmp_secret_name\""
+        ${YQ_CMD} -i ".spec.baw_configuration.[1].database.secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         if [[ $DB_TYPE == "postgresql" ]]; then
             tmp_aws_db_name=$(echo $tmp_aws_db_name | tr '[:upper:]' '[:lower:]')
         fi
 
         if [[ $DB_TYPE == "oracle" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].database.database_name "\"<Remove>\""
+            ${YQ_CMD} -i '.spec.baw_configuration[1].database.database_name = "<Remove>"' ${CP4A_PATTERN_FILE_TMP}
             # ${SED_COMMAND} "s|database_name: '\"<Remove>\"'|# database_name: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].database.database_name "\"$tmp_aws_db_name\""
+            ${YQ_CMD} -i ".spec.baw_configuration.[1].database.database_name = \"$tmp_aws_db_name\"" ${CP4A_PATTERN_FILE_TMP}
         fi
 
         if [[ $DB_TYPE == "oracle" ]]; then
             tmp_aws_db_jdbc_url="$(prop_db_server_property_file $tmp_aws_db_servername.ORACLE_JDBC_URL)"
             tmp_aws_db_jdbc_url=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_aws_db_jdbc_url")
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].database.jdbc_url "\"$tmp_aws_db_jdbc_url\""
+            ${YQ_CMD} -i ".spec.baw_configuration.[1].database.jdbc_url = \"$tmp_aws_db_jdbc_url\"" ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].database.jdbc_url "\"<Remove>\""
-            ${SED_COMMAND} "s|jdbc_url: '\"<Remove>\"'|# jdbc_url: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i '.spec.baw_configuration[1].database.jdbc_url = "<Remove>"' ${CP4A_PATTERN_FILE_TMP}
+            ${SED_COMMAND} 's|jdbc_url: "<Remove>"|# jdbc_url: ""|g' ${CP4A_PATTERN_FILE_TMP}
         fi
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].database.custom_jdbc_pvc "\"<Remove>\""
-        ${SED_COMMAND} "s|custom_jdbc_pvc: '\"<Remove>\"'|# custom_jdbc_pvc: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
+        ${YQ_CMD} -i '.spec.baw_configuration[1].database.custom_jdbc_pvc = "<Remove>"' ${CP4A_PATTERN_FILE_TMP}
+        ${SED_COMMAND} 's|custom_jdbc_pvc: "<Remove>"|# custom_jdbc_pvc: ""|g' ${CP4A_PATTERN_FILE_TMP}
 
         # set current schema name for db2 and postgresql
         if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
@@ -6945,29 +6989,29 @@ function sync_property_into_final_cr(){
                     tmp_aws_db_current_schema_name=$(echo $tmp_aws_db_current_schema_name | tr '[:upper:]' '[:lower:]')
                 fi
 
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].database.current_schema "\"$tmp_aws_db_current_schema_name\""
+                ${YQ_CMD} -i ".spec.baw_configuration.[1].database.current_schema = \"$tmp_aws_db_current_schema_name\"" ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
         if [[ $DB_TYPE == "postgresql-edb" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].database.type "postgresql"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].database.dc_use_postgres "true"
+            ${YQ_CMD} -i '.spec.baw_configuration[1].database.type = "postgresql"' ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i '.spec.baw_configuration[1].database.dc_use_postgres = true' ${CP4A_PATTERN_FILE_TMP}
             # always use default schema for EDB Postgres
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].database.current_schema
+            ${YQ_CMD} -i 'del(.spec.baw_configuration.[1].database.current_schema)' "${CP4A_PATTERN_FILE_TMP}"
             # set dc_ssl_enabled always true for postgresql-edb
-            ds_cfg_val=`cat $CP4A_PATTERN_FILE_TMP | ${YQ_CMD} r - spec.baw_configuration.[1].database`
+            ds_cfg_val=`${YQ_CMD} ".spec.baw_configuration.[1].database // \"\"" "$CP4A_PATTERN_FILE_TMP"`
             if [[ ! -z "$ds_cfg_val" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].database.enable_ssl "true"
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].database.db_cert_secret_name "{{ meta.name }}-pg-client-cert-secret"
+                ${YQ_CMD} -i '.spec.baw_configuration[1].database.enable_ssl = true' ${CP4A_PATTERN_FILE_TMP}
+                ${YQ_CMD} -i '.spec.baw_configuration[1].database.db_cert_secret_name = "{{ meta.name }}-pg-client-cert-secret"' ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
 
         # Applying user profile for BAW runtime
         tmp_baw_runtime_admin="$(prop_user_profile_property_file BAW_RUNTIME.ADMIN_USER)"
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].admin_user "\"$tmp_baw_runtime_admin\""
+        ${YQ_CMD} -i ".spec.baw_configuration.[0].admin_user = \"$tmp_baw_runtime_admin\"" ${CP4A_PATTERN_FILE_TMP}
 
         # Applying user profile for AWS
         tmp_aws_admin="$(prop_user_profile_property_file AWS.ADMIN_USER)"
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[1].admin_user "\"$tmp_aws_admin\""
+        ${YQ_CMD} -i ".spec.baw_configuration.[1].admin_user = \"$tmp_aws_admin\"" ${CP4A_PATTERN_FILE_TMP}
     fi
 
     # Applying value in Workstreams property file into final CR
@@ -6983,38 +7027,38 @@ function sync_property_into_final_cr(){
         tmp_aws_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_aws_db_name")
         for i in "${!AWS_ONLY_CR_MAPPING[@]}"; do
             if [[ ("${AWS_COMMON_PROPERTY[i]}" == "DATABASE_SERVERNAME"  || "${AWS_COMMON_PROPERTY[i]}" == "DATABASE_PORT") && $DB_TYPE == "oracle" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${AWS_ONLY_CR_MAPPING[i]}" "\"<Remove>\""
+                ${YQ_CMD} -i ".${AWS_ONLY_CR_MAPPING[i]} = \"<Remove>\"" ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${AWS_ONLY_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_aws_db_servername.${AWS_COMMON_PROPERTY[i]})\""
+                ${YQ_CMD} -i ".${AWS_ONLY_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_aws_db_servername.${AWS_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_aws_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
+        tmp_secret_name=`kubectl get secret -l db-name=${tmp_aws_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
 
         # set baw_configuration
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.secret_name "\"$tmp_secret_name\""
+        ${YQ_CMD} -i ".spec.baw_configuration.[0].database.secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
 
         if [[ $DB_TYPE == "postgresql" ]]; then
             tmp_aws_db_name=$(echo $tmp_aws_db_name | tr '[:upper:]' '[:lower:]')
         fi
 
         if [[ $DB_TYPE == "oracle" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.database_name "\"<Remove>\""
+            ${YQ_CMD} -i '.spec.baw_configuration[0].database.database_name = "<Remove>"' ${CP4A_PATTERN_FILE_TMP}
             # ${SED_COMMAND} "s|database_name: '\"<Remove>\"'|# database_name: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.database_name "\"$tmp_aws_db_name\""
+            ${YQ_CMD} -i ".spec.baw_configuration.[0].database.database_name = \"$tmp_aws_db_name\"" ${CP4A_PATTERN_FILE_TMP}
         fi
 
         if [[ $DB_TYPE == "oracle" ]]; then
             tmp_aws_db_jdbc_url="$(prop_db_server_property_file $tmp_aws_db_servername.ORACLE_JDBC_URL)"
             tmp_aws_db_jdbc_url=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_aws_db_jdbc_url")
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.jdbc_url "\"$tmp_aws_db_jdbc_url\""
+            ${YQ_CMD} -i ".spec.baw_configuration.[0].database.jdbc_url = \"$tmp_aws_db_jdbc_url\"" ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.jdbc_url "\"<Remove>\""
-            ${SED_COMMAND} "s|jdbc_url: '\"<Remove>\"'|# jdbc_url: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i '.spec.baw_configuration[0].database.jdbc_url = "<Remove>"' ${CP4A_PATTERN_FILE_TMP}
+            ${SED_COMMAND} 's|jdbc_url: "<Remove>"|# jdbc_url: ""|g' ${CP4A_PATTERN_FILE_TMP}
         fi
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.custom_jdbc_pvc "\"<Remove>\""
-        ${SED_COMMAND} "s|custom_jdbc_pvc: '\"<Remove>\"'|# custom_jdbc_pvc: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
+        ${YQ_CMD} -i '.spec.baw_configuration[0].database.custom_jdbc_pvc = "<Remove>"' ${CP4A_PATTERN_FILE_TMP}
+        ${SED_COMMAND} 's|custom_jdbc_pvc: "<Remove>"|# custom_jdbc_pvc: ""|g' ${CP4A_PATTERN_FILE_TMP}
 
         if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
             tmp_aws_db_current_schema_name="$(prop_db_name_user_property_file AWS_DB_CURRENT_SCHEMA)"
@@ -7024,25 +7068,25 @@ function sync_property_into_final_cr(){
                     tmp_aws_db_current_schema_name=$(echo $tmp_aws_db_current_schema_name | tr '[:upper:]' '[:lower:]')
                 fi
 
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.current_schema "\"$tmp_aws_db_current_schema_name\""
+                ${YQ_CMD} -i ".spec.baw_configuration.[0].database.current_schema = \"$tmp_aws_db_current_schema_name\"" ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
         if [[ $DB_TYPE == "postgresql-edb" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.type "postgresql"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.dc_use_postgres "true"
+            ${YQ_CMD} -i '.spec.baw_configuration[0].database.type = "postgresql"' ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i '.spec.baw_configuration[0].database.dc_use_postgres = true' ${CP4A_PATTERN_FILE_TMP}
             # always use default schema for EDB Postgres
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.current_schema
+            ${YQ_CMD} -i 'del(.spec.baw_configuration.[0].database.current_schema)' "${CP4A_PATTERN_FILE_TMP}"
             # set dc_ssl_enabled always true for postgresql-edb
-            ds_cfg_val=`cat $CP4A_PATTERN_FILE_TMP | ${YQ_CMD} r - spec.baw_configuration.[0].database`
+            ds_cfg_val=`${YQ_CMD} ".spec.baw_configuration.[0].database // \"\"" "$CP4A_PATTERN_FILE_TMP"`
             if [[ ! -z "$ds_cfg_val" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.enable_ssl "true"
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].database.db_cert_secret_name "{{ meta.name }}-pg-client-cert-secret"
+                ${YQ_CMD} -i '.spec.baw_configuration[0].database.enable_ssl = true' ${CP4A_PATTERN_FILE_TMP}
+                ${YQ_CMD} -i '.spec.baw_configuration[0].database.db_cert_secret_name = "{{ meta.name }}-pg-client-cert-secret"' ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
 
         # Applying user profile for AWS
         tmp_aws_admin="$(prop_user_profile_property_file AWS.ADMIN_USER)"
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[0].admin_user "\"$tmp_aws_admin\""
+        ${YQ_CMD} -i ".spec.baw_configuration.[0].admin_user = \"$tmp_aws_admin\"" ${CP4A_PATTERN_FILE_TMP}
     fi
 
     # Applying value in ADS property file into final CR
@@ -7051,16 +7095,16 @@ function sync_property_into_final_cr(){
         tmp_mongo_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_mongo_flag")
         if [[ $tmp_mongo_flag == "Yes" || $tmp_mongo_flag == "YES" || $tmp_mongo_flag == "Y" || $tmp_mongo_flag == "True" || $tmp_mongo_flag == "true" ]]; then
             # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-            tmp_secret_name=`kubectl get secret -l db-name=ads-mongo -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
+            tmp_secret_name=`kubectl get secret -l db-name=ads-mongo -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name // ""' -`
             if [[ -z $tmp_secret_name ]]; then
                 info "Not found ibm-dba-ads-mongo-secret secret for an external MongoDB"
             fi
             # set baw_configuration
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ads_configuration.mongo.use_embedded "false"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ads_configuration.mongo.admin_secret_name "\"$tmp_secret_name\""
+            ${YQ_CMD} -i '.spec.ads_configuration.mongo.use_embedded = false' ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i ".spec.ads_configuration.mongo.admin_secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ads_configuration.mongo.use_embedded "true"
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ads_configuration.mongo.admin_secret_name
+            ${YQ_CMD} -i '.spec.ads_configuration.mongo.use_embedded = true' ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i 'del(.spec.ads_configuration.mongo.admin_secret_name)' "${CP4A_PATTERN_FILE_TMP}"
         fi
     fi
 
@@ -7077,9 +7121,9 @@ function sync_property_into_final_cr(){
         tmp_adp_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_adp_db_name")
 
         for i in "${!ADPDB_CR_MAPPING[@]}"; do
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${ADPDB_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_adp_db_servername.${ADPDB_COMMON_PROPERTY[i]})\""
+            ${YQ_CMD} -i ".${ADPDB_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_adp_db_servername.${ADPDB_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
         done
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_ca_datasource.database_name "\"$tmp_adp_db_name\""
+        ${YQ_CMD} -i ".spec.datasource_configuration.dc_ca_datasource.database_name = \"$tmp_adp_db_name\"" ${CP4A_PATTERN_FILE_TMP}
 
         # set dc_ca_datasource.tenant_databases
         local db_name_array=()
@@ -7092,15 +7136,15 @@ function sync_property_into_final_cr(){
         IFS=$OIFS
         # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_ca_datasource.tenant_databases
         for i in ${!db_name_array[@]}; do
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_ca_datasource.tenant_databases.[${i}] "\"${db_name_array[i]}\""
+            ${YQ_CMD} -i ".spec.datasource_configuration.dc_ca_datasource.tenant_databases[${i}] = \"${db_name_array[$i]}\"" ${CP4A_PATTERN_FILE_TMP}
         done
         if [[ $DB_TYPE == "postgresql-edb" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_ca_datasource.dc_database_type "postgresql"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_ca_datasource.dc_use_postgres "true"
+            ${YQ_CMD} -i '.spec.datasource_configuration.dc_ca_datasource.dc_database_type = "postgresql"' ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i '.spec.datasource_configuration.dc_ca_datasource.dc_use_postgres = true' ${CP4A_PATTERN_FILE_TMP}
             # set dc_ssl_enabled always true for postgresql-edb
-            ds_cfg_val=`cat $CP4A_PATTERN_FILE_TMP | ${YQ_CMD} r - spec.datasource_configuration.dc_ca_datasource`
+            ds_cfg_val=`${YQ_CMD} ".spec.datasource_configuration.dc_ca_datasource // \"\"" "$CP4A_PATTERN_FILE_TMP"`
             if [[ ! -z "$ds_cfg_val" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_ca_datasource.dc_database_ssl_enabled "true"
+                ${YQ_CMD} -i '.spec.datasource_configuration.dc_ca_datasource.dc_database_ssl_enabled = true' ${CP4A_PATTERN_FILE_TMP}
                 # ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_ca_datasource.dc_ssl_secret_name "{{ meta.name }}-pg-client-cert-secret"
             fi
         fi
@@ -7110,9 +7154,9 @@ function sync_property_into_final_cr(){
         tmp_mongo_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_mongo_flag")
 
         if [[ $tmp_mongo_flag == "Yes" || $tmp_mongo_flag == "YES" || $tmp_mongo_flag == "Y" || $tmp_mongo_flag == "True" || $tmp_mongo_flag == "true" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration.document_processing.deploy_mongo "false"
+            ${YQ_CMD} -i '.spec.ecm_configuration.document_processing.deploy_mongo = false' ${CP4A_PATTERN_FILE_TMP}
         elif [[ $tmp_mongo_flag == "No" || $tmp_mongo_flag == "NO" || $tmp_mongo_flag == "N" || $tmp_mongo_flag == "False" || $tmp_mongo_flag == "false" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration.document_processing.deploy_mongo "true"
+            ${YQ_CMD} -i '.spec.ecm_configuration.document_processing.deploy_mongo = true' ${CP4A_PATTERN_FILE_TMP}
         fi
 
         # Apply git connection secret if true when ADP designer
@@ -7121,29 +7165,29 @@ function sync_property_into_final_cr(){
             tmp_git_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_git_flag")
             if [[ $tmp_git_flag == "Yes" || $tmp_git_flag == "YES" || $tmp_git_flag == "Y" || $tmp_git_flag == "True" || $tmp_git_flag == "true" ]]; then
                 tmp_git_secret_name="$(prop_user_profile_property_file ADP.GIT_SSL_SECRET_NAME)"
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.trusted_certificate_list.[0] "\"$tmp_git_secret_name\""
+                ${YQ_CMD} -i ".spec.shared_configuration.trusted_certificate_list.[0] = \"$tmp_git_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
 
         # Apply REPO_SERVICE_URL and CDRA route certificate and runtime_feedback if ADP runtime
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing_runtime" ]]; then
             tmp_REPO_SERVICE_URL="$(prop_user_profile_property_file ADP.REPO_SERVICE_URL)"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration.document_processing.cpds.production_setting.repo_service_url "\"$tmp_REPO_SERVICE_URL\""
+            ${YQ_CMD} -i ".spec.ecm_configuration.document_processing.cpds.production_setting.repo_service_url = \"$tmp_REPO_SERVICE_URL\"" ${CP4A_PATTERN_FILE_TMP}
 
             tmp_cdra_secret_name="$(prop_user_profile_property_file ADP.CDRA_SSL_SECRET_NAME)"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.trusted_certificate_list.[0] "\"$tmp_cdra_secret_name\""
+            ${YQ_CMD} -i ".spec.shared_configuration.trusted_certificate_list.[0] = \"$tmp_cdra_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
 
             tmp_runtime_feedback_enabled="$(prop_user_profile_property_file ADP.RUNTIME_FEEDBACK_ENABLED)"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ca_configuration.global.runtime_feedback.enabled "\"$tmp_runtime_feedback_enabled\""
+            ${YQ_CMD} -i ".spec.ca_configuration.global.runtime_feedback.enabled = \"$tmp_runtime_feedback_enabled\"" ${CP4A_PATTERN_FILE_TMP}
 
             tmp_runtime_feedback_runtime_type="$(prop_user_profile_property_file ADP.RUNTIME_FEEDBACK_RUNTIME_TYPE)"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ca_configuration.global.runtime_feedback.runtime_type "\"$tmp_runtime_feedback_runtime_type\""
+            ${YQ_CMD} -i ".spec.ca_configuration.global.runtime_feedback.runtime_type = \"$tmp_runtime_feedback_runtime_type\"" ${CP4A_PATTERN_FILE_TMP}
 
             tmp_runtime_feedback_design_api_secret="$(prop_user_profile_property_file ADP.RUNTIME_FEEDBACK_DESIGN_API_SECRET)"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ca_configuration.global.runtime_feedback.design_api_secret "\"$tmp_runtime_feedback_design_api_secret\""
+            ${YQ_CMD} -i ".spec.ca_configuration.global.runtime_feedback.design_api_secret = \"$tmp_runtime_feedback_design_api_secret\"" ${CP4A_PATTERN_FILE_TMP}
 
             tmp_runtime_feedback_design_tls_secret="$(prop_user_profile_property_file ADP.RUNTIME_FEEDBACK_DESIGN_TLS_SECRET)"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ca_configuration.global.runtime_feedback.design_tls_secret "\"$tmp_runtime_feedback_design_tls_secret\""
+            ${YQ_CMD} -i ".spec.ca_configuration.global.runtime_feedback.design_tls_secret = \"$tmp_runtime_feedback_design_tls_secret\"" ${CP4A_PATTERN_FILE_TMP}
         fi
     fi
 
@@ -7164,9 +7208,9 @@ function sync_property_into_final_cr(){
         isfalse=false
         for i in "${!BASDB_CR_MAPPING[@]}"; do
             if [[ ("${BASDB_COMMON_PROPERTY[i]}" == "DATABASE_SERVERNAME"  || "${BASDB_COMMON_PROPERTY[i]}" == "DATABASE_PORT") && $DB_TYPE == "oracle" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${BASDB_CR_MAPPING[i]}" "\"<Remove>\""
+                ${YQ_CMD} -i ".${BASDB_CR_MAPPING[i]} = \"<Remove>\"" ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${BASDB_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_bas_db_servername.${BASDB_COMMON_PROPERTY[i]})\""
+                ${YQ_CMD} -i ".${BASDB_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_bas_db_servername.${BASDB_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
                 # Check if we are updating spec.datasource_configuration.dc_ssl_enabled value to false
                 if [ "${BASDB_CR_MAPPING[i]}" == "spec.bastudio_configuration.database.ssl_enabled" ] && [[ "$(prop_db_server_property_file $tmp_bas_db_servername.${BASDB_COMMON_PROPERTY[i]})" =~ ^[fF]alse$ ]]; then
                     isfalse=true
@@ -7174,44 +7218,44 @@ function sync_property_into_final_cr(){
 
                 # If SSL is disabled, set the database_ssl_secret_name to ""
                 if [ "${BASDB_CR_MAPPING[i]}" == "spec.bastudio_configuration.database.certificate_secret_name" ] && [ "$isfalse" == "true" ]; then
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.bastudio_configuration.database.certificate_secret_name" "\"\""
+                    ${YQ_CMD} -i ".spec.bastudio_configuration.database.certificate_secret_name = \"\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_bas_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
+        tmp_secret_name=`kubectl get secret -l db-name=${tmp_bas_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
 
         # set bastudio_configuration
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.admin_secret_name "\"$tmp_secret_name\""
+        ${YQ_CMD} -i ".spec.bastudio_configuration.admin_secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         if [[ $DB_TYPE == "postgresql" ]]; then
             tmp_bas_db_name=$(echo $tmp_bas_db_name | tr '[:upper:]' '[:lower:]')
         fi
 
         # remove database_name if oracle
         if [[ $DB_TYPE == "oracle" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.database.name "\"<Remove>\""
+            ${YQ_CMD} -i '.spec.bastudio_configuration.database.name = "<Remove>"' ${CP4A_PATTERN_FILE_TMP}
             # ${SED_COMMAND} "s|database_name: '\"<Remove>\"'|# database_name: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.database.name "\"$tmp_bas_db_name\""
+            ${YQ_CMD} -i ".spec.bastudio_configuration.database.name = \"$tmp_bas_db_name\"" ${CP4A_PATTERN_FILE_TMP}
         fi
 
 
         if [[ $DB_TYPE != "oracle" ]]; then
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.database.oracle_url
+            ${YQ_CMD} -i 'del(.spec.bastudio_configuration.database.oracle_url)' "${CP4A_PATTERN_FILE_TMP}"
         fi
 
         # Applying user profile for BAS
         tmp_bas_admin="$(prop_user_profile_property_file BASTUDIO.ADMIN_USER)"
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.admin_user "\"$tmp_bas_admin\""
+        ${YQ_CMD} -i ".spec.bastudio_configuration.admin_user = \"$tmp_bas_admin\"" ${CP4A_PATTERN_FILE_TMP}
 
         if [[ $DB_TYPE == "postgresql-edb" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.database.type "postgresql"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.database.dc_use_postgres "true"
+            ${YQ_CMD} -i '.spec.bastudio_configuration.database.type = "postgresql"' ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i '.spec.bastudio_configuration.database.dc_use_postgres = true' ${CP4A_PATTERN_FILE_TMP}
             # set dc_ssl_enabled always true for postgresql-edb
-            ds_cfg_val=`cat $CP4A_PATTERN_FILE_TMP | ${YQ_CMD} r - spec.bastudio_configuration.database`
+            ds_cfg_val=`${YQ_CMD} ".spec.bastudio_configuration.database // \"\"" "$CP4A_PATTERN_FILE_TMP"`
             if [[ ! -z "$ds_cfg_val" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.database.ssl_enabled "true"
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.database.certificate_secret_name "{{ meta.name }}-pg-client-cert-secret"
+                ${YQ_CMD} -i '.spec.bastudio_configuration.database.ssl_enabled = true' ${CP4A_PATTERN_FILE_TMP}
+                ${YQ_CMD} -i '.spec.bastudio_configuration.database.certificate_secret_name = "{{ meta.name }}-pg-client-cert-secret"' ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
     fi
@@ -7234,9 +7278,9 @@ function sync_property_into_final_cr(){
         isfalse=false
         for i in "${!PLAYBACKDB_CR_MAPPING[@]}"; do
             if [[ ("${PLAYBACKDB_COMMON_PROPERTY[i]}" == "DATABASE_SERVERNAME"  || "${PLAYBACKDB_COMMON_PROPERTY[i]}" == "DATABASE_PORT") && $DB_TYPE == "oracle" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${PLAYBACKDB_CR_MAPPING[i]}" "\"<Remove>\""
+                ${YQ_CMD} -i ".${PLAYBACKDB_CR_MAPPING[i]} = \"<Remove>\"" ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${PLAYBACKDB_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_app_db_servername.${PLAYBACKDB_COMMON_PROPERTY[i]})\""
+                ${YQ_CMD} -i ".${PLAYBACKDB_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_app_db_servername.${PLAYBACKDB_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
                  # Check if we are updating spec.bastudio_configuration.playback_server.database.enable_ssl to false
                 if [ "${PLAYBACKDB_CR_MAPPING[i]}" == "spec.bastudio_configuration.playback_server.database.enable_ssl" ] && [[ "$(prop_db_server_property_file $tmp_app_db_servername.${PLAYBACKDB_COMMON_PROPERTY[i]})" =~ ^[fF]alse$ ]]; then
                     isfalse=true
@@ -7244,51 +7288,51 @@ function sync_property_into_final_cr(){
 
                 # If SSL is disabled, set the db_cert_secret_name to ""
                 if [ "${PLAYBACKDB_CR_MAPPING[i]}" == "spec.bastudio_configuration.playback_server.database.db_cert_secret_name" ] && [ "$isfalse" == "true" ]; then
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.bastudio_configuration.playback_server.database.db_cert_secret_name" "\"\""
+                    ${YQ_CMD} -i ".spec.bastudio_configuration.playback_server.database.db_cert_secret_name = \"\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_app_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
+        tmp_secret_name=`kubectl get secret -l db-name=${tmp_app_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
 
         # set bastudio_configuration.playback_server
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.admin_secret_name "\"$tmp_secret_name\""
+        ${YQ_CMD} -i ".spec.bastudio_configuration.playback_server.admin_secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         if [[ $DB_TYPE == "postgresql" ]]; then
             tmp_app_db_name=$(echo $tmp_app_db_name | tr '[:upper:]' '[:lower:]')
         fi
 
         # remove database_name if oracle
         if [[ $DB_TYPE == "oracle" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.database.name "\"<Remove>\""
+            ${YQ_CMD} -i '.spec.bastudio_configuration.playback_server.database.name = "<Remove>"' ${CP4A_PATTERN_FILE_TMP}
             # ${SED_COMMAND} "s|database_name: '\"<Remove>\"'|# database_name: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.database.name "\"$tmp_app_db_name\""
+            ${YQ_CMD} -i ".spec.bastudio_configuration.playback_server.database.name = \"$tmp_app_db_name\"" ${CP4A_PATTERN_FILE_TMP}
         fi
 
         if [[ $DB_TYPE != "oracle" ]]; then
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.database.oracle_url_without_wallet_directory
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.database.oracle_url_with_wallet_directory
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.database.oracle_sso_wallet_secret_name
+            ${YQ_CMD} -i 'del(.spec.bastudio_configuration.playback_server.database.oracle_url_without_wallet_directory)' "${CP4A_PATTERN_FILE_TMP}"
+            ${YQ_CMD} -i 'del(.spec.bastudio_configuration.playback_server.database.oracle_url_with_wallet_directory)' "${CP4A_PATTERN_FILE_TMP}"
+            ${YQ_CMD} -i 'del(.spec.bastudio_configuration.playback_server.database.oracle_sso_wallet_secret_name)' "${CP4A_PATTERN_FILE_TMP}"
         fi
         if [[ $DB_TYPE == "postgresql-edb" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.database.type "postgresql"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.database.dc_use_postgres "true"
+            ${YQ_CMD} -i '.spec.bastudio_configuration.playback_server.database.type = "postgresql"' ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i '.spec.bastudio_configuration.playback_server.database.dc_use_postgres = true' ${CP4A_PATTERN_FILE_TMP}
             # set dc_ssl_enabled always true for postgresql-edb
-            ds_cfg_val=`cat $CP4A_PATTERN_FILE_TMP | ${YQ_CMD} r - spec.bastudio_configuration.playback_server.database`
+            ds_cfg_val=`${YQ_CMD} ".spec.bastudio_configuration.playback_server.database // \"\"" "$CP4A_PATTERN_FILE_TMP"`
             if [[ ! -z "$ds_cfg_val" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.database.enable_ssl "true"
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.database.db_cert_secret_name "{{ meta.name }}-pg-client-cert-secret"
+                ${YQ_CMD} -i '.spec.bastudio_configuration.playback_server.database.enable_ssl = true' ${CP4A_PATTERN_FILE_TMP}
+                ${YQ_CMD} -i '.spec.bastudio_configuration.playback_server.database.db_cert_secret_name = "{{ meta.name }}-pg-client-cert-secret"' ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
         # Applying user profile for Playback
         tmp_playback_admin="$(prop_user_profile_property_file APP_PLAYBACK.ADMIN_USER)"
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.admin_user "\"$tmp_playback_admin\""
+        ${YQ_CMD} -i ".spec.bastudio_configuration.playback_server.admin_user = \"$tmp_playback_admin\"" ${CP4A_PATTERN_FILE_TMP}
 
         # Applying user profile for AE HA Redis session
         tmp_session_flag="$(prop_user_profile_property_file APP_PLAYBACK.SESSION_REDIS_USE_EXTERNAL_STORE)"
         tmp_session_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_session_flag")
         if [[ $tmp_session_flag == "Yes" || $tmp_session_flag == "YES" || $tmp_session_flag == "Y" || $tmp_session_flag == "True" || $tmp_session_flag == "true" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.session.use_external_store "true"
+            ${YQ_CMD} -i '.spec.bastudio_configuration.playback_server.session.use_external_store = true' ${CP4A_PATTERN_FILE_TMP}
 
             tmp_redis_host="$(prop_user_profile_property_file APP_PLAYBACK.SESSION_REDIS_HOST)"
             tmp_redis_port="$(prop_user_profile_property_file APP_PLAYBACK.SESSION_REDIS_PORT)"
@@ -7297,18 +7341,18 @@ function sync_property_into_final_cr(){
             tmp_redis_tls_enabled=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_redis_tls_enabled")
             tmp_redis_username="$(prop_user_profile_property_file APP_PLAYBACK.SESSION_REDIS_USERNAME)"
 
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.redis.host "\"$tmp_redis_host\""
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.redis.port "\"$tmp_redis_port\""
+            ${YQ_CMD} -i ".spec.bastudio_configuration.playback_server.redis.host = \"$tmp_redis_host\"" ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i ".spec.bastudio_configuration.playback_server.redis.port = \"$tmp_redis_port\"" ${CP4A_PATTERN_FILE_TMP}
             if [[ $tmp_redis_tls_enabled == "Yes" || $tmp_redis_tls_enabled == "YES" || $tmp_redis_tls_enabled == "Y" || $tmp_redis_tls_enabled == "True" || $tmp_redis_tls_enabled == "true" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.redis.tls_enabled "true"
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.tls.tls_trust_list.[0] "\"$tmp_redis_ssl_secret_name\""
+                ${YQ_CMD} -i '.spec.bastudio_configuration.playback_server.redis.tls_enabled = true' ${CP4A_PATTERN_FILE_TMP}
+                ${YQ_CMD} -i ".spec.bastudio_configuration.playback_server.tls.tls_trust_list.[0] = \"$tmp_redis_ssl_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.redis.tls_enabled "false"
+                ${YQ_CMD} -i '.spec.bastudio_configuration.playback_server.redis.tls_enabled = false' ${CP4A_PATTERN_FILE_TMP}
             fi
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.redis.username "\"$tmp_redis_username\""
+            ${YQ_CMD} -i ".spec.bastudio_configuration.playback_server.redis.username = \"$tmp_redis_username\"" ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.session.use_external_store "false"
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server.redis
+            ${YQ_CMD} -i '.spec.bastudio_configuration.playback_server.session.use_external_store = false' ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i 'del(.spec.bastudio_configuration.playback_server.redis)' "${CP4A_PATTERN_FILE_TMP}"
         fi
     fi
 
@@ -7328,60 +7372,60 @@ function sync_property_into_final_cr(){
         isfalse=false
         for i in "${!AEDB_CR_MAPPING[@]}"; do
             if [[ ("${AEDB_COMMON_PROPERTY[i]}" == "DATABASE_SERVERNAME"  || "${AEDB_COMMON_PROPERTY[i]}" == "DATABASE_PORT") && $DB_TYPE == "oracle" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${AEDB_CR_MAPPING[i]}" "\"<Remove>\""
+                ${YQ_CMD} -i ".${AEDB_CR_MAPPING[i]} = \"<Remove>\"" ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${AEDB_CR_MAPPING[i]}" "\"$(prop_db_server_property_file $tmp_ae_db_servername.${AEDB_COMMON_PROPERTY[i]})\""
+                ${YQ_CMD} -i ".${AEDB_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_ae_db_servername.${AEDB_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
                 # Check if we are updating spec.datasource_configuration.dc_ssl_enabled value to false
                 if [ "${AEDB_CR_MAPPING[i]}" == "spec.application_engine_configuration.[0].database.enable_ssl" ] && [[ "$(prop_db_server_property_file $tmp_ae_db_servername.${AEDB_COMMON_PROPERTY[i]})" =~ ^[fF]alse$ ]]; then
                     isfalse=true
                 fi
                 # If SSL is disabled, set the database_ssl_secret_name to ""
                 if [ "${AEDB_CR_MAPPING[i]}" == "spec.application_engine_configuration.[0].database.db_cert_secret_name" ] && [ "$isfalse" == "true" ]; then
-                    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "spec.application_engine_configuration.[0].database.db_cert_secret_name" "\"\""
+                    ${YQ_CMD} -i ".spec.application_engine_configuration[0].database.db_cert_secret_name = \"\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_ae_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
+        tmp_secret_name=`kubectl get secret -l db-name=${tmp_ae_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
 
         # set application_engine_configuration
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].admin_secret_name "\"$tmp_secret_name\""
+        ${YQ_CMD} -i ".spec.application_engine_configuration.[0].admin_secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         if [[ $DB_TYPE == "postgresql" ]]; then
             tmp_ae_db_name=$(echo $tmp_ae_db_name | tr '[:upper:]' '[:lower:]')
         fi
         # remove database_name if oracle
         if [[ $DB_TYPE == "oracle" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].database.name "\"<Remove>\""
+            ${YQ_CMD} -i '.spec.application_engine_configuration[0].database.name = "<Remove>"' ${CP4A_PATTERN_FILE_TMP}
             # ${SED_COMMAND} "s|database_name: '\"<Remove>\"'|# database_name: '\"\"'|g" ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].database.name "\"$tmp_ae_db_name\""
+            ${YQ_CMD} -i ".spec.application_engine_configuration.[0].database.name = \"$tmp_ae_db_name\"" ${CP4A_PATTERN_FILE_TMP}
         fi
 
         if [[ $DB_TYPE != "oracle" ]]; then
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].database.oracle_url_without_wallet_directory
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].database.oracle_url_with_wallet_directory
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].database.oracle_sso_wallet_secret_name
+            ${YQ_CMD} -i 'del(.spec.application_engine_configuration.[0].database.oracle_url_without_wallet_directory)' "${CP4A_PATTERN_FILE_TMP}"
+            ${YQ_CMD} -i 'del(.spec.application_engine_configuration.[0].database.oracle_url_with_wallet_directory)' "${CP4A_PATTERN_FILE_TMP}"
+            ${YQ_CMD} -i 'del(.spec.application_engine_configuration.[0].database.oracle_sso_wallet_secret_name)' "${CP4A_PATTERN_FILE_TMP}"
         fi
 
         if [[ $DB_TYPE == "postgresql-edb" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].database.type "postgresql"
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].database.dc_use_postgres "true"
+            ${YQ_CMD} -i '.spec.application_engine_configuration[0].database.type = "postgresql"' ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i '.spec.application_engine_configuration[0].database.dc_use_postgres = true' ${CP4A_PATTERN_FILE_TMP}
             # set dc_ssl_enabled always true for postgresql-edb
-            ds_cfg_val=`cat $CP4A_PATTERN_FILE_TMP | ${YQ_CMD} r - spec.application_engine_configuration.[0].database`
+            ds_cfg_val=`${YQ_CMD} ".spec.application_engine_configuration.[0].database // \"\"" "$CP4A_PATTERN_FILE_TMP"`
             if [[ ! -z "$ds_cfg_val" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].database.enable_ssl "true"
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].database.db_cert_secret_name "{{ meta.name }}-pg-client-cert-secret"
+                ${YQ_CMD} -i '.spec.application_engine_configuration[0].database.enable_ssl = true' ${CP4A_PATTERN_FILE_TMP}
+                ${YQ_CMD} -i '.spec.application_engine_configuration[0].database.db_cert_secret_name = "{{ meta.name }}-pg-client-cert-secret"' ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
         # Applying user profile for AE
         tmp_ae_admin="$(prop_user_profile_property_file APP_ENGINE.ADMIN_USER)"
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].admin_user "\"$tmp_ae_admin\""
+        ${YQ_CMD} -i ".spec.application_engine_configuration.[0].admin_user = \"$tmp_ae_admin\"" ${CP4A_PATTERN_FILE_TMP}
 
         # Applying user profile for AE HA Redis session
         tmp_session_flag="$(prop_user_profile_property_file APP_ENGINE.SESSION_REDIS_USE_EXTERNAL_STORE)"
         tmp_session_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_session_flag")
         if [[ $tmp_session_flag == "Yes" || $tmp_session_flag == "YES" || $tmp_session_flag == "Y" || $tmp_session_flag == "True" || $tmp_session_flag == "true" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].session.use_external_store "true"
+            ${YQ_CMD} -i '.spec.application_engine_configuration[0].session.use_external_store = true' ${CP4A_PATTERN_FILE_TMP}
 
             tmp_redis_host="$(prop_user_profile_property_file APP_ENGINE.SESSION_REDIS_HOST)"
             tmp_redis_port="$(prop_user_profile_property_file APP_ENGINE.SESSION_REDIS_PORT)"
@@ -7390,48 +7434,48 @@ function sync_property_into_final_cr(){
             tmp_redis_tls_enabled=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_redis_tls_enabled")
             tmp_redis_username="$(prop_user_profile_property_file APP_ENGINE.SESSION_REDIS_USERNAME)"
 
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].redis.host "\"$tmp_redis_host\""
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].redis.port "\"$tmp_redis_port\""
+            ${YQ_CMD} -i ".spec.application_engine_configuration.[0].redis.host = \"$tmp_redis_host\"" ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i ".spec.application_engine_configuration.[0].redis.port = \"$tmp_redis_port\"" ${CP4A_PATTERN_FILE_TMP}
             if [[ $tmp_redis_tls_enabled == "Yes" || $tmp_redis_tls_enabled == "YES" || $tmp_redis_tls_enabled == "Y" || $tmp_redis_tls_enabled == "True" || $tmp_redis_tls_enabled == "true" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].redis.tls_enabled "true"
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].tls.tls_trust_list.[0] "\"$tmp_redis_ssl_secret_name\""
+                ${YQ_CMD} -i '.spec.application_engine_configuration[0].redis.tls_enabled = true' ${CP4A_PATTERN_FILE_TMP}
+                ${YQ_CMD} -i ".spec.application_engine_configuration.[0].tls.tls_trust_list.[0] = \"$tmp_redis_ssl_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].redis.tls_enabled "false"
+                ${YQ_CMD} -i '.spec.application_engine_configuration[0].redis.tls_enabled = false' ${CP4A_PATTERN_FILE_TMP}
             fi
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].redis.username "\"$tmp_redis_username\""
+            ${YQ_CMD} -i ".spec.application_engine_configuration.[0].redis.username = \"$tmp_redis_username\"" ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].session.use_external_store "false"
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[0].redis
+            ${YQ_CMD} -i '.spec.application_engine_configuration[0].session.use_external_store = false' ${CP4A_PATTERN_FILE_TMP}
+            ${YQ_CMD} -i 'del(.spec.application_engine_configuration.[0].redis)' "${CP4A_PATTERN_FILE_TMP}"
         fi
     fi
 
     # set dc_ssl_enabled always true for postgresql-edb
     if [[ $DB_TYPE == "postgresql-edb" ]]; then
 
-        ds_cfg_val=`cat $CP4A_PATTERN_FILE_TMP | ${YQ_CMD} r - spec.datasource_configuration`
+        ds_cfg_val=`${YQ_CMD} ".spec.datasource_configuration // \"\"" "$CP4A_PATTERN_FILE_TMP"`
         if [[ ! -z "$ds_cfg_val" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_ssl_enabled "true"
+            ${YQ_CMD} -i '.spec.datasource_configuration.dc_ssl_enabled = true' ${CP4A_PATTERN_FILE_TMP}
         fi
     fi
 
     # Applying value in LDAP property file into final CR
     for i in "${!LDAP_COMMON_CR_MAPPING[@]}"; do
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${LDAP_COMMON_CR_MAPPING[i]}" "\"$(prop_ldap_property_file ${LDAP_COMMON_PROPERTY[i]})\""
+        ${YQ_CMD} -i ".${LDAP_COMMON_CR_MAPPING[i]} = \"$(prop_ldap_property_file ${LDAP_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
     done
 
     if [[ $LDAP_TYPE == "AD" ]]; then
         for i in "${!AD_LDAP_CR_MAPPING[@]}"; do
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${AD_LDAP_CR_MAPPING[i]}" "\"$(prop_ldap_property_file ${AD_LDAP_PROPERTY[i]})\""
+            ${YQ_CMD} -i ".${AD_LDAP_CR_MAPPING[i]} = \"$(prop_ldap_property_file ${AD_LDAP_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
         done
     else
         for i in "${!TDS_LDAP_CR_MAPPING[@]}"; do
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${TDS_LDAP_CR_MAPPING[i]}" "\"$(prop_ldap_property_file ${TDS_LDAP_PROPERTY[i]})\""
+            ${YQ_CMD} -i ".${TDS_LDAP_CR_MAPPING[i]} = \"$(prop_ldap_property_file ${TDS_LDAP_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
         done
     fi
     # set lc_bind_secret
     # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-    tmp_secret_name=`kubectl get secret -l name=ldap-bind-secret -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
-    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ldap_configuration.lc_bind_secret "\"$tmp_secret_name\""
+    tmp_secret_name=`kubectl get secret -l name=ldap-bind-secret -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+    ${YQ_CMD} -i ".spec.ldap_configuration.lc_bind_secret = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
     # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ldap_configuration.lc_ldap_bind_dn
     # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ldap_configuration.lc_ldap_bind_dn_pwd
     # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ldap_configuration.lc_ldap_ssl_secret_folder
@@ -7440,18 +7484,18 @@ function sync_property_into_final_cr(){
     # Applying value in External LDAP property file into final CR
     if [[ $SET_EXT_LDAP == "Yes" ]]; then
         for i in "${!LDAP_COMMON_CR_MAPPING[@]}"; do
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${EXT_LDAP_COMMON_CR_MAPPING[i]}" "\"$(prop_ext_ldap_property_file ${LDAP_COMMON_PROPERTY[i]})\""
+            ${YQ_CMD} -i ".${EXT_LDAP_COMMON_CR_MAPPING[i]} = \"$(prop_ext_ldap_property_file ${LDAP_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
         done
 
         tmp_ldap_type="$(prop_ext_ldap_property_file LDAP_TYPE)"
         tmp_ldap_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_ldap_type")
         if [[ $tmp_ldap_type == "Microsoft Active Directory" ]]; then
             for i in "${!AD_LDAP_CR_MAPPING[@]}"; do
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${EXT_AD_LDAP_CR_MAPPING[i]}" "\"$(prop_ext_ldap_property_file ${AD_LDAP_PROPERTY[i]})\""
+                ${YQ_CMD} -i ".${EXT_AD_LDAP_CR_MAPPING[i]} = \"$(prop_ext_ldap_property_file ${AD_LDAP_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
             done
         elif [[ $tmp_ldap_type == "IBM Security Directory Server" ]]; then
             for i in "${!TDS_LDAP_CR_MAPPING[@]}"; do
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${EXT_TDS_LDAP_CR_MAPPING[i]}" "\"$(prop_ext_ldap_property_file ${TDS_LDAP_PROPERTY[i]})\""
+                ${YQ_CMD} -i ".${EXT_TDS_LDAP_CR_MAPPING[i]} = \"$(prop_ext_ldap_property_file ${TDS_LDAP_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
             done
         else
             fail "The value for \"LDAP_TYPE\" in the property file \"${EXTERNAL_LDAP_PROPERTY_FILE}\" is not valid. The possible values are: \"IBM Security Directory Server\" or \"Microsoft Active Directory\""
@@ -7460,8 +7504,8 @@ function sync_property_into_final_cr(){
 
         # set lc_bind_secret
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} r - items.[0].metadata.name`
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ext_ldap_configuration.lc_bind_secret "\"$tmp_secret_name\""
+        tmp_secret_name=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        ${YQ_CMD} -i ".spec.ext_ldap_configuration.lc_bind_secret = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ext_ldap_configuration.lc_ldap_bind_dn
         # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ext_ldap_configuration.lc_ldap_bind_dn_pwd
         # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ext_ldap_configuration.lc_ldap_ssl_secret_folder
@@ -7473,11 +7517,11 @@ function sync_property_into_final_cr(){
         # DBACLD-177513 scim_configuration_iam section should not be present in the generated CR when deploying WFPS authoring only without LDAP
       if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring" || " ${pattern_cr_arr[@]}" =~ "content" || " ${pattern_cr_arr[@]}" =~ "document_processing" || "${optional_component_cr_arr[@]}" =~ "ae_data_persistence" || (" ${pattern_cr_arr[@]}" =~ "workflow-process-service" && "${optional_component_cr_arr[@]}" =~ "wfps_authoring" && $LDAP_WFPS_AUTHORING == "Yes") ]]; then
           for i in "${!SCIM_PROPERTY[@]}"; do
-              ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} "${SCIM_CR_MAPPING[i]}" "\"$(prop_user_profile_property_file ${SCIM_PROPERTY[i]})\""
+              ${YQ_CMD} -i ".${SCIM_CR_MAPPING[i]} = \"$(prop_user_profile_property_file ${SCIM_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
           done
       fi
     fi
-    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} null
+    ${YQ_CMD} -i 'del(.null)' "${CP4A_PATTERN_FILE_TMP}"
     ${SED_COMMAND} "s|'\"|\"|g" ${CP4A_PATTERN_FILE_TMP}
     ${SED_COMMAND} "s|\"'|\"|g" ${CP4A_PATTERN_FILE_TMP}
     # ${SED_COMMAND} "s|\"\"|\"|g" ${CP4A_PATTERN_FILE_TMP}
@@ -7559,22 +7603,22 @@ function apply_pattern_cr(){
 
     # ${COPY_CMD} -rf ${CP4A_PATTERN_FILE_BAK} ${CP4A_PATTERN_FILE_TMP}
     # remove merge issue
-    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} metadata.labels.app.*
+    ${YQ_CMD} -i 'del(.metadata.labels.app.*)' "${CP4A_PATTERN_FILE_TMP}"
 
     # Keep existing value
     if [[ "${INSTALLATION_TYPE}" == "existing" ]]; then
-        ${YQ_CMD} d -i ${CP4A_EXISTING_TMP} spec.shared_configuration.sc_deployment_patterns
-        ${YQ_CMD} d -i ${CP4A_EXISTING_TMP} spec.shared_configuration.sc_optional_components
+        ${YQ_CMD} -i 'del(.spec.shared_configuration.sc_deployment_patterns)' "${CP4A_EXISTING_TMP}"
+        ${YQ_CMD} -i 'del(.spec.shared_configuration.sc_optional_components)' "${CP4A_EXISTING_TMP}"
         # If a starter deployment CR generated from the form UI is supplied it will not need these fields anymore
         #For DBACLD-159390
         keys=("olm_production_workflow_process_service" "olm_production_workflow" "olm_production_document_processing" "olm_production_application" "olm_production_decisions_ads" "olm_production_decisions" "olm_production_content" "olm_production_option" "olm_starter_option" "olm_starter_application" "olm_starter_content" "olm_starter_decisions" "olm_starter_decisions_ads" "olm_starter_document_processing" "olm_starter_workflow")
         for key in "${keys[@]}"; do
-            ${YQ_CMD} d -i ${CP4A_EXISTING_TMP} spec.${key}
+            ${YQ_CMD} -i "del(.spec.${key})" "${CP4A_EXISTING_TMP}"
         done
         ${SED_COMMAND} '/tag: /d' ${CP4A_EXISTING_TMP}
         # updating the namespace of the existing CR passed by the user to whatever namespace value is passed while executing the script
         #For DBACLD-159390
-        ${YQ_CMD} w -i ${CP4A_EXISTING_TMP} metadata.namespace $CP4BA_SERVICES_NS
+        ${YQ_CMD} -i ".metadata.namespace = \"$CP4BA_SERVICES_NS\"" ${CP4A_EXISTING_TMP}
     fi
 
     ${SED_COMMAND_FORMAT} ${CP4A_PATTERN_FILE_TMP}
@@ -7678,7 +7722,7 @@ function apply_pattern_cr(){
                     for ((j=0;j<${#os_index_array[@]};j++))
                     do
                         ((index_os=${os_index_array[$j]}-j))
-                        ${YQ_CMD} d -i ${CP4A_EXISTING_TMP} spec.datasource_configuration.dc_os_datasources.[$index_os]
+                        ${YQ_CMD} -i "del(.spec.datasource_configuration.dc_os_datasources[\"${index_os}\"])" "${CP4A_EXISTING_TMP}"
                     done
                 fi
                 containsInitObjectStore "$object_name" "${CP4A_EXISTING_TMP}"
@@ -7687,7 +7731,7 @@ function apply_pattern_cr(){
                     for ((j=0;j<${#os_index_array[@]};j++))
                     do
                         ((index_os=${os_index_array[$j]}-j))
-                        ${YQ_CMD} d -i ${CP4A_EXISTING_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$index_os]
+                        ${YQ_CMD} -i "del(.spec.initialize_configuration.ic_obj_store_creation.object_stores[\"${index_os}\"])" "${CP4A_EXISTING_TMP}"
                     done
                 fi
             done
@@ -7708,7 +7752,7 @@ function apply_pattern_cr(){
                     for ((j=0;j<${#os_index_array[@]};j++))
                     do
                         ((index_os=${os_index_array[$j]}-j))
-                        ${YQ_CMD} d -i ${CP4A_EXISTING_TMP} spec.datasource_configuration.dc_os_datasources.[$index_os]
+                        ${YQ_CMD} -i "del(.spec.datasource_configuration.dc_os_datasources[\"${index_os}\"])" "${CP4A_EXISTING_TMP}"
                     done
                 fi
             done
@@ -7753,7 +7797,7 @@ function apply_pattern_cr(){
                     for ((j=0;j<${#baw_index_array[@]};j++))
                     do
                         ((index_os=${baw_index_array[$j]}-j))
-                        ${YQ_CMD} d -i ${CP4A_EXISTING_TMP} spec.baw_configuration
+                        ${YQ_CMD} -i 'del(.spec.baw_configuration)' "${CP4A_EXISTING_TMP}"
                     done
                 fi
             done
@@ -7762,30 +7806,30 @@ function apply_pattern_cr(){
 
         if grep "ums_configuration:" $CP4A_EXISTING_TMP > /dev/null
         then
-            ${YQ_CMD} w -i ${CP4A_EXISTING_TMP} spec.ums_configuration.fix "dummy"
+            ${YQ_CMD} -i '.spec.ums_configuration.fix = "dummy"' ${CP4A_EXISTING_TMP}
         fi
         # read -rsn1 -p"Before:Press Enter/Return to exit";echo
-        ${YQ_CMD} m -i -a -M --overwrite --autocreate=false ${CP4A_PATTERN_FILE_TMP} ${CP4A_EXISTING_TMP}
+        ${YQ_CMD} eval-all -i 'select(fi==0) *+? select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${CP4A_EXISTING_TMP}
         # read -rsn1 -p"After:Press Enter/Return to exit";echo
-        ${YQ_CMD} d -i ${CP4A_EXISTING_TMP} spec.ums_configuration.fix
+        ${YQ_CMD} -i 'del(.spec.ums_configuration.fix)' "${CP4A_EXISTING_TMP}"
         ${SED_COMMAND} "s|ums_configuration: {}|ums_configuration:|g" ${CP4A_EXISTING_TMP}
         ${SED_COMMAND} "s|ums_configuration: {}|ums_configuration:|g" ${CP4A_PATTERN_FILE_TMP}
     fi
 
     # ${COPY_CMD} -rf ${CP4A_PATTERN_FILE_BAK} ${CP4A_PATTERN_FILE_TMP}
     if [[ " ${OPT_COMPONENTS_CR_SELECTED[@]} " =~ "ae_data_persistence" ]]; then
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_content_initialization "true"
+        ${YQ_CMD} -i '.spec.shared_configuration.sc_content_initialization = true' ${CP4A_PATTERN_FILE_TMP}
     elif [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow" || " ${PATTERNS_CR_SELECTED[@]} " =~ "workstreams" ]]; then
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_content_initialization "true"
+        ${YQ_CMD} -i '.spec.shared_configuration.sc_content_initialization = true' ${CP4A_PATTERN_FILE_TMP}
     fi
 
     if [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "document_processing" ]]; then
         if [[ "$CPE_FULL_STORAGE" == "Yes" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_cpe_limited_storage "false"
+            ${YQ_CMD} -i '.spec.shared_configuration.sc_cpe_limited_storage = false' ${CP4A_PATTERN_FILE_TMP}
         elif [[ "$CPE_FULL_STORAGE" == "No" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_cpe_limited_storage "true"
+            ${YQ_CMD} -i '.spec.shared_configuration.sc_cpe_limited_storage = true' ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_cpe_limited_storage "false"
+            ${YQ_CMD} -i '.spec.shared_configuration.sc_cpe_limited_storage = false' ${CP4A_PATTERN_FILE_TMP}
         fi
     fi
 
@@ -7795,15 +7839,15 @@ function apply_pattern_cr(){
             while true; do
                 case $item in
                     "bai")
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.content_optional_components.bai "true"
+                        ${YQ_CMD} -i '.spec.content_optional_components.bai = true' ${CP4A_PATTERN_FILE_TMP}
                         break
                         ;;
                     "cmis")
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.content_optional_components.cmis "true"
+                        ${YQ_CMD} -i '.spec.content_optional_components.cmis = true' ${CP4A_PATTERN_FILE_TMP}
                         break
                         ;;
                     "css")
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.content_optional_components.css "true"
+                        ${YQ_CMD} -i '.spec.content_optional_components.css = true' ${CP4A_PATTERN_FILE_TMP}
                         break
                         ;;
                     "es")
@@ -7811,15 +7855,15 @@ function apply_pattern_cr(){
                         break
                         ;;
                     "iccsap")
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.content_optional_components.iccsap "true"
+                        ${YQ_CMD} -i '.spec.content_optional_components.iccsap = true' ${CP4A_PATTERN_FILE_TMP}
                         break
                         ;;
                     "ier")
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.content_optional_components.ier "true"
+                        ${YQ_CMD} -i '.spec.content_optional_components.ier = true' ${CP4A_PATTERN_FILE_TMP}
                         break
                         ;;
                     "tm")
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.content_optional_components.tm "true"
+                        ${YQ_CMD} -i '.spec.content_optional_components.tm = true' ${CP4A_PATTERN_FILE_TMP}
                         break
                         ;;
                 esac
@@ -7854,7 +7898,7 @@ function apply_pattern_cr(){
     if [ -z "$existing_infra_name" ]; then
         echo ""
     else
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_deployment_hostname_suffix "$existing_infra_name"
+        ${YQ_CMD} -i ".spec.shared_configuration.sc_deployment_hostname_suffix = \"$existing_infra_name\"" ${CP4A_PATTERN_FILE_TMP}
         if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]];
         then
             ${SED_COMMAND} "s|sc_deployment_hostname_suffix:.*|sc_deployment_hostname_suffix: \"{{ meta.namespace }}.${INFRA_NAME}\"|g" ${CP4A_PATTERN_FILE_TMP}
@@ -7881,9 +7925,9 @@ function apply_pattern_cr(){
     # Set fips_enable
     if  [[ ("$DEPLOYMENT_TYPE" == "starter" || ("$DEPLOYMENT_TYPE" == "production" && $DEPLOYMENT_WITH_PROPERTY == "No")) && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS") ]]; then
         if [[ $FIPS_ENABLED == "true" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.enable_fips "true"
+            ${YQ_CMD} -i '.spec.shared_configuration.enable_fips = true' ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.enable_fips "false"
+            ${YQ_CMD} -i '.spec.shared_configuration.enable_fips = false' ${CP4A_PATTERN_FILE_TMP}
         fi
     elif [[ $DEPLOYMENT_WITH_PROPERTY == "Yes" && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS") ]]; then
          fips_flag="$(prop_user_profile_property_file CP4BA.ENABLE_FIPS)"
@@ -7891,9 +7935,9 @@ function apply_pattern_cr(){
         fips_flag=$(echo $fips_flag | tr '[:upper:]' '[:lower:]')
         if [[ ! -z $fips_flag ]]; then
             if [[ $fips_flag == "true" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.enable_fips "true"
+                ${YQ_CMD} -i '.spec.shared_configuration.enable_fips = true' ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.enable_fips "false"
+                ${YQ_CMD} -i '.spec.shared_configuration.enable_fips = false' ${CP4A_PATTERN_FILE_TMP}
             fi
         fi
     fi
@@ -7901,9 +7945,9 @@ function apply_pattern_cr(){
     # Set sc_restricted_internet_access
     if  [[ ("$DEPLOYMENT_TYPE" == "starter" || ("$DEPLOYMENT_TYPE" == "production" && $DEPLOYMENT_WITH_PROPERTY == "No")) && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS") ]]; then
         if [[ $RESTRICTED_INTERNET_ACCESS == "true" ]]; then
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access "true"
+            ${YQ_CMD} -i '.spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access = true' ${CP4A_PATTERN_FILE_TMP}
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access "false"
+            ${YQ_CMD} -i '.spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access = false' ${CP4A_PATTERN_FILE_TMP}
         fi
     elif [[ $DEPLOYMENT_WITH_PROPERTY == "Yes" && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS") ]]; then
         restricted_flag="$(prop_user_profile_property_file CP4BA.ENABLE_RESTRICTED_INTERNET_ACCESS)"
@@ -7911,12 +7955,12 @@ function apply_pattern_cr(){
         restricted_flag=$(echo $restricted_flag | tr '[:upper:]' '[:lower:]')
         if [[ ! -z $restricted_flag ]]; then
             if [[ $restricted_flag == "true" ]]; then
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access "true"
+                ${YQ_CMD} -i '.spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access = true' ${CP4A_PATTERN_FILE_TMP}
             else
-                ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access "false"
+                ${YQ_CMD} -i '.spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access = false' ${CP4A_PATTERN_FILE_TMP}
             fi
         else
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access "true"
+            ${YQ_CMD} -i '.spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access = true' ${CP4A_PATTERN_FILE_TMP}
         fi
     fi
 
@@ -7932,24 +7976,24 @@ function apply_pattern_cr(){
     ${SED_COMMAND} "s|sc_block_storage_classname:.*|sc_block_storage_classname: \"${BLOCK_STORAGE_CLASS_NAME}\"|g" ${CP4A_PATTERN_FILE_TMP}
     # Set image_pull_secrets
     # ${SED_COMMAND} "s|image-pull-secret|$DOCKER_RES_SECRET_NAME|g" ${CP4A_PATTERN_FILE_TMP}
-    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.image_pull_secrets
-    ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.image_pull_secrets.[0] "$DOCKER_RES_SECRET_NAME"
+    ${YQ_CMD} -i 'del(.spec.shared_configuration.image_pull_secrets)' "${CP4A_PATTERN_FILE_TMP}"
+    ${YQ_CMD} -i ".spec.shared_configuration.image_pull_secrets[0] = \"$DOCKER_RES_SECRET_NAME\"" ${CP4A_PATTERN_FILE_TMP}
 
     # set sc_drivers_url
     if [ -z "$CP4BA_JDBC_URL" ]; then
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_drivers_url ""
+        ${YQ_CMD} -i '.spec.shared_configuration.sc_drivers_url = ""' ${CP4A_PATTERN_FILE_TMP}
     else
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_drivers_url "$CP4BA_JDBC_URL"
+        ${YQ_CMD} -i ".spec.shared_configuration.sc_drivers_url = \"$CP4BA_JDBC_URL\"" ${CP4A_PATTERN_FILE_TMP}
     fi
 
     # support profile size for production
     if [[ $DEPLOYMENT_TYPE == "production" ]]; then
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_deployment_profile_size "\"$PROFILE_TYPE\""
+        ${YQ_CMD} -i ".spec.shared_configuration.sc_deployment_profile_size = \"$PROFILE_TYPE\"" ${CP4A_PATTERN_FILE_TMP}
     fi
 
     # set the sc_iam.default_admin_username
     if [[ ("$PLATFORM_SELECTED" == "OCP" || "$PLATFORM_SELECTED" == "ROKS") && "$DEPLOYMENT_TYPE" == "production" && "$USE_DEFAULT_IAM_ADMIN" == "No" ]]; then
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_iam.default_admin_username "\"$NON_DEFAULT_IAM_ADMIN\""
+        ${YQ_CMD} -i ".spec.shared_configuration.sc_iam.default_admin_username = \"$NON_DEFAULT_IAM_ADMIN\"" ${CP4A_PATTERN_FILE_TMP}
     fi
 
     # set sc_image_repository
@@ -8015,7 +8059,7 @@ function apply_pattern_cr(){
             do
                 ((index_os=${os_index_array[$j]}-j))
                 # read -rsn1 -p"index_os: $index_os";echo
-                ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$index_os]
+                ${YQ_CMD} -i "del(.spec.datasource_configuration.dc_os_datasources[\"${index_os}\"])" "${CP4A_PATTERN_FILE_TMP}"
             done
         fi
         containsInitObjectStore "$object_name" "${CP4A_PATTERN_FILE_TMP}"
@@ -8024,7 +8068,7 @@ function apply_pattern_cr(){
             for ((j=0;j<${index_array_temp};j++))
             do
                 ((index_os=${os_index_array[$j]}-j))
-                ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$index_os]
+                ${YQ_CMD} -i "del(.spec.initialize_configuration.ic_obj_store_creation.object_stores[\"${index_os}\"])" "${CP4A_PATTERN_FILE_TMP}"
             done
         fi
     done
@@ -8045,7 +8089,7 @@ function apply_pattern_cr(){
                 for ((j=0;j<${index_array_temp};j++))
                 do
                     ((index_os=${os_index_array[$j]}-j))
-                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$index_os]
+                    ${YQ_CMD} -i "del(.spec.datasource_configuration.dc_os_datasources[\"${index_os}\"])" "${CP4A_PATTERN_FILE_TMP}"
                 done
             fi
         done
@@ -8066,7 +8110,7 @@ function apply_pattern_cr(){
                 for ((j=0;j<${index_array_temp};j++))
                 do
                     ((index_os=${os_index_array[$j]}-j))
-                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$index_os]
+                    ${YQ_CMD} -i "del(.spec.datasource_configuration.dc_os_datasources[\"${index_os}\"])" "${CP4A_PATTERN_FILE_TMP}"
                 done
             fi
         done
@@ -8095,7 +8139,7 @@ function apply_pattern_cr(){
                 for ((j=0;j<${index_array_temp};j++))
                 do
                     ((index_os=${os_index_array[$j]}-j))
-                    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$index_os]
+                    ${YQ_CMD} -i "del(.spec.datasource_configuration.dc_os_datasources[\"${index_os}\"])" "${CP4A_PATTERN_FILE_TMP}"
                 done
             fi
         done
@@ -8107,7 +8151,7 @@ function apply_pattern_cr(){
         for ((j=0;j<${index_array_temp};j++))
         do
             ((index_os=${ldap_groups_index_array[$j]}-j))
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_ldap_creation.ic_ldap_admins_groups_name.[$index_os]
+            ${YQ_CMD} -i "del(.spec.initialize_configuration.ic_ldap_creation.ic_ldap_admins_groups_name[\"${index_os}\"])" "${CP4A_PATTERN_FILE_TMP}"
         done
 
     fi
@@ -8118,7 +8162,7 @@ function apply_pattern_cr(){
         for ((j=0;j<${index_array_temp};j++))
         do
             ((index_os=${ldap_users_index_array[$j]}-j))
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_ldap_creation.ic_ldap_admin_user_name.[$index_os]
+            ${YQ_CMD} -i "del(.spec.initialize_configuration.ic_ldap_creation.ic_ldap_admin_user_name[\"${index_os}\"])" "${CP4A_PATTERN_FILE_TMP}"
         done
 
     fi
@@ -8132,7 +8176,7 @@ function apply_pattern_cr(){
             for ((j=0;j<${index_array_temp};j++))
             do
                 ((index_os=${baw_index_array[$j]}-j))
-                ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration.[$index_os]
+                ${YQ_CMD} -i "del(.spec.baw_configuration[\"${index_os}\"])" "${CP4A_PATTERN_FILE_TMP}"
             done
         fi
     done
@@ -8143,7 +8187,7 @@ function apply_pattern_cr(){
         for ((j=0;j<${index_array_temp};j++))
         do
             ((index_os=${ae_index_array[$j]}-j))
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration.[$index_os]
+            ${YQ_CMD} -i "del(.spec.application_engine_configuration[\"${index_os}\"])" "${CP4A_PATTERN_FILE_TMP}"
         done
     fi
 
@@ -8153,7 +8197,7 @@ function apply_pattern_cr(){
         for ((j=0;j<${index_array_temp};j++))
         do
             ((index_os=${icn_repo_index_array[$j]}-j))
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_icn_init_info.icn_repos.[$index_os]
+            ${YQ_CMD} -i "del(.spec.initialize_configuration.ic_icn_init_info.icn_repos[\"${index_os}\"])" "${CP4A_PATTERN_FILE_TMP}"
         done
     fi
 
@@ -8163,7 +8207,7 @@ function apply_pattern_cr(){
         for ((j=0;j<${index_array_temp};j++))
         do
             ((index_os=${icn_desktop_index_array[$j]}-j))
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_icn_init_info.icn_desktop.[$index_os]
+            ${YQ_CMD} -i "del(.spec.initialize_configuration.ic_icn_init_info.icn_desktop[\"${index_os}\"])" "${CP4A_PATTERN_FILE_TMP}"
         done
     fi
 
@@ -8173,7 +8217,7 @@ function apply_pattern_cr(){
         for ((j=0;j<${index_array_temp};j++))
         do
             ((index_os=${tenant_db_index_array[$j]}-j))
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_ca_datasource.tenant_databases.[$index_os]
+            ${YQ_CMD} -i "del(.spec.datasource_configuration.dc_ca_datasource.tenant_databases[\"${index_os}\"])" "${CP4A_PATTERN_FILE_TMP}"
         done
     fi
 
@@ -8201,7 +8245,7 @@ function apply_pattern_cr(){
     fi
 
     if [[ $PLATFORM_SELECTED == "other" ]]; then
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.storage_configuration.sc_block_storage_classname
+        ${YQ_CMD} -i 'del(.spec.shared_configuration.storage_configuration.sc_block_storage_classname)' "${CP4A_PATTERN_FILE_TMP}"
     fi
 
     # if [[ $DEPLOYMENT_TYPE == "starter" ]]; then
@@ -8212,11 +8256,11 @@ function apply_pattern_cr(){
 
     # Remove dc_os_datasources for `FNOS1DS` if content_os_number = 0
     if [[ $DEPLOYMENT_TYPE == "production" && $content_os_number -eq 0 ]]; then
-        OS_DATASOURCE_NUMBER=$(grep "^      dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'FNOS1DS'|cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^        dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'FNOS1DS'|cut -d':' -f1)
         # prompt_press_any_key_to_continue "$OS_DATASOURCE_NUMBER"
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
         OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER]
+        ${YQ_CMD} -i "del(.spec.datasource_configuration.dc_os_datasources[\"${OS_DATASOURCE_NUMBER}\"])" "${CP4A_PATTERN_FILE_TMP}"
         fi
     fi
 
@@ -8230,49 +8274,49 @@ function apply_pattern_cr(){
     ${SED_COMMAND} "s|\"'|\"|g" ${CP4A_PATTERN_FILE_TMP}
     # remove ldap_configuration and datasource_configuration when only select WfPS authoring
     if [[ "${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "No" ]]; then
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ldap_configuration
+        ${YQ_CMD} -i 'del(.spec.ldap_configuration)' "${CP4A_PATTERN_FILE_TMP}"
     fi
 
     if [[ "${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $EXTERNAL_DB_WFPS_AUTHORING == "No" ]]; then
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.admin_secret_name
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.database
+        ${YQ_CMD} -i 'del(.spec.bastudio_configuration.admin_secret_name)' "${CP4A_PATTERN_FILE_TMP}"
+        ${YQ_CMD} -i 'del(.spec.bastudio_configuration.database)' "${CP4A_PATTERN_FILE_TMP}"
     fi
 
     if [[ "${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" ]]; then
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_deployment_fncm_license
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_deployment_baw_license
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_content_initialization
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_cpe_limited_storage
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration
+        ${YQ_CMD} -i 'del(.spec.shared_configuration.sc_deployment_fncm_license)' "${CP4A_PATTERN_FILE_TMP}"
+        ${YQ_CMD} -i 'del(.spec.shared_configuration.sc_deployment_baw_license)' "${CP4A_PATTERN_FILE_TMP}"
+        ${YQ_CMD} -i 'del(.spec.shared_configuration.sc_content_initialization)' "${CP4A_PATTERN_FILE_TMP}"
+        ${YQ_CMD} -i 'del(.spec.shared_configuration.sc_cpe_limited_storage)' "${CP4A_PATTERN_FILE_TMP}"
+        ${YQ_CMD} -i 'del(.spec.datasource_configuration)' "${CP4A_PATTERN_FILE_TMP}"
     fi
 
     # remove application_engine_configuration/playback_server when only select BAW authoring/only WfPS authoring/both BAW authoring and WfPS authoring
     if [[ (! (" ${pattern_cr_arr[@]}" =~ "document_processing" || " ${pattern_cr_arr[@]}" =~ "application" || " ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workstreams")) && ("${pattern_cr_arr[@]}" =~ "workflow-authoring" || "${pattern_cr_arr[@]}" =~ "workflow-process-service") ]]; then
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration
+        ${YQ_CMD} -i 'del(.spec.application_engine_configuration)' "${CP4A_PATTERN_FILE_TMP}"
     fi
 
     if [[ (! (" ${pattern_cr_arr[@]}" =~ "document_processing_designer" || " ${optional_component_cr_arr[@]}" =~ "app_designer" || " ${optional_component_cr_arr[@]}" =~ "ads_designer")) && ("${pattern_cr_arr[@]}" =~ "workflow-authoring" || "${pattern_cr_arr[@]}" =~ "workflow-process-service") ]]; then
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.bastudio_configuration.playback_server
+        ${YQ_CMD} -i 'del(.spec.bastudio_configuration.playback_server)' "${CP4A_PATTERN_FILE_TMP}"
     fi
     # remove gcd/aeos/init without ae data persistent when only select BAA pattern
 
     if [[ "${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "application" && (! "${optional_component_cr_arr[@]}" =~ "ae_data_persistence") ]]; then
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_gcd_datasource
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration
+        ${YQ_CMD} -i 'del(.spec.datasource_configuration.dc_gcd_datasource)' "${CP4A_PATTERN_FILE_TMP}"
+        ${YQ_CMD} -i 'del(.spec.datasource_configuration.dc_os_datasources)' "${CP4A_PATTERN_FILE_TMP}"
+        ${YQ_CMD} -i 'del(.spec.initialize_configuration)' "${CP4A_PATTERN_FILE_TMP}"
     fi
 
     if [[ "${#pattern_cr_arr[@]}" -gt "1" && (! "${optional_component_cr_arr[@]}" =~ "ae_data_persistence") ]]; then
-        OS_DATASOURCE_NUMBER=$(grep "^      dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AEOS'|cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^        dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AEOS'|cut -d':' -f1)
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
             OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER]
+            ${YQ_CMD} -i "del(.spec.datasource_configuration.dc_os_datasources[\"${OS_DATASOURCE_NUMBER}\"])" "${CP4A_PATTERN_FILE_TMP}"
         fi
 
-        OS_DATASOURCE_NUMBER=$(grep "^          dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AEOS'|cut -d':' -f1)
+        OS_DATASOURCE_NUMBER=$(grep "^            dc_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn 'AEOS'|cut -d':' -f1)
         if [[ -n $OS_DATASOURCE_NUMBER && $OS_DATASOURCE_NUMBER -gt 0 ]]; then
             OS_DATASOURCE_NUMBER=$(( OS_DATASOURCE_NUMBER - 1 ))
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER]
+            ${YQ_CMD} -i "del(.spec.initialize_configuration.ic_obj_store_creation.object_stores[\"${OS_DATASOURCE_NUMBER}\"])" "${CP4A_PATTERN_FILE_TMP}"
         fi
     fi
 
@@ -8282,35 +8326,35 @@ function apply_pattern_cr(){
             echo # keep application_engine_configuration for BAA/ADP
         else
             if [[ (" ${pattern_cr_arr[@]} " =~ "workstreams") || (" ${pattern_cr_arr[@]} " =~ "workflow-runtime") ]]; then
-                ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.pfs_configuration
-                ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.application_engine_configuration
-                ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.elasticsearch_configuration
+                ${YQ_CMD} -i 'del(.spec.pfs_configuration)' "${CP4A_PATTERN_FILE_TMP}"
+                ${YQ_CMD} -i 'del(.spec.application_engine_configuration)' "${CP4A_PATTERN_FILE_TMP}"
+                ${YQ_CMD} -i 'del(.spec.elasticsearch_configuration)' "${CP4A_PATTERN_FILE_TMP}"
             fi
         fi
     # 6: remove Navigator/GraphQL
         if [[ " ${pattern_cr_arr[@]} " =~ "workstreams" && "${#pattern_cr_arr[@]}" -eq "1" ]]; then
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration.graphql
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ecm_configuration.navigator_configuration
-            ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.datasource_configuration.dc_icn_datasource
+            ${YQ_CMD} -i 'del(.spec.ecm_configuration.graphql)' "${CP4A_PATTERN_FILE_TMP}"
+            ${YQ_CMD} -i 'del(.spec.ecm_configuration.navigator_configuration)' "${CP4A_PATTERN_FILE_TMP}"
+            ${YQ_CMD} -i 'del(.spec.datasource_configuration.dc_icn_datasource)' "${CP4A_PATTERN_FILE_TMP}"
         fi
     fi
 
     # For ARO/ROSA platform type
     if [[ $OCP_PLATFORM == "ARO" ]]; then
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_deployment_ocp_platform "ARO"
+        ${YQ_CMD} -i '.spec.shared_configuration.sc_deployment_ocp_platform = "ARO"' ${CP4A_PATTERN_FILE_TMP}
     elif [[ $OCP_PLATFORM == "ROSA" ]]; then
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_deployment_ocp_platform "ROSA"
+        ${YQ_CMD} -i '.spec.shared_configuration.sc_deployment_ocp_platform = "ROSA"' ${CP4A_PATTERN_FILE_TMP}
     fi
 
     # sc_deployment_baw_license required for either workflow runtime or workflow authoring
     # For https://jsw.ibm.com/browse/DBACLD-161792
     if [[ ! (" ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring") ]]; then
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_deployment_baw_license
+        ${YQ_CMD} -i 'del(.spec.shared_configuration.sc_deployment_baw_license)' "${CP4A_PATTERN_FILE_TMP}"
     fi
 
     # Remove sc_deployment_fncm_license
     if [[ ! (" ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring" || " ${pattern_cr_arr[@]}" =~ "workstreams" || " ${pattern_cr_arr[@]}" =~ "content" || " ${pattern_cr_arr[@]}" =~ "document_processing" || "${optional_component_cr_arr[@]}" =~ "ae_data_persistence") ]]; then
-        ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.shared_configuration.sc_deployment_baw_license
+        ${YQ_CMD} -i 'del(.spec.shared_configuration.sc_deployment_baw_license)' "${CP4A_PATTERN_FILE_TMP}"
     fi
 
     # while [[ $TARGET_PROJECT_NAME == "" ]];
@@ -8347,7 +8391,7 @@ function apply_pattern_cr(){
                 info "This CP4BA deployment is separation of operators and operands"
             fi
             info "the script will set \"$cp4ba_services_namespace\" as the namespace in the final custom resource."
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} metadata.namespace "$cp4ba_services_namespace" --style=double
+            ${YQ_CMD} -i ".metadata.namespace = \"$cp4ba_services_namespace\" | .metadata.namespace style=\"double\"" ${CP4A_PATTERN_FILE_TMP}
         else
             warning "\"services_namespace\" was not found in the configMap ibm-cp4ba-common-config in the project \"$CP4BA_SERVICES_NS\""
             info "You need to apply the custom resource in the project for CP4BA operand, not in the project for CP4BA operators"
@@ -8387,7 +8431,7 @@ function apply_pattern_cr(){
         echo "Applying the existing Custom Resource file supplied to the cluster...\n"
         # Merging the existing CR sections to the CR that will be applied
         # For https://jsw.ibm.com/browse/DBACLD-159390
-        ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_BAK} ${CP4A_EXISTING_TMP}
+        ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_BAK} ${CP4A_EXISTING_TMP}
         echo -e "\x1B[1mInstalling the selected Cloud Pak capability...\x1B[0m"
 
         if [[ "${ALL_NAMESPACE}" == "Yes" ]]; then
@@ -8782,15 +8826,15 @@ function prepare_pattern_file(){
         WFPS_AUTHOR_PATTERN_FILE_BAK=$BAK_FOLDER/.ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow_process_service_authoring.yaml
 
         # merge workflow with workstreams templat for workflow-workstreams in 4Q
-        ${YQ_CMD} m -a -M ${WORKFLOW_PATTERN_FILE} ${WORKSTREAMS_PATTERN_FILE} > /tmp/ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow_workstreams.yaml
+        ${YQ_CMD} eval-all 'select(fi==0) *+ select(fi==1)' ${WORKFLOW_PATTERN_FILE} ${WORKSTREAMS_PATTERN_FILE} > /tmp/ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow_workstreams.yaml
         WW_PATTERN_FILE=/tmp/ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow_workstreams.yaml
-        ${YQ_CMD} d -i ${WW_PATTERN_FILE} spec.initialize_configuration.ic_obj_store_creation.object_stores.[3]
-        ${YQ_CMD} d -i ${WW_PATTERN_FILE} spec.datasource_configuration.dc_os_datasources.[3]
-        ${YQ_CMD} d -i ${WW_PATTERN_FILE} spec.initialize_configuration.ic_ldap_creation.ic_ldap_admin_user_name.[1]
-        ${YQ_CMD} d -i ${WW_PATTERN_FILE} spec.initialize_configuration.ic_ldap_creation.ic_ldap_admins_groups_name.[1]
-        ${YQ_CMD} w -i ${WW_PATTERN_FILE} spec.baw_configuration.[0].host_federated_portal false
-        ${YQ_CMD} w -i ${WW_PATTERN_FILE} spec.baw_configuration.[1].host_federated_portal false
-        ${YQ_CMD} w -i ${WW_PATTERN_FILE} spec.baw_configuration.[0].host_federated_portal true
+        ${YQ_CMD} -i 'del(.spec.initialize_configuration.ic_obj_store_creation.object_stores.[3])' "${WW_PATTERN_FILE}"
+        ${YQ_CMD} -i 'del(.spec.datasource_configuration.dc_os_datasources.[3])' "${WW_PATTERN_FILE}"
+        ${YQ_CMD} -i 'del(.spec.initialize_configuration.ic_ldap_creation.ic_ldap_admin_user_name.[1])' "${WW_PATTERN_FILE}"
+        ${YQ_CMD} -i 'del(.spec.initialize_configuration.ic_ldap_creation.ic_ldap_admins_groups_name.[1])' "${WW_PATTERN_FILE}"
+        ${YQ_CMD} -i '.spec.baw_configuration[0].host_federated_portal = false' ${WW_PATTERN_FILE}
+        ${YQ_CMD} -i '.spec.baw_configuration[1].host_federated_portal = false' ${WW_PATTERN_FILE}
+        ${YQ_CMD} -i '.spec.baw_configuration[0].host_federated_portal = true' ${WW_PATTERN_FILE}
         WW_PATTERN_FILE_TMP=$TEMP_FOLDER/.ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow_workstreams_tmp.yaml
         WW_PATTERN_FILE_BAK=$BAK_FOLDER/.ibm_cp4a_cr_${DEPLOY_TYPE_IN_FILE_NAME}_workflow_workstreams.yaml
 
@@ -9299,16 +9343,16 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         content_cr_name=$(${CLI_CMD} get content -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
         if [ ! -z $content_cr_name ]; then
             cr_type="content"
-            cp4ba_cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
-            owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.ownerReferences.[0].kind)
+            cp4ba_cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
+            owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.ownerReferences.[0].kind' -)
             if [[ ${owner_ref} == "ICP4ACluster" ]]; then
                 echo
             else
                 ${CLI_CMD} get $cr_type $content_cr_name -n $CP4BA_SERVICES_NS -o yaml > ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
-                bai_flag=`cat $UPGRADE_DEPLOYMENT_CONTENT_CR_TMP | ${YQ_CMD} r - spec.content_optional_components.bai`
+                bai_flag=`${YQ_CMD} ".spec.content_optional_components.bai" "$UPGRADE_DEPLOYMENT_CONTENT_CR_TMP"`
                 bai_flag=$(echo $bai_flag | tr '[:upper:]' '[:lower:]')
                 CONTENT_CR_EXIST="Yes"
-                cp4ba_root_ca_secret_name=`cat $UPGRADE_DEPLOYMENT_CONTENT_CR_TMP | ${YQ_CMD} r - spec.shared_configuration.root_ca_secret`
+                cp4ba_root_ca_secret_name=`${YQ_CMD} ".spec.shared_configuration.root_ca_secret" "$UPGRADE_DEPLOYMENT_CONTENT_CR_TMP"`
             fi
         fi
     fi
@@ -9316,10 +9360,10 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     icp4acluster_cr_name=$(${CLI_CMD} get icp4acluster -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
     if [ ! -z $icp4acluster_cr_name ]; then
         cr_type="icp4acluster"
-        cp4ba_cr_metaname=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
+        cp4ba_cr_metaname=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
         ${CLI_CMD} get $cr_type $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml > ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
 
-        cp4ba_root_ca_secret_name=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.shared_configuration.root_ca_secret`
+        cp4ba_root_ca_secret_name=`${YQ_CMD} ".spec.shared_configuration.root_ca_secret" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
         convert_olm_cr "${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}"
         if [[ $olm_cr_flag == "No" ]]; then
             # Get EXISTING_PATTERN_ARR/EXISTING_OPT_COMPONENT_ARR
@@ -9327,8 +9371,8 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             existing_opt_component_list=""
             EXISTING_PATTERN_ARR=()
             EXISTING_OPT_COMPONENT_ARR=()
-            existing_pattern_list=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.shared_configuration.sc_deployment_patterns`
-            existing_opt_component_list=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.shared_configuration.sc_optional_components`
+            existing_pattern_list=`${YQ_CMD} ".spec.shared_configuration.sc_deployment_patterns" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+            existing_opt_component_list=`${YQ_CMD} ".spec.shared_configuration.sc_optional_components" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
 
             OIFS=$IFS
             IFS=',' read -r -a EXISTING_PATTERN_ARR <<< "$existing_pattern_list"
@@ -9445,9 +9489,9 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     # Create ibm-cp4ba-shared-info configMap if not exist
     icp4acluster_cr_name=$(${CLI_CMD} get icp4acluster -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
     if [ ! -z $icp4acluster_cr_name ]; then
-        cr_version=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - spec.appVersion)
-        cr_metaname=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
-        cr_uid=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.uid)
+        cr_version=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.spec.appVersion' -)
+        cr_metaname=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
+        cr_uid=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.uid' -)
         if [[ -z $ibm_cp4ba_shared_info_cm ]]; then
             info "ibm-cp4ba-shared-info configMap not found, creating it now."
             create_ibm_cp4ba_shared_info_cm_yaml
@@ -9477,13 +9521,13 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     if [ $? -eq 0 ]; then
         content_cr_name=$(${CLI_CMD} get content -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
         if [ ! -z $content_cr_name ]; then
-            cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
-            owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.ownerReferences.[0].kind)
+            cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
+            owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.ownerReferences.[0].kind' -)
             if [[ ${owner_ref} != "ICP4ACluster" ]]; then
                 # Setting this variable to false so that we know the cp4ba-content-shared-info is to be used
                 cp4ba_shared_info_used=false 
-                cr_version=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - spec.appVersion)
-                cr_uid=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.uid)
+                cr_version=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.spec.appVersion' -)
+                cr_uid=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.uid' -)
                 if [[ -z $ibm_cp4ba_content_shared_info_cm ]]; then
                     info "Not found ibm-cp4ba-content-shared-info configMap,creating it."
                     create_ibm_cp4ba_content_shared_info_cm_yaml
@@ -9576,14 +9620,14 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         elif [[ "$cs_dedicated" != "" && "$cs_shared" != "" && "$control_namespace" != "" ]]; then
             ${CLI_CMD} get cm ${COMMON_SERVICES_CM_DEDICATED_NAME} --no-headers --ignore-not-found -n ${COMMON_SERVICES_CM_NAMESPACE} -o jsonpath='{ .data.common-service-maps\.yaml }' > /tmp/common-service-maps.yaml
             index=0
-            common_service_namespace=`cat /tmp/common-service-maps.yaml | ${YQ_CMD} r - namespaceMapping.[$index].map-to-common-service-namespace`
+            common_service_namespace=`${YQ_CMD} ".namespaceMapping.[$index].map-to-common-service-namespace // \"\"" "/tmp/common-service-maps.yaml"`
             while [[ ! -z $common_service_namespace ]]
             do
                 if [[ $common_service_namespace == "ibm-common-services" ]]; then
                     # listing all the requested namespaces that are in shared mode
                     # If the CP4BA_SERVICES_NS is in this list under ibm-common-services then it is shared otherwise it means CP4BA_SERVICES_NS is dedicated but there are other deployments in shared mode. Just checking if ibm-common-services is listed in namespaceMapping.map-to-common-service-namespace is not sufficient.
                     # For https://jsw.ibm.com/browse/DBACLD-168119
-                    common_service_requested_namespace=`cat /tmp/common-service-maps.yaml | ${YQ_CMD} r - namespaceMapping.[$index].requested-from-namespace`
+                    common_service_requested_namespace=`${YQ_CMD} ".namespaceMapping.[$index].requested-from-namespace" "/tmp/common-service-maps.yaml"`
                     if echo "$common_service_requested_namespace" | grep -q "$CP4BA_SERVICES_NS"; then
                         info "IBM Cloud Pak foundational services is working in \"Cluster-scoped\"."
                         # select_upgrade_mode
@@ -9599,7 +9643,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                     fi
                 fi
                 ((index++))
-                common_service_namespace=`cat /tmp/common-service-maps.yaml | ${YQ_CMD} r - namespaceMapping.[$index].map-to-common-service-namespace`
+                common_service_namespace=`${YQ_CMD} ".namespaceMapping.[$index].map-to-common-service-namespace // \"\"" "/tmp/common-service-maps.yaml"`
                 if [[ -z $common_service_namespace ]]; then
                     info "IBM Cloud Pak foundational services is working in \"Namespace-scoped\"."
                     UPGRADE_MODE="dedicated2dedicated"
@@ -9680,21 +9724,21 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         if [[ $UPGRADE_MODE == "shared2shared" ]]; then
             if [[ $ALL_NAMESPACE_FLAG == "Yes" ]]; then
                 # ${SED_COMMAND} "s|CS_OPERATOR_NAMESPACE=\"\"|CS_OPERATOR_NAMESPACE=\"openshift-operators\"|g" ${UPGRADE_DEPLOYMENT_PROPERTY_FILE}
-                ${YQ_CMD} w -i ${UPGRADE_CS_ZEN_FILE} data.operators_namespace "\"openshift-operators\""
+                ${YQ_CMD} -i '.data.operators_namespace = "openshift-operators"' ${UPGRADE_CS_ZEN_FILE}
                 cp4ba_operators_namespace="openshift-operators"
             elif [[ $ALL_NAMESPACE_FLAG == "No" ]]; then
                 # ${SED_COMMAND} "s|CS_OPERATOR_NAMESPACE=\"\"|CS_OPERATOR_NAMESPACE=\"ibm-common-services\"|g" ${UPGRADE_DEPLOYMENT_PROPERTY_FILE}
-                ${YQ_CMD} w -i ${UPGRADE_CS_ZEN_FILE} data.operators_namespace "\"ibm-common-services\""
+                ${YQ_CMD} -i '.data.operators_namespace = "ibm-common-services"' ${UPGRADE_CS_ZEN_FILE}
                 cp4ba_operators_namespace="ibm-common-services"
             fi
             # ${SED_COMMAND} "s|CS_SERVICES_NAMESPACE=\"\"|CS_SERVICES_NAMESPACE=\"ibm-common-services\"|g" ${UPGRADE_DEPLOYMENT_PROPERTY_FILE}
-            ${YQ_CMD} w -i ${UPGRADE_CS_ZEN_FILE} data.services_namespace "\"ibm-common-services\""
+            ${YQ_CMD} -i '.data.services_namespace = "ibm-common-services"' ${UPGRADE_CS_ZEN_FILE}
             cp4ba_services_namespace="ibm-common-services"
         elif [[ $UPGRADE_MODE == "shared2dedicated" || $UPGRADE_MODE == "dedicated2dedicated" ]]; then
             # ${SED_COMMAND} "s|CS_OPERATOR_NAMESPACE=\"\"|CS_OPERATOR_NAMESPACE=\"$CP4BA_SERVICES_NS\"|g" ${UPGRADE_DEPLOYMENT_PROPERTY_FILE}
             # ${SED_COMMAND} "s|CS_SERVICES_NAMESPACE=\"\"|CS_SERVICES_NAMESPACE=\"$CP4BA_SERVICES_NS\"|g" ${UPGRADE_DEPLOYMENT_PROPERTY_FILE}
-            ${YQ_CMD} w -i ${UPGRADE_CS_ZEN_FILE} data.operators_namespace "\"$CP4BA_SERVICES_NS\""
-            ${YQ_CMD} w -i ${UPGRADE_CS_ZEN_FILE} data.services_namespace "\"$CP4BA_SERVICES_NS\""
+            ${YQ_CMD} -i ".data.operators_namespace = \"$CP4BA_SERVICES_NS\"" ${UPGRADE_CS_ZEN_FILE}
+            ${YQ_CMD} -i ".data.services_namespace = \"$CP4BA_SERVICES_NS\"" ${UPGRADE_CS_ZEN_FILE}
             cp4ba_operators_namespace="$CP4BA_SERVICES_NS"
             cp4ba_services_namespace="$CP4BA_SERVICES_NS"
         fi
@@ -9718,15 +9762,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     if [ $? -eq 0 ]; then
         content_cr_name=$(${CLI_CMD} get content -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
         if [ ! -z $content_cr_name ]; then
-            cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
-            owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.ownerReferences.[0].kind)
+            cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
+            owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.ownerReferences.[0].kind' -)
 
             if [[ ${owner_ref} != "ICP4ACluster" ]]; then
                 CONTENT_CR_EXIST="Yes"
-                css_flag=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - spec.content_optional_components.css)
+                css_flag=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.spec.content_optional_components.css' -)
                 css_flag=$(echo $css_flag | tr '[:upper:]' '[:lower:]')
                 # Check fncm_secret_name for default ibm-fncm-secret
-                fncm_secret_name_val=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - spec.ecm_configuration.fncm_secret_name)
+                fncm_secret_name_val=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.spec.ecm_configuration.fncm_secret_name // ""' -)
                 if [[ ! -z $fncm_secret_name_val ]]; then
                     CP4BA_IBM_FNCM_SECRET_NAME=$fncm_secret_name_val
                 fi
@@ -9738,7 +9782,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     icp4acluster_cr_name=$(${CLI_CMD} get icp4acluster -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
 
     if [ ! -z $icp4acluster_cr_name ]; then
-        cr_metaname=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
+        cr_metaname=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
         ${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml > ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
 
         convert_olm_cr "${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}"
@@ -9747,14 +9791,14 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             existing_opt_component_list=""
             EXISTING_PATTERN_ARR=()
             EXISTING_OPT_COMPONENT_ARR=()
-            existing_pattern_list=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.shared_configuration.sc_deployment_patterns`
-            existing_opt_component_list=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.shared_configuration.sc_optional_components`
+            existing_pattern_list=`${YQ_CMD} ".spec.shared_configuration.sc_deployment_patterns" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+            existing_opt_component_list=`${YQ_CMD} ".spec.shared_configuration.sc_optional_components" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
             OIFS=$IFS
             IFS=',' read -r -a EXISTING_PATTERN_ARR <<< "$existing_pattern_list"
             IFS=',' read -r -a EXISTING_OPT_COMPONENT_ARR <<< "$existing_opt_component_list"
             IFS=$OIFS
             # Check fncm_secret_name for default ibm-fncm-secret
-            fncm_secret_name_val=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.ecm_configuration.fncm_secret_name`
+            fncm_secret_name_val=`${YQ_CMD} ".spec.ecm_configuration.fncm_secret_name // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
             if [[ ! -z $fncm_secret_name_val ]]; then
                 CP4BA_IBM_FNCM_SECRET_NAME=$fncm_secret_name_val
             fi
@@ -9964,8 +10008,8 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                 if [ ! -z $content_cr_name ]; then
                     info "Retrieving existing CP4BA Content (Kind: content.icp4a.ibm.com) Custom Resource"
                     cr_type="content"
-                    cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
-                    owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.ownerReferences.[0].kind)
+                    cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
+                    owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.ownerReferences.[0].kind' -)
 
                     if [[ ${owner_ref} != "ICP4ACluster" ]]; then
                         ${CLI_CMD} get $cr_type $content_cr_name -n $CP4BA_SERVICES_NS -o yaml > ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
@@ -9975,7 +10019,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         ${COPY_CMD} -rf ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} ${UPGRADE_DEPLOYMENT_CONTENT_CR_BAK}
 
                         mkdir -p ${TEMP_FOLDER} >/dev/null 2>&1
-                        bai_flag=`cat $UPGRADE_DEPLOYMENT_CONTENT_CR_TMP | ${YQ_CMD} r - spec.content_optional_components.bai`
+                        bai_flag=`${YQ_CMD} ".spec.content_optional_components.bai" "$UPGRADE_DEPLOYMENT_CONTENT_CR_TMP"`
                         if [[ $bai_flag == "True" || $bai_flag == "true" ]]; then
                             if [[ "$machine" == "Mac" ]]; then
                                 which jq &>/dev/null
@@ -10031,7 +10075,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                     tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
 
                                     if [ ! -z "$tmp_recovery_path" ]; then
-                                        ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_BAI_TMP} spec.bai_configuration.icm.recovery_path ${tmp_recovery_path}
+                                        ${YQ_CMD} -i ".spec.bai_configuration.icm.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
                                         success "Merged Flink savepoint for ICM: \"$tmp_recovery_path\" into \"${UPGRADE_DEPLOYMENT_BAI_TMP}\""
                                         info "When running \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.icm.recovery_path."
                                     fi
@@ -10043,7 +10087,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                     tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
 
                                     if [ ! -z "$tmp_recovery_path" ]; then
-                                        ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_BAI_TMP} spec.bai_configuration.odm.recovery_path ${tmp_recovery_path}
+                                        ${YQ_CMD} -i ".spec.bai_configuration.odm.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
                                         success "Merged Flink savepoint for ODM: \"$tmp_recovery_path\" into \"${UPGRADE_DEPLOYMENT_BAI_TMP}\""
                                         info "When running \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.odm.recovery_path."
                                     fi
@@ -10055,7 +10099,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                     tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
 
                                     if [ ! -z "$tmp_recovery_path" ]; then
-                                        ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_BAI_TMP} spec.bai_configuration.bawadv.recovery_path ${tmp_recovery_path}
+                                        ${YQ_CMD} -i ".spec.bai_configuration.bawadv.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
                                         success "Merged Flink savepoint for BAW ADV: \"$tmp_recovery_path\" into \"${UPGRADE_DEPLOYMENT_BAI_TMP}\""
                                         info "When running \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.bawadv.recovery_path."
                                     fi
@@ -10067,7 +10111,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                     tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
 
                                     if [ ! -z "$tmp_recovery_path" ]; then
-                                        ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_BAI_TMP} spec.bai_configuration.bpmn.recovery_path ${tmp_recovery_path}
+                                        ${YQ_CMD} -i ".spec.bai_configuration.bpmn.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
                                         success "Merged Flink savepoint for BPMN: \"$tmp_recovery_path\" into \"${UPGRADE_DEPLOYMENT_BAI_TMP}\""
                                         info "When running \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.bpmn.recovery_path."
                                     fi
@@ -10086,7 +10130,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             if [ ! -z $icp4acluster_cr_name ]; then
                 info "Retrieving existing CP4BA ICP4ACluster (Kind: icp4acluster.icp4a.ibm.com) Custom Resource"
                 cr_type="icp4acluster"
-                cr_metaname=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
+                cr_metaname=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
                 ${CLI_CMD} get $cr_type $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml > ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
 
                 # Backup existing icp4acluster CR
@@ -10102,8 +10146,8 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
 
                     EXISTING_PATTERN_ARR=()
                     EXISTING_OPT_COMPONENT_ARR=()
-                    existing_pattern_list=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.shared_configuration.sc_deployment_patterns`
-                    existing_opt_component_list=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.shared_configuration.sc_optional_components`
+                    existing_pattern_list=`${YQ_CMD} ".spec.shared_configuration.sc_deployment_patterns" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                    existing_opt_component_list=`${YQ_CMD} ".spec.shared_configuration.sc_optional_components" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
 
                     OIFS=$IFS
                     IFS=',' read -r -a EXISTING_PATTERN_ARR <<< "$existing_pattern_list"
@@ -10163,7 +10207,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                             fi
                             tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
                             if [ ! -z "$tmp_recovery_path" ]; then
-                                ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_BAI_TMP} spec.bai_configuration.icm.recovery_path ${tmp_recovery_path}
+                                ${YQ_CMD} -i ".spec.bai_configuration.icm.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
                                 success "Merged Flink savepoint for ICM: \"$tmp_recovery_path\" into \"${UPGRADE_DEPLOYMENT_BAI_TMP}\""
                                 info "When running \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.icm.recovery_path."
                             fi
@@ -10175,7 +10219,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                             fi
                             tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
                             if [ ! -z "$tmp_recovery_path" ]; then
-                                ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_BAI_TMP} spec.bai_configuration.odm.recovery_path ${tmp_recovery_path}
+                                ${YQ_CMD} -i ".spec.bai_configuration.odm.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
                                 success "Merged Flink savepoint for ODM: \"$tmp_recovery_path\" into \"${UPGRADE_DEPLOYMENT_BAI_TMP}\""
                                 info "When running \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.odm.recovery_path."
                             fi
@@ -10187,7 +10231,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                             fi
                             tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
                             if [ ! -z "$tmp_recovery_path" ]; then
-                                ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_BAI_TMP} spec.bai_configuration.bawadv.recovery_path ${tmp_recovery_path}
+                                ${YQ_CMD} -i ".spec.bai_configuration.bawadv.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
                                 success "Merged Flink savepoint for BAW ADV: \"$tmp_recovery_path\" into \"${UPGRADE_DEPLOYMENT_BAI_TMP}\""
                                 info "When running \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.bawadv.recovery_path."
                             fi
@@ -10199,7 +10243,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                             fi
                             tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
                             if [ ! -z "$tmp_recovery_path" ]; then
-                                ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_BAI_TMP} spec.bai_configuration.bpmn.recovery_path ${tmp_recovery_path}
+                                ${YQ_CMD} -i ".spec.bai_configuration.bpmn.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
                                 success "Merged Flink savepoint for BPMN: \"$tmp_recovery_path\" into \"${UPGRADE_DEPLOYMENT_BAI_TMP}\""
                                 info "When running \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.bpmn.recovery_path."
                             fi
@@ -10223,8 +10267,8 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                 if [ ! -z $content_cr_name ]; then
                     info "Retrieving existing CP4BA Content (Kind: content.icp4a.ibm.com) Custom Resource"
                     cr_type="content"
-                    cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
-                    owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.ownerReferences.[0].kind)
+                    cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
+                    owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.ownerReferences.[0].kind' -)
                     if [[ ${owner_ref} == "ICP4ACluster" ]]; then
                         echo
                     else
@@ -10238,7 +10282,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         info "Checking whether BAI install in this CP4BA deployment."
 
                         mkdir -p ${TEMP_FOLDER} >/dev/null 2>&1
-                        bai_flag=`cat $UPGRADE_DEPLOYMENT_CONTENT_CR_TMP | ${YQ_CMD} r - spec.content_optional_components.bai`
+                        bai_flag=`${YQ_CMD} ".spec.content_optional_components.bai" "$UPGRADE_DEPLOYMENT_CONTENT_CR_TMP"`
                         if [[ $bai_flag == "True" || $bai_flag == "true" ]]; then
                             info "Found BAI installed in this CP4BA deployment."
                             # Check the jq install on MacOS
@@ -10316,7 +10360,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                     tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
 
                                     if [ ! -z "$tmp_recovery_path" ]; then
-                                        ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_BAI_TMP} spec.bai_configuration.icm.recovery_path ${tmp_recovery_path}
+                                        ${YQ_CMD} -i ".spec.bai_configuration.icm.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
                                         success "Merged Flink savepoint for ICM: \"$tmp_recovery_path\""
                                         info "When run \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.icm.recovery_path."
                                     fi
@@ -10328,7 +10372,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                     tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
 
                                     if [ ! -z "$tmp_recovery_path" ]; then
-                                        ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_BAI_TMP} spec.bai_configuration.odm.recovery_path ${tmp_recovery_path}
+                                        ${YQ_CMD} -i ".spec.bai_configuration.odm.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
                                         success "Merged Flink savepoint for ODM: \"$tmp_recovery_path\""
                                         info "When run \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.odm.recovery_path."
                                     fi
@@ -10340,7 +10384,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                     tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
 
                                     if [ ! -z "$tmp_recovery_path" ]; then
-                                        ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_BAI_TMP} spec.bai_configuration.bawadv.recovery_path ${tmp_recovery_path}
+                                        ${YQ_CMD} -i ".spec.bai_configuration.bawadv.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
                                         success "Merged Flink savepoint for BAW ADV: \"$tmp_recovery_path\""
                                         info "When run \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.bawadv.recovery_path."
                                     fi
@@ -10352,7 +10396,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                     tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
 
                                     if [ ! -z "$tmp_recovery_path" ]; then
-                                        ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_BAI_TMP} spec.bai_configuration.bpmn.recovery_path ${tmp_recovery_path}
+                                        ${YQ_CMD} -i ".spec.bai_configuration.bpmn.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
                                         success "Merged Flink savepoint for BPMN: \"$tmp_recovery_path\""
                                         info "When run \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.bpmn.recovery_path."
                                     fi
@@ -10368,7 +10412,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             if [ ! -z $icp4acluster_cr_name ]; then
                 info "Retrieving existing CP4BA ICP4ACluster (Kind: icp4acluster.icp4a.ibm.com) Custom Resource"
                 cr_type="icp4acluster"
-                cr_metaname=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
+                cr_metaname=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
                 ${CLI_CMD} get $cr_type $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml > ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
 
                 # Backup existing icp4acluster CR
@@ -10383,8 +10427,8 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
 
                     EXISTING_PATTERN_ARR=()
                     EXISTING_OPT_COMPONENT_ARR=()
-                    existing_pattern_list=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.shared_configuration.sc_deployment_patterns`
-                    existing_opt_component_list=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.shared_configuration.sc_optional_components`
+                    existing_pattern_list=`${YQ_CMD} ".spec.shared_configuration.sc_deployment_patterns" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+                    existing_opt_component_list=`${YQ_CMD} ".spec.shared_configuration.sc_optional_components" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
 
                     OIFS=$IFS
                     IFS=',' read -r -a EXISTING_PATTERN_ARR <<< "$existing_pattern_list"
@@ -10469,7 +10513,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                             fi
                             tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
                             if [ ! -z "$tmp_recovery_path" ]; then
-                                ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_BAI_TMP} spec.bai_configuration.icm.recovery_path ${tmp_recovery_path}
+                                ${YQ_CMD} -i ".spec.bai_configuration.icm.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
                                 success "Merged Flink savepoint for ICM: \"$tmp_recovery_path\""
                                 info "When running \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.icm.recovery_path."
                             fi
@@ -10481,7 +10525,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                             fi
                             tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
                             if [ ! -z "$tmp_recovery_path" ]; then
-                                ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_BAI_TMP} spec.bai_configuration.odm.recovery_path ${tmp_recovery_path}
+                                ${YQ_CMD} -i ".spec.bai_configuration.odm.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
                                 success "Merged Flink savepoint for ODM: \"$tmp_recovery_path\""
                                 info "When running \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.odm.recovery_path."
                             fi
@@ -10493,7 +10537,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                             fi
                             tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
                             if [ ! -z "$tmp_recovery_path" ]; then
-                                ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_BAI_TMP} spec.bai_configuration.bawadv.recovery_path ${tmp_recovery_path}
+                                ${YQ_CMD} -i ".spec.bai_configuration.bawadv.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
                                 success "Merged Flink savepoint for BAW ADV: \"$tmp_recovery_path\""
                                 info "When running \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.bawadv.recovery_path."
                             fi
@@ -10505,7 +10549,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                             fi
                             tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
                             if [ ! -z "$tmp_recovery_path" ]; then
-                                ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_BAI_TMP} spec.bai_configuration.bpmn.recovery_path ${tmp_recovery_path}
+                                ${YQ_CMD} -i ".spec.bai_configuration.bpmn.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
                                 success "Merged Flink savepoint for BPMN: \"$tmp_recovery_path\""
                                 info "When running \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.bpmn.recovery_path."
                             fi
@@ -11249,7 +11293,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                     fail "No custom resource found for CP4BA deployment in the project \"$CP4BA_SERVICES_NS\", exit..."
                     exit 1
                 else
-                    cp4ba_cr_metaname=$(${CLI_CMD} get $cr_type $cp4ba_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
+                    cp4ba_cr_metaname=$(${CLI_CMD} get $cr_type $cp4ba_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
                 fi
 
 
@@ -12060,6 +12104,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${CUR_DIR}/cp4a-deployment.sh -m upgradeDeploymentStatus -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to check whether the upgrade of the CP4BA deployment was successful."
         fi
     fi
+    #DBACLD-198803: Display message to inform customer if they migrated from global catalog to private catalog they may remove the old/global catalog in the openshift-marketplace namespace.
+    #PRIVATE_CATALOG_FOUND is set to "No" when we found the catalog source in the openshift-marketplace namespace.
+    if [[ $ENABLE_PRIVATE_CATALOG -eq 1 && ($UPGRADE_MODE == "shared2dedicated" || $UPGRADE_MODE == "dedicated2dedicated") && $PRIVATE_CATALOG_FOUND == "No" ]]; then
+        printf "\n"
+        echo "${YELLOW_TEXT}[ATTENTION]: ${RESET_TEXT}"
+        echo "${YELLOW_TEXT}  - If you have migrated from global catalog namespace (GCN) to private catalog namespace (namespaced-scope) for IBM Cloud Pak Business Automation, you may remove the old global catalog source in the \"openshift-marketplace\" namespace to avoid confusion.${RESET_TEXT}"
+        echo "${YELLOW_TEXT}  - Be sure to check that there are no other deployments using the old global catalog in the openshift-marketplace namespace before removing them.${RESET_TEXT}"
+        printf "\n"
+    fi
 fi
 
 if [ "$RUNTIME_MODE" == "upgradeOperatorStatus" ]; then
@@ -12127,16 +12180,16 @@ if [ "$RUNTIME_MODE" == "upgradeOperatorStatus" ]; then
         content_cr_name=$(${CLI_CMD} get content -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
         if [ ! -z $content_cr_name ]; then
             cr_type="content"
-            cp4ba_cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
-            owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.ownerReferences.[0].kind)
+            cp4ba_cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
+            owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.ownerReferences.[0].kind' -)
             if [[ ${owner_ref} == "ICP4ACluster" ]]; then
                 echo
             else
                 ${CLI_CMD} get $cr_type $content_cr_name -n $CP4BA_SERVICES_NS -o yaml > ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
-                bai_flag=`cat $UPGRADE_DEPLOYMENT_CONTENT_CR_TMP | ${YQ_CMD} r - spec.content_optional_components.bai`
+                bai_flag=`${YQ_CMD} ".spec.content_optional_components.bai" "$UPGRADE_DEPLOYMENT_CONTENT_CR_TMP"`
                 bai_flag=$(echo $bai_flag | tr '[:upper:]' '[:lower:]')
                 CONTENT_CR_EXIST="Yes"
-                cp4ba_root_ca_secret_name=`cat $UPGRADE_DEPLOYMENT_CONTENT_CR_TMP | ${YQ_CMD} r - spec.shared_configuration.root_ca_secret`
+                cp4ba_root_ca_secret_name=`${YQ_CMD} ".spec.shared_configuration.root_ca_secret" "$UPGRADE_DEPLOYMENT_CONTENT_CR_TMP"`
             fi
         fi
     fi
@@ -12144,10 +12197,10 @@ if [ "$RUNTIME_MODE" == "upgradeOperatorStatus" ]; then
     icp4acluster_cr_name=$(${CLI_CMD} get icp4acluster -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
     if [ ! -z $icp4acluster_cr_name ]; then
         cr_type="icp4acluster"
-        cp4ba_cr_metaname=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
+        cp4ba_cr_metaname=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
         ${CLI_CMD} get $cr_type $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml > ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
 
-        cp4ba_root_ca_secret_name=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.shared_configuration.root_ca_secret`
+        cp4ba_root_ca_secret_name=`${YQ_CMD} ".spec.shared_configuration.root_ca_secret" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
         convert_olm_cr "${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}"
         if [[ $olm_cr_flag == "No" ]]; then
             # Get EXISTING_PATTERN_ARR/EXISTING_OPT_COMPONENT_ARR
@@ -12156,8 +12209,8 @@ if [ "$RUNTIME_MODE" == "upgradeOperatorStatus" ]; then
 
             EXISTING_PATTERN_ARR=()
             EXISTING_OPT_COMPONENT_ARR=()
-            existing_pattern_list=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.shared_configuration.sc_deployment_patterns`
-            existing_opt_component_list=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.shared_configuration.sc_optional_components`
+            existing_pattern_list=`${YQ_CMD} ".spec.shared_configuration.sc_deployment_patterns" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+            existing_opt_component_list=`${YQ_CMD} ".spec.shared_configuration.sc_optional_components" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
 
             OIFS=$IFS
             IFS=',' read -r -a EXISTING_PATTERN_ARR <<< "$existing_pattern_list"
@@ -12258,10 +12311,10 @@ if [ "$RUNTIME_MODE" == "upgradeDeployment" ]; then
         if [ ! -z $content_cr_name ]; then
             # info "Retrieving existing CP4BA Content (Kind: content.icp4a.ibm.com) Custom Resource"
             cr_type="content"
-            cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
-            owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.ownerReferences.[0].kind)
+            cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
+            owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.ownerReferences.[0].kind' -)
             if [[ ${owner_ref} != "ICP4ACluster" ]]; then
-                cr_version=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - spec.appVersion)
+                cr_version=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.spec.appVersion' -)
                 if [[ $cr_version == "${CP4BA_RELEASE_BASE}" ]]; then
                     warning "The release version of content custom resource \"$content_cr_name\" is already \"$cr_version\". Exit..."
                     printf "\n"
@@ -12289,7 +12342,7 @@ if [ "$RUNTIME_MODE" == "upgradeDeployment" ]; then
 
     icp4acluster_cr_name=$(${CLI_CMD} get icp4acluster -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | awk '{print $1}')
     if [ ! -z $icp4acluster_cr_name ]; then
-        cr_version=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - spec.appVersion)
+        cr_version=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.spec.appVersion' -)
         if [[ $cr_version == "${CP4BA_RELEASE_BASE}" ]]; then
             warning "The release version of icp4acluster custom resource \"$icp4acluster_cr_name\" is already \"$cr_version\"."
             printf "\n"
@@ -12450,7 +12503,7 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
         if [ -n $tmp_cp_console  ]; then
             # echo -e "${BLUE}Creating backup yaml for route $CP_CONSOLE${COLOR_OFF}"
             ${CLI_CMD} get route $CP_CONSOLE -o yaml -n $TARGET_PROJECT_NAME_CS > $TEMP_CP_CONSOLE_FILE
-            CP_CONSOLE_HOST=$(${YQ_CMD} r $TEMP_CP_CONSOLE_FILE spec.host )
+            CP_CONSOLE_HOST=$(${YQ_CMD} ".spec.host" $TEMP_CP_CONSOLE_FILE)
             ID_MGMT_CP_CONSOLE=$( echo "id-mgmt-${CP_CONSOLE_HOST}" | sed   "s/-$TARGET_PROJECT_NAME_CS//g" )
             ID_PROVIDER_CP_CONSOLE=$( echo "id-provider-${CP_CONSOLE_HOST}" | sed  "s/-$TARGET_PROJECT_NAME_CS//g")
             cp $TEMP_CP_CONSOLE_FILE $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
@@ -12466,23 +12519,23 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
 
         if [ -a ${TEMP_CP_CONSOLE_FILE_ID_PROVIDER} ]; then
 
-            ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER metadata.name "$ID_PROVIDER_ROUTE_NAME"
-            ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER spec.path "$ID_PROVIDER_PATH"
-            ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER spec.host "$ID_PROVIDER_CP_CONSOLE"
-            ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER metadata.labels.path "idprovider"
+            ${YQ_CMD} -i ".metadata.name = \"$ID_PROVIDER_ROUTE_NAME\"" $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
+            ${YQ_CMD} -i ".spec.path = \"$ID_PROVIDER_PATH\"" $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
+            ${YQ_CMD} -i ".spec.host = \"$ID_PROVIDER_CP_CONSOLE\"" $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
+            ${YQ_CMD} -i '.metadata.labels.path = "idprovider"' $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
 
 
-            ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER metadata.ownerReferences
-            ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER metadata.uid
-            ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER metadata.resourceVersion
-            ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER status
-            ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER metadata.creationTimestamp
+            ${YQ_CMD} -i 'del(.metadata.ownerReferences)' "$TEMP_CP_CONSOLE_FILE_ID_PROVIDER"
+            ${YQ_CMD} -i 'del(.metadata.uid)' "$TEMP_CP_CONSOLE_FILE_ID_PROVIDER"
+            ${YQ_CMD} -i 'del(.metadata.resourceVersion)' "$TEMP_CP_CONSOLE_FILE_ID_PROVIDER"
+            ${YQ_CMD} -i 'del(.status)' "$TEMP_CP_CONSOLE_FILE_ID_PROVIDER"
+            ${YQ_CMD} -i 'del(.metadata.creationTimestamp)' "$TEMP_CP_CONSOLE_FILE_ID_PROVIDER"
 
             if [[ "$1" == "platform-identity-provider" ]]; then
             ${SED_COMMAND} "s/-$TARGET_PROJECT_NAME_CS//g" $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
-            ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER spec.to.name "platform-identity-provider"
-            ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER spec.port.targetPort "4300"
-            ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_PROVIDER 'metadata.annotations."haproxy.router.openshift.io/rewrite-target"' '/'
+            ${YQ_CMD} -i '.spec.to.name = "platform-identity-provider"' $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
+            ${YQ_CMD} -i '.spec.port.targetPort = 4300' $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
+            ${YQ_CMD} -i '.metadata.annotations."haproxy.router.openshift.io/rewrite-target" = "/"' $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
             fi
 
             # echo -e "Creating new route named $ID_PROVIDER_ROUTE_NAME"
@@ -12504,22 +12557,22 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
 
         if [ -a ${TEMP_CP_CONSOLE_FILE_ID_MGMT} ]; then
 
-            ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_MGMT metadata.name "$ID_MGMT_ROUTE_NAME"
-            ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_MGMT metadata.labels.path "idmgmt"
-            ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_MGMT spec.path "$ID_MGMT_PATH"
-            ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_MGMT spec.host "$ID_MGMT_CP_CONSOLE"
+            ${YQ_CMD} -i ".metadata.name = \"$ID_MGMT_ROUTE_NAME\"" $TEMP_CP_CONSOLE_FILE_ID_MGMT
+            ${YQ_CMD} -i '.metadata.labels.path = "idmgmt"' $TEMP_CP_CONSOLE_FILE_ID_MGMT
+            ${YQ_CMD} -i ".spec.path = \"$ID_MGMT_PATH\"" $TEMP_CP_CONSOLE_FILE_ID_MGMT
+            ${YQ_CMD} -i ".spec.host = \"$ID_MGMT_CP_CONSOLE\"" $TEMP_CP_CONSOLE_FILE_ID_MGMT
 
-            ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_MGMT metadata.ownerReferences
-            ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_MGMT metadata.uid
-            ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_MGMT metadata.resourceVersion
-            ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_MGMT status
-            ${YQ_CMD} d -i $TEMP_CP_CONSOLE_FILE_ID_MGMT metadata.creationTimestamp
+            ${YQ_CMD} -i 'del(.metadata.ownerReferences)' "$TEMP_CP_CONSOLE_FILE_ID_MGMT"
+            ${YQ_CMD} -i 'del(.metadata.uid)' "$TEMP_CP_CONSOLE_FILE_ID_MGMT"
+            ${YQ_CMD} -i 'del(.metadata.resourceVersion)' "$TEMP_CP_CONSOLE_FILE_ID_MGMT"
+            ${YQ_CMD} -i 'del(.status)' "$TEMP_CP_CONSOLE_FILE_ID_MGMT"
+            ${YQ_CMD} -i 'del(.metadata.creationTimestamp)' "$TEMP_CP_CONSOLE_FILE_ID_MGMT"
 
             if [[ "$1" == "platform-identity-management" ]]; then
             ${SED_COMMAND} "s/-$TARGET_PROJECT_NAME_CS//g" $TEMP_CP_CONSOLE_FILE_ID_MGMT
-            ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_MGMT spec.to.name "platform-identity-management"
-            ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_MGMT spec.port.targetPort "4500"
-            ${YQ_CMD} w -i $TEMP_CP_CONSOLE_FILE_ID_MGMT 'metadata.annotations."haproxy.router.openshift.io/rewrite-target"' '/'
+            ${YQ_CMD} -i '.spec.to.name = "platform-identity-management"' $TEMP_CP_CONSOLE_FILE_ID_MGMT
+            ${YQ_CMD} -i '.spec.port.targetPort = 4500' $TEMP_CP_CONSOLE_FILE_ID_MGMT
+            ${YQ_CMD} -i '.metadata.annotations."haproxy.router.openshift.io/rewrite-target" = "/"' $TEMP_CP_CONSOLE_FILE_ID_MGMT
 
             fi
 
@@ -12590,8 +12643,8 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
         if [[ ! -z $content_cr_name ]]; then
             # info "Retrieving existing CP4BA Content (Kind: content.icp4a.ibm.com) Custom Resource"
             cr_type="content"
-            cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
-            owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.ownerReferences.[0].kind)
+            cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
+            owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.ownerReferences.[0].kind' -)
             if [[ "$owner_ref" != "ICP4ACluster" ]]; then
                 CONTENT_CR_EXIST="Yes"
                 info "Scaling up \"IBM CP4BA FileNet Content Manager\" operator"
@@ -12609,7 +12662,7 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
                 else
                     fail "Failed to scale up \"IBM CP4BA Foundation\" operator"
                 fi
-                cr_version=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - spec.appVersion)
+                cr_version=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.spec.appVersion' -)
                 if [[ $cr_version != "${CP4BA_RELEASE_BASE}" ]]; then
                     fail "The release version: \"$cr_version\" in content custom resource \"$content_cr_name\" is incorrect. Apply the new version of the CR first."
                     exit 1
@@ -12646,7 +12699,7 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
             fail "Failed to scale up \"IBM CP4BA Foundation\" operator"
         fi
 
-        cr_version=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - spec.appVersion)
+        cr_version=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.spec.appVersion' -)
         if [[ $cr_version != "${CP4BA_RELEASE_BASE}" ]]; then
             fail "The release version: \"$cr_version\" in icp4acluster custom resource \"$icp4acluster_cr_name\" is incorrect. Apply the new version of the CR first."
             exit 1
@@ -12701,6 +12754,8 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
         clear
         maxRetry=360
         skip_edb_check="false"
+        # The control variable used to detect if the strimzi patch function has to be executed.
+        strimzi_patched=false
         for ((retry=0;retry<=${maxRetry};retry++)); do
             # As a workaround for a known issue where the customer upgrade from 22.0.2-IF006/21.0.3-IF031 to 24.0.0-IF004 or above (shared to dedicated), a new postgresql-operator-controller-manager-config secret is created in the CP4BA_SERVICES_NS, this secret does not have the ibm-bts/skip-updates: "true" annotation. 
             # This causes the license of EDB instance to be expired since old BTS pod updated the license
@@ -12751,6 +12806,13 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
                 echo -e "\x1B[1mCheck the status of the Zen Service\x1B[0m"
                 printf "\n"
                 exit 1
+            fi
+            # Each refresh of the zen upgrade , we check if we need to update the kafka strimzi podset
+            # The function patch_strimzi_podset which is defined in common.sh will set strimzi_patched  to true once the patch is completed
+            # For upgrades to 24.0.1 or newer, kafka tasks in the cp4a-operator happen after zen is upgraded so this block is after zen upgrade completes
+            # For upgrades to 24.0.0, kafka tasks in the cp4a-operator happen before zen is upgraded
+            if [[ $strimzi_patched == "false" ]]; then
+                patch_strimzi_podset $cp4ba_operators_namespace $cp4ba_services_namespace
             fi
         done
         clear
@@ -12841,6 +12903,14 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
     # show_cp4ba_upgrade_status
     while true
     do
+        # Each refresh of the zen upgrade , we check if we need to update the kafka strimzi podset
+        # The function patch_strimzi_podset which is defined in common.sh will set strimzi_patched  to true once the patch is completed
+        # For upgrades to 24.0.1 or newer, kafka tasks in the foundation-operator happen after zen is upgraded so this block is after zen upgrade completes
+        # For upgrades to 24.0.0, kafka tasks in the foundation-operator happen before zen is upgraded, however there might be a timing issue for an IFIX to IFIX upgrade as there is no channel switch involved
+        # To handle that , this function is being called twice, and the second call only occurs if the strimzi pods have not yet been patched
+        if [[ $strimzi_patched == "false" ]]; then
+            patch_strimzi_podset $cp4ba_operators_namespace $cp4ba_services_namespace
+        fi
         printf '%s\n' "$(clear; show_cp4ba_upgrade_status)"
         sleep 30
     done
@@ -12876,7 +12946,7 @@ if [ "$RUNTIME_MODE" == "upgradePostconfig" ]; then
         do
             info "Retrieving existing IBM CP4BA Workflow Process Service (Kind: WfPSRuntime.icp4a.ibm.com) Custom Resource: \"${item}\""
             cr_type="WfPSRuntime"
-            cr_metaname=$(${CLI_CMD} get $cr_type ${item} -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} r - metadata.name)
+            cr_metaname=$(${CLI_CMD} get $cr_type ${item} -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
             UPGRADE_DEPLOYMENT_WFPS_CR=${UPGRADE_DEPLOYMENT_CR}/wfps_${cr_metaname}.yaml
             UPGRADE_DEPLOYMENT_WFPS_CR_TMP=${UPGRADE_DEPLOYMENT_CR}/.wfps_${cr_metaname}_tmp.yaml
             UPGRADE_DEPLOYMENT_WFPS_CR_BAK=${UPGRADE_DEPLOYMENT_CR_BAK}/wfps_cr_${cr_metaname}_backup.yaml
@@ -12889,12 +12959,12 @@ if [ "$RUNTIME_MODE" == "upgradePostconfig" ]; then
 
             info "Merging existing IBM CP4BA Workflow Process Service custom resource: \"${item}\" with new version ($CP4BA_RELEASE_BASE)"
             # Delete unnecessary section in CR
-            ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} status
-            ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} metadata.annotations
-            ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} metadata.creationTimestamp
-            ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} metadata.generation
-            ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} metadata.resourceVersion
-            ${YQ_CMD} d -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} metadata.uid
+            ${YQ_CMD} -i 'del(.status)' "${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}"
+            ${YQ_CMD} -i 'del(.metadata.annotations)' "${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}"
+            ${YQ_CMD} -i 'del(.metadata.creationTimestamp)' "${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}"
+            ${YQ_CMD} -i 'del(.metadata.generation)' "${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}"
+            ${YQ_CMD} -i 'del(.metadata.resourceVersion)' "${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}"
+            ${YQ_CMD} -i 'del(.metadata.uid)' "${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}"
 
             # replace release/appVersion
             # ${SED_COMMAND} "s|release: .*|release: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_PFS_CR_TMP}
@@ -12953,7 +13023,7 @@ if [ "$RUNTIME_MODE" == "upgradePostconfig" ]; then
     if [ ! -z $icp4acluster_cr_name ]; then
         info "Retrieving existing CP4BA ICP4ACluster (Kind: icp4acluster.icp4a.ibm.com) Custom Resource"
         cr_type="icp4acluster"
-        cr_metaname=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $project_name -o yaml | ${YQ_CMD} r - metadata.name)
+        cr_metaname=$(${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $project_name -o yaml | ${YQ_CMD} '.metadata.name' -)
         ${CLI_CMD} get $cr_type $icp4acluster_cr_name -n $project_name -o yaml > ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
 
         # Backup existing icp4acluster CR
@@ -12968,8 +13038,8 @@ if [ "$RUNTIME_MODE" == "upgradePostconfig" ]; then
 
             EXISTING_PATTERN_ARR=()
             EXISTING_OPT_COMPONENT_ARR=()
-            existing_pattern_list=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.shared_configuration.sc_deployment_patterns`
-            existing_opt_component_list=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP | ${YQ_CMD} r - spec.shared_configuration.sc_optional_components`
+            existing_pattern_list=`${YQ_CMD} ".spec.shared_configuration.sc_deployment_patterns" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
+            existing_opt_component_list=`${YQ_CMD} ".spec.shared_configuration.sc_optional_components" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
 
             OIFS=$IFS
             IFS=',' read -r -a EXISTING_PATTERN_ARR <<< "$existing_pattern_list"

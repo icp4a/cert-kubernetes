@@ -1207,8 +1207,8 @@ function verify_existing_csv(){
 
     else
         if [[ !(" ${exist_csv_project_array[@]} " =~ "${project_name}") && !(" ${exist_csv_project_array[@]} " =~ "${PROJ_NAME_ALL_NAMESPACE}") && "${ALL_NAMESPACE}" == "No" ]] ; then
+            info "Found the existing $CP4BA_FULL_NAME Operator (Pod, CSV, Subscription) in different project \"${exist_csv_project_array[*]}\"!"
             printf "\n"
-            echo -e "\x1B[1;31mFound the existing $CP4BA_FULL_NAME Operator (Pod, CSV, Subscription) in different project \"${exist_csv_project_array[*]}\"! \x1B[0m\n"
 
             if [ -z "$CP4BA_AUTO_NAMESPACE" ]; then
                 while true; do
@@ -1236,8 +1236,8 @@ function verify_existing_csv(){
             echo -e "\x1B[1;31mFound the existing $CP4BA_FULL_NAME Operator in \"${PROJ_NAME_ALL_NAMESPACE}\", it already supports All Namespaces! \x1B[0m\nExit..."
             exit 1
         elif [[ !(" ${exist_csv_project_array[@]} " =~ "${PROJ_NAME_ALL_NAMESPACE}") && "${ALL_NAMESPACE}" == "Yes" ]] ; then
+            info "Found the existing $CP4BA_FULL_NAME Operator (Pod, CSV, Subscription) in different project \"${exist_csv_project_array[*]}\"!"
             printf "\n"
-            echo -e "\x1B[1;31mFound the existing $CP4BA_FULL_NAME Operator (Pod, CSV, Subscription) in different project \"${exist_csv_project_array[*]}\"! \x1B[0m"
             echo -e "\x1B[1;31mSwitching to All Namespaces is not supported! \x1B[0m\n"
             exit 1
         fi
@@ -1522,7 +1522,7 @@ function prepare_olm_install() {
       sed -i "s/REPLACE_CATALOG_SOURCE_NAMESPACE/$CATALOG_NAMESPACE/g" ${OLM_SUBSCRIPTION_TMP}
     fi
 
-    ${YQ_CMD} w -i ${OLM_SUBSCRIPTION_TMP} spec.source "$online_source"
+    ${YQ_CMD} -i ".spec.source = \"$online_source\"" ${OLM_SUBSCRIPTION_TMP}
 
     ${CLI_CMD} apply -f ${OLM_SUBSCRIPTION_TMP}
     if [ $? -eq 0 ]
@@ -3431,12 +3431,17 @@ if [[ $SCRIPT_MODE == "OLM" ]];then
             if [[ $CNCF_DOMAIN_NAME != "" ]]; then
 
             ${CLI_CMD} get cm ${COMMON_SERVICES_CM_DEDICATED_NAME} -n ${COMMON_SERVICES_CM_NAMESPACE} -o jsonpath='{ .data.common-service-maps\.yaml}' > ${TEMP_FOLDER}/cm-data.yaml
-            dedicate_tmp=$(${YQ_CMD} r ${TEMP_FOLDER}/cm-data.yaml  --printMode p "namespaceMapping[*].requested-from-namespace.(.==$DEDICATED_PROJECT)")
+            dedicate_tmp=$(${YQ_CMD} '.namespaceMapping[]."requested-from-namespace"
+                | select(.==strenv(DEDICATED_PROJECT))
+                | path
+                | ( .[] | select((. | tag) == "!!int") |= (["[", tostring, "]"] | join("")) )
+                | join(".")
+                | sub("\\.\\[","[")' "${TEMP_FOLDER}/cm-data.yaml")
             if [[ $dedicate_tmp == "" ]]; then
                 echo -e "\x1B[1;31mCan not find namespace $DEDICATED_PROJECT in the configmap ${COMMON_SERVICES_CM_DEDICATED_NAME} in the namespace ${COMMON_SERVICES_CM_NAMESPACE}  .\n\x1B[0m"
                 exit 1
             fi
-            DEDICATED_COMMON_PROJECT=$(${YQ_CMD} r ${TEMP_FOLDER}/cm-data.yaml "${dedicate_tmp:0:20}.map-to-common-service-namespace")
+            DEDICATED_COMMON_PROJECT=$(${YQ_CMD} ".${dedicate_tmp:0:20}.map-to-common-service-namespace" ${TEMP_FOLDER}/cm-data.yaml)
 
             rm -fr ${TEMP_FOLDER}/cm-data.yaml >> ${LOG_FILE}
 

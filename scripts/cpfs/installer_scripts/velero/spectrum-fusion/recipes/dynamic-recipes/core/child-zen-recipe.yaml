@@ -4,13 +4,15 @@ metadata:
   labels:
     dp.isf.ibm.com/parent-recipe: cpfs-parent-recipe
     dp.isf.ibm.com/parent-recipe-namespace: <parent recipe namespace>
-  name: zen-child
+  name: zen-child-<child recipe namespace>
   namespace: <child recipe namespace>
 spec:
   appType: common-service
   groups:
     - labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       name: zen-volume
+      includedNamespaces:
+        - <child recipe namespace>
       type: volume
     - includeClusterResources: true
       includedResourceTypes:
@@ -21,6 +23,8 @@ spec:
         - configmaps
       labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       name: zen-br-resources
+      includedNamespaces:
+        - <child recipe namespace>
       type: resource
     - includeClusterResources: true
       includedResourceTypes:
@@ -28,6 +32,8 @@ spec:
         - customresourcedefinitions.apiextensions.k8s.io
       labelSelector: foundationservices.cloudpak.ibm.com=zen
       name: zenservice
+      includedNamespaces:
+        - <child recipe namespace>
       type: resource
     - backupRef: zen-br-resources
       labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
@@ -38,6 +44,8 @@ spec:
         - rolebinding
         - configmaps
       name: zen-pre-deploy
+      includedNamespaces:
+        - <child recipe namespace>
       type: resource
     - backupRef: zen-br-resources
       includeClusterResources: true
@@ -45,6 +53,8 @@ spec:
       includedResourceTypes:
         - deployments
       name: zen-deployment
+      includedNamespaces:
+        - <child recipe namespace>
       type: resource
   hooks:
     - chks:

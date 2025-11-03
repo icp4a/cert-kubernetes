@@ -62,7 +62,7 @@ spec:
                 - ppc64le
       initContainers:
         - name: folder-prepare-container
-          image: icr.io/cpopen/icp4a-content-operator@sha256:9637c5d2bd5264f40f7d84e4a012a3da6e2133ad06fad47f3174b5d68d2dd6e6
+          image: icr.io/cpopen/icp4a-content-operator@sha256:ede8cfda8096c42e13800b3783dd1300e7b87014cf5edc71dded97796f275aaa
           imagePullPolicy: IfNotPresent
           securityContext:
             readOnlyRootFilesystem: true
@@ -110,7 +110,7 @@ spec:
           value: smart
         - name: dba_license
           value: accept
-        image: icr.io/cpopen/icp4a-content-operator@sha256:9637c5d2bd5264f40f7d84e4a012a3da6e2133ad06fad47f3174b5d68d2dd6e6
+        image: icr.io/cpopen/icp4a-content-operator@sha256:ede8cfda8096c42e13800b3783dd1300e7b87014cf5edc71dded97796f275aaa
         imagePullPolicy: IfNotPresent
         name: operator
         resources:
