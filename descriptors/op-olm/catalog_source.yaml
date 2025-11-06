@@ -110,7 +110,7 @@ spec:
   displayName: BTS Operator-3.35.6
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-bts-operator-catalog@sha256:0e018642d7d3cbf3757f86043f7fd88be8ef2ae76d8297c74df7dba62715d876
+  image: icr.io/cpopen/ibm-bts-operator-catalog@sha256:f84b1af0e04cd8f8a86502622b40a8600c40f59758ace280108aefaaba6ee7d9
   grpcPodConfig:
     securityContextConfig: restricted
 ---
