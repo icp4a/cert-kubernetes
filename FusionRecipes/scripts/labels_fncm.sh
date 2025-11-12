@@ -12,8 +12,13 @@ oc label secret ibm-cp4ba-ldap-ssl-secret custom-label=cp4ba-ssl-secret
 
 oc label secret platform-auth-ldaps-ca-cert custom-label=cp4ba-platform-auth-ldaps-ca-cert
 
-# if mongo base common service are installed
-oc label secret icp-mongodb-client-cert custom-label=cp4ba-mongo-cert
+# If optional component Content Search Services is installed.
+oc label secret ibm-icc-secret custom-label=cp4ba
 
-oc label secret mongodb-root-ca-cert custom-label=cp4ba-mongo-cert
+# If optional component IBM Content Collector for SAP is installed.
+oc label secret ibm-iccsap-secret custom-label=cp4ba
 
+# comment out the next line if the mongo-based common services are installed (legacy)
+# oc label secret icp-mongodb-client-cert custom-label=cp4ba-mongo-cert
+
+# oc label secret mongodb-root-ca-cert custom-label=cp4ba-mongo-cert
