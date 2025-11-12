@@ -36,8 +36,8 @@ spec:
       type: resource   
       includedResourceTypes:
         - user
-      includeClusterResources: true
-      essential: false    
+      includeClusterResources: true 
+      essential: false   
     - name: cp4ba-ibm-entitlement-key
       type: resource   
       includedResourceTypes:
@@ -118,8 +118,8 @@ spec:
       type: resource
       includedResourceTypes:
         - secret 
-      labelSelector: custom-label=cp4ba-ssl-secret 
-      essential: false   
+      labelSelector: custom-label=cp4ba-ssl-secret
+      essential: false
     - name: cp4ba-ibm-ban-secret
       type: resource
       includedResourceTypes:
@@ -305,7 +305,7 @@ spec:
   - name: cs-postgres-exec
     type: exec
     namespace: $REPLACE_NAMESPACE
-    labelSelector: k8s.enterprisedb.io/instanceName=common-service-db-1,role=primary
+    labelSelector: k8s.enterprisedb.io/cluster=common-service-db,role=primary
     timeout: 3700
     onError: fail
     ops:
@@ -323,7 +323,7 @@ spec:
     ops:
     - name: backup
       command: >
-        ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh $REPLACE_NAMESPACE"]
+        ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh $REPLACE_NAMESPACE; /usr/bin/sync -f /zen5/zen-backup/"]
       container: zen5-backup-job
       timeout: 3600
     - name: restore
@@ -711,6 +711,4 @@ spec:
     - hook: content-navigator-deploy/replicasReady 
     - hook: content-navigator-watcher-check/replicasReady    
     - hook: cp4ba-instance-check/readyStatus
-    - hook: zen-backup-pod-exec/restore    
-                                       
-                                    
+    - hook: zen-backup-pod-exec/restore
