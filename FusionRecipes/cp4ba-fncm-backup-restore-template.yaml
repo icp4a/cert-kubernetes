@@ -1,4 +1,4 @@
-#### label the resouces using the labels.sh script before running this recipe
+#### label the resources using the labels.sh script before running this recipe
 #### updated the db-name=ICNDBf if you are using any other DB name
 apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
 kind: Recipe
@@ -10,8 +10,6 @@ spec:
   groups:
     - name: catalogsource-group
       type: resource
-      includedNamespaces:
-        - openshift-marketplace
       includedResourceTypes:
         - catalogSource
     - name: cp4ba-secrets-openshift-config
@@ -20,12 +18,15 @@ spec:
         - openshift-config    
       includedResourceTypes:
         - secrets
-      labelSelector: custom-label=cp4ba  
+      labelSelector: custom-label=cp4ba 
+      essential: false 
     - name: cp4ba-oauth
       type: resource
       includedResourceTypes:
         - oauth
+        - customresourcedefinition
       includeClusterResources: true  
+      essential: false
     - name: cp4ba-configmap-fips-status
       type: resource  
       includedResourceTypes:
@@ -35,7 +36,8 @@ spec:
       type: resource   
       includedResourceTypes:
         - user
-      includeClusterResources: true    
+      includeClusterResources: true  
+      essential: false  
     - name: cp4ba-ibm-entitlement-key
       type: resource   
       includedResourceTypes:
@@ -48,7 +50,7 @@ spec:
     - name: cp4ba-subscription
       type: resource      
       includedResourceTypes:
-        - subscription     
+        - subscriptions.operators.coreos.com     
       labelSelector: operators.coreos.com/ibm-cp4a-operator.$REPLACE_NAMESPACE=                    
     - name: cp4ba-resources
       type: resource   
@@ -65,7 +67,7 @@ spec:
       includeClusterResources: true 
     - name: cs-postgres-volumes
       type: volume
-      labelSelector: k8s.enterprisedb.io/instanceName=common-service-db-1,role=primary                  
+      labelSelector: k8s.enterprisedb.io/cluster=common-service-db,role=primary                  
     - name: icn-cfgstore-volumes
       type: volume
       labelSelector: app.kubernetes.io/name=icn-cfgstore,app=icn-cfgstore
@@ -85,7 +87,7 @@ spec:
       type: resource
       includedResourceTypes:
         - secret 
-      labelSelector: app.kubernetes.io/instance=content,app.kubernetes.io/name=content,app=content-cpe-oidc-secret   
+      labelSelector: app.kubernetes.io/instance=content,app.kubernetes.io/name=content,app=content-cpe-zen-oidc-secret   
     - name: cp4ba-admin-user-details-secrets
       type: resource
       includedResourceTypes:
@@ -110,12 +112,13 @@ spec:
       type: resource
       includedResourceTypes:
         - secret 
-      labelSelector: custom-label=cp4ba-ssl-secret    
+      labelSelector: custom-label=cp4ba-ssl-secret
+      essential: false    
     - name: cp4ba-ibm-ban-secret
       type: resource
       includedResourceTypes:
         - secret 
-      labelSelector: db-name=ICNDBf     
+      labelSelector: db-name=${ICN_DB_NAME}       
     - name: cp4ba-cs-db-secret 
       type: resource
       includedResourceTypes:
@@ -134,14 +137,26 @@ spec:
     - name: cp4ba-fncm-resource
       type: resource
       includedResourceTypes:
-        - contents.icp4a.ibm.com     
+        - contents.icp4a.ibm.com
+    - name: cp4ba-ibm-icc-secret
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: custom-label=cp4ba
+      essential: false    
+    - name: cp4ba-ibm-iccsap-secret
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: custom-label=cp4ba 
+      essential: false
   hooks:             
   - name: cp4a-foundation-operator-check
     type: check
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: operators.coreos.com/icp4a-foundation-operator.$REPLACE_NAMESPACE=
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -153,7 +168,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: operators.coreos.com/ibm-dpe-operator.$REPLACE_NAMESPACE=
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -165,7 +180,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: operators.coreos.com/ibm-ads-operator.$REPLACE_NAMESPACE=
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -177,7 +192,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: operators.coreos.com/ibm-content-operator.$REPLACE_NAMESPACE=
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -189,7 +204,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: operators.coreos.com/ibm-common-service-operator.$REPLACE_NAMESPACE=
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -201,7 +216,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: operators.coreos.com/ibm-pfs-operator.$REPLACE_NAMESPACE=
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -213,7 +228,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: operators.coreos.com/ibm-cp4a-operator.$REPLACE_NAMESPACE=
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -225,7 +240,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: operators.coreos.com/ibm-odm-operator.$REPLACE_NAMESPACE=
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -237,7 +252,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: operators.coreos.com/ibm-insights-engine-operator.$REPLACE_NAMESPACE=
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -249,7 +264,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: operators.coreos.com/ibm-cp4a-wfps-operator.$REPLACE_NAMESPACE=
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -261,7 +276,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: operators.coreos.com/ibm-odlm.$REPLACE_NAMESPACE=
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -271,8 +286,8 @@ spec:
   - name: cs-postgres-exec
     type: exec
     namespace: $REPLACE_NAMESPACE
-    labelSelector: k8s.enterprisedb.io/instanceName=common-service-db-1,role=primary
-    timeout: 3600
+    labelSelector: k8s.enterprisedb.io/cluster=common-service-db,role=primary
+    timeout: 3700
     onError: fail
     ops:
     - name: checkpoint
@@ -284,12 +299,12 @@ spec:
     type: exec
     namespace: $REPLACE_NAMESPACE
     labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
-    timeout: 3600
+    timeout: 3700
     onError: fail
     ops:
     - name: backup
       command: >
-        ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh $REPLACE_NAMESPACE"]
+        ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh $REPLACE_NAMESPACE; /usr/bin/sync -f /zen5/zen-backup/"]
       container: zen5-backup-job
       timeout: 3600
     - name: restore
@@ -316,7 +331,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: operators.coreos.com/ibm-zen-operator.$REPLACE_NAMESPACE=
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -328,7 +343,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: operators.coreos.com/ibm-iam-operator.$REPLACE_NAMESPACE=
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -340,7 +355,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: app.kubernetes.io/name=ibm-zen-meta-api
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -352,7 +367,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: app=platform-auth-service
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -364,7 +379,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: app=platform-identity-provider
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -376,7 +391,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: app=platform-identity-management
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -388,7 +403,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: operators.coreos.com/ibm-commonui-operator-app.$REPLACE_NAMESPACE=
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -400,7 +415,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: app.kubernetes.io/name=common-web-ui
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -412,7 +427,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: operators.coreos.com/cloud-native-postgresql.$REPLACE_NAMESPACE=
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -424,7 +439,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: component=usermgmt
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -436,7 +451,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: app.kubernetes.io/component=zen-audit
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -448,7 +463,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: component=zen-core
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -460,7 +475,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: component=zen-core-api
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -472,7 +487,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: component=zen-watcher
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -484,7 +499,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: component=ibm-nginx
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -496,7 +511,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: component=ibm-nginx-tester
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -508,7 +523,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: app=content-cpe-deploy
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -520,7 +535,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: app=content-graphql-deploy
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -532,7 +547,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: app=content-navigator-deploy
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -544,7 +559,7 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: deployment
     labelSelector: app.kubernetes.io/name=content-navigator-watcher
-    timeout: 3600
+    timeout: 3700
     onError: fail
     chks:
     - name: replicasReady
@@ -556,15 +571,16 @@ spec:
     namespace: $REPLACE_NAMESPACE
     selectResource: icp4a.ibm.com/v1/contents
     nameSelector: content
-    timeout: 600
+    timeout: 1400
     onError: fail
     chks:
     - name: readyStatus
-      timeout: 600
+      timeout: 1200
       onError: fail
       condition: "{$.status.conditions[?(@.type==\"Ready\")].reason} == {\"Successful\"}"                        
   workflows:
-  - name: backup
+  - failOn: essential-error
+    name: backup
     sequence:
     - group: catalogsource-group
     - group: cp4ba-secrets-openshift-config
@@ -590,11 +606,14 @@ spec:
     - group: cp4ba-content-rr-admin-secret      
     - group: cp4ba-ssl-secret
     - group: cp4ba-ibm-ban-secret
+    - group: cp4ba-ibm-icc-secret
+    - group: cp4ba-ibm-iccsap-secret
     - group: cp4ba-ibm-fncm-secret
     - group: cp4ba-cs-db-secret    
     - group: cp4ba-platform-auth-ldaps-ca-cert
     - group: cp4ba-fncm-resource
-  - name: restore
+  - failOn: essential-error
+    name: restore
     sequence:
     - group: catalogsource-group
     - group: cp4ba-secrets-openshift-config   
@@ -629,6 +648,8 @@ spec:
     - group: cp4ba-content-rr-admin-secret       
     - group: cp4ba-ssl-secret
     - group: cp4ba-ibm-ban-secret
+    - group: cp4ba-ibm-icc-secret
+    - group: cp4ba-ibm-iccsap-secret
     - group: cp4ba-ibm-fncm-secret
     - group: cp4ba-cs-db-secret
     - group: cp4ba-platform-auth-ldaps-ca-cert    
@@ -652,11 +673,8 @@ spec:
     - hook: ibm-nginx-check/replicasReady 
     - hook: ibm-nginx-tester-check/replicasReady 
     - hook: content-cpe-deploy-check/replicasReady 
-    - hook: content-cpe-deploy-check/replicasReady 
     - hook: content-graphql-deploy-check/replicasReady 
     - hook: content-navigator-deploy/replicasReady 
     - hook: content-navigator-watcher-check/replicasReady    
     - hook: cp4ba-instance-check/readyStatus
     - hook: zen-backup-pod-exec/restore
-                                       
-                                    
