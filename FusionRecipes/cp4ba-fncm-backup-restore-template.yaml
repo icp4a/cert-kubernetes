@@ -67,7 +67,7 @@ spec:
       includeClusterResources: true 
     - name: cs-postgres-volumes
       type: volume
-      labelSelector: k8s.enterprisedb.io/instanceName=common-service-db-1,role=primary                  
+      labelSelector: k8s.enterprisedb.io/cluster=common-service-db,role=primary                  
     - name: icn-cfgstore-volumes
       type: volume
       labelSelector: app.kubernetes.io/name=icn-cfgstore,app=icn-cfgstore
@@ -137,7 +137,19 @@ spec:
     - name: cp4ba-fncm-resource
       type: resource
       includedResourceTypes:
-        - contents.icp4a.ibm.com     
+        - contents.icp4a.ibm.com
+    - name: cp4ba-ibm-icc-secret
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: custom-label=cp4ba
+      essential: false    
+    - name: cp4ba-ibm-iccsap-secret
+      type: resource
+      includedResourceTypes:
+        - secret 
+      labelSelector: custom-label=cp4ba 
+      essential: false
   hooks:             
   - name: cp4a-foundation-operator-check
     type: check
@@ -274,7 +286,7 @@ spec:
   - name: cs-postgres-exec
     type: exec
     namespace: $REPLACE_NAMESPACE
-    labelSelector: k8s.enterprisedb.io/instanceName=common-service-db-1,role=primary
+    labelSelector: k8s.enterprisedb.io/cluster=common-service-db,role=primary
     timeout: 3700
     onError: fail
     ops:
@@ -292,7 +304,7 @@ spec:
     ops:
     - name: backup
       command: >
-        ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh $REPLACE_NAMESPACE"]
+        ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh $REPLACE_NAMESPACE; /usr/bin/sync -f /zen5/zen-backup/"]
       container: zen5-backup-job
       timeout: 3600
     - name: restore
@@ -594,6 +606,8 @@ spec:
     - group: cp4ba-content-rr-admin-secret      
     - group: cp4ba-ssl-secret
     - group: cp4ba-ibm-ban-secret
+    - group: cp4ba-ibm-icc-secret
+    - group: cp4ba-ibm-iccsap-secret
     - group: cp4ba-ibm-fncm-secret
     - group: cp4ba-cs-db-secret    
     - group: cp4ba-platform-auth-ldaps-ca-cert
@@ -634,6 +648,8 @@ spec:
     - group: cp4ba-content-rr-admin-secret       
     - group: cp4ba-ssl-secret
     - group: cp4ba-ibm-ban-secret
+    - group: cp4ba-ibm-icc-secret
+    - group: cp4ba-ibm-iccsap-secret
     - group: cp4ba-ibm-fncm-secret
     - group: cp4ba-cs-db-secret
     - group: cp4ba-platform-auth-ldaps-ca-cert    
@@ -657,11 +673,8 @@ spec:
     - hook: ibm-nginx-check/replicasReady 
     - hook: ibm-nginx-tester-check/replicasReady 
     - hook: content-cpe-deploy-check/replicasReady 
-    - hook: content-cpe-deploy-check/replicasReady 
     - hook: content-graphql-deploy-check/replicasReady 
     - hook: content-navigator-deploy/replicasReady 
     - hook: content-navigator-watcher-check/replicasReady    
     - hook: cp4ba-instance-check/readyStatus
     - hook: zen-backup-pod-exec/restore
-                                       
-                                    
