@@ -2,6 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: zen5-backup-role
+  namespace: <zenservice namespace>
   labels:
     foundationservices.cloudpak.ibm.com: zen5-data
 rules:
@@ -28,6 +29,7 @@ rules:
       - cronjobs
       - pods/exec
       - cronjob
+      - jobs
   - verbs:
       - get
       - list
