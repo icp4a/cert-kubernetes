@@ -1451,9 +1451,9 @@ function patch_strimzi_podset(){
     local operator_namespace=$1
     local services_namespace=$2
 
-    echo "Checking ibm-events-operator subscription channel..."
+    echo "Checking ibm-events-operator subscription and channel..."
     # Check if the subscription exists
-    events_operator_subscription_exists=$(${CLI_CMD} get subscription ibm-events-operator -n $operator_namespace -o name --no-headers 2>/dev/null || echo "")
+    events_operator_subscription_exists=$(${CLI_CMD} get subscription.operators.coreos.com ibm-events-operator -n $operator_namespace -o name --no-headers 2>/dev/null || echo "")
 
     if [[ -z "$events_operator_subscription_exists" ]]; then
         echo "Subscription 'ibm-events-operator' not found, skipping"
@@ -1462,7 +1462,7 @@ function patch_strimzi_podset(){
     fi
 
     # Get the subscription channel
-    events_operator_channel=$(${CLI_CMD} get subscription ibm-events-operator -n $operator_namespace -o yaml | ${YQ_CMD} '.spec.channel')
+    events_operator_channel=$(${CLI_CMD} get subscription.operators.coreos.com ibm-events-operator -n $operator_namespace -o yaml | ${YQ_CMD} '.spec.channel')
 
     echo "Current channel: $events_operator_channel"
 
