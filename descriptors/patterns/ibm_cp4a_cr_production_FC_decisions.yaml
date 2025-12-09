@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.0
+    release: 25.0.1
     cp4ba.ibm.com/backup-type: mandatory
 spec:
 
@@ -77,9 +77,18 @@ spec:
     ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
     ## based on input from the user.
     sc_deployment_platform:
+
+    ## This optional parameter is used to enable/disable Openshift Authentication method.  By default, the Openshift authentication is disabled.  Set this parameter to "true" if you want to enable the Openshift authentication method.
+    sc_osauth_enabled: false
+    
     ## You can provide your own driver to use your own external database by setting the sc_drivers_url parameter.
     ## The sc_driver_url parameter accepts compressed files (in .zip, .tar, .tar.gz, .tar.bz2, or .tar.xz formats) with the following structure: jdbc/db2|oracle|postgresql|sqlserver/driver_files.
     sc_drivers_url:
+
+    ## Enables integration with Instana to collect application and infrastructure metrics for enhanced observability. 
+    ## This optional parameter controls the instana instrumentation. If the parameter is not defined, then the default value is "false".
+    ## Set this flag to "true" if you plan to enable instana monitoring for CP4BA application. 
+    sc_enable_instana_metric_collection: false
 
     ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower.
     ## For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
@@ -211,7 +220,7 @@ spec:
     # Allow to specify which version of ODM you want to deploy.
     # Supported version > 19.0.2
     # If omitted the latest version will be used.
-    version: 25.0.0
+    version: 25.0.1
 
     audit_logging:
       # Enable or disable audit logging for the ODM component
@@ -224,7 +233,7 @@ spec:
 
     image:
       # Specify to override the tag docker images in case of an interim fix.
-      tag: "25.0.0-IF002"
+      tag: "25.0.1"
       # Specify the pull policy for the Docker images. See Kuberntes documentation for more inforations.
       # Possible values : IfNotPresent, Always, Never
       pullPolicy: IfNotPresent
@@ -260,7 +269,7 @@ spec:
           ephemeral-storage: 50Mi
         limits:
           # Specify the CPU limit.
-          cpu: 1
+          cpu: 2
           # Specify the memory limit.
           memory: 2Gi
           ephemeral-storage: 500Mi
@@ -273,8 +282,19 @@ spec:
         minReplicas: 1
         # Specify the maximum number of replicas.
         maxReplicas: 3
-        # Specify the target average utilization (in percentage of cpu utilization).
-        targetAverageUtilization: 75
+        # Specify the target average CPU utilization (in percentage of the cpu utilisation vs request).
+        targetAverageCpuUtilization: 300
+        # Specify the target average memory utilization (in percentage of the memory utilisation vs request).
+        targetAverageMemoryUtilization: 600
+        # Specify the scaling behavior (tolerance, stabilization window when scaling up or down, ...)
+        behavior: {}
+      # specify dedicated runtimes - list of dicts with the following content:
+      # - name: "<servicename>" (mandatory)
+      #   paths: [] (mandatory)
+      #   resources: {} (optional, same format as decisionServerRuntime.resources below)
+      #   webConfigRef: "" (optional)
+      #   xuConfigRef: "" (optional)
+      dedicated: []
       # Specify the labels to add to Decision Server Runtime deployment.
       labels: {}
       networkPolicy:
@@ -285,6 +305,11 @@ spec:
       # Create ZenExtension (true by default, other possible value is false)
       zenExtension:
         enabled: true
+      # Specify Rolling update policy. The values can be defined as either a percentage or an absolute number.
+      # By default, maxUnavailable is set to '0' and maxSurge is set to '1'.
+      rolling_update:
+        max_unavailable: '25%'
+        max_surge: 1
 
     ## Decision Server Console parameters
     decisionServerConsole:
@@ -296,6 +321,11 @@ spec:
       jvmOptionsRef:
       # Specify the name of the Kubernetes Secret that contains scripts for the container lifecycle hooks. The secret might have start.sh, stop.sh keys to be run in the postStart, preStop lifecycle.
       lifecycleHooksSecretRef:
+      # Specify the name of the configmap that contains the web-configuration.properties file. The content of this properties file allows you to customize the Decision Server Console web application.
+      webConfigRef:
+      # Specify the name of the configmap that contains the web-configuration.properties file. The content of this properties file allows you to customize the embedded Decision Server Runtime web application.
+      runtime:
+        webConfigRef:
       # Specify the title name for the Decision Server Console web page. If left empty, the default title name is used.
       title:
       # Specify a description for the Decision Server Console. If left empty, the default description is used.
@@ -325,6 +355,11 @@ spec:
       # Create ZenExtension (true by default, other possible value is false)
       zenExtension:
         enabled: true
+      # Specify Rolling update policy. The values can be defined as either a percentage or an absolute number.
+      # By default, maxUnavailable is set to '0' and maxSurge is set to '1'.
+      rolling_update:
+        max_unavailable: '25%'
+        max_surge: 1
 
     ## Decision Center parameters
     decisionCenter:
@@ -357,13 +392,13 @@ spec:
       resources:
         requests:
           # Specify the requested CPU.
-          cpu: 1
+          cpu: 500m
           # Specify the requested memory.
-          memory: 4Gi
+          memory: 2Gi
           ephemeral-storage: 50Mi
         limits:
           # Specify the CPU limit.
-          cpu: 1
+          cpu: 2
           # Specify the memory limit.
           memory: 4Gi
           ephemeral-storage: 500Mi
@@ -376,8 +411,12 @@ spec:
         minReplicas: 1
         # Specify the maximum number of replicas.
         maxReplicas: 3
-        # Specify the target average utilization (in percentage of cpu utilization).
-        targetAverageUtilization: 75
+        # Specify the target average CPU utilization (in percentage of the cpu utilisation vs request).
+        targetAverageCpuUtilization: 300
+        # Specify the target average memory utilization (in percentage of the memory utilisation vs request).
+        targetAverageMemoryUtilization: 150
+        # Specify the scaling behavior (tolerance, stabilization window when scaling up or down, ...)
+        behavior: {}
       # Specify the labels to add to Decision Center deployment.
       labels: {}
       networkPolicy:
@@ -388,6 +427,11 @@ spec:
       # Create ZenExtension (true by default, other possible value is false)
       zenExtension:
         enabled: true
+      # Specify Rolling update policy. The values can be defined as either a percentage or an absolute number.
+      # By default, maxUnavailable is set to '0' and maxSurge is set to '1'.
+      rolling_update:
+        max_unavailable: '25%'
+        max_surge: 1
 
     ## Decision Runner parameters
     decisionRunner:
@@ -413,9 +457,9 @@ spec:
           ephemeral-storage: 50Mi
         limits:
           # Specify the CPU limit.
-          cpu: 500m
+          cpu: 2
           # Specify the memory limit.
-          memory: 2Gi
+          memory: 4Gi
           ephemeral-storage: 500Mi
       # Specify the node selector term match expression list to manage node affinity.
       nodeAffinity:
@@ -426,8 +470,12 @@ spec:
         minReplicas: 1
         # Specify the maximum number of replicas.
         maxReplicas: 3
-        # Specify the target average utilization (in percentage of cpu utilization).
-        targetAverageUtilization: 75
+        # Specify the target average CPU utilization (in percentage of the cpu utilisation vs request).
+        targetAverageCpuUtilization: 300
+        # Specify the target average memory utilization (in percentage of the memory utilisation vs request).
+        targetAverageMemoryUtilization: 150
+        # Specify the scaling behavior (tolerance, stabilization window when scaling up or down, ...)
+        behavior: {}
       # Specify the labels to add to Decision Runner deployment.
       labels: {}
       networkPolicy:
@@ -438,6 +486,11 @@ spec:
       # Create ZenExtension (true by default, other possible value is false)
       zenExtension:
         enabled: true
+      # Specify Rolling update policy. The values can be defined as either a percentage or an absolute number.
+      # By default, maxUnavailable is set to '0' and maxSurge is set to '1'.
+      rolling_update:
+        max_unavailable: '25%'
+        max_surge: 1
 
     externalDatabase:
       ## Specify the database driver url. Optionally specify a list of driversUrl using

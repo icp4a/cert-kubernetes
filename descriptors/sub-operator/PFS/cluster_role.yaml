@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba-pfs
     app.kubernetes.io/managed-by: ibm-dba-pfs
     app.kubernetes.io/name: ibm-dba-pfs
-    release: 25.0.0
+    release: 25.0.1
 rules:
 - apiGroups:
   - apps

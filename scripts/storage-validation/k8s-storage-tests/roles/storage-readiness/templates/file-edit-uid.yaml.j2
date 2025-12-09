@@ -1,0 +1,60 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ prefix }}-file-uid-edit-job-{{ accessMode|lower}}-{{ type }}"
+{% if accessMode == 'ReadWriteOnce' %}
+  labels:
+     test: samenode
+{% endif %}
+spec:
+  backoffLimit: {{ backoffLimit }}
+  template:
+    metadata:
+      name: file-uid-edit-job
+{% if accessMode == 'ReadWriteOnce' %}
+      labels:
+         test: samenode
+{% endif %}
+    spec:
+{% if accessMode == 'ReadWriteOnce' %}
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: test
+                operator: In
+                values:
+                - samenode
+            topologyKey: "kubernetes.io/hostname"
+{% endif %}
+      containers:
+      - name: consumer-job
+        image: "{{ docker_registry }}/ibm-cp4d-public/storage-util:1.0-{{ arch }}"
+        imagePullPolicy: "IfNotPresent"
+        env:
+          - name: FILE_NAME
+            value: "/mnt/data/file-uid.txt"
+        command:
+        - "/bin/sh"
+        - "-ec"
+        - |
+          /tmp/file-edit-uid.sh
+        volumeMounts:
+        - name: tmp-store
+          mountPath: /mnt/data
+        - name: consume-conf 
+          mountPath: /tmp/file-edit-uid.sh
+          subPath: file-edit-uid.sh
+      securityContext:
+        runAsUser: 1000321000
+      serviceAccountName: uid-sa
+      volumes:
+      - name: tmp-store
+        persistentVolumeClaim:
+          claimName: "{{ prefix }}-{{ accessMode|lower }}"
+      - name: consume-conf
+        configMap:
+          defaultMode: 0755
+          name: consumer-cm 
+      restartPolicy: Never

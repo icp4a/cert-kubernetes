@@ -68,77 +68,36 @@ function func_sync_profile_size_into_cr() {
        ;;
     esac
 
-    # set BAN resources according profile size
-    ban_configuration=`${YQ_CMD} ".spec.navigator_configuration" "$BAW_STD_PATTERN_FILE_TMP"`
-    if [[ -n "${ban_configuration}" ]]; then
-        for profile in "${ban_footprint_profile[@]}"; do
-            ${YQ_CMD} -i ".${profile%%:*} = \"${profile#*:}\"" ${BAW_STD_PATTERN_FILE_TMP}
-        done
-    fi
+    declare -A CONFIG_MAP=(
+        [BAN]=".spec.navigator_configuration ban_footprint_profile"
+        [CPE]=".spec.ecm_configuration.cpe fncm_cpe_footprint_profile"
+        [CMIS]=".spec.ecm_configuration.cmis fncm_cmis_footprint_profile"
+        [GRAPHQL]=".spec.ecm_configuration.graphql fncm_graphql_footprint_profile"
+        [RR]=".spec.resource_registry_configuration rr_footprint_profile"
+        [AE]=".spec.application_engine_configuration ae_footprint_profile"
+        [BAW]=".spec.baw_configuration baw_std_footprint_profile"
+        [PFS]=".spec.pfs_configuration pfs_footprint_profile"
+        [ES]=".spec.elasticsearch_configuration es_footprint_profile"
+    )
 
-    # set FNCM - CPE resources according profile size
-    cpe_configuration=`${YQ_CMD} ".spec.ecm_configuration.cpe" "$BAW_STD_PATTERN_FILE_TMP"`
-    if [[ -n "${cpe_configuration}" ]]; then
-        for profile in "${fncm_cpe_footprint_profile[@]}"; do
-            ${YQ_CMD} -i ".${profile%%:*} = \"${profile#*:}\"" ${BAW_STD_PATTERN_FILE_TMP}
-        done
-    fi
+    # Loop through each component dynamically
+    for comp in "${!CONFIG_MAP[@]}"; do
+        conf_path=$(echo "${CONFIG_MAP[$comp]}" | awk '{print $1}')
+        array_name=$(echo "${CONFIG_MAP[$comp]}" | awk '{print $2}')
 
-    # set FNCM - CMIS resources according profile size
-    cmis_configuration=`${YQ_CMD} ".spec.ecm_configuration.cmis" "$BAW_STD_PATTERN_FILE_TMP"`
-    if [[ -n "${cmis_configuration}" ]]; then
-        for profile in "${fncm_cmis_footprint_profile[@]}"; do
-            ${YQ_CMD} -i ".${profile%%:*} = \"${profile#*:}\"" ${BAW_STD_PATTERN_FILE_TMP}
-        done
-    fi
-
-    # set FNCM - GRAPHQL resources according profile size
-    graphql_configuration=`${YQ_CMD} ".spec.ecm_configuration.graphql" "$BAW_STD_PATTERN_FILE_TMP"`
-    if [[ -n "${graphql_configuration}" ]]; then
-        for profile in "${fncm_graphql_footprint_profile[@]}"; do
-            ${YQ_CMD} -i ".${profile%%:*} = \"${profile#*:}\"" ${BAW_STD_PATTERN_FILE_TMP}
-        done
-    fi
-
-    # set RR resources according profile size
-    rr_configuration=`${YQ_CMD} ".spec.resource_registry_configuration" "$BAW_STD_PATTERN_FILE_TMP"`
-    if [[ -n "${rr_configuration}" ]]; then
-        for profile in "${rr_footprint_profile[@]}"; do
-            ${YQ_CMD} -i ".${profile%%:*} = \"${profile#*:}\"" ${BAW_STD_PATTERN_FILE_TMP}
-        done
-    fi
-
-    # set AE resources according profile size
-    ae_configuration=`${YQ_CMD} ".spec.application_engine_configuration" "$BAW_STD_PATTERN_FILE_TMP"`
-    if [[ -n "${ae_configuration}" ]]; then
-        for profile in "${ae_footprint_profile[@]}"; do
-            ${YQ_CMD} -i ".${profile%%:*} = \"${profile#*:}\"" ${BAW_STD_PATTERN_FILE_TMP}
-        done
-    fi
-
-    # set BAW STD resources according profile size
-    baw_configuration=`${YQ_CMD} ".spec.baw_configuration" "$BAW_STD_PATTERN_FILE_TMP"`
-    if [[ -n "${baw_configuration}" ]]; then
-        for profile in "${baw_std_footprint_profile[@]}"; do
-            ${YQ_CMD} -i ".${profile%%:*} = \"${profile#*:}\"" ${BAW_STD_PATTERN_FILE_TMP}
-        done
-    fi
-
-    # set PFS resources according profile size
-    pfs_configuration=`${YQ_CMD} ".spec.pfs_configuration" "$BAW_STD_PATTERN_FILE_TMP"`
-    if [[ -n "${pfs_configuration}" ]]; then
-        for profile in "${pfs_footprint_profile[@]}"; do
-            ${YQ_CMD} -i ".${profile%%:*} = \"${profile#*:}\"" ${BAW_STD_PATTERN_FILE_TMP}
-        done
-    fi
-
-    # set Elasticsearch resources according profile size
-    es_configuration=`${YQ_CMD} ".spec.elasticsearch_configuration" "$BAW_STD_PATTERN_FILE_TMP"`
-    if [[ -n "${es_configuration}" ]]; then
-        for profile in "${es_footprint_profile[@]}"; do
-            ${YQ_CMD} -i ".${profile%%:*} = \"${profile#*:}\"" ${BAW_STD_PATTERN_FILE_TMP}
-        done
-    fi
+        # Indirect expansion to access the array by name
+        configuration=$(${YQ_CMD} "$conf_path" "$BAW_STD_PATTERN_FILE_TMP")
+        if [[ -n "${configuration}" ]]; then
+            eval "profiles=( \"\${${array_name}[@]}\" )"
+            for profile in "${profiles[@]}"; do
+                key="${profile%%:*}"
+                val="${profile#*:}"
+                key="${key//\[\*\]/[0]}"
+                echo "[DEBUG] Applying profile in ${comp} → ${key}:${val}"
+                ${YQ_CMD} -i ".${key} = \"${val}\"" "${BAW_STD_PATTERN_FILE_TMP}"
+            done
+        fi
+    done
 }
 
 # Applying value in GCDDB property file into final CR
@@ -320,9 +279,13 @@ function func_sync_ldap_property_into_cr(){
         for i in "${!AD_LDAP_CR_MAPPING[@]}"; do
             ${YQ_CMD} -i ".${AD_LDAP_CR_MAPPING[i]} = \"$(prop_ldap_property_file ${AD_LDAP_PROPERTY[$i]})\"" ${BAW_STD_PATTERN_FILE_TMP}
         done
-    else
+    elif [[ $LDAP_TYPE == "TDS" ]]; then
         for i in "${!TDS_LDAP_CR_MAPPING[@]}"; do
             ${YQ_CMD} -i ".${TDS_LDAP_CR_MAPPING[i]} = \"$(prop_ldap_property_file ${TDS_LDAP_PROPERTY[$i]})\"" ${BAW_STD_PATTERN_FILE_TMP}
+        done
+    else 
+        for i in "${!PDS_LDAP_CR_MAPPING[@]}"; do
+            ${YQ_CMD} -i ".${PDS_LDAP_CR_MAPPING[i]} = \"$(prop_ldap_property_file ${PDS_LDAP_PROPERTY[$i]})\"" ${BAW_STD_PATTERN_FILE_TMP}
         done
     fi
 }

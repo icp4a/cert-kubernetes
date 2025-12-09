@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.0
+    release: 25.0.1
 spec:
   replicas: 1
   selector:
@@ -36,16 +36,16 @@ spec:
         com.ibm.cp4a.networking/egress-allow-all: "true"
         com.ibm.cp4a.networking/egress-allow-ldap: "true"
         com.ibm.cp4a.ecm.networking/egress-allow-db: "true"
-        release: 25.0.0
+        release: 25.0.1
       annotations:
         productID: "5737-I23"
         productName: "IBM Cloud Pak for Business Automation"
-        productVersion: "25.0.0"
+        productVersion: "25.0.1"
         productChargedContainers: ""
         productMetric: "VIRTUAL_PROCESSOR_CORE"
         cloudpakId: "94a9c8c358bb43ba8fbdea62e7e166a5"
         cloudpakName: "IBM Cloud Pak for Business Automation"
-        cloudpakVersion: "25.0.0"
+        cloudpakVersion: "25.0.1"
     spec:
       hostNetwork: false
       hostPID: false
@@ -76,7 +76,7 @@ spec:
                       - ppc64le
       initContainers:
         - name: folder-prepare-container
-          image: icr.io/cpopen/icp4a-operator@sha256:10c277267319682fd8ab6a5a3d0c2d69f949987678db5da80807bdc5eeee86ab
+          image: icr.io/cpopen/icp4a-operator@sha256:259f0db9c15d35dd73c05b73984b58e1cc3362b8133a53fcfe5bc76f1b469034
           securityContext:
             readOnlyRootFilesystem: true
           volumeMounts:
@@ -102,8 +102,24 @@ spec:
               cp -rp /opt/ibm/* /ibm-folder 
       containers:
         - name: operator
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 6789
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 10
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 6789
+            initialDelaySeconds: 5 
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
           # Replace this with the built image name
-          image: icr.io/cpopen/icp4a-operator@sha256:10c277267319682fd8ab6a5a3d0c2d69f949987678db5da80807bdc5eeee86ab
+          image: icr.io/cpopen/icp4a-operator@sha256:259f0db9c15d35dd73c05b73984b58e1cc3362b8133a53fcfe5bc76f1b469034
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

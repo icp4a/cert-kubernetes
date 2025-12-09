@@ -1,0 +1,110 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2025. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+---
+########################################################################################
+
+########################################################################################
+# Mount Test
+########################################################################################
+- name: Test mount {{ accessMode }} volumes for {{ prefix }}
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+  loop:
+     - name: create-volume.yaml.j2
+
+########################################################################################
+# Parallel Write/Read single thread
+########################################################################################
+
+- block:
+
+  - name: Set config maps
+    kubernetes.core.k8s:
+      state: present
+      namespace: "{{ storage_validation_namespace }}"
+      definition: "{{ lookup('template', item.name) | from_yaml }}"
+    loop:
+       - name: producer-cm.yaml.j2
+       - name: consumer-nocheck-cm.yaml.j2
+    vars:
+      options: "oflag=dsync conv=notrunc"
+
+  - name: Parallel read/write  {{ accessMode }} volumes for {{ prefix }}
+    kubernetes.core.k8s:
+      state: present
+      namespace: "{{ storage_validation_namespace }}"
+      definition: "{{ lookup('template', item.name) | from_yaml }}"
+    loop:
+       - name: producer.yaml.j2
+    vars:   
+      type: parallel
+
+  - name: Parallel concurrency read while producer is running 
+    kubernetes.core.k8s:
+      state: present
+      namespace: "{{ storage_validation_namespace }}"
+      definition: "{{ lookup('template', item.name) | from_yaml }}"
+      wait: yes
+      wait_timeout: "{{ 120 if accessMode=='ReadWriteOnce' else 50 }}"
+      wait_condition:
+        type: Complete
+        status: "True"
+    loop:
+      - name: consumer-nocheck.yaml.j2
+    vars:    
+      type: parallel-nocheck
+      backoffLimit: 6
+
+  - name: Assert that producer is still running
+    kubernetes.core.k8s_info:
+      kind: Job
+      name: "{{ prefix }}-producer-job-{{ accessMode|lower}}-{{ type }}"
+      namespace: "{{ storage_validation_namespace }}"
+    register: job_status
+    vars:  
+      type: parallel
+
+  - name: Warn if producer job is already completed
+    debug:
+      msg: "Producer job ran too soon, test may be inaccurate"
+    when: job_status.resources[0].status.active is defined and job_status.resources[0].status.active != 1
+
+  - name: Wait until producer job is done
+    kubernetes.core.k8s_info:
+      name: "{{ prefix }}-producer-job-{{ accessMode|lower}}-{{ type }}"
+      namespace: "{{ storage_validation_namespace }}"
+      kind: Job
+    register: job_status
+    until: job_status.resources[0].status.succeeded is defined and job_status.resources[0].status.succeeded == 1
+    retries: 20
+    delay: 10
+    vars:   
+      type: parallel
+
+- name: Parallel read  {{ accessMode }} volumes for {{ prefix }}
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+    wait: yes
+    wait_timeout: 60
+    wait_condition:
+      type: Complete
+      status: "True"
+  loop:
+     - name: consumer.yaml.j2
+  vars:    
+    type: parallel-final
+
+- debug:
+    msg: "######################## SINGLE THREAD PARALLEL READ WRITE TEST PASSED for {{ accessMode }} #################################"

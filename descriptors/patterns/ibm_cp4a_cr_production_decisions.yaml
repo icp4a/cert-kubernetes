@@ -17,10 +17,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.0
+    release: 25.0.1
     cp4ba.ibm.com/backup-type: mandatory
 spec:
-  appVersion: 25.0.0
+  appVersion: 25.0.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""

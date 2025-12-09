@@ -1,0 +1,113 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2025. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+---
+########################################################################################
+
+- name: Test mount {{ accessMode }} volumes for {{ prefix }}
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+  loop:
+     - name: create-volume.yaml.j2
+
+- name: Set config maps
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+  loop:
+     - name: producer-cm.yaml.j2
+     - name: consumer-nocheck-cm.yaml.j2
+  vars:
+    options: "oflag=dsync conv=notrunc"
+
+
+########################################################################################
+# Parallel Write/Read multiple thread across nodes
+########################################################################################
+
+- name: Get node count
+  kubernetes.core.k8s_info:
+    kind: Nodes
+    label_selectors:
+      - node-role.kubernetes.io/worker = 
+  register: node_list
+
+- set_fact:
+     node_count: "{{ node_list|length }}"
+
+- name: Parallel write from same/separate nodes
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+    wait: yes
+    wait_timeout: 300
+    wait_condition:
+      type: Complete
+      status: "True"
+  loop:
+     - name: parallel-producer.yaml.j2
+  vars:
+    type: parallel-multi
+    threads: "{{ node_count }}"
+
+
+- name: Parallel write no wait from same/separate nodes
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+  loop:
+     - name: parallel-producer.yaml.j2
+  vars:
+    type: parallel-multi-no-wait
+    threads: "{{ node_count }}"
+
+- name: Parallel read no wait from same/separate nodes
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+  loop:
+     - name: parallel-consumer.yaml.j2
+  vars:
+    type: parallel-multi
+    threads: "{{ node_count }}"
+
+- name: Wait Until parallel producer job is done
+  kubernetes.core.k8s_info:
+    name: "{{ prefix }}-producer-job-{{ accessMode|lower}}-{{ type }}"
+    namespace: "{{ storage_validation_namespace }}"
+    kind: Job
+  register: job_status
+  until: job_status.resources[0].status.succeeded is defined and job_status.resources[0].status.succeeded == (node_count|int)
+  retries: 10
+  delay: 30
+  vars:
+    type: parallel-multi-no-wait
+
+- name: Wait Until parallel consumer job is done
+  kubernetes.core.k8s_info:
+    name: "{{ prefix }}-consumer-job-{{ accessMode|lower}}-{{ type }}"
+    namespace: "{{ storage_validation_namespace }}"
+    kind: Job
+  register: job_status
+  until: job_status.resources[0].status.succeeded is defined and job_status.resources[0].status.succeeded == (node_count|int)
+  retries: 10
+  delay: 30
+  vars:   
+    type: parallel-multi
+
+
+- debug:
+    msg: "######################## MULTI NODE PARALLEL READ WRTIE TEST PASSED FOR {{ accessMode }} #################################"

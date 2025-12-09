@@ -1,0 +1,152 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2025. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+---
+########################################################################################
+
+- name: Test mount {{ accessMode }} volumes for {{ prefix }}
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+  loop:
+     - name: create-volume.yaml.j2
+
+########################################################################################
+# File Lock Tests using FLOCK and FCNTL
+########################################################################################
+- name: Set config maps
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+  loop:
+     - name: producer-cm.yaml.j2
+
+- name: File lock test for {{ prefix }}
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+  loop:
+     - name: file-lock.yaml.j2
+  vars:
+    type: create-lock
+
+- name: Wait few seconds
+  pause:
+    seconds: 20
+
+- name: Negative file lock test for {{ prefix }}
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+    wait: yes
+    wait_timeout: 120
+    wait_condition:
+      type: Failed
+      status: "True"
+  loop:
+     - name: file-lock2.yaml.j2
+  vars:
+    type: create-lock2
+
+- name: Wait for lock to be released
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+    wait: yes
+    wait_timeout: 120
+    wait_condition:
+      type: Complete
+      status: "True"
+  loop:
+     - name: file-lock.yaml.j2
+  vars:
+    type: create-lock
+
+- name: Positive lock test for {{ prefix }}
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+    wait: yes
+    wait_timeout: 120
+    wait_condition:
+      type: Complete
+      status: "True"
+  loop:
+     - name: file-lock.yaml.j2
+  vars:
+    type: create-lock3
+
+- name: Fcntl test for {{ prefix }}
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+  loop:
+     - name: file-lock-fcntl.yaml.j2
+  vars:
+    type: create-lock
+
+- name: Wait few seconds
+  pause:
+    seconds: 20
+
+- name: Negative Fcntl test for {{ prefix }}
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+    wait: yes
+    wait_timeout: 120
+    wait_condition:
+      type: Failed
+      status: "True"
+  loop:
+     - name: file-lock-fcntl2.yaml.j2
+  vars:
+    type: create-lock2
+
+- name: Wait for Fcntl lock to be released
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+    wait: yes
+    wait_timeout: 120
+    wait_condition:
+      type: Complete
+      status: "True"
+  loop:
+     - name: file-lock-fcntl.yaml.j2
+  vars:
+    type: create-lock
+
+- name: Positive Fcntl test for {{ prefix }}
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+    wait: yes
+    wait_timeout: 120
+    wait_condition:
+      type: Complete
+      status: "True"
+  loop:
+     - name: file-lock-fcntl.yaml.j2
+  vars:
+    type: create-lock3
+
+- debug:
+    msg: "######################## FILE LOCK TESTS PASSED FOR {{ accessMode }} Volume #################################"

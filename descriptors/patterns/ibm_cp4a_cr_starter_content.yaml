@@ -16,10 +16,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.0
+    release: 25.0.1
     cp4ba.ibm.com/backup-type: mandatory
 spec:
-  appVersion: 25.0.0
+  appVersion: 25.0.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept" 
   ibm_license: ""
@@ -58,8 +58,13 @@ spec:
     ## Please refer to the CP4BA documentation for more information about how to retrieve and apply the sample network policy templates.
     sc_generate_sample_network_policies: false
 
+    ## Enables integration with Instana to collect application and infrastructure metrics for enhanced observability. 
+    ## This optional parameter controls the instana instrumentation. If the parameter is not defined, then the default value is "false".
+    ## Set this flag to "true" if you plan to enable instana monitoring for CP4BA application. 
+    sc_enable_instana_metric_collection: false
+
     ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <route-name>-{{meta.namespace}}.<router-canonical-hostname> when not defined.
-    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.0?topic=scp-shared-configuration
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.1?topic=scp-shared-configuration
     ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
     #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
     

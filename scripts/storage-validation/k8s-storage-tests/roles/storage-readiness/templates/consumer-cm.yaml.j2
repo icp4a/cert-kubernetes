@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: consumer-cm
+data:
+  consume.sh: |
+    echo "Reading checksums"
+    md5sum $FILE_NAME > /mnt/data/consumer.md5
+    chk1=$(cat /mnt/data/producer.md5 | awk '{ print $1}')
+    chk2=$(cat /mnt/data/consumer.md5 | awk '{ print $1}')
+    echo "chk1 $chk1"
+    echo "chk2 $chk2"
+    if [ "$chk1" != "$chk2" ]
+    then
+      echo "File is not identical"
+      exit 1
+    else
+      echo "File is identical"
+    fi
+  read-file.sh: |
+    set -xe
+    id
+    echo "reading file /mnt/data/$FILE_NAME_GID"
+    ls -la /mnt/data/$FILE_NAME_GID
+    tail -1 /mnt/data/$FILE_NAME_GID
+  update-file.sh: |
+    set -xe
+    id
+    echo "writing to file /mnt/data/$FILE_NAME_GID"
+    ls -la /mnt/data/$FILE_NAME_GID
+    echo "\nmodifying with user group $TEST_GID" >> /mnt/data/$FILE_NAME_GID
+    tail -1 /mnt/data/$FILE_NAME_GID
+  file-edit-uid.sh: |
+    set -ex
+    id
+    ls -la ${FILE_NAME}
+    sudo chown 1000321000 ${FILE_NAME}
+    #echo "edit test" >> ${FILE_NAME}
+    ls -la ${FILE_NAME}
+    ecode=$?
+    exit $ecode

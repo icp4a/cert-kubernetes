@@ -68,7 +68,7 @@ COMMENTS_LDAP_PROPERTY=("## The possible values are: \"IBM Security Directory Se
                         "## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc."
                         "## The LDAP base DN.  For example, \"dc=example,dc=com\", \"dc=abc,dc=com\", etc"
                         "## The LDAP bind DN. For example, \"uid=user1,dc=example,dc=com\", \"uid=user1,dc=abc,dc=com\", etc."
-                        "## The password (if password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text) for LDAP bind DN."
+                        "## The password (if password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text) for LDAP bind DN.\n## Note: If you enable external Vault feature, enter your password in plain text, regardless of whether it contains special characters."
                         "## Enable SSL/TLS for LDAP communication. Refer to Knowledge Center for more info."
                         "## The name of the secret that contains the LDAP SSL/TLS certificate."
                         "## If enabled LDAP SSL, you need copy the SSL certificate file (named ldap-cert.crt) into this directory. Default value is <LDAP_SSL_CERT_FOLDER>"
@@ -440,4 +440,5 @@ SCIM_CR_MAPPING=("spec.scim_configuration_iam.user_unique_id_attribute"
                         "spec.scim_configuration_iam.group_lastmodified_attribute"
                         "spec.scim_configuration_iam.group_object_class_attribute"
                         "spec.scim_configuration_iam.group_members_attribute")
+
 

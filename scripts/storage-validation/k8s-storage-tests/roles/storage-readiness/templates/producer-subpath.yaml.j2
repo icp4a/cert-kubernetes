@@ -1,0 +1,58 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ prefix }}-producer-subpath-job-{{ accessMode|lower}}-{{ type }}"
+{% if accessMode == 'ReadWriteOnce' %}
+  labels:
+     test: samenode
+{% endif %}
+spec:
+  template:
+    metadata:
+      name: producer-job
+{% if accessMode == 'ReadWriteOnce' %}
+      labels:
+         test: samenode
+{% endif %}
+    spec:
+{% if accessMode == 'ReadWriteOnce' %}
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: test
+                operator: In
+                values:
+                - samenode
+            topologyKey: "kubernetes.io/hostname"
+{% endif %}
+      containers:
+      - name: producer-job
+        image: "{{ docker_registry }}/centos/{{ arch }}"
+        imagePullPolicy: "IfNotPresent"
+        env:
+          - name: DIR_NAME
+            value: "subdir"
+          - name: FILE_NAME
+            value: "sampleleaf.txt"
+        command:
+        - "/bin/sh"
+        - "-ec"
+        - |
+          /tmp/produce-subpath.sh
+        volumeMounts:
+        - name: tmp-store
+          mountPath: /mnt/data
+        - name: produce-conf 
+          mountPath: /tmp/produce-subpath.sh
+          subPath: produce-subpath.sh 
+      volumes:
+      - name: tmp-store
+        persistentVolumeClaim:
+          claimName: "{{ prefix }}-{{ accessMode|lower }}"
+      - name: produce-conf
+        configMap:
+          defaultMode: 0755
+          name: producer-cm 
+      restartPolicy: Never

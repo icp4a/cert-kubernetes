@@ -48,6 +48,6 @@ CREATE TABLE base_options
 );
 
 -- Put a placeholder for the schema_version. The version will be updated by a common function
-INSERT INTO base_options(schema_version) values('25.0.0');
+INSERT INTO base_options(schema_version) values('25.0.1');
 
 CONNECT RESET;

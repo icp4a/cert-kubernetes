@@ -129,8 +129,8 @@ LICENSE_PRODUCTION="production"
 PURCHASED_PRODUCT_BAW="BAW"
 PURCHASED_PRODUCT_CP4A="CP4A"
 
-LICENSE_BAW_URL="https://www.ibm.com/support/customer/csol/terms/?id=L-PMMB-HLZTES&lc=en"
-LICENSE_CP4A_URL="https://www.ibm.com/support/customer/csol/terms/?id=L-LDYZ-7V4YJ4&lc=en"
+LICENSE_BAW_URL="https://www14.software.ibm.com/cgi-bin/weblap/lap.pl?li_formnum=L-MVWM-ZKAC6A"
+LICENSE_CP4A_URL="https://www.ibm.com/support/customer/csol/terms/?id=L-PXVP-93U8VP"
 
 
 ######################################### Migration
@@ -1051,7 +1051,7 @@ function validate_secret_in_cluster(){
         else
             secret_exists=`kubectl get secret $secret_name_tmp --ignore-not-found | wc -l`  >/dev/null 2>&1
             if [ "$secret_exists" -ne 2 ] ; then
-                error "Not found secret \"$secret_name_tmp\" in Kubernetes cluster! Create it firstly before deployment CP4BA"
+                error "Not found secret \"$secret_name_tmp\" in Kubernetes cluster! Create it first before deploying CP4BA"
                 SECRET_CREATE_PASSED="false"
             else
                 success "Found secret \"$secret_name_tmp\" in Kubernetes cluster, PASSED!"              
@@ -1085,7 +1085,7 @@ function validate_secret_in_cluster(){
             secret_name_tmp=$(sed -e 's/^"//' -e 's/"$//' <<<"$secret_name_tmp")
             secret_exists=`kubectl get secret $secret_name_tmp --ignore-not-found | wc -l`  >/dev/null 2>&1
             if [ "$secret_exists" -ne 2 ] ; then
-                error "Not found secret \"$secret_name_tmp\" in Kubernetes cluster! Create it firstly before deployment CP4BA"
+                error "Not found secret \"$secret_name_tmp\" in Kubernetes cluster! Create it first before deploying CP4BA"
                 SECRET_CREATE_PASSED="false"
             else
                 success "Found secret \"$secret_name_tmp\" in Kubernetes cluster, PASSED!"              

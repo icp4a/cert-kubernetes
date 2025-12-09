@@ -17,6 +17,10 @@
 
 TEMP_FOLDER=${CUR_DIR}/.tmp
 
+# Define the required Java version based on CP4BA release
+REQUIRED_JAVA_MAJOR_VERSION=17  # Semeru 17 is required for CP4BA 25.x
+
+
 # Directory for common service script
 COMMON_SERVICES_SCRIPT_FOLDER=${CUR_DIR}/cpfs/installer_scripts/cp3pt0-deployment
 COMMON_SERVICES_SCRIPT_PARENT_FOLDER=${CUR_DIR}/cpfs/installer_scripts
@@ -33,17 +37,18 @@ PROPERTY_FILE_FOLDER=${PREREQUISITES_FOLDER}/propertyfile
 PROPERTY_FILE_FOLDER_BAK=${PREREQUISITES_FOLDER_BAK}/propertyfile
 CREATE_SECRET_SCRIPT_FILE=$PREREQUISITES_FOLDER/create_secret.sh
 
-LDAP_SSL_CERT_FOLDER=${PROPERTY_FILE_FOLDER}/cert/ldap
-EXT_LDAP_SSL_CERT_FOLDER=${PROPERTY_FILE_FOLDER}/cert/external_ldap
-DB_SSL_CERT_FOLDER=${PROPERTY_FILE_FOLDER}/cert/db
-ZEN_DB_SSL_CERT_FOLDER=${PROPERTY_FILE_FOLDER}/cert/zen_external_db
-IM_DB_SSL_CERT_FOLDER=${PROPERTY_FILE_FOLDER}/cert/im_external_db
-BTS_DB_SSL_CERT_FOLDER=${PROPERTY_FILE_FOLDER}/cert/bts_external_db
-CP4BA_TLS_ISSUER_CERT_FOLDER=${PROPERTY_FILE_FOLDER}/cert/cp4ba_tls_issuer
+SSL_CERT_FOLDER=${PROPERTY_FILE_FOLDER}/cert
+LDAP_SSL_CERT_FOLDER=${SSL_CERT_FOLDER}/ldap
+EXT_LDAP_SSL_CERT_FOLDER=${SSL_CERT_FOLDER}/external_ldap
+DB_SSL_CERT_FOLDER=${SSL_CERT_FOLDER}/db
+ZEN_DB_SSL_CERT_FOLDER=${SSL_CERT_FOLDER}/zen_external_db
+IM_DB_SSL_CERT_FOLDER=${SSL_CERT_FOLDER}/im_external_db
+BTS_DB_SSL_CERT_FOLDER=${SSL_CERT_FOLDER}/bts_external_db
+CP4BA_TLS_ISSUER_CERT_FOLDER=${SSL_CERT_FOLDER}/cp4ba_tls_issuer
 AE_REDIS_SSL_CERT_FOLDER=${DB_SSL_CERT_FOLDER}/redis-ae
 PLAYBACK_REDIS_SSL_CERT_FOLDER=${DB_SSL_CERT_FOLDER}/redis-playback
-ADP_GIT_SSL_CERT_FOLDER=${PROPERTY_FILE_FOLDER}/cert/adp_git
-ADP_CDRA_CERT_FOLDER=${PROPERTY_FILE_FOLDER}/cert/adp_cdra
+ADP_GIT_SSL_CERT_FOLDER=${SSL_CERT_FOLDER}/adp_git
+ADP_CDRA_CERT_FOLDER=${SSL_CERT_FOLDER}/adp_cdra
 
 
 TEMPORARY_PROPERTY_FILE=${TEMP_FOLDER}/.TEMPORARY.property
@@ -53,7 +58,6 @@ EXTERNAL_LDAP_PROPERTY_FILE=${PROPERTY_FILE_FOLDER}/cp4ba_External_LDAP.property
 DB_NAME_USER_PROPERTY_FILE=${PROPERTY_FILE_FOLDER}/cp4ba_db_name_user.property
 DB_SERVER_INFO_PROPERTY_FILE=${PROPERTY_FILE_FOLDER}/cp4ba_db_server.property
 USER_PROFILE_PROPERTY_FILE=${PROPERTY_FILE_FOLDER}/cp4ba_user_profile.property
-
 
 BAW_AUTH_OS_ARR=("BAWDOCS" "BAWDOS" "BAWTOS")
 AEOS=("AEOS")
@@ -73,6 +77,57 @@ BAW_AWS_DB_SCRIPT_FOLDER=${DB_SCRIPT_FOLDER}/baw-aws
 # Directory and template file for secret YAML template
 SECRET_FILE_FOLDER=${PREREQUISITES_FOLDER}/secret_template
 
+##DBACLD-185209: Vault's implementation.  Define supported secret/certificates names for Vault
+# If it's a regular (non-tls) secret then use VAULT_SECRET_FILE_FOLDER.  Otherwise, use VAULT_TLS_SECRET_FILE_FOLDER
+VAULT_SECRET_FILE_FOLDER=${SECRET_FILE_FOLDER}/vault/secrets
+VAULT_TLS_SECRET_FILE_FOLDER=${SECRET_FILE_FOLDER}/vault/tls
+
+#ldap-bind-secret
+VAULT_LDAP_SECRET_FILE=${VAULT_SECRET_FILE_FOLDER}/ldap-bind-secret.json
+VAULT_LDAP_SECRET_PROVIDER_CLASS_FILE=${VAULT_SECRET_FILE_FOLDER}/ldap-bind-secret-provider-class
+
+#ldap-bind-secret-tls
+VAULT_LDAP_SECRET_TLS_FOLDER=${VAULT_TLS_SECRET_FILE_FOLDER}/cp4ba_ldap_ssl_secret
+VAULT_LDAP_SECRET_TLS_FILE=${VAULT_LDAP_SECRET_TLS_FOLDER}/ldap-bind-secret-tls.json
+VAULT_LDAP_SECRET_TLS_PROVIDER_CLASS_FILE=${VAULT_LDAP_SECRET_TLS_FOLDER}/ldap-bind-secret-tls-provider-class
+
+#ibm-ban-secret
+BAN_VAULT_SECRET_FILE_FOLDER=${VAULT_SECRET_FILE_FOLDER}/ban
+BAN_VAULT_SECRET_FILE=${BAN_VAULT_SECRET_FILE_FOLDER}/ibm-ban-secret.json
+BAN_VAULT_SECRET_PROVIDER_CLASS_FILE=${BAN_VAULT_SECRET_FILE_FOLDER}/ibm-ban-secret-provider-class
+
+#This is a list of CSV that is supported with Vault.  For 25.1.0, only ibm-cp4a-operator, ibm-content-operator and icp4a-foundation-operator are supported. 
+# From this list, we'll generate the command for the customer to run to patch the CSV.
+VAULT_SUPPORT_LIST_OF_CSV=(
+  "ibm-cp4a-operator"
+  "ibm-content-operator"
+  "icp4a-foundation-operator"
+)
+
+#ibm-fncm-secret
+FNCM_VAULT_SECRET_FILE_FOLDER=${VAULT_SECRET_FILE_FOLDER}/fncm
+FNCM_VAULT_SECRET_FILE=${FNCM_VAULT_SECRET_FILE_FOLDER}/ibm-fncm-secret.json
+FNCM_VAULT_SECRET_PROVIDER_CLASS_FILE=${FNCM_VAULT_SECRET_FILE_FOLDER}/ibm-fncm-secret-provider-class
+
+#db-ssl-secret
+DB_VAULT_SECRET_FILE_FOLDER=${VAULT_TLS_SECRET_FILE_FOLDER}/cp4ba_db_ssl_secret
+# DB_VAULT_SECRET_FILE=${DB_VAULT_SECRET_FILE_FOLDER}/ibm-db-ssl-secret.json
+# DB_VAULT_SECRET_PROVIDER_CLASS_FILE=${DB_VAULT_SECRET_FILE_FOLDER}/ibm-db-ssl-secret-provider-class.yaml
+
+#ibm-icc-secret
+FNCM_ICC_VAULT_SECRET_FILE_FOLDER=${VAULT_SECRET_FILE_FOLDER}/fncm
+FNCM_ICC_VAULT_SECRET_FILE=${FNCM_ICC_VAULT_SECRET_FILE_FOLDER}/ibm-fncm-icc-secret.json
+FNCM_ICC_VAULT_SECRET_PROVIDER_CLASS_FILE=${FNCM_ICC_VAULT_SECRET_FILE_FOLDER}/ibm-fncm-icc-secret-provider-class
+
+#icp4ba-root-ca. Our script does not generate this secret.  The customer can either manually create it or our operator will create an internal self-sign rootCA
+#NOTE: The $CP4A_ROOT_CA_SECRET_PROVIDER_CLASS_FILE does not have the yaml extension.  The customer will need to add the .yaml if they want to use the custom root CA.
+CP4A_ROOT_CA_FOLDER=${VAULT_TLS_SECRET_FILE_FOLDER}/cp4ba_root_ca
+CP4A_ROOT_CA_SECRET_FILE=${CP4A_ROOT_CA_FOLDER}/icp4ba-root-ca-secret.json
+CP4A_ROOT_CA_SECRET_PROVIDER_CLASS_FILE=${CP4A_ROOT_CA_FOLDER}/icp4ba-root-ca-secret-provider-class
+
+## End of Vault's implementation
+
+
 DB_SSL_SECRET_FOLDER=${SECRET_FILE_FOLDER}/cp4ba_db_ssl_secret
 LDAP_SSL_SECRET_FOLDER=${SECRET_FILE_FOLDER}/cp4ba_ldap_ssl_secret
 REDIS_SSL_SECRET_FOLDER=${SECRET_FILE_FOLDER}/cp4ba_redis_ssl_secret
@@ -83,6 +138,7 @@ CP4A_AE_REDIS_SSL_SECRET_FILE=${REDIS_SSL_SECRET_FOLDER}/ibm-cp4ba-ae-redis-ssl-
 CP4A_PLAYBACK_REDIS_SSL_SECRET_FILE=${REDIS_SSL_SECRET_FOLDER}/ibm-cp4ba-playback-redis-ssl-cert-secret.sh
 CP4A_LDAP_SSL_SECRET_FILE=${LDAP_SSL_SECRET_FOLDER}/ibm-cp4ba-ldap-ssl-cert-secret.sh
 CP4A_EXT_LDAP_SSL_SECRET_FILE=${LDAP_SSL_SECRET_FOLDER}/ibm-cp4ba-external-ldap-ssl-cert-secret.sh
+
 
 
 LDAP_SECRET_FILE=${SECRET_FILE_FOLDER}/ldap-bind-secret.yaml
@@ -146,8 +202,8 @@ ZEN_SECRET_FILE=${ZEN_SECRET_FOLDER}/ibm-zen-metastore-edb-secret.sh
 ZEN_CONFIGMAP_FILE=${ZEN_SECRET_FOLDER}/ibm-zen-metastore-edb-cm.yaml
 
 IM_SECRET_FOLDER=${SECRET_FILE_FOLDER}/im_external_db
-IM_SECRET_FILE=${IM_SECRET_FOLDER}/ibm-im-metastore-edb-secret.sh
-IM_CONFIGMAP_FILE=${IM_SECRET_FOLDER}/ibm-im-metastore-edb-cm.yaml
+IM_SECRET_FILE=${IM_SECRET_FOLDER}/ibm-im-datastore-edb-secret.sh
+IM_CONFIGMAP_FILE=${IM_SECRET_FOLDER}/ibm-im-datastore-edb-cm.yaml
 
 BTS_SECRET_FOLDER=${SECRET_FILE_FOLDER}/bts_external_db
 BTS_SSL_SECRET_FILE=${BTS_SECRET_FOLDER}/ibm-bts-metastore-edb-ssl-secret.sh
@@ -162,14 +218,14 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 
 # Release/Patch version for CP4BA
 # CP4BA_RELEASE_BASE is for fetch content/foundation operator pod, only need to change for major release.
-CP4BA_RELEASE_BASE="25.0.0"
+CP4BA_RELEASE_BASE="25.0.1"
 # CP4BA_RELEASE_BASE_MAJOR_VERSION is used in certain checks where we used to hardcode to see if a upgrade is not ifix to ifix,change this only for major release
-CP4BA_RELEASE_BASE_MAJOR_VERSION="25.0"
-CP4BA_PATCH_VERSION="IF002"
+CP4BA_RELEASE_BASE_MAJOR_VERSION="25.1"
+CP4BA_PATCH_VERSION="GA"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v25.0.2"
+CP4BA_CSV_VERSION="v25.1.0"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
-CP4BA_CHANNEL_VERSION="v25.0"
+CP4BA_CHANNEL_VERSION="v25.1"
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
 CS_OPERATOR_VERSION="v4.15.0"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
@@ -177,7 +233,7 @@ CS_CHANNEL_VERSION="v4.15"
 # CS CHANNEL VERSION that is used in the KC
 CS_CHANNEL_KC="4.x_cd"
 # CERT_LICENSE_OPERATOR_VERSION is for checking IBM cert-manager/licensing operator upgrade status, need to update for each IFIX
-CERT_LICENSE_OPERATOR_VERSION="v4.2.17"
+CERT_LICENSE_OPERATOR_VERSION="v4.2.18"
 # CERT_LICENSE_CHANNEL_VERSION is for for IBM cert-manager/licensing script -c option, need to update for each IFIX
 CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
@@ -197,11 +253,15 @@ EVENTS_OPERATOR_VERSION="v5.2.1"
 #This is the list where we further restricted the versions that are supported for upgrade to $CP4BA_CSV_VERSION.  
 #This should change with each new version of CP4BA.  For example, if the next version is 25.0.1, we need to update this list to include the minimum version that is supported for upgrade to 25.0.1 such as 25.0.0.
 # 24.1.2 means the customer must have 24.1.2 installed to upgrade to 25.0.0.
-MINIMUM_SUPPORTED_UPGRADE_VERSIONS=("24.1.2" "25.0.0")
+# When setting to an empty array, only fresh installation is supported.
+MINIMUM_SUPPORTED_UPGRADE_VERSIONS=()
 
 # Zen metastore EDB configmap name
 ZEN_EDB_CFG="ibm-zen-metastore-edb-cm"
 CERT_MANAGER_PROJECT="ibm-cert-manager"
+#Cert manager owner.
+CERT_MANAGER_V1ALPHA1_OWNER="operator.ibm.com/v1alpha1"
+CERT_MANAGER_V1_OWNER="operator.ibm.com/v1"
 LICENSE_MANAGER_PROJECT="ibm-licensing"
 DEDICATED_CS_PROJECT="cs-control"
 # Directory for upgrade operator and prerequisites
@@ -232,6 +292,10 @@ SSL_CERT_ERROR_TAG=false
 
 # Becomes true if any required parameters are null or empty (Used in validate_property_file_required_fields)
 MISSING_REQUIRED_PARAMETERS=false
+
+#DBACLD-194974: This variable is used to specify the version that will skip EDB and Starter deployment option. It should be in the format of ${CP4BA_RELEASE_BASE}_${CP4BA_PATCH_VERSION}
+# For 25.0.1_GA we will remove the Starter option and EDB option.
+VERSION_TO_SKIP_EDB="25.0.1_GA"
 
 # Global array to store all optional parameter keys
 OPTIONAL_PARAMETERS_LIST=()
@@ -285,6 +349,8 @@ function prop_db_server_property_file() {
 function prop_db_oracle_server_property_file() {
     grep "^${1}=" ${DB_SERVER_INFO_PROPERTY_FILE}|cut -d'"' -f2
 }
+
+
 
 
 function set_global_env_vars() {
@@ -367,37 +433,6 @@ function install_yq_cli(){
         echo -n "Installing yq..."; sudo chmod +x yq_linux_amd64 >/dev/null; sudo mv yq_linux_amd64 /usr/local/bin/yq >/dev/null; echo "done.";
     else
         echo -n "Installing yq..."; brew install yq >/dev/null; echo "done.";
-    fi
-    printf "\n"
-}
-
-function install_ibm_jre(){
-    if [[ ${machine} = "Linux" ]]; then
-        local JRE_VERSION=""
-        local JRE_VERSION_TMP=""
-        JRE_VERSION=$(curl -s https://public.dhe.ibm.com/ibmdl/export/pub/systems/cloud/runtimes/java/  | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}' | tail -n 1)
-        if [[ -z $JRE_VERSION ]]; then
-            fail "Can NOT access official IBM JRE Repository https://public.dhe.ibm.com/ibmdl/export/pub/systems/cloud/runtimes/java, Please install IBM JRE manually."
-            exit 1
-        else
-            JRE_VERSION_TMP=$(echo "$JRE_VERSION" | sed 's/\./-/2')
-            local tmp_file="/tmp/ibm-java.tgz"
-            local download_url=https://public.dhe.ibm.com/ibmdl/export/pub/systems/cloud/runtimes/java/${JRE_VERSION}/linux/$(uname -m)/ibm-java-jre-${JRE_VERSION_TMP}-linux-$(uname -m).tgz
-            echo -n "Downloading $download_url";
-            curl -o $tmp_file -f $download_url
-            if [ ! -e $tmp_file ]; then
-                fail "Can NOT access official IBM JRE Repository https://public.dhe.ibm.com/ibmdl/export/pub/systems/cloud/runtimes/java, Please install IBM JRE manually."
-                exit 1
-            fi
-            mkdir -p /opt/ibm/java
-            tar -xzf $tmp_file --strip-components=1 -C /opt/ibm/java
-            #  add keytool to system PATH.
-            echo -n "Add keytool to system environment variable PATH..."; sudo -s export PATH="/opt/ibm/java/jre/bin/:$PATH"; export PATH="/opt/ibm/java/jre/bin/:$PATH"; echo "PATH=$PATH:/opt/ibm/java/jre/bin/" >> ~/.bashrc;echo "done."
-            info "IBM JRE has been installed and system enviroment variable PATH was configured. Please run command \"source ~/.bashrc\" before running the validate command again. Exiting this script."
-            exit 1
-        fi
-    elif [[ ${machine} = "Mac" ]]; then
-        echo -n "IBM's Java JRE is not available for Mac OS X. Install valid JRE for Mac OS X manually refer to MacOS document"; echo "done.";
     fi
     printf "\n"
 }
@@ -570,7 +605,7 @@ function prompt_press_any_key_to_continue() {
 # check OCP version
 ############################
 function check_platform_version(){
-    currentver=$(oc get nodes | awk 'NR==2{print $5}')
+    currentver=$(${CLI_CMD} get nodes | awk 'NR==2{print $5}')
     requiredver="v1.17.1"
     if [ "$(printf '%s\n' "$requiredver" "$currentver" | sort -V | head -n1)" = "$requiredver" ]; then
         PLATFORM_VERSION="4.4OrLater"
@@ -706,7 +741,7 @@ function decode_xor_password() {
 }
 
 # Function to encode the certificate contents to a base64 string
-encode_crt_file_to_base64() {
+function encode_crt_file_to_base64() {
     local crt_file="$1"
     if [[ ! -f "$crt_file" ]]; then
         echo "File not found: $crt_file"
@@ -979,12 +1014,9 @@ function display_latency_warning() {
 function generate_truststore_password() {
     local pwd_length="${1:-8}"
     local pwd_charset="${2:-A-Za-z0-9}"
-    local machine_lower=$(echo "${machine}" | tr '[:upper:]' '[:lower:]')
-    if [[ "$machine_lower" == "linux" ]]; then
-        < /dev/urandom tr -dc "$pwd_charset" | head -c "$pwd_length"
-    else
-        < /dev/urandom tr -dc "$pwd_charset" | cut -c1-"$pwd_length"
-    fi
+
+    openssl rand -base64 64 | tr -dc "$pwd_charset" | head -c "$pwd_length"
+
     echo
 }
 
@@ -1021,8 +1053,8 @@ function retrieve_network_details(){
         printf "\n"
         printf "The user does not have sufficient permissions to retrieve cluster network details. As a result, the \"ibm-cp4a-common-configmap\" ConfigMap must be manually updated with the correct network CIDR and network type. This step is required before applying the custom resource file."
         printf "\n"
-        printf "${YELLOW_TEXT}[NOTE]:${RESET_TEXT} In OCP or ROKS, this information can be obtained by querying the Network resource \"oc get network cluster -o yaml\" or by retrieving the details from the OCP Console."
-        printf "Then update the 'ibm-cp4ba-common-config' configMap in the namespace where CP4BA is deployed with the following command: \" oc patch configmap ibm-cp4ba-common-config -n <CP4BA-namespace> --type merge -p \"{ \"data\": { \"network_cidr\": \"<cidr range from command>\", \"network_type\": \"<networkType from command>\" } } \" where the values being patched are the CIDR range and networkType that you obtained from the command above respectively."
+        printf "${YELLOW_TEXT}[NOTE]:${RESET_TEXT} In OCP or ROKS, this information can be obtained by querying the Network resource \"${CLI_CMD} get network cluster -o yaml\" or by retrieving the details from the OCP Console."
+        printf "Then update the 'ibm-cp4ba-common-config' configMap in the namespace where CP4BA is deployed with the following command: \" ${CLI_CMD} patch configmap ibm-cp4ba-common-config -n <CP4BA-namespace> --type merge -p \"{ \"data\": { \"network_cidr\": \"<cidr range from command>\", \"network_type\": \"<networkType from command>\" } } \" where the values being patched are the CIDR range and networkType that you obtained from the command above respectively."
         printf "\n"
     else
         network_cidr=$(${YQ_CMD} '.spec.clusterNetwork[0].cidr // ""' - <<< "$network_configuration_output")
@@ -1157,7 +1189,6 @@ function remove_carriage_returns_from_sql_files() {
     fi
 }
 
-
 # Function that cleans up temporary files created during the execution of a specific script
 # Moved this function to the common.sh so it can be used by cp4a-content-assistant.sh script and cp4a-prerequisites.sh  -> https://jsw.ibm.com/browse/DBACLD-185712
 function clean_up_temp_file(){
@@ -1174,6 +1205,7 @@ function clean_up_temp_file(){
         rm -rf $item >/dev/null 2>&1
     done
 }
+
 
 # Helper function for (validate_ssl_certificates) to check a single SSL certificate
 # check type -> either certificate or key as the validation command for both are different
@@ -1211,7 +1243,7 @@ function check_ssl_cert() {
             else
                 error "$invalid_msg"
                 FAILING_CERTS+=("$config_name|$cert_path")
-            fi
+	    fi
         fi
     fi
     
@@ -1410,10 +1442,8 @@ function validate_ssl_certificates() {
     done
 
     
-
     print_cert_summary
 }
-
 
 # Fixes: https://jsw.ibm.com/browse/DBACLD
 # Validates that all required fields in a property file have valid values.
@@ -1437,7 +1467,7 @@ function mark_optional() {
     cleaned_params=$(echo "$cleaned_params" | sed 's/,[^,]*\.POSTGRESQL_SSL_CLIENT_SERVER//g' | sed 's/^[^,]*\.POSTGRESQL_SSL_CLIENT_SERVER,//g' | sed 's/^[^,]*\.POSTGRESQL_SSL_CLIENT_SERVER$//g')
     
     # Remove the old line
-    sed -i '/^OPTIONAL_PARAMETERS:/d' "$TEMPORARY_PROPERTY_FILE"
+    ${SED_COMMAND} '/^OPTIONAL_PARAMETERS:/d' "$TEMPORARY_PROPERTY_FILE"
     
     # Add new parameters to the cleaned list
     local final_params="$cleaned_params"
@@ -1566,6 +1596,97 @@ function validate_property_file_required_fields() {
     fi
 }
 
+
+#DBACLD-187443: Skip the creation of `ibm-cert-manager` project if cert-manager is already installed
+# This function will detect if there's an existing cert-manager (eg: Redhat Openshift cert-manger or Helm cert-manager) installed in the cluster.  If it is, we'll skip creating the ibm-cert-manager ns.
+# this function should return 0 if cert-manager is found, 1 otherwise
+function is_cert_manager_installed(){
+
+    info "Checking to see if any cert-manager is installed\n"
+    $CLI_CMD get subscriptions -A |grep  "cert-manager"  >  /dev/null 2>&1 # this will catch the packagenames of all cert-manager-operators
+    if [ $? -eq 0 ]; then
+        warning "There is a cert-manager Subscription already existed\n"
+    fi
+
+    local webhook_ns=$($CLI_CMD get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1)
+    if [ ! -z "$webhook_ns" ]; then
+        warning "There is a cert-manager-webhook pod Running, so most likely another cert-manager is already installed\n"
+        info "Continue to check further\n"
+        
+        # Check if the cert-manager-webhook is owned by ibm-cert-manager-operator
+        local api_version=$($CLI_CMD get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
+        if [ ! -z "$api_version" ]; then
+            if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
+                error "Cluster has not deactivated LTSR ibm-cert-manager-operator yet.  Please do so before proceeding."
+                return 0
+                exit 1
+            fi
+
+            if [ "$api_version" != "$CERT_MANAGER_V1_OWNER" ]; then
+                warning "Cluster has a non ibm-cert-manager-operator already installed, skipping"
+                return 0
+            fi
+
+            # IBM cert-manager is installed (regardless of namespace)
+            if [[ "$webhook_ns" != "$CERT_MANAGER_PROJECT" ]]; then
+                warning "IBM cert-manager is installed but in namespace: $webhook_ns (expected: $CERT_MANAGER_PROJECT)"
+            else
+                info "IBM cert-manager is already installed in the correct namespace: $webhook_ns"
+            fi
+            return 0
+        else
+            warning "Cluster has a RedHat cert-manager or Helm cert-manager, skipping"
+            return 0
+        fi
+    else
+        info "There is no cert-manager-webhook pod running\n"
+        return 1
+    fi
+}
+#DBACLD-187443: Skip the creation of `ibm-cert-manager` project if cert-manager is already installed
+# This function will remove the any catalog entry out of the catalog source list if it exists
+# There are three parameters:
+# 1. input_file: The input YAML file containing the catalog sources
+# 2. output_file: The output YAML file to write the modified catalog sources
+# 3. name_to_be_removed: The name of the catalog source to be removed. (eg: ibm-cert-manager-catalog)
+function remove_item_from_cs() {
+    local input_file="$1"
+    local output_file="$2"
+    local name_to_be_removed="$3"
+
+    
+    # Create an empty output file
+    > "$output_file"
+
+    # Process documents one by one (yq v3.3.0 approach)
+    doc_index=0
+    first_doc=true
+    
+    while true; do
+        # Try to read the document at current index
+        doc_content=$($YQ_CMD 'select(documentIndex == '"$doc_index"')' "$input_file" 2>/dev/null)
+        if [ $? -ne 0 ] || [ -z "$doc_content" ]; then
+            break
+        fi
+        
+        # Get the catalog name
+        catalog_name=$($YQ_CMD 'select(documentIndex == '"$doc_index"').metadata.name' "$input_file" 2>/dev/null)
+        
+        # If this is not the cert-manager catalog, include it
+        if [ "$catalog_name" != "$name_to_be_removed" ]; then
+            if [ "$first_doc" = true ]; then
+                echo "$doc_content" >> "$output_file"
+                first_doc=false
+            else
+                echo "---" >> "$output_file"
+                echo "$doc_content" >> "$output_file"
+            fi
+        fi
+        
+        ((doc_index++))
+    done
+}
+
 # Function that checks if there are any missing quotes in any property files after the user updates the property files
 # Moved this function to the common.sh so it can be used by cp4a-content-assistant.sh script and cp4a-prerequisites.sh  -> https://jsw.ibm.com/browse/DBACLD-185712
 function check_missing_quotes(){
@@ -1586,7 +1707,7 @@ function check_missing_quotes(){
             if [[ $line =~ ^[[:space:]]*# ]] || [[ -z $line ]]; then
                 continue
             fi
-            
+
             # Skip lines that are completely empty or contain only whitespace
             if [[ "$line" =~ ^[[:space:]]*$ ]]; then
                 continue
@@ -1622,7 +1743,7 @@ function check_missing_quotes(){
         fi
     done
     if [[ "$missing_quotes" == 1 ]] ; then
-        info "[NEXT_STEPS]: Reference the table above and ensure all values in all property files are enclosed in quotes and re-run cp4a-prerequisites.sh script in generate mode."
+        info "[NEXT_STEPS]: Reference the table above and ensure all values in all property files are enclosed in quotes and  cp4a-prerequisites.sh script in generate mode."
         exit 1
     fi
 }
@@ -1647,6 +1768,7 @@ function check_required_values(){
 }
 
 # Function that generates the create_secret.sh script
+# Moved this function to the common.sh so it can be used by cp4a-content-assistant.sh script and cp4a-prerequisites.sh  -> https://jsw.ibm.com/browse/DBACLD-185712
 function generate_create_secret_script(){
     local files=()
     local CREATE_SECRET_SCRIPT_FILE_TMP=$TEMP_FOLDER/create_secret.sh
@@ -1657,12 +1779,13 @@ function generate_create_secret_script(){
     if [ -d $SECRET_FILE_FOLDER ]; then
         files=($(find $SECRET_FILE_FOLDER -name '*.yaml'))
 
+        
         for item in ${files[*]}
         do
             echo "echo \"****************************************************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
             echo "echo \"******************************* START **************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
             echo "echo \"[INFO] Applying YAML template file:$item\"">> ${CREATE_SECRET_SCRIPT_FILE_TMP}
-            echo "kubectl apply -f \"$item\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
+            echo "${CLI_CMD} apply -f \"$item\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
             echo "echo \"******************************** END ***************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
             echo "echo \"****************************************************************************\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
             echo "printf \"\\n\"" >> ${CREATE_SECRET_SCRIPT_FILE_TMP}
@@ -1670,6 +1793,7 @@ function generate_create_secret_script(){
         done
 
         files=($(find $SECRET_FILE_FOLDER -name '*.sh'))
+
         
         for item in ${files[*]}
         do
@@ -1703,7 +1827,7 @@ iam_user_validation() {
   _bind_pwd="$(prop_ldap_property_file LDAP_BIND_DN_PASSWORD)"
   _ssl="$(prop_ldap_property_file LDAP_SSL_ENABLED)"
   _user_filter="$(prop_ldap_property_file LC_USER_FILTER 2>/dev/null)"
-
+  
   #DBACLD-197724 - updating IAM logic to accept base64 password
   if [[ "$_bind_pwd" =~ ^\{[Bb][Aa][Ss][Ee]64\}(.*)$ ]]; then
     local b64_payload="${BASH_REMATCH[1]}"
@@ -1718,7 +1842,7 @@ iam_user_validation() {
   else
     _bind_pwd="${_bind_pwd#\"}"
     _bind_pwd="${_bind_pwd%\"}"
-  fi
+  fi   
 
   if [[ -z "$LDAP_PROPERTY_FILE" || -z "$_host" || -z "$_port" || -z "$_base_dn" || -z "$_bind_dn" || -z "$_bind_pwd" ]]; then
     ERROR "Missing LDAP properties. Check LDAP_PROPERTY_FILE=$LDAP_PROPERTY_FILE"
@@ -1728,7 +1852,8 @@ iam_user_validation() {
   _base_dn="$(echo "$_base_dn" | tr '[:upper:]' '[:lower:]')"
 
   local proto="ldap"
-  local java_opts="-Dsemeru.fips=false"
+  # DBACLD-202948: remove -Dsemeru.fips option from all java commands for connection verification
+  local java_opts=""
 
   if [[ "$(echo "$_ssl" | tr '[:lower:]' '[:upper:]')" == "TRUE" ]]; then
     proto="ldaps"
@@ -1751,7 +1876,7 @@ iam_user_validation() {
       return 2
     fi
 
-    if ! keytool -import -alias cp4baLdapCerts -keystore "$truststore_path" -file /tmp/ldap.der -storepass "$ldap_truststore_pass" -storetype JKS -noprompt >/dev/null 2>&1; then
+    if ! "$KEYTOOL_CMD" -import -alias cp4baLdapCerts -keystore "$truststore_path" -file /tmp/ldap.der -storepass "$ldap_truststore_pass" -storetype JKS -noprompt >/dev/null 2>&1; then
       echo "iam_user_validation: keytool failed importing cert into $truststore_path" >&2
       return 2
     fi
@@ -1805,60 +1930,201 @@ iam_user_validation() {
   fi
 }
 
-function validate_java_for_deploy() {
-    which java &>/dev/null
-    if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate java. IBM JRE or other JRE must be installed to run this script.\x1B[0m" && \
-        while true; do
-            printf "\x1B[1mDo you want install the IBM JRE by this script? (Yes/No): \x1B[0m"
-            read -rp "" ans
-            case "$ans" in
-            "y"|"Y"|"yes"|"Yes"|"YES")
-                install_ibm_jre
-                break
-                ;;
-            "n"|"N"|"no"|"No"|"NO")
-                info "IBM JRE or other JRE must be installed to continue the next validation"
-                exit 1
-                ;;
-            *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
-                ;;
-            esac
-        done
-    else
-        java -version &>/dev/null
-        if [[ $? -ne 0 ]]; then
-            echo -e  "\x1B[1;31mUnable to locate a Java Runtime. IBM JRE or other JRE must be installed to run this script.\x1B[0m" && \
-            while true; do
-                printf "\x1B[1mDo you want install the IBM JRE by this script? (Yes/No): \x1B[0m"
-                read -rp "" ans
-                case "$ans" in
-                "y"|"Y"|"yes"|"Yes"|"YES")
-                    install_ibm_jre
-                    break
-                    ;;
-                "n"|"N"|"no"|"No"|"NO")
-                    info "IBM JRE or other JRE must be installed to continue next validation"
-                    exit 1
-                    ;;
-                *)
-                    echo -e "Answer must be \"Yes\" or \"No\"\n"
-                    ;;
-                esac
-            done
+# DBACLD-198782: check if Java runtime is available and meets the minimum version requirement
+# Parameters:
+# $1 - Required major version of Java (e.g., 17)
+# Consolidated function to validate Java runtime and set JAVA_CMD/KEYTOOL_CMD
+# $1 - (Optional) Custom Java path
+function validate_java_runtime() {
+    local CUSTOM_JAVA_PATH=$1
+    
+    # Step 1: Set JAVA_CMD and KEYTOOL_CMD based on CUSTOM_JAVA_PATH
+    if [[ -n "$CUSTOM_JAVA_PATH" ]]; then
+        # Normalize path - ensure it points to bin directory
+        if [[ "$CUSTOM_JAVA_PATH" != */bin ]]; then
+            CUSTOM_JAVA_PATH="${CUSTOM_JAVA_PATH}/bin"
         fi
-    fi
-    which keytool &>/dev/null
-    if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate keytool. You must add it in \"\$PATH\" to run this script.\x1B[0m" && \
-        exit 1
-    else
-        keytool -help &>/dev/null
-        if [[ $? -ne 0 ]]; then
-            echo -e  "\x1B[1;31mUnable to locate keytool. IBM JRE or other JRE must be installed and add keytool in \"\$PATH\" to run this script\x1B[0m" && \
+        
+        JAVA_CMD="${CUSTOM_JAVA_PATH}/java"
+        KEYTOOL_CMD="${CUSTOM_JAVA_PATH}/keytool"
+        
+        # Verify the custom Java path exists and is executable
+        if [[ ! -x "$JAVA_CMD" ]]; then
+            echo -e "\x1B[1;31mError: Java executable not found at specified path: $JAVA_CMD\x1B[0m"
+            echo -e "\x1B[1;31mPlease provide a valid path to Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher installation.\x1B[0m"
             exit 1
         fi
+        
+        # Verify keytool exists and is executable
+        if [[ ! -x "$KEYTOOL_CMD" ]]; then
+            echo -e "\x1B[1;31mError: keytool executable not found at specified path: $KEYTOOL_CMD\x1B[0m"
+            echo -e "\x1B[1;31mPlease provide a valid path to Java (JRE) installation.\x1B[0m"
+            exit 1
+        fi
+
+        echo -e "\x1B[1;32mUsing Java (JRE) from custom path: ${CUSTOM_JAVA_PATH}\x1B[0m"
+    else
+        JAVA_CMD="java"
+        KEYTOOL_CMD="keytool"
+        
+        # Verify that default Java is available
+        if ! command -v java &> /dev/null; then
+            echo -e "\x1B[1;31mUnable to locate a Java Runtime. Java (JRE)$REQUIRED_JAVA_MAJOR_VERSION or higher must be installed to run this script.\x1B[0m"
+            echo -e "\x1B[1;31mPlease install Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher manually before continuing.\x1B[0m"
+            echo -e "\x1B[1;33mInstallation instructions:\x1B[0m"
+            echo -e "  - Install any compatible Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher distribution (e.g., IBM Semeru, Oracle JDK, or OpenJDK)"
+            echo -e "  - Ensure the new Java version is added to your PATH environment variable"
+            echo -e "  - Re-run this script"
+            echo -e "\x1B[1;33mAlternatively, you can specify the path to an existing Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher installation:\x1B[0m"
+            echo -e " - Re-run this script with the Java (JRE)path parameter, using --java-path <path_to_java>; e.g., $0 -m validate -n $TARGET_PROJECT_NAME --java-path=/custom/java/path"
+            exit 1
+        fi
+        
+        # Verify that default keytool is available
+        if ! command -v keytool &> /dev/null; then
+            echo -e "\x1B[1;31mUnable to locate keytool. Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher must be installed to run this script.\x1B[0m"
+            echo -e "\x1B[1;31mPlease install Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher manually before continuing.\x1B[0m"
+            exit 1
+        fi
+    fi
+    
+    # Step 2: Validate Java version
+    "$JAVA_CMD" -version &>/dev/null
+    if [[ $? -ne 0 ]]; then
+        echo -e "\x1B[1;31mUnable to execute Java. Please check your Java (JRE) installation.\x1B[0m"
+        exit 1
+    fi
+    
+    # Extract the full version string
+    local CURRENT_JAVA_VERSION=$("$JAVA_CMD" -version 2>&1 | grep -i version | head -n 1 | awk -F '"' '{print $2}')
+    
+    # Extract just the major version for comparison
+    local CURRENT_MAJOR_VERSION=$(echo "$CURRENT_JAVA_VERSION" | awk -F '.' '{print $1}')
+    
+    # If version starts with "1.", use the second number (e.g., 1.8 -> 8)
+    if [[ "$CURRENT_JAVA_VERSION" == 1.* ]]; then
+        CURRENT_MAJOR_VERSION=$(echo "$CURRENT_JAVA_VERSION" | awk -F '.' '{print $2}')
+    fi
+    
+    # Check if current version is less than the required version
+    if [[ -n "$CURRENT_MAJOR_VERSION" && "$CURRENT_MAJOR_VERSION" -lt "$REQUIRED_JAVA_MAJOR_VERSION" ]]; then
+        echo -e "\x1B[1;31mJava version $CURRENT_JAVA_VERSION is installed but does not meet the minimum requirement (version $REQUIRED_JAVA_MAJOR_VERSION).\x1B[0m"
+        echo -e "\x1B[1;31mPlease upgrade to Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher manually before continuing.\x1B[0m"
+        echo -e "\x1B[1;33mJava (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher upgrade instructions:\x1B[0m"
+        echo -e "  - Install any compatible Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher distribution (e.g., IBM Semeru, Oracle JDK, or OpenJDK)"
+        echo -e "  - Ensure the new Java version is added to your PATH environment variable"
+        echo -e "  - Re-run this script"
+        echo -e "\x1B[1;33mAlternatively, you can specify the path to an existing Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher installation:\x1B[0m"
+        echo -e " - Re-run this script with the Java (JRE) path parameter, using --java-path <path_to_java>; e.g., $0 -m validate -n $TARGET_PROJECT_NAME --java-path=/custom/java/path"
+        exit 1
+    fi
+    
+    echo -e "\x1B[1;32mJava version: $CURRENT_JAVA_VERSION\x1B[0m"
+    
+    # Step 3: Validate keytool
+    "$KEYTOOL_CMD" -help &>/dev/null
+    if [[ $? -ne 0 ]]; then
+        echo -e "\x1B[1;31mUnable to execute keytool. Keytool is required and should be part of your Java (JRE) installation.\x1B[0m"
+        echo -e "\x1B[1;31mPlease ensure you have a complete Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher installation that includes keytool.\x1B[0m"
+        exit 1
+    fi
+    
+    # Step 4: Export the commands so they're available to child scripts
+    export JAVA_CMD
+    export KEYTOOL_CMD
+}
+
+#DBCALD-185209.  The below function is being called in create_fncm_secret_vault_template function cp4ba-secret.sh 
+function add_content_os_dynamically() {
+    local is_vault_enabled=${1:-false}
+    local os_number=${2}
+    local vault_path=${3}
+    local secret_name=${4}
+		# local fncm_secret_file=${5}
+    local os_sections=""
+    local os_secretprovider_sections=""
+    # content_os_number=$(prop_tmp_property_file CONTENT_OS_NUMBER)
+  nl=$'\n'
+  # Add content OS databases dynamically
+  if (( os_number > 0 )); then
+    for ((j=0;j<$((os_number));j++))
+    do
+      # get server/instance for OS
+      tmp_os_db_servername="$(prop_db_name_user_property_file_for_server_name OS$((j+1))_DB_USER_NAME)"
+      tmp_os_db_servername=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_os_db_servername")
+      
+      # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
+      local tmp_postgresql_client_flag=""
+      if [[ $DB_TYPE = "postgresql" ]]; then
+        tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_os_db_servername.POSTGRESQL_SSL_CLIENT_SERVER)")
+        tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+      fi
+      
+      if [[ $DB_TYPE = "postgresql-edb" ]]; then
+        tmp_postgresql_client_flag="true"
+      fi
+      
+      tmp_dbuser="$(prop_db_name_user_property_file OS$((j+1))_DB_USER_NAME)"
+      tmp_dbuserpwd="$(prop_db_name_user_property_file OS$((j+1))_DB_USER_PASSWORD)"
+      
+      # Always add username
+			if [[ $is_vault_enabled == "true" ]]; then
+            os_sections="$os_sections,
+  \"os$((j+1))DBUsername\": \"$tmp_dbuser\""
+            
+            # Always add username to SecretProviderClass
+            os_secretprovider_sections="$os_secretprovider_sections
+      - secretPath: \"$vault_path/$secret_name\"
+        objectName: \"os$((j+1))DBUsername\"
+        secretKey: \"os$((j+1))DBUsername\""
+            
+            # Only add password if PostgreSQL SSL client authentication is not enabled
+            if [[ ! ("$tmp_postgresql_client_flag" == "true" || "$tmp_postgresql_client_flag" == "yes" || "$tmp_postgresql_client_flag" == "y") ]]; then
+                os_sections="$os_sections,
+  \"os$((j+1))DBPassword\": \"$tmp_dbuserpwd\""
+                
+                # Add password to SecretProviderClass
+                os_secretprovider_sections="$os_secretprovider_sections
+      - secretPath: \"$vault_path/$secret_name\"
+        objectName: \"os$((j+1))DBPassword\"
+        secretKey: \"os$((j+1))DBPassword\""
+            fi
+				else # Non-Vault implementation
+					if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
+							# For https://jsw.ibm.com/browse/DBACLD-157020
+							# Function that updates the secret template with the base64 password
+							update_secret_template_passwords "$tmp_dbuserpwd" "osDBPassword" "$FNCM_SECRET_FILE" "os$((j+1))DBPassword"
+					fi
+
+					${YQ_CMD} -i ".stringData.os$((j+1))DBUsername = \"$tmp_dbuser\"" "${FNCM_SECRET_FILE}"
+        fi # End of vault enabled check
+        done # End of for loop
+		
+		# Only output delimiter sections when in vault mode
+		if [[ $is_vault_enabled == "true" ]]; then
+			# Output both sections with a unique delimiter that won't appear in the content
+			echo "###OS_SECTIONS_START###"
+			printf "%s" "$os_sections"
+			echo ""
+			echo "###OS_SECTIONS_END###"
+			echo "###OS_SECRETPROVIDER_SECTIONS_START###"
+			printf "%s" "$os_secretprovider_sections"
+			echo ""
+			echo "###OS_SECRETPROVIDER_SECTIONS_END###"
+		fi
+	fi
+}
+
+#DBACLD-194974: Version to remove EDB and skip Starter deployment option for CP4BA 25.0.1 by checking the version $CP4BA_PATCH_VERSION and $CP4BA_RELEASE_BASE
+#Update the version and patch here to skip EDB and Starter deployment option.  
+function skip_edb_for_2501() {
+    local _existing_cp4ba_version=${CP4BA_RELEASE_BASE}_${CP4BA_PATCH_VERSION}
+    local _version_to_skip="$VERSION_TO_SKIP_EDB"
+
+    if [[ "$_existing_cp4ba_version" == "$_version_to_skip" ]]; then
+        return 0  # Skip EDB
+    else
+        return 1  # Do not skip EDB
     fi
 }
 
@@ -1870,9 +2136,9 @@ function patch_strimzi_podset(){
     local operator_namespace=$1
     local services_namespace=$2
 
-    echo "Checking ibm-events-operator subscription and channel..."
+    echo "Checking ibm-events-operator subscription channel..."
     # Check if the subscription exists
-    events_operator_subscription_exists=$(${CLI_CMD} get subscription.operators.coreos.com ibm-events-operator -n $operator_namespace -o name --no-headers 2>/dev/null || echo "")
+    events_operator_subscription_exists=$(${CLI_CMD} get subscription ibm-events-operator -n $operator_namespace -o name --no-headers 2>/dev/null || echo "")
 
     if [[ -z "$events_operator_subscription_exists" ]]; then
         echo "Subscription 'ibm-events-operator' not found, skipping"
@@ -1881,7 +2147,7 @@ function patch_strimzi_podset(){
     fi
 
     # Get the subscription channel
-    events_operator_channel=$(${CLI_CMD} get subscription.operators.coreos.com ibm-events-operator -n $operator_namespace -o yaml | ${YQ_CMD} '.spec.channel')
+    events_operator_channel=$(${CLI_CMD} get subscription ibm-events-operator -n $operator_namespace -o yaml | ${YQ_CMD} '.spec.channel')
 
     echo "Current channel: $events_operator_channel"
 

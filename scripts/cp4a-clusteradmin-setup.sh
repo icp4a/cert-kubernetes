@@ -1,5 +1,5 @@
 #!/bin/bash
-# set -x
+#set -x
 ###############################################################################
 #
 # Licensed Materials - Property of IBM
@@ -66,18 +66,18 @@ CP4A_NAME="CP4A"
 mkdir -p $TEMP_FOLDER >/dev/null 2>&1
 
 ##  To fix the Error message in the cp4a-clusteradmin.sh script for kubectl - https://jsw.ibm.com/browse/DBACLD-180253
- function check_kubectl_installed() {
-     if ! command -v kubectl >/dev/null 2>&1; then
- 	printf "\n\n\n"
-         echo -e "\x1B[1;31mkubectl is required to run the script.\nPlease refer to the topic \"Preparing a client to connect to the cluster\" from IBM documentation:\nhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation\x1B[0m"
-         exit 1
-     fi
- }
+  function check_kubectl_installed() {
+      if ! command -v kubectl >/dev/null 2>&1; then
+  	printf "\n\n\n"
+          echo -e "\x1B[1;31mkubectl is required to run the script.\nPlease refer to the topic \"Preparing a client to connect to the cluster\" from IBM documentation:\nhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation\x1B[0m"
+          exit 1
+      fi
+  }
 
 function prompt_wfps_license(){
     clear
     echo -e "\x1B[1;31mIMPORTANT: Review the IBM Process Flow license information here: \n\x1B[0m"
-    echo -e "\x1B[1;31mhttps://www.ibm.com/support/customer/csol/terms/?id=L-LDYZ-7V4YJ4&lc=en\n\x1B[0m"
+    echo -e "\x1B[1;31mhttps://www.ibm.com/support/customer/csol/terms/?id=L-PXVP-93U8VP\n\x1B[0m"
 
     printf "\n"
     while true; do
@@ -196,6 +196,7 @@ else
 fi
 
 OLM_CATALOG_TMP=${TEMP_FOLDER}/.catalog_source.yaml
+OLM_CATALOG_TMP_BAK=${TEMP_FOLDER}/.catalog_source_bak.yaml
 OLM_OPT_GROUP_TMP=${TEMP_FOLDER}/.operator_group.yaml
 OLM_SUBSCRIPTION_TMP=${TEMP_FOLDER}/.subscription.yaml
 
@@ -232,9 +233,10 @@ function check_fips_enable(){
     check_kubectl_installed
 
     local TEMPORARY_NODE_INFO=${TEMP_FOLDER}/.TEMPORARY_NODE_INFO.property
-    local WOKER_NODE_LIST=()
-    arch_type=$(kubectl get cm cluster-config-v1 -n kube-system -o yaml | grep -i architecture|tail -1| awk '{print $2}')
-    if [[ "$arch_type" == "amd64" ]]; then
+    local WORKER_NODE_LIST=()
+    arch_type=$(${CLI_CMD} get cm cluster-config-v1 -n kube-system -o yaml | grep -i architecture|tail -1| awk '{print $2}')
+    ## -- https://jsw.ibm.com/browse/DBACLD-186147 - <Update the script to remove the Power (ppc64le) restrictions with FIPS>
+    if [[ "$arch_type" == "amd64" || "$arch_type" == "ppc64le" ]]; then
         printf "\n"
         echo "${YELLOW_TEXT}[NOTES] If you plan to enable FIPS for the CP4BA deployment, this script can verify whether FIPS is enabled on the compute nodes of the OCP cluster.${RESET_TEXT}"
         while true; do       
@@ -254,16 +256,16 @@ function check_fips_enable(){
                     echo "Unable to locate the OpenShift CLI. You must install it to perform the FIPS check." && \
                     exit 1
                 > $TEMPORARY_NODE_INFO
-                for node in $(oc get no --no-headers -o name); 
+                for node in $(${CLI_CMD} get no --no-headers -o name); 
                 do
-                    WOKER_NODE_LIST+=("$node")
+                    WORKER_NODE_LIST+=("$node")
                     echo "$node" >> $TEMPORARY_NODE_INFO
-                    fips_flag=$(oc get cm cluster-config-v1 -n kube-system -o jsonpath={.data.install-config} | grep "fips: true")
+                    fips_flag=$(${CLI_CMD} get cm cluster-config-v1 -n kube-system -o jsonpath={.data.install-config} | grep "fips: true")
                     # oc debug $node --quiet=true -- chroot /host sh -c "fips-mode-setup --check" >/dev/null 2>&1 >> $TEMPORARY_NODE_INFO
                 done
                 printHeaderMessage "The mode of FIPS for each compute node"
-                # printf "%s\n" "${WOKER_NODE_LIST[@]}"
-                for node in "${WOKER_NODE_LIST[@]}"; 
+                # printf "%s\n" "${WORKER_NODE_LIST[@]}"
+                for node in "${WORKER_NODE_LIST[@]}"; 
                 do
                     NUM=$(grep -Fn $node $TEMPORARY_NODE_INFO|cut -d':' -f1)
 
@@ -274,7 +276,7 @@ function check_fips_enable(){
                         FIPS_STATUS="${GREEN_TEXT}Enabled${RESET_TEXT}"
                     fi
                     echo "$node          : $FIPS_STATUS"
-                    # echo "Value for WOKER_NODE_LIST array is: $node"
+                    # echo "Value for WORKER_NODE_LIST array is: $node"
                 done
                 if [[ -z $ALL_FIPS_ENABLED ]]; then
                     ALL_FIPS_ENABLED="Yes"
@@ -290,8 +292,8 @@ function check_fips_enable(){
                 ;;
             esac
         done
-    elif [[ "$arch_type" == "ppc64le" || "$arch_type" == "s390x" ]]; then
-        warning "FIPS only support OCp/ROKS cluster based on amd64_x86 platform."
+    elif [[ "$arch_type" == "s390x" ]]; then
+        warning "FIPS only support OCP/ROKS cluster based on amd64_x86 and ppc64le platforms."
     else
         warning "Platform type not found."
     fi
@@ -333,7 +335,7 @@ function install_cert_license_operator(){
     if [[ $PRIVATE_CATALOG == "No" ]]; then
         
         OLM_CATALOG=${PARENT_DIR}/descriptors/op-olm/catalog_source.yaml
-        kubectl apply -f $OLM_CATALOG >/dev/null 2>&1
+        ${CLI_CMD} apply -f $OLM_CATALOG >/dev/null 2>&1
         if [ $? -eq 0 ]; then
             success "The IBM CP4BA Operator catalog source has been updated!"
 
@@ -342,7 +344,7 @@ function install_cert_license_operator(){
             exit 1
         fi
     else
-        kubectl apply -f $OLM_CATALOG_TMP >/dev/null 2>&1
+        ${CLI_CMD} apply -f $OLM_CATALOG_TMP >/dev/null 2>&1
         if [ $? -eq 0 ]; then
             success "The IBM CP4BA Operator catalog source has been updated!"
         else
@@ -358,25 +360,31 @@ function install_cert_license_operator(){
     # fail "Unable to locate the yq CLI. You must install latest one from https://github.com/mikefarah/yq/ manually" && \
     # exit 1
     
-    # Checking ibm-cert-manager/ibm-licensing catalog soure pod
+    # Checking ibm-cert-manager/ibm-licensing catalog source pod
     maxRetry=10
     for ((retry=0;retry<=${maxRetry};retry++)); do
         if [[ $PRIVATE_CATALOG == "No" ]]; then
-            cert_catalog_pod_name=$(kubectl get pod -l=olm.catalogSource=ibm-cert-manager-catalog -n openshift-marketplace -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
-            license_catalog_pod_name=$(kubectl get pod -l=olm.catalogSource=ibm-licensing-catalog -n openshift-marketplace -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
+            if [[ "$CERT_MANAGER_ALREADY_INSTALLED" == "false" ]]; then
+                cert_catalog_pod_name=$(${CLI_CMD} get pod -l=olm.catalogSource=ibm-cert-manager-catalog -n openshift-marketplace -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
+            fi
+            license_catalog_pod_name=$(${CLI_CMD} get pod -l=olm.catalogSource=ibm-licensing-catalog -n openshift-marketplace -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
         else
-            cert_catalog_pod_name=$(kubectl get pod -l=olm.catalogSource=ibm-cert-manager-catalog -n ibm-cert-manager -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
-            license_catalog_pod_name=$(kubectl get pod -l=olm.catalogSource=ibm-licensing-catalog -n ibm-licensing -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
+            if [[ "$CERT_MANAGER_ALREADY_INSTALLED" == "false" ]]; then
+                cert_catalog_pod_name=$(${CLI_CMD} get pod -l=olm.catalogSource=ibm-cert-manager-catalog -n ibm-cert-manager -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
+            fi
+            license_catalog_pod_name=$(${CLI_CMD} get pod -l=olm.catalogSource=ibm-licensing-catalog -n ibm-licensing -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
         fi
-        if [[ ( -z $cert_catalog_pod_name) || (-z $license_catalog_pod_name) ]]; then
+        
+        
+        #checking for ibm-cert-manager-catalog pod
+        if [[ (-z $cert_catalog_pod_name) &&  $CERT_MANAGER_ALREADY_INSTALLED == "false" ]]; then
             if [[ $retry -eq ${maxRetry} ]]; then
                 printf "\n"
                 if [[ $PRIVATE_CATALOG == "Yes" && -z $cert_catalog_pod_name ]]; then
                     warning "Timeout reached while waiting for the ibm-cert-manager-catalog pod to become ready in the project.  \"ibm-cert-manager\""
-                elif [[ $PRIVATE_CATALOG == "Yes" && -z $license_catalog_pod_name ]]; then
-                    warning "Timeout reached while waiting for the ibm-licensing-catalog pod to become ready in the project.  \"ibm-licensing\""
+
                 elif [[ $PRIVATE_CATALOG == "No" ]]; then
-                    warning "Timeout reached while waiting for the ibm-licensing-catalog/ibm-cert-manager-catalog catalog pods to become ready in the project.  \"openshift-marketplace\""
+                    warning "Timeout reached while waiting for the ibm-cert-manager-catalog catalog pods to become ready in the project.  \"openshift-marketplace\""
                 fi
                 exit 1
             else
@@ -385,7 +393,29 @@ function install_cert_license_operator(){
                 continue
             fi
         else
-            success "ibm-licensing-catalog/ibm-cert-manager-catalog pods are ready!"
+            success "ibm-cert-manager-catalog pod is ready!"
+            break
+        fi
+
+
+        
+        #Checking for ibm-licensing-catalog pod
+        if [[ (-z $license_catalog_pod_name) ]]; then
+            if [[ $retry -eq ${maxRetry} ]]; then
+                printf "\n"
+                if [[ $PRIVATE_CATALOG == "Yes" && -z $license_catalog_pod_name ]]; then
+                    warning "Timeout reached while waiting for the ibm-licensing-catalog pod to become ready in the project.  \"ibm-licensing\""
+                elif [[ $PRIVATE_CATALOG == "No" ]]; then
+                    warning "Timeout reached while waiting for the ibm-licensing-catalog catalog pods to become ready in the project.  \"openshift-marketplace\""
+                fi
+                exit 1
+            else
+                sleep 30
+                echo -n "..."
+                continue
+            fi
+        else
+            success "ibm-licensing-catalog pod is ready!"
             break
         fi
     done
@@ -410,10 +440,10 @@ function install_cert_license_operator(){
         maxRetry=50
         info "Waiting for IBM Cert Manager Operator to be ready..."
         for ((retry=0;retry<=${maxRetry};retry++)); do
-            isReadyWebhook=$(kubectl get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-webhook -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
-            isReadyCertmanager=$(kubectl get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-controller -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
-            isReadyCainjector=$(kubectl get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-cainjector -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
-            isReadyCertmanagerOperator=$(kubectl get pod -l=app.kubernetes.io/name=cert-manager,app.kubernetes.io/instance=ibm-cert-manager-operator -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers --ignore-not-found | grep 'Running' | grep 'true' | awk '{print $1}')
+            isReadyWebhook=$(${CLI_CMD} get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-webhook -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
+            isReadyCertmanager=$(${CLI_CMD} get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-controller -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
+            isReadyCainjector=$(${CLI_CMD} get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-cainjector -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
+            isReadyCertmanagerOperator=$(${CLI_CMD} get pod -l=app.kubernetes.io/name=cert-manager,app.kubernetes.io/instance=ibm-cert-manager-operator -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers --ignore-not-found | grep 'Running' | grep 'true' | awk '{print $1}')
 
             if [[ -z $isReadyWebhook || -z $isReadyCertmanager || -z $isReadyCainjector || -z $isReadyCertmanagerOperator ]]; then
                 if [[ $retry -eq ${maxRetry} ]]; then
@@ -437,8 +467,8 @@ function install_cert_license_operator(){
 
         info "Waiting for IBM Licensing Operator to be ready..."
         for ((retry=0;retry<=${maxRetry};retry++)); do
-            isReadyLicenseOperator=$(kubectl get pod -l=app.kubernetes.io/name=ibm-licensing,name=ibm-licensing-operator -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
-            isReadyLicenseService=$(kubectl get pod -l=app.kubernetes.io/name=ibm-licensing-service-instance,app=ibm-licensing-service-instance -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
+            isReadyLicenseOperator=$(${CLI_CMD} get pod -l=app.kubernetes.io/name=ibm-licensing,name=ibm-licensing-operator -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
+            isReadyLicenseService=$(${CLI_CMD} get pod -l=app.kubernetes.io/name=ibm-licensing-service-instance,app=ibm-licensing-service-instance -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
 
             if [[ -z $isReadyLicenseOperator || -z $isReadyLicenseService ]]; then
                 if [[ $retry -eq ${maxRetry} ]]; then
@@ -578,19 +608,24 @@ function select_project(){
                 project_name=""
             fi
             if [[ ! ("$RUNTIME_MODE" == "baw" || $RUNTIME_MODE == "baw-dev" || "$RUNTIME_MODE" == "process-flow" || $RUNTIME_MODE == "process-flow-dev") ]]; then
-                ${CLI_CMD} create namespace ibm-cert-manager > /dev/null 2>&1
-                ${CLI_CMD} create namespace ibm-licensing > /dev/null 2>&1
+                if [[ "$CERT_MANAGER_ALREADY_INSTALLED" == "false" ]]; then  #DBACLD-187443: Skip the creation of `ibm-cert-manager` project if cert-manager is already installed
+                    ${CLI_CMD} create namespace "$CERT_MANAGER_PROJECT" > /dev/null 2>&1
+                fi
+                ${CLI_CMD} create namespace "$LICENSE_MANAGER_PROJECT" > /dev/null 2>&1
             fi
             
         fi
     done
 
-    if [[ $PRIVATE_CATALOG == "Yes" ]]; then  
-        info "Creating project \"$CERT_MANAGER_PROJECT\" for IBM Cert Manager operator catalog."
-        create_project "$CERT_MANAGER_PROJECT"
-        if [[ $? -eq 0 ]]; then
-            success "Created project \"$CERT_MANAGER_PROJECT\" for IBM Cert Manager operator catalog."
+    if [[ $PRIVATE_CATALOG == "Yes" ]]; then
+        if [[ "$CERT_MANAGER_ALREADY_INSTALLED" == "false" ]]; then  #DBACLD-187443: Skip the creation of `ibm-cert-manager` project if cert-manager is already installed
+            info "Creating project \"$CERT_MANAGER_PROJECT\" for IBM Cert Manager operator catalog."
+            create_project "$CERT_MANAGER_PROJECT"
+            if [[ $? -eq 0 ]]; then
+                success "Created project \"$CERT_MANAGER_PROJECT\" for IBM Cert Manager operator catalog."
+            fi
         fi
+
 
         info "Creating project \"$LICENSE_MANAGER_PROJECT\" for IBM Licensing operator catalog."
         create_project "$LICENSE_MANAGER_PROJECT"
@@ -601,8 +636,25 @@ function select_project(){
         sed "s/REPLACE_CATALOG_SOURCE_NAMESPACE/$CATALOG_NAMESPACE/g" ${OLM_CATALOG} > ${OLM_CATALOG_TMP}
         # replace all other catalogs with <CP4BA NS> namespaces 
         ${SED_COMMAND} "s|namespace: .*|namespace: \"$project_name\"|g" ${OLM_CATALOG_TMP}
-        # replace openshift-marketplace for ibm-cert-manager-catalog with ibm-cert-manager
-        ${SED_COMMAND} "/name: ibm-cert-manager-catalog/{n;s/namespace: .*/namespace: $CERT_MANAGER_PROJECT/;}" ${OLM_CATALOG_TMP}
+
+        # DBACLD-187443:replace openshift-marketplace for ibm-cert-manager-catalog with ibm-cert-manager when cert-manager is not installed
+        if [[ "$CERT_MANAGER_ALREADY_INSTALLED" == "false" ]]; then
+            # replace openshift-marketplace for ibm-cert-manager-catalog with ibm-cert-manager
+            ${SED_COMMAND} "/name: ibm-cert-manager-catalog/{n;s/namespace: .*/namespace: $CERT_MANAGER_PROJECT/;}" ${OLM_CATALOG_TMP}
+        else # Cert-manager is already installed.  Removing ibm-cert-manager-catalog from the catalog source
+            remove_item_from_cs "${OLM_CATALOG_TMP}" "${OLM_CATALOG_TMP_BAK}" "ibm-cert-manager-catalog"
+            if [[ $? -ne 0 ]]; then
+                warning "Failed to remove ibm-cert-manager-catalog from the catalog source."
+            else
+                success "Removed ibm-cert-manager-catalog from the catalog source."
+                printf "\n"
+                cp ${OLM_CATALOG_TMP_BAK} ${OLM_CATALOG_TMP} > /dev/null 2>&1
+            fi
+
+        fi
+        
+        
+        
         # replace openshift-marketplace for ibm-licensing-catalog with ibm-licensing
         ${SED_COMMAND} "/name: ibm-licensing-catalog/{n;s/namespace: .*/namespace: $LICENSE_MANAGER_PROJECT/;}" ${OLM_CATALOG_TMP}
     fi    
@@ -640,17 +692,21 @@ function set_separate_operator_project(){
                 project_name_operator=""
             fi
             if [[ ! ("$RUNTIME_MODE" == "baw" || $RUNTIME_MODE == "baw-dev" || "$RUNTIME_MODE" == "process-flow" || $RUNTIME_MODE == "process-flow-dev") ]]; then
-                ${CLI_CMD} create namespace ibm-cert-manager > /dev/null 2>&1
-                ${CLI_CMD} create namespace ibm-licensing > /dev/null 2>&1
+                if [[ "$CERT_MANAGER_ALREADY_INSTALLED" == "false" ]]; then #DBACLD-187443: Skip the creation of `ibm-cert-manager` project if cert-manager is already installed
+                    ${CLI_CMD} create namespace "$CERT_MANAGER_PROJECT"> /dev/null 2>&1
+                fi
+                ${CLI_CMD} create namespace "$LICENSE_MANAGER_PROJECT" > /dev/null 2>&1
             fi
         fi
     done
 
     if [[ $PRIVATE_CATALOG == "Yes" ]]; then
-        info "Creating project \"$CERT_MANAGER_PROJECT\" for IBM Cert Manager operator catalog."
-        create_project "$CERT_MANAGER_PROJECT"
-        if [[ $? -eq 0 ]]; then
-            success "Created project \"$CERT_MANAGER_PROJECT\" for IBM Cert Manager operator catalog."
+        if [[ "$CERT_MANAGER_ALREADY_INSTALLED" == "false" ]]; then #DBACLD-187443: Skip the creation of `ibm-cert-manager` project if cert-manager is already installed
+            info "Creating project \"$CERT_MANAGER_PROJECT\" for IBM Cert Manager operator catalog."
+            create_project "$CERT_MANAGER_PROJECT"
+            if [[ $? -eq 0 ]]; then
+                success "Created project \"$CERT_MANAGER_PROJECT\" for IBM Cert Manager operator catalog."
+            fi
         fi
 
         info "Creating project \"$LICENSE_MANAGER_PROJECT\" for IBM Licensing operator catalog."
@@ -662,8 +718,24 @@ function set_separate_operator_project(){
         sed "s/REPLACE_CATALOG_SOURCE_NAMESPACE/$CATALOG_NAMESPACE/g" ${OLM_CATALOG} > ${OLM_CATALOG_TMP}
         # replace all other catalogs with <CP4BA NS> namespaces 
         ${SED_COMMAND} "s|namespace: .*|namespace: \"$project_name_operator\"|g" ${OLM_CATALOG_TMP}
-        # replace openshift-marketplace for ibm-cert-manager-catalog with ibm-cert-manager
-        ${SED_COMMAND} "/name: ibm-cert-manager-catalog/{n;s/namespace: .*/namespace: $CERT_MANAGER_PROJECT/;}" ${OLM_CATALOG_TMP}
+
+        # DBACLD-187443:replace openshift-marketplace for ibm-cert-manager-catalog with ibm-cert-manager when cert-manager is not installed
+        if [[ "$CERT_MANAGER_ALREADY_INSTALLED" == "false" ]]; then
+            # replace openshift-marketplace for ibm-cert-manager-catalog with ibm-cert-manager
+            ${SED_COMMAND} "/name: ibm-cert-manager-catalog/{n;s/namespace: .*/namespace: $CERT_MANAGER_PROJECT/;}" ${OLM_CATALOG_TMP}
+        else # Cert-manager is already installed.  Removing ibm-cert-manager-catalog from the catalog source
+            remove_item_from_cs "${OLM_CATALOG_TMP}" "${OLM_CATALOG_TMP_BAK}" "ibm-cert-manager-catalog"
+            if [[ $? -ne 0 ]]; then
+                warning "Failed to remove ibm-cert-manager-catalog from the catalog source."
+            else
+                success "Removed ibm-cert-manager-catalog from the catalog source."
+                printf "\n"
+                cp ${OLM_CATALOG_TMP_BAK} ${OLM_CATALOG_TMP} > /dev/null 2>&1
+            fi
+
+        fi
+        
+        
         # replace openshift-marketplace for ibm-licensing-catalog with ibm-licensing
         ${SED_COMMAND} "/name: ibm-licensing-catalog/{n;s/namespace: .*/namespace: $LICENSE_MANAGER_PROJECT/;}" ${OLM_CATALOG_TMP}
     fi
@@ -854,10 +926,10 @@ function select_all_namespace(){
 
     if [[ ( "$RUNTIME_MODE" == "process-flow" || $RUNTIME_MODE == "process-flow-dev" ) && "$PLATFORM_SELECTED" == "other" && "$ALL_NAMESPACE" == "Yes" ]]; then
         PROJ_NAME_ALL_NAMESPACE="$WFPS_CNCF_PROJ_NAME_ALL_NAMESPACE"
-        isProjExists=`kubectl get namespace $PROJ_NAME_ALL_NAMESPACE --ignore-not-found | wc -l`  >/dev/null 2>&1
+        isProjExists=`${CLI_CMD} get namespace $PROJ_NAME_ALL_NAMESPACE --ignore-not-found | wc -l`  >/dev/null 2>&1
 
         if [ $isProjExists -ne 2 ] ; then
-            kubectl create namespace ${PROJ_NAME_ALL_NAMESPACE} >> ${LOG_FILE}
+            ${CLI_CMD} create namespace ${PROJ_NAME_ALL_NAMESPACE} >> ${LOG_FILE}
             returnValue=$?
             if [ "$returnValue" == 1 ]; then
                 echo -e "\x1B[1;31mFailed to create namespace name \"$PROJ_NAME_ALL_NAMESPACE\", Check the details...\x1B[0m"
@@ -1109,12 +1181,12 @@ function validate_cncf_olm(){
      done
 
       echo "Installing OLM..."
-      isProjExists=`kubectl get namespace $CNCF_OLM_NAMESPACE --ignore-not-found | wc -l`  >/dev/null 2>&1
+      isProjExists=`${CLI_CMD} get namespace $CNCF_OLM_NAMESPACE --ignore-not-found | wc -l`  >/dev/null 2>&1
       if [ $isProjExists -ne 2 ] ; then
-          kubectl create namespace $CNCF_OLM_NAMESPACE
+          ${CLI_CMD} create namespace $CNCF_OLM_NAMESPACE
       fi
       # Must be privileged PSP because OLM util container run as root
-      kubectl create rolebinding olm-admin-rolebinding --clusterrole admin --group 'system:serviceaccounts:olm' -n $CNCF_OLM_NAMESPACE
+      ${CLI_CMD} create rolebinding olm-admin-rolebinding --clusterrole admin --group 'system:serviceaccounts:olm' -n $CNCF_OLM_NAMESPACE
 
       curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.20.0/install.sh -o olm_install.sh
       chmod +x olm_install.sh
@@ -1160,10 +1232,10 @@ function create_project() {
         fi
     elif [[ "$PLATFORM_SELECTED" == "other" ]]
     then
-        isProjExists=`kubectl get namespace $project_name --ignore-not-found | wc -l`  >/dev/null 2>&1
+        isProjExists=`${CLI_CMD} get namespace $project_name --ignore-not-found | wc -l`  >/dev/null 2>&1
 
         if [ $isProjExists -ne 2 ] ; then
-            kubectl create namespace ${project_name} >> ${LOG_FILE}
+            ${CLI_CMD} create namespace ${project_name} >> ${LOG_FILE}
             returnValue=$?
             if [ "$returnValue" == 1 ]; then
                 if [ -z "$CP4BA_AUTO_NAMESPACE" ]; then
@@ -1490,7 +1562,7 @@ function prepare_olm_install() {
         if [[ $retry -eq ${maxRetry} ]]; then
           echo "Timeout waiting for $CP4BA_NAME Operator Catalog pod to start"
           echo -e "\x1B[1mCheck the status of Pod by issue cmd: \x1B[0m"
-          echo "oc describe pod $(oc get pod -n $CATALOG_NAMESPACE|grep $online_source|awk '{print $1}') -n $CATALOG_NAMESPACE"
+          echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $CATALOG_NAMESPACE|grep $online_source|awk '{print $1}') -n $CATALOG_NAMESPACE"
           exit 1
         else
           sleep 30
@@ -1610,7 +1682,7 @@ function prepare_olm_install() {
         echo "start patch service account: $service_account"
         if [ $(${CLI_CMD} patch serviceaccount $service_account -n $temp_project_name -p '{"imagePullSecrets": [{"name": "ibm-entitlement-key"}, {"name": "hyc-baw-team"}, {"name": "hyc-base-image"}]}' -n $temp_project_name|grep 'no change'|wc -l) -lt 1 ]; then
           # delete pod to force using patched service account
-          ${CLI_CMD} get pod -o name -n $temp_project_name |grep $deployment|xargs kubectl delete -n $temp_project_name
+          ${CLI_CMD} get pod -o name -n $temp_project_name |grep $deployment|xargs ${CLI_CMD} delete -n $temp_project_name
         fi
       done
 
@@ -1631,11 +1703,11 @@ function prepare_olm_install() {
 
         #checking if ibm-dpe-operator is present and if so checking if the pod is running
         # DPE only support x86 so check the target cluster arch type
-        arch_type=$(kubectl get cm cluster-config-v1 -n kube-system -o yaml | grep -i architecture|tail -1| awk '{print $2}')
+        arch_type=$(${CLI_CMD} get cm cluster-config-v1 -n kube-system -o yaml | grep -i architecture|tail -1| awk '{print $2}')
         if [[ "$arch_type" == "amd64" ]]; then
             ibmDpePodPresent=$(${CLI_CMD} get pod -n "$temp_project_name" --no-headers --ignore-not-found | grep ibm-dpe-operator | wc -l)
             if [[ $ibmDpePodPresent -eq 1 ]]; then
-                ibmDpePodCount=$(oc get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-dpe-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
+                ibmDpePodCount=$(${CLI_CMD} get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-dpe-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
             else
                 ibmDpePodCount=0
             fi
@@ -1646,7 +1718,7 @@ function prepare_olm_install() {
         #checking if ibm-insights-engine-operator is present and if so checking if the pod is running
         ibmInsightsEnginePodPresent=$(${CLI_CMD} get pod -n "$temp_project_name" --no-headers --ignore-not-found | grep ibm-insights-engine-operator | wc -l)
         if [[ $ibmInsightsEnginePodPresent -eq 1 ]]; then
-            ibmInsightsEnginePodCount=$(oc get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-insights-engine-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
+            ibmInsightsEnginePodCount=$(${CLI_CMD} get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-insights-engine-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
         else
             ibmInsightsEnginePodCount=0
         fi
@@ -1654,7 +1726,7 @@ function prepare_olm_install() {
         #checking if ibm-ads-operator is present and if so checking if the pod is running
         ibmADSOperatorPodPresent=$(${CLI_CMD} get pod -n "$temp_project_name" --no-headers --ignore-not-found | grep ibm-ads-operator | wc -l)
         if [[ $ibmADSOperatorPodPresent -eq 1 ]]; then
-            ibmADSOperatorPodCount=$(oc get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-ads-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
+            ibmADSOperatorPodCount=$(${CLI_CMD} get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-ads-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
         else
             ibmADSOperatorPodCount=0
         fi
@@ -1662,7 +1734,7 @@ function prepare_olm_install() {
         #checking if ibm-common-service-operator is present and if so checking if the pod is running
         ibmCommonServicesPodPresent=$(${CLI_CMD} get pod -n "$temp_project_name" --no-headers --ignore-not-found | grep ibm-common-service-operator | wc -l)
         if [[ $ibmCommonServicesPodPresent -eq 1 ]]; then
-            ibmCommonServicesPodCount=$(oc get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-common-service-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
+            ibmCommonServicesPodCount=$(${CLI_CMD} get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-common-service-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
         else
             ibmCommonServicesPodCount=0
         fi
@@ -1670,7 +1742,7 @@ function prepare_olm_install() {
         #checking if ibm-odm-operator is present and if so checking if the pod is running
         ibmODMPodPresent=$(${CLI_CMD} get pod -n "$temp_project_name" --no-headers --ignore-not-found | grep ibm-odm-operator | wc -l)
         if [[ $ibmODMPodPresent -eq 1 ]]; then
-            ibmODMPodCount=$(oc get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-odm-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
+            ibmODMPodCount=$(${CLI_CMD} get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-odm-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
         else    
             ibmODMPodCount=0
         fi
@@ -1678,7 +1750,7 @@ function prepare_olm_install() {
         #checking if ibm-pfs-operator is present and if so checking if the pod is running
         ibmPFSPodPresent=$(${CLI_CMD} get pod -n "$temp_project_name" --no-headers --ignore-not-found | grep ibm-pfs-operator | wc -l)
         if [[ $ibmPFSPodPresent -eq 1 ]]; then
-            ibmPFSPodCount=$(oc get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-pfs-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
+            ibmPFSPodCount=$(${CLI_CMD} get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-pfs-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
         else    
             ibmPFSPodCount=0
         fi
@@ -1686,7 +1758,7 @@ function prepare_olm_install() {
         #checking if icp4a-foundation-operator is present and if so checking if the pod is running
         foundationPodPresent=$(${CLI_CMD} get pod -n "$temp_project_name" --no-headers --ignore-not-found | grep icp4a-foundation-operator | wc -l)
         if [[ $foundationPodPresent -eq 1 ]]; then
-            foundationPodCount=$(oc get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep icp4a-foundation-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
+            foundationPodCount=$(${CLI_CMD} get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep icp4a-foundation-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
         else   
             foundationPodCount=0
         fi
@@ -1694,7 +1766,7 @@ function prepare_olm_install() {
         #checking if operand-deployment-lifecycle-manager is present and if so checking if the pod is running
         operandLifeCyclePodPresent=$(${CLI_CMD} get pod -n "$temp_project_name" --no-headers --ignore-not-found | grep operand-deployment-lifecycle-manager | wc -l)
         if [[ $operandLifeCyclePodPresent -eq 1 ]]; then
-            operandLifeCyclePodCount=$(oc get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep operand-deployment-lifecycle-manager | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
+            operandLifeCyclePodCount=$(${CLI_CMD} get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep operand-deployment-lifecycle-manager | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
         else    
             operandLifeCyclePodCount=0
         fi    
@@ -1703,7 +1775,7 @@ function prepare_olm_install() {
         #checking if ibm-pfs-operator is present and if so checking if the pod is running
         ibmPFSPodPresent=$(${CLI_CMD} get pod -n "$temp_project_name" --no-headers --ignore-not-found | grep ibm-pfs-operator | wc -l)
         if [[ $ibmPFSPodPresent -eq 1 ]]; then
-            ibmPFSPodCount=$(oc get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-pfs-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
+            ibmPFSPodCount=$(${CLI_CMD} get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-pfs-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
         else    
             ibmPFSPodCount=0
         fi
@@ -1716,15 +1788,15 @@ function prepare_olm_install() {
           echo "Timeout waiting for $CP4BA_NAME operator to start"
           echo -e "\x1B[1mCheck the status of Pod by issue cmd:\x1B[0m"
           if [[ ($RUNTIME_MODE == "process-flow-dev") || ($RUNTIME_MODE == "process-flow") ]]; then
-            echo "oc describe pod $(oc get pod -n $temp_project_name|grep ibm-wfps-operator-controller-manager|awk '{print $1}') -n $temp_project_name"
+            echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $temp_project_name|grep ibm-wfps-operator-controller-manager|awk '{print $1}') -n $temp_project_name"
             printf "\n"
             echo -e "\x1B[1mCheck the status of ReplicaSet by issue cmd:\x1B[0m"
-            echo "oc describe rs $(oc get rs -n $temp_project_name|grep ibm-wfps-operator-controller-manager|awk '{print $1}') -n $temp_project_name"
+            echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $temp_project_name|grep ibm-wfps-operator-controller-manager|awk '{print $1}') -n $temp_project_name"
           else
-            echo "oc describe pod $(oc get pod -n $temp_project_name|grep ibm-cp4a-operator|awk '{print $1}') -n $temp_project_name"
+            echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $temp_project_name|grep ibm-cp4a-operator|awk '{print $1}') -n $temp_project_name"
             printf "\n"
             echo -e "\x1B[1mCheck the status of ReplicaSet by issue cmd:\x1B[0m"
-            echo "oc describe rs $(oc get rs -n $temp_project_name|grep ibm-cp4a-operator|awk '{print $1}') -n $temp_project_name"
+            echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $temp_project_name|grep ibm-cp4a-operator|awk '{print $1}') -n $temp_project_name"
           fi
           
         #   printf "\n"
@@ -1761,10 +1833,10 @@ function prepare_olm_install() {
            if [[ $retry -eq ${maxRetry} ]]; then
              echo "Timeout waiting for $CP4BA_NAME Content operator to start"
              echo -e "\x1B[1mCheck the status of Pod by issue cmd:\x1B[0m"
-             echo "oc describe pod $(oc get pod -n $temp_project_name|grep ibm-content-operator|awk '{print $1}') -n $temp_project_name"
+             echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $temp_project_name|grep ibm-content-operator|awk '{print $1}') -n $temp_project_name"
              printf "\n"
              echo -e "\x1B[1mCheck the status of ReplicaSet by issue cmd:\x1B[0m"
-             echo "oc describe rs $(oc get rs -n $temp_project_name|grep ibm-content-operator|awk '{print $1}') -n $temp_project_name"
+             echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $temp_project_name|grep ibm-content-operator|awk '{print $1}') -n $temp_project_name"
            #   printf "\n"
            #   echo -e "\x1B[1mPlease check the status of PVC by issue cmd:\x1B[0m"
            #   echo "oc describe pvc $(oc get pvc -n $temp_project_name|grep operator-shared-pvc|awk '{print $1}') -n $temp_project_name"
@@ -2107,7 +2179,7 @@ function get_domain_name(){
             hostname=$(echo "$domain_name" | sed 's|:.*||')
             # validate domain name works
             # prepare test ingress controller
-            isNsExists=`kubectl get namespace "ingress-free-test" --ignore-not-found | wc -l`  >/dev/null 2>&1
+            isNsExists=`${CLI_CMD} get namespace "ingress-free-test" --ignore-not-found | wc -l`  >/dev/null 2>&1
             if [ $isNsExists -eq 2 ] ; then
               ${CLI_CMD} delete namespace "ingress-free-test" >/dev/null 2>&1
             fi
@@ -2362,7 +2434,7 @@ function get_storage_class_name(){
 
 function display_storage_classes() {
     echo
-    echo "Storage classes are needed to run the deployment script. For the "Starter" deployment scenario, you may use one (1) storage class.  For an "Production" deployment, the deployment script will ask for three (3) storage classes to meet the "slow", "medium", and "fast" storage for the configuration of $CP4BA_NAME components.  If you don't have three (3) storage classes, you can use the same one for "slow", "medium", or fast.  Note that you can get the existing storage class(es) in the environment by running the following command: oc get storageclass. Take note of the storage classes that you want to use for deployment. "
+    echo "Storage classes are needed to run the deployment script. For the "Starter" deployment scenario, you may use one (1) storage class.  For an "Production" deployment, the deployment script will ask for three (3) storage classes to meet the "slow", "medium", and "fast" storage for the configuration of $CP4BA_NAME components.  If you don't have three (3) storage classes, you can use the same one for "slow", "medium", or fast.  Note that you can get the existing storage class(es) in the environment by running the following command: ${CLI_CMD} get storageclass. Take note of the storage classes that you want to use for deployment. "
 	${CLI_CMD} get storageclass
 }
 
@@ -2380,7 +2452,7 @@ function display_node_name() {
 	${CLI_CMD} get nodes --selector node-role.kubernetes.io/infra=true -o custom-columns=":metadata.name"
     elif  [[ $PLATFORM_VERSION == "4.4OrLater" ]];
     then
-        echo "Below is the route host name for the environment, which is required as an input during the execution of the deployment script for the creation of routes in OCP. You can also get the host name by running the following command: oc get IngressController default -n openshift-ingress-operator -o yaml|grep \" domain\". Take note of the host name. "
+        echo "Below is the route host name for the environment, which is required as an input during the execution of the deployment script for the creation of routes in OCP. You can also get the host name by running the following command: ${CLI_CMD} get IngressController default -n openshift-ingress-operator -o yaml|grep \" domain\". Take note of the host name. "
         ${CLI_CMD} get IngressController default -n openshift-ingress-operator -o yaml|grep " domain" | head -1 | cut -d ' ' -f 4
     fi
 }
@@ -2525,6 +2597,11 @@ function select_deployment_type(){
                 if [[ "$RUNTIME_MODE" == "baw" || $RUNTIME_MODE == "baw-dev" || $RUNTIME_MODE == "process-flow-dev" || $PRIVATE_CATALOG == "Yes" ]]; then
                     options=("Production")
                     PS3='Enter a valid option [1]: '
+                #DBACLD-194974: Remove Starter option for CP4BA 25.0.1 GA by checking the version $CP4BA_PATCH_VERSION and $CP4BA_RELEASE_BASE_MAJOR_VERSION
+                elif skip_edb_for_2501; then
+                    info "Note: Please be aware that for this 25.0.1 GA Limited Support Release, Starter deployment is not supported. Starter deployment support will be available in the upcoming iFix and next release."
+                    options=("Production")
+                    PS3='Enter a valid option [1]: '
                 else
                     options=("Starter" "Production")
                     PS3='Enter a valid option [1 to 2]: '
@@ -2658,14 +2735,14 @@ function display_storage_classes_roks() {
 function check_platform_version(){
     check_kubectl_installed
 
-    currentver=$(kubectl  get nodes | awk 'NR==2{print $5}')
+    currentver=$(${CLI_CMD}  get nodes | awk 'NR==2{print $5}')
     requiredver="v1.17.1"
     if [ "$(printf '%s\n' "$requiredver" "$currentver" | sort -V | head -n1)" = "$requiredver" ]; then
         PLATFORM_VERSION="4.4OrLater"
     else
         # PLATFORM_VERSION="3.11"
         PLATFORM_VERSION="4.4OrLater"
-        #echo -e "\x1B[1;31mIMPORTANT: Only support OCp4.4 or Later, exit...\n\x1B[0m"
+        #echo -e "\x1B[1;31mIMPORTANT: Only support OCP4.4 or Later, exit...\n\x1B[0m"
         #exit 1
     fi
     # OpenShift 4.0-4.2, install Cloud Pak foundational services 3.3
@@ -3239,7 +3316,7 @@ function fetch_cp4ba_common_configmap_details(){
 # Function to detect where the ibm_cp4ba_common_config configmap should be created
 function recreate_cp4ba_common_configmap() {
     # Get namespaces where CommonService 'common-service' exists
-    namespaces=$(oc get CommonService -A -o jsonpath='{range .items[?(@.metadata.name=="common-service")]}{.metadata.namespace}{"\n"}{end}')
+    namespaces=$(${CLI_CMD} get CommonService -A -o jsonpath='{range .items[?(@.metadata.name=="common-service")]}{.metadata.namespace}{"\n"}{end}')
     if [[ -z "$namespaces" ]]; then
         error "Could not find a IBM Cloud Pak foundational services Custom Resource file in any namespaces ."
         exit 0
@@ -3247,7 +3324,7 @@ function recreate_cp4ba_common_configmap() {
     configmap_missing=false
     for ns in $namespaces; do
         # Check if ConfigMap 'ibm-cp4ba-common-config' exists in the namespace
-        if [[ $(oc get configmap ibm-cp4ba-common-config -n "$ns" &>/dev/null; echo $?) -ne 0 ]]; then
+        if [[ $(${CLI_CMD} get configmap ibm-cp4ba-common-config -n "$ns" &>/dev/null; echo $?) -ne 0 ]]; then
             configmap_missing=true
             info "ConfigMap 'ibm-cp4ba-common-config' is not found in namespace $ns."
             
@@ -3333,6 +3410,16 @@ if [[ $ENVIRONMENT == "dev" || $ENVIRONMENT == "baw-dev" ]]; then
     CS_INSTALL="YES"
 else
     CS_INSTALL="NO"
+fi
+
+# DBACLD-187443: Check cert-manager installation status once and store in variable
+info "Checking cert-manager installation status..."
+if is_cert_manager_installed; then
+    CERT_MANAGER_ALREADY_INSTALLED=true
+    info "Pre-existing cert-manager found on the cluster."
+else
+    CERT_MANAGER_ALREADY_INSTALLED=false
+    info "No pre-existing cert-manager detected on the cluster."
 fi
 
 # For DBACLD-156657 where we want to add logic to recreate the ibm-cp4ba-common-config configmap if it was deleted
@@ -3463,11 +3550,11 @@ if [[ $SCRIPT_MODE == "OLM" ]];then
             rm -fr ${TEMP_FOLDER}/cm-data.yaml >> ${LOG_FILE}
 
             echo -e "\x1B[1mCreating the configmap required by common service...\x1B[0m"
-            isNsExists=`kubectl get namespace $DEDICATED_COMMON_PROJECT --ignore-not-found | wc -l`  >/dev/null 2>&1
+            isNsExists=`${CLI_CMD} get namespace $DEDICATED_COMMON_PROJECT --ignore-not-found | wc -l`  >/dev/null 2>&1
             if [ $isNsExists -ne 2 ] ; then
                 ${CLI_CMD} create namespace $DEDICATED_COMMON_PROJECT >/dev/null 2>&1
             fi
-            cat <<EOF | kubectl apply -f -
+            cat <<EOF | ${CLI_CMD} apply -f -
             apiVersion: v1
             kind: ConfigMap
             metadata:

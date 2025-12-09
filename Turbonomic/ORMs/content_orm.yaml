@@ -1,0 +1,112 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: content-orm
+  namespace: {{ placeholder_namespace }}
+spec:
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: cpe
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-cpe-deploy")].resources
+        ownerPath: .spec.ecm_configuration.cpe.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: css1
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-css-deploy-1")].resources
+        ownerPath: .spec.ecm_configuration.css.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: css2
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-css-deploy-2")].resources
+        ownerPath: .spec.ecm_configuration.css.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: css3
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-css-deploy-3")].resources
+        ownerPath: .spec.ecm_configuration.css.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: css4
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-css-deploy-4")].resources
+        ownerPath: .spec.ecm_configuration.css.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: css5
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-css-deploy-5")].resources
+        ownerPath: .spec.ecm_configuration.css.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: css6
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-css-deploy-6")].resources
+        ownerPath: .spec.ecm_configuration.css.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: cmis
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-cmis-deploy")].resources
+        ownerPath: .spec.ecm_configuration.cmis.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: tm
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-tm-deploy")].resources
+        ownerPath: .spec.ecm_configuration.tm.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: graphql
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-graphql-deploy")].resources
+        ownerPath: .spec.ecm_configuration.graphql.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: navigator
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-navigator-deploy")].resources
+        ownerPath: .spec.navigator_configuration.navigator.resources
+    selectors:
+      cpe:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-cpe-deploy
+      css1:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-css-deploy-1
+      css2:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-css-deploy-2
+      css3:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-css-deploy-3
+      css4:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-css-deploy-4
+      css5:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-css-deploy-5
+      css6:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-css-deploy-6
+      cmis:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-cmis-deploy
+      graphql:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-graphql-deploy
+      tm:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-tm-deploy
+      navigator:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-navigator-deploy
+  owner:
+    apiVersion: icp4a.ibm.com/v1
+    kind: Content
+    name: {{ meta.name }}

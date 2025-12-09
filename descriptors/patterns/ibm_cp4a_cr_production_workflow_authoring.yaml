@@ -16,10 +16,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.0
+    release: 25.0.1
     cp4ba.ibm.com/backup-type: mandatory
 spec:
-  appVersion: 25.0.0
+  appVersion: 25.0.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -68,6 +68,11 @@ spec:
     ## Set this flag to "true" if you plan to have restricted network policies in CP4BA namespaces so that the operators can create sample network policy templates for CP4BA components.
     ## Please refer to the CP4BA documentation for more information about how to retrieve and apply the sample network policy templates.
     sc_generate_sample_network_policies: false
+
+    ## Enables integration with Instana to collect application and infrastructure metrics for enhanced observability. 
+    ## This optional parameter controls the instana instrumentation. If the parameter is not defined, then the default value is "false".
+    ## Set this flag to "true" if you plan to enable instana monitoring for CP4BA application. 
+    sc_enable_instana_metric_collection: false
 
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false
@@ -287,9 +292,22 @@ spec:
     ## Intelligent Task Prioritization configuration
     ## if this configuration is enabled, setting bai_configuration.bpmn.install to true
     intelligent_task_prioritization:
+      ## Linux Cron expression that defines when the Intelligent Task Prioritization server retrains the model.
+      ## The model uses data retrieved from the Business Automation Insights server.
+      ## Default value: 
+          ##'* 3 * * 0' (Every Sunday at 3:00 AM UTC)
+      ## Examples:
+          ##   '* 3 * * *' — Every day at 3:00 AM UTC
+          ##   '*/50 * * * *' — Every 50 minutes
+      retrain_model_schedule: ""
     ## Workforce Insights configuration
     ## if this configuration is enabled, setting bai_configuration.bpmn.install to true and bai_configuration.bpmn.force_elasticsearch_timeseries to true
     workforce_insights:
+      ## readiness probes configuration
+      probes:
+        readiness:
+          ## Number of seconds after the Workforce Insights pod container starts before the readiness probe is initiated
+          initial_delay_seconds: 40
 
   ########################################################################
   ########  IBM FileNet Content Manager initialize configuration  ########

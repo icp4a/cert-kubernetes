@@ -16,10 +16,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.0
+    release: 25.0.1
     cp4ba.ibm.com/backup-type: mandatory
 spec:
-  appVersion: 25.0.0
+  appVersion: 25.0.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "true"
   license:
@@ -54,7 +54,7 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: "25.0.0-IF002"
+        tag: "25.0.1"
         pull_policy: IfNotPresent
         # The pull secret list
         # Examples:
@@ -64,7 +64,7 @@ spec:
         pull_secrets: []
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: "25.0.0-IF002"
+        tag: "25.0.1"
         pull_policy: IfNotPresent
         # The pull secret list
         # Examples:
@@ -76,6 +76,9 @@ spec:
     ## The platform to be deployed specified by the user.  Possible values are: OCP and other.  This is normally populated by the User script
     ## based on input from the user.
     sc_deployment_platform:
+
+    ## This optional parameter is used to enable/disable Openshift Authentication method.  By default, the Openshift authentication is disabled.  Set this parameter to "true" if you want to enable the Openshift authentication method.
+    sc_osauth_enabled: false
 
     ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
     sc_ingress_enable: false
@@ -115,6 +118,11 @@ spec:
     ## Set this flag to "true" if you plan to have restricted network policies in CP4BA namespaces so that the operators can create sample network policy templates for CP4BA components.
     ## Please refer to the CP4BA documentation for more information about how to retrieve and apply the sample network policy templates.
     sc_generate_sample_network_policies: false
+
+    ## Enables integration with Instana to collect application and infrastructure metrics for enhanced observability. 
+    ## This optional parameter controls the instana instrumentation. If the parameter is not defined, then the default value is "false".
+    ## Set this flag to "true" if you plan to enable instana monitoring for CP4BA application. 
+    sc_enable_instana_metric_collection: false
 
     ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
     ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
@@ -169,7 +177,7 @@ spec:
       ## The default repository is the IBM Entitled Registry.
       repository: cp.icr.io/cp/cp4a/baw/pfs-prod
       ## Process Federation Server image tag
-      tag: "25.0.0-IF002"
+      tag: "25.0.1"
       ## Process Federation Server image pull policy. This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
       # The pull secret list
@@ -364,7 +372,7 @@ spec:
     application_engine:
       workplace_image:
         repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
-        tag: "25.0.0-IF002"
+        tag: "25.0.1"
         pull_policy: IfNotPresent
         # The pull secret list
         # Examples:

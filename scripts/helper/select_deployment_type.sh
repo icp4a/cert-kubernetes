@@ -44,7 +44,13 @@ function select_deployment_type(){
         COLUMNS=12
         options=("Starter" "Production")
         if [ -z "$existing_deployment_type" ]; then
-            PS3='Enter a valid option [1 to 2]: '
+            if skip_edb_for_2501; then
+                info "Note: Please be aware that for this 25.0.1 GA Limited Support Release, Starter deployment is not supported. Starter deployment support will be available in the upcoming iFix and next release."
+                options=("Production")
+                PS3='Enter a valid option [1]: '
+            else
+                PS3='Enter a valid option [1 to 2]: '
+            fi
             select opt in "${options[@]}"
             do
                 case $opt in

@@ -1,0 +1,40 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2025. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+---
+
+- hosts: localhost
+  gather_facts: no
+
+  tasks:
+
+  - name: ocp login using creds
+    shell: oc login {{ ocp_url }} -u {{ ocp_username }} -p {{ ocp_password }} --insecure-skip-tls-verify=true
+    register: login_creds
+    when: (not ocp_token or ocp_token == '<required if user/password not available>')
+
+  - name: ocp login using token
+    shell: oc login --server={{ ocp_url }} --token={{ ocp_token }} --insecure-skip-tls-verify=true
+    register: login_token
+    when: (not ocp_username or ocp_username == '<required>' or not ocp_password or ocp_password == '<required>') 
+
+  - debug:
+      var: login_creds.stdout_lines
+    when: login_creds.stdout_lines is defined
+
+  - debug:
+      var: login_token.stdout_lines
+    when: login_token.stdout_lines is defined    
+
+  # Storage Validation Suite
+  - name: Storage Readiness
+    include_role:
+      name: storage-readiness
+    when: run_storage_readiness

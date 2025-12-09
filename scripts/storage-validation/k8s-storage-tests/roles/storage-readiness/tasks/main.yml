@@ -1,0 +1,128 @@
+- name: Create namespace {{ storage_validation_namespace }} if not present
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    state: present
+    name: "{{ storage_validation_namespace }}"
+     
+- name: Run simple mount test for {{ accessMode }}
+  include_tasks: mount-test.yaml 
+  vars:
+    accessMode: ReadWriteOnce
+
+- name: Run simple mount test for {{ accessMode }}
+  include_tasks: mount-test.yaml 
+  vars:
+    accessMode: ReadWriteMany
+
+- name: Run sequential RW tests for {{ accessMode }}
+  block:
+  - name: Run sequential RW tests for {{ accessMode }}
+    include_tasks: sequential-rw.yaml
+  rescue:
+    - debug:
+        msg: "Run sequential RW tests for {{ accessMode }} - FAILED"
+  vars:
+    accessMode: ReadWriteOnce
+
+- name: Run sequential RW tests for {{ accessMode }}
+  block:
+  - name: Run sequential RW tests for {{ accessMode }}
+    include_tasks: sequential-rw.yaml
+  rescue:
+    - debug:
+        msg: "Run sequential RW tests for {{ accessMode }} - FAILED"
+  vars:
+    accessMode: ReadWriteMany
+
+- name: Run parallel rw single thread tests 
+  block:
+  - name: Run parallel rw single thread tests  {{ accessMode }}
+    include_tasks: parallel-rw-single-thread.yaml 
+  rescue:
+    - debug:
+        msg: "Run parallel rw single thread tests for {{ accessMode }} - FAILED"
+  vars:
+    accessMode: ReadWriteOnce
+
+- name: Run parallel rw single thread tests 
+  block:
+  - name: Run parallel rw single thread tests for {{ accessMode }}
+    include_tasks: parallel-rw-single-thread.yaml 
+  rescue:
+    - debug:
+        msg: "Run parallel rw single thread tests  for {{ accessMode }} - FAILED"
+  vars:
+    accessMode: ReadWriteMany
+
+- name: Run parallel rw multi thread tests 
+  block:
+  - name: Run parallel rw multi thread tests for {{ accessMode }}
+    include_tasks: parallel-rw-multi-thread.yaml 
+  rescue:
+    - debug:
+        msg: "Run parallel rw multi thread tests {{ accessMode }} - FAILED"
+  vars:
+    accessMode: ReadWriteOnce
+
+- name: Run parallel rw multi thread tests 
+  block:
+  - name: Run parallel rw multi thread tests  for {{ accessMode }}
+    include_tasks: parallel-rw-multi-thread.yaml 
+  rescue:
+    - debug:
+        msg: "Run parallel rw multi thread tests for {{ accessMode }} - FAILED"
+  vars:
+    accessMode: ReadWriteMany
+
+- name: File UID permission tests {{ accessMode }}
+  block:
+  - name: File UID permission tests for {{ accessMode }}
+    include_tasks: file-uid-test.yaml 
+  rescue:
+    - debug:
+        msg: "File UID permission tests for {{ accessMode }} - FAILED"
+  vars:
+    accessMode: ReadWriteMany
+
+- name: SupplementalGroup GID permission tests {{ accessMode }}
+  block:
+  - name: SupplementalGroup GID permission tests for {{ accessMode }}
+    include_tasks: file-permissions-test.yaml 
+  rescue:
+    - debug:
+        msg: "SupplementalGroup GID permission tests for {{ accessMode }} - FAILED"
+  vars:
+    accessMode: ReadWriteMany
+
+- name: FSGroup GID permission tests {{ accessMode }}
+  block:
+  - name: FSGroup GID permission tests for {{ accessMode }}
+    include_tasks: file-permissions-test.yaml 
+  rescue:
+    - debug:
+        msg: "FSGroup GID permission tests for {{ accessMode }} - FAILED"
+  vars:
+    accessMode: ReadWriteOnce
+
+- name: Subpath tests {{ accessMode }}
+  block:
+  - name: Subpath tests {{ accessMode }}
+    include_tasks: volume-subpath-test.yaml 
+  rescue:
+    - debug:
+        msg: "Subpath tests for {{ accessMode }} - FAILED"
+  vars:
+    accessMode: ReadWriteMany
+
+- name: File locks tests {{ accessMode }}
+  block:
+  - name: File locks tests
+    include_tasks: file-lock-test.yaml 
+  rescue:
+    - debug:
+        msg: "File locks tests - FAILED"
+  vars:
+    accessMode: ReadWriteMany
+
+

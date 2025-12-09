@@ -1,0 +1,26 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2025. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+---
+# Run sysbench test
+- name:  Setup PVCs to run test on
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'common-objects.yaml.j2') }}"
+
+- name: Wait few seconds for the PVC 
+  pause:
+    seconds: 60
+
+- name: Create logs directory
+  ansible.builtin.file:
+    path: '{{ logfolder }}'
+    state: directory
+    mode: '0755'

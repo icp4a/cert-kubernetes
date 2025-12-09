@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ prefix }}-consumer-job-{{ accessMode|lower}}-{{ type }}"
+{% if accessMode == 'ReadWriteOnce' %}
+  labels:
+     test: samenode
+{% endif %}
+spec:
+  backoffLimit: {{ backoffLimit }}
+  template:
+    metadata:
+      name: consumer-job
+{% if accessMode == 'ReadWriteOnce' %}
+      labels:
+         test: samenode
+{% endif %}
+    spec:
+{% if accessMode == 'ReadWriteOnce' %}
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: test
+                operator: In
+                values:
+                - samenode
+            topologyKey: "kubernetes.io/hostname"
+{% endif %}
+      containers:
+      - name: consumer-job
+        image: "{{ docker_registry }}/centos/{{ arch }}"
+        imagePullPolicy: "IfNotPresent"
+        env:
+          - name: FILE_NAME
+            value: "/mnt/data/sample.txt"
+        command:
+        - "/bin/sh"
+        - "-ec"
+        - |
+          /tmp/consume.sh 
+        volumeMounts:
+        - name: tmp-store
+          mountPath: /mnt/data
+        - name: consume-conf 
+          mountPath: /tmp/consume.sh
+          subPath: consume.sh 
+      volumes:
+      - name: tmp-store
+        persistentVolumeClaim:
+          claimName: "{{ prefix }}-{{ accessMode|lower }}"
+      - name: consume-conf
+        configMap:
+          defaultMode: 0755
+          name: consumer-cm 
+      restartPolicy: Never

@@ -1,0 +1,31 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2025. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+---
+# Build CSV file
+- name: Create CSV file
+  ansible.builtin.script: jsontocsv.py "{{ logfolder }}"
+  args:
+    executable: python
+
+- name: Output node lists to CSV
+  shell: oc get nodes --show-labels | awk '{print $1","$2","$3","$4","$5","$6}' > nodes.csv
+
+- name: Output pod lists to CSV
+  shell: oc get pods -n {{ storage_perf_namespace }} -o wide | awk '{print $1","$2","$3","$4","$5","$6","$7}' > pods.csv
+
+- name: Output job lists to CSV
+  shell: oc get jobs -n {{ storage_perf_namespace }}  | awk '{print $1","$2","$3","$4}' > jobs.csv
+
+- name: Print to file
+  action: template src=../templates/dump.yml.j2 dest=params.log
+
+- name: Package storage-perf.tar
+  shell: tar -cf storage-perf.tar *.csv params.log

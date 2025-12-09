@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: producer-cm
+data:
+  produce.sh: |
+    echo "writing to file $FILE_NAME"
+    dd if=/dev/urandom of=$FILE_NAME bs=2M count=400 {{ options }}
+    md5sum $FILE_NAME > /mnt/data/producer.md5
+  produce-subpath.sh: |
+    echo "writing to file $FILE_NAME"
+    mkdir -p /mnt/data/$DIR_NAME
+    dd if=/dev/urandom of=/mnt/data/$DIR_NAME/$FILE_NAME bs=1M count=10 {{ options }}
+    md5sum /mnt/data/$DIR_NAME/$FILE_NAME > /mnt/data/$DIR_NAME/producer.md5
+  create-file-gid.sh: |
+    set -x
+    id
+    ls -la /home/cpuser/$FILE_NAME_GID
+    set -e
+    echo "copying to file $FILE_NAME_GID"
+    cp -p /home/cpuser/$FILE_NAME_GID /mnt/data/$FILE_NAME_GID
+    ls -la /mnt/data/$FILE_NAME_GID
+  file-lock.sh: |
+    set -ex
+    touch ${FILE_NAME}
+    lock="${FILE_NAME}"
+    exec 200>$lock
+    flock -n 200 || exit 1
+    echo "Lock acquired"
+    pid=$$
+    echo $pid 1>&200
+    sleep 60
+    echo "Lock released"
+  lock-file.c: |
+    #include <stdlib.h>
+    #include <fcntl.h>
+    #include <stdio.h>
+    #include <string.h>
+    #include <unistd.h>
+
+    int main (int argc, char* argv[])
+    {
+      char* file = argv[1];
+      int fd;
+      int exitcode;
+      struct flock lock;
+
+      printf ("opening %s\n", file);
+      /* Open a file descriptor to the file. */
+      fd = open (file, O_WRONLY);
+      printf ("locking\n");
+      /* Initialize the flock structure. */
+      memset (&lock, 0, sizeof(lock));
+      lock.l_type = F_WRLCK;
+      /* Place a write lock on the file. */
+      exitcode = fcntl (fd, F_SETLK, &lock);
+
+      if(exitcode == 0){
+        printf ("Acquired lock, retaining for a minute\n"); 
+        sleep(60);
+        printf ("unlocking\n");
+        /* Release the lock. */
+        lock.l_type = F_UNLCK;
+        fcntl (fd, F_SETLK, &lock);
+        close (fd);
+        return 0;
+      }
+      else{
+        printf ("Unable to acquire lock\n");
+        return (EXIT_FAILURE); 
+      }
+    }
+  lock-file.sh: |
+    set -ex
+    touch ${FILE_NAME}
+    gcc -o /tmp/lock-file /tmp/lock-file.c
+    /tmp/lock-file ${FILE_NAME}
+    ecode=$?
+    exit $ecode
+  file-create-uid.sh: |
+    set -ex
+    id
+    touch ${FILE_NAME}
+    ls -la ${FILE_NAME}
+    ls -la ${FILE_NAME} | awk '{ print $3 }'
+    ecode=$?
+    exit $ecode
+  file-create-uid-check-owner.sh: |
+    set -ex
+    uid=${UID}
+    touch ${FILE_NAME}
+    ls -la ${FILE_NAME}
+    file_uid=$(ls -la ${FILE_NAME} | awk '{ print $3 }')
+    if [ "$uid" != "$file_uid" ]
+    then
+      echo "File owner mismatch, expecting $uid, got $file_uid"
+      exit 1
+    else
+      echo "File owner matched"
+    fi
+    ecode=$?
+    exit $ecode
+

@@ -1,0 +1,38 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2025. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+
+# OCP Parameters
+ocp_url: https://<required>:6443
+ocp_username: <required>  # a cluster admin user
+ocp_password: <required>
+ocp_token: <required if user/password not available>
+
+run_storage_readiness: true
+
+############################ STORAGE VALIDATION PARAMETERS START ########################
+
+# REQUIRED PARAMETERS
+storageClass_ReadWriteOnce: <required> # eg "ocs-storagecluster-ceph-rbd"
+storageClass_ReadWriteMany: <required>  # eg "ocs-storagecluster-cephfs"
+storage_validation_namespace: <required>
+
+# OPTIONAL PARAMETERS
+prefix: "readiness"
+storageSize: "1Gi"
+options: ""
+backoffLimit: 5
+
+arch: amd64  # amd64, ppc64le
+
+docker_registry: "quay.io"
+
+############################ STORAGE VALIDATION PARAMETERS END ##########################
+

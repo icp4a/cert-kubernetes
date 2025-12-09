@@ -1,0 +1,38 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2025. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+---
+########################################################################################
+
+########################################################################################
+# Mount Test
+########################################################################################
+  
+- name: Test mount {{ accessMode }} volumes for {{ prefix }}
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+  loop:
+     - name: create-volume.yaml.j2
+     - name: mount-job.yaml.j2
+
+- name: Verify mount completed for {{ accessMode }}
+  kubernetes.core.k8s_info:
+    name: "{{ prefix }}-mount-job-{{ accessMode|lower}}"
+    namespace: "{{ storage_validation_namespace }}"
+    kind: Job
+  register: job_status
+  until: job_status.resources[0].status.succeeded is defined and job_status.resources[0].status.succeeded == 1
+  retries: 20
+  delay: 10
+
+- debug: 
+    msg: "######################## MOUNT TESTS PASSED FOR {{ accessMode }} Volume  #################################"

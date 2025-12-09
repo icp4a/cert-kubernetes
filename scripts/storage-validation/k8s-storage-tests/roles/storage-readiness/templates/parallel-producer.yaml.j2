@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ prefix }}-producer-job-{{ accessMode|lower}}-{{ type }}"
+  labels:
+     job: producer
+spec:
+  parallelism: {{ threads|int }}   
+  completions: {{ threads|int }}
+  template:
+    metadata:
+       labels:
+         job: producer
+    spec:
+      affinity:
+{% if accessMode == 'ReadWriteMany' %}
+        podAntiAffinity:
+{% else %}
+        podAffinity:
+{% endif %}
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: job
+                operator: In
+                values:
+                - producer
+            topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: producer-job
+        image: "{{ docker_registry }}/centos/{{ arch }}"
+        imagePullPolicy: "IfNotPresent"
+        env:
+          - name: FILE_NAME
+            value: "/mnt/data/sample.txt"
+        command:
+        - "/bin/sh"
+        - "-ec"
+        - |
+          /tmp/produce.sh 
+        volumeMounts:
+        - name: tmp-store
+          mountPath: /mnt/data
+        - name: produce-conf 
+          mountPath: /tmp/produce.sh
+          subPath: produce.sh 
+      volumes:
+      - name: tmp-store
+        persistentVolumeClaim:
+          claimName: "{{ prefix }}-{{ accessMode|lower }}"
+      - name: produce-conf
+        configMap:
+          defaultMode: 0755
+          name: producer-cm 
+      restartPolicy: Never

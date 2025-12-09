@@ -1,0 +1,22 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2025. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+# REQUIRED PARAMETERS
+storageClass_ReadWriteOnce: <required> # eg "ocs-storagecluster-ceph-rbd"
+storageClass_ReadWriteMany: <required> # eg "ocs-storagecluster-cephfs"
+namespace: <required>
+
+# OPTIONAL
+prefix: "readiness"
+storageSize: "1Gi"
+options: ""
+backoffLimit: 5
+
+run_storage_readiness: true

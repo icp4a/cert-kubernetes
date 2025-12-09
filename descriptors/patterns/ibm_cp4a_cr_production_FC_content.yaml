@@ -17,13 +17,13 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.0
+    release: 25.0.1
     cp4ba.ibm.com/backup-type: mandatory
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 25.0.0
+  appVersion: 25.0.1
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -87,7 +87,7 @@ spec:
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
     ## The optional components are: Content Manager Image Services (cmis), css (Content Search Services), es (External Share), tm (Task Manager),
-    ##                              IBM Enterprise Records (ier), IBM Content Collector for SAP (iccsap).
+    ## IBM Enterprise Records (ier) IBM Content Collector for SAP (iccsap).
     ## NOTE: ier, and iccsap does NOT support integration with ums.
     ## NOTE: es does not work when using Zen and IAM for authentication.
     sc_optional_components:
@@ -109,13 +109,22 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/common/dba-keytool-initcontainer
-        tag: "25.0.0-IF002"
+        tag: "25.0.1"
 
     ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
     ## based on input from the user.
     sc_deployment_platform:
 
+    ## This optional parameter is used to enable/disable Openshift Authentication method.  By default, the Openshift authentication is disabled.  Set this parameter to "true" if you want to enable the Openshift authentication method.
+    sc_osauth_enabled: false
+
+    ## Enables integration with Instana to collect application and infrastructure metrics for enhanced observability. 
+    ## This optional parameter controls the instana instrumentation. If the parameter is not defined, then the default value is "false".
+    ## Set this flag to "true" if you plan to enable instana monitoring for CP4BA application. 
+    sc_enable_instana_metric_collection: false
+
     ## Staring with CP4BA 25.0.0, the operators are no longer creating network policies automatically due to a change in the security requirements where the permissions to create network policies have been removed.
+
     ## The optional parameter to enable/disable the creation of sample network policy templates for CP4BA components.  If the parameter is not defined, then the default value is "false".
     ## Set this flag to "true" if you plan to have restricted network policies in CP4BA namespaces so that the operators can create sample network policy templates for CP4BA components.
     ## Please refer to the CP4BA documentation for more information about how to retrieve and apply the sample network policy templates.
@@ -128,7 +137,7 @@ spec:
     sc_ingress_tls_secret_name: <Required>
 
     ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <route-name>-{{meta.namespace}}.<router-canonical-hostname> when not defined.
-    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.0?topic=scp-shared-configuration
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.1?topic=scp-shared-configuration
     ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
     #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
 
@@ -923,7 +932,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "25.0.0-IF002"
+        tag: "25.0.1"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -965,6 +974,24 @@ spec:
         min_replicas: "<Required>"
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: "<Required>"
+        ## Set this parameter (in percentage) if you want HPA  scales a deployment based on the average memory utilization 
+        target_memory_utilization_percentage: "<Required>"
+        ## Define scaleup/scaledown sections to control how fast and how often scaling happens. 
+        ## These sections are optional; if they are not defined, the default values are set.
+        scaleup:  # policy is Pod
+          # the maximum number of pods that the HPA is allowed to add during each periodSeconds interval, default value is 1
+          policies_pods_value: "<Optional>" 
+          # defines how often the HPA can apply a scaling action, default value is 180 (seconds)
+          policies_pods_period_seconds: "<Optional>" 
+          # cooldown window before applying scaleUp action, default value is 60 (seconds)
+          stabilization_window_seconds: "<Optional>"
+        scaledown:
+          # the maximum number of pods that the HPA is allowed to remove during each periodSeconds interval, default value is 1
+          policies_pods_value: "<Optional>"
+          # defines how often the HPA can apply a scaling action, default value is 180 (seconds)
+          policies_pods_period_seconds: "<Optional>"
+          # cooldown window before applying scaleDown action, default value is 300 (seconds)
+          stabilization_window_seconds: "<Optional>"
 
       ## Below are the default CPE Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       cpe_production_setting:
@@ -1086,7 +1113,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/fncm/cpe-audit-log
-          tag: "25.0.0-IF002"
+          tag: "25.0.1"
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
         initresources:
@@ -1115,6 +1142,24 @@ spec:
           min_replicas: "<Required>"
           ## This is the default cpu percentage before autoscaling occurs.
           target_cpu_utilization_percentage: "<Required>"
+          ## Set this parameter (in percentage) if you want HPA  scales a deployment based on the average memory utilization 
+          target_memory_utilization_percentage: "<Required>"
+          ## Define scaleup/scaledown sections to control how fast and how often scaling happens. 
+          ## These sections are optional; if they are not defined, the default values are set.
+          scaleup:  # policy is Pod
+            # the maximum number of pods that the HPA is allowed to add during each periodSeconds interval, default value is 1
+            policies_pods_value: "<Optional>" 
+            # defines how often the HPA can apply a scaling action, default value is 180 (seconds)
+            policies_pods_period_seconds: "<Optional>" 
+            # cooldown window before applying scaleUp action, default value is 60 (seconds)
+            stabilization_window_seconds: "<Optional>"
+          scaledown:
+            # the maximum number of pods that the HPA is allowed to remove during each periodSeconds interval, default value is 1
+            policies_pods_value: "<Optional>"
+            # defines how often the HPA can apply a scaling action, default value is 180 (seconds)
+            policies_pods_period_seconds: "<Optional>"
+            # cooldown window before applying scaleDown action, default value is 300 (seconds)
+            stabilization_window_seconds: "<Optional>"
         node_affinity:
           #-------------------------------------
           # custom_node_selector_match_expression will be added in node selector match expressions.
@@ -1168,7 +1213,7 @@ spec:
       #     pull_policy: IfNotPresent
       #     ## The default repository is the IBM Entitled Registry.
       #     repository: cp.icr.io/cp/cp4a/fncm/lscollector
-      #     tag: "25.0.0-IF002"
+      #     tag: "25.0.1"
       #   ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
       #   ## If more resources are needed, make the changes here to meet your requirement.
       #   resources:
@@ -1209,7 +1254,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "25.0.0-IF002"
+        tag: "25.0.1"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1234,6 +1279,16 @@ spec:
       css_production_setting:
         ## The maximum percentage of available memory to use.
         jvm_max_heap_percentage: 50
+
+        ## Use this "jvm_customize_options" parameter to specify JVM arguments using comma separation. For example, if you want to set the following JVM arguments:
+        ##  -Dmy.test.jvm.arg1=123
+        ##  -Dmy.test.jvm.arg2=abc
+        ##  -XX:+SomeJVMSettings
+        ##  -XshowSettings:vm"
+        ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
+        ## If your JVM option contains comma then you have to include 'DELIM=;' to use a different separator, for example jvm_customize_options="DELIM=;-Dmy.test.jvm.arg1=123;-Dcom.filenet.authentication.wsi.AuthTokenOrder=oauth,oidc,ltpa". Semicolon can be replaced with any other char.
+        ## If your JVM option contains double quotes then you need to escape it like this: jvm_customize_options="-Dsettings.navigator.default=logging.level={\"_value\":\"4\",\"_mergeOption\":\"replace\"}"
+        jvm_customize_options:
 
         # The license must be set to "accept" in order for the component to install.  This is the default value.
         license: accept
@@ -1306,7 +1361,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "25.0.0-IF002"
+        tag: "25.0.1"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1327,6 +1382,13 @@ spec:
           memory: 1536Mi
           ephemeral_storage: 1Gi
 
+      ## Rolling update settings for CMIS deployment.
+      ## By default, maxUnavailable is set to '25%' and maxSurge is set '1'. You can override these values by specifying max_unavailable and max_surge below. 
+      ## The values can be defined as either a percentage (e.g., '25%') or an absolute number (e.g., 1).
+      rolling_update:
+        max_unavailable: '25%'
+        max_surge: '1'
+
       ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
       ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
       auto_scaling:
@@ -1335,6 +1397,24 @@ spec:
         min_replicas: "<Required>"
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: "<Required>"
+        ## Set this parameter (in percentage) if you want HPA  scales a deployment based on the average memory utilization 
+        target_memory_utilization_percentage: "<Required>"
+        ## Define scaleup/scaledown sections to control how fast and how often scaling happens. 
+        ## These sections are optional; if they are not defined, the default values are set.
+        scaleup:  # policy is Pod
+          # the maximum number of pods that the HPA is allowed to add during each periodSeconds interval, default value is 1
+          policies_pods_value: "<Optional>" 
+          # defines how often the HPA can apply a scaling action, default value is 15 (seconds)
+          policies_pods_period_seconds: "<Optional>" 
+          # cooldown window before applying scaleUp action, default value is 30 (seconds)
+          stabilization_window_seconds: "<Optional>"
+        scaledown:
+          # the maximum number of pods that the HPA is allowed to remove during each periodSeconds interval, default value is 1
+          policies_pods_value: "<Optional>"
+          # defines how often the HPA can apply a scaling action, default value is 15 (seconds)
+          policies_pods_period_seconds: "<Optional>"
+          # cooldown window before applying scaleDown action, default value is 300 (seconds)
+          stabilization_window_seconds: "<Optional>"
 
       ## Below are the default CMIS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       cmis_production_setting:
@@ -1480,7 +1560,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "25.0.0-IF002"
+        tag: "25.0.1"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1501,6 +1581,13 @@ spec:
           memory: 1536Mi
           ephemeral_storage: 1Gi
 
+      ## Rolling update settings for Graphql deployment.
+      ## By default, maxUnavailable is set to '25%' and maxSurge is set '1'. You can override these values by specifying max_unavailable and max_surge below. 
+      ## The values can be defined as either a percentage (e.g., '25%') or an absolute number (e.g., 1).
+      rolling_update:
+        max_unavailable: '25%'
+        max_surge: '1'
+
       ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
       ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
       auto_scaling:
@@ -1509,6 +1596,24 @@ spec:
         min_replicas: "<Required>"
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: "<Required>"
+        ## Set this parameter (in percentage) if you want HPA  scales a deployment based on the average memory utilization 
+        target_memory_utilization_percentage: "<Required>"
+        ## Define scaleup/scaledown sections to control how fast and how often scaling happens. 
+        ## These sections are optional; if they are not defined, the default values are set.
+        scaleup:  # policy is Pod
+          # the maximum number of pods that the HPA is allowed to add during each periodSeconds interval, default value is 1
+          policies_pods_value: "<Optional>" 
+          # defines how often the HPA can apply a scaling action, default value is 15 (seconds)
+          policies_pods_period_seconds: "<Optional>" 
+          # cooldown window before applying scaleUp action, default value is 30 (seconds)
+          stabilization_window_seconds: "<Optional>"
+        scaledown:
+          # the maximum number of pods that the HPA is allowed to remove during each periodSeconds interval, default value is 1
+          policies_pods_value: "<Optional>"
+          # defines how often the HPA can apply a scaling action, default value is 15 (seconds)
+          policies_pods_period_seconds: "<Optional>"
+          # cooldown window before applying scaleDown action, default value is 300 (seconds)
+          stabilization_window_seconds: "<Optional>"
 
       ## Below are the default CMIS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       graphql_production_setting:
@@ -1600,7 +1705,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "25.0.0-IF002"
+        tag: "25.0.1"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1625,6 +1730,24 @@ spec:
         min_replicas: "<Required>"
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: "<Required>"
+        ## Set this parameter (in percentage) if you want HPA  scales a deployment based on the average memory utilization 
+        target_memory_utilization_percentage: "<Required>"
+        ## Define scaleup/scaledown sections to control how fast and how often scaling happens. 
+        ## These sections are optional; if they are not defined, the default values are set.
+        scaleup:  # policy is Pod
+          # the maximum number of pods that the HPA is allowed to add during each periodSeconds interval, default value is 1
+          policies_pods_value: "<Optional>" 
+          # defines how often the HPA can apply a scaling action, default value is 15 (seconds)
+          policies_pods_period_seconds: "<Optional>" 
+          # cooldown window before applying scaleUp action, default value is 30 (seconds)
+          stabilization_window_seconds: "<Optional>"
+        scaledown:
+          # the maximum number of pods that the HPA is allowed to remove during each periodSeconds interval, default value is 1
+          policies_pods_value: "<Optional>"
+          # defines how often the HPA can apply a scaling action, default value is 15 (seconds)
+          policies_pods_period_seconds: "<Optional>"
+          # cooldown window before applying scaleDown action, default value is 300 (seconds)
+          stabilization_window_seconds: "<Optional>"
 
       ## Below are the default External Share Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       es_production_setting:
@@ -1708,7 +1831,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "25.0.0-IF002"
+        tag: "25.0.1"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1725,6 +1848,14 @@ spec:
           memory: 1536Mi
           ephemeral_storage: 1Gi
 
+      ## Rolling update settings for Task Manager deployment.
+      ## By default, maxUnavailable is set to '25%' and maxSurge is set '1'. You can override these values by specifying max_unavailable and max_surge below. 
+      ## The values can be defined as either a percentage (e.g., '25%') or an absolute number (e.g., 1).
+      rolling_update:
+        max_unavailable: '25%'
+        max_surge: '1'
+
+
       ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
       ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
       auto_scaling:
@@ -1733,6 +1864,24 @@ spec:
         min_replicas: "<Required>"
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: "<Required>"
+        ## Set this parameter (in percentage) if you want HPA  scales a deployment based on the average memory utilization 
+        target_memory_utilization_percentage: "<Required>"
+        ## Define scaleup/scaledown sections to control how fast and how often scaling happens. 
+        ## These sections are optional; if they are not defined, the default values are set.
+        scaleup:  # policy is Pod
+          # the maximum number of pods that the HPA is allowed to add during each periodSeconds interval, default value is 1
+          policies_pods_value: "<Optional>" 
+          # defines how often the HPA can apply a scaling action, default value is 15 (seconds)
+          policies_pods_period_seconds: "<Optional>" 
+          # cooldown window before applying scaleUp action, default value is 30 (seconds)
+          stabilization_window_seconds: "<Optional>"
+        scaledown:
+          # the maximum number of pods that the HPA is allowed to remove during each periodSeconds interval, default value is 1
+          policies_pods_value: "<Optional>"
+          # defines how often the HPA can apply a scaling action, default value is 15 (seconds)
+          policies_pods_period_seconds: "<Optional>"
+          # cooldown window before applying scaleDown action, default value is 300 (seconds)
+          stabilization_window_seconds: "<Optional>"
 
       ## Below are the default TM Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       tm_production_setting:
@@ -1834,7 +1983,7 @@ spec:
     #    pull_policy: IfNotPresent
     #    ## The default repository is the IBM Entitled Registry.
     #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-    #    tag: "25.0.0-IF002"
+    #    tag: "25.0.1"
     #   #  ## Below are the default LSReporter Production settings.
     #  ## Make the necessary changes as you see fit.
     #  product_settings:
@@ -1935,7 +2084,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "25.0.0-IF002"
+      tag: "25.0.1"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -1956,6 +2105,13 @@ spec:
         memory: 3072Mi
         ephemeral_storage: 2.5Gi
 
+    ## Rolling update settings for Navigator deployment.
+    ## By default, maxUnavailable is set to '25%' and maxSurge is set '1'. You can override these values by specifying max_unavailable and max_surge below. 
+    ## The values can be defined as either a percentage (e.g., '25%') or an absolute number (e.g., 1).
+    rolling_update:
+      max_unavailable: '25%'
+      max_surge: '1'
+
     ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
     ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
     auto_scaling:
@@ -1964,6 +2120,24 @@ spec:
       min_replicas: "<Required>"
       ## This is the default cpu percentage before autoscaling occurs.
       target_cpu_utilization_percentage: "<Required>"
+      ## Set this parameter (in percentage) if you want HPA  scales a deployment based on the average memory utilization 
+      target_memory_utilization_percentage: "<Required>"
+      ## Define scaleup/scaledown sections to control how fast and how often scaling happens. 
+      ## These sections are optional; if they are not defined, the default values are set.
+      scaleup:  # policy is Pod
+        # the maximum number of pods that the HPA is allowed to add during each periodSeconds interval, default value is 1
+        policies_pods_value: "<Optional>" 
+        # defines how often the HPA can apply a scaling action, default value is 15 (seconds)
+        policies_pods_period_seconds: "<Optional>" 
+        # cooldown window before applying scaleUp action, default value is 30 (seconds)
+        stabilization_window_seconds: "<Optional>"
+      scaledown:
+        # the maximum number of pods that the HPA is allowed to remove during each periodSeconds interval, default value is 1
+        policies_pods_value: "<Optional>"
+        # defines how often the HPA can apply a scaling action, default value is 15 (seconds)
+        policies_pods_period_seconds: "<Optional>"
+        # cooldown window before applying scaleDown action, default value is 300 (seconds)
+        stabilization_window_seconds: "<Optional>"
 
     ## send email
     java_mail:
@@ -2334,7 +2508,7 @@ spec:
 
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: "25.0.0-IF002"
+        tag: "25.0.1"
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -2439,6 +2613,9 @@ spec:
  ########################################################################
   iccsap_configuration:
 
+    ## DBACLD-149270 - Multi ICCSAP instance update
+    instances_to_deploy: ""
+
     ## ICCSAP secret that contains the password to be used for the generation of Keystore and Truststore files
     iccsap_secret_name: "ibm-iccsap-secret"
 
@@ -2454,7 +2631,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: "25.0.0-IF002"
+      tag: "25.0.1"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent

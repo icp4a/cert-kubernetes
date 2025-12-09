@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ prefix }}-file-uid-job-{{ accessMode|lower}}-{{ type }}"
+  labels:
+     name: file-uid-job
+spec:
+  template:
+    metadata:
+      name: file-uid-job
+      labels:
+         name: file-uid-job
+    spec:
+      containers:
+      - name: producer-job
+        image: "{{ docker_registry }}/ibm-cp4d-public/storage-util:1.0-{{ arch }}"
+        imagePullPolicy: "IfNotPresent"
+        env:
+          - name: FILE_NAME
+            value: "/mnt/data/file-uid.txt"
+        command:
+        - "/bin/sh"
+        - "-ec"
+        - |
+          /tmp/file-create-uid.sh
+        volumeMounts:
+        - name: tmp-store
+          mountPath: /mnt/data
+        - name: produce-conf 
+          mountPath: /tmp/file-create-uid.sh
+          subPath: file-create-uid.sh
+      volumes:
+      - name: tmp-store
+        persistentVolumeClaim:
+          claimName: "{{ prefix }}-{{ accessMode|lower }}"
+      - name: produce-conf
+        configMap:
+          defaultMode: 0755
+          name: producer-cm 
+      restartPolicy: Never

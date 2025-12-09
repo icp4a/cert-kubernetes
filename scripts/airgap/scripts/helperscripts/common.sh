@@ -15,7 +15,7 @@
 
 # Release/Patch version for CP4BA
 # CP4BA_RELEASE_BASE is for fetch content/foundation operator pod, only need to change for major release.
-CP4BA_RELEASE_BASE="25.0.0"
+CP4BA_RELEASE_BASE="25.0.1"
 #set of filters that can be used while mirroring images
 AUTOMATION_DECISION_SERVICES="ibmcp4baProd,ibmcp4baADSImages,ibmcp4baBANImages,ibmcp4baBASImages,ibmcp4baAAEImages,ibmEdbStandard"
 AUTOMATION_DOCUMENT_PROCESSING="ibmcp4baProd,ibmcp4baADPImages,ibmcp4baFNCMImages,ibmcp4baBANImages,ibmcp4baBASImages,ibmcp4baAAEImages,ibmEdbStandard"

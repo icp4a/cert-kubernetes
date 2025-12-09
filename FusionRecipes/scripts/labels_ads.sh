@@ -1,3 +1,4 @@
+
 oc label secret htpass-secret custom-label=htpass-secret  -n openshift-config 
 oc label configmap cp4ba-fips-status custom-label=cp4ba
 oc label secret ibm-entitlement-key custom-label=cp4ba-ibm-entitlement-key 

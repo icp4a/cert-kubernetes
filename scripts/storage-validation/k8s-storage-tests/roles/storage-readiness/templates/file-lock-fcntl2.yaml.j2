@@ -1,0 +1,54 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ prefix }}-file-lock-fcntl-job-{{ type }}"
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      name: file-lock-job
+    spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: job-name
+                operator: In
+                values:
+                - "{{ prefix }}-file-lock-fcntl-job-create-lock"
+            topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: file-lock-job
+        image: "{{ docker_registry }}/ibm-cp4d-public/storage-gcc:1.0-{{ arch }}"
+        imagePullPolicy: "IfNotPresent"
+        env:
+          - name: FILE_NAME
+            value: "/mnt/data/file-lock-fcntl.dat"
+        command:
+        - "/bin/sh"
+        - "-ec"
+        - |
+          /tmp/lock-file.sh
+        volumeMounts:
+        - name: tmp-store
+          mountPath: /mnt/data
+        - name: produce-conf-run 
+          mountPath: /tmp/lock-file.sh
+          subPath: lock-file.sh 
+        - name: produce-conf 
+          mountPath: /tmp/lock-file.c
+          subPath: lock-file.c 
+      volumes:
+      - name: tmp-store
+        persistentVolumeClaim:
+          claimName: "{{ prefix }}-{{ accessMode|lower }}"
+      - name: produce-conf-run
+        configMap:
+          defaultMode: 0755
+          name: producer-cm 
+      - name: produce-conf
+        configMap:
+          defaultMode: 0755
+          name: producer-cm 
+      restartPolicy: Never

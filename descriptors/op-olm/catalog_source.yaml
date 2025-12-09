@@ -8,7 +8,7 @@
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
 #
 ###############################################################################
-# CP4BA 25.0.0-IF002 catalog
+# CP4BA 25.0.1 catalog
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
@@ -18,7 +18,7 @@ spec:
   displayName: ibm-cp4a-operator
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-cp-automation-catalog@sha256:ee6eae0a51506fd1f8ba4d975a3d607271f472961cbeb3c7249dea5b974d5843
+  image: icr.io/cpopen/ibm-cp-automation-catalog@sha256:da89949ca1de850635d3d17da93467a49966dd0c93ac617b37de88e1049302b8
   grpcPodConfig:
     securityContextConfig: restricted
 ---
@@ -38,7 +38,7 @@ spec:
   grpcPodConfig:
     securityContextConfig: restricted
 ---
-# IBM CS Opensearch Operator Catalog 1.1.2452
+# IBM CS Opensearch Operator Catalog 1.1.4005
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
@@ -48,35 +48,35 @@ spec:
   displayName: IBM CS Opencontent Opensearch Catalog
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/opencontent-ibm-opensearch-operator-catalog@sha256:6fbe960c6a5168c54632e771960da89d45cfedafc0498c768c7747d11161a979
+  image: icr.io/cpopen/opencontent-ibm-opensearch-operator-catalog@sha256:7ff897a206d020b973949df4176be388f5d19a27595937e3a43ec34a9f78711e
   priority: 100
   grpcPodConfig:
     securityContextConfig: restricted
 ---
-# IBM Certificate Manager 4.2.17
+# IBM Certificate Manager 4.2.18
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
   name: ibm-cert-manager-catalog
   namespace: openshift-marketplace
 spec:
-  displayName: ibm-cert-manager-4.2.17
+  displayName: ibm-cert-manager-4.2.18
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-cert-manager-operator-catalog@sha256:10c775e414d55e992b076d28638e83de432302067f3a5ce4a1f7d4b173b41341
+  image: icr.io/cpopen/ibm-cert-manager-operator-catalog@sha256:78e1242e197ed1a2db82ea29887ff85b77ce39d15868fd26505fcfe7db0c3bba
   grpcPodConfig:
     securityContextConfig: restricted
 ---
-# IBM License Manager 4.2.17
+# IBM License Manager 4.2.18
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
   name: ibm-licensing-catalog
   namespace: openshift-marketplace
 spec:
-  displayName: ibm-licensing-4.2.17
+  displayName: ibm-licensing-4.2.18
   publisher: IBM
-  image: icr.io/cpopen/ibm-licensing-catalog@sha256:f557775e3872dd3ced9a23e5bf0763b1effb9b0184ff966bd2e96ab075d63a0a
+  image: icr.io/cpopen/ibm-licensing-catalog@sha256:42e8f5a12742742c1967568d497ff1c93aa7a78a3a7ad414da011d0c1eedb19a
   sourceType: grpc
   grpcPodConfig:
     securityContextConfig: restricted
@@ -94,7 +94,7 @@ spec:
   publisher: IBM
   sourceType: grpc
   image: icr.io/cpopen/ibm-cs-install-catalog@sha256:5cc26a852fcb17f407e922175437494538934c7615001b49bec69a723a164c52
-  priority: 100
+  priority: 100   
   grpcPodConfig:
     securityContextConfig: restricted
 ---
@@ -162,23 +162,6 @@ spec:
   publisher: IBM
   sourceType: grpc
   image: icr.io/cpopen/ibm-events-operator-catalog@sha256:228ea92d69daa2350e151d1fe6b14e6fb56eadd0d3b5b5872178180747297687
-  priority: 100
-  grpcPodConfig:
-    securityContextConfig: restricted
----
-# Cloud Native PostgresSQL Version 1.25.3 (CASE 5.22.0+20251001.142254.2660)(Postgresql Image Version 14.19)
-apiVersion: operators.coreos.com/v1alpha1
-kind: CatalogSource
-metadata:
-  name: cloud-native-postgresql-catalog
-  namespace: openshift-marketplace
-  annotations:
-    bedrock_catalogsource_priority: '1'
-spec:
-  displayName: Cloud Native Postgresql Catalog
-  publisher: IBM
-  sourceType: grpc
-  image: icr.io/cpopen/ibm-cpd-cloud-native-postgresql-operator-catalog@sha256:a333a9dc5f8c81aed7201a574f784a85b68ea55d8a45af235956aac1406009e4
   priority: 100
   grpcPodConfig:
     securityContextConfig: restricted

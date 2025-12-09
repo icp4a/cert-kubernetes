@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba-content
     app.kubernetes.io/managed-by: ibm-dba-content
     app.kubernetes.io/name: ibm-dba-content
-    release: 25.0.0
+    release: 25.0.1
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

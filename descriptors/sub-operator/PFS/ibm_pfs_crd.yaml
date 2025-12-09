@@ -18,7 +18,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.0
+    release: 25.0.1
   name: processfederationservers.icp4a.ibm.com
 spec:
   group: icp4a.ibm.com
@@ -1538,7 +1538,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.0
+    release: 25.0.1
   name: federatedsystems.icp4a.ibm.com
 spec:
   group: icp4a.ibm.com

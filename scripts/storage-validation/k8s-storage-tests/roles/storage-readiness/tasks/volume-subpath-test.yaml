@@ -1,0 +1,48 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2025. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+---
+########################################################################################
+
+- name: Test mount {{ accessMode }} volumes for {{ prefix }}
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+  loop:
+     - name: create-volume.yaml.j2
+
+- name: Set config maps
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+  loop:
+     - name: producer-cm.yaml.j2
+     - name: consumer-cm.yaml.j2
+
+- name: Subpath tests for {{ accessMode }} volumes for {{ prefix }}
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+    wait: yes
+    wait_timeout: 180
+    wait_condition:
+      type: Complete
+      status: "True"
+  loop:
+     - name: producer-subpath.yaml.j2
+     - name: consumer-subpath.yaml.j2
+  vars:
+    type: sequential
+
+- debug:
+    msg: "######################## SUB PATH TEST PASSED FOR {{ accessMode }} Volume #################################"

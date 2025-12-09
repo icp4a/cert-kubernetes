@@ -1,4 +1,3 @@
-
 #!/bin/bash 
 
 oc label secret htpass-secret custom-label=cp4ba  -n openshift-config 

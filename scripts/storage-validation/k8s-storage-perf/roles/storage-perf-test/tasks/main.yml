@@ -1,0 +1,40 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2025. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+---
+
+# tasks file for roles/storage-perf-test
+- import_tasks: sysbench_test_prep.yml
+
+- import_tasks: sysbench_random_read_rwo.yml
+  when: sysbench_random_read == true
+
+- import_tasks: sysbench_random_write_rwo.yml
+  when: sysbench_random_write == true
+
+- import_tasks: sysbench_sequential_read_rwo.yml
+  when: sysbench_sequential_read == true
+
+- import_tasks: sysbench_sequential_write_rwo.yml
+  when: sysbench_sequential_write == true
+
+- import_tasks: sysbench_random_read_rwx.yml
+  when: sysbench_random_read == true
+
+- import_tasks: sysbench_random_write_rwx.yml
+  when: sysbench_random_write == true
+
+- import_tasks: sysbench_sequential_read_rwx.yml
+  when: sysbench_sequential_read == true
+
+- import_tasks: sysbench_sequential_write_rwx.yml
+  when: sysbench_sequential_write == true
+
+- import_tasks: sysbench_build_csv.yml

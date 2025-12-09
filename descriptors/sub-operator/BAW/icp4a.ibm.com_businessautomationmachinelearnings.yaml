@@ -17,7 +17,7 @@ metadata:
     app.kubernetes.io/name: ibm-dba-workflowruntime
     app.kubernetes.io/instance: ibm-dba-workflowruntime
     app.kubernetes.io/managed-by: ibm-dba-workflowruntime
-    release: 25.0.0
+    release: 25.0.1
 spec:
   group: icp4a.ibm.com
   names:

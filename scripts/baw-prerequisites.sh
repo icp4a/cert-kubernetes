@@ -129,8 +129,8 @@ LICENSE_PRODUCTION="production"
 PURCHASED_PRODUCT_BAW="BAW"
 PURCHASED_PRODUCT_CP4A="CP4A"
 
-LICENSE_BAW_URL="https://www.ibm.com/support/customer/csol/terms/?id=L-FWZS-PUAT9S"
-LICENSE_CP4A_URL="https://www.ibm.com/support/customer/csol/terms/?id=L-LDYZ-7V4YJ4"
+LICENSE_BAW_URL="https://www.ibm.com/support/customer/csol/terms/?id=L-BKWX-VWBQKW"
+LICENSE_CP4A_URL="https://www.ibm.com/support/customer/csol/terms/?id=L-PXVP-93U8VP"
 
 function show_help() {     
     echo -e "\nUsage: baw-prerequisites.sh -m [modetype]\n"     
@@ -1339,13 +1339,20 @@ element_val.DATABASE_SERVERNAME=\"\"\\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
             echo "${AD_LDAP_PROPERTY[i]}=\"\"" >> ${LDAP_PROPERTY_FILE}
             echo "" >> ${LDAP_PROPERTY_FILE}
         done
-    else
+    elif [[ $LDAP_TYPE == "TDS" ]]; then
         ${SED_COMMAND} "s|LDAP_TYPE=\"\"|LDAP_TYPE=\"IBM Security Directory Server\"|g" ${LDAP_PROPERTY_FILE}
         for i in "${!TDS_LDAP_PROPERTY[@]}"; do
             echo "${COMMENTS_TDS_LDAP_PROPERTY[i]}" >> ${LDAP_PROPERTY_FILE}
             echo "${TDS_LDAP_PROPERTY[i]}=\"\"" >> ${LDAP_PROPERTY_FILE}
             echo "" >> ${LDAP_PROPERTY_FILE}
         done
+    else
+            ${SED_COMMAND} "s|LDAP_TYPE=\"\"|LDAP_TYPE=\"PingDirectory Server\"|g" ${LDAP_PROPERTY_FILE}
+            for i in "${!PDS_LDAP_PROPERTY[@]}"; do
+                echo "${COMMENTS_PDS_LDAP_PROPERTY[i]}" >> ${LDAP_PROPERTY_FILE}
+                echo "${PDS_LDAP_PROPERTY[i]}=\"\"" >> ${LDAP_PROPERTY_FILE}
+                echo "" >> ${LDAP_PROPERTY_FILE}
+            done
     fi
     # Set default value
     ${SED_COMMAND} "s|LDAP_SSL_ENABLED=\"\"|LDAP_SSL_ENABLED=\"True\"|g" ${LDAP_PROPERTY_FILE}
@@ -1375,12 +1382,19 @@ element_val.DATABASE_SERVERNAME=\"\"\\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
                 echo "${AD_LDAP_PROPERTY[i]}=\"\"" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
                 echo "" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
             done
-        else
+       elif [[ $LDAP_TYPE == "TDS" ]]; then
             # ${SED_COMMAND} "s|LDAP_TYPE=\"\"|LDAP_TYPE=\"IBM Security Directory Server\"|g" ${EXTERNAL_LDAP_PROPERTY_FILE}
             for i in "${!TDS_LDAP_PROPERTY[@]}"; do
                 echo "${COMMENTS_TDS_LDAP_PROPERTY[i]}" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
                 echo "${TDS_LDAP_PROPERTY[i]}=\"\"" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
                 echo "" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
+            done
+        else
+            ${SED_COMMAND} "s|LDAP_TYPE=\"\"|LDAP_TYPE=\"PingDirectory Server\"|g" ${LDAP_PROPERTY_FILE}
+            for i in "${!PDS_LDAP_PROPERTY[@]}"; do
+                echo "${COMMENTS_PDS_LDAP_PROPERTY[i]}" >> ${LDAP_PROPERTY_FILE}
+                echo "${PDS_LDAP_PROPERTY[i]}=\"\"" >> ${LDAP_PROPERTY_FILE}
+                echo "" >> ${LDAP_PROPERTY_FILE}
             done
         fi
         # set default vaule
@@ -2204,8 +2218,8 @@ function select_ldap_type(){
     printf "\n"
     COLUMNS=12
     echo -e "\x1B[1mWhat is the LDAP type that is used for this deployment? \x1B[0m"
-    options=("Microsoft Active Directory" "IBM Tivoli Directory Server / Security Directory Server")
-    PS3='Enter a valid option [1 to 2]: '
+    options=("Microsoft Active Directory" "IBM Tivoli Directory Server / Security Directory Server" "PingDirectory Server")
+    PS3='Enter a valid option [1 to 3]: '
     select opt in "${options[@]}"
     do
         case $opt in
@@ -2216,6 +2230,11 @@ function select_ldap_type(){
                 ;;
             "IBM Tivoli"*)
                 LDAP_TYPE="TDS"
+                local tmp_ldap_type=$opt
+                break
+                ;;
+            "PingDirectory Server")
+                LDAP_TYPE="PDS"
                 local tmp_ldap_type=$opt
                 break
                 ;;

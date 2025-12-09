@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ prefix }}-mount-job-{{ accessMode|lower}}"
+spec:
+  template:
+    metadata:
+      name: mount-job
+    spec:
+      containers:
+      - name: mount-job
+        image: "{{ docker_registry }}/centos/{{ arch }}"
+        imagePullPolicy: "IfNotPresent"
+        command: ["sh"]
+        args:
+          - '-c'
+          - 'echo "volume mounted";echo "writing data" > /mnt/data/{{ prefix }}'
+        volumeMounts:
+        - name: tmp-store
+          mountPath: /mnt/data
+      volumes:
+      - name: tmp-store
+        persistentVolumeClaim:
+          claimName: "{{ prefix }}-{{ accessMode|lower }}"
+      restartPolicy: Never
+

@@ -1,0 +1,39 @@
+{% import 'commonhelper.macros.j2' as cm with context %}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sysbench-sequential-write-rwx
+  namespace: "{{ storage_perf_namespace }}"
+spec:
+  template:
+    metadata:
+      name: sysbench-sequential-write-rwx
+    spec:
+      {{ cm.nodeAffinity() | indent(6) }}
+      containers:
+      - name: sysbench-sequential-write-rwx
+        image: {{ imageurl }}-{{ arch }}
+        command: ["python3"]
+        args:
+          - '/tmp/sysbench.py'
+          - '{{ swrite_threads }}'
+          - '{{ swrite_fileTotalSize }}'
+          - '{{ swrite_fileNum }}'
+          - 'seqwr'
+          - '{{ swrite_fileBlockSize }}'
+          - 'async'
+          - '0'
+          - '{{ file_extra_flags }}'
+          - '{{ cluster_infrastructure }}'
+          - '{{ cluster_name }}'
+          - '{{ storage_type }}'
+          - 'pvc-sysbench-rwx'
+        volumeMounts:
+        - name: tmp-store
+          mountPath: /tmp/data
+      volumes:
+      - name: tmp-store
+        persistentVolumeClaim:
+          claimName: pvc-sysbench-rwx
+          readOnly: false
+      restartPolicy: Never

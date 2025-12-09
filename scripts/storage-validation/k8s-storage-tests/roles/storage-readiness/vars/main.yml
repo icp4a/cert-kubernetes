@@ -1,0 +1,32 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2025. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+---
+# vars file for roles/storage-perf-test
+imageurl: docker.io/akinf3mi/xsysbench:v0.3
+
+#sysbench oc rwx idle 
+sysbench: false
+idle_storageclass: ocs-storagecluster-cephfs
+idle_accessMode: ReadWriteMany
+idle_storageSize: 10Gi
+
+#sysbench oc rwx random read
+sysbench_random_read_4k: true
+rread4k_storageclass: portworx-shared-gp3
+rread4k_accessMode: ReadWriteOnce
+rread4k_storageSize: 30Gi
+threads: 16
+fileTotalSize: 128m
+fileTestMode: rndrd
+fileBlockSize: 4k
+fileIoMode: async
+fileFsyncFreq: 0
+fileExtraFlags: dsync

@@ -1,0 +1,52 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2025. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+---
+
+- hosts: localhost
+  gather_facts: no
+
+  tasks:
+
+  - name: ocp login using creds
+    shell: oc login {{ ocp_url }} -u {{ ocp_username }} -p {{ ocp_password }} --insecure-skip-tls-verify=true
+    register: login_creds
+    when: (not ocp_token or ocp_token == '<required if user/password not available>') and
+          (not ocp_apikey or ocp_apikey == '<required if neither user/password or token not available>')
+
+  - name: ocp login using token
+    shell: oc login --server={{ ocp_url }} --token={{ ocp_token }} --insecure-skip-tls-verify=true
+    register: login_token
+    when: (not ocp_username or ocp_username == '<required>' or not ocp_password or ocp_password == '<required>') and
+          (not ocp_apikey or ocp_apikey == '<required if neither user/password or token not available>')
+
+  - name: ocp login using apikey
+    shell: oc login --server={{ ocp_url }} -u apikey -p {{ ocp_apikey }} --insecure-skip-tls-verify=true
+    register: login_apikey
+    when: (not ocp_username or ocp_username == '<required>' or not ocp_password or ocp_password == '<required>') and
+          (not ocp_token or ocp_token == '<required if user/password not available>')
+    
+  - debug:
+      var: login_creds.stdout_lines
+    when: login_creds.stdout_lines is defined
+
+  - debug:
+      var: login_token.stdout_lines
+    when: login_token.stdout_lines is defined    
+
+  - debug:
+      var: login_apikey.stdout_lines
+    when: login_apikey.stdout_lines is defined
+    
+  # Storage Performance Collection Suite
+  - name: Storage Performance
+    include_role:
+      name: storage-perf-test
+    when: run_storage_perf

@@ -1,0 +1,42 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2025. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+---
+# Run sysbench test
+- name: Run sysbench sequential read rwo test
+  block:
+    - name:  Run sysbench sequential read rwo test
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('template', 'sysbench_sequential_read_rwo.yaml.j2') }}"
+        wait: yes
+        wait_timeout: 7200
+        wait_condition:
+          type: Complete
+          status: "True"
+
+    - name: Get logs of the sysbench sequential read pod for RWO
+      kubernetes.core.k8s_log:
+        namespace: "{{ storage_perf_namespace }}"
+        label_selectors:
+        - job-name=sysbench-sequential-read-rwo
+      register: logo
+
+    - name: Save Log to local file
+      local_action: 
+        module: copy 
+        content: "{{ logo }}"
+        dest: "{{ logfolder }}/sequential_read_rwo.json"
+
+  rescue:
+    - debug:
+        msg: 
+         - "Run sysbench random write RWO test failed or timed out after 2 hours." 
+         - "Please check your openshift storage configuration. This is likely due to poor I/O."

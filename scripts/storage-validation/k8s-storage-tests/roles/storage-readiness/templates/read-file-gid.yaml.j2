@@ -1,0 +1,63 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ prefix }}-read-file-job-{{ accessMode|lower}}-{{ type }}"
+  labels:
+     job: file-permission
+spec:
+  template:
+    metadata:
+       labels:
+         job: file-permission
+    spec:
+      containers:
+      - name: read-file-job
+        image: "{{ docker_registry }}/centos/{{ arch }}"
+        imagePullPolicy: "Always"
+        env:
+          - name: FILE_NAME_GID
+{% if test_supplemental_group is defined %}
+            value: "sgtest.txt"
+{% else %}
+            value: "gidtest.txt"
+{% endif %}
+          - name: TEST_UID
+            value: "{{ test_uid }}"
+          - name: TEST_GID
+{% if test_supplemental_group is defined %}
+            value: "{{ test_supplemental_group }}"
+{% else %}
+            value: "{{ test_gid }}"
+{% endif %}
+        command:
+        - "/bin/sh"
+        - "-ec"
+        - |
+          /tmp/read-file.sh 
+        volumeMounts:
+        - name: tmp-store
+          mountPath: /mnt/data
+        - name: consumer-conf 
+          mountPath: /tmp/read-file.sh
+          subPath: read-file.sh
+      securityContext:
+        runAsUser: {{ target_uid_reader }}
+{% if test_supplemental_group is defined and accessMode=='ReadWriteMany' %}
+        supplementalGroups: [{{ test_supplemental_group }}]
+{% elif test_supplemental_group is defined and accessMode=='ReadWriteOnce' %}
+        fsGroup: {{ test_supplemental_group }}
+{% else %}
+        runAsGroup: {{ test_gid }}
+{% endif %}
+{% if test_supplemental_group is defined and accessMode=='ReadWriteOnce' %}
+      serviceAccountName: fsgroup-sa
+{% endif %}
+      volumes:
+      - name: tmp-store
+        persistentVolumeClaim:
+          claimName: "{{ prefix }}-{{ accessMode|lower }}"
+      - name: consumer-conf
+        configMap:
+          defaultMode: 0755
+          name: consumer-cm 
+      restartPolicy: Never

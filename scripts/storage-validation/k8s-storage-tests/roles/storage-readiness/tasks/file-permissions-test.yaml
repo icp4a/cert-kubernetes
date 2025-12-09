@@ -1,0 +1,98 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2025. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+---
+########################################################################################
+
+- name: Test mount {{ accessMode }} volumes for {{ prefix }}
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+  loop:
+     - name: create-volume.yaml.j2
+
+- name: Set config maps
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+  loop:
+     - name: producer-cm.yaml.j2
+     - name: consumer-cm.yaml.j2
+
+- name: Get first uid from project range
+  shell: oc get -o=jsonpath="{..openshift\.io/sa\.scc\.uid-range}" project {{ storage_validation_namespace }} | cut -d '/' -f 1
+  register: target_uid_output
+
+- name: Set target uid to set for the reader job to be different than the writer
+  set_fact:
+    target_uid_reader: "{{ target_uid_output.stdout|int + 100 }}"  
+
+- debug:
+    msg: "The target_uid_reader is {{ target_uid_reader }}"
+  when: target_uid_reader is defined
+
+- name: set up scc and sa for fsgroup test
+  block:
+    - name: create custom scc
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('template', 'fsgroup-scc.yaml.j2') | from_yaml }}"
+    - name: create custom sa
+      shell: oc create sa fsgroup-sa -n {{ storage_validation_namespace }}
+    - name: add scc to custom sa
+      shell: oc adm policy add-scc-to-user zz-fsgroup-scc system:serviceaccount:{{ storage_validation_namespace }}:fsgroup-sa  
+  rescue:
+    - debug:
+        msg: "set up scc and sa for fsgroup test failed"
+  when: accessMode == 'ReadWriteOnce'
+
+- name: File Permissions GID test for {{ accessMode }} volumes for {{ prefix }}
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+    wait: yes
+    wait_timeout: 180
+    wait_condition:
+      type: Complete
+      status: "True"
+  loop:
+     - name: create-file-gid.yaml.j2
+     - name: read-file-gid.yaml.j2
+     - name: edit-file-gid.yaml.j2
+  vars:
+    test_uid: 1000321000
+    test_gid: 1000321000
+    type: gid
+
+- name: File Permissions Supplemental Group test for {{ accessMode }} volumes for {{ prefix }}
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ storage_validation_namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+    wait: yes
+    wait_timeout: 180
+    wait_condition:
+      type: Complete
+      status: "True"
+  loop:
+     - name: create-file-gid.yaml.j2
+     - name: read-file-gid.yaml.j2
+     - name: edit-file-gid.yaml.j2
+  vars:
+    test_uid: 1000321000
+    test_gid: 1000321000
+    test_supplemental_group: 3000
+    type: sg
+
+- debug:
+    msg: "######################## FILE PERMISSIONS TEST PASSED FOR {{ accessMode }} Volume #################################"

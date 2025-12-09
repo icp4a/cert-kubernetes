@@ -332,8 +332,8 @@ CP4BA_RESOURCES=(
 	"secret"
 	"kafkatopics.ibmevents.ibm.com"
 	"endpoints"
+ 	"secretproviderclass.secrets-store.csi.x-k8s.io"
 )
-
 if [[ "$SEPARATION_DUTY" == "true" ]]; then
 	# Seperation of Duty
 	INFO "Resources in CP4BA Operators Namespace: ${CP4BA_OPERATORS_NAMESPACE}"
