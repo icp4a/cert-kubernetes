@@ -131,7 +131,7 @@ spec:
   grpcPodConfig:
     securityContextConfig: restricted
 ---
-# IBM Zen Operator Catalog 6.2.2+20251007.000309.45
+# IBM Zen Operator Catalog 6.2.2+20251021.102826.45
 # we only update the catalog name when the channel is changed.
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
