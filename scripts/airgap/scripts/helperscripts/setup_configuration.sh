@@ -41,7 +41,7 @@ configure_ibm_pak_cli(){
     echo "$repo_config"
 
     # Check if the required URL is present
-    if ! echo "$repo_config" | grep -q "oci:cp.icr.io/cpopen"; then
+    if ! echo "$repo_config" | grep -q "* oci:cp.icr.io/cpopen"; then
         info "oci:cp.icr.io/cpopen is NOT present in the CASE Repo URL."
         info "Configuring oci:cp.icr.io/cpopen with ibm-pak CLI tool...\n"
         if ! output=$(oc ibm-pak config repo 'IBM Cloud-Pak OCI registry' -r oci:cp.icr.io/cpopen --enable); then
