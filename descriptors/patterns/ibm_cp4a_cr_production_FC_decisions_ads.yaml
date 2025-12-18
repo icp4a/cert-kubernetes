@@ -274,7 +274,7 @@ spec:
     rr_integration:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
 
       resources:
         requests:
@@ -304,7 +304,7 @@ spec:
     rest_api:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-restapi
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
       replica_count: 1
 
       resources:
@@ -320,7 +320,7 @@ spec:
     credentials_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-credentials
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
       replica_count: 1
 
       resources:
@@ -334,7 +334,7 @@ spec:
     git_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
       replica_count: 1
 
       resources:
@@ -348,7 +348,7 @@ spec:
     parsing_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-parsing
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
       replica_count: 1
 
       resources:
@@ -368,7 +368,7 @@ spec:
     run_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-run
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
       replica_count: 1
 
       resources:
@@ -388,7 +388,7 @@ spec:
     decision_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
       replica_count: 1
 
       # Whether the decision runtime should include an exception stack trace when an incident occurs.

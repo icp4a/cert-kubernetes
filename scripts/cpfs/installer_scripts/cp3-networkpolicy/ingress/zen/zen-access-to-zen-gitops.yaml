@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: access-to-zen-gitops
+  namespace: "zenNamespace"
+  labels:
+    component: cpfs3
+    service: zen
+spec:
+  podSelector:
+    matchLabels:
+      component: "zen-gitops"
+  policyTypes:
+  - Ingress
+  ingress:
+  - {}

@@ -225,7 +225,7 @@ while true; do
 	break
 	;;
 	"n"|"no")
-		info "There is only one CP4BA deployment, CustomResourceDefinitions will be cleaned up."
+		info "Since there is only one CP4BA deployment, the script will also clean up CustomResourceDefinitions (CRD)."
 		CLEAN_CRDS="true"
 	break
 	;;
@@ -275,6 +275,39 @@ function delete_specific_resource() {
            info "${RESOURCE_NAME} ${OBJECT_NAME} is still found.  Removing finalizer..."
            ${CLI_CMD} patch "${RESOURCE_NAME}"/"${OBJECT_NAME}" -n "${NAMESPACE_NAME}" -p '{"metadata":{"finalizers":[]}}' --type=merge
         fi
+    fi
+}
+
+# Function to check if webhook belongs to the operators namespace being cleaned
+function webhook_belongs_to_namespace() {
+    local webhook_name=$1
+    local webhook_type=$2
+
+    # Get all service namespaces referenced by this webhook
+    local namespaces=$(${CLI_CMD} get ${webhook_type} ${webhook_name} \
+        -o jsonpath='{.webhooks[*].clientConfig.service.namespace}' 2>/dev/null)
+
+    # Check if the operators namespace we're cleaning is in the webhook's namespace list
+    if echo "$namespaces" | grep -qw "${CP4BA_OPERATORS_NAMESPACE}"; then
+        return 0  # Webhook points to our operators namespace
+    else
+        return 1  # Webhook points to different namespace
+    fi
+}
+
+# Function to delete subscription and its CSV
+function delete_subscription_and_csv() {
+    local subName=$1
+    local csvName
+
+    csvName=$(${CLI_CMD} get subscription "$subName" -n "${CP4BA_OPERATORS_NAMESPACE}" -o=jsonpath='{.status.installedCSV}' 2>/dev/null)
+
+    if [ -n "$csvName" ]; then
+        INFO "Removing subscription: $subName in namespace: ${CP4BA_OPERATORS_NAMESPACE}"
+        ${CLI_CMD} delete subscription "$subName" -n "${CP4BA_OPERATORS_NAMESPACE}" --ignore-not-found=true 2>/dev/null || true
+
+        INFO "Removing CSV: $csvName in namespace: ${CP4BA_OPERATORS_NAMESPACE}"
+        ${CLI_CMD} delete clusterserviceversion "$csvName" -n "${CP4BA_OPERATORS_NAMESPACE}" --ignore-not-found=true 2>/dev/null || true
     fi
 }
 
@@ -372,6 +405,29 @@ else
 	done
 
 fi
+	
+# Define CP4BA webhook patterns
+INFO "GET CP4BA webhook"
+CP4BA_WEBHOOK_PATTERNS_VALIDATING="validationwebhook.flink.ibm.com|vbusinessteamsservice|vwfpsruntime"
+CP4BA_WEBHOOK_PATTERNS_MUTATING="mutationwebhook.flink.ibm.com"
+
+webhook_configs=$(${CLI_CMD} get ValidatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers 2>/dev/null | grep -E "$CP4BA_WEBHOOK_PATTERNS_VALIDATING" || true)
+for webhook in $webhook_configs; do
+	[ -n "$webhook" ] || continue
+	# Only list webhooks that point to the namespace being cleaned
+	if webhook_belongs_to_namespace "$webhook" "ValidatingWebhookConfiguration"; then
+		echo -e "ValidatingWebhookConfiguration/${webhook}"
+	fi
+done
+
+webhook_configs=$(${CLI_CMD} get MutatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers 2>/dev/null | grep -E "$CP4BA_WEBHOOK_PATTERNS_MUTATING" || true)
+for webhook in $webhook_configs; do
+	[ -n "$webhook" ] || continue
+	# Only list webhooks that point to the namespace being cleaned
+	if webhook_belongs_to_namespace "$webhook" "MutatingWebhookConfiguration"; then
+		echo -e "MutatingWebhookConfiguration/${webhook}"
+	fi
+done
 
 # CPFS Resource
 CPFS_RESOURCES=(
@@ -421,7 +477,7 @@ if [[ $CLEAN_CPFS == "true" ]]; then
 	fi
 
 	#Get webhook
-	INFO "Webhook"
+	INFO "Common service Webhook"
 	pattern2="ibm-cs-ns-mapping-webhook-configuration"
 	pattern3="ibm-common-service-validating-webhook"
 	pattern4="namespace-admission-config"
@@ -524,6 +580,44 @@ if [[ $SKIP_CONFIRM == "false" ]]; then
 	sleep 2
 	echo
 fi
+
+INFO "Delete all CSV and Subscriptions to prevent webhook recreation"
+# Delete all subscriptions and their CSVs in operator namespace
+${CLI_CMD} get subscription.operators.coreos.com -n "${CP4BA_OPERATORS_NAMESPACE}" -o=jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null | while read -r subName; do
+    if [ -n "$subName" ]; then
+        delete_subscription_and_csv "$subName"
+    fi
+done
+
+INFO "Wait 5 seconds for operators to be fully removed"
+sleep 5
+
+INFO "Delete CP4BA webhooks that point to operators namespace: ${CP4BA_OPERATORS_NAMESPACE}"
+
+# Delete Validating webhooks that point to operators namespace
+webhook_configs=$(${CLI_CMD} get ValidatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers 2>/dev/null | grep -E "$CP4BA_WEBHOOK_PATTERNS_VALIDATING" || true)
+for webhook in $webhook_configs; do
+    [ -n "$webhook" ] || continue
+
+    # Check if this webhook points to the operators namespace
+    if webhook_belongs_to_namespace "$webhook" "ValidatingWebhookConfiguration"; then
+        INFO "Deleting ValidatingWebhookConfiguration: $webhook points to ${CP4BA_OPERATORS_NAMESPACE}"
+        ${CLI_CMD} delete ValidatingWebhookConfiguration "$webhook" --ignore-not-found=true || true
+    fi
+done
+
+# Delete Mutating webhooks that point to operators namespace
+webhook_configs=$(${CLI_CMD} get MutatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers 2>/dev/null | grep -E "$CP4BA_WEBHOOK_PATTERNS_MUTATING" || true)
+for webhook in $webhook_configs; do
+    [ -n "$webhook" ] || continue
+
+    # Check if this webhook points to the operators namespace
+    if webhook_belongs_to_namespace "$webhook" "MutatingWebhookConfiguration"; then
+        INFO "Deleting MutatingWebhookConfiguration: $webhook points to ${CP4BA_OPERATORS_NAMESPACE}"
+        ${CLI_CMD} delete MutatingWebhookConfiguration "$webhook" --ignore-not-found=true || true
+    fi
+done
+sleep 5
 
 # CP4BA clean up
 if [[ "$SEPARATION_DUTY" == "true" ]]; then

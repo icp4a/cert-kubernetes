@@ -1341,60 +1341,10 @@ function validate_utility_tool_for_validation(){
             esac
         done
     fi
-    which java &>/dev/null
-    if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate java. You must install it to run this script.\x1B[0m" && \
-        while true; do
-            printf "\x1B[1mDo you want install the IBM JRE by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
-            read -rp "" ans
-            case "$ans" in
-            "y"|"Y"|"yes"|"Yes"|"YES")
-                install_ibm_jre
-                break
-                ;;
-            "n"|"N"|"no"|"No"|"NO")
-                info "Must install the IBM JRE or other JRE to continue the next validation"
-                exit 1
-                ;;
-            *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
-                ;;
-            esac
-        done
-    else
-        java -version &>/dev/null
-        if [[ $? -ne 0 ]]; then
-            echo -e  "\x1B[1;31mUnable to locate a Java Runtime. You must install JRE to run this script.\x1B[0m" && \
-            while true; do
-                printf "\x1B[1mDo you want install the IBM JRE by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
-                read -rp "" ans
-                case "$ans" in
-                "y"|"Y"|"yes"|"Yes"|"YES")
-                    install_ibm_jre
-                    break
-                    ;;
-                "n"|"N"|"no"|"No"|"NO")
-                    info "Must install the IBM JRE or other JRE to continue next validation"
-                    exit 1
-                    ;;
-                *)
-                    echo -e "Answer must be \"Yes\" or \"No\"\n"
-                    ;;
-                esac
-            done    
-        fi
-    fi
-    which keytool &>/dev/null
-    if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate keytool. You must add it in \"\$PATH\" to run this script.\x1B[0m" && \
-        exit 1
-    else
-        keytool -help &>/dev/null
-        if [[ $? -ne 0 ]]; then
-            echo -e  "\x1B[1;31mUnable to locate keytool. You must install the IBM JRE or other JRE and add keytool in \"\$PATH\" to run this script\x1B[0m" && \
-            exit 1     
-        fi
-    fi
+    # DBACLD-198782: Check if Java is installed and meets the minimum version requirement
+    # Priority: --java-path > JAVA_HOME > system PATH
+    JAVA_PATH="${CUSTOM_JAVA_PATH:-$JAVA_HOME}"
+    validate_java_runtime "$JAVA_PATH"
 
     which openssl &>/dev/null
     if [[ $? -ne 0 ]]; then
@@ -1420,7 +1370,7 @@ function validate_utility_tool_for_validation(){
 }
 
 function show_help() {
-    echo -e "\nUsage: case-migrate-cp4a-prerequisites.sh -m [modetype]\n"
+    echo -e "\nUsage: case-migrate-cp4a-prerequisites.sh -m [modetype] [-j java_path]\n"
     echo "Options:"
     echo "  -h  Display help"
     echo "  -m  The valid mode types are: [property], [generate], or [validate]"
@@ -1429,6 +1379,7 @@ function show_help() {
     echo "      STEP3: Run the script in [generate] mode. Generates the DB SQL statement files and YAML templates for the secrets based on the values in the property files."
     echo "      STEP4: Create the databases and secrets by using the modified DB SQL statement files and YAML templates for the secrets."
     echo "      STEP5: Run the script in [validate] mode. Checks whether the databases and the secrets are created before you install CP4BA."
+    echo "  -j Optional: Specify a custom Java (JRE) path to use for Java validation (must be Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher)"
 }
 
 ################################################
@@ -1445,7 +1396,7 @@ then
     show_help
     exit -1
 else
-    while getopts "h?i:p:n:t:a:m:" opt; do
+    while getopts "h?i:p:n:t:a:m:j:" opt; do
         case "$opt" in
         h|\?)
             show_help
@@ -1458,6 +1409,8 @@ else
                 msg "Use a valid value: -m [property] or [generate] or [validate]"
                 exit -1
             fi
+            ;;
+        j)  CUSTOM_JAVA_PATH=$OPTARG
             ;;
         :)  echo "Invalid option: -$OPTARG requires an argument"
             show_help

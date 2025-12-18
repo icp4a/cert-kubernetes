@@ -3,6 +3,7 @@ kind: NetworkPolicy
 metadata:
   labels:
     component: cpfs3
+    service: cs
   name: access-to-ibm-common-service-operator
   namespace: "opNamespace"
 spec:

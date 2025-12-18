@@ -5,6 +5,7 @@ metadata:
   namespace: "certNamespace"
   labels:
     component: cpfs3
+    service: ibm-cert-manager
 spec:
   egress:
     - ports:

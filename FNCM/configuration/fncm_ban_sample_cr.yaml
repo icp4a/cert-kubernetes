@@ -195,7 +195,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -259,7 +259,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -276,6 +276,7 @@ spec:
       ## CSS Production setting
       css_production_setting:
         jvm_max_heap_percentage: 50
+        jvm_customize_options: ""
         license: accept
       monitor_enabled: false
       logging_enabled: false
@@ -310,7 +311,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -388,7 +389,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
         pull_policy: IfNotPresent
       ## resource
       resources:
@@ -446,7 +447,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
         pull_policy: IfNotPresent
       ## resource
       resources:
@@ -508,7 +509,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
         pull_policy: IfNotPresent
      ## LOGGING FOR WORKLOADS
       log:
@@ -577,7 +578,7 @@ spec:
     # run_as_user: 1000110001
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "25.0.0-IF002"
+      tag: "25.0.0-IF003"
       pull_policy: IfNotPresent
       arbitrary_uid_enabled: true
     ## Logging for workloads

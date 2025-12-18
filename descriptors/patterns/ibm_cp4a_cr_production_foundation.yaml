@@ -168,6 +168,9 @@ spec:
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
     sc_is_multiple_az: false
 
+    ## The global flag to enable or disable Pod Disruption Budget (PDB) creation across all components. Default is true
+    sc_enable_pdb: true
+
   ## The beginning section of LDAP configuration for CP4A
   ldap_configuration:
     ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory" or "PingDirectory Server"
@@ -450,6 +453,20 @@ spec:
         #-----------------------------------------------------------------------
         enable_ssl: true
         db_cert_secret_name: <Required>
+
+    ## PodDisruptionBudget (PDB) configuration for BAStudio
+    ## This configuration is optional and allows fine-grained control over PDB settings
+    ## If not specified, PDB will be created based on the global sc_enable_pdb flag with automatic min_available calculation
+    ## Both sc_enable_pdb (global) and pod_disruption_budget.enabled (component-level) must be true for PDB to be created
+    pod_disruption_budget:
+      ## Enable or disable PDB for this component. Default is true when sc_enable_pdb is true
+      enabled: true
+      ## Specify either min_available OR max_unavailable, not both
+      ## min_available: Minimum number of pods that must remain available during disruptions
+      min_available: 1
+      ## max_unavailable: Maximum number of pods that can be unavailable during disruptions
+      # max_unavailable: 1
+
       #-----------------------------------------------------------------------
       # If you want better HA experience.
       # - Set the session.use_external_store to true

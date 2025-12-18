@@ -3,6 +3,7 @@ kind: NetworkPolicy
 metadata:
   labels:
     component: cpfs3
+    service: keycloak
   name: egress-cs-keycloak
   namespace: "csNamespace"
 spec:

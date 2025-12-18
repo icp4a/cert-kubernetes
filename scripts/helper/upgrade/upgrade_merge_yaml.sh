@@ -104,7 +104,7 @@ get_pvc_size_from_cluster() {
     pvc_name=$1
     project_namespace=$2
     DEFAULT_SIZE="1Gi"
-    size=$(kubectl get pvc "$pvc_name" -n $project_namespace -o=jsonpath='{.spec.resources.requests.storage}' 2>/dev/null)
+    size=$(${CLI_CMD} get pvc "$pvc_name" -n $project_namespace -o=jsonpath='{.spec.resources.requests.storage}' 2>/dev/null)
 
     # If the PVC doesn't exist or kubectl fails, return the default size
     if [ -z "$size" ]; then
@@ -239,7 +239,7 @@ function dryrun(){
     FILE=$1
     projectname=$2
     # Run kubectl apply with dry-run
-    output=$(kubectl apply -f "$FILE" --dry-run=server 2>&1)
+    output=$(${CLI_CMD} apply -f "$FILE" --dry-run=server 2>&1)
     exit_code=$?
     info "Validating the CP4BA Custom Resource file by executing a dry run..."
     printf "\n"
@@ -695,7 +695,7 @@ function upgrade_deployment(){
                 #Validate the CR by performing a dry run
                 dryrun $UPGRADE_DEPLOYMENT_CONTENT_CR_TMP $deployment_project_name
                 #applying the latest tmp CR so that we can update the kubectl.kubernetes.io/last-applied-configuration section to include any potential user edits
-                kubectl apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
+                ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
 
                 # replace release/appVersion
                 ${SED_COMMAND} "s|release: .*|release: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
@@ -860,8 +860,8 @@ function upgrade_deployment(){
                     ${CLI_CMD} patch content $content_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/verify_configuration"}]' >/dev/null 2>&1
 
                     info "Applying the custom resource ${UPGRADE_DEPLOYMENT_CONTENT_CR}"
-                    kubectl annotate content $content_cr_name kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name >/dev/null 2>&1
-                    kubectl apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR} -n $deployment_project_name >/dev/null 2>&1
+                    ${CLI_CMD} annotate content $content_cr_name kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name >/dev/null 2>&1
+                    ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR} -n $deployment_project_name >/dev/null 2>&1
 
                     if [ $? -ne 0 ]; then
                         fail "Failed to update IBM CP4BA Content Custom Resource."
@@ -950,7 +950,7 @@ function upgrade_deployment(){
             ${YQ_CMD} -i 'del(.metadata.uid)' "${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}"
 
             # Scale up wfps operator deployment to enable webhook for CR validation
-            kubectl scale --replicas=1 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
+            ${CLI_CMD} scale --replicas=1 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
             wait_for_pod $operator_project_name ibm-cp4a-wfps-operator
             #Validate the CR by performing a dry run
             #additional sleep time added so that we can make sure that the wfps operator is completely ready prior to applying new CR
@@ -958,9 +958,9 @@ function upgrade_deployment(){
             sleep 25
             dryrun $UPGRADE_DEPLOYMENT_WFPS_CR_TMP $deployment_project_name
             #applying the latest tmp CR so that we can update the kubectl.kubernetes.io/last-applied-configuration section to include any potential user edits
-            kubectl apply -f ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
+            ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
             # Scale down wfps operator deployment again
-            kubectl scale --replicas=0 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
+            ${CLI_CMD} scale --replicas=0 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
 
             # replace release/appVersion
             # ${SED_COMMAND} "s|release: .*|release: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_PFS_CR_TMP}
@@ -1014,10 +1014,10 @@ function upgrade_deployment(){
                     printf "\n"
                     warning "Timeout waiting for IBM CP4BA Workflow Process Service operator to start"
                     echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
-                    echo "oc describe pod $(oc get pod -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
+                    echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
                     printf "\n"
                     echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
-                    echo "oc describe rs $(oc get rs -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
+                    echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
                     printf "\n"
                     exit 1
                     else
@@ -1046,7 +1046,7 @@ function upgrade_deployment(){
 
 
             info "Apply the new version ($CP4BA_RELEASE_BASE) of IBM CP4BA Workflow Process Service custom resource"
-            kubectl apply -f ${UPGRADE_DEPLOYMENT_WFPS_CR} -n $deployment_project_name >/dev/null 2>&1
+            ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_WFPS_CR} -n $deployment_project_name >/dev/null 2>&1
             if [ $? -ne 0 ]; then
                 fail "IBM CP4BA Workflow Process Service custom resource update failed"
                 exit 1
@@ -1112,7 +1112,7 @@ function upgrade_deployment(){
         #Validate the CR by performing a dry run
         dryrun $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP $deployment_project_name
         #applying the latest tmp CR so that we can update the kubectl.kubernetes.io/last-applied-configuration section to include any potential user edits
-        kubectl apply -f ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
+        ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
 
         # replace release/appVersion
         ${SED_COMMAND} "s|release: .*|release: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
@@ -2064,9 +2064,9 @@ function upgrade_deployment(){
             ${CLI_CMD} patch icp4acluster $icp4acluster_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/verify_configuration"}]' >/dev/null 2>&1
 
             info "Applying the custom resource ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}"
-            kubectl annotate icp4acluster $icp4acluster_cr_name kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name >/dev/null 2>&1
+            ${CLI_CMD} annotate icp4acluster $icp4acluster_cr_name kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name >/dev/null 2>&1
             #Apply CR to new configuration from the CR file to the cluster, updating the ICP4ACluster resource as per the new specifications
-            kubectl apply -f ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR} -n $deployment_project_name >/dev/null 2>&1
+            ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR} -n $deployment_project_name >/dev/null 2>&1
 
             # Check if above kubectl apply command was successful
             if [ $? -ne 0 ]; then

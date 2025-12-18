@@ -21,6 +21,8 @@ set -o errtrace
 OUTPUT_FILE="env-oadp.properties"
 WRITE="false"
 RESTORE_SINGLETONS="false"
+BACKUP_CLU_USERNAME="kubeadmin"
+RESTORE_CLU_USERNAME="kubeadmin"
 DEBUG=1
 
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
@@ -35,9 +37,9 @@ function main() {
         check_for_oadp
     fi
     if [[ $SETUP_RESTORE == "true" ]] && [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
-        login $RESTORE_CLU_SERVER $RESTORE_CLU_TOKEN
+        login $RESTORE_CLU_SERVER $RESTORE_CLU_USERNAME $RESTORE_CLU_PASSWORD
         check_for_oadp
-        login $BACKUP_CLU_SERVER $BACKUP_CLU_TOKEN
+        login $BACKUP_CLU_SERVER $BACKUP_CLU_USERNAME $BACKUP_CLU_PASSWORD
     else
         check_for_oadp
     fi
@@ -48,7 +50,7 @@ function main() {
     fi
     if [[ $RESTORE == "true" ]]; then
         if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
-            login $RESTORE_CLU_SERVER $RESTORE_CLU_TOKEN
+            login $RESTORE_CLU_SERVER $RESTORE_CLU_USERNAME $RESTORE_CLU_PASSWORD
             if [[ $BACKUP == "true" ]]; then
                 #in full e2e BR scenarios where we are restoring to a different cluster
                 #it takes a few minutes for the backup to be present on the new cluster once completed
@@ -61,7 +63,7 @@ function main() {
         fi
         restore_cpfs
         if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
-            login $BACKUP_CLU_SERVER $BACKUP_CLU_TOKEN
+            login $BACKUP_CLU_SERVER $BACKUP_CLU_USERNAME $BACKUP_CLU_PASSWORD
         fi
     fi
 }
@@ -243,7 +245,7 @@ function prereq() {
     
     #write env variables to output file
     if [[ $WRITE == "true" ]]; then
-        write_specific_env_vars_to_file $OUTPUT_FILE "OC YQ OPERATOR_NS SERVICES_NS TETHERED_NS BACKUP RESTORE SETUP OADP_INSTALL OADP_RESOURCE_CREATION OADP_NS BACKUP_STORAGE_LOCATION_NAMESTORAGE_BUCKET_NAME S3_URL STORAGE_SECRET_ACCESS_KEY STORAGE_SECRET_ACCESS_KEY_ID IM_ENABLED ZEN_ENABLED NSS_ENABLED UMS_ENABLED MCSP_ENABLED CERT_MANAGER_NAMESPACE LICENSING_NAMESPACE LSR_NAMESPACE CPFS_VERSION ZENSERVICE_NAME ZEN_NAMESPACE ENABLE_CERT_MANAGER ENABLE_LICENSING ENABLE_LSR ENABLE_PRIVATE_CATALOG ENABLE_DEFAULT_CS ADDITIONAL_SOURCES CONTROL_NS BACKUP_CLU_SERVER BACKUP_CLU_TOKEN RESTORE_CLU_SERVER RESTORE_CLU_TOKEN TARGET_CLUSTER_TYPE BACKUP_NAME"
+        write_specific_env_vars_to_file $OUTPUT_FILE "OC YQ OPERATOR_NS SERVICES_NS TETHERED_NS BACKUP RESTORE SETUP OADP_INSTALL OADP_RESOURCE_CREATION OADP_NS BACKUP_STORAGE_LOCATION_NAMESTORAGE_BUCKET_NAME S3_URL STORAGE_SECRET_ACCESS_KEY STORAGE_SECRET_ACCESS_KEY_ID IM_ENABLED ZEN_ENABLED NSS_ENABLED UMS_ENABLED MCSP_ENABLED CERT_MANAGER_NAMESPACE LICENSING_NAMESPACE LSR_NAMESPACE CPFS_VERSION ZENSERVICE_NAME ZEN_NAMESPACE ENABLE_CERT_MANAGER ENABLE_LICENSING ENABLE_LSR ENABLE_PRIVATE_CATALOG ENABLE_DEFAULT_CS ADDITIONAL_SOURCES CONTROL_NS BACKUP_CLU_SERVER BACKUP_CLU_USERNAME BACKUP_CLU_PASSWORD RESTORE_CLU_SERVER RESTORE_CLU_USERNAME RESTORE_CLU_PASSWORD TARGET_CLUSTER_TYPE BACKUP_NAME"
     fi
 }
 
@@ -257,13 +259,13 @@ function check_cluster_credentials() {
         error "TARGET_CLUSTER_TYPE value not set. Make sure it is either set in the parameters file or as an env variable."
     else
         if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
-            if [[ $BACKUP_CLU_SERVER == "" ]] || [[ $BACKUP_CLU_TOKEN == "" ]] || [[ $RESTORE_CLU_SERVER == "" ]] || [[ $RESTORE_CLU_TOKEN == "" ]]; then
-                error "If interacting with a different cluster (either restore or setup), all of BACKUP_CLU_SERVER, BACKUP_CLU_TOKEN, RESTORE_CLU_SERVER, and RESTORE_CLU_TOKEN must be defined either in the parameters file or as an env variable." 
+            if [[ $BACKUP_CLU_SERVER == "" ]] || [[ $BACKUP_CLU_USERNAME == "" ]] || [[ $BACKUP_CLU_PASSWORD == "" ]] ||  [[ $RESTORE_CLU_SERVER == "" ]] || [[ $BACKUP_CLU_USERNAME == "" ]] || [[ $RESTORE_CLU_PASSWORD == "" ]]; then
+                error "If interacting with a different cluster (either restore or setup), all of BACKUP_CLU_SERVER BACKUP_CLU_USERNAME BACKUP_CLU_PASSWORD RESTORE_CLU_SERVER RESTORE_CLU_USERNAME and RESTORE_CLU_PASSWORD must be defined either in the parameters file or as an env variable." 
             else
                 info "Different cluster selected. Validating login credentials work..."
-                ${OC} login --token=$RESTORE_CLU_TOKEN --server=$RESTORE_CLU_SERVER --insecure-skip-tls-verify=true
+                ${OC} login -u $RESTORE_CLU_USERNAME -p $RESTORE_CLU_PASSWORD --server=$RESTORE_CLU_SERVER --insecure-skip-tls-verify=true
                 info "Logging back into home cluster..."
-                ${OC} login --token=$BACKUP_CLU_TOKEN --server=$BACKUP_CLU_SERVER --insecure-skip-tls-verify=true
+                ${OC} login -u $BACKUP_CLU_USERNAME -p $BACKUP_CLU_PASSWORD --server=$BACKUP_CLU_SERVER --insecure-skip-tls-verify=true
             fi
         fi
         success "Backup and Restore cluster login credentials verified."
@@ -757,7 +759,7 @@ function backup_setup() {
             deploy_arg_str="$deploy_arg_str --im"
         fi
         if [[ $ZEN_ENABLED == "true" ]]; then
-            deploy_arg_str="$deploy_arg_str --zen"
+            deploy_arg_str="$deploy_arg_str --zen --zen-ns $ZEN_NAMESPACE"
         fi
         if [[ $STORAGE_CLASS != "" ]]; then
             deploy_arg_str="$deploy_arg_str --storage-class $STORAGE_CLASS"
@@ -956,10 +958,11 @@ function wait_for_backup() {
 
 function login() {
     server=$1
-    token=$2
+    username=$2
+    password=$3
     title "Logging in to server $server"
     #oc login to spoke cluster
-    ${OC} login --token=$token --server=$server --insecure-skip-tls-verify=true
+    ${OC} login -u $username -p $password --server=$server --insecure-skip-tls-verify=true
 }
 
 

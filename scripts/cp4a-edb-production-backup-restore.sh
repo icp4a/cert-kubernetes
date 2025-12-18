@@ -489,7 +489,7 @@ function google_cloud_storage() {
   # kubectl create secret generic backup-creds --from-file=gcsCredentials=gcs_credentials_file.json
   rm -fr ${GOOGLE_SECRET_SCRIPT_FILE}
   touch ${GOOGLE_SECRET_SCRIPT_FILE}
-  echo -e "kubectl create secret generic backup-creds --from-file=gcsCredentials=$GOOGLE_JSON_FILE_PATH" > ${GOOGLE_SECRET_SCRIPT_FILE}
+  echo -e "${CLI_CMD} create secret generic backup-creds --from-file=gcsCredentials=$GOOGLE_JSON_FILE_PATH" > ${GOOGLE_SECRET_SCRIPT_FILE}
 
   if [[ "${DEBUG}" == "True" || "${DEBUG}" == "TRUE" || "${DEBUG}" == "true" ]] ; then
     printf "\n*************** DEBUG MSG ***********************\n"

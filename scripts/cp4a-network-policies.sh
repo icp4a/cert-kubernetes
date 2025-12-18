@@ -13,6 +13,13 @@
 CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 separation_of_duties_flag=false
+# This flag is control whether the Network Policy related tasks should be executed or not.
+# For all namespaces , depending on the mode being executed we can exit or just skip tasks.
+# For generate , install, delete modes, the script is being executed on its owned so we can safely exit.
+# However for the other modes, they are called internally from the upgrade scripts and in that scenario we can not exit as that will end the upgrade script too
+# instead this flag will get set to true, which means the remaining tasks will just skipped
+# https://jsw.ibm.com/browse/DBACLD-201361
+skip_network_policy_tasks=false
 
 source ${CUR_DIR}/helper/network-policies/common_functions.sh
 
@@ -36,6 +43,10 @@ function show_help() {
     echo "   STEP 1: Run the script in [generate] mode. This copies the sample network policy templates to folder [${CUR_DIR}/network-policies/<namespace>/templates]"
     echo "   STEP 2: Review and modify (if needed) the network policy templates based on your cluster environment."
     echo "   STEP 3: Apply the network policies in you cluster manually or optionally run the script in [install] mode to apply templates in the path [${CUR_DIR}/network-policies/<namespace>/templates]"
+    echo
+    echo "Note:"
+    echo "If the existing deployment has been installed in \"All Namespaces\" on the cluster, generation or installation of network policies is not permitted for the deployment."
+    echo  
   #  [delete] mode. Delete the installed network policy" 
   #  [retrieveExisting] mode. This functionality is only used internally for upgrade scenarios"
   #  [removeRef] mode. This functionality is only used internally for upgrade scenarios"
@@ -132,6 +143,19 @@ fi
 #Function to retrieve the operator and operand namespaces
 set_operator_operand_namespaces "$TARGET_PROJECT_NAME"
 
+# Call the Function that checks if the deployment has been deployed in "All Namespaces" and if so it will exit as that scenario is not supported
+# https://jsw.ibm.com/browse/DBACLD-201361
+if all_namespaces_check "$cp4ba_operators_namespace" "$cp4ba_services_namespace"; then
+    error "The existing CP4BA deployment in the \"$TARGET_PROJECT_NAME\" namespace has been deployed as \"All namespaces\" in the cluster and the installation of network policies is not permitted for this type of deployment. The script will now terminate."
+    # We can exit for generate , install and delete modes
+    if [[ "$RUNTIME_MODE" == "generate" || "$RUNTIME_MODE" == "install" || "$RUNTIME_MODE" == "delete" ]]; then
+        exit
+    # Need a flag to skip the tasks for other modes . Because the other modes are called internally , we can not exit the script and just need to skip the network policy script tasks
+    else
+        skip_network_policy_tasks="true"
+    fi
+fi
+
 ### BEGIN - SETTING THE VARIABLES USED ###
 # Based on the type of deployment we could have two namespaces to check for NPs to be installed in
 # In the case of separation of duties there will be 2 namespaces and hence the file paths in operator where NPs are generated will be different
@@ -168,7 +192,7 @@ trap cleanup_log EXIT
 # Main
 #=======================================================================================================================
 # Retrieving network policy templates from the operator pods
-if [ "$RUNTIME_MODE" == "generate" ]; then
+if [[ "$RUNTIME_MODE" == "generate" ]]; then
  
     echo "${GREEN_TEXT}---------------------------------${RESET_TEXT}"
     echo "${GREEN_TEXT}Generate network policy templates${RESET_TEXT}"
@@ -185,7 +209,7 @@ if [ "$RUNTIME_MODE" == "generate" ]; then
 fi
 
 # Installing network policy from templates directory
-if [ "$RUNTIME_MODE" == "install" ]; then
+if [[ "$RUNTIME_MODE" == "install" ]]; then
     echo "${RED_TEXT}IMPORTANT: ${YELLOW_TEXT}Before installing the network policy templates, please confirm that network policies have been reviewed and updated to match your environment if necessary.${RESET_TEXT}"
         
     prompt_to_continue
@@ -209,7 +233,7 @@ if [ "$RUNTIME_MODE" == "install" ]; then
 fi
 
 # Deleting network policy from templates directory
-if [ "$RUNTIME_MODE" == "delete" ]; then
+if [[ "$RUNTIME_MODE" == "delete" ]]; then
     echo "${RED_TEXT}IMPORTANT: ${YELLOW_TEXT}Please confirm that you want to delete the network policies from your cluster based on the network policy templates in the dir $netpol_targ_template_path${RESET_TEXT}"
     prompt_to_continue
     printf "\n"
@@ -233,7 +257,7 @@ fi
 
 # This is internal mode where we retrieve the existing network policies as part of the upgrade process
 # When this function is called, it needs the kind's name, namespace.
-if [[ "$RUNTIME_MODE" == "retrieveExisting"  && ! -z "$KIND" ]]; then
+if [[ "$RUNTIME_MODE" == "retrieveExisting"  && ! -z "$KIND" && "$skip_network_policy_tasks" == "false" ]]; then
     len="${#netpol_targ_existing_path_list[@]}"
     for (( i=0; i<len; i++ )); do
         echo "${GREEN_TEXT}----------------------------------------------------------------------------------------------------------------------------------------${RESET_TEXT}"
@@ -257,7 +281,7 @@ fi
 # This is internal mode where we remove the ownerReference the existing network policies as part of the upgrade process so that the operator will no longer own the network policies
 # The retrievingExisting mode should be run first to get the existing network policies, then this function can be run to remove the ownerReference, then apply them to the cluster.
 # When this function is called, it needs the location of the existing network policies
-if [ "$RUNTIME_MODE" == "removeRef" ]; then
+if [[ "$RUNTIME_MODE" == "removeRef" && "$skip_network_policy_tasks" == "false" ]]; then
     len="${#netpol_targ_existing_path_list[@]}"
     for (( i=0; i<len; i++ )); do
         echo "${GREEN_TEXT}---------------------------------${RESET_TEXT}"

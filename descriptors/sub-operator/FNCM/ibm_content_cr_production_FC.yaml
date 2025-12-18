@@ -106,7 +106,7 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/common/dba-keytool-initcontainer
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
 
     ## The platform to be deployed specified by the user. Possible values are: OCP, ROKS, and other. This is normally populated by the User script
     ## based on input from the user.
@@ -911,7 +911,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1064,7 +1064,7 @@ spec:
       #     pull_policy: IfNotPresent
       #     ## The default repository is the IBM Entitled Registry.
       #     repository: cp.icr.io/cp/cp4a/fncm/lscollector
-      #     tag: "25.0.0-IF002"
+      #     tag: "25.0.0-IF003"
       #   ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
       #   ## If more resources are needed, make the changes here to meet your requirement.
       #   resources:
@@ -1105,7 +1105,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1130,6 +1130,16 @@ spec:
       css_production_setting:
         ## The maximum percentage of available memory to use.
         jvm_max_heap_percentage: 50
+
+        ## Use this "jvm_customize_options" parameter to specify JVM arguments using comma separation. For example, if you want to set the following JVM arguments:
+        ##  -Dmy.test.jvm.arg1=123
+        ##  -Dmy.test.jvm.arg2=abc
+        ##  -XX:+SomeJVMSettings
+        ##  -XshowSettings:vm"
+        ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
+        ## If your JVM option contains comma then you have to include 'DELIM=;' to use a different separator, for example jvm_customize_options="DELIM=;-Dmy.test.jvm.arg1=123;-Dcom.filenet.authentication.wsi.AuthTokenOrder=oauth,oidc,ltpa". Semicolon can be replaced with any other char.
+        ## If your JVM option contains double quotes then you need to escape it like this: jvm_customize_options="-Dsettings.navigator.default=logging.level={\"_value\":\"4\",\"_mergeOption\":\"replace\"}"
+        jvm_customize_options:
 
         # The license must be set to "accept" in order for the component to install.  This is the default value.
         license: accept
@@ -1202,7 +1212,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1364,7 +1374,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1484,7 +1494,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1592,7 +1602,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1718,7 +1728,7 @@ spec:
     #    pull_policy: IfNotPresent
     #    ## The default repository is the IBM Entitled Registry.
     #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-    #    tag: "25.0.0-IF002"
+    #    tag: "25.0.0-IF003"
     #
     #  ## Below are the default LSReporter Production settings.
     #  ## Make the necessary changes as you see fit.
@@ -1806,7 +1816,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "25.0.0-IF002"
+      tag: "25.0.0-IF003"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2198,7 +2208,7 @@ spec:
 
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -2319,7 +2329,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: "25.0.0-IF002"
+      tag: "25.0.0-IF003"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent

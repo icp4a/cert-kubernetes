@@ -282,6 +282,8 @@ spec:
                   initial_admin_user:
                     type: string
                     nullable: true
+                  sc_enable_pdb:
+                    type: boolean
                 
               ldap_configuration:
                 type: object
@@ -841,6 +843,18 @@ spec:
                           db_cert_secret_name:
                             type: string
                             nullable: true
+                  pod_disruption_budget:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                    properties:
+                      enabled:
+                        type: boolean
+                      min_available:
+                        type: integer
+                        nullable: true
+                      max_unavailable:
+                        type: integer
+                        nullable: true
               ecm_configuration:
                 type: object
                 nullable: true

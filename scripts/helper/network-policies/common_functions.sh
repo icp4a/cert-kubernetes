@@ -393,3 +393,16 @@ function set_operator_operand_namespaces(){
         separation_of_duties_flag=true
     fi
 }
+
+#  Function that checks if the deployment has been deployed in "All Namespaces" and if so it will return 0 otherwise returns 1
+# https://jsw.ibm.com/browse/DBACLD-201361
+function all_namespaces_check(){
+    local operator_namespace=$1
+    local operand_namespace=$2
+    if [[ ("$(echo "$operator_namespace" | tr '[:upper:]' '[:lower:]')" == "openshift-operators") && ("$(echo "$operand_namespace" | tr '[:upper:]' '[:lower:]')" == "ibm-common-services") ]]; then
+        return 0 # Is all namespaces deployment
+    else
+        return 1 # Is not a all namespaces deployment
+    fi
+
+}

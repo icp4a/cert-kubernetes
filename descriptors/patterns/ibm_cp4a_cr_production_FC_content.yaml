@@ -109,7 +109,7 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/common/dba-keytool-initcontainer
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
 
     ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
     ## based on input from the user.
@@ -229,6 +229,10 @@ spec:
     ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
     sc_is_multiple_az: false
+
+    ## The global flag to enable or disable Pod Disruption Budget (PDB) creation across all components.  This flag can be overridden at specific configuration sections (eg: ecm_configuration.cpe.enable_pdb).  Default is true
+    ## A PDB will be created with a `minAvailable: 1` only if the replica count of a particular deployment is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+    sc_enable_pdb: true
 
     ## Audit logging configuration for CP4BA components. The default value is "false".  If set to "true", then the audit logging will be enabled for all the CP4BA components.
     ## These settings can be overridden at the component level by setting the "audit_logging" parameter in the component configuration such as ecm_configuration, ads_configuration, etc...
@@ -923,7 +927,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -965,6 +969,10 @@ spec:
         min_replicas: "<Required>"
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: "<Required>"
+
+      ## This flag enable or disable Pod Disruption Budget (PDB) creation for CPE component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+      ## A PDB for CPE will be created with a `minAvailable: 1` only if the CPE replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+      enable_pdb: true
 
       ## Below are the default CPE Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       cpe_production_setting:
@@ -1086,7 +1094,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/fncm/cpe-audit-log
-          tag: "25.0.0-IF002"
+          tag: "25.0.0-IF003"
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
         initresources:
@@ -1168,7 +1176,7 @@ spec:
       #     pull_policy: IfNotPresent
       #     ## The default repository is the IBM Entitled Registry.
       #     repository: cp.icr.io/cp/cp4a/fncm/lscollector
-      #     tag: "25.0.0-IF002"
+      #     tag: "25.0.0-IF003"
       #   ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
       #   ## If more resources are needed, make the changes here to meet your requirement.
       #   resources:
@@ -1209,7 +1217,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1234,6 +1242,16 @@ spec:
       css_production_setting:
         ## The maximum percentage of available memory to use.
         jvm_max_heap_percentage: 50
+
+        ## Use this "jvm_customize_options" parameter to specify JVM arguments using comma separation. For example, if you want to set the following JVM arguments:
+        ##  -Dmy.test.jvm.arg1=123
+        ##  -Dmy.test.jvm.arg2=abc
+        ##  -XX:+SomeJVMSettings
+        ##  -XshowSettings:vm"
+        ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
+        ## If your JVM option contains comma then you have to include 'DELIM=;' to use a different separator, for example jvm_customize_options="DELIM=;-Dmy.test.jvm.arg1=123;-Dcom.filenet.authentication.wsi.AuthTokenOrder=oauth,oidc,ltpa". Semicolon can be replaced with any other char.
+        ## If your JVM option contains double quotes then you need to escape it like this: jvm_customize_options="-Dsettings.navigator.default=logging.level={\"_value\":\"4\",\"_mergeOption\":\"replace\"}"
+        jvm_customize_options:
 
         # The license must be set to "accept" in order for the component to install.  This is the default value.
         license: accept
@@ -1306,7 +1324,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1335,6 +1353,10 @@ spec:
         min_replicas: "<Required>"
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: "<Required>"
+
+      ## This flag enable or disable Pod Disruption Budget (PDB) creation for cmis component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+      ## A PDB for cmis will be created with a `minAvailable: 1` only if the cmis replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+      enable_pdb: true
 
       ## Below are the default CMIS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       cmis_production_setting:
@@ -1480,7 +1502,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1509,6 +1531,10 @@ spec:
         min_replicas: "<Required>"
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: "<Required>"
+
+      ## This flag enable or disable Pod Disruption Budget (PDB) creation for GraphQL component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+      ## A PDB for graphql will be created with a `minAvailable: 1` only if the GraphQL replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+      enable_pdb: true
 
       ## Below are the default CMIS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       graphql_production_setting:
@@ -1600,7 +1626,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1625,6 +1651,10 @@ spec:
         min_replicas: "<Required>"
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: "<Required>"
+      
+      ## This flag enable or disable Pod Disruption Budget (PDB) creation for ExtShare component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+      ## A PDB for ExtShare will be created with a `minAvailable: 1` only if the ExtShare replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+      enable_pdb: true
 
       ## Below are the default External Share Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       es_production_setting:
@@ -1708,7 +1738,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1733,6 +1763,10 @@ spec:
         min_replicas: "<Required>"
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: "<Required>"
+
+      ## This flag enable or disable Pod Disruption Budget (PDB) creation for Task Manager component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+      ## A PDB for TM will be created with a `minAvailable: 1` only if the TM replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+      enable_pdb: true
 
       ## Below are the default TM Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       tm_production_setting:
@@ -1834,7 +1868,7 @@ spec:
     #    pull_policy: IfNotPresent
     #    ## The default repository is the IBM Entitled Registry.
     #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-    #    tag: "25.0.0-IF002"
+    #    tag: "25.0.0-IF003"
     #   #  ## Below are the default LSReporter Production settings.
     #  ## Make the necessary changes as you see fit.
     #  product_settings:
@@ -1935,7 +1969,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "25.0.0-IF002"
+      tag: "25.0.0-IF003"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -1964,6 +1998,10 @@ spec:
       min_replicas: "<Required>"
       ## This is the default cpu percentage before autoscaling occurs.
       target_cpu_utilization_percentage: "<Required>"
+
+    ## This flag enable or disable Pod Disruption Budget (PDB) creation for Navigator component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+    ## A PDB for Navigator will be created with a 'minAvailable: 1' only if the Navigator replica count is greater than 1.  Otherwise, the PDB will have 'minAvailable: 0' if the replica is 1.
+    enable_pdb: true
 
     ## send email
     java_mail:
@@ -2334,7 +2372,7 @@ spec:
 
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: "25.0.0-IF002"
+        tag: "25.0.0-IF003"
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -2454,7 +2492,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: "25.0.0-IF002"
+      tag: "25.0.0-IF003"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2517,3 +2555,89 @@ spec:
     ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
     image_pull_secrets:
       name: "ibm-entitlement-key"
+
+ ########################################################################
+ ########    IBM Content Collector for SAP - Multi Instance      ########
+ ########################################################################
+ # ## The beginning section of multi ICCSAP configuration
+ #  iccsap_configuration_<id_name>:
+ #    instance_id: "<id_name>" #Mandatory when additional instances (multi-instances) are required.
+
+ #    ## ICCSAP secret that contains the password to be used for the generation of Keystore and Truststore files
+ #    iccsap_secret_name: "ibm-iccsap-secret"
+
+ #    ## The architecture of the cluster.  This is the default for Linux and should not be changed.
+ #    arch:
+ #      amd64: "3 - Most preferred"
+
+ #    ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+ #    ## it is recommended to have 2 or more.
+ #    replica_count: 2
+
+ #    ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+ #    image:
+ #      ## The default repository is the IBM Entitled Registry
+ #      repository: cp.icr.io/cp/cp4a/iccsap/iccsap
+ #      tag: "25.0.0-IF003"
+
+ #      ## This will override the image pull policy in the shared_configuration.
+ #      pull_policy: IfNotPresent
+
+ #    ## Logging for workloads.  This is the default setting.
+ #    log:
+ #      format: json
+
+ #    ## The initial resources (CPU, memory) requests and limits.  If more resources are needed,
+ #    ## make the changes here to meet your requirement.
+ #    resources:
+ #      requests:
+ #        cpu: 1
+ #        memory: 1024Mi
+ #      limits:
+ #        cpu: 1
+ #        memory: 1024Mi
+
+ #    ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
+ #    ## this settings to meet your requirement.
+ #    auto_scaling:
+ #      enabled: true
+ #      max_replicas: 3
+ #      min_replicas: 1
+ #      ## This is the default cpu percentage before autoscaling occurs.
+ #      target_cpu_utilization_percentage: 80
+
+
+ #    ## Below are the default ICCSAP Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
+ #    iccsap_production_setting:
+ #      # The license must be set to "accept" in order for the component to install.  This is the default value.
+ #      license: accept
+
+ #    ## Default settings for monitoring
+ #    monitor_enabled: false
+ #    ## Default settings for logging
+ #    logging_enabled: false
+
+ #    ## Persistent Volume Claims for ICCSAP.  If the storage_configuration in the shared_configuration is configured,
+ #    ## the Operator will create the PVC using the names below.
+ #    datavolume:
+ #      existing_pvc_for_iccsap_instance: "iccsap-instance"
+ #      existing_pvc_for_iccsap_logs: "iccsap-logstore"
+ #    storage:
+ #        storage_class: "<Required>"
+ #        size_for_logstore: 1Gi
+ #    ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
+ #    probe:
+ #      readiness:
+ #        initial_delay_seconds: 120
+ #        period_seconds: 5
+ #        timeout_seconds: 10
+ #        failure_threshold: 6
+ #      liveness:
+ #        initial_delay_seconds: 600
+ #        period_seconds: 5
+ #        timeout_seconds: 5
+ #        failure_threshold: 6
+
+ #    ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
+ #    image_pull_secrets:
+ #      name: "ibm-entitlement-key"
