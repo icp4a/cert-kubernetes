@@ -27,8 +27,7 @@ function validate_tools() {
     local tools=(
         "1. oc OCP CLI tool:4.12.0"
         "2. Podman:Any"
-        # Will update this to 1.13.0
-        "3. IBM Catalog Management Plug-in:1.11.0"
+        "3. IBM Catalog Management Plug-in:1.13.0"
         "4. oc mirror:4.14.0"
     )
     local current_versions=()
@@ -74,8 +73,6 @@ function validate_tools() {
     info "Validating IBM Catalog Management Plug-in..."
     if command -v oc &> /dev/null; then
         plugin_version=$(oc ibm-pak --version | sed 's/^v//')
-        # Will update this to 1.13.0
-        plugin_version="1.13.0"
         if version_ge "$plugin_version" "1.13.0"; then
             success "IBM Catalog Management Plug-in version $plugin_version is acceptable."
             current_versions+=("IBM Catalog Management Plug-in:$plugin_version")
