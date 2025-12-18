@@ -5,6 +5,7 @@ metadata:
   namespace: "zenNamespace"
   labels:
     component: cpfs3
+    service: zen
 spec:
   podSelector:
     matchLabels:

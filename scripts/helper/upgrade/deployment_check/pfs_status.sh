@@ -10,7 +10,7 @@
 ###############################################################################
 #################### ODM #######################
 # Check pfsDeployment upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.pfs.pfsDeployment`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.pfs.pfsDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_PFS_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "NotReady" ]]; then

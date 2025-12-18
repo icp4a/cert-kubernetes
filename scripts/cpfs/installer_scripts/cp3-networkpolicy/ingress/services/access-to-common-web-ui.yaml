@@ -3,6 +3,7 @@ kind: NetworkPolicy
 metadata:
   labels:
     component: cpfs3
+    service: commonui
   name: access-to-common-web-ui
   namespace: "csNamespace"
 spec:

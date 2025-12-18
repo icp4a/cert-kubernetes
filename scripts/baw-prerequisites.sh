@@ -132,18 +132,19 @@ PURCHASED_PRODUCT_CP4A="CP4A"
 LICENSE_BAW_URL="https://www.ibm.com/support/customer/csol/terms/?li=L-GPHE-W5RGSC"
 LICENSE_CP4A_URL="https://www.ibm.com/support/customer/csol/terms/?id=L-MAXV-9HY9ZD"
 
-function show_help() {     
-    echo -e "\nUsage: baw-prerequisites.sh -m [modetype]\n"     
-    echo "Options:"     
-    echo "  -h  Display help"     
+function show_help() {
+    echo -e "\nUsage: baw-prerequisites.sh -m [modetype] [options]\n"
+    echo "Options:"
+    echo "  -h  Display help"
     echo "  -m  The valid mode types are [property], [generate], [validate], or [generate-cr]"
+    echo " --java-path Optional path to Java (JRE) installation directory"
     echo "      STEP1: Run the script in [property] mode to create the user property files (DB/LDAP property files) with default values (database name/user)."
     echo "      STEP2: Modify the DB/LDAP/User property files with your values."
-    echo "      STEP3: Run the script in [generate] mode to generate the DB SQL statement files and YAML template for the secrets, based on the values in the property files."     
-    echo "      STEP4: Create the databases and secrets manually based on the modified DB SQL statement file and YAML templates for the secret."     
-    echo "      STEP5: Run the script in [validate] mode to check that the databases and secrets are created before you deploy Business Automation Workflow."     
-    echo "      STEP6: Run the script in [generate-cr] mode to generate the Business Automation Workflow custom resources based on the property files." 
-} 
+    echo "      STEP3: Run the script in [generate] mode to generate the DB SQL statement files and YAML template for the secrets, based on the values in the property files."
+    echo "      STEP4: Create the databases and secrets manually based on the modified DB SQL statement file and YAML templates for the secret."
+    echo "      STEP5: Run the script in [validate] mode to check that the databases and secrets are created before you deploy Business Automation Workflow."
+    echo "      STEP6: Run the script in [generate-cr] mode to generate the Business Automation Workflow custom resources based on the property files."
+}
 
 function prompt_license(){
     get_purchased_product
@@ -407,22 +408,10 @@ function validate_kube_oc_cli(){
         echo -e  "\x1B[1;31mUnable to locate Kubernetes CLI. You must install it to run this script.\x1B[0m" && \
         exit 1
     fi
-    which java &>/dev/null
-    if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate Java. You must install it to run this script.\x1B[0m" && \
-        exit 1
-    # else
-    #     java -version | grep "Runtime Environment"
-    #     if [[ $? -ne 0 ]]; then
-    #         echo -e  "\x1B[1;31mUnable to locate java, You must install it to run this script.\x1B[0m" && \
-    #         exit 1     
-    #     fi
-    fi
-    which keytool &>/dev/null
-    if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate keytool. You must add it in \"$PATH\" to run this script.\x1B[0m" && \
-        exit 1
-    fi
+    # DBACLD-198782: Check if Java is installed and meets the minimum version requirement
+    # Priority: --java-path > JAVA_HOME > system PATH
+    JAVA_PATH="${CUSTOM_JAVA_PATH:-$JAVA_HOME}"
+    validate_java_runtime "$JAVA_PATH"
 
     which openssl &>/dev/null
     if [[ $? -ne 0 ]]; then
@@ -634,7 +623,7 @@ function create_prerequisites() {
     create_ldap_secret_template
     #  replace ldap user
     tmp_ldapuser="$(prop_ldap_property_file LDAP_BIND_DN)"
-    ${YQ_CMD} w -i "${LDAP_SECRET_FILE}" "stringData.ldapUsername" "$tmp_ldapuser"
+    ${YQ_CMD} -i ".stringData.ldapUsername = \"$tmp_ldapuser\"" "${LDAP_SECRET_FILE}"
 
     tmp_ldapuserpwd="$(prop_ldap_property_file LDAP_BIND_DN_PASSWORD)"
     update_secret_template_passwords "$tmp_ldapuserpwd" "ldapPassword" "$LDAP_SECRET_FILE"
@@ -644,7 +633,7 @@ function create_prerequisites() {
         create_ext_ldap_secret_template
         #  replace ldap user
         tmp_ldapuser="$(prop_ext_ldap_property_file LDAP_BIND_DN)"
-        ${YQ_CMD} w -i "${EXT_LDAP_SECRET_FILE}" "stringData.ldapUsername" "$tmp_ldapuser"
+        ${YQ_CMD} -i ".stringData.ldapUsername = \"$tmp_ldapuser\"" "${EXT_LDAP_SECRET_FILE}"
 
         tmp_ldapuserpwd="$(prop_ext_ldap_property_file LDAP_BIND_DN_PASSWORD)"
         update_secret_template_passwords "$tmp_ldapuserpwd" "ldapPassword" "$EXT_LDAP_SECRET_FILE"
@@ -2519,7 +2508,7 @@ function validate_secret_in_cluster(){
     files=($(find $SECRET_FILE_FOLDER -name '*.yaml'))
     for item in ${files[*]}
     do
-        secret_name_tmp=`cat $item | ${YQ_CMD} r - metadata.name`
+        secret_name_tmp=`${YQ_CMD} ".metadata.name // \"\"" "$item"`
         if [ -z "$secret_name_tmp" ]; then
             error "Secret name not found in YAML file: \"$item\"! Check and fix it"
             exit 1
@@ -2602,8 +2591,8 @@ function validate_prerequisites(){
     tmp_serverport="$(prop_ldap_property_file LDAP_PORT)"
     tmp_basdn="$(prop_ldap_property_file LDAP_BASE_DN)"
     tmp_ldapssl="$(prop_ldap_property_file LDAP_SSL_ENABLED)"
-    tmp_user=`kubectl get secret -l name=ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapUsername | base64 --decode`
-    tmp_userpwd=`kubectl get secret -l name=ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapPassword | base64 --decode`
+    tmp_user=`kubectl get secret -l name=ldap-bind-secret -o yaml | ${YQ_CMD} '.items[0].data.ldapUsername' - | base64 --decode`
+    tmp_userpwd=`kubectl get secret -l name=ldap-bind-secret -o yaml | ${YQ_CMD} '.items[0].data.ldapPassword' - | base64 --decode`
 
     tmp_servername=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_servername")
     tmp_serverport=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_serverport")
@@ -2622,8 +2611,8 @@ function validate_prerequisites(){
         tmp_serverport="$(prop_ext_ldap_property_file LDAP_PORT)"
         tmp_basdn="$(prop_ext_ldap_property_file LDAP_BASE_DN)"
         tmp_ldapssl="$(prop_ext_ldap_property_file LDAP_SSL_ENABLED)"
-        tmp_user=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapUsername | base64 --decode`
-        tmp_userpwd=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapPassword | base64 --decode`
+        tmp_user=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml | ${YQ_CMD} '.items[0].data.ldapUsername' - | base64 --decode`
+        tmp_userpwd=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml | ${YQ_CMD} '.items[0].data.ldapPassword' - | base64 --decode`
 
         tmp_servername=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_servername")
         tmp_serverport=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_serverport")
@@ -2643,9 +2632,9 @@ function validate_prerequisites(){
     # check db connection for GCDDB
    
     # check DBNAME/DBUSER for GCDDB
-    tmp_dbserver=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.gcd-db-server`
-    tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.gcdDBUsername | base64 --decode`
-    tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.gcdDBPassword | base64 --decode`        
+    tmp_dbserver=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.gcd-db-server' -`
+    tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.gcdDBUsername' - | base64 --decode`
+    tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.gcdDBPassword' - | base64 --decode`
 
     if [[ $DB_TYPE != "oracle" ]]; then
         tmp_dbname="$(prop_db_name_user_property_file $tmp_dbserver.GCD_DB_NAME)"
@@ -2668,8 +2657,8 @@ function validate_prerequisites(){
             # tmp_dbserver=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.os-db-server`
             tmp_dbserver="$(prop_db_name_user_property_file_for_server_name OS$((j+1))_DB_USER_NAME)"
             check_dbserver_name_valid $tmp_dbserver "OS$((j+1))_DB_USER_NAME"
-            tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.os$((j+1))DBUsername | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.os$((j+1))DBPassword | base64 --decode`        
+            tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.os$((j+1))DBUsername" - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.os$((j+1))DBPassword" - | base64 --decode`
 
             if [[ $DB_TYPE != "oracle" ]]; then
                 tmp_dbname="$(prop_db_name_user_property_file $tmp_dbserver.OS$((j+1))_DB_NAME)"
@@ -2692,8 +2681,8 @@ function validate_prerequisites(){
         tmp_dbserver="$(prop_db_name_user_property_file_for_server_name ${BAW_STD_OS_ARR[i]}_DB_USER_NAME)"
         check_dbserver_name_valid $tmp_dbserver "${BAW_STD_OS_ARR[i]}_DB_USER_NAME"
         tmp_label=$(echo ${BAW_STD_OS_ARR[i]}| tr '[:upper:]' '[:lower:]')
-        tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBUsername | base64 --decode`
-        tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBPassword | base64 --decode`        
+        tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBUsername" - | base64 --decode`
+        tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBPassword" - | base64 --decode`
 
         if [[ $DB_TYPE != "oracle" ]]; then
             tmp_dbname="$(prop_db_name_user_property_file $tmp_dbserver.${BAW_STD_OS_ARR[i]}_DB_NAME)"
@@ -2717,9 +2706,9 @@ function validate_prerequisites(){
     fi
     tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-    tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-    tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.navigatorDBUsername | base64 --decode`
-    tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.navigatorDBPassword | base64 --decode`        
+    tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+    tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.navigatorDBUsername' - | base64 --decode`
+    tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.navigatorDBPassword' - | base64 --decode`
 
     # Check DB non-SSL and SSL
     if [[ $DB_TYPE == "oracle" ]]; then
@@ -2737,9 +2726,9 @@ function validate_prerequisites(){
     fi
     tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-    tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-    tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.dbUser | base64 --decode`
-    tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.password | base64 --decode`        
+    tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+    tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUser' - | base64 --decode`
+    tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
 
     # Check DB non-SSL and SSL
     if [[ $DB_TYPE == "oracle" ]]; then
@@ -2756,9 +2745,9 @@ function validate_prerequisites(){
     fi
     tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-    tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-    tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.oauthDBUser | base64 --decode`
-    tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.oauthDBPassword | base64 --decode`        
+    tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+    tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.oauthDBUser' - | base64 --decode`
+    tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.oauthDBPassword' - | base64 --decode`
 
     # Check DB non-SSL and SSL
     if [[ $DB_TYPE == "oracle" ]]; then
@@ -2776,6 +2765,45 @@ function validate_prerequisites(){
 # prompt_license
 IBM_LICENS="Accept"
 
+# Handle long options before getopts
+ARGS=()
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --java-path)
+            if [[ -z "$2" || "$2" == -* ]]; then
+                echo "Invalid option: --java-path requires an argument"
+                exit 1
+            fi
+            CUSTOM_JAVA_PATH="$2"
+            # Verify the path exists
+            if [ ! -d "$CUSTOM_JAVA_PATH" ]; then
+                echo -e "\x1B[1;31mThe specified Java (JRE) path does not exist: ${CUSTOM_JAVA_PATH}\x1B[0m"
+                exit 1
+            fi
+            shift 2
+            ;;
+        --java-path=*)
+            CUSTOM_JAVA_PATH="${1#*=}"
+            if [ -z "$CUSTOM_JAVA_PATH" ]; then
+                echo "Invalid option: --java-path requires a value"
+                exit 1
+            fi
+            # Verify the path exists
+            if [ ! -d "$CUSTOM_JAVA_PATH" ]; then
+                echo -e "\x1B[1;31mThe specified Java (JRE) path does not exist: ${CUSTOM_JAVA_PATH}\x1B[0m"
+                exit 1
+            fi
+            shift
+            ;;
+        *)
+            ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+# Restore positional parameters for getopts
+set -- "${ARGS[@]}"
 
 if [[ $1 == "" ]]
 then
@@ -2797,6 +2825,10 @@ else
             fi
             ;;
         :)  echo "Invalid option: -$OPTARG requires an argument"
+            show_help
+            exit -1
+            ;;
+        *)  echo "Invalid option: -$OPTARG"
             show_help
             exit -1
             ;;

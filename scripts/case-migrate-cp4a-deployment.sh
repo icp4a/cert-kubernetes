@@ -40,13 +40,13 @@ function case_migration_replace(){
     local param_out1=$2
     local param_q1=$3
 
-    local MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} $param_in1)
+    MIG_PROP_TEMP=$(${YQ_CMD} ".$param_in1" ${CASE_MIGRATION_PROPERTY_FILE})
     #echo -e $MIG_PROP_TEMP
     if [ "$param_q1" = "q" ] ;
     then 
-        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_BAK_TEMP} $param_out1 --style=double "${MIG_PROP_TEMP}"
+        ${YQ_CMD} -i ".$param_out1 = \"${MIG_PROP_TEMP}\" | .$param_out1 style=\"double\"" ${CP4A_PATTERN_FILE_BAK_TEMP}
     else 
-        ${YQ_CMD} w -i  ${CP4A_PATTERN_FILE_BAK_TEMP} $param_out1 "${MIG_PROP_TEMP}" 
+        ${YQ_CMD} -i ".$param_out1 = \"${MIG_PROP_TEMP}\"" ${CP4A_PATTERN_FILE_BAK_TEMP}
     fi
     
 }
@@ -76,12 +76,12 @@ function case_migration_apply_pattern_cr() {
     #echo -e "Tos Number fromn file is : $TOS_NUM"
     ## Removing the initialize_configuration Section from CR 
     ## This section is not needed because you are reusing the existing FileNet domain, Object stores, and LDAP.
-    ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_BAK_TEMP} spec.initialize_configuration
+    ${YQ_CMD} -i 'del(.spec.initialize_configuration)' "${CP4A_PATTERN_FILE_BAK_TEMP}"
     
     # Updating icn datasource value 
     ${SED_COMMAND_FORMAT} ${CASE_MIGRATION_PROPERTY_FILE}
     #sc_content_initialization
-    ${YQ_CMD} w -i  ${CP4A_PATTERN_FILE_BAK_TEMP} "spec.shared_configuration.sc_content_initialization" "false" 
+    ${YQ_CMD} -i '.spec.shared_configuration.sc_content_initialization = false' ${CP4A_PATTERN_FILE_BAK_TEMP}
     #case_migration_replace "shared_configuration.sc_content_initialization" "spec.shared_configuration.sc_content_initialization"
 
     #icn datasource
@@ -197,7 +197,7 @@ function case_migration_apply_pattern_cr() {
                 else 
                     if [[ "$prop_flag" = false ]] && [[ $TOS_NUM -gt 1 ]];
                     then
-                        ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_BAK_TEMP} "spec.datasource_configuration.dc_os_datasources[$os_count].dc_database_type" --style=double "BAWTOS_START"
+                        ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$os_count].dc_database_type = \"BAWTOS_START\" | .spec.datasource_configuration.dc_os_datasources[$os_count].dc_database_type style=\"double\"" ${CP4A_PATTERN_FILE_BAK_TEMP}
                         
                         for ((i=1;i<$TOS_NUM;i++))
                         do
@@ -281,7 +281,7 @@ function case_migration_apply_pattern_cr() {
             case_migration_replace "case.tos_list[$j].desktop_id" "spec.workflow_authoring_configuration.case.tos_list[$j].desktop_id" "q"
             case_migration_replace "case.tos_list[$j].target_environment_name" "spec.workflow_authoring_configuration.case.tos_list[$j].target_environment_name" "q"
             case_migration_replace "case.tos_list[$j].is_default" "spec.workflow_authoring_configuration.case.tos_list[$j].is_default" 
-            temp_flag=$(${YQ_CMD} r ${CP4A_PATTERN_FILE_BAK_TEMP} "spec.workflow_authoring_configuration.case.tos_list[$j].is_default")
+            temp_flag=$(${YQ_CMD} ".spec.workflow_authoring_configuration.case.tos_list[$j].is_default" ${CP4A_PATTERN_FILE_BAK_TEMP})
             if [[ "$temp_flag" = true ]]; then
                 prop_flag=true;
             fi
@@ -289,7 +289,7 @@ function case_migration_apply_pattern_cr() {
         
         if [[ "$prop_flag" = false ]]; then
 
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_BAK_TEMP} "spec.workflow_authoring_configuration.case.tos_list[0].is_default" "true"
+            ${YQ_CMD} -i '.spec.workflow_authoring_configuration.case.tos_list[0].is_default = true' ${CP4A_PATTERN_FILE_BAK_TEMP}
 
         fi
 
@@ -336,7 +336,7 @@ function case_migration_apply_pattern_cr() {
             case_migration_replace "case.tos_list[$j].desktop_id" "spec.baw_configuration[0].case.tos_list[$j].desktop_id" "q"
             case_migration_replace "case.tos_list[$j].target_environment_name" "spec.baw_configuration[0].case.tos_list[$j].target_environment_name" "q"
             case_migration_replace "case.tos_list[$j].is_default" "spec.baw_configuration[0].case.tos_list[$j].is_default"
-            temp_flag=$(${YQ_CMD} r ${CP4A_PATTERN_FILE_BAK_TEMP} "spec.baw_configuration[0].case.tos_list[$j].is_default")
+            temp_flag=$(${YQ_CMD} ".spec.baw_configuration[0].case.tos_list[$j].is_default" ${CP4A_PATTERN_FILE_BAK_TEMP})
             if [[ "$temp_flag" = true ]]; then
                 prop_flag=true;
             fi
@@ -344,35 +344,35 @@ function case_migration_apply_pattern_cr() {
 
         if [[ "$prop_flag" = false ]]; then
 
-            ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_BAK_TEMP} "spec.baw_configuration[0].case.tos_list[0].is_default" "true"
+            ${YQ_CMD} -i '.spec.baw_configuration[0].case.tos_list[0].is_default = true' ${CP4A_PATTERN_FILE_BAK_TEMP}
 
         fi
 
     fi
 
     #ecm_configuration
-    local MIG_PROP_TEMP=$(${YQ_CMD} r ${CP4A_PATTERN_FILE_BAK_TEMP} "spec.ecm_configuration.cpe.replica_count")
+    MIG_PROP_TEMP=$(${YQ_CMD} ".spec.ecm_configuration.cpe.replica_count // \"\"" ${CP4A_PATTERN_FILE_BAK_TEMP})
     if [ -z "$MIG_PROP_TEMP"];
     then 
-        ${YQ_CMD} w -i  ${CP4A_PATTERN_FILE_BAK_TEMP} "spec.ecm_configuration.cpe.replica_count" "1" 
+        ${YQ_CMD} -i '.spec.ecm_configuration.cpe.replica_count = 1' ${CP4A_PATTERN_FILE_BAK_TEMP}
     fi 
 
-    local MIG_PROP_TEMP=$(${YQ_CMD} r ${CP4A_PATTERN_FILE_BAK_TEMP} "spec.ecm_configuration.cmis.replica_count")
+    MIG_PROP_TEMP=$(${YQ_CMD} ".spec.ecm_configuration.cmis.replica_count // \"\"" ${CP4A_PATTERN_FILE_BAK_TEMP})
     if [ -z "$MIG_PROP_TEMP"];
     then 
-        ${YQ_CMD} w -i  ${CP4A_PATTERN_FILE_BAK_TEMP} "spec.ecm_configuration.cmis.replica_count" "1" 
+        ${YQ_CMD} -i '.spec.ecm_configuration.cmis.replica_count = 1' ${CP4A_PATTERN_FILE_BAK_TEMP}
     fi
 
-    local MIG_PROP_TEMP=$(${YQ_CMD} r ${CP4A_PATTERN_FILE_BAK_TEMP} "spec.ecm_configuration.graphql.replica_count")
+    MIG_PROP_TEMP=$(${YQ_CMD} ".spec.ecm_configuration.graphql.replica_count // \"\"" ${CP4A_PATTERN_FILE_BAK_TEMP})
     if [ -z "$MIG_PROP_TEMP"];
     then 
-        ${YQ_CMD} w -i  ${CP4A_PATTERN_FILE_BAK_TEMP} "spec.ecm_configuration.graphql.replica_count" "1" 
+        ${YQ_CMD} -i '.spec.ecm_configuration.graphql.replica_count = 1' ${CP4A_PATTERN_FILE_BAK_TEMP}
     fi
 
-    local MIG_PROP_TEMP=$(${YQ_CMD} r ${CP4A_PATTERN_FILE_BAK_TEMP} "spec.resource_registry_configuration.service_type")
+    MIG_PROP_TEMP=$(${YQ_CMD} ".spec.resource_registry_configuration.service_type // \"\"" ${CP4A_PATTERN_FILE_BAK_TEMP})
     if [ -z "$MIG_PROP_TEMP"];
     then 
-        ${YQ_CMD} w -i  ${CP4A_PATTERN_FILE_BAK_TEMP} "spec.resource_registry_configuration.service_type" "Route" 
+        ${YQ_CMD} -i '.spec.resource_registry_configuration.service_type = "Route"' ${CP4A_PATTERN_FILE_BAK_TEMP}
     fi
 
     ## Copying the Final CR after Modifications for Migration
@@ -408,7 +408,7 @@ then
             exit 1
         fi
         #Validate the property file for Syntax errors
-        if ! ${YQ_CMD} validate $CASE_MIGRATION_PROPERTY_FILE ;
+        ${YQ_CMD} 'true' $CASE_MIGRATION_PROPERTY_FILE > /dev/null
         then 
             error "Invalid Property File Syntax (YAML): \"${CASE_MIGRATION_PROPERTY_FILE}\", correct the synatx and rerun the migration"
             exit 1

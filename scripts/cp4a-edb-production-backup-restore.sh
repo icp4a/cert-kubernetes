@@ -198,19 +198,19 @@ function get_edb_cluster() {
   cp -f ${EDB_CLUSTER_YAML_FILE} ${EDB_CLUSTER_YAML_FILE_OG}
 
 
-  ${YQ_CMD} d -i ${EDB_CLUSTER_YAML_FILE} status
-  ${YQ_CMD} d -i ${EDB_CLUSTER_YAML_FILE} spec.backup
-  ${YQ_CMD} d -i ${EDB_CLUSTER_YAML_FILE} metadata.annotations
-  ${YQ_CMD} d -i ${EDB_CLUSTER_YAML_FILE} metadata.creationTimestamp
-  ${YQ_CMD} d -i ${EDB_CLUSTER_YAML_FILE} metadata.generation
-  ${YQ_CMD} d -i ${EDB_CLUSTER_YAML_FILE} metadata.resourceVersion
+  ${YQ_CMD} -i 'del(.status)' "${EDB_CLUSTER_YAML_FILE}"
+  ${YQ_CMD} -i 'del(.spec.backup)' "${EDB_CLUSTER_YAML_FILE}"
+  ${YQ_CMD} -i 'del(.metadata.annotations)' "${EDB_CLUSTER_YAML_FILE}"
+  ${YQ_CMD} -i 'del(.metadata.creationTimestamp)' "${EDB_CLUSTER_YAML_FILE}"
+  ${YQ_CMD} -i 'del(.metadata.generation)' "${EDB_CLUSTER_YAML_FILE}"
+  ${YQ_CMD} -i 'del(.metadata.resourceVersion)' "${EDB_CLUSTER_YAML_FILE}"
   if [[ "${MODE}" == "backup" ]] ; then
-    ${YQ_CMD} d -i ${EDB_CLUSTER_YAML_FILE} spec.backup
+    ${YQ_CMD} -i 'del(.spec.backup)' "${EDB_CLUSTER_YAML_FILE}"
   elif [[  "${MODE}" == "recovery" ]] ; then
-    ${YQ_CMD} d -i ${EDB_CLUSTER_YAML_FILE} spec.bootstrap
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].name "${EDB_RECOVERY_NAME}"
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.serverName "${EDB_CLUSTER_NAME}"
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.bootstrap.recovery.source "${EDB_RECOVERY_NAME}"
+    ${YQ_CMD} -i 'del(.spec.bootstrap)' "${EDB_CLUSTER_YAML_FILE}"
+    ${YQ_CMD} -i ".spec.externalClusters[0].name = \"${EDB_RECOVERY_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+    ${YQ_CMD} -i ".spec.externalClusters[0].barmanObjectStore.serverName = \"${EDB_CLUSTER_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+    ${YQ_CMD} -i ".spec.bootstrap.recovery.source = \"${EDB_RECOVERY_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
   fi
   
 }
@@ -249,13 +249,13 @@ function aws_s3(){
   if [[ "${session_token}" == "yes" ]] ; then
     ACCESS_SESSION_TOKEN=$( enter_input "$prompt_access_session_token" "-s" | base64 -w 0 )
     printf "\n"
-    ${YQ_CMD} w -i $S3_SECRET_YAML_FILE data.ACCESS_SESSION_TOKEN "${ACCESS_SESSION_TOKEN}"
+    ${YQ_CMD} -i ".data.ACCESS_SESSION_TOKEN = \"${ACCESS_SESSION_TOKEN}\"" $S3_SECRET_YAML_FILE
     if [[ "${MODE}" == "backup" ]] ; then
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.s3Credentials.accessSessionToken.name "${S3_SECRET_NAME}"
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.s3Credentials.accessSessionToken.key "ACCESS_SESSION_TOKEN"
+      ${YQ_CMD} -i ".spec.backup.barmanObjectStore.s3Credentials.accessSessionToken.name = \"${S3_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+      ${YQ_CMD} -i '.spec.backup.barmanObjectStore.s3Credentials.accessSessionToken.key = "ACCESS_SESSION_TOKEN"' ${EDB_CLUSTER_YAML_FILE}
     else 
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.s3Credentials.accessSessionToken.name "${S3_SECRET_NAME}"
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.s3Credentials.accessSessionToken.key "ACCESS_SESSION_TOKEN"
+      ${YQ_CMD} -i ".spec.externalClusters[0].barmanObjectStore.s3Credentials.accessSessionToken.name = \"${S3_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+      ${YQ_CMD} -i '.spec.externalClusters[0].barmanObjectStore.s3Credentials.accessSessionToken.key = "ACCESS_SESSION_TOKEN"' ${EDB_CLUSTER_YAML_FILE}
 
     fi 
    
@@ -269,21 +269,21 @@ function aws_s3(){
     END_POINT_URL=$( enter_input "${prompt_other_s3_compatible_endpoint}"  )
   fi 
 
-  ${YQ_CMD} w -i $S3_SECRET_YAML_FILE apiVersion "v1"
-  ${YQ_CMD} w -i $S3_SECRET_YAML_FILE kind "Secret"
-  ${YQ_CMD} w -i $S3_SECRET_YAML_FILE metadata.name "${S3_SECRET_NAME}"
-  ${YQ_CMD} w -i $S3_SECRET_YAML_FILE metadata.namespace "${TARGET_PROJECT_NAME}"
-  ${YQ_CMD} w -i $S3_SECRET_YAML_FILE data.ACCESS_SECRET_ID "${ACCESS_KEY_ID}"
-  ${YQ_CMD} w -i $S3_SECRET_YAML_FILE data.ACCESS_SECRET_KEY "${ACCESS_SECRET_KEY}"
+  ${YQ_CMD} -i '.apiVersion = "v1"' $S3_SECRET_YAML_FILE
+  ${YQ_CMD} -i '.kind = "Secret"' $S3_SECRET_YAML_FILE
+  ${YQ_CMD} -i ".metadata.name = \"${S3_SECRET_NAME}\"" $S3_SECRET_YAML_FILE
+  ${YQ_CMD} -i ".metadata.namespace = \"${TARGET_PROJECT_NAME}\"" $S3_SECRET_YAML_FILE
+  ${YQ_CMD} -i ".data.ACCESS_SECRET_ID = \"${ACCESS_KEY_ID}\"" $S3_SECRET_YAML_FILE
+  ${YQ_CMD} -i ".data.ACCESS_SECRET_KEY = \"${ACCESS_SECRET_KEY}\"" $S3_SECRET_YAML_FILE
 
 
   if [[ "${MODE}" == "backup" ]] ; then
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.s3Credentials.accessKeyId.name "${S3_SECRET_NAME}"
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.s3Credentials.secretAccessKey.name "${S3_SECRET_NAME}"
+    ${YQ_CMD} -i ".spec.backup.barmanObjectStore.s3Credentials.accessKeyId.name = \"${S3_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+    ${YQ_CMD} -i ".spec.backup.barmanObjectStore.s3Credentials.secretAccessKey.name = \"${S3_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
 
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.s3Credentials.accessKeyId.key "ACCESS_SECRET_ID"
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.s3Credentials.secretAccessKey.key "ACCESS_SECRET_KEY"
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.destinationPath "${S3_DESTINATION_PATH}"
+    ${YQ_CMD} -i '.spec.backup.barmanObjectStore.s3Credentials.accessKeyId.key = "ACCESS_SECRET_ID"' ${EDB_CLUSTER_YAML_FILE}
+    ${YQ_CMD} -i '.spec.backup.barmanObjectStore.s3Credentials.secretAccessKey.key = "ACCESS_SECRET_KEY"' ${EDB_CLUSTER_YAML_FILE}
+    ${YQ_CMD} -i ".spec.backup.barmanObjectStore.destinationPath = \"${S3_DESTINATION_PATH}\"" ${EDB_CLUSTER_YAML_FILE}
  
     if [[ "${DEBUG}" == "True" || "${DEBUG}" == "TRUE" || "${DEBUG}" == "true" ]] ; then
       printf "\n*************** DEBUG MSG ***********************\n"
@@ -301,11 +301,11 @@ function aws_s3(){
     display_msgs "${next_steps[@]}"
   else 
 
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.s3Credentials.accessKeyId.name "${S3_SECRET_NAME}"
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.s3Credentials.secretAccessKey.name "${S3_SECRET_NAME}"
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.s3Credentials.accessKeyId.key "ACCESS_SECRET_ID"
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.s3Credentials.secretAccessKey.key "ACCESS_SECRET_KEY"
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.destinationPath "${S3_DESTINATION_PATH}"
+    ${YQ_CMD} -i ".spec.externalClusters[0].barmanObjectStore.s3Credentials.accessKeyId.name = \"${S3_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+    ${YQ_CMD} -i ".spec.externalClusters[0].barmanObjectStore.s3Credentials.secretAccessKey.name = \"${S3_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+    ${YQ_CMD} -i '.spec.externalClusters[0].barmanObjectStore.s3Credentials.accessKeyId.key = "ACCESS_SECRET_ID"' ${EDB_CLUSTER_YAML_FILE}
+    ${YQ_CMD} -i '.spec.externalClusters[0].barmanObjectStore.s3Credentials.secretAccessKey.key = "ACCESS_SECRET_KEY"' ${EDB_CLUSTER_YAML_FILE}
+    ${YQ_CMD} -i ".spec.externalClusters[0].barmanObjectStore.destinationPath = \"${S3_DESTINATION_PATH}\"" ${EDB_CLUSTER_YAML_FILE}
     # EXTERNAL_CLUSTERS=$(  ${YQ_CMD} r  $EDB_CLUSTER_YAML_FILE  -j 'spec.externalClusters' )
     printf "\n"
     clear
@@ -345,15 +345,15 @@ function azure_blob_storage() {
 
   if [[ "${selected_option}" == "1" ]] ; then
     AZURE_ACCOUNT_STORAGE_CONN_STR=$( enter_input "$prompt_storage_connection_string" | base64 -w 0 )
-    ${YQ_CMD} w -i $AZ_SECRET_YAML_FILE data.AZURE_STORAGE_CONNECTION_STRING "${AZURE_ACCOUNT_STORAGE_CONN_STR}"
+    ${YQ_CMD} -i ".data.AZURE_STORAGE_CONNECTION_STRING = \"${AZURE_ACCOUNT_STORAGE_CONN_STR}\"" $AZ_SECRET_YAML_FILE
     printf "\n"
     if [[ "${MODE}" == "backup" ]] ; then
 
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.azureCredentials.connectionString.name "${AZ_SECRET_NAME}"
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.azureCredentials.connectionString.key "AZURE_STORAGE_CONNECTION_STRING"
+      ${YQ_CMD} -i ".spec.backup.barmanObjectStore.azureCredentials.connectionString.name = \"${AZ_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+      ${YQ_CMD} -i '.spec.backup.barmanObjectStore.azureCredentials.connectionString.key = "AZURE_STORAGE_CONNECTION_STRING"' ${EDB_CLUSTER_YAML_FILE}
     else
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.azureCredentials.connectionString.name "${AZ_SECRET_NAME}"
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.azureCredentials.connectionString.key "AZURE_STORAGE_CONNECTION_STRING"
+      ${YQ_CMD} -i ".spec.externalClusters[0].barmanObjectStore.azureCredentials.connectionString.name = \"${AZ_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+      ${YQ_CMD} -i '.spec.externalClusters[0].barmanObjectStore.azureCredentials.connectionString.key = "AZURE_STORAGE_CONNECTION_STRING"' ${EDB_CLUSTER_YAML_FILE}
     fi
 
   elif [[ "${selected_option}" == "2" ]] ; then
@@ -362,19 +362,19 @@ function azure_blob_storage() {
     AZURE_ACCOUNT_STORAGE_SAS_TOKEN=$( enter_input "$prompt_storage_sas_token" "-s" | base64 -w 0 )
     printf "\n"
 
-    ${YQ_CMD} w -i $AZ_SECRET_YAML_FILE data.AZURE_STORAGE_ACCOUNT "${AZURE_ACCOUNT_STORAGE_NAME}"
-    ${YQ_CMD} w -i $AZ_SECRET_YAML_FILE data.AZURE_STORAGE_SAS_TOKEN "${AZURE_ACCOUNT_STORAGE_SAS_TOKEN}"
+    ${YQ_CMD} -i ".data.AZURE_STORAGE_ACCOUNT = \"${AZURE_ACCOUNT_STORAGE_NAME}\"" $AZ_SECRET_YAML_FILE
+    ${YQ_CMD} -i ".data.AZURE_STORAGE_SAS_TOKEN = \"${AZURE_ACCOUNT_STORAGE_SAS_TOKEN}\"" $AZ_SECRET_YAML_FILE
 
     if [[ "${MODE}" == "backup" ]] ; then
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.azureCredentials.storageAccount.name "${AZ_SECRET_NAME}"
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.azureCredentials.storageAccount.key "AZURE_STORAGE_ACCOUNT"
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.azureCredentials.storageSasToken.name "${AZ_SECRET_NAME}"
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.azureCredentials.storageSasToken.key "AZURE_STORAGE_SAS_TOKEN"
+      ${YQ_CMD} -i ".spec.backup.barmanObjectStore.azureCredentials.storageAccount.name = \"${AZ_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+      ${YQ_CMD} -i '.spec.backup.barmanObjectStore.azureCredentials.storageAccount.key = "AZURE_STORAGE_ACCOUNT"' ${EDB_CLUSTER_YAML_FILE}
+      ${YQ_CMD} -i ".spec.backup.barmanObjectStore.azureCredentials.storageSasToken.name = \"${AZ_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+      ${YQ_CMD} -i '.spec.backup.barmanObjectStore.azureCredentials.storageSasToken.key = "AZURE_STORAGE_SAS_TOKEN"' ${EDB_CLUSTER_YAML_FILE}
     else 
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.azureCredentials.storageAccount.name "${AZ_SECRET_NAME}"
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.azureCredentials.storageAccount.key "AZURE_STORAGE_ACCOUNT"
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.azureCredentials.storageSasToken.name "${AZ_SECRET_NAME}"
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.azureCredentials.storageSasToken.key "AZURE_STORAGE_SAS_TOKEN"
+      ${YQ_CMD} -i ".spec.externalClusters[0].barmanObjectStore.azureCredentials.storageAccount.name = \"${AZ_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+      ${YQ_CMD} -i '.spec.externalClusters[0].barmanObjectStore.azureCredentials.storageAccount.key = "AZURE_STORAGE_ACCOUNT"' ${EDB_CLUSTER_YAML_FILE}
+      ${YQ_CMD} -i ".spec.externalClusters[0].barmanObjectStore.azureCredentials.storageSasToken.name = \"${AZ_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+      ${YQ_CMD} -i '.spec.externalClusters[0].barmanObjectStore.azureCredentials.storageSasToken.key = "AZURE_STORAGE_SAS_TOKEN"' ${EDB_CLUSTER_YAML_FILE}
     fi
 
   elif [[ "${selected_option}" == "3" ]] ; then
@@ -382,20 +382,20 @@ function azure_blob_storage() {
     # printf "\n"
     AZURE_ACCOUNT_STORAGE_KEY=$( enter_input "$prompt_storage_key" "-s" | base64 -w 0)
     printf "\n"
-    ${YQ_CMD} w -i $AZ_SECRET_YAML_FILE data.AZURE_STORAGE_KEY "${AZURE_ACCOUNT_STORAGE_KEY}"
-    ${YQ_CMD} w -i $AZ_SECRET_YAML_FILE data.AZURE_STORAGE_ACCOUNT "${AZURE_ACCOUNT_STORAGE_NAME}"
+    ${YQ_CMD} -i ".data.AZURE_STORAGE_KEY = \"${AZURE_ACCOUNT_STORAGE_KEY}\"" $AZ_SECRET_YAML_FILE
+    ${YQ_CMD} -i ".data.AZURE_STORAGE_ACCOUNT = \"${AZURE_ACCOUNT_STORAGE_NAME}\"" $AZ_SECRET_YAML_FILE
 
     if [[ "${MODE}" == "backup" ]] ; then
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.azureCredentials.storageAccount.name "${AZ_SECRET_NAME}"
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.azureCredentials.storageAccount.key "AZURE_STORAGE_ACCOUNT"
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.azureCredentials.storageKey.name "${AZ_SECRET_NAME}"
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.azureCredentials.storageKey.key "AZURE_STORAGE_KEY"
+      ${YQ_CMD} -i ".spec.backup.barmanObjectStore.azureCredentials.storageAccount.name = \"${AZ_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+      ${YQ_CMD} -i '.spec.backup.barmanObjectStore.azureCredentials.storageAccount.key = "AZURE_STORAGE_ACCOUNT"' ${EDB_CLUSTER_YAML_FILE}
+      ${YQ_CMD} -i ".spec.backup.barmanObjectStore.azureCredentials.storageKey.name = \"${AZ_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+      ${YQ_CMD} -i '.spec.backup.barmanObjectStore.azureCredentials.storageKey.key = "AZURE_STORAGE_KEY"' ${EDB_CLUSTER_YAML_FILE}
     else
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.azureCredentials.storageAccount.name "${AZ_SECRET_NAME}"
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.azureCredentials.storageAccount.key "AZURE_STORAGE_ACCOUNT"
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.azureCredentials.storageKey.name "${AZ_SECRET_NAME}"
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.azureCredentials.storageKey.key "AZURE_STORAGE_KEY"
-      EXTERNAL_CLUSTERS=$(  ${YQ_CMD} r  $EDB_CLUSTER_YAML_FILE  -j 'spec.externalClusters' )
+      ${YQ_CMD} -i ".spec.externalClusters[0].barmanObjectStore.azureCredentials.storageAccount.name = \"${AZ_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+      ${YQ_CMD} -i '.spec.externalClusters[0].barmanObjectStore.azureCredentials.storageAccount.key = "AZURE_STORAGE_ACCOUNT"' ${EDB_CLUSTER_YAML_FILE}
+      ${YQ_CMD} -i ".spec.externalClusters[0].barmanObjectStore.azureCredentials.storageKey.name = \"${AZ_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+      ${YQ_CMD} -i '.spec.externalClusters[0].barmanObjectStore.azureCredentials.storageKey.key = "AZURE_STORAGE_KEY"' ${EDB_CLUSTER_YAML_FILE}
+      EXTERNAL_CLUSTERS=$(${YQ_CMD} -j ".spec.externalClusters" $EDB_CLUSTER_YAML_FILE)
 
     fi
 
@@ -410,10 +410,10 @@ function azure_blob_storage() {
 
 
 
-  ${YQ_CMD} w -i $AZ_SECRET_YAML_FILE apiVersion "v1"
-  ${YQ_CMD} w -i $AZ_SECRET_YAML_FILE kind "Secret"
-  ${YQ_CMD} w -i $AZ_SECRET_YAML_FILE metadata.name "${AZ_SECRET_NAME}"
-  ${YQ_CMD} w -i $AZ_SECRET_YAML_FILE metadata.namespace "${TARGET_PROJECT_NAME}"
+  ${YQ_CMD} -i '.apiVersion = "v1"' $AZ_SECRET_YAML_FILE
+  ${YQ_CMD} -i '.kind = "Secret"' $AZ_SECRET_YAML_FILE
+  ${YQ_CMD} -i ".metadata.name = \"${AZ_SECRET_NAME}\"" $AZ_SECRET_YAML_FILE
+  ${YQ_CMD} -i ".metadata.namespace = \"${TARGET_PROJECT_NAME}\"" $AZ_SECRET_YAML_FILE
 
   if [[ "${DEBUG}" == "True" || "${DEBUG}" == "TRUE" || "${DEBUG}" == "true" ]] ; then
     printf "\n*************** DEBUG MSG ***********************\n"
@@ -473,21 +473,21 @@ function google_cloud_storage() {
   fi
 
   if [[ "${MODE}" == "backup" ]] ; then
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.destinationPath "${GOOGLE_DESTINATION_PATH}"
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.googleCredentials.applicationCredentials.key "gcsCredentials"    
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.backup.barmanObjectStore.googleCredentials.applicationCredentials.name "${GOOGLE_SECRET_NAME}"
+    ${YQ_CMD} -i ".spec.backup.barmanObjectStore.destinationPath = \"${GOOGLE_DESTINATION_PATH}\"" ${EDB_CLUSTER_YAML_FILE}
+    ${YQ_CMD} -i '.spec.backup.barmanObjectStore.googleCredentials.applicationCredentials.key = "gcsCredentials"' ${EDB_CLUSTER_YAML_FILE}
+    ${YQ_CMD} -i ".spec.backup.barmanObjectStore.googleCredentials.applicationCredentials.name = \"${GOOGLE_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
   else
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.destinationPath "${GOOGLE_DESTINATION_PATH}"
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.googleCredentials.applicationCredentials.key "gcsCredentials"
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.externalClusters[0].barmanObjectStore.googleCredentials.applicationCredentials.name "${GOOGLE_SECRET_NAME}"
-    EXTERNAL_CLUSTERS=$(  ${YQ_CMD} r  $EDB_CLUSTER_YAML_FILE  -j 'spec.externalClusters' )
+    ${YQ_CMD} -i ".spec.externalClusters[0].barmanObjectStore.destinationPath = \"${GOOGLE_DESTINATION_PATH}\"" ${EDB_CLUSTER_YAML_FILE}
+    ${YQ_CMD} -i '.spec.externalClusters[0].barmanObjectStore.googleCredentials.applicationCredentials.key = "gcsCredentials"' ${EDB_CLUSTER_YAML_FILE}
+    ${YQ_CMD} -i ".spec.externalClusters[0].barmanObjectStore.googleCredentials.applicationCredentials.name = \"${GOOGLE_SECRET_NAME}\"" ${EDB_CLUSTER_YAML_FILE}
+    EXTERNAL_CLUSTERS=$(${YQ_CMD} -j ".spec.externalClusters" $EDB_CLUSTER_YAML_FILE)
 
   fi 
 
   # kubectl create secret generic backup-creds --from-file=gcsCredentials=gcs_credentials_file.json
   rm -fr ${GOOGLE_SECRET_SCRIPT_FILE}
   touch ${GOOGLE_SECRET_SCRIPT_FILE}
-  echo -e "kubectl create secret generic backup-creds --from-file=gcsCredentials=$GOOGLE_JSON_FILE_PATH" > ${GOOGLE_SECRET_SCRIPT_FILE}
+  echo -e "${CLI_CMD} create secret generic backup-creds --from-file=gcsCredentials=$GOOGLE_JSON_FILE_PATH" > ${GOOGLE_SECRET_SCRIPT_FILE}
 
   if [[ "${DEBUG}" == "True" || "${DEBUG}" == "TRUE" || "${DEBUG}" == "true" ]] ; then
     printf "\n*************** DEBUG MSG ***********************\n"
@@ -591,12 +591,12 @@ function get_recovery_input() {
       ENABLED_BACKUP_ID="true"
       local prompt_backup_id_desc="Enter the backup id (e.g. 20220616T142236) : "
       BACKUP_ID_VALUE=$( enter_input "${prompt_backup_id_desc}")
-      ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.bootstrap.recovery.recoveryTarget.backupID "${BACKUP_ID_VALUE}"
+      ${YQ_CMD} -i ".spec.bootstrap.recovery.recoveryTarget.backupID = \"${BACKUP_ID_VALUE}\"" ${EDB_CLUSTER_YAML_FILE}
     fi
-    ${YQ_CMD} w -i ${EDB_CLUSTER_YAML_FILE} spec.bootstrap.recovery.recoveryTarget.${PITR_MODE} "${PITR_MODE_VALUE}"
+    ${YQ_CMD} -i ".spec.bootstrap.recovery.recoveryTarget.${PITR_MODE} = \"${PITR_MODE_VALUE}\"" ${EDB_CLUSTER_YAML_FILE}
     
   fi
-  BOOTSTRAP=$( ${YQ_CMD} r  $EDB_CLUSTER_YAML_FILE  -j 'spec.bootstrap'  )
+  BOOTSTRAP=$(${YQ_CMD} -j ".spec.bootstrap" $EDB_CLUSTER_YAML_FILE)
 
  
 
@@ -621,13 +621,13 @@ function schedule_backups() {
   local prompt_sc_bk_immediate_options=("True", "true", "False", "false")
   local enable_sc_bk_immediate=$( display_input_custom "$prompt_sc_bk_immediate" "${prompt_sc_bk_immediate_options[@]}" )
 
-  ${YQ_CMD} w -i $EDB_CLUSTER_SCHEDULE_BACKUP apiVersion "postgresql.k8s.enterprisedb.io/v1"
-  ${YQ_CMD} w -i $EDB_CLUSTER_SCHEDULE_BACKUP kind "ScheduledBackup"
-  ${YQ_CMD} w -i $EDB_CLUSTER_SCHEDULE_BACKUP metadata.name "${EDB_CLUSTER_NAME}-schedule-backup"
-  ${YQ_CMD} w -i $EDB_CLUSTER_SCHEDULE_BACKUP spec.schedule "${SCHEDULE_BACKUPS}"
+  ${YQ_CMD} -i '.apiVersion = "postgresql.k8s.enterprisedb.io/v1"' $EDB_CLUSTER_SCHEDULE_BACKUP
+  ${YQ_CMD} -i '.kind = "ScheduledBackup"' $EDB_CLUSTER_SCHEDULE_BACKUP
+  ${YQ_CMD} -i ".metadata.name = \"${EDB_CLUSTER_NAME}-schedule-backup\"" $EDB_CLUSTER_SCHEDULE_BACKUP
+  ${YQ_CMD} -i ".spec.schedule = \"${SCHEDULE_BACKUPS}\"" $EDB_CLUSTER_SCHEDULE_BACKUP
   # ${YQ_CMD} w -i $EDB_CLUSTER_SCHEDULE_BACKUP spec.backupOwnerReference "self"
-  ${YQ_CMD} w -i $EDB_CLUSTER_SCHEDULE_BACKUP spec.immediate "${enable_sc_bk_immediate}"
-  ${YQ_CMD} w -i $EDB_CLUSTER_SCHEDULE_BACKUP spec.cluster.name "${EDB_CLUSTER_NAME}"
+  ${YQ_CMD} -i ".spec.immediate = \"${enable_sc_bk_immediate}\"" $EDB_CLUSTER_SCHEDULE_BACKUP
+  ${YQ_CMD} -i ".spec.cluster.name = \"${EDB_CLUSTER_NAME}\"" $EDB_CLUSTER_SCHEDULE_BACKUP
   
   if [[ "${DEBUG}" == "True" || "${DEBUG}" == "TRUE" || "${DEBUG}" == "true" ]] ; then 
     printf "\n*************** DEBUG MSG ***********************\n"

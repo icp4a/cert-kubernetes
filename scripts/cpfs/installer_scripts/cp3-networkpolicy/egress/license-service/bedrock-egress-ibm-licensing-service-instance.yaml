@@ -5,6 +5,7 @@ metadata:
   namespace: "licNamespace"
   labels:
     component: cpfs3
+    service: licensing
 spec:
   podSelector:
     matchLabels:

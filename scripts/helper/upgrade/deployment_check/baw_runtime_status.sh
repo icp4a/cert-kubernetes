@@ -9,9 +9,9 @@
 #
 ######################## BAA #######################
 # Check baw runtime upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.baw.[${item}].bawDeployment`
+isInstalled=$(cat "${UPGRADE_STATUS_FILE}" | ${YQ_CMD} ".status.components.baw[${item}].bawDeployment // \"\"" -)
 if [ -z "${isInstalled}"  ]; then
-    isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.baw.[${item}].bawCustomResource`
+    isInstalled=$(cat "${UPGRADE_STATUS_FILE}" | ${YQ_CMD} ".status.components.baw[${item}].bawCustomResource // \"\"" -)
 fi
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_BAW_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"

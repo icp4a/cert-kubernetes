@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-olm-utils-cm-job
+  namespace: "zenNamespace"
+  labels:
+    component: cpfs3
+    service: cpd-platform
+spec:
+  podSelector:
+    matchLabels:
+      job-name: olm-utils-cm-creation-job
+  policyTypes:
+  - Egress
+  egress:
+  - {}

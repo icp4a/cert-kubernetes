@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-cpd-platform-operator
+  namespace: "opNamespace"
+  labels:
+    component: cpfs3
+    service: cpd-platform
+spec:
+  podSelector:
+    matchLabels:
+      control-plane: cpd
+  policyTypes:
+  - Egress
+  egress:
+  - {}

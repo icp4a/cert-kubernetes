@@ -1,27 +1,33 @@
 apiVersion: velero.io/v1
 kind: Backup
 metadata:
+  labels:
+    velero.io/storage-location: <storage location name>
   name: __BACKUP_NAME__
   namespace: velero
 spec:
-  ttl: 720h0m0s
+  csiSnapshotTimeout: 10m0s
+  defaultVolumesToFsBackup: true
   defaultVolumesToRestic: true
-  storageLocation: bcdr-s3-location
+  hooks: {}
   includeClusterResources: true
   includedNamespaces:
   - '*'
   includedResources:
   - '*'
+  itemOperationTimeout: 4h0m0s
+  metadata: {}
   orLabelSelectors:
   - matchExpressions:
     - key: foundationservices.cloudpak.ibm.com
       operator: In
       values:
       - catalog
-      - singleton-subscription
       - subscription
+      - singleton-subscription
       - operand
-      - data
+      - zen-data
+      - mongo-data
       - entitlementkey
       - commonservice
       - pull-secret
@@ -29,3 +35,37 @@ spec:
       - zen
       - licensing
       - cert-manager
+      - namespace
+      - configmap
+      - zen5
+      - zen5-data
+      - crd
+      - lsr
+      - lsr-data
+      - cs-db-data
+      - cs-db
+      - keycloak-data
+      - keycloak
+      - user-mgmt
+      - nss
+      - cs-chart
+      - cs-cluster
+      - odlm-chart
+      - odlm-cluster
+      - ui-chart
+      - ui-cluster
+      - zen-chart
+      - zen-cluster
+      - edb-chart
+      - edb-cluster
+      - iam-chart
+      - iam-cluster
+      - nss-cluster
+      - ls-cluster
+      - ls-chart
+      - lsr-cluster
+      - lsr-chart
+      - ibm-cm-chart
+  snapshotMoveData: false
+  storageLocation: <storage location name>
+  ttl: 4h0m0s

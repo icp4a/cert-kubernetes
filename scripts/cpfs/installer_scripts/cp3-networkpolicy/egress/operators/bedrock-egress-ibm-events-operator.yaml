@@ -5,6 +5,7 @@ metadata:
   namespace: "opNamespace"
   labels:
     component: cpfs3
+    service: events
 spec:
   egress:
   - ports:

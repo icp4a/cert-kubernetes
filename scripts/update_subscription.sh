@@ -121,8 +121,8 @@ function prereq_check() {
             exit 1
         fi
     elif [ -z "${NAMESPACE}" ]; then
-        CP4BA_SUB=$(oc get sub -A | grep "ibm-cp4a-operator " | grep -v "wfps")
-        CP4BA_SUB_COUNT=$(oc get sub -A | grep "ibm-cp4a-operator " | grep -v -c "wfps")
+        CP4BA_SUB=$(oc get subscription.operators.coreos.com -A | grep "ibm-cp4a-operator " | grep -v "wfps")
+        CP4BA_SUB_COUNT=$(oc get subscription.operators.coreos.com -A | grep "ibm-cp4a-operator " | grep -v -c "wfps")
         if [ "${CP4BA_SUB_COUNT}" -le "0" ]; then
             echo -e "Error: CP4BA subscription not found in any namespace." >&2
             exit 1
@@ -133,7 +133,7 @@ function prereq_check() {
             exit 1
         fi
     fi
-    CP4BA_SUB_COUNT=$(oc get sub -n "${NAMESPACE}" | grep "ibm-cp4a-operator " | grep -v -c "wfps")
+    CP4BA_SUB_COUNT=$(oc get subscription.operators.coreos.com -n "${NAMESPACE}" | grep "ibm-cp4a-operator " | grep -v -c "wfps")
     if ! [[ ${NAMESPACE} =~ ^[0-9a-z][-0-9a-zA-Z]{2,62}$ ]]; then
         echo -e "Error: Invalid namespace input '${NAMESPACE}'." >&2
         exit 1
@@ -185,7 +185,7 @@ function get_sub_name() {
     local sub_list
     local sub_match
     local sub_match_count
-    sub_list=$(oc get sub --no-headers | awk '{print $1}')
+    sub_list=$(oc get subscription.operators.coreos.com --no-headers | awk '{print $1}')
     sub_match=$(echo "${sub_list}" | grep -E "$1")
     sub_match_count=$(echo "${sub_list}" | grep -E -c "$1")
     if [ "${sub_match_count}" -eq 1 ]; then
@@ -207,12 +207,12 @@ function get_sub_name() {
 function patch_sub() {
     local source
     if oc get sub "$1" --no-headers &> /dev/null ; then
-        source=$(oc get sub "$1" --no-headers | awk '{print $3}')
+        source=$(oc get subscription.operators.coreos.com "$1" --no-headers | awk '{print $3}')
         if [ "${source}" == "$2" ]; then return 0; fi
         while :; do
             oc patch sub "$1" --type=json -p '[{"op": "replace", "path": "/spec/source", "value": "'"$2"'"}]'
             sleep 1
-            source=$(oc get sub "$1" --no-headers | awk '{print $3}') 
+            source=$(oc get subscription.operators.coreos.com "$1" --no-headers | awk '{print $3}') 
             if [ "${source}" == "$2" ]; then
                 break
             fi
@@ -303,12 +303,12 @@ function validate_sub() {
             echo -e "Failed to patch following subscriptions from 'ibm-operator-catalog' to pinned-catalogs!"
             echo -e "(Ignore this error if below operator subscriptions is not one of the CP4BA operators)"
             echo -e "---------------------------------------------------------------------------------------"
-            oc get sub -n "$1" | grep -E 'ibm-operator-catalog |NAME'
+            oc get subscription.operators.coreos.com -n "$1" | grep -E 'ibm-operator-catalog |NAME'
             echo -e "---------------------------------------------------------------------------------------\n"
             VALIDATE_PASS=0
             break
         fi
-        if [ "$(oc get sub -n "$1" --no-headers | awk '{print $3}' | grep -c 'ibm-operator-catalog')" -ge 1 ]; then
+        if [ "$(oc get subscription.operators.coreos.com -n "$1" --no-headers | awk '{print $3}' | grep -c 'ibm-operator-catalog')" -ge 1 ]; then
             if [ "$1" == "${CS_NS}" ]; then patch_cs_sub;
             elif [ "$1" == "${CS_CTRL_NS}" ]; then patch_cs_ctrl_sub;
             elif [ "$1" == "${NAMESPACE}" ]; then patch_ns_sub; fi 

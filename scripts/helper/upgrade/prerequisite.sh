@@ -19,7 +19,7 @@ function install_ibm_cert_manager(){
     fi
     wait_msg "Installing IBM Cert-manager Operator..."
     mkdir -p $UPGRADE_PREREQUISITE_FOLDER >/dev/null 2>&1
-    oc new-project ibm-cert-manager >/dev/null 2>&1
+    ${CLI_CMD} new-project ibm-cert-manager >/dev/null 2>&1
     install_plan_approval_flag=$(echo $install_plan_approval | tr '[:upper:]' '[:lower:]')
     if [[ $install_plan_approval_flag == "automatic" ]]; then
         install_plan_approval="Automatic"
@@ -36,9 +36,9 @@ metadata:
   namespace: ibm-cert-manager
 spec: {}
 EOF
-    isOperatorGrp=$(kubectl get operatorgroup -n ibm-cert-manager --no-headers --ignore-not-found | grep ibm-cert-manager)
+    isOperatorGrp=$(${CLI_CMD} get operatorgroup -n ibm-cert-manager --no-headers --ignore-not-found | grep ibm-cert-manager)
     if [[ -z "$isOperatorGrp" ]]; then
-        kubectl apply -f ${UPGRADE_OPERATOR_GROUP}
+        ${CLI_CMD} apply -f ${UPGRADE_OPERATOR_GROUP}
     fi
 
 cat << EOF > ${UPGRADE_CERT_MANAGER_FILE}
@@ -59,15 +59,15 @@ spec:
   sourceNamespace: openshift-marketplace
   startingCSV: ibm-cert-manager-operator.v4.0.0
 EOF
-    kubectl apply -f ${UPGRADE_CERT_MANAGER_FILE}
+    ${CLI_CMD} apply -f ${UPGRADE_CERT_MANAGER_FILE}
 
     local maxRetry=30
     info "Checking the IBM Cert-manager Operator ready or not"
     for ((retry=0;retry<=${maxRetry};retry++)); do
-        isReadyWebhook=$(kubectl get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-webhook -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
-        isReadyCertmanager=$(kubectl get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-controller -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
-        isReadyCainjector=$(kubectl get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-cainjector -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
-        isReadyCertmanagerOperator=$(kubectl get pod -l=app.kubernetes.io/name=cert-manager,app.kubernetes.io/instance=ibm-cert-manager-operator -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
+        isReadyWebhook=$(${CLI_CMD} get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-webhook -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
+        isReadyCertmanager=$(${CLI_CMD} get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-controller -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
+        isReadyCainjector=$(${CLI_CMD} get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-cainjector -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
+        isReadyCertmanagerOperator=$(${CLI_CMD} get pod -l=app.kubernetes.io/name=cert-manager,app.kubernetes.io/instance=ibm-cert-manager-operator -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready' --all-namespaces --no-headers| grep 'Running' | grep 'true' | awk '{print $1}')
 
         # if [[ -z $isReadyCertmanagerOperator ]]; then
         if [[ -z $isReadyWebhook || -z $isReadyCertmanager || -z $isReadyCainjector || -z $isReadyCertmanagerOperator ]]; then
@@ -75,16 +75,16 @@ EOF
                 echo "Timeout waiting for IBM Cert-manager Operator to start"
                 echo -e "\x1B[1mPlease check the status of Pod by issue cmd: \x1B[0m"
                 if [[ -z $isReadyWebhook ]]; then
-                    echo "kubectl describe pod $(kubectl get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-webhook --all-namespaces --no-headers|awk '{print $1}') --all-namespaces"
+                    echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-webhook --all-namespaces --no-headers|awk '{print $1}') --all-namespaces"
                 fi
                 if [[ -z $isReadyCertmanager ]]; then
-                    echo "kubectl describe pod $(kubectl get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-controller --all-namespaces --no-headers|awk '{print $1}') --all-namespaces"
+                    echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-controller --all-namespaces --no-headers|awk '{print $1}') --all-namespaces"
                 fi
                 if [[ -z $isReadyCainjector ]]; then
-                    echo "kubectl describe pod $(kubectl get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-cainjector --all-namespaces --no-headers|awk '{print $1}') --all-namespaces"
+                    echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-cainjector --all-namespaces --no-headers|awk '{print $1}') --all-namespaces"
                 fi
                 if [[ -z $isReadyCertmanagerOperator ]]; then
-                    echo "kubectl describe pod $(kubectl get pod -l=app.kubernetes.io/name=cert-manager,app.kubernetes.io/instance=ibm-cert-manager-operator --all-namespaces --no-headers|awk '{print $1}') --all-namespaces"
+                    echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -l=app.kubernetes.io/name=cert-manager,app.kubernetes.io/instance=ibm-cert-manager-operator --all-namespaces --no-headers|awk '{print $1}') --all-namespaces"
                 fi
                 exit 1
             else

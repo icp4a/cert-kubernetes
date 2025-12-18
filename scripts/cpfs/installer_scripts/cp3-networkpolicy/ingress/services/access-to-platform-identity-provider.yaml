@@ -3,6 +3,7 @@ kind: NetworkPolicy
 metadata:
   labels:
     component: cpfs3
+    service: iam
   name: access-to-platform-identity-provider
   namespace: "csNamespace"
 spec:

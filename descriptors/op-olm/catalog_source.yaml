@@ -8,7 +8,7 @@
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
 #
 ###############################################################################
-# CP4BA 24.0.1-IF005 catalog
+# CP4BA 24.0.1-IF006 catalog
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
@@ -18,7 +18,9 @@ spec:
   displayName: ibm-cp4a-operator
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-cp-automation-catalog@sha256:ffec9bce43095b702844c14ed3e74d4578533b6dc37732afa55639899a48b65a
+  image: icr.io/cpopen/ibm-cp-automation-catalog@sha256:a57fb953e8aa717147d82cd0fbef801ff7a1fcbb8d5f62c90d9fca533620826e
+  grpcPodConfig:
+    securityContextConfig: restricted
 ---
 # IBM CS Flink Operator Catalog 1.18.1 (2.0.5+20250528.100000)
 apiVersion: operators.coreos.com/v1alpha1
@@ -33,6 +35,8 @@ spec:
   image: >-
     icr.io/cpopen/ibm-opencontent-flink-operator-catalog@sha256:452a16bfe1f015ac3a5510874a4b20bb0488caa5d74b270b608c2571b17b97ac
   priority: 100
+  grpcPodConfig:
+    securityContextConfig: restricted
 ---
 # IBM CS Opensearch Operator Catalog 1.1.2470
 apiVersion: operators.coreos.com/v1alpha1
@@ -46,36 +50,42 @@ spec:
   sourceType: grpc
   image: icr.io/cpopen/opencontent-elasticsearch-operator-catalog@sha256:5b81f9d2a5bb20f96503f76d6a39fc71cb844c49f4bc4f580e37bc4aeecb9474
   priority: 100
+  grpcPodConfig:
+    securityContextConfig: restricted
 ---
-# IBM Certificate Manager 4.2.15
+# IBM Certificate Manager 4.2.19
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
   name: ibm-cert-manager-catalog
   namespace: openshift-marketplace
 spec:
-  displayName: ibm-cert-manager-4.2.15
+  displayName: ibm-cert-manager-4.2.19
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-cert-manager-operator-catalog@sha256:85690858394aa8104e4452bead01b5648495c9930a237f9ee953064ddd1151fb
+  image: icr.io/cpopen/ibm-cert-manager-operator-catalog@sha256:d67b90ea57739794853674a4999beba00cd67a806174a00d397f55eebb1a76f4
+  grpcPodConfig:
+    securityContextConfig: restricted
 ---
-# IBM License Manager 4.2.15
+# IBM License Manager 4.2.19
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
   name: ibm-licensing-catalog
   namespace: openshift-marketplace
 spec:
-  displayName: ibm-licensing-4.2.15
+  displayName: ibm-licensing-4.2.19
   publisher: IBM
-  image: icr.io/cpopen/ibm-licensing-catalog@sha256:5c5fda8dc9958f1420ccccb4872c58fd6639d5f2c70694c06eb14f59816a4be8
+  image: icr.io/cpopen/ibm-licensing-catalog@sha256:7a6822eddbbdaa62555b61e529f3f620fa42c0e5472d48eeefeeaeea00f9e939
   sourceType: grpc
+  grpcPodConfig:
+    securityContextConfig: restricted
 ---
-# IBM Cloud Foundational Services 4.14.0
+# IBM Cloud Foundational Services 4.16.0
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
-  name: ibm-cs-install-catalog-v4-14-0
+  name: ibm-cs-install-catalog-v4-16-0
   namespace: openshift-marketplace
   annotations:
     bedrock_catalogsource_priority: '1'
@@ -83,10 +93,12 @@ spec:
   displayName: IBM CS Install Operators
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-cs-install-catalog@sha256:05e8a09eb13ae69563db7b41eff543ebcd618f540dc90f5ed13b69d75846086a
-  priority: 100    
+  image: icr.io/cpopen/ibm-cs-install-catalog@sha256:f24bad596f32cc6531420c8533419d6b7bc5c65da5578ab9ca6e55180cd72ac5
+  priority: 100
+  grpcPodConfig:
+    securityContextConfig: restricted
 ---
-# IBM Business Teams Service version 3.35.5
+# IBM Business Teams Service version 3.35.7
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
@@ -95,16 +107,18 @@ metadata:
   annotations:
     bedrock_catalogsource_priority: '1'
 spec:
-  displayName: BTS Operator-3.35.5
+  displayName: BTS Operator-3.35.7
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-bts-operator-catalog@sha256:d1f80f653c131d6b8b0f7d23a517b75900792688b120b564d5910c59ecd1729c
+  image: icr.io/cpopen/ibm-bts-operator-catalog@sha256:9a2e253c3a4931c579882ba791544f5afd0283a465c2c398e5b22f7416154d6d
+  grpcPodConfig:
+    securityContextConfig: restricted
 ---
-# IBM CS IM Operator Catalog 4.13.0
+# IBM CS IM Operator Catalog 4.15.0
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
-  name: ibm-iam-operator-catalog-4-13-0
+  name: ibm-iam-operator-catalog-4-15-0
   namespace: openshift-marketplace
   annotations:
     bedrock_catalogsource_priority: '1'
@@ -112,15 +126,17 @@ spec:
   displayName: IBM IAM Operator Catalog
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-iam-operator-catalog@sha256:64d8300c54590926e09f663de2af68de393cc7c86266d9e7be9af6e62acecdb9
+  image: icr.io/cpopen/ibm-iam-operator-catalog@sha256:620c8985b5e6056082a5e0aa35a91e1de7aeb15145690a4683bd80a32b3e4fa6
   priority: 100
+  grpcPodConfig:
+    securityContextConfig: restricted
 ---
-# IBM Zen Operator Catalog 6.2.1+20250818.110231.113
+# IBM Zen Operator Catalog 6.3.0+20251203.153430.336
 # we only update the catalog name when the channel is changed.
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
-  name: ibm-zen-operator-catalog-6-2-0
+  name: ibm-zen-operator-catalog-6-3-0
   namespace: openshift-marketplace
   annotations:
     bedrock_catalogsource_priority: '1'
@@ -128,25 +144,29 @@ spec:
   displayName: IBM Zen Operator Catalog
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-zen-operator-catalog@sha256:0b92ad1b0d12f06d89e34f9e0b6e5b4359614ef173501decc74758213cd5f11d
+  image: icr.io/cpopen/ibm-zen-operator-catalog@sha256:78ec2c576051a5ef98da6f9da5f18a490a148e9e988877fbac386147c69f080f
   priority: 100
+  grpcPodConfig:
+    securityContextConfig: restricted
 ---
-# IBM Events Operator Catalog 5.0.1
+# IBM Events Operator Catalog 5.2.1
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
-  name: ibm-events-operator-catalog
+  name: ibm-events-operator-catalog-v5-2-1
   namespace: openshift-marketplace
   annotations:
     bedrock_catalogsource_priority: '1'
 spec:
-  displayName: IBM Events Operator Catalog
+  displayName: IBM Events Operator Catalog-v5.2.1
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-events-operator-catalog@sha256:4cd92e1a78b080cc94beae89c257078314a6a0fae66e8a14512953b1c4004c09
+  image: icr.io/cpopen/ibm-events-operator-catalog@sha256:228ea92d69daa2350e151d1fe6b14e6fb56eadd0d3b5b5872178180747297687
   priority: 100
+  grpcPodConfig:
+    securityContextConfig: restricted
 ---
-# Cloud Native PostgresSQL Version 1.25.2 (CASE 5.16.0+20250722.134758.2626)(Postgresql Image Version 14.18)
+# Cloud Native PostgresSQL Version 1.25.4 (CASE 5.30.0+20251030.101847.2667)(Postgresql Image Version 14.19)
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
@@ -158,8 +178,10 @@ spec:
   displayName: Cloud Native Postgresql Catalog
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-cpd-cloud-native-postgresql-operator-catalog@sha256:4b7cf401006cd4d4060a664c8313b3690916746d0df40bd96c9e592f6aba541f
+  image: icr.io/cpopen/ibm-cpd-cloud-native-postgresql-operator-catalog@sha256:64319d2ce95721f25bbafb952af06e65f635097b04b1b5ecc4631b2757f6201d
   priority: 100
+  grpcPodConfig:
+    securityContextConfig: restricted
 ---
 # IBM FileNet Content Manager Standalone catalog for 5.6.0-IF002.
 apiVersion: operators.coreos.com/v1alpha1
@@ -172,3 +194,5 @@ spec:
   publisher: IBM
   sourceType: grpc
   image: icr.io/cpopen/ibm-fncm-catalog@sha256:f9b94bed28ed637c907eb82d04bbe3f67a7ec5615c982ae92a25810f0a57b817
+  grpcPodConfig:
+    securityContextConfig: restricted

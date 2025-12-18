@@ -1,0 +1,132 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  labels:
+    dp.isf.ibm.com/parent-recipe: cpfs-parent-recipe
+    dp.isf.ibm.com/parent-recipe-namespace: <parent recipe namespace>
+  name: cs-odlm-child-recipe
+  namespace: <child recipe namespace>
+spec:
+  appType: common-service
+  groups:
+    - includeClusterResources: true
+      includedResourceTypes:
+        - clusterrole
+        - clusterrolebinding
+        - customresourcedefinitions.apiextensions.k8s.io
+      labelSelector: foundationservices.cloudpak.ibm.com=cs-cluster
+      name: cs-cluster-resources
+      type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        - customresourcedefinitions.apiextensions.k8s.io
+      labelSelector: foundationservices.cloudpak.ibm.com=crd
+      name: cs-crd
+      type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        # - clusterrole
+        # - clusterrolebinding
+        - customresourcedefinitions.apiextensions.k8s.io
+      labelSelector: foundationservices.cloudpak.ibm.com=odlm-cluster
+      name: odlm-cluster-resources
+      type: resource
+    - includedResourceTypes:
+        - role
+        - rolebinding
+        - serviceaccount
+        - deployments
+        - secrets
+        - commonservices.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=cs-chart
+      name: cs-resources
+      type: resource
+    - includedResourceTypes:
+        - commonservices.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=commonservice
+      name: cs-cr
+      type: resource
+    - includedResourceTypes:
+        - role
+        - rolebinding
+        - serviceaccount
+        - deployments
+      labelSelector: foundationservices.cloudpak.ibm.com=odlm-chart
+      name: odlm-resources
+      type: resource
+    - backupRef: cs-resources
+      includedResourceTypes:
+        - serviceaccount
+        - role
+        - rolebinding
+        - secrets
+      name: cs-rbac-resources
+      type: resource
+    - backupRef: odlm-resources
+      includedResourceTypes:
+        - serviceaccount
+        - role
+        - rolebinding
+        - secrets
+      name: odlm-rbac-resources
+      type: resource
+    - backupRef: cs-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - deployments
+      name: cs-deployment
+      type: resource
+    - backupRef: odlm-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - deployments
+      name: odlm-deployment
+      type: resource
+  hooks:
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: cs-check
+      nameSelector: ibm-common-service-operator
+      namespace: <operator_ns>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: odlm-check
+      nameSelector: operand-deployment-lifecycle-manager
+      namespace: <operator_ns>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+  workflows:
+    - name: chart-backup
+      priority: 0
+      sequence:
+        - group: cs-cluster-resources
+        - group: cs-crd
+        - group: cs-cr
+        - group: cs-resources
+        - group: odlm-cluster-resources
+        - group: odlm-resources
+    - name: chart-restore
+      priority: 8
+      sequence:
+        - group: cs-cluster-resources
+        - group: cs-crd
+        - group: cs-rbac-resources
+        - group: cs-cr
+        - group: cs-deployment
+        - hook: cs-check/podReady
+        - group: odlm-cluster-resources
+        - group: odlm-rbac-resources
+        - group: odlm-deployment
+        - hook: odlm-check/podReady

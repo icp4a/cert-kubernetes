@@ -5,6 +5,7 @@ metadata:
   namespace: "csNamespace"
   labels:
     component: cpfs3
+    service: keycloak
 spec:
   egress:
   - ports:

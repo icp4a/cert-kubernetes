@@ -19,9 +19,9 @@ OLM_SUBSCRIPTION_TMP=${TEMP_FOLDER}/.subscription.yaml
 function select_uninstall_type(){
     local returnValue
     if [[ $RUNTIME_MODE == "baw" || $RUNTIME_MODE == "baw-dev" ]];then
-        kubectl get subscription -n $NAMESPACE| grep ibm-baw-operator-catalog-subscription >/dev/null 2>&1
+        kubectl get subscription.operators.coreos.com -n $NAMESPACE| grep ibm-baw-operator-catalog-subscription >/dev/null 2>&1
     else
-        kubectl get subscription -n $NAMESPACE| grep ibm-cp4a-operator-catalog-subscription >/dev/null 2>&1
+        kubectl get subscription.operators.coreos.com -n $NAMESPACE| grep ibm-cp4a-operator-catalog-subscription >/dev/null 2>&1
     fi
     returnValue=$?
     if [ "$returnValue" == 0 ] ; then
@@ -54,7 +54,7 @@ function uninstall_olm_cp4a(){
     ${SED_COMMAND} '/namespace: /d' ${OLM_SUBSCRIPTION_TMP}
     if [[ $RUNTIME_MODE == "baw" || $RUNTIME_MODE == "baw-dev" ]];then
         # - get csv name
-        csvName=$(kubectl get subscription "ibm-baw-operator-catalog-subscription" -n $NAMESPACE -o go-template --template '{{.status.installedCSV}}')
+        csvName=$(kubectl get subscription.operators.coreos.com "ibm-baw-operator-catalog-subscription" -n $NAMESPACE -o go-template --template '{{.status.installedCSV}}')
         # - remove the subscription
         echo "Removing the subscription for ibm-baw-operator-catalog-subscription"
         kubectl delete -f ${OLM_SUBSCRIPTION_TMP} -n $NAMESPACE
@@ -78,7 +78,7 @@ function uninstall_olm_cp4a(){
             echo "***********************************"
             if [[ "$source" == "ibm-cp4a-operator-catalog" ]]; then
                 # - get csv anme
-                csvName=$(kubectl get subscription $subName -n $NAMESPACE -o=jsonpath='{.status.installedCSV}')
+                csvName=$(kubectl get subscription.operators.coreos.com $subName -n $NAMESPACE -o=jsonpath='{.status.installedCSV}')
                 # - remove the subscription
                 echo "Removing the subscription for $subName"
                 kubectl delete subscription $subName -n $NAMESPACE

@@ -41,6 +41,12 @@ OPENSEARCH_NAMESPACE=
 # is uninstall flag?
 UNINSTALL=
 
+# skip IAM network policies flag
+SKIP_IAM=false
+
+# skip Zen network policies flag
+SKIP_ZEN=false
+
 IFS='
 '
 
@@ -117,6 +123,8 @@ function print_usage() {
     echo "   -opensearch, --opensearch-namespace string           Opensearch namespace. No default value"
     echo "   -u, --uninstall                                      Uninstall both ingress and egress IBM Common Services Network Policies"
     echo "   -e, --egress                                         Deploy egress NetworkPolicies. Without this option, only ingress NetworkPolicies are deployed"
+    echo "   --skipIAM                                            Skip installing network policies with for IAM services, Default is false"
+    echo "   --skipZen                                            Skip installing network policies with for Zen services. Default is false"
     echo "   -h, --help                                           Print usage information"
     echo ""
 }
@@ -163,6 +171,12 @@ function parse_arguments() {
         -e | --egress)
             EGRESS=true
             ;;
+        --skipIAM)
+            SKIP_IAM=true
+            ;;
+        --skipZen)
+            SKIP_ZEN=true
+            ;;
         -h | --help)
             print_usage
             exit 1
@@ -175,6 +189,22 @@ function parse_arguments() {
 }
 
 # ---------- Supporting functions ----------
+
+function should_skip_policy() {
+    local policyfile=$1
+    
+    # Check if policy contains 'service: iam' label and SKIP_IAM is set
+    if [[ ${SKIP_IAM} == "true" ]] && grep -q "service: iam" "${policyfile}"; then
+        return 0  # Skip this policy
+    fi
+    
+    # Check if policy contains 'service: zen' label and SKIP_ZEN is set
+    if [[ ${SKIP_ZEN} == "true" ]] && grep -q "service: zen" "${policyfile}"; then
+        return 0  # Skip this policy
+    fi
+    
+    return 1  # Don't skip this policy
+}
 
 function check_prereqs() {
     title "[$(translate_step ${STEP})] Checking prerequisites ..."
@@ -274,6 +304,14 @@ function install_networkpolicy() {
     info "Using license-service-reporter namespace: ${LICSVC_REPORTER_NAMESPACE}"
     info "Using flink namespace: ${FLINK_NAMESPACE}"
     info "Using opensearch namespace: ${OPENSEARCH_NAMESPACE}"
+    
+    if [[ ${SKIP_IAM} == "true" ]]; then
+        info "Skipping networkpolicies for IAM services"
+    fi
+    
+    if [[ ${SKIP_ZEN} == "true" ]]; then
+        info "Skipping networkpolicies for Zen services"
+    fi
 
     if [[ ${EGRESS} == "true" ]]; then
         BASE_DIR="${BASE_DIR}/egress"
@@ -283,6 +321,10 @@ function install_networkpolicy() {
 
     if [[ ! -z "${CS_NAMESPACE}" ]]; then
         for policyfile in `ls -1 ${BASE_DIR}/services/*.yaml`; do
+            if should_skip_policy "${policyfile}"; then
+                info "Skipping `basename ${policyfile}` due to skip flags ..."
+                continue
+            fi
             info "Installing `basename ${policyfile}` ..."
             cat ${policyfile} | sed -e "s/csNamespace/${CS_NAMESPACE}/g" | sed -e "s/opNamespace/${OPERATORS_NAMESPACE}/g" | sed -e "s/zenNamespace/${ZEN_NAMESPACE}/g" | oc apply -f -
         done
@@ -290,6 +332,10 @@ function install_networkpolicy() {
 
     if [[ ! -z "${OPERATORS_NAMESPACE}" ]]; then    
         for policyfile in `ls -1 ${BASE_DIR}/operators/*.yaml`; do
+            if should_skip_policy "${policyfile}"; then
+                info "Skipping `basename ${policyfile}` due to skip flags ..."
+                continue
+            fi
             info "Installing `basename ${policyfile}` ..."
             cat ${policyfile} | sed -e "s/csNamespace/${CS_NAMESPACE}/g" | sed -e "s/opNamespace/${OPERATORS_NAMESPACE}/g" | sed -e "s/zenNamespace/${ZEN_NAMESPACE}/g" | oc apply -f -
         done
@@ -298,6 +344,10 @@ function install_networkpolicy() {
     # Installing cert-manager policies
     if [[ ! -z "${CERT_NAMESPACE}" ]]; then
         for policyfile in `ls -1 ${BASE_DIR}/cert-manager/*.yaml`; do
+            if should_skip_policy "${policyfile}"; then
+                info "Skipping `basename ${policyfile}` due to skip flags ..."
+                continue
+            fi
             info "Installing `basename ${policyfile}` ..."
             cat ${policyfile} | sed -e "s/certNamespace/${CERT_NAMESPACE}/g" | oc apply -f -
         done
@@ -306,6 +356,10 @@ function install_networkpolicy() {
     # Installing license-service policies
     if [[ ! -z "${LICSVC_NAMESPACE}" ]]; then
         for policyfile in `ls -1 ${BASE_DIR}/license-service/*.yaml`; do
+            if should_skip_policy "${policyfile}"; then
+                info "Skipping `basename ${policyfile}` due to skip flags ..."
+                continue
+            fi
             info "Installing `basename ${policyfile}` ..."
             cat ${policyfile} | sed -e "s/licNamespace/${LICSVC_NAMESPACE}/g" | oc apply -f -
         done
@@ -314,6 +368,10 @@ function install_networkpolicy() {
     # Installing license-service-reporter policies
     if [[ ! -z "${LICSVC_REPORTER_NAMESPACE}" ]]; then
         for policyfile in `ls -1 ${BASE_DIR}/license-service-reporter/*.yaml`; do
+            if should_skip_policy "${policyfile}"; then
+                info "Skipping `basename ${policyfile}` due to skip flags ..."
+                continue
+            fi
             info "Installing `basename ${policyfile}` ..."
             cat ${policyfile} | sed -e "s/lsrNamespace/${LICSVC_REPORTER_NAMESPACE}/g" | oc apply -f -
         done
@@ -323,6 +381,10 @@ function install_networkpolicy() {
     # Installing flink policies
     if [[ ! -z "${FLINK_NAMESPACE}" ]]; then
         for policyfile in `ls -1 ${BASE_DIR}/flink/*.yaml`; do
+            if should_skip_policy "${policyfile}"; then
+                info "Skipping `basename ${policyfile}` due to skip flags ..."
+                continue
+            fi
             info "Installing `basename ${policyfile}` ..."
             cat ${policyfile} | sed -e "s/flinkNamespace/${FLINK_NAMESPACE}/g" | sed -e "s/opNamespace/${OPERATORS_NAMESPACE}/g" | oc apply -f -
         done
@@ -332,6 +394,10 @@ function install_networkpolicy() {
     # Installing opensearch policies
     if [[ ! -z "${OPENSEARCH_NAMESPACE}" ]]; then
         for policyfile in `ls -1 ${BASE_DIR}/opensearch/*.yaml`; do
+            if should_skip_policy "${policyfile}"; then
+                info "Skipping `basename ${policyfile}` due to skip flags ..."
+                continue
+            fi
             info "Installing `basename ${policyfile}` ..."
             cat ${policyfile} | sed -e "s/opensearchNamespace/${OPENSEARCH_NAMESPACE}/g" | sed -e "s/opNamespace/${OPERATORS_NAMESPACE}/g" | oc apply -f -
         done
@@ -340,6 +406,10 @@ function install_networkpolicy() {
     # Installing zen policies
     if [[ ! -z "${ZEN_NAMESPACE}" ]]; then
         for policyfile in `ls -1 ${BASE_DIR}/zen/*.yaml`; do
+            if should_skip_policy "${policyfile}"; then
+                info "Skipping `basename ${policyfile}` due to skip flags ..."
+                continue
+            fi
             info "Installing `basename ${policyfile}` ..."
             cat ${policyfile} | sed -e "s/zenNamespace/${ZEN_NAMESPACE}/g" | sed -e "s/csNamespace/${CS_NAMESPACE}/g" | sed -e "s/opNamespace/${OPERATORS_NAMESPACE}/g" | oc apply -f -
         done
@@ -351,36 +421,51 @@ function delete_networkpolicy() {
     title "[$(translate_step ${STEP})] Removing IBM Common Services Network Policies ..."
     msg "-----------------------------------------------------------------------"
 
+    # Build selector based on skip flags
+    local selector="component=cpfs3"
+    
+    if [[ ${SKIP_IAM} == "true" ]]; then
+        selector="${selector},service!=iam"
+    fi
+    
+    if [[ ${SKIP_ZEN} == "true" ]]; then
+        selector="${selector},service!=zen"
+    fi
+
+    if [[ ${SKIP_IAM} == "true" || ${SKIP_ZEN} == "true" ]]; then
+        info "Using selector: ${selector}"
+    fi
+
     if [[ ! -z "${CS_NAMESPACE}" ]]; then
-        oc delete networkpolicies -n ${CS_NAMESPACE} --selector=component=cpfs3
+        oc delete networkpolicies -n ${CS_NAMESPACE} --selector="${selector}"
     fi
 
     if [[ ! -z "${OPERATORS_NAMESPACE}" ]]; then
-        oc delete networkpolicies -n ${OPERATORS_NAMESPACE} --selector=component=cpfs3
+        oc delete networkpolicies -n ${OPERATORS_NAMESPACE} --selector="${selector}"
     fi
 
     if [[ ! -z "${CERT_NAMESPACE}" ]]; then
-        oc delete networkpolicies -n ${CERT_NAMESPACE} --selector=component=cpfs3
+        oc delete networkpolicies -n ${CERT_NAMESPACE} --selector="${selector}"
     fi
 
     if [[ ! -z "${LICSVC_NAMESPACE}" ]]; then
-        oc delete networkpolicies -n ${LICSVC_NAMESPACE} --selector=component=cpfs3
+        oc delete networkpolicies -n ${LICSVC_NAMESPACE} --selector="${selector}"
     fi
 
     if [[ ! -z "${LICSVC_REPORTER_NAMESPACE}" ]]; then
-        oc delete networkpolicies -n ${LICSVC_REPORTER_NAMESPACE} --selector=component=cpfs3
+        oc delete networkpolicies -n ${LICSVC_REPORTER_NAMESPACE} --selector="${selector}"
     fi
 
     if [[ ! -z "${FLINK_NAMESPACE}" ]]; then
-        oc delete networkpolicies -n ${FLINK_NAMESPACE} --selector=component=cpfs3
+        oc delete networkpolicies -n ${FLINK_NAMESPACE} --selector="${selector}"
     fi
 
     if [[ ! -z "${OPENSEARCH_NAMESPACE}" ]]; then
-        oc delete networkpolicies -n ${OPENSEARCH_NAMESPACE} --selector=component=cpfs3
+        oc delete networkpolicies -n ${OPENSEARCH_NAMESPACE} --selector="${selector}"
     fi
 
     if [[ ! -z "${ZEN_NAMESPACE}" ]]; then
-        oc delete networkpolicies -n ${ZEN_NAMESPACE} --selector=component=cpfs3
+        oc delete networkpolicies -n ${ZEN_NAMESPACE} --selector="${selector}"
     fi
 
 }

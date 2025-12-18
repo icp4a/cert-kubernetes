@@ -3,6 +3,7 @@ kind: NetworkPolicy
 metadata:
   labels:
     component: cpfs3
+    service: mongodb
   name: egress-icp-mongodb
   namespace: "csNamespace"
 spec:

@@ -5,6 +5,7 @@ metadata:
   namespace: "lsrNamespace"
   labels:
     component: cpfs3
+    service: lsr
 spec:
   egress:
     - ports:

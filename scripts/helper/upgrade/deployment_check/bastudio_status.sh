@@ -9,7 +9,7 @@
 #
 ######################## BAA #######################
 # Check ae-icp4adeploy-workspace-aae upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.bastudio.service`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.bastudio.service // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_BASTUDIO_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -24,10 +24,10 @@ elif [ -z "${isInstalled}"  ]; then
     CP4BA_BASTUDIO_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 fi
 
-PLAYBAK_DEPLOYMENT=`cat $UPGRADE_STATUS_FILE | ${YQ_CMD} r - spec.bastudio_configuration.playback_server.admin_user`
+PLAYBAK_DEPLOYMENT=`${YQ_CMD} ".spec.bastudio_configuration.playback_server.admin_user // \"\"" "$UPGRADE_STATUS_FILE"`
 if [[ ! -z "$PLAYBAK_DEPLOYMENT" ]]; then
     # Check playback upgrade status
-    isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.ae-${cr_metaname}-pbk.service`
+    isInstalled=$(cat "${UPGRADE_STATUS_FILE}" | ${YQ_CMD} ".status.components[\"ae-${cr_metaname}-pbk\"].service // \"\"" -)
     if [ "$isInstalled" == "NotInstalled" ]; then
         CP4BA_BAA_PBK_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
     elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then

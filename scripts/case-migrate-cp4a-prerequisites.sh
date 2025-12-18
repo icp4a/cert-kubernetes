@@ -56,80 +56,80 @@ function create_case_migration_property_file() {
     touch ${CASE_MIGRATION_PROPERTY_FILE}
     #${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "shared_configuration.sc_content_initialization" "false"
     #ICN details
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_icn_datasource.dc_icn_database_type" --style=double $DB_TYPE
+    ${YQ_CMD} -i ".datasource_configuration.dc_icn_datasource.dc_icn_database_type = \"$DB_TYPE\" | .datasource_configuration.dc_icn_datasource.dc_icn_database_type style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
     
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_icn_datasource.dc_common_icn_datasource_name" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".datasource_configuration.dc_icn_datasource.dc_common_icn_datasource_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_icn_datasource.dc_common_icn_datasource_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
     ${SED_COMMAND}  -e "/dc_common_icn_datasource_name: \"$MIG_PROP_TEMP\"/s/^/    #  ####Provide the name of the Datasource for the ICN required by BAW authoring or BAW Runtime\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_icn_datasource.dc_icn_database_servername" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_icn_datasource.dc_icn_database_name" --style=double "ICNDB"
+    ${YQ_CMD} -i ".datasource_configuration.dc_icn_datasource.dc_icn_database_servername = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_icn_datasource.dc_icn_database_servername style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i '.datasource_configuration.dc_icn_datasource.dc_icn_database_name = "ICNDB" | .datasource_configuration.dc_icn_datasource.dc_icn_database_name style="double"' ${CASE_MIGRATION_PROPERTY_FILE}
     MIG_COMMENT_TEMP="#### For Oracle database_name and database_username should be same. For example:  ICNDB"
     ${SED_COMMAND}  -e "/dc_icn_database_name: \"ICNDB\"/s/^/    #  $MIG_COMMENT_TEMP\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_icn_datasource.dc_icn_database_port" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_icn_datasource.dc_icn_database_username" --style=double "ICNDB"
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_icn_datasource.dc_icn_database_password" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".datasource_configuration.dc_icn_datasource.dc_icn_database_port = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_icn_datasource.dc_icn_database_port style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i '.datasource_configuration.dc_icn_datasource.dc_icn_database_username = "ICNDB" | .datasource_configuration.dc_icn_datasource.dc_icn_database_username style="double"' ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i ".datasource_configuration.dc_icn_datasource.dc_icn_database_password = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_icn_datasource.dc_icn_database_password style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
     if [[ $DB_TYPE == *"oracle"* ]];
     then 
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_icn_datasource.dc_icn_oracle_os_jdbc_url" --style=double "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+        ${YQ_CMD} -i '.datasource_configuration.dc_icn_datasource.dc_icn_oracle_os_jdbc_url = "jdbc:oracle:thin:@//<oracle_server>:1521/orcl" | .datasource_configuration.dc_icn_datasource.dc_icn_oracle_os_jdbc_url style="double"' ${CASE_MIGRATION_PROPERTY_FILE}
     fi 
     
     #GCD details
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_gcd_datasource.dc_gcd_database_type" --style=double $DB_TYPE
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_gcd_datasource.dc_common_gcd_datasource_name" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".datasource_configuration.dc_gcd_datasource.dc_gcd_database_type = \"$DB_TYPE\" | .datasource_configuration.dc_gcd_datasource.dc_gcd_database_type style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i ".datasource_configuration.dc_gcd_datasource.dc_common_gcd_datasource_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_gcd_datasource.dc_common_gcd_datasource_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
     ${SED_COMMAND}  -e "/dc_common_gcd_datasource_name: \"$MIG_PROP_TEMP\"/s/^/    #  ####Provide the name of the Datasource for the GCD required by BAW authoring or BAW Runtime\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_gcd_datasource.dc_common_gcd_xa_datasource_name" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".datasource_configuration.dc_gcd_datasource.dc_common_gcd_xa_datasource_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_gcd_datasource.dc_common_gcd_xa_datasource_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
     ${SED_COMMAND}  -e "/dc_common_gcd_xa_datasource_name: \"$MIG_PROP_TEMP\"/s/^/    #  ####Provide the name of the Datasource for the GCD XA required by BAW authoring or BAW Runtime\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_gcd_datasource.dc_gcd_database_servername" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_gcd_datasource.dc_gcd_database_name" --style=double "GCDDB"
+    ${YQ_CMD} -i ".datasource_configuration.dc_gcd_datasource.dc_gcd_database_servername = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_gcd_datasource.dc_gcd_database_servername style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i '.datasource_configuration.dc_gcd_datasource.dc_gcd_database_name = "GCDDB" | .datasource_configuration.dc_gcd_datasource.dc_gcd_database_name style="double"' ${CASE_MIGRATION_PROPERTY_FILE}
     MIG_COMMENT_TEMP="#### For Oracle database_name and database_username should be same. For example:  GCDDB"
     ${SED_COMMAND}  -e "/dc_gcd_database_name: \"GCDDB\"/s/^/    #  $MIG_COMMENT_TEMP\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_gcd_datasource.dc_gcd_database_port" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_gcd_datasource.dc_gcd_database_username" --style=double "GCDDB"
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_gcd_datasource.dc_gcd_database_password" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".datasource_configuration.dc_gcd_datasource.dc_gcd_database_port = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_gcd_datasource.dc_gcd_database_port style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i '.datasource_configuration.dc_gcd_datasource.dc_gcd_database_username = "GCDDB" | .datasource_configuration.dc_gcd_datasource.dc_gcd_database_username style="double"' ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i ".datasource_configuration.dc_gcd_datasource.dc_gcd_database_password = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_gcd_datasource.dc_gcd_database_password style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
     if [[ $DB_TYPE == *"oracle"* ]];
     then 
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_gcd_datasource.dc_gcd_oracle_os_jdbc_url" --style=double "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+        ${YQ_CMD} -i '.datasource_configuration.dc_gcd_datasource.dc_gcd_oracle_os_jdbc_url = "jdbc:oracle:thin:@//<oracle_server>:1521/orcl" | .datasource_configuration.dc_gcd_datasource.dc_gcd_oracle_os_jdbc_url style="double"' ${CASE_MIGRATION_PROPERTY_FILE}
     fi 
 
     #os datasource :
     #bawdocs
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_type" --style=double $DB_TYPE
+    ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_type = \"$DB_TYPE\" | .datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_type style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
     MIG_COMMENT_TEMP="#### Provide the name of the Datasource for the object store required by BAW authoring or BAW Runtime. For example: "BAWDOCS""
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[0].dc_bawdocs_os_label" --style=double "BAWDOCS"
+    ${YQ_CMD} -i '.datasource_configuration.dc_os_datasources[0].dc_bawdocs_os_label = "BAWDOCS" | .datasource_configuration.dc_os_datasources[0].dc_bawdocs_os_label style="double"' ${CASE_MIGRATION_PROPERTY_FILE}
     ${SED_COMMAND}  -e "/dc_bawdocs_os_label: \"BAWDOCS\"/s/^/    #  $MIG_COMMENT_TEMP\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[0].dc_bawdocs_common_os_datasource_name" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[0].dc_bawdocs_common_os_xa_datasource_name" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_common_os_datasource_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[0].dc_bawdocs_common_os_datasource_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_common_os_xa_datasource_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[0].dc_bawdocs_common_os_xa_datasource_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
 
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_servername" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_name" --style=double "BAWDOCS"
+    ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_servername = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_servername style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i '.datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_name = "BAWDOCS" | .datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_name style="double"' ${CASE_MIGRATION_PROPERTY_FILE}
     MIG_COMMENT_TEMP="#### For Oracle database_name and database_username should be same. For example:  BAWDOCS"
     ${SED_COMMAND}  -e "/dc_bawdocs_database_name: \"BAWDOCS\"/s/^/    #  $MIG_COMMENT_TEMP\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_port" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_username" --style=double "BAWDOCS"
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_password" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_port = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_port style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i '.datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_username = "BAWDOCS" | .datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_username style="double"' ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_password = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_password style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
     if [[ $DB_TYPE == *"oracle"* ]];
     then 
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[0].dc_bawdocs_oracle_os_jdbc_url" --style=double "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+        ${YQ_CMD} -i '.datasource_configuration.dc_os_datasources[0].dc_bawdocs_oracle_os_jdbc_url = "jdbc:oracle:thin:@//<oracle_server>:1521/orcl" | .datasource_configuration.dc_os_datasources[0].dc_bawdocs_oracle_os_jdbc_url style="double"' ${CASE_MIGRATION_PROPERTY_FILE}
     fi 
 
 
     #bawdos
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[1].dc_bawdos_database_type" --style=double $DB_TYPE
+    ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[1].dc_bawdos_database_type = \"$DB_TYPE\" | .datasource_configuration.dc_os_datasources[1].dc_bawdos_database_type style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
     MIG_COMMENT_TEMP="#### Provide the name of the Datasource for the Design object store required by BAW authoring or BAW Runtime. For example: "BAWDOS""
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[1].dc_bawdos_os_label" --style=double "BAWDOS"
+    ${YQ_CMD} -i '.datasource_configuration.dc_os_datasources[1].dc_bawdos_os_label = "BAWDOS" | .datasource_configuration.dc_os_datasources[1].dc_bawdos_os_label style="double"' ${CASE_MIGRATION_PROPERTY_FILE}
     ${SED_COMMAND}  -e "/dc_bawdos_os_label: \"BAWDOS\"/s/^/    #  $MIG_COMMENT_TEMP\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[1].dc_bawdos_common_os_datasource_name" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[1].dc_bawdos_common_os_xa_datasource_name" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[1].dc_bawdos_common_os_datasource_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[1].dc_bawdos_common_os_datasource_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[1].dc_bawdos_common_os_xa_datasource_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[1].dc_bawdos_common_os_xa_datasource_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
 
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[1].dc_bawdos_database_servername" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[1].dc_bawdos_database_name" --style=double "BAWDOS"
+    ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[1].dc_bawdos_database_servername = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[1].dc_bawdos_database_servername style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i '.datasource_configuration.dc_os_datasources[1].dc_bawdos_database_name = "BAWDOS" | .datasource_configuration.dc_os_datasources[1].dc_bawdos_database_name style="double"' ${CASE_MIGRATION_PROPERTY_FILE}
     MIG_COMMENT_TEMP="#### For Oracle database_name and database_username should be same. For example:  BAWDOS"
     ${SED_COMMAND}  -e "/dc_bawdos_database_name: \"BAWDOS\"/s/^/    #  $MIG_COMMENT_TEMP\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[1].dc_bawdos_database_port" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[1].dc_bawdos_database_username" --style=double "BAWDOS"
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[1].dc_bawdos_database_password" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[1].dc_bawdos_database_port = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[1].dc_bawdos_database_port style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i '.datasource_configuration.dc_os_datasources[1].dc_bawdos_database_username = "BAWDOS" | .datasource_configuration.dc_os_datasources[1].dc_bawdos_database_username style="double"' ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[1].dc_bawdos_database_password = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[1].dc_bawdos_database_password style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
     if [[ $DB_TYPE == *"oracle"* ]];
     then 
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[1].dc_bawdos_oracle_os_jdbc_url" --style=double "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+        ${YQ_CMD} -i '.datasource_configuration.dc_os_datasources[1].dc_bawdos_oracle_os_jdbc_url = "jdbc:oracle:thin:@//<oracle_server>:1521/orcl" | .datasource_configuration.dc_os_datasources[1].dc_bawdos_oracle_os_jdbc_url style="double"' ${CASE_MIGRATION_PROPERTY_FILE}
     fi 
 
 
@@ -141,43 +141,43 @@ function create_case_migration_property_file() {
             
             if [[ $TOS_NUM -gt 1 ]];
             then
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_type" --style=double $DB_TYPE
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_type = \"$DB_TYPE\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_type style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
                 MIG_COMMENT_TEMP="#### Provide the name of the Datasource for the Target object store required by BAW authoring or BAW Runtime. For example:  BAWTOS$((i-1))"
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_os_label" --style=double "BAWTOS$((i-1))"
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_os_label = \"BAWTOS$((i-1))\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_os_label style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
                 ${SED_COMMAND}  -e "/dc_bawtos$((i-1))_os_label: \"BAWTOS$((i-1))\"/s/^/    #  $MIG_COMMENT_TEMP\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_common_os_datasource_name" --style=double ${MIG_PROP_TEMP}
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_common_os_xa_datasource_name" --style=double ${MIG_PROP_TEMP}
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_common_os_datasource_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_common_os_datasource_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_common_os_xa_datasource_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_common_os_xa_datasource_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
 
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_servername" --style=double ${MIG_PROP_TEMP}
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_name" --style=double "BAWTOS$((i-1))"
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_servername = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_servername style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_name = \"BAWTOS$((i-1))\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
                 MIG_COMMENT_TEMP="#### For Oracle database_name and database_username should be same. For example:  BAWDOS"
                 ${SED_COMMAND}  -e "/dc_bawtos$((i-1))_database_name: \"BAWTOS$((i-1))\"/s/^/    #  $MIG_COMMENT_TEMP\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_port" --style=double ${MIG_PROP_TEMP}
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_username" --style=double "BAWTOS$((i-1))"
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_password" --style=double ${MIG_PROP_TEMP}
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_port = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_port style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_username = \"BAWTOS$((i-1))\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_username style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_password = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_database_password style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
                 
                 if [[ $DB_TYPE == *"oracle"* ]];
                 then 
-                    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_oracle_os_jdbc_url" --style=double "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+                    ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_oracle_os_jdbc_url = \"jdbc:oracle:thin:@//<oracle_server>:1521/orcl\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos$((i-1))_oracle_os_jdbc_url style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
                 fi
             else
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_type" --style=double $DB_TYPE
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_type = \"$DB_TYPE\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_type style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
                 MIG_COMMENT_TEMP="#### Provide the name of the Datasource for the Target object store required by BAW authoring or BAW Runtime. For example: BAWTOS"
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos_os_label" --style=double "BAWTOS"
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos_os_label = \"BAWTOS\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos_os_label style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
                 ${SED_COMMAND}  -e "/dc_bawtos_os_label: \"BAWTOS$((i-1))\"/s/^/    #  $MIG_COMMENT_TEMP\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos_common_os_datasource_name" --style=double ${MIG_PROP_TEMP}
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos_common_os_xa_datasource_name" --style=double ${MIG_PROP_TEMP}
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos_common_os_datasource_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos_common_os_datasource_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos_common_os_xa_datasource_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos_common_os_xa_datasource_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
 
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_servername" --style=double ${MIG_PROP_TEMP}
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_name" --style=double "BAWTOS"
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_servername = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_servername style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_name = \"BAWTOS\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
                 MIG_COMMENT_TEMP="#### For Oracle database_name and database_username should be same. For example:  BAWTOS"
                 ${SED_COMMAND}  -e "/dc_bawtos_database_name: \"BAWTOS\"/s/^/    #  $MIG_COMMENT_TEMP\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_port" --style=double ${MIG_PROP_TEMP}
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_username" --style=double "BAWTOS"
-                ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_password" --style=double ${MIG_PROP_TEMP}
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_port = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_port style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_username = \"BAWTOS\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_username style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+                ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_password = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos_database_password style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
                 if [[ $DB_TYPE == *"oracle"* ]];
                 then 
-                    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_bawtos_oracle_os_jdbc_url" --style=double "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+                    ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_bawtos_oracle_os_jdbc_url = \"jdbc:oracle:thin:@//<oracle_server>:1521/orcl\" | .datasource_configuration.dc_os_datasources[$i].dc_bawtos_oracle_os_jdbc_url style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
                 fi         
             fi           
         done
@@ -187,71 +187,71 @@ function create_case_migration_property_file() {
     if [[ $option_component_list == *"ae_data_persistence"* ]];
     then 
         i=$((TOS_NUM+2))
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_aeos_database_type" --style=double $DB_TYPE
+        ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_aeos_database_type = \"$DB_TYPE\" | .datasource_configuration.dc_os_datasources[$i].dc_aeos_database_type style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
         MIG_COMMENT_TEMP="#### Provide the name of the Datasource for the  object store required by BAW authoring or BAW Runtime. For example:  AEOS"
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_aeos_os_label" --style=double "AEOS"
+        ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_aeos_os_label = \"AEOS\" | .datasource_configuration.dc_os_datasources[$i].dc_aeos_os_label style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
         ${SED_COMMAND}  -e "/dc_aeos_os_label: \"AEOS\"/s/^/    #  $MIG_COMMENT_TEMP\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_aeos_common_os_datasource_name" --style=double ${MIG_PROP_TEMP}
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_aeos_common_os_xa_datasource_name" --style=double ${MIG_PROP_TEMP}
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_aeos_database_servername" --style=double ${MIG_PROP_TEMP}
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_aeos_database_name" --style=double "AEOS"
+        ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_aeos_common_os_datasource_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[$i].dc_aeos_common_os_datasource_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+        ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_aeos_common_os_xa_datasource_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[$i].dc_aeos_common_os_xa_datasource_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+        ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_aeos_database_servername = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[$i].dc_aeos_database_servername style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+        ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_aeos_database_name = \"AEOS\" | .datasource_configuration.dc_os_datasources[$i].dc_aeos_database_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
         MIG_COMMENT_TEMP="#### For Oracle database_name and database_username should be same. For example:  AEOS"
         ${SED_COMMAND}  -e "/dc_aeos_database_name: \"AEOS\"/s/^/    #  $MIG_COMMENT_TEMP\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_aeos_database_port" --style=double ${MIG_PROP_TEMP}
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_aeos_database_username" --style=double "AEOS"
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_aeos_database_password" --style=double ${MIG_PROP_TEMP}
+        ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_aeos_database_port = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[$i].dc_aeos_database_port style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+        ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_aeos_database_username = \"AEOS\" | .datasource_configuration.dc_os_datasources[$i].dc_aeos_database_username style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+        ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_aeos_database_password = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_os_datasources[$i].dc_aeos_database_password style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
         if [[ $DB_TYPE == *"oracle"* ]];
         then 
-            ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_aeos_oracle_os_jdbc_url" --style=double "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+            ${YQ_CMD} -i ".datasource_configuration.dc_os_datasources[$i].dc_aeos_oracle_os_jdbc_url = \"jdbc:oracle:thin:@//<oracle_server>:1521/orcl\" | .datasource_configuration.dc_os_datasources[$i].dc_aeos_oracle_os_jdbc_url style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
         fi    
         
     fi
 
     #cpe datasource 
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_cpe_datasources[0].dc_database_type" --style=double $DB_TYPE
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_cpe_datasources[0].dc_os_label" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".datasource_configuration.dc_cpe_datasources[0].dc_database_type = \"$DB_TYPE\" | .datasource_configuration.dc_cpe_datasources[0].dc_database_type style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i ".datasource_configuration.dc_cpe_datasources[0].dc_os_label = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_cpe_datasources[0].dc_os_label style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
     ${SED_COMMAND}  -e "/dc_os_label: \"$MIG_PROP_TEMP\"/s/^/    #  ####Provide the Details for CPE required by BAW authoring or BAW Runtime\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_cpe_datasources[0].dc_common_cpe_datasource_name" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_cpe_datasources[0].dc_common_cpe_xa_datasource_name" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_cpe_datasources[0].dc_database_servername" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_cpe_datasources[0].dc_database_name" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_cpe_datasources[0].dc_database_port" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".datasource_configuration.dc_cpe_datasources[0].dc_common_cpe_datasource_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_cpe_datasources[0].dc_common_cpe_datasource_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i ".datasource_configuration.dc_cpe_datasources[0].dc_common_cpe_xa_datasource_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_cpe_datasources[0].dc_common_cpe_xa_datasource_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i ".datasource_configuration.dc_cpe_datasources[0].dc_database_servername = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_cpe_datasources[0].dc_database_servername style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i ".datasource_configuration.dc_cpe_datasources[0].dc_database_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_cpe_datasources[0].dc_database_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i ".datasource_configuration.dc_cpe_datasources[0].dc_database_port = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_cpe_datasources[0].dc_database_port style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
 
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_cpe_datasources[0].dc_database_username" --style=double "CHOS"
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_cpe_datasources[0].dc_database_password" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i '.datasource_configuration.dc_cpe_datasources[0].dc_database_username = "CHOS" | .datasource_configuration.dc_cpe_datasources[0].dc_database_username style="double"' ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i ".datasource_configuration.dc_cpe_datasources[0].dc_database_password = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_cpe_datasources[0].dc_database_password style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
     if [[ $DB_TYPE == *"oracle"* ]];
     then 
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_cpe_datasources[0].dc_oracle_os_jdbc_url" --style=double "jdbc:oracle:thin:@//<oracle_server>:1521/orcl"
+        ${YQ_CMD} -i '.datasource_configuration.dc_cpe_datasources[0].dc_oracle_os_jdbc_url = "jdbc:oracle:thin:@//<oracle_server>:1521/orcl" | .datasource_configuration.dc_cpe_datasources[0].dc_oracle_os_jdbc_url style="double"' ${CASE_MIGRATION_PROPERTY_FILE}
     fi  
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_cpe_datasources[0].dc_common_conn_name" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".datasource_configuration.dc_cpe_datasources[0].dc_common_conn_name = \"${MIG_PROP_TEMP}\" | .datasource_configuration.dc_cpe_datasources[0].dc_common_conn_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
 
 
     #navigator_configuration
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "navigator_configuration.icn_production_setting.icn_jndids_name" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".navigator_configuration.icn_production_setting.icn_jndids_name = \"${MIG_PROP_TEMP}\" | .navigator_configuration.icn_production_setting.icn_jndids_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
     ${SED_COMMAND}  -e "/icn_jndids_name: \"$MIG_PROP_TEMP\"/s/^/    #  ####Provide the Details for Navigator required by BAW authoring or BAW Runtime\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "navigator_configuration.icn_production_setting.icn_schema" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "navigator_configuration.icn_production_setting.icn_table_space" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "navigator_configuration.icn_production_setting.icn_admin" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".navigator_configuration.icn_production_setting.icn_schema = \"${MIG_PROP_TEMP}\" | .navigator_configuration.icn_production_setting.icn_schema style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i ".navigator_configuration.icn_production_setting.icn_table_space = \"${MIG_PROP_TEMP}\" | .navigator_configuration.icn_production_setting.icn_table_space style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i ".navigator_configuration.icn_production_setting.icn_admin = \"${MIG_PROP_TEMP}\" | .navigator_configuration.icn_production_setting.icn_admin style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
 
 
     #content_integration
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "content_integration.domain_name" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".content_integration.domain_name = \"${MIG_PROP_TEMP}\" | .content_integration.domain_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
     ${SED_COMMAND}  -e "/domain_name: \"$MIG_PROP_TEMP\"/s/^/    #  ####Provide the Details for Content Integration required by BAW authoring or BAW Runtime\n/" ${CASE_MIGRATION_PROPERTY_FILE}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "content_integration.object_store_name" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".content_integration.object_store_name = \"${MIG_PROP_TEMP}\" | .content_integration.object_store_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
 
     #case
     ${SED_COMMAND} -e "/object_store_name: \"$MIG_PROP_TEMP\"/a    #  ####Provide the Details for Case required by BAW authoring or BAW Runtime" ${CASE_MIGRATION_PROPERTY_FILE} 
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "case.domain_name" --style=double ${MIG_PROP_TEMP}
-    ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "case.object_store_name_dos" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".case.domain_name = \"${MIG_PROP_TEMP}\" | .case.domain_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+    ${YQ_CMD} -i ".case.object_store_name_dos = \"${MIG_PROP_TEMP}\" | .case.object_store_name_dos style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
     #tos_list
     
     for ((i=0;i<$TOS_NUM;i++))
     do
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "case.tos_list[$i].object_store_name" --style=double ${MIG_PROP_TEMP}
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "case.tos_list[$i].connection_point_name" --style=double ${MIG_PROP_TEMP}
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "case.tos_list[$i].desktop_id" --style=double ${MIG_PROP_TEMP}
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "case.tos_list[$i].target_environment_name" --style=double ${MIG_PROP_TEMP}
-        ${YQ_CMD} w -i ${CASE_MIGRATION_PROPERTY_FILE} "case.tos_list[$i].is_default"  ${MIG_PROP_TEMP}
+        ${YQ_CMD} -i ".case.tos_list[$i].object_store_name = \"${MIG_PROP_TEMP}\" | .case.tos_list[$i].object_store_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+        ${YQ_CMD} -i ".case.tos_list[$i].connection_point_name = \"${MIG_PROP_TEMP}\" | .case.tos_list[$i].connection_point_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+        ${YQ_CMD} -i ".case.tos_list[$i].desktop_id = \"${MIG_PROP_TEMP}\" | .case.tos_list[$i].desktop_id style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+        ${YQ_CMD} -i ".case.tos_list[$i].target_environment_name = \"${MIG_PROP_TEMP}\" | .case.tos_list[$i].target_environment_name style=\"double\"" ${CASE_MIGRATION_PROPERTY_FILE}
+        ${YQ_CMD} -i ".case.tos_list[$i].is_default = \"${MIG_PROP_TEMP}\"" ${CASE_MIGRATION_PROPERTY_FILE}
     done
 
 }
@@ -267,20 +267,20 @@ create_secret_multi_tos() {
     local db_user_pwd_list=""
     local MIG_OS_TEMP=""
     
-    ${YQ_CMD} d -i ${FNCM_SECRET_FILE} "stringData.aeosDBUsername"
-    ${YQ_CMD} d -i ${FNCM_SECRET_FILE} "data.aeosDBPassword"
-    ${YQ_CMD} d -i ${FNCM_SECRET_FILE} "stringData.bawdosDBUsername"
-    ${YQ_CMD} d -i ${FNCM_SECRET_FILE} "data.bawdosDBPassword"
-    ${YQ_CMD} d -i ${FNCM_SECRET_FILE} "stringData.bawdocsDBUsername"
-    ${YQ_CMD} d -i ${FNCM_SECRET_FILE} "data.bawdocsDBPassword"
-    ${YQ_CMD} d -i ${FNCM_SECRET_FILE} "stringData.bawtosDBUsername"
-    ${YQ_CMD} d -i ${FNCM_SECRET_FILE} "data.bawtosDBPassword"
+    ${YQ_CMD} -i 'del(.stringData.aeosDBUsername)' "${FNCM_SECRET_FILE}"
+    ${YQ_CMD} -i 'del(.data.aeosDBPassword)' "${FNCM_SECRET_FILE}"
+    ${YQ_CMD} -i 'del(.stringData.bawdosDBUsername)' "${FNCM_SECRET_FILE}"
+    ${YQ_CMD} -i 'del(.data.bawdosDBPassword)' "${FNCM_SECRET_FILE}"
+    ${YQ_CMD} -i 'del(.stringData.bawdocsDBUsername)' "${FNCM_SECRET_FILE}"
+    ${YQ_CMD} -i 'del(.data.bawdocsDBPassword)' "${FNCM_SECRET_FILE}"
+    ${YQ_CMD} -i 'del(.stringData.bawtosDBUsername)' "${FNCM_SECRET_FILE}"
+    ${YQ_CMD} -i 'del(.data.bawtosDBPassword)' "${FNCM_SECRET_FILE}"
     
     #Updating GCD DB Username and Password
-    MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_gcd_datasource.dc_gcd_database_username")
-    ${YQ_CMD} w -i ${FNCM_SECRET_FILE} "stringData.gcdDBUsername" --style=double ${MIG_PROP_TEMP}
+    MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_gcd_datasource.dc_gcd_database_username" ${CASE_MIGRATION_PROPERTY_FILE})
+    ${YQ_CMD} -i ".stringData.gcdDBUsername = \"${MIG_PROP_TEMP}\" | .stringData.gcdDBUsername style=\"double\"" ${FNCM_SECRET_FILE}
     db_user_list=$MIG_PROP_TEMP
-    MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_gcd_datasource.dc_gcd_database_password")
+    MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_gcd_datasource.dc_gcd_database_password" ${CASE_MIGRATION_PROPERTY_FILE})
     echo  " ssl enabled : $tmp_postgresql_client_flag"
     db_user_pwd_list=$MIG_PROP_TEMP
 
@@ -298,7 +298,7 @@ create_secret_multi_tos() {
         update_secret_template_passwords "$MIG_PROP_TEMP" "gcdDBPassword" "$FNCM_SECRET_FILE"
     fi
     
-    db_name_list=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_gcd_datasource.dc_gcd_database_name")
+    db_name_list=$(${YQ_CMD} ".datasource_configuration.dc_gcd_datasource.dc_gcd_database_name" ${CASE_MIGRATION_PROPERTY_FILE})
     
     #OS details
     content_os_number="$(prop_tmp_property_file CONTENT_OS_NUMBER)"
@@ -314,10 +314,10 @@ create_secret_multi_tos() {
     fi 
 
     #Updating ICN DB Username and Password
-    MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_icn_datasource.dc_icn_database_username")
+    MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_icn_datasource.dc_icn_database_username" ${CASE_MIGRATION_PROPERTY_FILE})
     db_user_list+=",$MIG_PROP_TEMP"
-    ${YQ_CMD} w -i ${BAN_SECRET_FILE} "stringData.navigatorDBUsername" --style=double ${MIG_PROP_TEMP}
-    MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_icn_datasource.dc_icn_database_password")
+    ${YQ_CMD} -i ".stringData.navigatorDBUsername = \"${MIG_PROP_TEMP}\" | .stringData.navigatorDBUsername style=\"double\"" ${BAN_SECRET_FILE}
+    MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_icn_datasource.dc_icn_database_password" ${CASE_MIGRATION_PROPERTY_FILE})
     db_user_pwd_list+=",$MIG_PROP_TEMP"
 
     if [[ "${MIG_PROP_TEMP:0:8}" == "{Base64}"  ]]; then
@@ -334,19 +334,19 @@ create_secret_multi_tos() {
         update_secret_template_passwords "$MIG_PROP_TEMP" "navigatorDBPassword" "$BAN_SECRET_FILE"
     fi
     
-    MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_icn_datasource.dc_icn_database_name")
+    MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_icn_datasource.dc_icn_database_name" ${CASE_MIGRATION_PROPERTY_FILE})
     db_name_list+=",$MIG_PROP_TEMP"
-    ${YQ_CMD} w -i ${BAN_SECRET_FILE} "metadata.labels.db-name" --style=double ${MIG_PROP_TEMP}
+    ${YQ_CMD} -i ".metadata.labels.db-name = \"${MIG_PROP_TEMP}\" | .metadata.labels.db-name style=\"double\"" ${BAN_SECRET_FILE}
 
     
     #Updating BAWDOCS DB Username and Password
-    MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_username")
+    MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_username" ${CASE_MIGRATION_PROPERTY_FILE})
     db_user_list+=",$MIG_PROP_TEMP"
     
-    MIG_OS_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[0].dc_bawdocs_os_label")
+    MIG_OS_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
     #echo -e "Docs  is $MIG_OS_TEMP . "stringData.${MIG_OS_TEMP}DBUsername""
-    ${YQ_CMD} w -i ${FNCM_SECRET_FILE} "stringData.${MIG_OS_TEMP}DBUsername" --style=double ${MIG_PROP_TEMP}
-    MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_password")
+    ${YQ_CMD} -i ".stringData.${MIG_OS_TEMP}DBUsername = \"${MIG_PROP_TEMP}\" | .stringData.${MIG_OS_TEMP}DBUsername style=\"double\"" ${FNCM_SECRET_FILE}
+    MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_password" ${CASE_MIGRATION_PROPERTY_FILE})
     db_user_pwd_list+=",$MIG_PROP_TEMP"
 
     if [[ "${MIG_PROP_TEMP:0:8}" == "{Base64}"  ]]; then
@@ -365,16 +365,16 @@ create_secret_multi_tos() {
     fi 
 
     
-    MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_name")
+    MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_name" ${CASE_MIGRATION_PROPERTY_FILE})
     db_name_list+=",$MIG_PROP_TEMP"
 
     #Updating BAWDOS DB Username and Password
-    MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[1].dc_bawdos_database_username")
+    MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[1].dc_bawdos_database_username" ${CASE_MIGRATION_PROPERTY_FILE})
     db_user_list+=",$MIG_PROP_TEMP"
 
-    MIG_OS_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[1].dc_bawdos_os_label")
-    ${YQ_CMD} w -i ${FNCM_SECRET_FILE} "stringData.${MIG_OS_TEMP}DBUsername" --style=double ${MIG_PROP_TEMP}
-    MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[1].dc_bawdos_database_password")
+    MIG_OS_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[1].dc_bawdos_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
+    ${YQ_CMD} -i ".stringData.${MIG_OS_TEMP}DBUsername = \"${MIG_PROP_TEMP}\" | .stringData.${MIG_OS_TEMP}DBUsername style=\"double\"" ${FNCM_SECRET_FILE}
+    MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[1].dc_bawdos_database_password" ${CASE_MIGRATION_PROPERTY_FILE})
     db_user_pwd_list+=",$MIG_PROP_TEMP"
 
     if [[ "${MIG_PROP_TEMP:0:8}" == "{Base64}"  ]]; then
@@ -391,7 +391,7 @@ create_secret_multi_tos() {
         update_secret_template_passwords "$MIG_PROP_TEMP" "${MIG_OS_TEMP}DBPassword" "$FNCM_SECRET_FILE"
     fi
     
-    MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[1].dc_bawdos_database_name")
+    MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[1].dc_bawdos_database_name" ${CASE_MIGRATION_PROPERTY_FILE})
     db_name_list+=",$MIG_PROP_TEMP"
 
     #Updating TOS DB names in secret
@@ -399,12 +399,12 @@ create_secret_multi_tos() {
         
     if [[ $TOS_NUM -eq 1 ]];
     then 
-        MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[2].dc_bawtos_database_username")
+        MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[2].dc_bawtos_database_username" ${CASE_MIGRATION_PROPERTY_FILE})
         db_user_list+=",$MIG_PROP_TEMP"
-        MIG_OS_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[2].dc_bawtos_os_label")
+        MIG_OS_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[2].dc_bawtos_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
 
-        ${YQ_CMD} w -i ${FNCM_SECRET_FILE} "stringData.${MIG_OS_TEMP}DBUsername" --style=double ${MIG_PROP_TEMP}
-        MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[2].dc_bawtos_database_password")
+        ${YQ_CMD} -i ".stringData.${MIG_OS_TEMP}DBUsername = \"${MIG_PROP_TEMP}\" | .stringData.${MIG_OS_TEMP}DBUsername style=\"double\"" ${FNCM_SECRET_FILE}
+        MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[2].dc_bawtos_database_password" ${CASE_MIGRATION_PROPERTY_FILE})
         db_user_pwd_list+=",$MIG_PROP_TEMP"
 
         if [[ "${MIG_PROP_TEMP:0:8}" == "{Base64}"  ]]; then
@@ -421,24 +421,24 @@ create_secret_multi_tos() {
             update_secret_template_passwords "$MIG_PROP_TEMP" "${MIG_OS_TEMP}DBPassword" "$FNCM_SECRET_FILE"
         fi
         #${YQ_CMD} w -i ${FNCM_SECRET_FILE} "stringData.${MIG_OS_TEMP}DBPassword" --style=double ${MIG_PROP_TEMP}
-        MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[2].dc_bawtos_database_name")
+        MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[2].dc_bawtos_database_name" ${CASE_MIGRATION_PROPERTY_FILE})
         db_name_list+=",$MIG_PROP_TEMP"
     elif [[ $TOS_NUM -gt 1 ]];
     then
        
         for ((i=1;i<$TOS_NUM+1;i++))                
         do
-            MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_database_username")
+            MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_database_username" ${CASE_MIGRATION_PROPERTY_FILE})
             
-            MIG_PROP_KEY_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_os_label")
+            MIG_PROP_KEY_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
             MIG_PROP_KEY_TEMP="stringData."$MIG_PROP_KEY_TEMP"DBUsername"
             db_user_list+=",$MIG_PROP_TEMP"
-            ${YQ_CMD} w -i ${FNCM_SECRET_FILE} ${MIG_PROP_KEY_TEMP} --style=double ${MIG_PROP_TEMP}
+            ${YQ_CMD} -i ".${MIG_PROP_KEY_TEMP} = \"${MIG_PROP_TEMP}\" | .${MIG_PROP_KEY_TEMP} style=\"double\"" ${FNCM_SECRET_FILE}
 
             
-            MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_database_password")
+            MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_database_password" ${CASE_MIGRATION_PROPERTY_FILE})
             #echo -e "$MIG_PROP_TEMP"
-            MIG_PROP_KEY_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_os_label")
+            MIG_PROP_KEY_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
             MIG_PROP_KEY_TEMP=""$MIG_PROP_KEY_TEMP"DBPassword"
             db_user_pwd_list+=",$MIG_PROP_TEMP"
 
@@ -457,7 +457,7 @@ create_secret_multi_tos() {
             
             #${YQ_CMD} w -i ${FNCM_SECRET_FILE} ${MIG_PROP_KEY_TEMP} --style=double ${MIG_PROP_TEMP}
 
-            MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_database_name")
+            MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_database_name" ${CASE_MIGRATION_PROPERTY_FILE})
             db_name_list+=",$MIG_PROP_TEMP"
             
         done
@@ -465,12 +465,12 @@ create_secret_multi_tos() {
     
 
     #Updating cpe details    
-    MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_cpe_datasources[0].dc_database_username")
+    MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_cpe_datasources[0].dc_database_username" ${CASE_MIGRATION_PROPERTY_FILE})
     db_user_list+=",$MIG_PROP_TEMP"
-    MIG_OS_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_cpe_datasources[0].dc_os_label")
+    MIG_OS_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_cpe_datasources[0].dc_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
 
-    ${YQ_CMD} w -i ${FNCM_SECRET_FILE} "stringData.${MIG_OS_TEMP}DBUsername" --style=double ${MIG_PROP_TEMP}
-    MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_cpe_datasources[0].dc_database_password")
+    ${YQ_CMD} -i ".stringData.${MIG_OS_TEMP}DBUsername = \"${MIG_PROP_TEMP}\" | .stringData.${MIG_OS_TEMP}DBUsername style=\"double\"" ${FNCM_SECRET_FILE}
+    MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_cpe_datasources[0].dc_database_password" ${CASE_MIGRATION_PROPERTY_FILE})
     db_user_pwd_list+=",$MIG_PROP_TEMP"
 
     if [[ "${MIG_PROP_TEMP:0:8}" == "{Base64}"  ]]; then
@@ -487,7 +487,7 @@ create_secret_multi_tos() {
     fi
 
     #${YQ_CMD} w -i ${FNCM_SECRET_FILE} "stringData.${MIG_OS_TEMP}DBPassword" --style=double ${MIG_PROP_TEMP}
-    MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_cpe_datasources[0].dc_database_name")
+    MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_cpe_datasources[0].dc_database_name" ${CASE_MIGRATION_PROPERTY_FILE})
     db_name_list+=",$MIG_PROP_TEMP"
 
     #aeos data sources
@@ -495,12 +495,12 @@ create_secret_multi_tos() {
     if [[ $option_component_list == *"ae_data_persistence"* ]];
     then 
         i=$((TOS_NUM+2))
-        MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_aeos_database_username")
+        MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$i].dc_aeos_database_username" ${CASE_MIGRATION_PROPERTY_FILE})
         db_user_list+=",$MIG_PROP_TEMP"
-        MIG_OS_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_aeos_os_label")
+        MIG_OS_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$i].dc_aeos_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
 
-        ${YQ_CMD} w -i ${FNCM_SECRET_FILE} "stringData.${MIG_OS_TEMP}DBUsername" --style=double ${MIG_PROP_TEMP}
-        MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_aeos_database_password")
+        ${YQ_CMD} -i ".stringData.${MIG_OS_TEMP}DBUsername = \"${MIG_PROP_TEMP}\" | .stringData.${MIG_OS_TEMP}DBUsername style=\"double\"" ${FNCM_SECRET_FILE}
+        MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$i].dc_aeos_database_password" ${CASE_MIGRATION_PROPERTY_FILE})
         db_user_pwd_list+=",$MIG_PROP_TEMP"
 
         if [[ "${MIG_PROP_TEMP:0:8}" == "{Base64}"  ]]; then
@@ -518,7 +518,7 @@ create_secret_multi_tos() {
             update_secret_template_passwords "$MIG_PROP_TEMP" "${MIG_OS_TEMP}DBPassword" "$FNCM_SECRET_FILE"
         fi 
         #${YQ_CMD} w -i ${FNCM_SECRET_FILE} "stringData.${MIG_OS_TEMP}DBPassword" --style=double ${MIG_PROP_TEMP}
-        MIG_PROP_TEMP=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} "datasource_configuration.dc_os_datasources[$i].dc_aeos_database_name")
+        MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$i].dc_aeos_database_name" ${CASE_MIGRATION_PROPERTY_FILE})
         db_name_list+=",$MIG_PROP_TEMP"
     fi
 
@@ -674,7 +674,7 @@ function check_dbserver_name_valid(){
 
 function prop_db_name_migration_property() {
 
-    tmp_dbname="$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} $1)"
+    tmp_dbname=$(${YQ_CMD} ".$1" ${CASE_MIGRATION_PROPERTY_FILE})
     
 }
 
@@ -685,7 +685,7 @@ function validate_secret_in_cluster(){
     files=($(find $SECRET_FILE_FOLDER -name '*.yaml'))
     for item in ${files[*]}
     do
-        secret_name_tmp=`cat $item | ${YQ_CMD} r - metadata.name`
+        secret_name_tmp=`${YQ_CMD} ".metadata.name // \"\"" "$item"`
         if [ -z "$secret_name_tmp" ]; then
             error "Not found secret name in YAML file: \"$item\"!  check and fix it"
             exit 1
@@ -775,8 +775,8 @@ function validate_case_migrate_prerequisites(){
         tmp_serverport="$(prop_ldap_property_file LDAP_PORT)"
         tmp_basdn="$(prop_ldap_property_file LDAP_BASE_DN)"
         tmp_ldapssl="$(prop_ldap_property_file LDAP_SSL_ENABLED)"
-        tmp_user=`kubectl get secret -l name=ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapUsername | base64 --decode`
-        tmp_userpwd=`kubectl get secret -l name=ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapPassword | base64 --decode`
+        tmp_user=`kubectl get secret -l name=ldap-bind-secret -o yaml | ${YQ_CMD} '.items[0].data.ldapUsername' - | base64 --decode`
+        tmp_userpwd=`kubectl get secret -l name=ldap-bind-secret -o yaml | ${YQ_CMD} '.items[0].data.ldapPassword' - | base64 --decode`
 
         tmp_servername=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_servername")
         tmp_serverport=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_serverport")
@@ -795,8 +795,8 @@ function validate_case_migrate_prerequisites(){
             tmp_serverport="$(prop_ext_ldap_property_file LDAP_PORT)"
             tmp_basdn="$(prop_ext_ldap_property_file LDAP_BASE_DN)"
             tmp_ldapssl="$(prop_ext_ldap_property_file LDAP_SSL_ENABLED)"
-            tmp_user=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapUsername | base64 --decode`
-            tmp_userpwd=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml | ${YQ_CMD} r - items.[0].data.ldapPassword | base64 --decode`
+            tmp_user=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml | ${YQ_CMD} '.items[0].data.ldapUsername' - | base64 --decode`
+            tmp_userpwd=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml | ${YQ_CMD} '.items[0].data.ldapPassword' - | base64 --decode`
 
             tmp_servername=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_servername")
             tmp_serverport=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_serverport")
@@ -817,13 +817,13 @@ function validate_case_migrate_prerequisites(){
     # check db connection for GCDDB
     if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring" || " ${pattern_cr_arr[@]}" =~ "content" || " ${pattern_cr_arr[@]}" =~ "document_processing" || "${optional_component_cr_arr[@]}" =~ "ae_data_persistence" ]]; then
         # check DBNAME/DBUSER for GCDDB
-        tmp_dbserver=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.gcd-db-server`
-        tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.gcdDBUsername | base64 --decode`
-        tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.gcdDBPassword | base64 --decode`        
+        tmp_dbserver=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.gcd-db-server' -`
+        tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.gcdDBUsername' - | base64 --decode`
+        tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.gcdDBPassword' - | base64 --decode`
 
         #prop_db_name_migration_property "datasource_configuration.dc_gcd_datasource.dc_gcd_database_name"
 
-        tmp_dbname=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} datasource_configuration.dc_gcd_datasource.dc_gcd_database_name)
+        tmp_dbname=$(${YQ_CMD} ".datasource_configuration.dc_gcd_datasource.dc_gcd_database_name" ${CASE_MIGRATION_PROPERTY_FILE})
         
         # Check DB connection for ssl/nonssl
         if [[ $DB_TYPE == "oracle" ]]; then
@@ -842,8 +842,8 @@ function validate_case_migrate_prerequisites(){
                 # tmp_dbserver=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.os-db-server`
                 tmp_dbserver="$(prop_db_name_user_property_file_for_server_name OS$((j+1))_DB_USER_NAME)"
                 check_dbserver_name_valid $tmp_dbserver "OS$((j+1))_DB_USER_NAME"
-                tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.os$((j+1))DBUsername | base64 --decode`
-                tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.os$((j+1))DBPassword | base64 --decode`        
+                tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.os$((j+1))DBUsername" - | base64 --decode`
+                tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.os$((j+1))DBPassword" - | base64 --decode`
 
                 if [[ $DB_TYPE != "oracle" ]]; then
                     tmp_dbname="$(prop_db_name_user_property_file $tmp_dbserver.OS$((j+1))_DB_NAME)"
@@ -867,10 +867,10 @@ function validate_case_migrate_prerequisites(){
             #tmp_dbserver=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_servername)
 
             #tmp_dbserver=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_username)
-            tmp_label=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} datasource_configuration.dc_os_datasources[0].dc_bawdocs_os_label)
-            tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBUsername | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBPassword | base64 --decode`        
-            tmp_dbname=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_name)
+            tmp_label=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
+            tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBUsername" - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBPassword" - | base64 --decode`
+            tmp_dbname=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_name" ${CASE_MIGRATION_PROPERTY_FILE})
 
             if [[ $DB_TYPE == "oracle" ]]; then
                 verify_db_connection "${tmp_dbusername}" "${tmp_dbuserpassword}" "${tmp_dbserver}"
@@ -881,13 +881,13 @@ function validate_case_migrate_prerequisites(){
             
             #bawdos
             #tmp_dbserver=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} datasource_configuration.dc_os_datasources[1].dc_bawdos_database_username)
-            tmp_label=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} datasource_configuration.dc_os_datasources[1].dc_bawdos_os_label)
-            tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBUsername | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBPassword | base64 --decode`        
+            tmp_label=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[1].dc_bawdos_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
+            tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBUsername" - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBPassword" - | base64 --decode`
 
             #echo "Show tmp_dbusername = $tmp_dbusername"
             
-            tmp_dbname=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} datasource_configuration.dc_os_datasources[1].dc_bawdos_database_name)
+            tmp_dbname=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[1].dc_bawdos_database_name" ${CASE_MIGRATION_PROPERTY_FILE})
 
             if [[ $DB_TYPE == "oracle" ]]; then
                 verify_db_connection "${tmp_dbusername}" "${tmp_dbuserpassword}" "${tmp_dbserver}"
@@ -901,12 +901,12 @@ function validate_case_migrate_prerequisites(){
             TOS_NUM="$(prop_tmp_property_file TOS_NUM)"
             if [[ $TOS_NUM -eq 1 ]];
             then 
-                tmp_label=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} datasource_configuration.dc_os_datasources[2].dc_bawtos1_os_label)
-                tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBUsername | base64 --decode`
-                tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBPassword | base64 --decode`        
+                tmp_label=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[2].dc_bawtos1_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
+                tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBUsername" - | base64 --decode`
+                tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBPassword" - | base64 --decode`
                 #echo "Show tmp_dbusername = $tmp_dbusername"
                 
-                tmp_dbname=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} datasource_configuration.dc_os_datasources[2].dc_bawtos_database_name)
+                tmp_dbname=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[2].dc_bawtos_database_name" ${CASE_MIGRATION_PROPERTY_FILE})
 
                 if [[ $DB_TYPE == "oracle" ]]; then
                     verify_db_connection "${tmp_dbusername}" "${tmp_dbuserpassword}" "${tmp_dbserver}"
@@ -918,12 +918,12 @@ function validate_case_migrate_prerequisites(){
             then
                 for ((i=1;i<$TOS_NUM+1;i++))                
                 do
-                    tmp_label=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_os_label)
-                    tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBUsername | base64 --decode`
-                    tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBPassword | base64 --decode`        
+                    tmp_label=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
+                    tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBUsername" - | base64 --decode`
+                    tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBPassword" - | base64 --decode`
                     #echo "Show tmp_dbusername = $tmp_dbusername"
                     
-                    tmp_dbname=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_database_name)
+                    tmp_dbname=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_database_name" ${CASE_MIGRATION_PROPERTY_FILE})
                     echo "tmp_dbname value is $tmp_dbname"
                     if [[ $DB_TYPE == "oracle" ]]; then
                         verify_db_connection "${tmp_dbusername}" "${tmp_dbuserpassword}" "${tmp_dbserver}"
@@ -942,12 +942,12 @@ function validate_case_migrate_prerequisites(){
             
             #check_dbserver_name_valid $tmp_dbserver "CHOS_DB_USER_NAME"
             # tmp_label=$(echo ${BAW_AUTH_OS_ARR[i]}| tr '[:upper:]' '[:lower:]')
-            tmp_label=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} datasource_configuration.dc_cpe_datasources[0].dc_os_label)
-            tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBUsername | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBPassword | base64 --decode`        
+            tmp_label=$(${YQ_CMD} ".datasource_configuration.dc_cpe_datasources[0].dc_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
+            tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBUsername" - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBPassword" - | base64 --decode`
             
             
-            tmp_dbname=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} datasource_configuration.dc_cpe_datasources[0].dc_database_name)
+            tmp_dbname=$(${YQ_CMD} ".datasource_configuration.dc_cpe_datasources[0].dc_database_name" ${CASE_MIGRATION_PROPERTY_FILE})
             # Check DB non-SSL and SSL
             if [[ $DB_TYPE == "oracle" ]]; then
                 verify_db_connection "${tmp_dbusername}" "${tmp_dbuserpassword}" "${tmp_dbserver}"
@@ -962,8 +962,8 @@ function validate_case_migrate_prerequisites(){
             # tmp_dbserver=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.os-db-server`
             tmp_dbserver="$(prop_db_name_user_property_file_for_server_name AWSDOCS_DB_USER_NAME)"
             check_dbserver_name_valid $tmp_dbserver "AWSDOCS_DB_USER_NAME"
-            tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.awsdocsDBUsername | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.awsdocsDBPassword | base64 --decode`        
+            tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.awsdocsDBUsername' - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.awsdocsDBPassword' - | base64 --decode`
 
             if [[ $DB_TYPE != "oracle" ]]; then
                 tmp_dbname="$(prop_db_name_user_property_file $tmp_dbserver.AWSDOCS_DB_NAME)"
@@ -982,14 +982,14 @@ function validate_case_migrate_prerequisites(){
         # check db connection for objectstore used by AE data persistent
         if [[ " ${optional_component_cr_arr[@]}" =~ "ae_data_persistence" ]]; then
             i=$((TOS_NUM+2))
-            tmp_label=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} datasource_configuration.dc_os_datasources[$i].dc_aeos_os_label)
+            tmp_label=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$i].dc_aeos_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
 
         
             # tmp_dbserver=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.os-db-server`
-            tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBUsername | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_label}DBPassword | base64 --decode`        
+            tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBUsername" - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBPassword" - | base64 --decode`
 
-            tmp_dbname=$(${YQ_CMD} r ${CASE_MIGRATION_PROPERTY_FILE} datasource_configuration.dc_os_datasources[$i].dc_aeos_database_name)
+            tmp_dbname=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$i].dc_aeos_database_name" ${CASE_MIGRATION_PROPERTY_FILE})
             # Check DB non-SSL and SSL
             if [[ $DB_TYPE == "oracle" ]]; then
                 verify_db_connection "${tmp_dbusername}" "${tmp_dbuserpassword}" "${tmp_dbserver}"
@@ -1004,8 +1004,8 @@ function validate_case_migrate_prerequisites(){
             # tmp_dbserver=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.os-db-server`
             tmp_dbserver="$(prop_db_name_user_property_file_for_server_name DEVOS_DB_USER_NAME)"
             check_dbserver_name_valid $tmp_dbserver "DEVOS_DB_USER_NAME"
-            tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.devos1DBUsername | base64 --decode`
-            tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} r - items.[0].data.devos1DBPassword | base64 --decode`        
+            tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.devos1DBUsername' - | base64 --decode`
+            tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.devos1DBPassword' - | base64 --decode`
  
             if [[ $DB_TYPE != "oracle" ]]; then
                 tmp_dbname="$(prop_db_name_user_property_file $tmp_dbserver.DEVOS_DB_NAME)"
@@ -1031,9 +1031,9 @@ function validate_case_migrate_prerequisites(){
         fi
         tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.navigatorDBUsername | base64 --decode`
-        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.navigatorDBPassword | base64 --decode`        
+        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.navigatorDBUsername' - | base64 --decode`
+        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.navigatorDBPassword' - | base64 --decode`
 
         # Check DB non-SSL and SSL
         if [[ $DB_TYPE == "oracle" ]]; then
@@ -1054,9 +1054,9 @@ function validate_case_migrate_prerequisites(){
         fi
         tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.db-user | base64 --decode`
-        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.db-password | base64 --decode`        
+        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.db-user' - | base64 --decode`
+        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.db-password' - | base64 --decode`
 
         # Check DB non-SSL and SSL
         if [[ $DB_TYPE == "oracle" ]]; then
@@ -1075,9 +1075,9 @@ function validate_case_migrate_prerequisites(){
         fi
         tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-        tmp_dbserver=`kubectl get secret -l base-db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.base-db-server`
-        tmp_dbusername=`kubectl get secret -l base-db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.BASE_DB_USER | base64 --decode`
-        tmp_dbuserpassword=`kubectl get secret -l base-db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.BASE_DB_CONFIG | base64 --decode`        
+        tmp_dbserver=`kubectl get secret -l base-db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.base-db-server' -`
+        tmp_dbusername=`kubectl get secret -l base-db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.BASE_DB_USER' - | base64 --decode`
+        tmp_dbuserpassword=`kubectl get secret -l base-db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.BASE_DB_CONFIG' - | base64 --decode`
 
         # Check DB non-SSL and SSL
         if [[ $DB_TYPE == "oracle" ]]; then
@@ -1131,7 +1131,7 @@ function validate_case_migrate_prerequisites(){
                 tmp_dbname=$(echo $tmp_dbname | tr '[:lower:]' '[:upper:]')
                 tmp_dbusername=${db_user_array[num]}
                 # tmp_dbuserpassword=${db_userpwd_array[num]}
-                tmp_dbuserpassword=`kubectl get secret -l base-db-name=${tmp_base_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.${tmp_dbname}_DB_CONFIG | base64 --decode`
+                tmp_dbuserpassword=`kubectl get secret -l base-db-name=${tmp_base_dbname} -o yaml | ${YQ_CMD} ".items[0].data.${tmp_dbname}_DB_CONFIG" - | base64 --decode`
                 tmp_dbserver=${db_server_array[num]}
 
                 # Check DB non-SSL and SSL and SSL
@@ -1153,9 +1153,9 @@ function validate_case_migrate_prerequisites(){
         fi
         tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.AE_DATABASE_USER | base64 --decode`
-        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.AE_DATABASE_PWD | base64 --decode`        
+        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.AE_DATABASE_USER' - | base64 --decode`
+        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.AE_DATABASE_PWD' - | base64 --decode`
 
         # Check DB non-SSL and SSL and SSL
         if [[ $DB_TYPE == "oracle" ]]; then
@@ -1198,9 +1198,9 @@ function validate_case_migrate_prerequisites(){
         fi
         tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.dbUser | base64 --decode`
-        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.password | base64 --decode`        
+        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUser' - | base64 --decode`
+        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
 
         # Check DB non-SSL and SSL
         if [[ $DB_TYPE == "oracle" ]]; then
@@ -1217,9 +1217,9 @@ function validate_case_migrate_prerequisites(){
         fi
         tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.dbUser | base64 --decode`
-        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.password | base64 --decode`        
+        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUser' - | base64 --decode`
+        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
 
         # Check DB non-SSL and SSL
         if [[ $DB_TYPE == "oracle" ]]; then
@@ -1236,9 +1236,9 @@ function validate_case_migrate_prerequisites(){
         fi
         tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.dbUser | base64 --decode`
-        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.password | base64 --decode`        
+        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUser' - | base64 --decode`
+        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
 
         # Check DB non-SSL and SSL
         if [[ $DB_TYPE == "oracle" ]]; then
@@ -1255,9 +1255,9 @@ function validate_case_migrate_prerequisites(){
         fi
         tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.dbUser | base64 --decode`
-        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.password | base64 --decode`        
+        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUser' - | base64 --decode`
+        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
 
         # Check DB non-SSL and SSL
         if [[ $DB_TYPE == "oracle" ]]; then
@@ -1276,9 +1276,9 @@ function validate_case_migrate_prerequisites(){
         fi
         tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.AE_DATABASE_USER | base64 --decode`
-        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.AE_DATABASE_PWD | base64 --decode`        
+        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.AE_DATABASE_USER' - | base64 --decode`
+        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.AE_DATABASE_PWD' - | base64 --decode`
 
         # Check DB non-SSL and SSL
         if [[ $DB_TYPE == "oracle" ]]; then
@@ -1297,9 +1297,9 @@ function validate_case_migrate_prerequisites(){
         fi
         tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].metadata.labels.db-server`
-        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.dbUsername | base64 --decode`
-        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} r - items.[0].data.dbPassword | base64 --decode`
+        tmp_dbserver=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
+        tmp_dbusername=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUsername' - | base64 --decode`
+        tmp_dbuserpassword=`kubectl get secret -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbPassword' - | base64 --decode`
         # Check DB non-SSL and SSL
         if [[ $DB_TYPE == "oracle" ]]; then
             verify_db_connection "${tmp_dbusername}" "${tmp_dbuserpassword}" "${tmp_dbserver}"
@@ -1341,60 +1341,10 @@ function validate_utility_tool_for_validation(){
             esac
         done
     fi
-    which java &>/dev/null
-    if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate java. You must install it to run this script.\x1B[0m" && \
-        while true; do
-            printf "\x1B[1mDo you want install the IBM JRE by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
-            read -rp "" ans
-            case "$ans" in
-            "y"|"Y"|"yes"|"Yes"|"YES")
-                install_ibm_jre
-                break
-                ;;
-            "n"|"N"|"no"|"No"|"NO")
-                info "Must install the IBM JRE or other JRE to continue the next validation"
-                exit 1
-                ;;
-            *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
-                ;;
-            esac
-        done
-    else
-        java -version &>/dev/null
-        if [[ $? -ne 0 ]]; then
-            echo -e  "\x1B[1;31mUnable to locate a Java Runtime. You must install JRE to run this script.\x1B[0m" && \
-            while true; do
-                printf "\x1B[1mDo you want install the IBM JRE by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
-                read -rp "" ans
-                case "$ans" in
-                "y"|"Y"|"yes"|"Yes"|"YES")
-                    install_ibm_jre
-                    break
-                    ;;
-                "n"|"N"|"no"|"No"|"NO")
-                    info "Must install the IBM JRE or other JRE to continue next validation"
-                    exit 1
-                    ;;
-                *)
-                    echo -e "Answer must be \"Yes\" or \"No\"\n"
-                    ;;
-                esac
-            done    
-        fi
-    fi
-    which keytool &>/dev/null
-    if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate keytool. You must add it in \"\$PATH\" to run this script.\x1B[0m" && \
-        exit 1
-    else
-        keytool -help &>/dev/null
-        if [[ $? -ne 0 ]]; then
-            echo -e  "\x1B[1;31mUnable to locate keytool. You must install the IBM JRE or other JRE and add keytool in \"\$PATH\" to run this script\x1B[0m" && \
-            exit 1     
-        fi
-    fi
+    # DBACLD-198782: Check if Java is installed and meets the minimum version requirement
+    # Priority: --java-path > JAVA_HOME > system PATH
+    JAVA_PATH="${CUSTOM_JAVA_PATH:-$JAVA_HOME}"
+    validate_java_runtime "$JAVA_PATH"
 
     which openssl &>/dev/null
     if [[ $? -ne 0 ]]; then
@@ -1420,7 +1370,7 @@ function validate_utility_tool_for_validation(){
 }
 
 function show_help() {
-    echo -e "\nUsage: case-migrate-cp4a-prerequisites.sh -m [modetype]\n"
+    echo -e "\nUsage: case-migrate-cp4a-prerequisites.sh -m [modetype] [-j java_path]\n"
     echo "Options:"
     echo "  -h  Display help"
     echo "  -m  The valid mode types are: [property], [generate], or [validate]"
@@ -1429,6 +1379,7 @@ function show_help() {
     echo "      STEP3: Run the script in [generate] mode. Generates the DB SQL statement files and YAML templates for the secrets based on the values in the property files."
     echo "      STEP4: Create the databases and secrets by using the modified DB SQL statement files and YAML templates for the secrets."
     echo "      STEP5: Run the script in [validate] mode. Checks whether the databases and the secrets are created before you install CP4BA."
+    echo "  -j Optional: Specify a custom Java (JRE) path to use for Java validation (must be Java (JRE) $(REQUIRED_JAVA_VERSION) or higher)"
 }
 
 ################################################
@@ -1445,7 +1396,7 @@ then
     show_help
     exit -1
 else
-    while getopts "h?i:p:n:t:a:m:" opt; do
+    while getopts "h?i:p:n:t:a:m:j:" opt; do
         case "$opt" in
         h|\?)
             show_help
@@ -1459,6 +1410,8 @@ else
                 exit -1
             fi
             ;;
+        j)  CUSTOM_JAVA_PATH=$OPTARG
+            ;;
         :)  echo "Invalid option: -$OPTARG requires an argument"
             show_help
             exit -1
@@ -1471,7 +1424,7 @@ clear
 
 if [[ $RUNTIME_MODE == "property" ]]; then
     
-    #Import & exeute cp4a-prerequisites
+    #Import & execute cp4a-prerequisites
     source ${CUR_DIR}/cp4a-prerequisites.sh
     # Import common utilities and environment variables
     #source ${CUR_DIR}/helper/common.sh $TARGET_PROJECT_NAME
@@ -1519,7 +1472,7 @@ elif [[ $RUNTIME_MODE == "generate" ]]; then
                 exit 1
             fi
             #Validate the property file for Syntax errors
-            if ! ${YQ_CMD} validate $CASE_MIGRATION_PROPERTY_FILE ;
+            ${YQ_CMD} 'true' $CASE_MIGRATION_PROPERTY_FILE > /dev/null
             then 
                 error "Invalid Property File Syntax (YAML): \"${CASE_MIGRATION_PROPERTY_FILE}\", correct the synatx and rerun"
                 exit 1

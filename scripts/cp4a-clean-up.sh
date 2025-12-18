@@ -133,9 +133,9 @@ CP4BA_CM_CONFIG=$(${CLI_CMD} get configmap ibm-cp4ba-common-config -n ${CP4BA_NA
 CP4BA_CM_CONFIG_YAML=$(mktemp)
 echo "$CP4BA_CM_CONFIG" > "$CP4BA_CM_CONFIG_YAML"
 # get operators namespace
-CP4BA_OPERATORS_NAMESPACE=$(${YQ_CMD} r "$CP4BA_CM_CONFIG_YAML" "operators_namespace")
+CP4BA_OPERATORS_NAMESPACE=$(${YQ_CMD} ".operators_namespace" "$CP4BA_CM_CONFIG_YAML")
 # get services namespace (Same as the CP4BA namespace)
-CP4BA_SERVICES_NAMESPACE=$(${YQ_CMD} r "$CP4BA_CM_CONFIG_YAML" "services_namespace")
+CP4BA_SERVICES_NAMESPACE=$(${YQ_CMD} ".services_namespace" "$CP4BA_CM_CONFIG_YAML")
 
 if [[ "$CP4BA_OPERATORS_NAMESPACE" == "openshift-operators" ]]; then
 	ALL_NAMESPACE="true"
@@ -160,23 +160,23 @@ if [[ "$ALL_NAMESPACE" == "false" ]]; then
 	else
 		CS_MAPS_YAML=$(mktemp) 
 		echo "$CS_MAP" > "$CS_MAPS_YAML"
-		CS_NAMESPACE_COUNT=$(${YQ_CMD} r "$CS_MAPS_YAML" "namespaceMapping" -l)
+		CS_NAMESPACE_COUNT=$(${YQ_CMD} eval '.namespaceMapping | length' "$CS_MAPS_YAML")
 		for(( i = 0; i < $CS_NAMESPACE_COUNT; i++ ))
 		do
 			# Get CS namespace
-			CS_NS=$(${YQ_CMD} r "$CS_MAPS_YAML" "namespaceMapping[${i}].map-to-common-service-namespace")
+			CS_NS=$(${YQ_CMD} ".namespaceMapping[${i}].map-to-common-service-namespace" "$CS_MAPS_YAML")
 			# Get CS control namespace
-			CPFS_CONTROL_NAMESPACE=$(${YQ_CMD} r "$CS_MAPS_YAML" "controlNamespace")
+			CPFS_CONTROL_NAMESPACE=$(${YQ_CMD} ".controlNamespace" "$CS_MAPS_YAML")
 			# Get Shared namespace count
-			SHARED_NAMESPACE_COUNT=$(${YQ_CMD} r "$CS_MAPS_YAML" "namespaceMapping[${i}].requested-from-namespace" -l)
+			SHARED_NAMESPACE_COUNT=$(${YQ_CMD} eval '.namespaceMapping['"${i}"'].requested-from-namespace | length' "$CS_MAPS_YAML")
 			# Check if the Entered CP4BA namespace is in the list
 			for((j = 0; j < $SHARED_NAMESPACE_COUNT; j++))
 			do
 				# Get Cloud Pak namespace
-				CP_NS=$(${YQ_CMD} r "$CS_MAPS_YAML" "namespaceMapping[${i}].requested-from-namespace[${j}]")
+				CP_NS=$(${YQ_CMD} ".namespaceMapping[${i}].requested-from-namespace[${j}]" "$CS_MAPS_YAML")
 				if [[ "$CP_NS" == "$CP4BA_NAMESPACE" ]];then
-					NAMESPACES_MAPPED_TO_CS=$(${YQ_CMD} r "$CS_MAPS_YAML" "namespaceMapping[${i}].requested-from-namespace")
-					CPFS_SHARED_NAMESPACE=$(${YQ_CMD} r "$CS_MAPS_YAML" "namespaceMapping[${i}].map-to-common-service-namespace")
+					NAMESPACES_MAPPED_TO_CS=$(${YQ_CMD} ".namespaceMapping[${i}].requested-from-namespace" "$CS_MAPS_YAML")
+					CPFS_SHARED_NAMESPACE=$(${YQ_CMD} ".namespaceMapping[${i}].map-to-common-service-namespace // \"\"" "$CS_MAPS_YAML")
 					CS_MAP_INDEX="${i}"
 					REQUEST_NS_INDEX="${j}"
 					# Found and break out of nested loop
@@ -225,7 +225,7 @@ while true; do
 	break
 	;;
 	"n"|"no")
-		info "There is only one CP4BA deployment, CustomResourceDefinitions will be cleaned up."
+		info "Since there is only one CP4BA deployment, the script will also clean up CustomResourceDefinitions (CRD)."
 		CLEAN_CRDS="true"
 	break
 	;;
@@ -275,6 +275,39 @@ function delete_specific_resource() {
            info "${RESOURCE_NAME} ${OBJECT_NAME} is still found.  Removing finalizer..."
            ${CLI_CMD} patch "${RESOURCE_NAME}"/"${OBJECT_NAME}" -n "${NAMESPACE_NAME}" -p '{"metadata":{"finalizers":[]}}' --type=merge
         fi
+    fi
+}
+
+# Function to check if webhook belongs to the operators namespace being cleaned
+function webhook_belongs_to_namespace() {
+    local webhook_name=$1
+    local webhook_type=$2
+
+    # Get all service namespaces referenced by this webhook
+    local namespaces=$(${CLI_CMD} get ${webhook_type} ${webhook_name} \
+        -o jsonpath='{.webhooks[*].clientConfig.service.namespace}' 2>/dev/null)
+
+    # Check if the operators namespace we're cleaning is in the webhook's namespace list
+    if echo "$namespaces" | grep -qw "${CP4BA_OPERATORS_NAMESPACE}"; then
+        return 0  # Webhook points to our operators namespace
+    else
+        return 1  # Webhook points to different namespace
+    fi
+}
+
+# Function to delete subscription and its CSV
+function delete_subscription_and_csv() {
+    local subName=$1
+    local csvName
+
+    csvName=$(${CLI_CMD} get subscription "$subName" -n "${CP4BA_OPERATORS_NAMESPACE}" -o=jsonpath='{.status.installedCSV}' 2>/dev/null)
+
+    if [ -n "$csvName" ]; then
+        INFO "Removing subscription: $subName in namespace: ${CP4BA_OPERATORS_NAMESPACE}"
+        ${CLI_CMD} delete subscription "$subName" -n "${CP4BA_OPERATORS_NAMESPACE}" --ignore-not-found=true 2>/dev/null || true
+
+        INFO "Removing CSV: $csvName in namespace: ${CP4BA_OPERATORS_NAMESPACE}"
+        ${CLI_CMD} delete clusterserviceversion "$csvName" -n "${CP4BA_OPERATORS_NAMESPACE}" --ignore-not-found=true 2>/dev/null || true
     fi
 }
 
@@ -372,6 +405,29 @@ else
 	done
 
 fi
+	
+# Define CP4BA webhook patterns
+INFO "GET CP4BA webhook"
+CP4BA_WEBHOOK_PATTERNS_VALIDATING="validationwebhook.flink.ibm.com|vbusinessteamsservice|vwfpsruntime"
+CP4BA_WEBHOOK_PATTERNS_MUTATING="mutationwebhook.flink.ibm.com"
+
+webhook_configs=$(${CLI_CMD} get ValidatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers 2>/dev/null | grep -E "$CP4BA_WEBHOOK_PATTERNS_VALIDATING" || true)
+for webhook in $webhook_configs; do
+	[ -n "$webhook" ] || continue
+	# Only list webhooks that point to the namespace being cleaned
+	if webhook_belongs_to_namespace "$webhook" "ValidatingWebhookConfiguration"; then
+		echo -e "ValidatingWebhookConfiguration/${webhook}"
+	fi
+done
+
+webhook_configs=$(${CLI_CMD} get MutatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers 2>/dev/null | grep -E "$CP4BA_WEBHOOK_PATTERNS_MUTATING" || true)
+for webhook in $webhook_configs; do
+	[ -n "$webhook" ] || continue
+	# Only list webhooks that point to the namespace being cleaned
+	if webhook_belongs_to_namespace "$webhook" "MutatingWebhookConfiguration"; then
+		echo -e "MutatingWebhookConfiguration/${webhook}"
+	fi
+done
 
 # CPFS Resource
 CPFS_RESOURCES=(
@@ -421,7 +477,7 @@ if [[ $CLEAN_CPFS == "true" ]]; then
 	fi
 
 	#Get webhook
-	INFO "Webhook"
+	INFO "Common service Webhook"
 	pattern2="ibm-cs-ns-mapping-webhook-configuration"
 	pattern3="ibm-common-service-validating-webhook"
 	pattern4="namespace-admission-config"
@@ -524,6 +580,44 @@ if [[ $SKIP_CONFIRM == "false" ]]; then
 	sleep 2
 	echo
 fi
+
+INFO "Delete all CSV and Subscriptions to prevent webhook recreation"
+# Delete all subscriptions and their CSVs in operator namespace
+${CLI_CMD} get subscription.operators.coreos.com -n "${CP4BA_OPERATORS_NAMESPACE}" -o=jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null | while read -r subName; do
+    if [ -n "$subName" ]; then
+        delete_subscription_and_csv "$subName"
+    fi
+done
+
+INFO "Wait 5 seconds for operators to be fully removed"
+sleep 5
+
+INFO "Delete CP4BA webhooks that point to operators namespace: ${CP4BA_OPERATORS_NAMESPACE}"
+
+# Delete Validating webhooks that point to operators namespace
+webhook_configs=$(${CLI_CMD} get ValidatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers 2>/dev/null | grep -E "$CP4BA_WEBHOOK_PATTERNS_VALIDATING" || true)
+for webhook in $webhook_configs; do
+    [ -n "$webhook" ] || continue
+
+    # Check if this webhook points to the operators namespace
+    if webhook_belongs_to_namespace "$webhook" "ValidatingWebhookConfiguration"; then
+        INFO "Deleting ValidatingWebhookConfiguration: $webhook points to ${CP4BA_OPERATORS_NAMESPACE}"
+        ${CLI_CMD} delete ValidatingWebhookConfiguration "$webhook" --ignore-not-found=true || true
+    fi
+done
+
+# Delete Mutating webhooks that point to operators namespace
+webhook_configs=$(${CLI_CMD} get MutatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers 2>/dev/null | grep -E "$CP4BA_WEBHOOK_PATTERNS_MUTATING" || true)
+for webhook in $webhook_configs; do
+    [ -n "$webhook" ] || continue
+
+    # Check if this webhook points to the operators namespace
+    if webhook_belongs_to_namespace "$webhook" "MutatingWebhookConfiguration"; then
+        INFO "Deleting MutatingWebhookConfiguration: $webhook points to ${CP4BA_OPERATORS_NAMESPACE}"
+        ${CLI_CMD} delete MutatingWebhookConfiguration "$webhook" --ignore-not-found=true || true
+    fi
+done
+sleep 5
 
 # CP4BA clean up
 if [[ "$SEPARATION_DUTY" == "true" ]]; then
@@ -645,7 +739,7 @@ fi
 if [[ $IS_SHARED_CPFS == "true" ]]; then
 	INFO "Remove mapping from ${COMMON_SERVICES_CM_NAMESPACE} namespace"
 	# Remove mapping from common-service-maps.yaml and apply it back
-	NEW_CS_MAPS=$(${YQ_CMD} d "$CS_MAPS_YAML" "namespaceMapping[${CS_MAP_INDEX}].requested-from-namespace[${REQUEST_NS_INDEX}]")
+	NEW_CS_MAPS=$(${YQ_CMD} -i "del(.namespaceMapping[${CS_MAP_INDEX}].requested-from-namespace[${REQUEST_NS_INDEX}])" "$CS_MAPS_YAML")
 	padded_yaml=$(echo "$NEW_CS_MAPS" | awk '$0="    "$0')
 	NEW_CS_MAPS_YAML="$(
 	cat <<EOF
@@ -663,7 +757,7 @@ EOF
 else
 	INFO "Remove mapping from ${COMMON_SERVICES_CM_NAMESPACE} namespace"
 	# Remove mapping from common-service-maps.yaml and apply it back
-	NEW_CS_MAPS=$(${YQ_CMD} d "$CS_MAPS_YAML" "namespaceMapping[${CS_MAP_INDEX}]")
+	NEW_CS_MAPS=$(${YQ_CMD} -i "del(.namespaceMapping[${CS_MAP_INDEX}])" "$CS_MAPS_YAML")
 	padded_yaml=$(echo "$NEW_CS_MAPS" | awk '$0="    "$0')
 	NEW_CS_MAPS_YAML="$(
 		cat <<EOF

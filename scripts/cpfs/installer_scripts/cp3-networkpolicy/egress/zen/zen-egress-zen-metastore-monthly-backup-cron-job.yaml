@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-zen-metastore-monthly-backup-cron-job
+  namespace: "zenNamespace"
+  labels:
+    component: cpfs3
+    service: zen
+spec:
+  podSelector:
+    matchLabels:
+      component: "zen-metastore-monthly-backup-cron-job"
+  policyTypes:
+  - Egress
+  egress:
+  - {}

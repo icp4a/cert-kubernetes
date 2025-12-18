@@ -164,7 +164,7 @@ function prepare_olm_install() {
               exit 1
             fi
             sed "s/REPLACE_NAMESPACE/$project_name/g" ${OLM_SUBSCRIPTION} > ${OLM_SUBSCRIPTION_TMP}
-            ${YQ_CMD} w -i ${OLM_SUBSCRIPTION_TMP} spec.source "$online_source"
+            ${YQ_CMD} -i ".spec.source = \"$online_source\"" ${OLM_SUBSCRIPTION_TMP}
             sed -i "s/sourceNamespace: .*/sourceNamespace: \"$CATALOG_NS\"/g" ${OLM_SUBSCRIPTION_TMP}
             oc apply -f ${OLM_SUBSCRIPTION_TMP} -n $NAMESPACE
             if [ $? -eq 0 ]
@@ -253,7 +253,7 @@ function prepare_olm_install() {
     old_pod=$(oc get pods -n $NAMESPACE|grep ibm-cp4a-operator|awk '{print $1}'|head -n 1)
     if [[ $CATALOG_FOUND == "No" ]]; then
       sed "s/REPLACE_NAMESPACE/$project_name/g" ${OLM_SUBSCRIPTION} > ${OLM_SUBSCRIPTION_TMP}
-      ${YQ_CMD} w -i ${OLM_SUBSCRIPTION_TMP} spec.source "$online_source"
+      ${YQ_CMD} -i ".spec.source = \"$online_source\"" ${OLM_SUBSCRIPTION_TMP}
       sed -i "s/sourceNamespace: .*/sourceNamespace: \"$CATALOG_NS\"/g" ${OLM_SUBSCRIPTION_TMP}
       oc apply -f ${OLM_SUBSCRIPTION_TMP} -n $NAMESPACE
       # sed <"${OLM_SUBSCRIPTION}" "s|REPLACE_NAMESPACE|${project_name}|g; s|REPLACE_CHANNEL_NAME|stable|g" | oc apply -f -

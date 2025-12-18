@@ -62,6 +62,10 @@ function parse_arguments() {
       shift
       LSR_NAMESPACE=$1
       ;;
+    --zen-ns)
+      shift
+      ZEN_NAMESPACE=$1
+      ;;
     --zen)
       ZEN="true"
       SELECTED="true"
@@ -126,6 +130,10 @@ function parse_arguments() {
     warning "No services namespace specified, using operator namespace $OPERATOR_NAMESPACE instead. If using SOD topology, please re-run with both --operator-ns and --services-ns defined."
     TARGET_NAMESPACE=$OPERATOR_NAMESPACE
   fi
+  if [[ $ZEN == "true" || $ZEN4 == "true" ]] && [[ $ZEN_NAMESPACE == "" ]]; then
+    warning "No zen namespace specified, using service namespace $TARGET_NAMESPACE instead."
+    ZEN_NAMESPACE=$TARGET_NAMESPACE
+  fi
 }
 
 function print_usage() {
@@ -138,6 +146,7 @@ function print_usage() {
   echo " --services-ns string                             Required. Namespace where IM EDB, IM Mongo, Zen, or Keycloak operands are installed. If installed in different namespaces, script will need to be run separately. Optional if it is the same as --operator-ns."
   echo " --tethered-ns string                             Optional. Comma-delimited list of namespaces attached to a given CPFS install. Should include any namespace from a given tenant in the common-service-maps cm that are not the --operator-ns or the --services-ns. Only required when --util specified."
   echo " --lsr-ns string                                  Optional. Namespace for the License Service Reporter install. Required if --lsr specified."
+  echo " --zen-ns string                                  Optional. Namespace for the Zen install. Only required if multiple zenservice instances are found in the --services-ns."
   echo " --im, --mongo, --keycloak, --zen, --zen4, --lsr  Required. Choose which component(s) to deploy backup/restore resources for to the target namespace. At least one is required. Multiple can be specified but only one of --zen or --zen4 can be chosen."
   echo " --util                                           Optional. Deploy the CPFS Util job for use in SOD topologies. If this option is selected, --operator-ns and --services-ns are both required."
   echo " --storage-class string                           Optional. Storage class to use for backup/restore resources. Default value is cluster's default storage class."
@@ -221,14 +230,14 @@ function deploy_resources(){
   #Deploy zen 5 resources
   if [[ $ZEN == "true" ]]; then
     if [[ $ZENSERVICE == "" ]]; then
-      ZENSERVICE=$(oc get zenservice -n $TARGET_NAMESPACE --no-headers | awk '{print $1}')
+      ZENSERVICE=$(oc get zenservice -n $ZEN_NAMESPACE --no-headers | awk '{print $1}')
     fi
     if [[ $ZENSERVICE != "" ]]; then
-      exists=$(oc get zenservice $ZENSERVICE -n $TARGET_NAMESPACE --no-headers --ignore-not-found)
+      exists=$(oc get zenservice $ZENSERVICE -n $ZEN_NAMESPACE --no-headers --ignore-not-found)
       if [[ $exists == "" ]]; then
-        warning "Zenservice $ZENSERVICE not found in namespace $TARGET_NAMESPACE. Make sure the zenservice is deployed to the target namespace $TARGET_NAMESPACE or change the namespace used."
+        warning "Zenservice $ZENSERVICE not found in namespace $ZEN_NAMESPACE. Make sure the zenservice is deployed to the target namespace $ZEN_NAMESPACE or change the namespace used."
       else
-        info "Creating Zen Backup/Restore resources in namespace $TARGET_NAMESPACE."
+        info "Creating Zen Backup/Restore resources in namespace $ZEN_NAMESPACE."
         
         rm -rf tmp/zen/
         mkdir tmp/zen
@@ -239,33 +248,33 @@ function deploy_resources(){
         cp ${BASE_DIR}/zen5-sa.yaml tmp/zen/zen5-sa.yaml
         cp ${BASE_DIR}/zen5-br-scripts-cm.yaml tmp/zen/zen5-br-scripts-cm.yaml
 
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen/zen5-backup-deployment.yaml
+        sed -i -E "s/<zenservice namespace>/$ZEN_NAMESPACE/" tmp/zen/zen5-backup-deployment.yaml
         sed -i -E "s/<zenservice name>/$ZENSERVICE/" tmp/zen/zen5-backup-deployment.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen/zen5-backup-pvc.yaml
+        sed -i -E "s/<zenservice namespace>/$ZEN_NAMESPACE/" tmp/zen/zen5-backup-pvc.yaml
         sed -i -E "s/<storage class>/$STORAGE_CLASS/" tmp/zen/zen5-backup-pvc.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen/zen5-role.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen/zen5-rolebinding.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen/zen5-sa.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen/zen5-br-scripts-cm.yaml
-        oc apply -f tmp/zen -n $TARGET_NAMESPACE || error "Unable to deploy resources for Zen 5."   
-        success "Resources to backup Zen deployed in namespace $TARGET_NAMESPACE."
+        sed -i -E "s/<zenservice namespace>/$ZEN_NAMESPACE/" tmp/zen/zen5-role.yaml
+        sed -i -E "s/<zenservice namespace>/$ZEN_NAMESPACE/" tmp/zen/zen5-rolebinding.yaml
+        sed -i -E "s/<zenservice namespace>/$ZEN_NAMESPACE/" tmp/zen/zen5-sa.yaml
+        sed -i -E "s/<zenservice namespace>/$ZEN_NAMESPACE/" tmp/zen/zen5-br-scripts-cm.yaml
+        oc apply -f tmp/zen -n $ZEN_NAMESPACE || error "Unable to deploy resources for Zen 5."   
+        success "Resources to backup Zen deployed in namespace $ZEN_NAMESPACE."
       fi
     else
-      warning "No zenservice found in namespace $TARGET_NAMESPACE. Skipping."
+      warning "No zenservice found in namespace $ZEN_NAMESPACE. Skipping."
     fi
   fi
 
   #deploy zen 4 resources
   if [[ $ZEN4 == "true" ]]; then
     if [[ $ZENSERVICE == "" ]]; then
-      ZENSERVICE=$(oc get zenservice -n $TARGET_NAMESPACE --no-headers | awk '{print $1}')
+      ZENSERVICE=$(oc get zenservice -n $ZEN_NAMESPACE --no-headers | awk '{print $1}')
     fi
     if [[ $ZENSERVICE != "" ]]; then
-      exists=$(oc get zenservice $ZENSERVICE -n $TARGET_NAMESPACE --no-headers --ignore-not-found)
+      exists=$(oc get zenservice $ZENSERVICE -n $ZEN_NAMESPACE --no-headers --ignore-not-found)
       if [[ $exists == "" ]]; then
-        error "Zenservice $ZENSERVICE not found in namespace $TARGET_NAMESPACE. Make sure the zenservice is deployed to the target namespace $TARGET_NAMESPACE or change the namespace used."
+        error "Zenservice $ZENSERVICE not found in namespace $ZEN_NAMESPACE. Make sure the zenservice is deployed to the target namespace $ZEN_NAMESPACE or change the namespace used."
       else
-        info "Creating Zen Backup/Restore resources in namespace $TARGET_NAMESPACE."
+        info "Creating Zen Backup/Restore resources in namespace $ZEN_NAMESPACE."
         
         rm -rf tmp/zen4
         mkdir tmp/zen4
@@ -276,20 +285,20 @@ function deploy_resources(){
         cp ${BASE_DIR}/zen4-sa.yaml tmp/zen4/zen4-sa.yaml
         cp ${BASE_DIR}/zen4-br-scripts.yaml tmp/zen4/zen4-br-scripts.yaml
         
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen4/zen-backup-deployment.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen4/zen-backup-pvc.yaml
+        sed -i -E "s/<zenservice namespace>/$ZEN_NAMESPACE/" tmp/zen4/zen-backup-deployment.yaml
+        sed -i -E "s/<zenservice namespace>/$ZEN_NAMESPACE/" tmp/zen4/zen-backup-pvc.yaml
         sed -i -E "s/<storage class>/$STORAGE_CLASS/" tmp/zen4/zen-backup-pvc.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen4/zen4-role.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen4/zen4-rolebinding.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen4/zen4-sa.yaml
-        sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen4/zen4-br-scripts.yaml
-        oc apply -f tmp/zen4/ -n $TARGET_NAMESPACE || error "Unable to deploy resources for Zen 4."
+        sed -i -E "s/<zenservice namespace>/$ZEN_NAMESPACE/" tmp/zen4/zen4-role.yaml
+        sed -i -E "s/<zenservice namespace>/$ZEN_NAMESPACE/" tmp/zen4/zen4-rolebinding.yaml
+        sed -i -E "s/<zenservice namespace>/$ZEN_NAMESPACE/" tmp/zen4/zen4-sa.yaml
+        sed -i -E "s/<zenservice namespace>/$ZEN_NAMESPACE/" tmp/zen4/zen4-br-scripts.yaml
+        oc apply -f tmp/zen4/ -n $ZEN_NAMESPACE || error "Unable to deploy resources for Zen 4."
       fi        
     fi
-    success "Resources to backup Zen 4 deployed in namespace $TARGET_NAMESPACE."
+    success "Resources to backup Zen 4 deployed in namespace $ZEN_NAMESPACE."
   fi
   
-  success "Backup/Restore resources created in namespace $TARGET_NAMESPACE."
+  success "Backup/Restore resources created in namespace $ZEN_NAMESPACE."
 
   #Deploy cpfs-util resources
   if [[ $UTIL == "true" ]]; then

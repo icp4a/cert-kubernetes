@@ -9,7 +9,7 @@
 #
 ######################## BAA #######################
 # Check resource-registry upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.resource-registry.rrCluster`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.resource-registry.rrCluster // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_RR_CLUSTER_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
@@ -24,7 +24,7 @@ elif [ -z "${isInstalled}"  ]; then
     CP4BA_RR_CLUSTER_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 fi
 
-isInstalled=`cat ${UPGRADE_STATUS_FILE}| ${YQ_CMD} r - status.components.resource-registry.rrService`
+isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.resource-registry.rrService // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_RR_SERVICE_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
