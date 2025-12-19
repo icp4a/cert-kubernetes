@@ -15,7 +15,7 @@ cases:
     ocMirror:
       disableMerge: true
 - name: ibm-cloud-native-postgresql
-  version: 5.30.0+20251030.101847.2667
+  version: 5.30.0+20251203.182305.2683
   catalogGeneration:
     ocMirror:
       disableMerge: true
