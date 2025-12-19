@@ -166,7 +166,7 @@ spec:
   grpcPodConfig:
     securityContextConfig: restricted
 ---
-# Cloud Native PostgresSQL Version 1.25.4 (CASE 5.30.0+20251030.101847.2667)(Postgresql Image Version 14.19)
+# Cloud Native PostgresSQL Version 1.25.4 (CASE 5.30.0+20251203.182305.2683)(Postgresql Image Version 14.19)
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
@@ -178,7 +178,7 @@ spec:
   displayName: Cloud Native Postgresql Catalog
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-cpd-cloud-native-postgresql-operator-catalog@sha256:64319d2ce95721f25bbafb952af06e65f635097b04b1b5ecc4631b2757f6201d
+  image: icr.io/cpopen/ibm-cpd-cloud-native-postgresql-operator-catalog@sha256:796117e1fcc38863f24ace073441c5a6954230ae19df24af8937e2feacf4f5d6
   priority: 100
   grpcPodConfig:
     securityContextConfig: restricted
