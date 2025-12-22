@@ -380,13 +380,16 @@ process_image_storage_location(){
             printf "\x1B[1;31mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=deployment-mirroring-catalogs-private-registry-using-oc-mirror\n\x1B[0m"
             read -p "Do you wish to mirror images access to a specific location in the private registry.? (yes/no) (default no): " has_key
             has_key=$(echo "$has_key" | tr '[:upper:]' '[:lower:]')
+            if [ -z "$has_key" ]; then
+                has_key="no"
+            fi
             case "$has_key" in
                 yes|y)
                 CUSTOM_IMAGE_STORAGE_PATH="true"
                 break
                 ;;
                 no|n)
-                info "A Private Registry is required to store images.\n Configure a Private Registry and re-run the script\n"
+                info "The script will use the Private Registry's default path as the location where images will be stored after mirroring has been completed .\n"
                 CUSTOM_IMAGE_STORAGE_PATH="false"
                 break
                 ;;
@@ -400,6 +403,15 @@ process_image_storage_location(){
         fi
         collect_private_image_storage_location
         if [[ "$PRIVATE_REGISTRY_IMAGE_STORAGE_VALIDATION" == "true" ]]; then
+            # If the user decided not to share a specific location, the default location will be at the root path of registry server and hence we are setting the mirroring path to what the private registry server is.
+            info "Images will be mirrored to: \"$PRIVATE_REGISTRY_HOST\" "
+            PRIVATE_REGISTRY_IMAGE_STORAGE_VALIDATION="true"
+            # If the port is not a standard port then we need to use it in the mirroring path
+            if [[ "$PRIVATE_REGISTRY_PORT" != "443" && "$PRIVATE_REGISTRY_PORT" != "80" ]]; then
+                PRIVATE_REGISTRY_MIRRORING_PATH=$PRIVATE_REGISTRY_SERVER
+            else
+                PRIVATE_REGISTRY_MIRRORING_PATH=$PRIVATE_REGISTRY_HOST
+            fi
             break
         else
             VALIDATION_ATTEMPTS=$((VALIDATION_ATTEMPTS + 1))
