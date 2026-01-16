@@ -1,9 +1,0 @@
-oc label secret htpass-secret custom-label=htpass-secret  -n openshift-config 
-oc label configmap cp4ba-fips-status custom-label=cp4ba
-oc label secret ibm-entitlement-key custom-label=cp4ba-ibm-entitlement-key 
-oc label secret ibm-cp4ba-db-ssl-secret custom-label=cp4ba-ssl-secret
-oc label secret ibm-cp4ba-ldap-ssl-secret custom-label=cp4ba-ssl-secret
-oc label secret platform-auth-ldaps-ca-cert custom-label=cp4ba-platform-auth-ldaps-ca-cert
-oc label oauth cluster custom-label=cluster
-oc label configmap ibm-cp4ba-common-config custom-label=cp4ba
-oc label user CEAdmin custom-label=ceadmin
