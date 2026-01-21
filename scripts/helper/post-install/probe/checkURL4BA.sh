@@ -27,8 +27,11 @@ VERBOSE=$6      # verbose option to see additional debug information
   RESET_TEXT=`tput sgr0`
   BOLD_TEXT=`tput bold`
 
-PROB_DIR="$( cd "$( dirname "$0" )" && pwd )"
-cd $PROB_DIR
+# 'dirname' always prints the path, 'cd' can print the path if CDPATH is set.
+ # Set PROB_DIR via 'pwd' only and discard the other path printouts.
+ cd "$( dirname "$0" )" > /dev/null
+ PROB_DIR="$( pwd )"
+ echo "$PROB_DIR"
 
 # Funtion to check if given keyword is returned by URL
 checkURL() {
