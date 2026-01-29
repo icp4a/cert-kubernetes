@@ -13,14 +13,14 @@ NC='\033[0m'     # No Color
 
 #Unicode Icons
 ## https://apps.timwhitlock.info/emoji/tables/unicode
-ICON_SUCCESS=`echo -e "\xE2\x9C\x94" `
-ICON_FAIL=`echo -e "\xE2\x9D\x8C  FAILED " `
-ICON_WARNING=`echo -e "\xE2\x9D\x97  WARNING " `
-ICON_WAITING=`echo -e "\xE2\x9C\x8B" `
-ICON_VERY_BAD_FAIL=`echo -e "\xF0\x9F\x92\x80" `
-ICON_WAITING_USER_INPUT=`echo -e "\xF0\x9F\x91\x89  Waiting for User Input:  " `
-ICON_TIMER=`echo -e "\xE2\x8F\xB0" `
-ICON_COFFEE=`echo -e "\xF0\x9F\x8D\xB5" `
+ICON_SUCCESS=`printf '%b\n' "\xE2\x9C\x94" `
+ICON_FAIL=`printf '%b\n' "\xE2\x9D\x8C  FAILED " `
+ICON_WARNING=`printf '%b\n' "\xE2\x9D\x97  WARNING " `
+ICON_WAITING=`printf '%b\n' "\xE2\x9C\x8B" `
+ICON_VERY_BAD_FAIL=`printf '%b\n' "\xF0\x9F\x92\x80" `
+ICON_WAITING_USER_INPUT=`printf '%b\n' "\xF0\x9F\x91\x89  Waiting for User Input:  " `
+ICON_TIMER=`printf '%b\n' "\xE2\x8F\xB0" `
+ICON_COFFEE=`printf '%b\n' "\xF0\x9F\x8D\xB5" `
 
 OS_NAME=`uname`
 CURRENT_DATE_TIME=`date +"%Y-%m-%d"`

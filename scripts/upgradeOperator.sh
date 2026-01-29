@@ -42,18 +42,18 @@ CATALOG_FOUND="Yes"
 CATALOG_NS="openshift-marketplace"
 
 function show_help {
-    echo -e "\nPrerequisite:"
-    echo -e "1. Login your cluster and switch to your target project;"
-    echo -e "2. CR was applied in your project."
-    echo -e "3. Upgrade IBM Cloud Pak foundational services according to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=2302-option-2-upgrading-operators-in-online-environment"
-    echo -e "\nUsage for OCP and ROKS platform: upgradeOperator.sh -a accept -n namespace"
-    echo -e "Usage for other platform: upgradeOperator.sh -a accept -n namespace -i operator_image -p secret_name\n"
+    printf '%b\n' "\nPrerequisite:"
+    printf '%b\n' "1. Login your cluster and switch to your target project;"
+    printf '%b\n' "2. CR was applied in your project."
+    printf '%b\n' "3. Upgrade IBM Cloud Pak foundational services according to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=2302-option-2-upgrading-operators-in-online-environment"
+    printf '%b\n' "\nUsage for OCP and ROKS platform: upgradeOperator.sh -a accept -n namespace"
+    printf '%b\n' "Usage for other platform: upgradeOperator.sh -a accept -n namespace -i operator_image -p secret_name\n"
     echo "Options:"
     echo "  -h  Display help"
     echo "  -n  The namespace to deploy Operator"
     echo "  -a  Accept IBM license"
     echo "  -i  Optional: Operator image name, by default it is cp.icr.io/cp/cp4a/icp4a-operator:22.0.1"
-    echo -e "  -p  Optional: Pull secret to use to connect to the registry, by default it is ibm-entitlement-key\n"
+    printf '%b\n' "  -p  Optional: Pull secret to use to connect to the registry, by default it is ibm-entitlement-key\n"
 
 }
 
@@ -87,7 +87,7 @@ else
 fi
 
 if [ -z "$NAMESPACE" ]; then
-  echo -e "\x1B[1;31mPlease input value for \"-n <NAMESPACE>\" option.\n\x1B[0m"
+  printf '%b\n' "\x1B[1;31mPlease input value for \"-n <NAMESPACE>\" option.\n\x1B[0m"
   exit 1
 fi
 
@@ -97,14 +97,14 @@ cp ${CUR_DIR}/../descriptors/operator.yaml ${CUR_DIR}/../upgradeOperator.yaml
 PLATFORM_SELECTED=$(eval echo $(kubectl get icp4acluster $(kubectl get icp4acluster -n $NAMESPACE | grep NAME -v | awk '{print $1}') -n $NAMESPACE -o yaml | grep sc_deployment_platform | tail -1 | cut -d ':' -f 2))
 if [[ !($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" || $PLATFORM_SELECTED == "other") ]]; then
   clear
-  echo -e "\x1B[1;31mA deployed custom resource cannot be found.\n\x1B[0m"
-  echo -e "\x1B[1;31mYou must apply an instance of a custom resource before you can upgrade. The script is exiting...\n\x1B[0m"
+  printf '%b\n' "\x1B[1;31mA deployed custom resource cannot be found.\n\x1B[0m"
+  printf '%b\n' "\x1B[1;31mYou must apply an instance of a custom resource before you can upgrade. The script is exiting...\n\x1B[0m"
   exit 1
 fi
 
 # Show license file
 function readLicense() {
-    echo -e "\033[32mYou need to read the International Program License Agreement before start\033[0m"
+    printf '%b\n' "\033[32mYou need to read the International Program License Agreement before start\033[0m"
     sleep 3
     more ${LICENSE_FILE}
 }
@@ -112,7 +112,7 @@ function readLicense() {
 # Get user's input on whether accept the license
 function userInput() {
   while true; do
-      echo -e "\033[32mDo you accept the International Program License?(Yes/No): \033[0m"
+      printf '%b\n' "\033[32mDo you accept the International Program License?(Yes/No): \033[0m"
       read -rp "" ans
       case "$ans" in
       "y"|"Y"|"yes"|"Yes"|"YES")
@@ -120,12 +120,12 @@ function userInput() {
           break
           ;;
       "n"|"N"|"no"|"No"|"NO")
-          echo -e "\033[31mScript will exit ...\033[0m"
+          printf '%b\n' "\033[31mScript will exit ...\033[0m"
           sleep 2
           exit 0
           ;;
       *)
-          echo -e "Answer must be \"Yes\" or \"No\"\n"
+          printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
           ;;
       esac
   done
@@ -214,12 +214,12 @@ function prepare_olm_install() {
       if [[ -z $isReady ]]; then
         if [[ $retry -eq ${maxRetry} ]]; then
           echo "Timeout waiting for  CP4BA Operator Catalog pod to start"
-          echo -e "\x1B[1mPlease check the status of Pod by issue cmd: \x1B[0m"
+          printf '%b\n' "\x1B[1mPlease check the status of Pod by issue cmd: \x1B[0m"
           echo "oc describe pod $(oc get pod -n $CATALOG_NS|grep $online_source|awk '{print $1}') -n $CATALOG_NS"
           exit 1
         else
           sleep 30
-          echo -n "..."
+          printf '%s' "..."
           continue
         fi
       else
@@ -310,16 +310,16 @@ function prepare_olm_install() {
       if [[ -z $isReady || "$old_pod" == "$new_pod" ]]; then
         if [[ $retry -eq ${maxRetry} ]]; then
           echo "Timeout waiting for CP4BA operator to start"
-          echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+          printf '%b\n' "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
           echo "oc describe pod $(oc get pod -n $project_name|grep ibm-cp4a-operator|awk '{print $1}') -n $project_name"
           printf "\n"
-          echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+          printf '%b\n' "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
           echo "oc describe rs $(oc get rs -n $project_name|grep ibm-cp4a-operator|awk '{print $1}') -n $project_name"
           printf "\n"
           exit 1
         else
           sleep 30
-          echo -n "..."
+          printf '%s' "..."
           continue
         fi
       else
@@ -335,16 +335,16 @@ function prepare_olm_install() {
       if [[ -z $isReady ]]; then
         if [[ $retry -eq ${maxRetry} ]]; then
           echo "Timeout waiting for CP4BA Content operator to start"
-          echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+          printf '%b\n' "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
           echo "oc describe pod $(oc get pod -n $project_name|grep ibm-content-operator|awk '{print $1}') -n $project_name"
           printf "\n"
-          echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+          printf '%b\n' "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
           echo "oc describe rs $(oc get rs -n $project_name|grep ibm-content-operator|awk '{print $1}') -n $project_name"
           printf "\n"
           exit 1
         else
           sleep 30
-          echo -n "..."
+          printf '%s' "..."
           continue
         fi
       else
@@ -380,7 +380,7 @@ function uninstall_olm_cp4a(){
 
 function create_new_shared_logs_pvc(){
     if [[ $(kubectl get icp4acluster) == '' ]]; then
-        echo -e "\033[31mIf you don't have a CR deployed, we can't upgrade CP4A Operator only, pls run deleteOperator.sh and then deployOperator.sh to redeploy Operator.\033[0m"
+        printf '%b\n' "\033[31mIf you don't have a CR deployed, we can't upgrade CP4A Operator only, pls run deleteOperator.sh and then deployOperator.sh to redeploy Operator.\033[0m"
         exit 1
     fi
     DEPLOYMENT_TYPE=$(eval echo $(kubectl get icp4acluster $(kubectl get icp4acluster | grep NAME -v | awk '{print $1}') -o yaml | grep sc_deployment_type | tail -1 | cut -d ':' -f 2))
@@ -436,7 +436,7 @@ function cp4a_operator_uninstall(){
         break
       else
         if [[ $retry -eq ${maxRetry} ]]; then
-          echo -e "\x1B[1;31mTimeout waiting for CP4A operator to be removed!\n\x1B[0m"
+          printf '%b\n' "\x1B[1;31mTimeout waiting for CP4A operator to be removed!\n\x1B[0m"
           exit 1
         else
           sleep 30
@@ -548,5 +548,5 @@ if [[ $LICENSE_ACCEPTED == "accept" ]]; then
   else
     cncf_install
   fi
-  echo -e "\033[32mAll descriptors have been successfully applied. Monitor the pod status with 'kubectl get pods -w'.\033[0m"
+  printf '%b\n' "\033[32mAll descriptors have been successfully applied. Monitor the pod status with 'kubectl get pods -w'.\033[0m"
 fi

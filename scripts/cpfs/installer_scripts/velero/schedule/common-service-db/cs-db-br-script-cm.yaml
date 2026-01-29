@@ -115,12 +115,12 @@ data:
             
             oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
             info "Beginning restore of im database..."
-            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname im --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_im_backup.dump
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname im --format=c --clean --if-exists --exit-on-error -v /run/cs-db_backup/cs-db_im_backup.dump
             info "Beginning restore of zen database..."
-            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname zen --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_zen_backup.dump
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname zen --format=c --clean --if-exists --exit-on-error -v /run/cs-db_backup/cs-db_zen_backup.dump
             if [[ $ACCOUNT_IAM != "False" ]]; then
                 info "Beginning restore of account_iam database..."
-                oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname account_iam --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_account_iam_backup.dump        
+                oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname account_iam --format=c --clean --if-exists --exit-on-error -v /run/cs-db_backup/cs-db_account_iam_backup.dump        
             fi
             oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
         else

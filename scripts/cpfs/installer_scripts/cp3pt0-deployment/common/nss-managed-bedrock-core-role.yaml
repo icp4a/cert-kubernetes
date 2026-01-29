@@ -182,6 +182,7 @@ rules:
       - patch
       - update
       - watch
+      - list
     apiGroups:
       - postgresql.k8s.enterprisedb.io
     resources:
@@ -479,13 +480,6 @@ rules:
     resources:
       - daemonsets
   - verbs:
-      - get
-      - create
-    apiGroups:
-      - monitoring.coreos.com
-    resources:
-      - servicemonitors
-  - verbs:
       - update
     apiGroups:
       - apps
@@ -709,6 +703,18 @@ rules:
       - kafkamirrormaker2s/status
       - kafkarebalances/status
   - verbs:
+      - update
+    apiGroups:
+      - ibmevents.ibm.com
+    resources:
+      - kafkas/finalizers
+      - kafkanodepools/finalizers
+      - kafkaconnects/finalizers
+      - kafkaconnectors/finalizers
+      - kafkabridges/finalizers
+      - kafkamirrormaker2s/finalizers
+      - kafkarebalances/finalizers
+  - verbs:
       - get
       - list
       - watch
@@ -728,6 +734,12 @@ rules:
       - core.ibmevents.ibm.com
     resources:
       - strimzipodsets/status
+  - verbs:
+      - update
+    apiGroups:
+      - core.ibmevents.ibm.com
+    resources:
+      - strimzipodsets/finalizers
   - verbs:
       - get
       - list
@@ -1472,8 +1484,10 @@ rules:
       - watch
     apiGroups:
       - postgresql.k8s.enterprisedb.io
+      - postgresql.cnpg.ibm.com
     resources:
       - clusters
+      - clusters/status
   - verbs:
       - create
       - delete
@@ -1486,9 +1500,16 @@ rules:
       - ''
     resources:
       - configmaps
-      - namespaces
       - secrets
       - services
+  - verbs:
+      - get
+      - list
+      - watch
+    apiGroups:
+      - ""
+    resources:
+      - namespaces
   - verbs:
       - create
       - delete
@@ -1670,3 +1691,99 @@ rules:
       - db2uengines
     apiGroups:
       - db2u.databases.ibm.com
+  - verbs:
+      - get
+      - list
+      - watch
+    resources:
+      - secretproviderclasses
+    apiGroups:
+      - secrets-store.csi.x-k8s.io
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - ''
+    resources:
+      - leases
+  - verbs:
+      - create
+      - patch
+      - update
+    apiGroups:
+      - certmanager.k8s.io
+    resources:
+      - certificaterequests
+      - challenges
+      - orders
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - operator.ibm.com
+    resources:
+      - businessteamsservices
+  - verbs:
+      - update
+    apiGroups:
+      - operator.ibm.com
+    resources:
+      - businessteamsservices/finalizers
+  - verbs:
+      - get
+      - patch
+      - update
+    apiGroups:
+      - operator.ibm.com
+    resources:
+      - businessteamsservices/status
+  - verbs:
+      - create
+      - delete
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - storage.k8s.io
+    resources:
+      - storageclasses
+  - verbs:
+      - get
+      - list
+      - watch
+      - update
+      - patch
+      - create
+      - delete
+    apiGroups:
+      - cluster.ibm-cpd-mcscheduler.ibm.com
+    resources:
+      - distributionrule
+      - distributionrules
+      - distributionruledecision
+      - distributionruledecisions
+      - physicallocation
+      - physicallocations
+  - verbs:
+      - get
+      - list
+      - watch
+      - update
+      - patch
+      - create
+      - delete
+    apiGroups:
+      - work.ibm-cpd-mcscheduler.ibm.com
+    resources:
+      - remotekuberestemplate
+      - remotekuberestemplates

@@ -18,7 +18,7 @@
 # DRY_RUN="none" # none|client|server
 
 function show_help() {
-    echo -e "\nUsage: remove_iaf.sh <CLOUD_PAK_CR_KIND> <CLOUD_PAK_CR_NAME> <CLOUD_PAK_NAMESPACE> <FOUNDATION_NAMESPACE> <CARTRIDGE_NAME> <DRY_RUN>\n"
+    printf '%b\n' "\nUsage: remove_iaf.sh <CLOUD_PAK_CR_KIND> <CLOUD_PAK_CR_NAME> <CLOUD_PAK_NAMESPACE> <FOUNDATION_NAMESPACE> <CARTRIDGE_NAME> <DRY_RUN>\n"
     echo "Options:"
     echo "  -h  Display the help"
 }
@@ -57,7 +57,7 @@ function fail() {
 
 function msgB() {
 
-  echo -e "\x1B[1m${1}\x1B[0m\n"
+  printf '%b\n' "\x1B[1m${1}\x1B[0m\n"
 
 }
 function patch_finalizers(){
@@ -178,12 +178,12 @@ fi
 
 OPERATOR_NAMESPACE=$CLOUD_PAK_NAMESPACE
 
-CP4BA_SUB_COUNT=$(oc get sub --no-headers --ignore-not-found  -n ${CLOUD_PAK_NAMESPACE}|grep ibm-cp4a-operator | wc -l | xargs)
+CP4BA_SUB_COUNT=$(oc get subscription.operators.coreos.com --no-headers --ignore-not-found  -n ${CLOUD_PAK_NAMESPACE}|grep ibm-cp4a-operator | wc -l | xargs)
 if [ $CP4BA_SUB_COUNT -gt 0 ]; then
   OPERATOR_NAMESPACE=$CLOUD_PAK_NAMESPACE 
   info "Found CP4BA Subscription in namespace $OPERATOR_NAMESPACE"
 else
-  CP4BA_SUB_COUNT=$(oc get sub --no-headers --ignore-not-found  -n openshift-operators |grep ibm-cp4a-operator | wc -l | xargs)
+  CP4BA_SUB_COUNT=$(oc get subscription.operators.coreos.com --no-headers --ignore-not-found  -n openshift-operators |grep ibm-cp4a-operator | wc -l | xargs)
   if [ $CP4BA_SUB_COUNT -gt 0 ]; then
     OPERATOR_NAMESPACE=openshift-operators
     info "Found CP4BA Subscription in namespace $OPERATOR_NAMESPACE"
@@ -196,13 +196,13 @@ sleep 10
 # TODO: Remove/disable IBM CP4BA Orchestrator?
 info "Discovering and deleting IBM Automation Foundation Subscriptions and ClusterServiceVersions"
 #oc -n ${CLOUD_PAK_NAMESPACE} get subs,csv -o name | grep ibm-automation | grep -v "elastic\|flink" | xargs oc delete -n ${CLOUD_PAK_NAMESPACE} --wait --dry-run=${DRY_RUN}  # TODO: Fully qualify subscription/csv
-iaf_count=$(oc get subs,csv -o name --no-headers --ignore-not-found -n ${OPERATOR_NAMESPACE}| grep ibm-automation |wc -l|xargs)
+iaf_count=$(oc get subscription.operators.coreos.com,csv -o name --no-headers --ignore-not-found -n ${OPERATOR_NAMESPACE}| grep ibm-automation |wc -l|xargs)
 while [[ "$iaf_count" -gt 0 ]] ;
 do
-  oc -n ${OPERATOR_NAMESPACE} get subs,csv -o name --ignore-not-found| grep ibm-automation | xargs oc delete -n ${OPERATOR_NAMESPACE} --wait --dry-run=${DRY_RUN}  # TODO: Fully qualify subscription/csv
+  oc -n ${OPERATOR_NAMESPACE} get subscription.operators.coreos.com,csv -o name --ignore-not-found| grep ibm-automation | xargs oc delete -n ${OPERATOR_NAMESPACE} --wait --dry-run=${DRY_RUN}  # TODO: Fully qualify subscription/csv
   if [[ "${DRY_RUN}" == "none" ]] ; then 
     sleep 10
-    iaf_count=$(oc get subs,csv -o name --no-headers --ignore-not-found -n ${OPERATOR_NAMESPACE}| grep ibm-automation |wc -l|xargs)
+    iaf_count=$(oc get subscription.operators.coreos.com,csv -o name --no-headers --ignore-not-found -n ${OPERATOR_NAMESPACE}| grep ibm-automation |wc -l|xargs)
   else
     iaf_count=0
   fi
@@ -221,7 +221,7 @@ done
 
 # Can we use cascade=orphan for delete instead of removing references?
 info "Removing IBM Automation Foundation Resources - AutomationBase, AutomationUIConfig, Cartridge, CartridgeRequirements, InsightsEngine(Eventprocessor)"
-iaf_count=$(oc get subs,csv -o name --no-headers --ignore-not-found -n ${OPERATOR_NAMESPACE}| grep ibm-automation |wc -l|xargs)
+iaf_count=$(oc get subscription.operators.coreos.com,csv -o name --no-headers --ignore-not-found -n ${OPERATOR_NAMESPACE}| grep ibm-automation |wc -l|xargs)
 if [ $iaf_count -gt 0 ]; then
   fail "IBM Automation Foundation Subscriptions and ClusterServiceVersions still there, please rerun this script again."
   exit 1
@@ -254,10 +254,10 @@ info "Discovering and deleting IBM Crossplane Subscriptions and ClusterServiceVe
 crossplane_count=$(oc -n ${FOUNDATION_NAMESPACE} get subs,csv -o name --ignore-not-found| grep ibm-crossplane-operator |wc -l|xargs)
 while [[ "$crossplane_count" -gt 0 ]] ;
 do
-  oc -n ${FOUNDATION_NAMESPACE} get subs,csv -o name --ignore-not-found| grep ibm-crossplane-operator | xargs oc delete -n ${FOUNDATION_NAMESPACE} --wait --dry-run=${DRY_RUN}  
+  oc -n ${FOUNDATION_NAMESPACE} get subscription.operators.coreos.com,csv -o name --ignore-not-found| grep ibm-crossplane-operator | xargs oc delete -n ${FOUNDATION_NAMESPACE} --wait --dry-run=${DRY_RUN}  
   if [[ "${DRY_RUN}" == "none" ]] ; then 
     sleep 10
-    crossplane_count=$(oc -n ${FOUNDATION_NAMESPACE} get subs,csv -o name --ignore-not-found| grep ibm-crossplane-operator |wc -l|xargs)
+    crossplane_count=$(oc -n ${FOUNDATION_NAMESPACE} get subscription.operators.coreos.com,csv -o name --ignore-not-found| grep ibm-crossplane-operator |wc -l|xargs)
   else
     crossplane_count=0
   fi
@@ -273,9 +273,9 @@ else
     info "NO KafkaClaim CR"
 fi
 sleep 10
-crossplane_count=$(oc -n ${FOUNDATION_NAMESPACE} get subs,csv -o name --ignore-not-found| grep ibm-crossplane-operator |wc -l|xargs)
+crossplane_count=$(oc -n ${FOUNDATION_NAMESPACE} get subscription.operators.coreos.com,csv -o name --ignore-not-found| grep ibm-crossplane-operator |wc -l|xargs)
 if [[ "$crossplane_count" -gt 0 ]] ; then
-  oc -n ${FOUNDATION_NAMESPACE} get subs,csv -o name --ignore-not-found| grep ibm-crossplane-operator | xargs oc delete -n ${FOUNDATION_NAMESPACE} --wait --dry-run=${DRY_RUN}  
+  oc -n ${FOUNDATION_NAMESPACE} get subscription.operators.coreos.com,csv -o name --ignore-not-found| grep ibm-crossplane-operator | xargs oc delete -n ${FOUNDATION_NAMESPACE} --wait --dry-run=${DRY_RUN}  
 else
   info "NO Crossplane subs,csv in ${FOUNDATION_NAMESPACE}"
 fi
@@ -284,10 +284,10 @@ sleep 20
 #Implement while loop to check if the subs,csv are deleted
 is_iaf_deleted=false
 while [[ "$is_iaf_deleted" == false ]] ; do
-  iaf_count=$(oc get subs,csv -o name --no-headers --ignore-not-found -n ${OPERATOR_NAMESPACE}| grep ibm-automation |wc -l|xargs)
+  iaf_count=$(oc get subscription.operators.coreos.com,csv -o name --no-headers --ignore-not-found -n ${OPERATOR_NAMESPACE}| grep ibm-automation |wc -l|xargs)
   if [ $iaf_count -gt 0 ]; then
     info "Discovering and deleting IBM Automation Foundation Subscriptions and ClusterServiceVersions"
-    oc -n ${OPERATOR_NAMESPACE} get subs,csv -o name | grep ibm-automation | xargs oc delete -n ${OPERATOR_NAMESPACE} --wait --dry-run=${DRY_RUN}  # TODO: Fully qualify subscription/csv
+    oc -n ${OPERATOR_NAMESPACE} get subscription.operators.coreos.com,csv -o name | grep ibm-automation | xargs oc delete -n ${OPERATOR_NAMESPACE} --wait --dry-run=${DRY_RUN}  # TODO: Fully qualify subscription/csv
   else
     is_iaf_deleted=true
     info "NO IAF subs,csv in ${OPERATOR_NAMESPACE}"

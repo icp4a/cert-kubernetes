@@ -1,5 +1,8 @@
 #!/bin/bash
 
+export LC_ALL=C
+export LC_CTYPE=C
+
 ###############################################################################
 #
 # Licensed Materials - Property of IBM
@@ -16,6 +19,12 @@
 # PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 
 TEMP_FOLDER=${CUR_DIR}/.tmp
+
+# Define the required Java version based on CP4BA release
+REQUIRED_JAVA_MAJOR_VERSION=17  # Semeru 17 is required for CP4BA 24.x
+
+#List of operators to be scale up or down
+CP4BA_OPERATOR_LIST="ibm-cp4a-operator ibm-content-operator icp4a-foundation-operator  ibm-ads-operator  ibm-cp4a-wfps-operator ibm-dpe-operator ibm-insights-engine-operator ibm-odm-operator ibm-pfs-operator ibm-workflow-operator"
 
 # Directory for common service script
 COMMON_SERVICES_SCRIPT_FOLDER=${CUR_DIR}/cpfs/installer_scripts/cp3pt0-deployment
@@ -153,29 +162,29 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 # Release/Patch version for CP4BA
 # CP4BA_RELEASE_BASE is for fetch content/foundation operator pod, only need to change for major release.
 CP4BA_RELEASE_BASE="24.0.0"
-CP4BA_PATCH_VERSION="IF007"
+CP4BA_PATCH_VERSION="IF008"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v24.0.7"
+CP4BA_CSV_VERSION="v24.0.8"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
 CP4BA_CHANNEL_VERSION="v24.0"
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.6.18"
+CS_OPERATOR_VERSION="v4.6.20"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
 CS_CHANNEL_VERSION="v4.6"
 # CERT_LICENSE_OPERATOR_VERSION is for checking IBM cert-manager/licensing operator upgrade status, need to update for each IFIX
-CERT_LICENSE_OPERATOR_VERSION="v4.2.13"
+CERT_LICENSE_OPERATOR_VERSION="v4.2.19"
 # CERT_LICENSE_CHANNEL_VERSION is for for IBM cert-manager/licensing script -c option, need to update for each IFIX
 CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
-CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-6-18"
+CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-6-20"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v5.1.17"
+ZEN_OPERATOR_VERSION="v5.1.19"
 # BTS_CHANNEL_VERSION is for for BTS, need to update for each IFIX
 BTS_CHANNEL_VERSION="v3.35"
-# BTS_CATALOG_VERSION is for BTS 3.35.4.
+# BTS_CATALOG_VERSION is for BTS 3.35.7.
 BTS_CATALOG_VERSION="bts-operator-v3-35"
 # REQUIREDVER_BTS is for checking bts operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_BTS="3.35.4"
+REQUIREDVER_BTS="3.35.7"
 # REQUIREDVER_POSTGRESQL is for checking postgresql operator upgrade status before run removal_iaf.sh, need to update for each IFIX
 REQUIREDVER_POSTGRESQL="1.25.1"
 # EVENTS_OPERATOR_VERSION is for checking IBM Events operator upgrade status, need to update for each IFIX
@@ -221,7 +230,7 @@ if which oc >/dev/null 2>&1; then
 elif which kubectl >/dev/null 2>&1; then
     CLI_CMD=kubectl
 else
-    echo -e  "\x1B[1;31mUnable to locate Kubernetes CLI or OpenShift CLI. You must install it to run this script.\x1B[0m" && \
+    printf '%b\n'  "\x1B[1;31mUnable to locate Kubernetes CLI or OpenShift CLI. You must install it to run this script.\x1B[0m" && \
     exit 1
 fi
 
@@ -277,12 +286,14 @@ function set_global_env_vars() {
     if [[ "$machine" == "Mac" ]]; then
         SED_COMMAND='sed -i ""'
         SED_COMMAND_FORMAT='sed -i "" s/^M//g'
+        BASE64_DECODE='base64 --decode'
         YQ_CMD=${CUR_DIR}/helper/yq/yq_darwin_amd64
         CPFS_YQ_PATH=$COMMON_SERVICES_SCRIPT_YQ_FOLDER/macos/yq
         COPY_CMD=/bin/cp
     else
         SED_COMMAND='sed -i'
         SED_COMMAND_FORMAT='sed -i s/\r//g'
+        BASE64_DECODE='base64 -w 0 --decode'
         if [[ $(uname -m) == 'x86_64' ]]; then
             YQ_CMD=${CUR_DIR}/helper/yq/yq_linux_amd64
             CPFS_YQ_PATH=$COMMON_SERVICES_SCRIPT_YQ_FOLDER/amd64/yq
@@ -322,7 +333,7 @@ function validate_cli(){
                 break
                 ;;
             "n"|"N"|"no"|"No"|"NO")
-                echo -e "You do not accept, exiting...\n"
+                printf '%b\n' "You do not accept, exiting...\n"
                 exit 0
                 ;;
             *)
@@ -335,55 +346,125 @@ function validate_cli(){
 
 function install_timeout_cli(){
     if [[ ${machine} = "Mac" ]]; then
-        echo -n "Installing timeout..."; brew install coreutils >/dev/null 2>&1; sudo ln -s /usr/local/bin/gtimeout /usr/local/bin/timeout >/dev/null 2>&1; echo "done.";
+        printf '%s' "Installing timeout..."; brew install coreutils >/dev/null 2>&1; sudo ln -s /usr/local/bin/gtimeout /usr/local/bin/timeout >/dev/null 2>&1; echo "done.";
     fi
     printf "\n"
 }
 
 function install_yq_cli(){
     if [[ ${machine} = "Linux" ]]; then
-        echo -n "Downloading..."; curl -LO https://github.com/mikefarah/yq/releases/download/3.2.1/yq_linux_amd64  >/dev/null 2>&1; echo "done.";
-        echo -n "Installing yq..."; sudo chmod +x yq_linux_amd64 >/dev/null; sudo mv yq_linux_amd64 /usr/local/bin/yq >/dev/null; echo "done.";
+        printf '%s' "Downloading..."; curl -LO https://github.com/mikefarah/yq/releases/download/3.2.1/yq_linux_amd64  >/dev/null 2>&1; echo "done.";
+        printf '%s' "Installing yq..."; sudo chmod +x yq_linux_amd64 >/dev/null; sudo mv yq_linux_amd64 /usr/local/bin/yq >/dev/null; echo "done.";
     else
-        echo -n "Installing yq..."; brew install yq >/dev/null; echo "done.";
+        printf '%s' "Installing yq..."; brew install yq >/dev/null; echo "done.";
     fi
     printf "\n"
 }
 
-function install_ibm_jre(){
-    if [[ ${machine} = "Linux" ]]; then
-        local JRE_VERSION=""
-        local JRE_VERSION_TMP=""
-        JRE_VERSION=$(curl -s https://public.dhe.ibm.com/ibmdl/export/pub/systems/cloud/runtimes/java/  | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}' | tail -n 1)
-        if [[ -z $JRE_VERSION ]]; then
-            fail "Can NOT access official IBM JRE Repository https://public.dhe.ibm.com/ibmdl/export/pub/systems/cloud/runtimes/java, Please install IBM JRE manually."
-            exit 1
-        else
-            JRE_VERSION_TMP=$(echo "$JRE_VERSION" | sed 's/\./-/2')
-            local tmp_file="/tmp/ibm-java.tgz"
-            local download_url=https://public.dhe.ibm.com/ibmdl/export/pub/systems/cloud/runtimes/java/${JRE_VERSION}/linux/$(uname -m)/ibm-java-jre-${JRE_VERSION_TMP}-linux-$(uname -m).tgz
-            echo -n "Downloading $download_url";
-            curl -o $tmp_file -f $download_url
-            if [ ! -e $tmp_file ]; then
-                fail "Can NOT access official IBM JRE Repository https://public.dhe.ibm.com/ibmdl/export/pub/systems/cloud/runtimes/java, Please install IBM JRE manually."
-                exit 1
-            fi
-            mkdir -p /opt/ibm/java
-            tar -xzf $tmp_file --strip-components=1 -C /opt/ibm/java
-            #  add keytool to system PATH.
-            echo -n "Add keytool to system environment variable PATH..."; sudo -s export PATH="/opt/ibm/java/jre/bin/:$PATH"; export PATH="/opt/ibm/java/jre/bin/:$PATH"; echo "PATH=$PATH:/opt/ibm/java/jre/bin/" >> ~/.bashrc;echo "done."
-            info "IBM JRE has been installed and system enviroment variable PATH was configured. Please run command \"source ~/.bashrc\" before running the validate command again. Exiting this script."
+# DBACLD-198782: check if Java runtime is available and meets the minimum version requirement
+# Parameters:
+# $1 - Required major version of Java (e.g., 17)
+# Consolidated function to validate Java runtime and set JAVA_CMD/KEYTOOL_CMD
+# $1 - (Optional) Custom Java path
+function validate_java_runtime() {
+    local CUSTOM_JAVA_PATH=$1
+    
+    # Step 1: Set JAVA_CMD and KEYTOOL_CMD based on CUSTOM_JAVA_PATH
+    if [[ -n "$CUSTOM_JAVA_PATH" ]]; then
+        # Normalize path - ensure it points to bin directory
+        if [[ "$CUSTOM_JAVA_PATH" != */bin ]]; then
+            CUSTOM_JAVA_PATH="${CUSTOM_JAVA_PATH}/bin"
+        fi
+        
+        JAVA_CMD="${CUSTOM_JAVA_PATH}/java"
+        KEYTOOL_CMD="${CUSTOM_JAVA_PATH}/keytool"
+        
+        # Verify the custom Java path exists and is executable
+        if [[ ! -x "$JAVA_CMD" ]]; then
+            printf '%b\n' "\x1B[1;31mError: Java executable not found at specified path: $JAVA_CMD\x1B[0m"
+            printf '%b\n' "\x1B[1;31mPlease provide a valid path to Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higherinstallation.\x1B[0m"
             exit 1
         fi
-    elif [[ ${machine} = "Mac" ]]; then
-        echo -n "IBM's Java JRE is not available for Mac OS X. Install valid JRE for Mac OS X manually refer to MacOS document"; echo "done.";
+        
+        # Verify keytool exists and is executable
+        if [[ ! -x "$KEYTOOL_CMD" ]]; then
+            printf '%b\n' "\x1B[1;31mError: keytool executable not found at specified path: $KEYTOOL_CMD\x1B[0m"
+            printf '%b\n' "\x1B[1;31mPlease provide a valid path to Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher installation.\x1B[0m"
+            exit 1
+        fi
+    else
+        JAVA_CMD="java"
+        KEYTOOL_CMD="keytool"
+        
+        # Verify that default Java is available
+        if ! command -v java &> /dev/null; then
+            printf '%b\n' "\x1B[1;31mUnable to locate a Java Runtime. Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher must be installed to run this script.\x1B[0m"
+            printf '%b\n' "\x1B[1;31mPlease install Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher manually before continuing.\x1B[0m"
+            printf '%b\n' "\x1B[1;33mInstallation instructions:\x1B[0m"
+            printf '%b\n' "  - Install any compatible Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher distribution (e.g., IBM Semeru, Oracle JDK, or OpenJDK)"
+            printf '%b\n' "  - Ensure the new Java version is added to your PATH environment variable"
+            printf '%b\n' "  - Re-run this script"
+            printf '%b\n' "\x1B[1;33mAlternatively, you can specify the path to an existing Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher installation:\x1B[0m"
+            printf '%b\n' " - Re-run this script with the Java (JRE) path parameter, using --java-path <path_to_java>; e.g., $0 -m validate -n $TARGET_PROJECT_NAME --java-path=/custom/java/path"
+            exit 1
+        fi
+        
+        # Verify that default keytool is available
+        if ! command -v keytool &> /dev/null; then
+            printf '%b\n' "\x1B[1;31mUnable to locate keytool. Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher must be installed to run this script.\x1B[0m"
+            printf '%b\n' "\x1B[1;31mPlease install Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher manually before continuing.\x1B[0m"
+            exit 1
+        fi
     fi
-    printf "\n"
+    
+    # Step 2: Validate Java version
+    "$JAVA_CMD" -version &>/dev/null
+    if [[ $? -ne 0 ]]; then
+        printf '%b\n' "\x1B[1;31mUnable to execute Java. Please check your Java (JRE) installation.\x1B[0m"
+        exit 1
+    fi
+    
+    # Extract the full version string
+    local CURRENT_JAVA_VERSION=$("$JAVA_CMD" -version 2>&1 | grep -i version | head -n 1 | awk -F '"' '{print $2}')
+    
+    # Extract just the major version for comparison
+    local CURRENT_MAJOR_VERSION=$(echo "$CURRENT_JAVA_VERSION" | awk -F '.' '{print $1}')
+    
+    # If version starts with "1.", use the second number (e.g., 1.8 -> 8)
+    if [[ "$CURRENT_JAVA_VERSION" == 1.* ]]; then
+        CURRENT_MAJOR_VERSION=$(echo "$CURRENT_JAVA_VERSION" | awk -F '.' '{print $2}')
+    fi
+    
+    # Check if current version is less than the required version
+    if [[ -n "$CURRENT_MAJOR_VERSION" && "$CURRENT_MAJOR_VERSION" -lt "$REQUIRED_JAVA_MAJOR_VERSION" ]]; then
+        printf '%b\n' "\x1B[1;31mJava version $CURRENT_JAVA_VERSION is installed but does not meet the minimum requirement (version $REQUIRED_JAVA_MAJOR_VERSION).\x1B[0m"
+        printf '%b\n' "\x1B[1;31mPlease upgrade to Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher manually before continuing.\x1B[0m"
+        printf '%b\n' "\x1B[1;33mJava (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher upgrade instructions:\x1B[0m"
+        printf '%b\n' "  - Install any compatible Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher distribution (e.g., IBM Semeru, Oracle JDK, or OpenJDK)"
+        printf '%b\n' "  - Ensure the new Java version is added to your PATH environment variable"
+        printf '%b\n' "  - Re-run this script"
+        printf '%b\n' "\x1B[1;33mAlternatively, you can specify the path to an existing Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher installation:\x1B[0m"
+        printf '%b\n' "  - Re-run this script with the Java (JRE) path parameter, using --java-path <path_to_java>; e.g., $0 -m validate -n $TARGET_PROJECT_NAME --java-path=/custom/java/path"
+        exit 1
+    fi
+    info "Using Java version: $CURRENT_JAVA_VERSION located at: $(command -v "$JAVA_CMD")"
+    
+    # Step 3: Validate keytool
+    "$KEYTOOL_CMD" -help &>/dev/null
+    if [[ $? -ne 0 ]]; then
+        printf '%b\n' "\x1B[1;31mUnable to execute keytool. Keytool is required and should be part of your Java (JRE) installation.\x1B[0m"
+        printf '%b\n' "\x1B[1;31mPlease ensure you have a complete Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher installation that includes keytool.\x1B[0m"
+        exit 1
+    fi
+    
+    # Step 4: Export the commands so they're available to child scripts
+    export JAVA_CMD
+    export KEYTOOL_CMD
 }
 
 function install_kubectl_cli(){
     if [[ ${machine} = "Linux" ]]; then
-        echo -n "Downloading..."
+        printf '%s' "Downloading..."
         if [[ $(uname -m) == 'x86_64' ]]; then
             PLATFORM_ARCH='amd64'
         elif [[ $(uname -m) == 'ppc64le' ]]; then
@@ -392,19 +473,19 @@ function install_kubectl_cli(){
             PLATFORM_ARCH='s390x'
         fi
         curl -o /tmp/kubectl "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/${PLATFORM_ARCH}/kubectl" >/dev/null 2>&1; echo "done."
-        echo -n "Installing Kubectl CLI..."; sudo install -o root -g root -m 0755 /tmp/kubectl /usr/local/bin/kubectl >/dev/null; echo "done.";
+        printf '%s' "Installing Kubectl CLI..."; sudo install -o root -g root -m 0755 /tmp/kubectl /usr/local/bin/kubectl >/dev/null; echo "done.";
     elif [[ ${machine} = "Mac" ]]; then
-        echo -n "Downloading..."; curl -o /tmp/kubectl "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/darwin/amd64/kubectl" >/dev/null 2>&1; echo "done.";
-        echo -n "Installing Kubectl CLI..."; chmod +x /tmp/kubectl >/dev/null; sudo mv /tmp/kubectl /usr/local/bin/kubectl >/dev/null; sudo chown root: /usr/local/bin/kubectl; echo "done.";
+        printf '%s' "Downloading..."; curl -o /tmp/kubectl "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/darwin/amd64/kubectl" >/dev/null 2>&1; echo "done.";
+        printf '%s' "Installing Kubectl CLI..."; chmod +x /tmp/kubectl >/dev/null; sudo mv /tmp/kubectl /usr/local/bin/kubectl >/dev/null; sudo chown root: /usr/local/bin/kubectl; echo "done.";
     fi
     printf "\n"
 }
 
 function install_openssl(){
     if [[ ${machine} = "Linux" ]]; then
-        echo -n "Installing OpenSSL..."; sudo yum install openssl -y >/dev/null; echo "done.";
+        printf '%s' "Installing OpenSSL..."; sudo yum install openssl -y >/dev/null; echo "done.";
     elif [[ ${machine} = "Mac" ]]; then
-        echo -n "Installing OpenSSL..."; sudo brew install openssl >/dev/null; echo 'export PATH="/usr/local/opt/openssl/bin:$PATH"' >> ~/.bash_profile; source ~/.bash_profile; echo "done.";
+        printf '%s' "Installing OpenSSL..."; sudo brew install openssl >/dev/null; echo 'export PATH="/usr/local/opt/openssl/bin:$PATH"' >> ~/.bash_profile; source ~/.bash_profile; echo "done.";
     fi
     printf "\n"
 }
@@ -471,7 +552,7 @@ function INFO() {
 
 function tips() {
 
-  echo -en "\x1B[1;31m[NEXT ACTIONS]\x1B[0m${1}\n"
+  printf '%b' "\x1B[1;31m[NEXT ACTIONS]\x1B[0m${1}\n"
 
 }
 
@@ -492,7 +573,7 @@ function error() {
 
 function msgRed() {
 
-  echo -en "\x1B[1;31m[*] ${1}\x1B[0m\n"
+  printf '%b' "\x1B[1;31m[*] ${1}\x1B[0m\n"
 
 }
 
@@ -515,7 +596,7 @@ function title() {
 
 function msgB() {
 
-  echo -e "\x1B[1m${1}\x1B[0m\n"
+  printf '%b\n' "\x1B[1m${1}\x1B[0m\n"
 
 }
 
@@ -534,7 +615,7 @@ function echo_impl() {
     local MSG=${1:?Missing message to echo}
     local PREFIX=${2:?Missing message prefix}
     #local SUFFIX=${3:?Missing message suffix}
-    echo -e "\x1B[1${PREFIX}${MSG}\x1B[0m"
+    printf '%b\n' "\x1B[1${PREFIX}${MSG}\x1B[0m"
 }
 
 ## <https://jsw.ibm.com/browse/DBACLD-159357> - Introduced new function to deal with pressing control keys to continune, need to clear buffer before and after reading user input.
@@ -549,14 +630,14 @@ function prompt_press_any_key_to_continue() {
 # check OCP version
 ############################
 function check_platform_version(){
-    currentver=$(oc get nodes | awk 'NR==2{print $5}')
+    currentver=$(${CLI_CMD} get nodes | awk 'NR==2{print $5}')
     requiredver="v1.17.1"
     if [ "$(printf '%s\n' "$requiredver" "$currentver" | sort -V | head -n1)" = "$requiredver" ]; then
         PLATFORM_VERSION="4.4OrLater"
     else
         # PLATFORM_VERSION="3.11"
         PLATFORM_VERSION="4.4OrLater"
-        echo -e "\x1B[1;31mIMPORTANT: Only support OCp4.4 or Later, exit...\n\x1B[0m"
+        printf '%b\n' "\x1B[1;31mIMPORTANT: Only support OCp4.4 or Later, exit...\n\x1B[0m"
         exit 1
     fi
 }
@@ -585,7 +666,7 @@ set_global_env_vars
 function allocate_operator_pvc(){
     # For dynamic storage classname
     printf "\n"
-    echo -e "\x1B[1mApplying the persistent volumes for the Cloud Pak operator by using the storage classname: ${STORAGE_CLASS_NAME}...\x1B[0m"
+    printf '%b\n' "\x1B[1mApplying the persistent volumes for the Cloud Pak operator by using the storage classname: ${STORAGE_CLASS_NAME}...\x1B[0m"
 
     printf "\n"
     if [[ $DEPLOYMENT_TYPE == "starter" && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "other") ]] ;
@@ -603,27 +684,27 @@ function allocate_operator_pvc(){
     # Create Operator Persistent Volume.
     CREATE_PVC_CMD="${CLI_CMD} apply -f ${OPERATOR_PVC_FILE_TMP}"
     if $CREATE_PVC_CMD ; then
-        echo -e "\x1B[1mDone\x1B[0m"
+        printf '%b\n' "\x1B[1mDone\x1B[0m"
     else
-        echo -e "\x1B[1;31mFailed\x1B[0m"
+        printf '%b\n' "\x1B[1;31mFailed\x1B[0m"
     fi
    # Check Operator Persistent Volume status every 5 seconds (max 10 minutes) until allocate.
     ATTEMPTS=0
     TIMEOUT=60
     printf "\n"
-    echo -e "\x1B[1mWaiting for the persistent volumes to be ready...\x1B[0m"
+    printf '%b\n' "\x1B[1mWaiting for the persistent volumes to be ready...\x1B[0m"
     until ${CLI_CMD} get pvc | grep cp4a-shared-log-pvc | grep -q -m 1 "Bound" || [ $ATTEMPTS -eq $TIMEOUT ]; do
         ATTEMPTS=$((ATTEMPTS + 1))
-        echo -e "......"
+        printf '%b\n' "......"
         sleep 10
         if [ $ATTEMPTS -eq $TIMEOUT ] ; then
-            echo -e "\x1B[1;31mFailed to allocate the persistent volumes!\x1B[0m"
-            echo -e "\x1B[1;31mRun the following command to check the claim '${CLI_CMD} describe pvc operator-shared-pvc'\x1B[0m"
+            printf '%b\n' "\x1B[1;31mFailed to allocate the persistent volumes!\x1B[0m"
+            printf '%b\n' "\x1B[1;31mRun the following command to check the claim '${CLI_CMD} describe pvc operator-shared-pvc'\x1B[0m"
             exit 1
         fi
     done
     if [ $ATTEMPTS -lt $TIMEOUT ] ; then
-            echo -e "\x1B[1mDone\x1B[0m"
+            printf '%b\n' "\x1B[1mDone\x1B[0m"
     fi
 }
 
@@ -669,7 +750,7 @@ function decode_xor_password() {
     local decoded=$( ${CLI_CMD} exec -i -n $operator_project_name $operator_pod_name -- bash -c "java -cp \"${class_path}\" com.ibm.ws.security.util.PasswordDecoder \"$encoded\"")
     echo "$decoded" | grep -i 'decoded password == ' | awk '{print $8}' | sed -e 's/^"//' -e 's/"$//'
   else
-    echo $encoded
+    echo "$encoded"
   fi
 }
 
@@ -728,7 +809,7 @@ function update_secret_template_passwords(){
     else
         local machine_lower=$(echo "${machine}" | tr '[:upper:]' '[:lower:]')
         if [[ "$machine_lower" == "linux" ]]; then
-            temp_val=$(echo -n "$password_value" | base64 -w 0 )
+            temp_val=$(printf '%s' "$password_value" | base64 -w 0 )
         else
             # printf makes sure there is no addition of newline character in certain cases
             temp_val=$(printf "%s" "$password_value" | base64 )
@@ -935,11 +1016,7 @@ function generate_truststore_password() {
     local pwd_length="${1:-8}"
     local pwd_charset="${2:-A-Za-z0-9}"
     local machine_lower=$(echo "${machine}" | tr '[:upper:]' '[:lower:]')
-    if [[ "$machine_lower" == "linux" ]]; then
-        < /dev/urandom tr -dc "$pwd_charset" | head -c "$pwd_length"
-    else
-        < /dev/urandom tr -dc "$pwd_charset" | cut -c1-"$pwd_length"
-    fi
+    openssl rand -base64 64 | tr -dc "$pwd_charset" | head -c "$pwd_length"
     echo
 }
 
@@ -971,7 +1048,7 @@ function populate_os_tablespaces(){
             table_storage_location_prop="${os_db_name}_${table_storage_location_prop}"
         fi
         if [[ $db_type == "postgresql" ]]; then
-            table_storage_location_prop=$(echo $table_storage_location_prop | tr '[:upper:]' '[:lower:]')
+            table_storage_location_prop=$(echo "$table_storage_location_prop" | tr '[:upper:]' '[:lower:]')
         fi
         ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$os_datasource_number].oc_cpe_obj_store_table_storage_location = \"$table_storage_location_prop\"" ${CP4A_PATTERN_FILE_TMP}
     fi
@@ -983,7 +1060,7 @@ function populate_os_tablespaces(){
             index_storage_location_prop="${os_db_name}_${index_storage_location_prop}"
         fi
         if [[ $db_type == "postgresql" ]]; then
-           index_storage_location_prop=$(echo $index_storage_location_prop | tr '[:upper:]' '[:lower:]')
+           index_storage_location_prop=$(echo "$index_storage_location_prop" | tr '[:upper:]' '[:lower:]')
         fi
         ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$os_datasource_number].oc_cpe_obj_store_index_storage_location = \"$index_storage_location_prop\"" ${CP4A_PATTERN_FILE_TMP}
 
@@ -995,7 +1072,7 @@ function populate_os_tablespaces(){
             lob_storage_location_prop="${os_db_name}_${lob_storage_location_prop}"
         fi
         if [[ $db_type == "postgresql" ]]; then
-            lob_storage_location_prop=$(echo $lob_storage_location_prop | tr '[:upper:]' '[:lower:]')
+            lob_storage_location_prop=$(echo "$lob_storage_location_prop" | tr '[:upper:]' '[:lower:]')
         fi
         ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$os_datasource_number].oc_cpe_obj_store_lob_storage_location = \"$lob_storage_location_prop\"" ${CP4A_PATTERN_FILE_TMP}
     fi
@@ -1190,7 +1267,7 @@ function validate_ssl_certificates() {
                 # IF the DB type is postgresql then the user can have client side SSL enabled or not and if so there are different number of certificates and the naming is also different
                 if [[ "$db_type" == "postgresql" ]]; then
                     client_server_ssl_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $db_alias.POSTGRESQL_SSL_CLIENT_SERVER)")
-                    client_server_ssl_flag=$(echo $client_server_ssl_flag | tr '[:upper:]' '[:lower:]')
+                    client_server_ssl_flag=$(echo "$client_server_ssl_flag" | tr '[:upper:]' '[:lower:]')
                     # if the client side SSL is disabled , there is only SSL certificate expected and just like other DBs it must be named db-cert
                     # The reason for this requirement is when we generate the SSL secrets we have specify the full path and that is hardcoded
                     if [[ $client_server_ssl_flag == "no" || $client_server_ssl_flag == "false" || $client_server_ssl_flag == "" || -z $client_server_ssl_flag ]]; then
@@ -1315,7 +1392,7 @@ function mark_optional() {
     cleaned_params=$(echo "$cleaned_params" | sed 's/,[^,]*\.POSTGRESQL_SSL_CLIENT_SERVER//g' | sed 's/^[^,]*\.POSTGRESQL_SSL_CLIENT_SERVER,//g' | sed 's/^[^,]*\.POSTGRESQL_SSL_CLIENT_SERVER$//g')
     
     # Remove the old line
-    sed -i '/^OPTIONAL_PARAMETERS:/d' "$TEMPORARY_PROPERTY_FILE"
+    ${SED_COMMAND} '/^OPTIONAL_PARAMETERS:/d' "$TEMPORARY_PROPERTY_FILE"
     
     # Add new parameters to the cleaned list
     local final_params="$cleaned_params"
@@ -1393,7 +1470,7 @@ function validate_property_file_required_fields() {
 
         # Consider as empty: empty, ",...", "...,", "{Base64}", or "{xor}" (case-insensitive, with or without quotes, and only if value is exactly those tokens)
         # Also, if value contains commas, any empty or whitespace only entry is invalid
-        val_lc="${value,,}"
+        val_lc=$(echo "$value" | tr '[:upper:]' '[:lower:]')
         local invalid=0
         if [[ -z "$val_lc" || "$val_lc" == "," || "$val_lc" == "{base64}" || "$val_lc" == "{xor}" ]]; then
             invalid=1
@@ -1445,6 +1522,7 @@ function validate_property_file_required_fields() {
 
 # This function is to patch the kafka strimzi podset for an upgrade to a version having Events Operator 5.2 or higher
 # The function checks if events operator subscription is on channel 5.2 and if so gets the kafka strimzi podset and replaces an annotation which will allow the zen upgrade to complete
+# If the upgrade is from 22.0.2 then there is strimzipodset resource , instead the stateful set resource must be patched -> https://jsw.ibm.com/browse/DBACLD-210631
 # The subscription for events operator is updated after the new CR is applied and the cp4a-operator/foundation-operator applies the new operand request, so this function is called during upgradeDeploymentStatus
 # For https://jsw.ibm.com/browse/DBACLD-199163 https://jsw.ibm.com/browse/DBACLD-199093
 function patch_strimzi_podset(){
@@ -1452,19 +1530,28 @@ function patch_strimzi_podset(){
     local services_namespace=$2
 
     echo "Checking ibm-events-operator subscription and channel..."
-    # Check if the subscription exists
-    events_operator_subscription_exists=$(${CLI_CMD} get subscription.operators.coreos.com ibm-events-operator -n $operator_namespace -o name --no-headers 2>/dev/null || echo "")
+    
+    # Check if the events operator subscription exists and get its actual name. we found sometimes the subscription gets created with the channel appended to the name.
+    events_operator_subscription_name=$(${CLI_CMD} get subscription.operators.coreos.com -n $operator_namespace --no-headers -o custom-columns=":metadata.name" 2>/dev/null | grep "ibm-events-operator" | head -n 1 || echo "")
 
-    if [[ -z "$events_operator_subscription_exists" ]]; then
-        echo "Subscription 'ibm-events-operator' not found, skipping"
+    if [[ -z "$events_operator_subscription_name" ]]; then
+        echo "Subscription matching 'ibm-events-operator' not found, skipping"
         strimzi_patched=true
         return
     fi
 
-    # Get the subscription channel
-    events_operator_channel=$(${CLI_CMD} get subscription.operators.coreos.com ibm-events-operator -n $operator_namespace -o yaml | ${YQ_CMD} '.spec.channel')
+    echo "Found subscription: $events_operator_subscription_name"
+
+    # Get the subscription channel using the actual subscription name
+    events_operator_channel=$(${CLI_CMD} get subscription.operators.coreos.com "$events_operator_subscription_name" -n $operator_namespace -o yaml 2>/dev/null | ${YQ_CMD} '.spec.channel')
+
+    if [[ -z "$events_operator_channel" || "$events_operator_channel" == "null" ]]; then
+        echo "Could not retrieve channel for subscription '$events_operator_subscription_name'"
+        return
+    fi
 
     echo "Current channel: $events_operator_channel"
+    
 
     #if [[ "$events_operator_channel" =~ ^v5\.[3-9]$ || "$events_operator_channel" =~ ^v[6-9] || "$events_operator_channel" =~ ^v[1-9][0-9] ]]; then
     #    # This handles v5.3-v5.9, v6-v9, and v10+ versions
@@ -1472,6 +1559,7 @@ function patch_strimzi_podset(){
     #    strimzi_patched=true
     #    return 0
     #fi
+
     # Check if channel is v5.2
     if [[ "$events_operator_channel" == "v5.2" ]]; then
         echo "Events Operator Channel is v5.2, proceeding to check if the events operator is running..."
@@ -1494,35 +1582,252 @@ function patch_strimzi_podset(){
             return
         fi
 
-        # Get the StrimziPodSet resource
+        # Check for StrimziPodSet resource first
         kafka_podset_exists=$(${CLI_CMD} get strimzipodset iaf-system-kafka -n $services_namespace -o name --no-headers 2>/dev/null || echo "")
 
-        if [[ -z "$kafka_podset_exists" ]]; then
-            echo "StrimziPodSet 'iaf-system-kafka' not found"
-            return
-        fi
+        if [[ -n "$kafka_podset_exists" ]]; then
+            echo "Found StrimziPodSet 'iaf-system-kafka'"
 
-        echo "Found StrimziPodSet 'iaf-system-kafka'"
+            # Get the current kafka version from the annotation
+            kafka_annotation_value=$(${CLI_CMD} get strimzipodset iaf-system-kafka -n $services_namespace -o yaml | ${YQ_CMD} '.metadata.annotations."strimzi.io/kafka-version"')
 
-        # Get the current kafka version from the annotation
-        kafka_annotation_value=$(${CLI_CMD} get strimzipodset iaf-system-kafka -n $services_namespace -o yaml | ${YQ_CMD} '.metadata.annotations."strimzi.io/kafka-version"')
+            if [[ -z "$kafka_annotation_value" || "$kafka_annotation_value" == "null" ]]; then
+                strimzi_patched=true
+                return
+            fi
 
-        if [[ -z "$kafka_annotation_value" || "$kafka_annotation_value" == "null" ]]; then
+            echo "Current kafka version: $kafka_annotation_value"
+
+            # Apply the patch to StrimziPodSet
+            echo "Applying patch to StrimziPodSet to update annotations..."
+            ${CLI_CMD} patch strimzipodset iaf-system-kafka -n $services_namespace --type=merge -p "{\"metadata\":{\"annotations\":{\"strimzi.io/kafka-version\":null,\"ibmevents.ibm.com/kafka-version\":\"$kafka_annotation_value\"}}}"
+
+            echo "Successfully updated StrimziPodSet annotations:"
+            echo "- Removed: strimzi.io/kafka-version"
+            echo "- Added: ibmevents.ibm.com/kafka-version: $kafka_annotation_value"
             strimzi_patched=true
-            return
+        # The code would only go into this block for an upgrade from 22.0.2 as there is no strimzipodset resource on those versions of events operator
+        # https://jsw.ibm.com/browse/DBACLD-210631
+        else
+            echo "StrimziPodSet 'iaf-system-kafka' not found, checking for StatefulSet..."
+            
+            # Check for StatefulSet
+            kafka_statefulset_exists=$(${CLI_CMD} get statefulset iaf-system-kafka -n $services_namespace -o name --no-headers 2>/dev/null || echo "")
+
+            if [[ -n "$kafka_statefulset_exists" ]]; then
+                echo "Found StatefulSet 'iaf-system-kafka'"
+
+                # Get the current kafka version from the StatefulSet annotation
+                kafka_annotation_value=$(${CLI_CMD} get statefulset iaf-system-kafka -n $services_namespace -o yaml | ${YQ_CMD} '.metadata.annotations."strimzi.io/kafka-version"')
+
+                if [[ -z "$kafka_annotation_value" || "$kafka_annotation_value" == "null" ]]; then
+                    strimzi_patched=true
+                    return
+                fi
+
+                echo "Current kafka version: $kafka_annotation_value"
+
+                # Apply the patch to StatefulSet (both metadata and template.metadata annotations)
+                echo "Applying patch to StatefulSet to update annotations..."
+                ${CLI_CMD} patch statefulset iaf-system-kafka -n $services_namespace --type=merge -p "{\"metadata\":{\"annotations\":{\"strimzi.io/kafka-version\":null,\"ibmevents.ibm.com/kafka-version\":\"$kafka_annotation_value\"}},\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"strimzi.io/kafka-version\":null,\"ibmevents.ibm.com/kafka-version\":\"$kafka_annotation_value\"}}}}}"
+
+                echo "Successfully updated StatefulSet annotations:"
+                echo "- Removed: strimzi.io/kafka-version (metadata and template.metadata)"
+                echo "- Added: ibmevents.ibm.com/kafka-version: $kafka_annotation_value (metadata and template.metadata)"
+                strimzi_patched=true
+            else
+                echo "Neither StrimziPodSet nor StatefulSet 'iaf-system-kafka' found"
+                return
+            fi
         fi
-
-        echo "Current kafka version: $kafka_annotation_value"
-
-        # Apply the patch directly
-        echo "Applying patch to update annotations..."
-        ${CLI_CMD} patch strimzipodset iaf-system-kafka -n $services_namespace --type=merge -p "{\"metadata\":{\"annotations\":{\"strimzi.io/kafka-version\":null,\"ibmevents.ibm.com/kafka-version\":\"$kafka_annotation_value\"}}}"
-
-        echo "Successfully updated annotations:"
-        echo "- Removed: strimzi.io/kafka-version"
-        echo "- Added: ibmevents.ibm.com/kafka-version: $kafka_annotation_value"
-        strimzi_patched=true
     else
         echo "Events operator is not at channel v5.2"
+    fi
+}
+
+
+# Function to check if the deployment is SaaS 
+# We detect if sc_deploy_zen_with_iaf is explicitly set to false in the CR 
+# Returns: "true" if sc_deploy_zen_with_iaf is false, "false" otherwise
+# Parameters:
+#   $1 - namespace
+#   $2 - CR kind (e.g., ICP4ACluster, Content, etc.)
+#   $3 - CR name
+function check_saas_deployment() {
+    local cr_kind="$1"
+    local cr_name="$2"
+    local namespace="$3"
+
+    # Get the CR and extract sc_deploy_zen_with_iaf value (defaults to true if not set)
+    local zen_iaf_value
+    zen_iaf_value=$(${CLI_CMD} get "$cr_kind" "$cr_name" -n "$namespace" -o yaml 2>/dev/null | \
+        ${YQ_CMD} eval '.spec.shared_configuration.sc_deploy_zen_with_iaf' -)
+
+    # Check if kubectl/yq command failed
+    if [[ $? -ne 0 ]]; then
+        return 1
+    fi
+
+    # Return true only if value is false, otherwise return false
+    # If the value is false that means the deployment is SaaS
+    if [[ "$zen_iaf_value" == "false" ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+
+function validate_zen_upgrade_status(){
+    # check for zenStatus and currentverison for zen
+
+    zen_service_name=$(${CLI_CMD} get zenService --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS |awk '{print $1}')
+    if [[ ! -z "$zen_service_name" ]]; then
+        clear
+        maxRetry=360
+        skip_edb_check="false"
+        
+        for ((retry=0;retry<=${maxRetry};retry++)); do
+            # As a workaround for a known issue where the customer upgrade from 22.0.2-IF006/21.0.3-IF031 to 24.0.0-IF004 or above (shared to dedicated), a new postgresql-operator-controller-manager-config secret is created in the CP4BA_SERVICES_NS, this secret does not have the ibm-bts/skip-updates: "true" annotation. 
+            # This causes the license of EDB instance to be expired since old BTS pod updated the license
+            # The check_edb_license function will return edb_license_expired. If edb_license_expired is empty, this means we don't have any expired license hence we'll skip the license check.            
+            if [[ "$skip_edb_check" == "false" ]]; then
+                check_edb_license
+            fi
+            # # As workaround for https://github.ibm.com/IBMPrivateCloud/roadmap/issues/64207
+            # # update secret postgresql-operator-controller-manager-config in <cp4ba> namespace and/or ibm-common-services namespace and add this annotation ibm-bts/skip-updates: "true"
+            # if ${CLI_CMD} get secret -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | grep postgresql-operator-controller-manager-config >/dev/null 2>&1; then
+            #     ${CLI_CMD} patch secret postgresql-operator-controller-manager-config -n $CP4BA_SERVICES_NS -p '{"metadata": {"annotations": {"ibm-bts/skip-updates": "true"}}}' >/dev/null 2>&1
+            # fi
+
+            zenservice_version=$(${CLI_CMD} get zenService $zen_service_name --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath='{.status.currentVersion}')
+            isCompleted=$(${CLI_CMD} get zenService $zen_service_name --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath='{.status.zenStatus}')
+            isProgressDone=$(${CLI_CMD} get zenService $zen_service_name --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath='{.status.Progress}')
+
+            if [[ "$isCompleted" != "Completed" || "$isProgressDone" != "100%" || "$zenservice_version" != "${ZEN_OPERATOR_VERSION//v/}" ]]; then
+                clear
+                CP4BA_DEPLOYMENT_STATUS="Waiting for the zenService to be ready (could take up to 120 minutes) before upgrade the CP4BA capabilities..."
+                printf '%s %s\n' "$(date)" "[refresh interval: 60s]"
+                printf '%b' "[Press Ctrl+C to exit] \t\t"
+                printf "\n"
+                echo "${YELLOW_TEXT}$CP4BA_DEPLOYMENT_STATUS${RESET_TEXT}"
+                printHeaderMessage "CP4BA Upgrade Status"
+                if [[ "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
+                    echo "zenService Version (Expected - ${ZEN_OPERATOR_VERSION//v/})       : ${GREEN_TEXT}$zenservice_version${RESET_TEXT}"
+                else
+                    echo "zenService Version (Expected - ${ZEN_OPERATOR_VERSION//v/})       : ${RED_TEXT}$zenservice_version${RESET_TEXT}"
+                fi
+                if [[ "$isCompleted" == "Completed" && "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
+                    echo "zenService Status (Expected - Completed)    : ${GREEN_TEXT}$isCompleted${RESET_TEXT}"
+                else
+                    echo "zenService Status (Expected - Completed)    : ${RED_TEXT}$isCompleted${RESET_TEXT}"
+                fi
+
+                if [[ "$isProgressDone" == "100%" && "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
+                    echo "zenService Progress (Expected - 100%)       : ${GREEN_TEXT}$isProgressDone${RESET_TEXT}"
+                else
+                    echo "zenService Progress (Expected - 100%)       : ${RED_TEXT}$isProgressDone${RESET_TEXT}"
+                fi
+                sleep 60
+            elif [[ "$isCompleted" == "Completed" && "$isProgressDone" == "100%" && "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
+                break
+            elif [[ $retry -eq ${maxRetry} ]]; then
+                printf "\n"
+                warning "Timeout waiting for the Zen Service to start"
+                printf '%b' "\x1B[1mCheck the status of the Zen Service\x1B[0m"
+                printf "\n"
+                exit 1
+            fi
+            # Each refresh of the zen upgrade , we check if we need to update the kafka strimzi podset
+            # The function patch_strimzi_podset which is defined in common.sh will set strimzi_patched  to true once the patch is completed
+            # For upgrades to 24.0.1 or newer, kafka tasks in the cp4a-operator happen after zen is upgraded so this block is after zen upgrade completes
+            # For upgrades to 24.0.0, kafka tasks in the cp4a-operator happen before zen is upgraded
+            if [[ $strimzi_patched == "false" ]]; then
+                patch_strimzi_podset $cp4ba_operators_namespace $cp4ba_services_namespace
+            fi
+        done
+        clear
+        # success "The Zen Service (${ZEN_OPERATOR_VERSION//v/}) is ready for CP4BA"
+        CP4BA_DEPLOYMENT_STATUS="The Zen Service (${ZEN_OPERATOR_VERSION//v/}) is ready for CP4BA"
+        printf '%s %s\n' "$(date)" "[refresh interval: 30s]"
+        printf '%b' "[Press Ctrl+C to exit] \t\t"
+        printf "\n"
+        echo "${YELLOW_TEXT}$CP4BA_DEPLOYMENT_STATUS${RESET_TEXT}"
+        info "Starting all CP4BA Operators to upgrade CP4BA capabilities"
+        printHeaderMessage "CP4BA Upgrade Status"
+        if [[ "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
+            echo "zenService Version        : ${GREEN_TEXT}$zenservice_version${RESET_TEXT}"
+        else
+            echo "zenService Version        : ${RED_TEXT}$zenservice_version${RESET_TEXT}"
+        fi
+        if [[ "$isCompleted" == "Completed" ]]; then
+            echo "zenService Status         : ${GREEN_TEXT}$isCompleted${RESET_TEXT}"
+        else
+            echo "zenService Status         : ${RED_TEXT}$isCompleted${RESET_TEXT}"
+        fi
+
+        if [[ "$isProgressDone" == "100%" && "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
+            echo "zenService Progress       : ${GREEN_TEXT}$isProgressDone${RESET_TEXT}"
+        else
+            echo "zenService Progress       : ${RED_TEXT}$isProgressDone${RESET_TEXT}"
+        fi
+
+        ## Apply workaround for https://jsw.ibm.com/browse/DBACLD-148543 for 24.0.0 IF002
+        if [[ "$cp4ba_original_csv_ver_for_upgrade_script" == "24.0."* ]]; then
+            tmp_val_result=$(${CLI_CMD} get job create-postgres-license-config -n $cp4ba_services_namespace --no-headers --ignore-not-found)
+            if [[ ! -z $tmp_val_result ]]; then
+                ${CLI_CMD} delete job create-postgres-license-config -n $cp4ba_services_namespace >/dev/null 2>&1
+            fi
+
+            tmp_val_result=$(${CLI_CMD} get pod -l name=operand-deployment-lifecycle-manager -n $cp4ba_services_namespace --no-headers --ignore-not-found)
+            if [[ ! -z $tmp_val_result ]]; then
+                ${CLI_CMD} delete pod -l name=operand-deployment-lifecycle-manager -n $cp4ba_services_namespace >/dev/null 2>&1
+            fi
+
+            tmp_val_result=$(${CLI_CMD} get job create-postgres-license-config -n $cp4ba_operators_namespace --no-headers --ignore-not-found)
+            if [[ ! -z $tmp_val_result ]]; then
+                ${CLI_CMD} delete job create-postgres-license-config -n $cp4ba_operators_namespace >/dev/null 2>&1
+            fi
+
+            tmp_val_result=$(${CLI_CMD} get pod -l name=operand-deployment-lifecycle-manager -n $cp4ba_operators_namespace --no-headers --ignore-not-found)
+            if [[ ! -z $tmp_val_result ]]; then
+                ${CLI_CMD} delete pod -l name=operand-deployment-lifecycle-manager -n $cp4ba_operators_namespace >/dev/null 2>&1
+            fi
+        fi
+
+        if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "24.0."*) ]]; then
+            ## Create tow route after zenService ready
+            TARGET_PROJECT_NAME_CS=$(${CLI_CMD} get route --no-headers --ignore-not-found  -A |grep  cp-console-iam-provider|awk '{print $1}')
+            if [[ -z $TARGET_PROJECT_NAME_CS ]]; then
+                warning "cp-console-iam-provider not found in the cluster. continuing..."
+            else
+                get_default_cp_console_route
+                res=$?
+                if [[ ${res} == "0" ]]; then
+                    create_custom_idprovider_route "platform-identity-provider"
+                    create_custom_idmgmt_route "platform-identity-management"
+                fi
+            fi
+
+            # start all cp4ba operators after zen/im ready
+            startup_operator $TEMP_OPERATOR_PROJECT_NAME "silent"
+            sleep 10
+
+            ## Apply workaround for https://jsw.ibm.com/browse/DBACLD-137719 before start migration CPfs
+            ## scale up ibm-bts-operator-controller-manager in ibm-common-services project after zenService ready
+            if [[ $ALL_NAMESPACE_FLAG == "yes" ]]; then
+                bts_operator_name=$(${CLI_CMD} get deployment ibm-bts-operator-controller-manager --no-headers --ignore-not-found -n ibm-common-services -o name)
+                if [[ ! -z $bts_operator_name ]]; then
+                    ${CLI_CMD} scale --replicas=1 deployment ibm-bts-operator-controller-manager -n ibm-common-services >/dev/null 2>&1
+                    if [[ $? -ne 0 ]]; then
+                        warning "Failed to scale up ibm-bts-operator-controller-manager operator in the project \"ibm-common-services\". Scale up the ibm-bts-operator-controller-manager operator manually."
+                    fi
+                fi
+            fi
+        fi
+    else
+        fail "ZenService not found in the project \"$CP4BA_SERVICES_NS\", exiting..."
+        echo "****************************************************************************"
+        exit 1
     fi
 }

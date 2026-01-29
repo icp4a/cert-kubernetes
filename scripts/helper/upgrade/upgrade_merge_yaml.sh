@@ -29,7 +29,7 @@ get_pvc_size_from_cluster() {
     pvc_name=$1
     DEFAULT_SIZE="1Gi"
     project_namespace=$2
-    size=$(kubectl get pvc "$pvc_name" -n $project_namespace -o=jsonpath='{.spec.resources.requests.storage}' 2>/dev/null)
+    size=$(${CLI_CMD} get pvc "$pvc_name" -n $project_namespace -o=jsonpath='{.spec.resources.requests.storage}' 2>/dev/null)
     
     # If the PVC doesn't exist or kubectl fails, return the default size
     if [ -z "$size" ]; then
@@ -165,7 +165,7 @@ function dryrun(){
     FILE=$1
     projectname=$2
     # Run kubectl apply with dry-run
-    output=$(kubectl apply -f "$FILE" --dry-run=server 2>&1)
+    output=$(${CLI_CMD} apply -f "$FILE" --dry-run=server 2>&1)
     exit_code=$?
     info "Validating the CP4BA Custom Resource file by executing a dry run..."
     printf "\n"
@@ -489,7 +489,7 @@ function select_apply_cr(){
     #         break
     #         ;;
     #     *)
-    #         echo -e "Answer must be \"Yes\" or \"No\"\n"
+    #         printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
     #         ;;
     #     esac
     # done
@@ -573,7 +573,7 @@ function upgrade_deployment(){
                 #Validate the CR by performing a dry run
                 dryrun $UPGRADE_DEPLOYMENT_CONTENT_CR_TMP $deployment_project_name
                 #applying the latest tmp CR so that we can update the kubectl.kubernetes.io/last-applied-configuration section to include any potential user edits
-                kubectl apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
+                ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
 
                 # replace release/appVersion
                 ${SED_COMMAND} "s|release: .*|release: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
@@ -589,7 +589,7 @@ function upgrade_deployment(){
                 if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "24.0."*) ]]; then
                     # Merge BAI save point into content cr
                     bai_flag=`${YQ_CMD} ".spec.content_optional_components.bai" "$UPGRADE_DEPLOYMENT_CONTENT_CR_TMP"`
-                    bai_flag=$(echo $bai_flag | tr '[:upper:]' '[:lower:]')
+                    bai_flag=$(echo "$bai_flag" | tr '[:upper:]' '[:lower:]')
                     if [[ $bai_flag == "true" ]]; then
                         info "Merging Flink job savepoint from \"${UPGRADE_DEPLOYMENT_BAI_TMP}\" into new version of custom resource \"${UPGRADE_DEPLOYMENT_CONTENT_CR}\"."
                         if [ -s ${UPGRADE_DEPLOYMENT_BAI_TMP} ]; then
@@ -724,8 +724,8 @@ function upgrade_deployment(){
                     ${CLI_CMD} patch content $content_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/verify_configuration"}]' >/dev/null 2>&1
 
                     info "Applying the custom resource ${UPGRADE_DEPLOYMENT_CONTENT_CR}"
-                    kubectl annotate content $content_cr_name kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name >/dev/null 2>&1
-                    kubectl apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR} -n $deployment_project_name >/dev/null 2>&1
+                    ${CLI_CMD} annotate content $content_cr_name kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name >/dev/null 2>&1
+                    ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR} -n $deployment_project_name >/dev/null 2>&1
 
                     if [ $? -ne 0 ]; then
                         fail "Failed to update IBM CP4BA Content Custom Resource."
@@ -809,7 +809,7 @@ function upgrade_deployment(){
             ${YQ_CMD} -i 'del(.metadata.uid)' "${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}"
 
             # Scale up wfps operator deployment to enable webhook for CR validation
-            kubectl scale --replicas=1 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
+            ${CLI_CMD} scale --replicas=1 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
             wait_for_pod $operator_project_name ibm-cp4a-wfps-operator
             #Validate the CR by performing a dry run
             #additional sleep time added so that we can make sure that the wfps operator is completely ready prior to applying new CR
@@ -817,9 +817,9 @@ function upgrade_deployment(){
             sleep 25
             dryrun $UPGRADE_DEPLOYMENT_WFPS_CR_TMP $deployment_project_name
             #applying the latest tmp CR so that we can update the kubectl.kubernetes.io/last-applied-configuration section to include any potential user edits
-            kubectl apply -f ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
+            ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
             # Scale down wfps operator deployment again
-            kubectl scale --replicas=0 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
+            ${CLI_CMD} scale --replicas=0 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
 
             # replace release/appVersion
             # ${SED_COMMAND} "s|release: .*|release: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_PFS_CR_TMP}
@@ -862,16 +862,16 @@ function upgrade_deployment(){
                     if [[ $retry -eq ${maxRetry} ]]; then
                     printf "\n"
                     warning "Timeout waiting for IBM CP4BA Workflow Process Service operator to start"
-                    echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
-                    echo "oc describe pod $(oc get pod -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
+                    printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
+                    echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
                     printf "\n"
-                    echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
-                    echo "oc describe rs $(oc get rs -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
+                    printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
+                    echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
                     printf "\n"
                     exit 1
                     else
                     sleep 30
-                    echo -n "..."
+                    printf '%s' "..."
                     continue
                     fi
                 elif [[ $isReady == "Succeeded" ]]; then
@@ -895,7 +895,7 @@ function upgrade_deployment(){
 
 
             info "Apply the new version ($CP4BA_RELEASE_BASE) of IBM CP4BA Workflow Process Service custom resource"
-            kubectl apply -f ${UPGRADE_DEPLOYMENT_WFPS_CR} -n $deployment_project_name >/dev/null 2>&1
+            ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_WFPS_CR} -n $deployment_project_name >/dev/null 2>&1
             if [ $? -ne 0 ]; then
                 fail "IBM CP4BA Workflow Process Service custom resource update failed"
                 exit 1
@@ -964,7 +964,7 @@ function upgrade_deployment(){
         dryrun $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP $deployment_project_name
 	
         #applying the latest tmp CR so that we can update the kubectl.kubernetes.io/last-applied-configuration section to include any potential user edits
-        kubectl apply -f ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
+        ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
 
         # replace release/appVersion
         ${SED_COMMAND} "s|release: .*|release: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
@@ -1019,12 +1019,12 @@ function upgrade_deployment(){
                     if [[ -z $bas_db_user_name ]]; then
                         bas_db_user_name=$(${CLI_CMD} get secret $bas_db_secret_name --no-headers --ignore-not-found -n $deployment_project_name -o jsonpath='{.stringData.dbUsername}' | base64 -d)
                         if [[ ! -z $bas_db_user_name ]]; then
-                            ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"stringData":{"dbUsername":"'$(echo -n "$baw_auth_db_user_name" | base64)'"}}' >/dev/null 2>&1
+                            ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"stringData":{"dbUsername":"'$(printf '%s' "$baw_auth_db_user_name" | base64)'"}}' >/dev/null 2>&1
                         else
                             warning "Not found the value of \"dbUsername\" from secret $bas_db_secret_name in the project \"$deployment_project_name\"."
                         fi
                     else
-                        ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"data":{"dbUsername":"'$(echo -n "$baw_auth_db_user_name" | base64)'"}}' >/dev/null 2>&1
+                        ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"data":{"dbUsername":"'$(printf '%s' "$baw_auth_db_user_name" | base64)'"}}' >/dev/null 2>&1
                     fi
 
                     # Update User Password
@@ -1032,12 +1032,12 @@ function upgrade_deployment(){
                     if [[ -z $bas_db_user_pwd ]]; then
                         bas_db_user_pwd=$(${CLI_CMD} get secret $bas_db_secret_name --no-headers --ignore-not-found -n $deployment_project_name -o jsonpath='{.stringData.dbPassword}' | base64 -d)
                         if [[ ! -z $bas_db_user_pwd ]]; then
-                            ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"stringData":{"dbPassword":"'$(echo -n "$baw_auth_db_user_pwd" | base64)'"}}' >/dev/null 2>&1
+                            ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"stringData":{"dbPassword":"'$(printf '%s' "$baw_auth_db_user_pwd" | base64)'"}}' >/dev/null 2>&1
                         else
                             warning "Not found the value of \"dbPassword\" from secret $bas_db_secret_name in the project \"$deployment_project_name\"."
                         fi
                     else
-                        ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"data":{"dbPassword":"'$(echo -n "$baw_auth_db_user_pwd" | base64)'"}}' >/dev/null 2>&1
+                        ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"data":{"dbPassword":"'$(printf '%s' "$baw_auth_db_user_pwd" | base64)'"}}' >/dev/null 2>&1
                     fi
                 else
                     warning "Not found the value of \"spec.bastudio_configuration.admin_secret_name\" from ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}"
@@ -1046,6 +1046,12 @@ function upgrade_deployment(){
             else
                 warning "Not found the value of \"spec.workflow_authoring_configuration.database.secret_name\" from ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}"
             fi
+        fi
+
+        # Fixing pvc logstore size for cp4a-shared-log for NON-authoring scenarios
+        # This handles BAW Runtime, ADP with BAStudio, etc. (authoring already handled above)
+        if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $cr_version == "21.0.3" && ! (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "baw_authoring") ]]; then
+            ensure_baw_logstore_size "${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}" "${deployment_project_name}"
         fi
 
         # Add "kafka" into sc_optional_component if kafka_services.enable is true when upgrade
@@ -1369,7 +1375,7 @@ function upgrade_deployment(){
                                                     ${YQ_CMD} -i ".spec.workflow_authoring_configuration.case.tos_list[${tos_instance_index}].connection_point_name = \"$tos_connection\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
                                                 fi
                                                 # if [[ -z "$baw_target_environment_name" ]]; then
-                                                #     tmp_val_ds_name=$(echo $tos_datasource_name | tr '[:upper:]' '[:lower:]')
+                                                #     tmp_val_ds_name=$(echo "$tos_datasource_name" | tr '[:upper:]' '[:lower:]')
                                                 #     ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.workflow_authoring_configuration.case.tos_list.[${tos_instance_index}].target_environment_name "$tmp_val_ds_name"
                                                 # fi
                                             fi
@@ -1517,7 +1523,7 @@ function upgrade_deployment(){
                                                             ${YQ_CMD} -i ".spec.baw_configuration[${baw_instance_index}].case.tos_list[${tos_instance_index}].connection_point_name = \"$tos_connection\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
                                                         fi
                                                         # if [[ -z "$baw_target_environment_name" ]]; then
-                                                        #     tmp_val_ds_name=$(echo $tos_datasource_name | tr '[:upper:]' '[:lower:]')
+                                                        #     tmp_val_ds_name=$(echo "$tos_datasource_name" | tr '[:upper:]' '[:lower:]')
                                                         #     ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.baw_configuration.[${baw_instance_index}].case.tos_list.[${tos_instance_index}].target_environment_name "$tmp_val_ds_name"
                                                         # fi
                                                     fi
@@ -1647,7 +1653,7 @@ function upgrade_deployment(){
             echo "Status of Content Process Engine SCIM configuration: $IS_SCIM_ENABLED"
             # set sc_skip_ldap_config when upgrade from 21.0.3/22.0.2 to 24.0.0+
             # DBACLD-157386: remove LDAP configuration when SCIM is configured
-            if [[ $IS_SCIM_ENABLED == "true" ]]; then
+            if [[ "$(echo "$IS_SCIM_ENABLED" | tr '[:upper:]' '[:lower:]')" == "true" ]]; then
                     info "${YELLOW_TEXT}When Content Process Engine directory provider type is set to SCIM, setting \"shared_configuration.sc_skip_ldap_config\" as \"true\" when upgrade CP4BA deployment from version \"$cr_version\".${RESET_TEXT}"
                     ${YQ_CMD} -i '.spec.shared_configuration.sc_skip_ldap_config = true' ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
             else
@@ -1775,8 +1781,8 @@ function upgrade_deployment(){
             ${CLI_CMD} patch icp4acluster $icp4acluster_cr_name -n $deployment_project_name --type=json -p='[{"op": "remove", "path": "/spec/verify_configuration"}]' >/dev/null 2>&1
 
             info "Applying the custom resource ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}"
-            kubectl annotate icp4acluster $icp4acluster_cr_name kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name >/dev/null 2>&1
-            kubectl apply -f ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR} -n $deployment_project_name >/dev/null 2>&1
+            ${CLI_CMD} annotate icp4acluster $icp4acluster_cr_name kubectl.kubernetes.io/last-applied-configuration- -n $deployment_project_name >/dev/null 2>&1
+            ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR} -n $deployment_project_name >/dev/null 2>&1
             if [ $? -ne 0 ]; then
                 fail "Failed to update IBM CP4BA Custom Resource."
             else
@@ -1799,7 +1805,7 @@ function upgrade_deployment(){
             step_num=1
             for element in "${EXISTING_PATTERN_ARR[@]}"; do
                 if [[ "$element" != "decisions" && "$element" == "decisions_ads" ]]; then
-                    echo -e "\x1B[33;5m- Automation Decision Services capability is installed in this CP4BA deployment: \x1B[0m"
+                    printf '%b\n' "\x1B[33;5m- Automation Decision Services capability is installed in this CP4BA deployment: \x1B[0m"
                     echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Refer to the Knowledge Center: \"Upgrading IBM Automation Decision Services\" topic:"
                     echo "    - if upgrading from 21.0.3 or 22.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=deployment-upgrading-automation-decision-services]"
                     echo "    - if upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=ucreciyd-upgrading-automation-decision-services]"
@@ -1816,12 +1822,12 @@ function upgrade_deployment(){
 
             # output info for upgrading document process databases
             if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") ]]; then
-                    echo -e "\x1B[33;5m- Automation Document Processing capability is installed in this CP4BA deployment: \x1B[0m"
+                    printf '%b\n' "\x1B[33;5m- Automation Document Processing capability is installed in this CP4BA deployment: \x1B[0m"
                     echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Upgrade the Automation Document Processing databases"
                     echo "    - If you are upgrading from 21.0.3 or 22.0.2, go to the following KC version:"
-                    echo -e "      ${GREEN_TEXT}https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE${RESET_TEXT}\n      Navigate to:\n        - \"Upgrading from 21.0.3 or 22.0.2\"\n        - \"Upgrading your IBM Cloud Pak deployment\"\n        - \"Updating the custom resource for each capability in your deployment\"\n        - \"Upgrading IBM Automation Document Processing\""
+                    printf '%b\n' "      ${GREEN_TEXT}https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE${RESET_TEXT}\n      Navigate to:\n        - \"Upgrading from 21.0.3 or 22.0.2\"\n        - \"Upgrading your IBM Cloud Pak deployment\"\n        - \"Updating the custom resource for each capability in your deployment\"\n        - \"Upgrading IBM Automation Document Processing\""
                     echo "    - If you are upgrading from 23.0.2, go to the following KC version:"
-                    echo -e "      ${GREEN_TEXT}https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE${RESET_TEXT}\n      Navigate to:\n        - \"Upgrading from 23.0.2\"\n        - \"Upgrading your IBM Cloud Pak deployment\"\n        - \"Updating the custom resource for each capability in your deployment\"\n        - \"Upgrading IBM Automation Document Processing\""
+                    printf '%b\n' "      ${GREEN_TEXT}https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE${RESET_TEXT}\n      Navigate to:\n        - \"Upgrading from 23.0.2\"\n        - \"Upgrading your IBM Cloud Pak deployment\"\n        - \"Updating the custom resource for each capability in your deployment\"\n        - \"Upgrading IBM Automation Document Processing\""
                     step_num=$((step_num + 1))
 
                     # NOTE: After discussion with ADP team, we will only output a link to KC since the details of the steps may change based on the ADP version.
@@ -1950,6 +1956,8 @@ function wait_for_condition() {
 # If missing in the merged temp CR, set it. No-op if already present.
 # $1 = path to temp ICP4ACluster CR (e.g., ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP})
 # $2 = project namespace (e.g., ${PROJECT_NAMESPACE})
+
+
 function ensure_baw_logstore_size() {
   local tmp_cr="$1"
   local ns="$2"
@@ -1964,51 +1972,127 @@ function ensure_baw_logstore_size() {
     return 0
   fi
 
-  # Prefer bastudio_configuration if present; else fallback to baw_configuration
+  # Check what configurations exist
   local section_type_ba
-  local section_type_bw
   section_type_ba="$(${YQ_CMD} ".spec.bastudio_configuration | type" "$tmp_cr" 2>/dev/null)"
-  section_type_bw="$(${YQ_CMD} ".spec.baw_configuration      | type" "$tmp_cr" 2>/dev/null)"
 
-  local config_section=""
-  local section_type=""
-  if [[ "$section_type_ba" != "!!null" && -n "$section_type_ba" ]]; then
-    config_section="bastudio_configuration"
-    section_type="$section_type_ba"
-  elif [[ "$section_type_bw" != "!!null" && -n "$section_type_bw" ]]; then
-    config_section="baw_configuration"
-    section_type="$section_type_bw"
-  else
-    echo "[INFO] Neither bastudio_configuration nor baw_configuration present—skipping." >&2
+  if [[ "$section_type_ba" == "!!null" || -z "$section_type_ba" ]]; then
+    echo "[INFO] bastudio_configuration not present—skipping BA Studio logstore sizing." >&2
     return 0
   fi
 
-  # Read live PVC size (e.g., "100Gi"); if unavailable, don't inject anything.
+  # Read live PVC size (authoritative source)
   local live_size
-  live_size=$(kubectl get pvc "$pvc_name" -n "$ns" -o=jsonpath='{.spec.resources.requests.storage}' 2>/dev/null)
+  live_size=$(${CLI_CMD} get pvc "$pvc_name" -n "$ns" \
+    -o=jsonpath='{.spec.resources.requests.storage}' 2>/dev/null)
+
   if [[ -z "$live_size" ]]; then
-    echo "[WARN] Could not read PVC '${pvc_name}' size in ns '${ns}'. Leaving CR unchanged." >&2
+    echo "[INFO] Could not read PVC '${pvc_name}' size in namespace '${ns}'. Leaving CR unchanged." >&2
     return 0
   fi
 
-  if [[ "$section_type" == "!!seq" ]]; then
-    # Multiple configs: iterate indices
+  echo "[INFO] Ensuring BA Studio logstore size = ${live_size}" >&2
+
+  # -----------------------------------
+  # Handle bastudio_configuration
+  # -----------------------------------
+  if [[ "$section_type_ba" == "!!seq" ]]; then
+    # Multiple BA Studio configs
     local cnt
-    cnt=$(${YQ_CMD} ".spec.${config_section} | length" "$tmp_cr" 2>/dev/null)
+    cnt=$(${YQ_CMD} ".spec.bastudio_configuration | length" "$tmp_cr" 2>/dev/null)
+
     for ((i=0; i<cnt; i++)); do
-      # Ensure storage map exists
-      ${YQ_CMD} -i ".spec.${config_section}[$i].storage = (.spec.${config_section}[$i].storage // {})" "$tmp_cr"
-      # Set size_for_logstore only if missing
-      ${YQ_CMD} -i ".spec.${config_section}[$i].storage.size_for_logstore = \
-        (.spec.${config_section}[$i].storage.size_for_logstore // \"${live_size}\")" "$tmp_cr"
+      ${YQ_CMD} -i \
+        ".spec.bastudio_configuration[$i].storage = (.spec.bastudio_configuration[$i].storage // {})" \
+        "$tmp_cr"
+
+      ${YQ_CMD} -i \
+        ".spec.bastudio_configuration[$i].storage.size_for_logstore = \
+         (.spec.bastudio_configuration[$i].storage.size_for_logstore // \"${live_size}\")" \
+        "$tmp_cr"
     done
-  elif [[ "$section_type" == "!!map" ]]; then
-    # Single config: operate directly on the map (no [i])
-    ${YQ_CMD} -i ".spec.${config_section}.storage = (.spec.${config_section}.storage // {})" "$tmp_cr"
-    ${YQ_CMD} -i ".spec.${config_section}.storage.size_for_logstore = \
-      (.spec.${config_section}.storage.size_for_logstore // \"${live_size}\")" "$tmp_cr"
-  else
-    echo "[WARN] Unexpected type for .spec.${config_section}: ${section_type}. Skipping." >&2
+
+  elif [[ "$section_type_ba" == "!!map" ]]; then
+    # Single BA Studio config
+    ${YQ_CMD} -i \
+      ".spec.bastudio_configuration.storage = (.spec.bastudio_configuration.storage // {})" \
+      "$tmp_cr"
+
+    ${YQ_CMD} -i \
+      ".spec.bastudio_configuration.storage.size_for_logstore = \
+       (.spec.bastudio_configuration.storage.size_for_logstore // \"${live_size}\")" \
+      "$tmp_cr"
+  fi
+
+  # -----------------------------------
+  # Handle playback_server (optional)
+  # -----------------------------------
+  local pb_type
+  pb_type="$(${YQ_CMD} ".spec.bastudio_configuration.playback_server | type" "$tmp_cr" 2>/dev/null)"
+
+  if [[ "$pb_type" != "!!null" && -n "$pb_type" ]]; then
+    ${YQ_CMD} -i \
+      ".spec.bastudio_configuration.playback_server.storage = \
+       (.spec.bastudio_configuration.playback_server.storage // {})" \
+      "$tmp_cr"
+
+    ${YQ_CMD} -i \
+      ".spec.bastudio_configuration.playback_server.storage.size_for_logstore = \
+       (.spec.bastudio_configuration.playback_server.storage.size_for_logstore // \"${live_size}\")" \
+      "$tmp_cr"
+
+    echo "[INFO] playback_server logstore size ensured (${live_size})" >&2
+  fi
+}
+
+# Function to patch the cluster CR directly with logstore size (for ifix upgrades only)
+function patch_cluster_baw_logstore_size() {
+  local ns="$1"
+  local cr_name="$2"
+  local pvc_name="cp4a-shared-log-pvc"
+
+  # Check if bastudio_configuration exists in cluster CR
+  local bastudio_exists
+  bastudio_exists=$(${CLI_CMD} get icp4acluster "${cr_name}" -n "${ns}" \
+    -o jsonpath='{.spec.bastudio_configuration}' 2>/dev/null || echo "")
+
+  if [[ -z "$bastudio_exists" || "$bastudio_exists" == "null" ]]; then
     return 0
+  fi
+
+  # Get live PVC size
+  local live_size
+  live_size=$(${CLI_CMD} get pvc "${pvc_name}" -n "${ns}" \
+    -o jsonpath='{.spec.resources.requests.storage}' 2>/dev/null || echo "")
+
+  if [[ -z "$live_size" ]]; then
+    return 0
+  fi
+
+  # Check if it's array or single object
+  local is_array
+  is_array=$(${CLI_CMD} get icp4acluster "${cr_name}" -n "${ns}" \
+    -o jsonpath='{.spec.bastudio_configuration[0]}' 2>/dev/null || echo "")
+
+  if [[ -n "$is_array" ]]; then
+    # Array - patch first element (typically there's only one)
+    # Try to add storage section first, ignore error if exists
+    ${CLI_CMD} patch icp4acluster "${cr_name}" -n "${ns}" --type=json -p='[
+      {"op":"add","path":"/spec/bastudio_configuration/0/storage","value":{}}
+    ]' >/dev/null 2>&1
+    # Now add/replace the size_for_logstore value
+    ${CLI_CMD} patch icp4acluster "${cr_name}" -n "${ns}" --type=merge -p='
+      {"spec":{"bastudio_configuration":[{"storage":{"size_for_logstore":"'"${live_size}"'"}}]}}
+    ' >/dev/null 2>&1
+  else
+    # Single object
+    # Try to add storage section first, ignore error if exists
+    ${CLI_CMD} patch icp4acluster "${cr_name}" -n "${ns}" --type=json -p='[
+      {"op":"add","path":"/spec/bastudio_configuration/storage","value":{}}
+    ]' >/dev/null 2>&1
+    # Now add/replace the size_for_logstore value using merge patch
+    ${CLI_CMD} patch icp4acluster "${cr_name}" -n "${ns}" --type=merge -p='
+      {"spec":{"bastudio_configuration":{"storage":{"size_for_logstore":"'"${live_size}"'"}}}}
+    ' >/dev/null 2>&1
   fi
 }

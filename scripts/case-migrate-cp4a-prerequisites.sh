@@ -337,7 +337,7 @@ create_secret_multi_tos() {
     db_user_list+=",$MIG_PROP_TEMP"
     
     MIG_OS_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
-    #echo -e "Docs  is $MIG_OS_TEMP . "stringData.${MIG_OS_TEMP}DBUsername""
+    #printf '%b\n' "Docs  is $MIG_OS_TEMP . "stringData.${MIG_OS_TEMP}DBUsername""
     ${YQ_CMD} -i ".stringData.${MIG_OS_TEMP}DBUsername = \"${MIG_PROP_TEMP}\" | .stringData.${MIG_OS_TEMP}DBUsername style=\"double\"" ${FNCM_SECRET_FILE}
     MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_password" ${CASE_MIGRATION_PROPERTY_FILE})
     db_user_pwd_list+=",$MIG_PROP_TEMP"
@@ -424,7 +424,7 @@ create_secret_multi_tos() {
 
             
             MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_database_password" ${CASE_MIGRATION_PROPERTY_FILE})
-            #echo -e "$MIG_PROP_TEMP"
+            #printf '%b\n' "$MIG_PROP_TEMP"
             MIG_PROP_KEY_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
             MIG_PROP_KEY_TEMP="stringData."$MIG_PROP_KEY_TEMP"DBPassword"
             db_user_pwd_list+=",$MIG_PROP_TEMP"
@@ -564,7 +564,7 @@ create_secret_multi_tos() {
     fi
     echo "DB_USER_LIST=$db_user_list" >> ${TEMPORARY_PROPERTY_FILE}
     echo "DB_USER_PWD_LIST=$db_user_pwd_list" >> ${TEMPORARY_PROPERTY_FILE}
-    #echo -e "$db_name_list"
+    #printf '%b\n' "$db_name_list"
 
 
 }
@@ -635,13 +635,13 @@ function check_dbserver_name_valid(){
     if [[ ! ( "${input_servername}" == \#* ) ]]; then
         if [[ ! (" ${tmp_db_array[@]}" =~ "${input_servername}") ]]; then
             error "The prefix \"$input_servername\" in front of \"$parameter_name\" is not in the definition DB_SERVER_LIST=\"${temp}\", Check the following example to configure"
-            echo -e "***************** example *****************"
-            echo -e "if DB_SERVER_LIST=\"DBSERVER1\""
-            echo -e "You need to change"
-            echo -e "<DB_ALIAS_NAME>.GCD_DB_NAME=\"GCDDB\""
-            echo -e "to"
-            echo -e "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
-            echo -e "***************** example *****************"
+            printf '%b\n' "***************** example *****************"
+            printf '%b\n' "if DB_SERVER_LIST=\"DBSERVER1\""
+            printf '%b\n' "You need to change"
+            printf '%b\n' "<DB_ALIAS_NAME>.GCD_DB_NAME=\"GCDDB\""
+            printf '%b\n' "to"
+            printf '%b\n' "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
+            printf '%b\n' "***************** example *****************"
             exit 1
         fi
     fi
@@ -757,7 +757,7 @@ function validate_case_migrate_prerequisites(){
         tmp_serverport=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_serverport")
         tmp_basdn=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_basdn")
         tmp_ldapssl=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_ldapssl")
-        tmp_ldapssl=$(echo $tmp_ldapssl | tr '[:upper:]' '[:lower:]')
+        tmp_ldapssl=$(echo "$tmp_ldapssl" | tr '[:upper:]' '[:lower:]')
         tmp_user=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_user")
         tmp_userpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_userpwd")
 
@@ -777,7 +777,7 @@ function validate_case_migrate_prerequisites(){
             tmp_serverport=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_serverport")
             tmp_basdn=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_basdn")
             tmp_ldapssl=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_ldapssl")
-            tmp_ldapssl=$(echo $tmp_ldapssl | tr '[:upper:]' '[:lower:]')
+            tmp_ldapssl=$(echo "$tmp_ldapssl" | tr '[:upper:]' '[:lower:]')
             tmp_user=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_user")
             tmp_userpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_userpwd")
 
@@ -1103,7 +1103,7 @@ function validate_case_migrate_prerequisites(){
            
             for num in "${!db_name_array[@]}"; do
                 tmp_dbname=${db_name_array[num]}
-                tmp_dbname=$(echo $tmp_dbname | tr '[:lower:]' '[:upper:]')
+                tmp_dbname=$(echo "$tmp_dbname" | tr '[:lower:]' '[:upper:]')
                 tmp_dbusername=${db_user_array[num]}
                 # tmp_dbuserpassword=${db_userpwd_array[num]}
                 tmp_dbuserpassword=`kubectl get secret -l base-db-name=${tmp_base_dbname} -o yaml | ${YQ_CMD} ".items[0].data.${tmp_dbname}_DB_CONFIG" - | base64 --decode`
@@ -1297,7 +1297,7 @@ function containsElement(){
 function validate_utility_tool_for_validation(){
     which kubectl &>/dev/null
     if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate Kubernetes CLI. You must install it to run this script.\x1B[0m" && \
+        printf '%b\n'  "\x1B[1;31mUnable to locate Kubernetes CLI. You must install it to run this script.\x1B[0m" && \
         while true; do
             printf "\x1B[1mDo you want install the Kubernetes CLI by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
             read -rp "" ans
@@ -1311,69 +1311,19 @@ function validate_utility_tool_for_validation(){
                 exit 1
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
     fi
-    which java &>/dev/null
-    if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate java. You must install it to run this script.\x1B[0m" && \
-        while true; do
-            printf "\x1B[1mDo you want install the IBM JRE by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
-            read -rp "" ans
-            case "$ans" in
-            "y"|"Y"|"yes"|"Yes"|"YES")
-                install_ibm_jre
-                break
-                ;;
-            "n"|"N"|"no"|"No"|"NO")
-                info "Must install the IBM JRE or other JRE to continue the next validation"
-                exit 1
-                ;;
-            *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
-                ;;
-            esac
-        done
-    else
-        java -version &>/dev/null
-        if [[ $? -ne 0 ]]; then
-            echo -e  "\x1B[1;31mUnable to locate a Java Runtime. You must install JRE to run this script.\x1B[0m" && \
-            while true; do
-                printf "\x1B[1mDo you want install the IBM JRE by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
-                read -rp "" ans
-                case "$ans" in
-                "y"|"Y"|"yes"|"Yes"|"YES")
-                    install_ibm_jre
-                    break
-                    ;;
-                "n"|"N"|"no"|"No"|"NO")
-                    info "Must install the IBM JRE or other JRE to continue next validation"
-                    exit 1
-                    ;;
-                *)
-                    echo -e "Answer must be \"Yes\" or \"No\"\n"
-                    ;;
-                esac
-            done    
-        fi
-    fi
-    which keytool &>/dev/null
-    if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate keytool. You must add it in \"\$PATH\" to run this script.\x1B[0m" && \
-        exit 1
-    else
-        keytool -help &>/dev/null
-        if [[ $? -ne 0 ]]; then
-            echo -e  "\x1B[1;31mUnable to locate keytool. You must install the IBM JRE or other JRE and add keytool in \"\$PATH\" to run this script\x1B[0m" && \
-            exit 1     
-        fi
-    fi
+    # DBACLD-198782: Check if Java is installed and meets the minimum version requirement
+    # Priority: --java-path > JAVA_HOME > system PATH
+    JAVA_PATH="${CUSTOM_JAVA_PATH:-$JAVA_HOME}"
+    validate_java_runtime "$JAVA_PATH"
 
     which openssl &>/dev/null
     if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate openssl. You must install it to run this script.\x1B[0m" && \
+        printf '%b\n'  "\x1B[1;31mUnable to locate openssl. You must install it to run this script.\x1B[0m" && \
         while true; do
             printf "\x1B[1mDo you want install the OpenSSL by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
             read -rp "" ans
@@ -1387,7 +1337,7 @@ function validate_utility_tool_for_validation(){
                 exit 1
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -1395,7 +1345,7 @@ function validate_utility_tool_for_validation(){
 }
 
 function show_help() {
-    echo -e "\nUsage: case-migrate-cp4a-prerequisites.sh -m [modetype]\n"
+    printf '%b\n' "\nUsage: case-migrate-cp4a-prerequisites.sh -m [modetype] [-j java_path]\n"
     echo "Options:"
     echo "  -h  Display help"
     echo "  -m  The valid mode types are: [property], [generate], or [validate]"
@@ -1404,6 +1354,7 @@ function show_help() {
     echo "      STEP3: Run the script in [generate] mode. Generates the DB SQL statement files and YAML templates for the secrets based on the values in the property files."
     echo "      STEP4: Create the databases and secrets by using the modified DB SQL statement files and YAML templates for the secrets."
     echo "      STEP5: Run the script in [validate] mode. Checks whether the databases and the secrets are created before you install CP4BA."
+    echo " -j Optional: Specify a custom Java (JRE) path to use for Java validation (must be Java (JRE) $REQUIRED_JAVA_MAJOR_VERSION or higher)"
 }
 
 ################################################
@@ -1420,7 +1371,7 @@ then
     show_help
     exit -1
 else
-    while getopts "h?i:p:n:t:a:m:" opt; do
+    while getopts "h?i:p:n:t:a:m:j:" opt; do
         case "$opt" in
         h|\?)
             show_help
@@ -1434,6 +1385,8 @@ else
                 exit -1
             fi
             ;;
+        j)  CUSTOM_JAVA_PATH=$OPTARG
+            ;;
         :)  echo "Invalid option: -$OPTARG requires an argument"
             show_help
             exit -1
@@ -1446,7 +1399,7 @@ clear
 
 if [[ $RUNTIME_MODE == "property" ]]; then
 
-    #Import & exeute cp4a-prerequisites
+    #Import & execute cp4a-prerequisites
     source ${CUR_DIR}/cp4a-prerequisites.sh
 
     if [ -e $CASE_MIGRATION_PROPERTY_FILE ] ; 
@@ -1465,9 +1418,9 @@ if [[ $RUNTIME_MODE == "property" ]]; then
             success "Number of Target Object Stores provided : ${TOS_NUM}"
             create_case_migration_property_file
             ${SED_COMMAND_FORMAT} ${CASE_MIGRATION_PROPERTY_FILE}
-            echo -e "Update the property file ${CASE_MIGRATION_PROPERTY_FILE} and rerun the migration with generate"
+            printf '%b\n' "Update the property file ${CASE_MIGRATION_PROPERTY_FILE} and rerun the migration with generate"
         else 
-            echo -e "\x1B[1;31mProvide a valid input for Number of Target Object Stores\x1B[0m"
+            printf '%b\n' "\x1B[1;31mProvide a valid input for Number of Target Object Stores\x1B[0m"
         fi
     done 
 
@@ -1502,7 +1455,7 @@ elif [[ $RUNTIME_MODE == "generate" ]]; then
     ##########################################
     # Migration Function to do changes on cr based on migration requirement
     #migration_apply_pattern_cr  
-    #echo -e "Generated CR is $CP4A_PATTERN_FILE_BAK"
+    #printf '%b\n' "Generated CR is $CP4A_PATTERN_FILE_BAK"
     ##########################################
 
 

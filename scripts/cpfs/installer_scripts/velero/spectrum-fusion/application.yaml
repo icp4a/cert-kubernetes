@@ -13,6 +13,7 @@ spec:
     - <cert manager namespace>
     - <licensing namespace>
     - <lsr namespace>
+    - <usage metering namespace>
     - openshift-marketplace    
     - openshift-config
     - kube-public

@@ -65,9 +65,9 @@ function parse_arguments() {
             fi
             RUNTIME_MODE=$1
             if [[ $RUNTIME_MODE == "upgradeOperator" || $RUNTIME_MODE == "upgradeOperatorStatus" || $RUNTIME_MODE == "upgradeDeployment" || $RUNTIME_MODE == "upgradeDeploymentStatus" ]]; then
-                echo -n
+                : # Null command - validation passed, continue execution
             else
-                echo -e "Provide a valid argument for -m: [upgradeOperator] or [upgradeOperatorStatus] or [upgradeDeployment] or [upgradeDeploymentStatus]"
+                printf '%b\n' "Provide a valid argument for -m: [upgradeOperator] or [upgradeOperatorStatus] or [upgradeDeployment] or [upgradeDeploymentStatus]"
                 exit -1
             fi
             ;;
@@ -80,15 +80,15 @@ function parse_arguments() {
             TARGET_PROJECT_NAME=$1
             case "$TARGET_PROJECT_NAME" in
             "")
-                echo -e "\x1B[1;31mEnter a valid namespace name, namespace name can not be blank\x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid namespace name, namespace name can not be blank\x1B[0m"
                 exit -1
                 ;;
             "openshift"*)
-                echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
                 exit -1
                 ;;
             "kube"*)
-                echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
                 exit -1
                 ;;
             *)
@@ -97,10 +97,10 @@ function parse_arguments() {
                 # Check project name
                 isProjExists=`${CLI_CMD} get project $TARGET_PROJECT_NAME --ignore-not-found | wc -l`  >/dev/null 2>&1
                 if [ $isProjExists -ne 2 ] ; then
-                    echo -e "\x1B[1;31mInvalid project name \"$TARGET_PROJECT_NAME\", enter a valid name...\x1B[0m"
+                    printf '%b\n' "\x1B[1;31mInvalid project name \"$TARGET_PROJECT_NAME\", enter a valid name...\x1B[0m"
                     exit 1
                 fi
-                echo -n
+                : # Null command - validation passed, continue execution
                 ;;
             esac
             ;;
@@ -159,11 +159,11 @@ function parse_arguments() {
 
 parse_arguments "$@"
 # if [[ -z "$RUNTIME_MODE" ]]; then
-#     echo -e "\x1B[1;31mInput value for \"-m <MODE_NAME>\" option.\n\x1B[0m"
+#     printf '%b\n' "\x1B[1;31mInput value for \"-m <MODE_NAME>\" option.\n\x1B[0m"
 #     exit 1
 # fi
 if [[ -z "$TARGET_PROJECT_NAME" ]]; then
-    echo -e "\x1B[1;31mInput value for \"-n <CP4BA_NAMESPACE>\" option.\n\x1B[0m"
+    printf '%b\n' "\x1B[1;31mInput value for \"-n <CP4BA_NAMESPACE>\" option.\n\x1B[0m"
     show_help
     exit 1
 fi
@@ -280,8 +280,8 @@ function prompt_license(){
     get_baw_mode
     retVal_baw=$?
     if [[ $retVal_baw -eq 1 ]]; then
-        echo -e "\x1B[1;31mIMPORTANT: Review the IBM Cloud Pak for Business Automation license information here: \n\x1B[0m"
-        echo -e "\x1B[1;31mhttps://www14.software.ibm.com/cgi-bin/weblap/lap.pl?li_formnum=L-FNHF-F9RU7N\n\x1B[0m"
+        printf '%b\n' "\x1B[1;31mIMPORTANT: Review the IBM Cloud Pak for Business Automation license information here: \n\x1B[0m"
+        printf '%b\n' "\x1B[1;31mhttps://www14.software.ibm.com/cgi-bin/weblap/lap.pl?li_formnum=L-FNHF-F9RU7N\n\x1B[0m"
         INSTALL_BAW_ONLY="No"
     fi
 
@@ -305,6 +305,12 @@ function prompt_license(){
                     if [[ $retVal_baw -eq 0 ]]; then
                         printf "\n"
                     fi
+                    check_cp4ba_separate_operand $TARGET_PROJECT_NAME
+                    if [[ -n "${CP4BA_SERVICES_NS:-}" && "$TARGET_PROJECT_NAME" != "$CP4BA_SERVICES_NS" ]]; then
+                        printf '%b\n' "\x1B[1;31m[ERROR]\x1B[0m The -n value must be the CP4BA operand namespace in Separation-of-Duty deployments."
+                        printf '%b\n' "         Re-run: ./cp4a-deployment.sh -n ${CP4BA_SERVICES_NS}"
+                        exit 1
+                    fi
                     if [[ $retVal_baw -eq 1 ]]; then
                         printf "\x1B[1mDid you deploy Content CR (CRD: contents.icp4a.ibm.com) in current cluster? (Yes/No, default: No): \x1B[0m"
                     fi
@@ -315,32 +321,32 @@ function prompt_license(){
                     fi
                     case "$ans" in
                     "y"|"Y"|"yes"|"Yes"|"YES")
-                        echo -e "Continuing...\n"
-                        # echo -e "\x1B[1;31mThe cp4a-deployment.sh can not work with existing Content CR together, exiting now...\x1B[0m\n"
+                        printf '%b\n' "Continuing...\n"
+                        # printf '%b\n' "\x1B[1;31mThe cp4a-deployment.sh can not work with existing Content CR together, exiting now...\x1B[0m\n"
                         CONTENT_DEPLOYED="Yes"
                         break
                         ;;
                     "n"|"N"|"no"|"No"|"NO"|"")
-                        echo -e "Continuing...\n"
+                        printf '%b\n' "Continuing...\n"
                         CONTENT_DEPLOYED="No"
                         break
                         ;;
                     *)
-                        echo -e "Answer must be \"Yes\" or \"No\"\n"
+                        printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                         ;;
                     esac
                 done
-            echo -e "Starting to Install the Cloud Pak for Business Automation Operator...\n"
+            printf '%b\n' "Starting to Install the Cloud Pak for Business Automation Operator...\n"
             IBM_LICENS="Accept"
             validate_cli
             break
             ;;
         "n"|"N"|"no"|"No"|"NO"|"")
-            echo -e "The license agreement was not accepted. The license agreement must be accepted to continue. The script is exiting...\n"
+            printf '%b\n' "The license agreement was not accepted. The license agreement must be accepted to continue. The script is exiting...\n"
             exit 0
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -375,12 +381,12 @@ EOF
 function show_tips_es_to_os_migration(){
     which jq &>/dev/null
     [[ $? -ne 0 ]] && \
-    echo -e  "\x1B[1;31mUnable to locate the jq CLI. You must install it to run this migration script.\x1B[0m"
+    printf '%b\n'  "\x1B[1;31mUnable to locate the jq CLI. You must install it to run this migration script.\x1B[0m"
 
     # For step1
     ELASTICSEARCH_CR_NAME=$(${CLI_CMD} get elasticsearch.elastic.automation.ibm.com -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found -o name)
     if [[ ! -z $ELASTICSEARCH_CR_NAME  ]]; then
-        ELASTICSEARCH_CR_NAME=$(echo $ELASTICSEARCH_CR_NAME | cut -d'/' -f2)
+        ELASTICSEARCH_CR_NAME=$(echo "$ELASTICSEARCH_CR_NAME" | cut -d'/' -f2)
         ELASTICSEARCH_URL=$(${CLI_CMD} get route ${ELASTICSEARCH_CR_NAME}-es -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found -o jsonpath='{.spec.host}')
         ELASTIC_PASSWORD=$(${CLI_CMD} get secret ${ELASTICSEARCH_CR_NAME}-elasticsearch-es-default-user -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found -o jsonpath='{.data.password}' | base64 -d)
         OPENSEARCH_URL=$(${CLI_CMD} get route opensearch-route -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found -o jsonpath='{.spec.host}')
@@ -389,7 +395,7 @@ function show_tips_es_to_os_migration(){
         fail "Elasticsearch custom resource not found in the project \"$CP4BA_SERVICES_NS\"."
     fi
     printf "\n"
-    echo -e "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;31mYou need to complete migration from Elasticsearch to OpenSearch first before upgrading CP4BA.\n\x1B[0m"
+    printf '%b\n' "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;31mYou need to complete migration from Elasticsearch to OpenSearch first before upgrading CP4BA.\n\x1B[0m"
     echo "${YELLOW_TEXT}* How to migrate from Elasticsearch to OpenSearch${RESET_TEXT}"
 
     # For step 1
@@ -402,12 +408,12 @@ function show_tips_es_to_os_migration(){
     echo "    ${YELLOW_TEXT}GOAL${RESET_TEXT}: Migrate immutable indices first to reduce downtime. You can bypass this step if you prefer migrating all data at once during the downtime."
     echo "    ${YELLOW_TEXT}* Before executing the migration script, run the prerequisites to export variables in your terminal${RESET_TEXT}"
     echo "      Execute the following commands:"
-    echo -e '\033[0;32m      # export ELASTICSEARCH_URL=https://'"${ELASTICSEARCH_URL}"':443\033[0m'
-    echo -e '\033[0;32m      # export ELASTIC_USERNAME="elasticsearch-admin"\033[0m'
-    echo -e '\033[0;32m      # export ELASTIC_PASSWORD=$('"${CLI_CMD}"' get secret iaf-system-elasticsearch-es-default-user -n '"$CP4BA_SERVICES_NS"' --no-headers --ignore-not-found -o jsonpath='{.data.password}' | base64 -d)\033[0m'
-    echo -e '\033[0;32m      # export OPENSEARCH_URL=https://'"${OPENSEARCH_URL}"'\033[0m'
-    echo -e '\033[0;32m      # export OPENSEARCH_USERNAME="elastic"\033[0m'
-    echo -e '\033[0;32m      # export OPENSEARCH_PASSWORD=$('"${CLI_CMD}"' get secret opensearch-ibm-elasticsearch-cred-secret -n '"$CP4BA_SERVICES_NS"' --no-headers --ignore-not-found -o jsonpath='{.data.elastic}' | base64 -d)\033[0m'
+    printf '%b\n' '\033[0;32m      # export ELASTICSEARCH_URL=https://'"${ELASTICSEARCH_URL}"':443\033[0m'
+    printf '%b\n' '\033[0;32m      # export ELASTIC_USERNAME="elasticsearch-admin"\033[0m'
+    printf '%b\n' '\033[0;32m      # export ELASTIC_PASSWORD=$('"${CLI_CMD}"' get secret iaf-system-elasticsearch-es-default-user -n '"$CP4BA_SERVICES_NS"' --no-headers --ignore-not-found -o jsonpath='{.data.password}' | base64 -d)\033[0m'
+    printf '%b\n' '\033[0;32m      # export OPENSEARCH_URL=https://'"${OPENSEARCH_URL}"'\033[0m'
+    printf '%b\n' '\033[0;32m      # export OPENSEARCH_USERNAME="elastic"\033[0m'
+    printf '%b\n' '\033[0;32m      # export OPENSEARCH_PASSWORD=$('"${CLI_CMD}"' get secret opensearch-ibm-elasticsearch-cred-secret -n '"$CP4BA_SERVICES_NS"' --no-headers --ignore-not-found -o jsonpath='{.data.elastic}' | base64 -d)\033[0m'
 
     echo "    ${YELLOW_TEXT}* Migration script usage:${RESET_TEXT}"
     echo "      For more information, refer to the Knowledge Center: \"Installing OpenSearch and migrating Elasticsearch data\" topic:"
@@ -493,7 +499,7 @@ function show_tips_es_to_os_migration(){
                 echo "    ${YELLOW_TEXT}* Create a Flink savepoint and stop the Flink job simultaneously.${RESET_TEXT}"
                 echo "      Execute the following command:"
                 # echo "      ${GREEN_TEXT}# curl -X POST -k -u ${MANAGEMENT_USERNAME}:${MANAGEMENT_PASSWORD} \"${MANAGEMENT_URL}/api/v1/processing/jobs/savepoints?cancel-job=true\" -o ${UPGRADE_DEPLOYMENT_CR}/bai.json >/dev/null 2>&1 && cat ${UPGRADE_DEPLOYMENT_CR}/bai.json && echo ${RESET_TEXT}"
-                echo -e '\033[0;32m      '"${GREEN_TEXT}"'# curl -X POST -k -u '"${MANAGEMENT_USERNAME}"':'"${MANAGEMENT_PASSWORD}"' "'"${MANAGEMENT_URL}"'/api/v1/processing/jobs/savepoints?cancel-job=true" -o /tmp/tmp_bai.json && [ "$(cat /tmp/tmp_bai.json)" != "[]" ] && '"${COPY_CMD}"' -rf /tmp/tmp_bai.json '"${UPGRADE_DEPLOYMENT_CR}"'/bai.json || rm -rf /tmp/tmp_bai.json\033[0m'
+                printf '%b\n' '\033[0;32m      '"${GREEN_TEXT}"'# curl -X POST -k -u '"${MANAGEMENT_USERNAME}"':'"${MANAGEMENT_PASSWORD}"' "'"${MANAGEMENT_URL}"'/api/v1/processing/jobs/savepoints?cancel-job=true" -o /tmp/tmp_bai.json && [ "$(cat /tmp/tmp_bai.json)" != "[]" ] && '"${COPY_CMD}"' -rf /tmp/tmp_bai.json '"${UPGRADE_DEPLOYMENT_CR}"'/bai.json || rm -rf /tmp/tmp_bai.json\033[0m'
             fi
         fi
 
@@ -505,24 +511,24 @@ function show_tips_es_to_os_migration(){
             if [[ $ALL_NAMESPACE_FLAG == "No" ]]; then
                 bai_operator_name=$(${CLI_CMD} get deployment --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS  -o name | grep insights-engine-operator-controller-manager)
                 if [[ ! -z $bai_operator_name ]]; then
-                    echo -e '\033[0;32m    '"${GREEN_TEXT}"'# '"${CLI_CMD}"' scale --replicas=0 '"${bai_operator_name}"' -n '"${TARGET_PROJECT_NAME}"'\033[0m'
+                    printf '%b\n' '\033[0;32m    '"${GREEN_TEXT}"'# '"${CLI_CMD}"' scale --replicas=0 '"${bai_operator_name}"' -n '"${TARGET_PROJECT_NAME}"'\033[0m'
                 fi
                 bai_operator_name=$(${CLI_CMD} get deployment --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS  -o name | grep ibm-insights-engine-operator)
                 if [[ ! -z $bai_operator_name ]]; then
-                    echo -e '\033[0;32m    '"${GREEN_TEXT}"'# '"${CLI_CMD}"' scale --replicas=0 '"${bai_operator_name}"' -n '"${TARGET_PROJECT_NAME}"'\033[0m'
+                    printf '%b\n' '\033[0;32m    '"${GREEN_TEXT}"'# '"${CLI_CMD}"' scale --replicas=0 '"${bai_operator_name}"' -n '"${TARGET_PROJECT_NAME}"'\033[0m'
                 fi
             elif [[ $ALL_NAMESPACE_FLAG == "Yes" ]]; then
                 bai_operator_name=$(${CLI_CMD} get deployment --no-headers --ignore-not-found -n openshift-operators  -o name | grep insights-engine-operator-controller-manager)
                 if [[ ! -z $bai_operator_name ]]; then
-                    echo -e '\033[0;32m    '"${GREEN_TEXT}"'# '"${CLI_CMD}"' scale --replicas=0 '"${bai_operator_name}"' -n openshift-operators\033[0m'
+                    printf '%b\n' '\033[0;32m    '"${GREEN_TEXT}"'# '"${CLI_CMD}"' scale --replicas=0 '"${bai_operator_name}"' -n openshift-operators\033[0m'
                 fi
                 bai_operator_name=$(${CLI_CMD} get deployment --no-headers --ignore-not-found -n openshift-operators  -o name | grep ibm-insights-engine-operator)
                 if [[ ! -z $bai_operator_name ]]; then
-                    echo -e '\033[0;32m    '"${GREEN_TEXT}"'# '"${CLI_CMD}"' scale --replicas=0 '"${bai_operator_name}"' -n openshift-operators\033[0m'
+                    printf '%b\n' '\033[0;32m    '"${GREEN_TEXT}"'# '"${CLI_CMD}"' scale --replicas=0 '"${bai_operator_name}"' -n openshift-operators\033[0m'
                 fi
             fi
 
-            echo -e '\033[0;32m    '"${GREEN_TEXT}"'# '"${CLI_CMD}"' scale --replicas=0 '"${bpc_deployment_name}"' -n '"${TARGET_PROJECT_NAME}"'\033[0m'
+            printf '%b\n' '\033[0;32m    '"${GREEN_TEXT}"'# '"${CLI_CMD}"' scale --replicas=0 '"${bpc_deployment_name}"' -n '"${TARGET_PROJECT_NAME}"'\033[0m'
             step_num=$((step_num + 1))
         fi
     fi
@@ -536,12 +542,12 @@ function show_tips_es_to_os_migration(){
     echo "    ${YELLOW_TEXT}GOAL${RESET_TEXT}: To migrate all data from Elasticsearch to OpenSearch as soon as possible during downtime before upgrading the CP4BA deployment."
     echo "    ${YELLOW_TEXT}* Before executing the migration script, run the prerequisites to export variables in your terminal${RESET_TEXT}"
     echo "      Execute the following commands:"
-    echo -e '\033[0;32m      # export ELASTICSEARCH_URL=https://'"${ELASTICSEARCH_URL}"':443\033[0m'
-    echo -e '\033[0;32m      # export ELASTIC_USERNAME="elasticsearch-admin"\033[0m'
-    echo -e '\033[0;32m      # export ELASTIC_PASSWORD=$('"${CLI_CMD}"' get secret iaf-system-elasticsearch-es-default-user -n '"$CP4BA_SERVICES_NS"' --no-headers --ignore-not-found -o jsonpath='{.data.password}' | base64 -d)\033[0m'
-    echo -e '\033[0;32m      # export OPENSEARCH_URL=https://'"${OPENSEARCH_URL}"'\033[0m'
-    echo -e '\033[0;32m      # export OPENSEARCH_USERNAME="elastic"\033[0m'
-    echo -e '\033[0;32m      # export OPENSEARCH_PASSWORD=$('"${CLI_CMD}"' get secret opensearch-ibm-elasticsearch-cred-secret -n '"$CP4BA_SERVICES_NS"' --no-headers --ignore-not-found -o jsonpath='{.data.elastic}' | base64 -d)\033[0m'
+    printf '%b\n' '\033[0;32m      # export ELASTICSEARCH_URL=https://'"${ELASTICSEARCH_URL}"':443\033[0m'
+    printf '%b\n' '\033[0;32m      # export ELASTIC_USERNAME="elasticsearch-admin"\033[0m'
+    printf '%b\n' '\033[0;32m      # export ELASTIC_PASSWORD=$('"${CLI_CMD}"' get secret iaf-system-elasticsearch-es-default-user -n '"$CP4BA_SERVICES_NS"' --no-headers --ignore-not-found -o jsonpath='{.data.password}' | base64 -d)\033[0m'
+    printf '%b\n' '\033[0;32m      # export OPENSEARCH_URL=https://'"${OPENSEARCH_URL}"'\033[0m'
+    printf '%b\n' '\033[0;32m      # export OPENSEARCH_USERNAME="elastic"\033[0m'
+    printf '%b\n' '\033[0;32m      # export OPENSEARCH_PASSWORD=$('"${CLI_CMD}"' get secret opensearch-ibm-elasticsearch-cred-secret -n '"$CP4BA_SERVICES_NS"' --no-headers --ignore-not-found -o jsonpath='{.data.elastic}' | base64 -d)\033[0m'
     echo "    ${YELLOW_TEXT}* Run the following command to migrate all the indexes, except for the indexes related to the Process Federation Server (if any), which must not be migrated with the migration script.${RESET_TEXT}"
     echo "      Execute the following command:"
     echo "      ${GREEN_TEXT}# $OPENSEARCH_MIGRATION_SCRIPT -exclude_regex=icp4ba-pfs@*${RESET_TEXT}"
@@ -555,18 +561,18 @@ function show_tips_es_to_os_migration(){
     step_num=$((step_num + 1))
     echo "    ${YELLOW_TEXT}* Before executing verification, run the prerequisites to export variables in your terminal${RESET_TEXT}"
     echo "      Execute the following commands:"
-    echo -e '\033[0;32m      # export ELASTICSEARCH_URL=https://'"${ELASTICSEARCH_URL}"':443\033[0m'
-    echo -e '\033[0;32m      # export ELASTIC_USERNAME="elasticsearch-admin"\033[0m'
-    echo -e '\033[0;32m      # export ELASTIC_PASSWORD=$('"${CLI_CMD}"' get secret iaf-system-elasticsearch-es-default-user -n '"$CP4BA_SERVICES_NS"' --no-headers --ignore-not-found -o jsonpath='{.data.password}' | base64 -d)\033[0m'
-    echo -e '\033[0;32m      # export OPENSEARCH_URL=https://'"${OPENSEARCH_URL}"'\033[0m'
-    echo -e '\033[0;32m      # export OPENSEARCH_USERNAME="elastic"\033[0m'
-    echo -e '\033[0;32m      # export OPENSEARCH_PASSWORD=$('"${CLI_CMD}"' get secret opensearch-ibm-elasticsearch-cred-secret -n '"$CP4BA_SERVICES_NS"' --no-headers --ignore-not-found -o jsonpath='{.data.elastic}' | base64 -d)\033[0m'
+    printf '%b\n' '\033[0;32m      # export ELASTICSEARCH_URL=https://'"${ELASTICSEARCH_URL}"':443\033[0m'
+    printf '%b\n' '\033[0;32m      # export ELASTIC_USERNAME="elasticsearch-admin"\033[0m'
+    printf '%b\n' '\033[0;32m      # export ELASTIC_PASSWORD=$('"${CLI_CMD}"' get secret iaf-system-elasticsearch-es-default-user -n '"$CP4BA_SERVICES_NS"' --no-headers --ignore-not-found -o jsonpath='{.data.password}' | base64 -d)\033[0m'
+    printf '%b\n' '\033[0;32m      # export OPENSEARCH_URL=https://'"${OPENSEARCH_URL}"'\033[0m'
+    printf '%b\n' '\033[0;32m      # export OPENSEARCH_USERNAME="elastic"\033[0m'
+    printf '%b\n' '\033[0;32m      # export OPENSEARCH_PASSWORD=$('"${CLI_CMD}"' get secret opensearch-ibm-elasticsearch-cred-secret -n '"$CP4BA_SERVICES_NS"' --no-headers --ignore-not-found -o jsonpath='{.data.elastic}' | base64 -d)\033[0m'
     echo "    ${YELLOW_TEXT}* To list the indices in Elasticsearch${RESET_TEXT}"
     echo "      Execute the following command:"
-    echo -e '\033[0;32m      # curl -X GET -u ${ELASTIC_USERNAME}:${ELASTIC_PASSWORD} --insecure "${ELASTICSEARCH_URL}/_cat/indices?v&s=docs.count:desc,index"\033[0m'
+    printf '%b\n' '\033[0;32m      # curl -X GET -u ${ELASTIC_USERNAME}:${ELASTIC_PASSWORD} --insecure "${ELASTICSEARCH_URL}/_cat/indices?v&s=docs.count:desc,index"\033[0m'
     echo "    ${YELLOW_TEXT}* To list the indices in OpenSearch${RESET_TEXT}"
     echo "      Execute the following command:"
-    echo -e '\033[0;32m      # curl -X GET -u ${OPENSEARCH_USERNAME}:${OPENSEARCH_PASSWORD} --insecure "${OPENSEARCH_URL}/_cat/indices?v&s=docs.count:desc,index"\033[0m'
+    printf '%b\n' '\033[0;32m      # curl -X GET -u ${OPENSEARCH_USERNAME}:${OPENSEARCH_PASSWORD} --insecure "${OPENSEARCH_URL}/_cat/indices?v&s=docs.count:desc,index"\033[0m'
     echo "    ${YELLOW_TEXT}* Compare the outputs above and check whether there are any missing indices between Elasticsearch and OpenSearch.${RESET_TEXT}"
 
     # For step 6
@@ -599,7 +605,7 @@ function select_private_catalog_cp4ba(){
             ;;
         *)
             PRIVATE_CATALOG=""
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -629,7 +635,7 @@ function select_private_catalog_opensearch(){
             ;;
         *)
             PRIVATE_CATALOG=""
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -640,7 +646,7 @@ function setup_opensearch_catalog(){
     info "Creating ibm-cs-opensearch-catalog CatalogSource for Opensearch in the project \"$OPENSEARCH_CATALOG_NS\"."
     OLM_CATALOG=${PARENT_DIR}/descriptors/op-olm/catalog_source.yaml
     local LINE_NUM=$(grep -E '^  image: icr\.io/cpopen/opencontent-elasticsearch-operator-catalog@sha256:[0-9a-f]+' $OLM_CATALOG)
-    local CURRENT_DIGEST=$(echo $LINE_NUM | sed -E 's/^.*@sha256:([0-9a-f]+).*$/\1/')
+    local CURRENT_DIGEST=$(echo "$LINE_NUM" | sed -E 's/^.*@sha256:([0-9a-f]+).*$/\1/')
 
 cat << EOF > ${TEMP_FOLDER}/ibm-cp4ba-os-catalog-source.yaml
 # IBM CS Opensearch Operator Catalog 1.1.2131
@@ -683,7 +689,7 @@ EOF
                 exit 1
             else
                 sleep 30
-                echo -n "..."
+                printf '%s' "..."
                 continue
             fi
         else
@@ -745,7 +751,7 @@ EOF
                 exit 1
             else
                 sleep 30
-                echo -n "..."
+                printf '%s' "..."
                 continue
             fi
         else
@@ -990,7 +996,7 @@ EOF
                     exit 1
                 else
                     sleep 30
-                    echo -n "..."
+                    printf '%s' "..."
                     continue
                 fi
             else
@@ -1098,25 +1104,25 @@ function select_upgrade_mode_simple(){
         pros_tips=("The namespace-scoped foundational services for each Cloud Pak or CP4BA component." "The fewer resource required for a single shared instance of foundational services.")
         cons_tips=("The more resource required for each namespace-scoped instance of IBM Cloud Pak foundational services." "It is not flexible for all Cloud Pak or CP4BA component to share same one instance of IBM Cloud Pak foundational services.")
 
-        echo -e "\x1B[1mWhich migration mode for the IBM Cloud Pak foundational services do you plan to migrate to? \x1B[0m${YELLOW_TEXT}(NOTES: This choice will decide to either use a private catalog (namespace-scoped) or a global catalog namespace (GCN) for Opensearch installation. Make sure you choose the SAME MIGRATION MODE when rerunning [upgradeOperator] for upgrading IBM Cloud Pak foundational services next.)${RESET_TEXT}\x1B[0m"
+        printf '%b\n' "\x1B[1mWhich migration mode for the IBM Cloud Pak foundational services do you plan to migrate to? \x1B[0m${YELLOW_TEXT}(NOTES: This choice will decide to either use a private catalog (namespace-scoped) or a global catalog namespace (GCN) for Opensearch installation. Make sure you choose the SAME MIGRATION MODE when rerunning [upgradeOperator] for upgrading IBM Cloud Pak foundational services next.)${RESET_TEXT}\x1B[0m"
 
-        echo -e "${YELLOW_TEXT}1) Cluster-scoped to Cluster-scoped${RESET_TEXT}"
+        printf '%b\n' "${YELLOW_TEXT}1) Cluster-scoped to Cluster-scoped${RESET_TEXT}"
         if [[ $RUNTIME_MODE == "upgradeOperator" ]]; then
-            echo -e "   ${YELLOW_TEXT}[Tips]${RESET_TEXT}: ${tips[1]}"
-            # echo -e "   ${GREEN_TEXT}[Pros]${RESET_TEXT}: ${pros_tips[1]}"
-            # echo -e "   ${RED_TEXT}[Cons]${RESET_TEXT}: ${cons_tips[1]}"
+            printf '%b\n' "   ${YELLOW_TEXT}[Tips]${RESET_TEXT}: ${tips[1]}"
+            # printf '%b\n' "   ${GREEN_TEXT}[Pros]${RESET_TEXT}: ${pros_tips[1]}"
+            # printf '%b\n' "   ${RED_TEXT}[Cons]${RESET_TEXT}: ${cons_tips[1]}"
         fi
-        # echo -e "${YELLOW_TEXT}2) Namespace-scoped to Namespace-scoped${RESET_TEXT}"
+        # printf '%b\n' "${YELLOW_TEXT}2) Namespace-scoped to Namespace-scoped${RESET_TEXT}"
         # if [[ $RUNTIME_MODE == "upgradeOperator" ]]; then
-        #     echo -e "   ${YELLOW_TEXT}[Tips]${RESET_TEXT}: ${tips[2]}"
-        #     # echo -e "   ${GREEN_TEXT}[Pros]${RESET_TEXT}: ${pros_tips[0]}"
-        #     # echo -e "   ${RED_TEXT}[Cons]${RESET_TEXT}: ${cons_tips[0]}"
+        #     printf '%b\n' "   ${YELLOW_TEXT}[Tips]${RESET_TEXT}: ${tips[2]}"
+        #     # printf '%b\n' "   ${GREEN_TEXT}[Pros]${RESET_TEXT}: ${pros_tips[0]}"
+        #     # printf '%b\n' "   ${RED_TEXT}[Cons]${RESET_TEXT}: ${cons_tips[0]}"
         # fi
-        echo -e "${YELLOW_TEXT}2) Cluster-scoped to Namespace-scoped${RESET_TEXT}"
+        printf '%b\n' "${YELLOW_TEXT}2) Cluster-scoped to Namespace-scoped${RESET_TEXT}"
         if [[ $RUNTIME_MODE == "upgradeOperator" ]]; then
-            echo -e "   ${YELLOW_TEXT}[Tips]${RESET_TEXT}: ${tips[0]}"
-            # echo -e "   ${GREEN_TEXT}[Pros]${RESET_TEXT}: ${pros_tips[0]}"
-            # echo -e "   ${RED_TEXT}[Cons]${RESET_TEXT}: ${cons_tips[0]}"
+            printf '%b\n' "   ${YELLOW_TEXT}[Tips]${RESET_TEXT}: ${tips[0]}"
+            # printf '%b\n' "   ${GREEN_TEXT}[Pros]${RESET_TEXT}: ${pros_tips[0]}"
+            # printf '%b\n' "   ${RED_TEXT}[Cons]${RESET_TEXT}: ${cons_tips[0]}"
         fi
 
         read -p "Enter your choice [1 or 2]: " choice
@@ -1282,7 +1288,7 @@ function setup_opensearch(){
         info "Access URL for Opensearch Cluster: https://opensearch-$CP4BA_SERVICES_NS.$openshift_hostname"
         msg "       username: elastic"
         msg "       password: ***************"
-        echo -e '       NOTES: To get the password, use this command: \033[0;32m'"${CLI_CMD}"' get secret opensearch-ibm-elasticsearch-cred-secret -n '"$CP4BA_SERVICES_NS"' --no-headers --ignore-not-found -o jsonpath='{.data.elastic}' | base64 -d && echo\033[0m'
+        printf '%b\n' '       NOTES: To get the password, use this command: \033[0;32m'"${CLI_CMD}"' get secret opensearch-ibm-elasticsearch-cred-secret -n '"$CP4BA_SERVICES_NS"' --no-headers --ignore-not-found -o jsonpath='{.data.elastic}' | base64 -d && echo\033[0m'
     fi
 }
 
@@ -1293,31 +1299,31 @@ function create_project() {
     isProjExists=`${CLI_CMD} get project $project_name --ignore-not-found | wc -l`  >/dev/null 2>&1
 
     if [ $isProjExists -ne 2 ] ; then
-        oc new-project ${project_name} >/dev/null 2>&1
+        ${CLI_CMD} new-project ${project_name} >/dev/null 2>&1
         returnValue=$?
         if [ "$returnValue" == 1 ]; then
             if [ -z "$CP4BA_AUTO_NAMESPACE" ]; then
-                echo -e "\x1B[1;31mInvalid project name, enter a valid name...\x1B[0m"
+                printf '%b\n' "\x1B[1;31mInvalid project name, enter a valid name...\x1B[0m"
                 project_name=""
                 return 1
             else
-                echo -e "\x1B[1;31mInvalid project name \"$CP4BA_AUTO_NAMESPACE\". Set a valid name...\x1B[0m"
+                printf '%b\n' "\x1B[1;31mInvalid project name \"$CP4BA_AUTO_NAMESPACE\". Set a valid name...\x1B[0m"
                 project_name=""
                 exit 1
             fi
         else
-            echo -e "\x1B[1mUsing project ${project_name}...\x1B[0m"
+            printf '%b\n' "\x1B[1mUsing project ${project_name}...\x1B[0m"
             return 0
         fi
     else
-        echo -e "\x1B[1mProject \"${project_name}\" already exists! Continue...\x1B[0m"
+        printf '%b\n' "\x1B[1mProject \"${project_name}\" already exists! Continue...\x1B[0m"
         return 0
     fi
 }
 
 function check_selection_migration(){
     es_to_os_migration_flag=$(${CLI_CMD} get configmap ibm-cp4ba-os-migration-status --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath={.data.opensearch_migration_done})
-    # es_to_os_migration_flag=$(echo $es_to_os_migration_flag | tr '[:upper:]' '[:lower:]')
+    # es_to_os_migration_flag=$(echo "$es_to_os_migration_flag" | tr '[:upper:]' '[:lower:]')
     if [[ $es_to_os_migration_flag == "NONEED" ]]; then
         ES_TO_OS_MIGRATION_SELECTED="No"
         MIGRATE_ES_TO_OS_DONE="NONEED"
@@ -1344,7 +1350,7 @@ function check_selection_migration(){
                 break
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -1395,7 +1401,7 @@ function check_es_to_os_migration(){
                                 exit 1
                             else
                                 sleep 1
-                                echo -n "..."
+                                printf '%s' "..."
                                 continue
                             fi
                         else
@@ -1442,14 +1448,14 @@ function check_es_to_os_migration(){
                         ;;
                     "n"|"N"|"no"|"No"|"NO")
                         printf "\n"
-                        echo -e "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;31mYou need to install Opensearch first for migration from Elasticsearch to Opensearch.\n\x1B[0m"
+                        printf '%b\n' "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;31mYou need to install Opensearch first for migration from Elasticsearch to Opensearch.\n\x1B[0m"
                         # MIGRATE_ES_TO_OS_DONE="No"
                         # create_configmap_os_migration
                         echo "Exiting..."
                         exit 1
                         ;;
                     *)
-                        echo -e "Answer must be \"Yes\" or \"No\"\n"
+                        printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                         ;;
                     esac
                 done
@@ -1472,7 +1478,7 @@ function check_es_to_os_migration(){
                                 exit 1
                             else
                                 sleep 30
-                                echo -n "..."
+                                printf '%s' "..."
                                 continue
                             fi
                         else
@@ -1494,7 +1500,7 @@ function check_es_to_os_migration(){
             exit 1
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -1524,7 +1530,7 @@ function retrieve_dependencies(){
                 exit 1
             else
                 sleep 30
-                echo -n "..."
+                printf '%s' "..."
                 continue
             fi
         else
@@ -1620,8 +1626,8 @@ function is_scim_enabled(){
   fi
 }
 
-function set_script_mode(){
-    if [[ -f $TEMPORARY_PROPERTY_FILE && -f $DB_NAME_USER_PROPERTY_FILE && -f $DB_SERVER_INFO_PROPERTY_FILE && -f $LDAP_PROPERTY_FILE ]]; then
+function detect_property_files(){
+    if [[ -f $TEMPORARY_PROPERTY_FILE && -f $DB_NAME_USER_PROPERTY_FILE && -f $DB_SERVER_INFO_PROPERTY_FILE && -f $LDAP_PROPERTY_FILE && -f $USER_PROFILE_PROPERTY_FILE ]]; then
         DEPLOYMENT_WITH_PROPERTY="Yes"
     else
         DEPLOYMENT_WITH_PROPERTY="No"
@@ -1632,13 +1638,13 @@ function validate_kube_oc_cli(){
     if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]]; then
         which oc &>/dev/null
         [[ $? -ne 0 ]] && \
-        echo -e  "\x1B[1;31mUnable to locate the OpenShift CLI. You must install it to run this script.\x1B[0m" && \
+        printf '%b\n'  "\x1B[1;31mUnable to locate the OpenShift CLI. You must install it to run this script.\x1B[0m" && \
         exit 1
     fi
     if  [[ $PLATFORM_SELECTED == "other" ]]; then
         which kubectl &>/dev/null
         [[ $? -ne 0 ]] && \
-        echo -e  "\x1B[1;31mUnable to locate the Kubernetes CLI, You must install it to run this script.\x1B[0m" && \
+        printf '%b\n'  "\x1B[1;31mUnable to locate the Kubernetes CLI, You must install it to run this script.\x1B[0m" && \
         exit 1
     fi
 }
@@ -1723,7 +1729,7 @@ function validate_docker_podman_cli(){
             [[ $? -ne 0 ]] && \
                 DOCKER_FOUND="No"
             if [[ $DOCKER_FOUND == "No" && $PODMAN_FOUND == "No" ]]; then
-                echo -e "\x1B[1;31mUnable to locate docker and podman. Install either of them first.\x1B[0m" && \
+                printf '%b\n' "\x1B[1;31mUnable to locate docker and podman. Install either of them first.\x1B[0m" && \
                 exit 1
             fi
         fi
@@ -1731,7 +1737,7 @@ function validate_docker_podman_cli(){
     then
         which podman &>/dev/null
         [[ $? -ne 0 ]] && \
-            echo -e "\x1B[1;31mUnable to locate podman. Install it first.\x1B[0m" && \
+            printf '%b\n' "\x1B[1;31mUnable to locate podman. Install it first.\x1B[0m" && \
             exit 1
     fi
 }
@@ -1740,24 +1746,24 @@ function select_project() {
     while [[ $TARGET_PROJECT_NAME == "" ]];
     do
         printf "\n"
-        echo -e "\x1B[1mWhere do you want to deploy Cloud Pak for Business Automation?\x1B[0m"
+        printf '%b\n' "\x1B[1mWhere do you want to deploy Cloud Pak for Business Automation?\x1B[0m"
         read -p "Enter the name for an existing project (namespace): " TARGET_PROJECT_NAME
         if [ -z "$TARGET_PROJECT_NAME" ]; then
-            echo -e "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
         elif [[ "$TARGET_PROJECT_NAME" == openshift* ]]; then
-            echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
             TARGET_PROJECT_NAME=""
         elif [[ "$TARGET_PROJECT_NAME" == kube* ]]; then
-            echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
             TARGET_PROJECT_NAME=""
         else
             isProjExists=`${CLI_CMD} get project $TARGET_PROJECT_NAME --ignore-not-found | wc -l`  >/dev/null 2>&1
 
             if [ "$isProjExists" -ne 2 ] ; then
-                echo -e "\x1B[1;31mInvalid project name. Enter an existing project name...\x1B[0m"
+                printf '%b\n' "\x1B[1;31mInvalid project name. Enter an existing project name...\x1B[0m"
                 TARGET_PROJECT_NAME=""
             else
-                echo -e "\x1B[1mUsing project ${TARGET_PROJECT_NAME}...\x1B[0m"
+                printf '%b\n' "\x1B[1mUsing project ${TARGET_PROJECT_NAME}...\x1B[0m"
             fi
         fi
     done
@@ -1948,7 +1954,7 @@ function get_baw_mode(){
 
 function select_platform(){
     printf "\n"
-    echo -e "\x1B[1mSelect the cloud platform to deploy: \x1B[0m"
+    printf '%b\n' "\x1B[1mSelect the cloud platform to deploy: \x1B[0m"
     COLUMNS=12
     if [ -z "$existing_platform_type" ]; then
         if [[ $DEPLOYMENT_TYPE == "starter" ]];then
@@ -2006,8 +2012,8 @@ function select_platform(){
                 printf "%1d) %s\n" $((i+1)) "${options[i]}"
             fi
         done
-        echo -e "\x1B[1;31mExisting platform type found in CR: \"$existing_platform_type\"\x1B[0m"
-        # echo -e "\x1B[1;31mDo not need to select again.\n\x1B[0m"
+        printf '%b\n' "\x1B[1;31mExisting platform type found in CR: \"$existing_platform_type\"\x1B[0m"
+        # printf '%b\n' "\x1B[1;31mDo not need to select again.\n\x1B[0m"
         prompt_press_any_key_to_continue
     fi
 
@@ -2029,7 +2035,7 @@ function select_platform(){
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 printf "\n"
-                echo -e "\x1B[1mWhich platform is OCP deployed on? \x1B[0m"
+                printf '%b\n' "\x1B[1mWhich platform is OCP deployed on? \x1B[0m"
                 COLUMNS=12
                 options=("AWS (ROSA: Red Hat OpenShift Service on AWS)" "Azure (ARO: Azure Red Hat OpenShift)")
                 PS3='Enter a valid option [1 to 2]: '
@@ -2054,7 +2060,7 @@ function select_platform(){
                 break
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -2075,7 +2081,7 @@ function check_ocp_version(){
         else
             # OCP_VERSION="3.11"
             OCP_VERSION="4.4OrLater"
-            echo -e "\x1B[1;31mIMPORTANT: The apiextensions.k8s.io/v1beta API has been deprecated from k8s 1.16+, OCP 4.3 is using k8s 1.16.x. recommend you to upgrade your OCP to version 4.4 or later\n\x1B[0m"
+            printf '%b\n' "\x1B[1;31mIMPORTANT: The apiextensions.k8s.io/v1beta API has been deprecated from k8s 1.16+, OCP 4.3 is using k8s 1.16.x. recommend you to upgrade your OCP to version 4.4 or later\n\x1B[0m"
             prompt_press_any_key_to_continue
             # exit 0
         fi
@@ -2165,11 +2171,11 @@ function select_pattern(){
         for ((j=0;j<${#options_cr_val[@]};j++));
         do [ "${options_cr_val[$j]}" = "$1" ] && { i=$j; break; }
         done
-        echo $i
+        echo "$i"
     }
     menu() {
         clear
-        echo -e "\x1B[1mSelect the Cloud Pak for Business Automation capability to install: \x1B[0m"
+        printf '%b\n' "\x1B[1mSelect the Cloud Pak for Business Automation capability to install: \x1B[0m"
         for i in ${!options[@]}; do
             if [[ $DEPLOYMENT_TYPE == "starter" ]];then
                 containsElement "${options_cr_val[i]}" "${EXISTING_PATTERN_ARR[@]}"
@@ -2321,26 +2327,26 @@ function select_pattern(){
         if [[ "$msg" ]]; then echo "$msg"; fi
         printf "\n"
         if [[ $DEPLOYMENT_TYPE == "production" ]]; then
-            echo -e "${baw_iaws_tips}"
+            printf '%b\n' "${baw_iaws_tips}"
         fi
 
         if [[ $DEPLOYMENT_TYPE == "production" ]]; then
-            echo -e "${pattern_production_tips}"
-            echo -e "${linux_production_tips}"
+            printf '%b\n' "${pattern_production_tips}"
+            printf '%b\n' "${linux_production_tips}"
             if [[ $CONTENT_DEPLOYED == "Yes" ]]; then
-                echo -e "${content_deployed_tips}"
+                printf '%b\n' "${content_deployed_tips}"
             fi
         else
-            echo -e "${pattern_starter_tips}"
-            echo -e "${linux_starter_tips}"
+            printf '%b\n' "${pattern_starter_tips}"
+            printf '%b\n' "${linux_starter_tips}"
         fi
         # Show different tips according components select or unselect
         containsElement "(Selected)" "${choices_pattern[@]}"
         retVal=$?
         if [ $retVal -ne 0 ]; then
-            echo -e "${tips1}"
+            printf '%b\n' "${tips1}"
         else
-            echo -e "${tips2}"
+            printf '%b\n' "${tips2}"
         fi
 # ##########################DEBUG############################
 #     for i in "${!choices_pattern[@]}"; do
@@ -2508,7 +2514,7 @@ function select_pattern(){
                 if  [[ "${choices_pattern[9]}" == "" && "${choices_pattern[10]}" == "" ]]; then
                     choices_pattern[8]=""
                 fi
-                if [[ ${choices_pattern[0]} == "(Selected)" && "$CONTENT_DEPLOYED" == "Yes" && "$INSTALLATION_TYPE" == "new" ]]; then
+                if [[ ${choices_pattern[0]} == "(Selected)" && "$CONTENT_DEPLOYED" == "Yes" ]]; then
                     choices_pattern[0]=""
                 fi
             fi
@@ -2612,7 +2618,7 @@ function select_pattern(){
             fi
         fi
     done
-    echo -e "$msg"
+    printf '%b\n' "$msg"
 
     # 4Q: add workflow-workstream into pattern list when select both workflow-runtime and workstream
     # https://jsw.ibm.com/browse/DBACLD-174822 (modified if condition by changing workflow to workflow-runtime)
@@ -2681,12 +2687,12 @@ function select_optional_component(){
             for ((j=0;j<${#optional_component_cr_arr[@]};j++));
             do [ "${optional_component_cr_arr[$j]}" = "$1" ] && { i=$j; break; }
             done
-            echo $i
+            echo "$i"
         }
         menu() {
             clear
-            echo -e "\x1B[1;31mCapability \"$item_pattern\": \x1B[0m\x1B[1mSelect optional components: \x1B[0m"
-            # echo -e "\x1B[1mSelect optional components: \x1B[0m"
+            printf '%b\n' "\x1B[1;31mCapability \"$item_pattern\": \x1B[0m\x1B[1mSelect optional components: \x1B[0m"
+            # printf '%b\n' "\x1B[1mSelect optional components: \x1B[0m"
             containsElement "bai" "${EXISTING_OPT_COMPONENT_ARR[@]}"
             bai_cr_retVal=$?
             for i in ${!optional_components_list[@]}; do
@@ -2742,41 +2748,41 @@ function select_optional_component(){
             printf "\n"
 
             if [[ "${item_pattern}" == "Automation Decision Services" ]]; then
-                echo -e "${ads_tips}"
+                printf '%b\n' "${ads_tips}"
             fi
             if [[ "${item_pattern}" == "Operational Decision Manager" ]]; then
-                echo -e "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;31m You must select at least one of ODM components.\x1B[0m\n"
-                echo -e "${decision_tips}"
+                printf '%b\n' "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;31m You must select at least one of ODM components.\x1B[0m\n"
+                printf '%b\n' "${decision_tips}"
             fi
             if [[ "${item_pattern}" == "Business Automation Application" ]]; then
 
-                echo -e "${application_tips}"
+                printf '%b\n' "${application_tips}"
                 if [[ $DEPLOYMENT_TYPE == "starter" ]];then
-                    echo -e "${application_tips_demo}"
+                    printf '%b\n' "${application_tips_demo}"
                 elif [[ $DEPLOYMENT_TYPE == "production" ]]
                 then
-                    echo -e "${application_tips_ent}"
+                    printf '%b\n' "${application_tips_ent}"
                 fi
             fi
 
             if [[ "${item_pattern}" == "FileNet Content Manager" ]]; then
                 if [[ $DEPLOYMENT_TYPE == "starter" ]];then
-                    echo -e "${linux_starter_tips}"
+                    printf '%b\n' "${linux_starter_tips}"
                 elif [[ $DEPLOYMENT_TYPE == "production" ]]
                 then
-                    echo -e "${linux_production_tips}"
+                    printf '%b\n' "${linux_production_tips}"
                 fi
             fi
             # Show different tips according components select or unselect
             containsElement "(Selected)" "${choices_component[@]}"
             retVal=$?
             if [ $retVal -eq 0 ]; then
-                echo -e "${tips2}"
+                printf '%b\n' "${tips2}"
             elif [ $selectedVal -eq 0 ]
             then
-                echo -e "${tips2}"
+                printf '%b\n' "${tips2}"
             else
-                echo -e "${tips1}"
+                printf '%b\n' "${tips1}"
             fi
 # ##########################DEBUG############################
 #         for i in "${!choices_component[@]}"; do
@@ -3002,7 +3008,7 @@ function select_optional_component(){
                 fi
             fi
         done
-        # echo -e "$msg"
+        # printf '%b\n' "$msg"
 
         if [ "${#optional_component_arr[@]}" -eq "0" ]; then
             COMPONENTS_SELECTED="None"
@@ -3277,7 +3283,7 @@ function select_optional_component(){
 
     OPT_COMPONENTS_CR_SELECTED=($(echo "${optional_component_cr_arr[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
     OPTIONAL_COMPONENT_DELETE_LIST=($(echo "${OPT_COMPONENTS_CR_SELECTED[@]}" "${OPTIONAL_COMPONENT_FULL_ARR[@]}" | tr ' ' '\n' | sort | uniq -u))
-    KEEP_COMPOMENTS=($(echo ${FOUNDATION_CR_SELECTED_LOWCASE[@]} ${OPTIONAL_COMPONENT_DELETE_LIST[@]} | tr ' ' '\n' | sort | uniq -d | uniq))
+    KEEP_COMPOMENTS=($(echo "${FOUNDATION_CR_SELECTED_LOWCASE[@]}" "${OPTIONAL_COMPONENT_DELETE_LIST[@]}" | tr ' ' '\n' | sort | uniq -d | uniq))
     OPT_COMPONENTS_SELECTED=($(echo "${optional_component_arr[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
 
     # Will an external LDAP be used as part of the configuration?
@@ -3296,7 +3302,7 @@ function get_local_registry_password(){
     do
        read -rsp "" local_registry_password
        if [ -z "$local_registry_password" ]; then
-       echo -e "\x1B[1;31mEnter a valid password\x1B[0m"
+       printf '%b\n' "\x1B[1;31mEnter a valid password\x1B[0m"
        fi
     done
     export LOCAL_REGISTRY_PWD=${local_registry_password}
@@ -3327,7 +3333,7 @@ function get_local_registry_password_double(){
                    pwdconfirmed=0
                 else
                    printf "\n"
-                   echo -e "\x1B[1;31mThe passwords do not match. Try again.\x1B[0m"
+                   printf '%b\n' "\x1B[1;31mThe passwords do not match. Try again.\x1B[0m"
                    unset pwd
                    unset pwd2
                 fi
@@ -3355,7 +3361,7 @@ function get_entitlement_registry(){
 
     fi
     test "$result" || { echo "Timed out too soon. Try using a wait_time greater than $wait_time..."; return 1 ;}
-    echo $result | grep -vq 'not found'
+    echo "$result" | grep -vq 'not found'
     }
 
     # For Entitlement Registry key
@@ -3392,7 +3398,7 @@ function get_entitlement_registry(){
             fi
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -3404,9 +3410,9 @@ function create_secret_entitlement_registry(){
     ${CLI_CMD} delete secret "$DOCKER_RES_SECRET_NAME" >/dev/null 2>&1
     CREATE_SECRET_CMD="${CLI_CMD} create secret docker-registry $DOCKER_RES_SECRET_NAME --docker-server=$DOCKER_REG_SERVER --docker-username=$DOCKER_REG_USER --docker-password=$DOCKER_REG_KEY --docker-email=ecmtest@ibm.com"
     if $CREATE_SECRET_CMD ; then
-        echo -e "\x1B[1mDone\x1B[0m"
+        printf '%b\n' "\x1B[1mDone\x1B[0m"
     else
-        echo -e "\x1B[1mFailed\x1B[0m"
+        printf '%b\n' "\x1B[1mFailed\x1B[0m"
     fi
 }
 
@@ -3422,7 +3428,7 @@ function get_local_registry_server(){
         do
             read -rp "" local_public_registry_server
             if [ -z "$local_public_registry_server" ]; then
-            echo -e "\x1B[1;31mEnter a valid service name or the URL for the docker registry.\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid service name or the URL for the docker registry.\x1B[0m"
             fi
         done
     fi
@@ -3449,7 +3455,7 @@ function get_local_registry_server(){
     do
         read -rp "" local_registry_server
         if [ -z "$local_registry_server" ]; then
-        echo -e "\x1B[1;31mEnter a valid service name or the URL for the docker registry.\x1B[0m"
+        printf '%b\n' "\x1B[1;31mEnter a valid service name or the URL for the docker registry.\x1B[0m"
         fi
     done
     LOCAL_REGISTRY_SERVER=${local_registry_server}
@@ -3476,7 +3482,7 @@ function get_local_registry_user(){
     do
        read -rp "" local_registry_user
        if [ -z "$local_registry_user" ]; then
-       echo -e "\x1B[1;31mEnter a valid user name.\x1B[0m"
+       printf '%b\n' "\x1B[1;31mEnter a valid user name.\x1B[0m"
        fi
     done
     export LOCAL_REGISTRY_USER=${local_registry_user}
@@ -3500,7 +3506,7 @@ function get_storage_class_name(){
         do
             read -rp "" storage_class_name
             if [ -z "$storage_class_name" ]; then
-               echo -e "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
+               printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
             fi
         done
         printf "\x1B[1mTo provision the persistent volumes and volume claims, enter the block storage classname(RWO): \x1B[0m"
@@ -3509,7 +3515,7 @@ function get_storage_class_name(){
         do
             read -rp "" block_storage_class_name
             if [ -z "$block_storage_class_name" ]; then
-               echo -e "\x1B[1;31mEnter a valid block storage classname(RWO)\x1B[0m"
+               printf '%b\n' "\x1B[1;31mEnter a valid block storage classname(RWO)\x1B[0m"
             fi
         done
         fi
@@ -3521,7 +3527,7 @@ function get_storage_class_name(){
             printf "\x1B[1mEnter the file storage classname for slow storage(RWX): \x1B[0m"
             read -rp "" sc_slow_file_storage_classname
             if [ -z "$sc_slow_file_storage_classname" ]; then
-               echo -e "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
+               printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
             fi
         done
 
@@ -3530,7 +3536,7 @@ function get_storage_class_name(){
             printf "\x1B[1mEnter the file storage classname for medium storage(RWX): \x1B[0m"
             read -rp "" sc_medium_file_storage_classname
             if [ -z "$sc_medium_file_storage_classname" ]; then
-               echo -e "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
+               printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
             fi
         done
 
@@ -3539,7 +3545,7 @@ function get_storage_class_name(){
             printf "\x1B[1mEnter the file storage classname for fast storage(RWX): \x1B[0m"
             read -rp "" sc_fast_file_storage_classname
             if [ -z "$sc_fast_file_storage_classname" ]; then
-               echo -e "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
+               printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
             fi
         done
         if [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]]; then
@@ -3548,7 +3554,7 @@ function get_storage_class_name(){
             printf "\x1B[1mEnter the block storage classname for Zen(RWO): \x1B[0m"
             read -rp "" block_storage_class_name
             if [ -z "$block_storage_class_name" ]; then
-               echo -e "\x1B[1;31mEnter a valid block storage classname(RWO)\x1B[0m"
+               printf '%b\n' "\x1B[1;31mEnter a valid block storage classname(RWO)\x1B[0m"
             fi
         done
         fi
@@ -3561,9 +3567,9 @@ function get_storage_class_name(){
 }
 
 function create_secret_local_registry(){
-    echo -e "\x1B[1mCreating the secret based on the local docker registry information...\x1B[0m"
+    printf '%b\n' "\x1B[1mCreating the secret based on the local docker registry information...\x1B[0m"
     # Create docker-registry secret for local Registry Key
-    # echo -e "Create docker-registry secret for Local Registry...\n"
+    # printf '%b\n' "Create docker-registry secret for Local Registry...\n"
     if [[ $LOCAL_REGISTRY_SERVER == docker-registry* || $LOCAL_REGISTRY_SERVER == image-registry.openshift-image-registry* ]] ;
     then
         builtin_dockercfg_secrect_name=$(${CLI_CMD} get secret | grep default-dockercfg | awk '{print $1}')
@@ -3573,9 +3579,9 @@ function create_secret_local_registry(){
         ${CLI_CMD} delete secret "$DOCKER_RES_SECRET_NAME" >/dev/null 2>&1
         CREATE_SECRET_CMD="${CLI_CMD} create secret docker-registry $DOCKER_RES_SECRET_NAME --docker-server=$LOCAL_REGISTRY_SERVER --docker-username=$LOCAL_REGISTRY_USER --docker-password=$LOCAL_REGISTRY_PWD --docker-email=ecmtest@ibm.com"
         if $CREATE_SECRET_CMD ; then
-            echo -e "\x1B[1mDone\x1B[0m"
+            printf '%b\n' "\x1B[1mDone\x1B[0m"
         else
-            echo -e "\x1B[1;31mFailed\x1B[0m"
+            printf '%b\n' "\x1B[1;31mFailed\x1B[0m"
         fi
     fi
 }
@@ -3593,11 +3599,11 @@ function verify_local_registry_password(){
             break
             ;;
         "n"|"N"|"no"|"No"|"NO")
-            echo -e "\x1B[1;31mPull the images to the local images to proceed.\n\x1B[0m"
+            printf '%b\n' "\x1B[1;31mPull the images to the local images to proceed.\n\x1B[0m"
             exit 1
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -3605,7 +3611,7 @@ function verify_local_registry_password(){
     # Select which type of image registry to use.
     if [[ "${PLATFORM_SELECTED}" == "OCP" ]]; then
         printf "\n"
-        echo -e "\x1B[1mSelect the type of image registry to use: \x1B[0m"
+        printf '%b\n' "\x1B[1mSelect the type of image registry to use: \x1B[0m"
         COLUMNS=12
         options=("Other ( External image registry: abc.xyz.com )")
 
@@ -3629,44 +3635,11 @@ function verify_local_registry_password(){
     fi
     get_local_registry_server
 }
-function select_installation_type(){
-    COLUMNS=12
-    echo -e "\x1B[1mIs this a new installation or an existing installation?\x1B[0m"
-    options=("New" "Existing")
-    PS3='Enter a valid option [1 to 2]: '
-    select opt in "${options[@]}"
-    do
-        case $opt in
-            "New")
-                INSTALLATION_TYPE="new"
-                break
-                ;;
-            "Existing")
-                INSTALLATION_TYPE="existing"
-                mkdir -p $TEMP_FOLDER >/dev/null 2>&1
-                mkdir -p $BAK_FOLDER >/dev/null 2>&1
-                mkdir -p $FINAL_CR_FOLDER >/dev/null 2>&1
-                get_existing_pattern_name
-                break
-                ;;
-            *) echo "invalid option $REPLY";;
-        esac
-    done
-    if [[ "${INSTALLATION_TYPE}" == "new" ]]; then
-        clean_up_temp_file
-        rm -rf $BAK_FOLDER >/dev/null 2>&1
-        rm -rf $FINAL_CR_FOLDER >/dev/null 2>&1
-
-        mkdir -p $TEMP_FOLDER >/dev/null 2>&1
-        mkdir -p $BAK_FOLDER >/dev/null 2>&1
-        mkdir -p $FINAL_CR_FOLDER >/dev/null 2>&1
-    fi
-}
 
 function select_iam_default_admin(){
     printf "\n"
     while true; do
-        echo -e "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;31mIf you are unable to use [cpadmin] as the default IAM admin user due to it having the same username in your LDAP Directory, you need to change the Cloud Pak administrator username. See: \"https://www.ibm.com/docs/en/cpfs?topic=configurations-changing-cloud-pak-administrator-access-credentials#user-name\"\x1B[0m"
+        printf '%b\n' "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;31mIf you are unable to use [cpadmin] as the default IAM admin user due to it having the same username in your LDAP Directory, you need to change the Cloud Pak administrator username. See: \"https://www.ibm.com/docs/en/cpfs?topic=configurations-changing-cloud-pak-administrator-access-credentials#user-name\"\x1B[0m"
         printf "\x1B[1mDo you want to use the default IAM admin user: [cpadmin] (Yes/No, default: Yes): \x1B[0m"
         read -rp "" ans
         case "$ans" in
@@ -3679,21 +3652,21 @@ function select_iam_default_admin(){
             while [[ $NON_DEFAULT_IAM_ADMIN == "" ]];
             do
                 printf "\n"
-                echo -e "\x1B[1mWhat is the non default IAM admin user you renamed?\x1B[0m"
+                printf '%b\n' "\x1B[1mWhat is the non default IAM admin user you renamed?\x1B[0m"
                 read -p "Enter the admin username: " NON_DEFAULT_IAM_ADMIN
 
                 if [ -z "$NON_DEFAULT_IAM_ADMIN" ]; then
-                    echo -e "\x1B[1;31mEnter a valid admin username, username can not be blank\x1B[0m"
+                    printf '%b\n' "\x1B[1;31mEnter a valid admin username, username can not be blank\x1B[0m"
                     NON_DEFAULT_IAM_ADMIN=""
                 elif [[ "$NON_DEFAULT_IAM_ADMIN" == "cpadmin" ]]; then
-                    echo -e "\x1B[1;31mEnter a valid admin username, username should not be 'cpadmin'\x1B[0m"
+                    printf '%b\n' "\x1B[1;31mEnter a valid admin username, username should not be 'cpadmin'\x1B[0m"
                     NON_DEFAULT_IAM_ADMIN=""
                 fi
             done
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -3703,9 +3676,9 @@ function select_profile_type(){
     printf "\n"
     COLUMNS=12
     if [ -z $OPENSEARCH_CATALOG_NS ]; then
-        echo -e "\x1B[1mSelect the deployment profile. Refer to the documentation in CP4BA Docs for details on the profile.\x1B[0m"
+        printf '%b\n' "\x1B[1mSelect the deployment profile. Refer to the documentation in CP4BA Docs for details on the profile.\x1B[0m"
     else
-        echo -e "\x1B[1mSelect the deployment profile for Opensearch. Refer to the documentation in Opensearch Docs for details on the profile.\x1B[0m"
+        printf '%b\n' "\x1B[1mSelect the deployment profile for Opensearch. Refer to the documentation in Opensearch Docs for details on the profile.\x1B[0m"
     fi
     options=("small" "medium" "large")
     if [ -z "$existing_profile_type" ]; then
@@ -3739,8 +3712,8 @@ function select_profile_type(){
                 printf "%1d) %s\n" $((i+1)) "${options[i]}"
             fi
         done
-        echo -e "\x1B[1;31mExisting profile size type found in CR: \"$existing_profile_type\"\x1B[0m"
-        # echo -e "\x1B[1;31mDo not need to select again.\n\x1B[0m"
+        printf '%b\n' "\x1B[1;31mExisting profile size type found in CR: \"$existing_profile_type\"\x1B[0m"
+        # printf '%b\n' "\x1B[1;31mDo not need to select again.\n\x1B[0m"
         prompt_press_any_key_to_continue
     fi
 }
@@ -3760,7 +3733,7 @@ function select_ocp_olm(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -3773,9 +3746,9 @@ function select_deployment_type(){
     if [[ "$SCRIPT_MODE" == "OLM" ]]
     then
         DEPLOYMENT_TYPE="production"
-        echo -e "An enterprise deployment will be prepared for the OCP Catalog."
+        printf '%b\n' "An enterprise deployment will be prepared for the OCP Catalog."
     else
-        echo -e "\x1B[1mWhat type of deployment is being performed?\x1B[0m"
+        printf '%b\n' "\x1B[1mWhat type of deployment is being performed?\x1B[0m"
 
         COLUMNS=12
         options=("Starter" "Production")
@@ -3808,8 +3781,8 @@ function select_deployment_type(){
                     printf "%1d) %s\n" $((i+1)) "${options[i]}"
                 fi
             done
-            echo -e "\x1B[1;31mExisting deployment type found in CR: \"$existing_deployment_type\"\x1B[0m"
-            # echo -e "\x1B[1;31mDo not need to select again.\n\x1B[0m"
+            printf '%b\n' "\x1B[1;31mExisting deployment type found in CR: \"$existing_deployment_type\"\x1B[0m"
+            # printf '%b\n' "\x1B[1;31mDo not need to select again.\n\x1B[0m"
             prompt_press_any_key_to_continue
         fi
     fi
@@ -3860,7 +3833,7 @@ function select_ldap_type_for_wfps_authoring(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -3876,21 +3849,21 @@ function select_upgrade_mode(){
         cons_tips=("The more resource required for each namespace-scoped instance of IBM Cloud Pak foundational services." "It is not flexible for all Cloud Pak or CP4BA component to share same one instance of IBM Cloud Pak foundational services.")
 
         if [[ $RUNTIME_MODE == "upgradeOperator" ]]; then
-            echo -e "\x1B[1mWhich migration mode for the IBM Cloud Pak foundational services are you migrating to? \x1B[0m"
+            printf '%b\n' "\x1B[1mWhich migration mode for the IBM Cloud Pak foundational services are you migrating to? \x1B[0m"
         elif [[ $RUNTIME_MODE == "upgradeDeployment" ]]; then
-            echo -e "\x1B[1mWhich migration mode for the IBM Cloud Pak foundational services are you migrating to when run [upgradeOperator]? \x1B[0m"
+            printf '%b\n' "\x1B[1mWhich migration mode for the IBM Cloud Pak foundational services are you migrating to when run [upgradeOperator]? \x1B[0m"
         fi
-        echo -e "${YELLOW_TEXT}1) Cluster-scoped to Cluster-scoped${RESET_TEXT}"
+        printf '%b\n' "${YELLOW_TEXT}1) Cluster-scoped to Cluster-scoped${RESET_TEXT}"
         if [[ $RUNTIME_MODE == "upgradeOperator" ]]; then
-            echo -e "   ${YELLOW_TEXT}[Tips]${RESET_TEXT}: ${tips[1]}"
-            echo -e "   ${GREEN_TEXT}[Pros]${RESET_TEXT}: ${pros_tips[1]}"
-            echo -e "   ${RED_TEXT}[Cons]${RESET_TEXT}: ${cons_tips[1]}"
+            printf '%b\n' "   ${YELLOW_TEXT}[Tips]${RESET_TEXT}: ${tips[1]}"
+            printf '%b\n' "   ${GREEN_TEXT}[Pros]${RESET_TEXT}: ${pros_tips[1]}"
+            printf '%b\n' "   ${RED_TEXT}[Cons]${RESET_TEXT}: ${cons_tips[1]}"
         fi
-        echo -e "${YELLOW_TEXT}2) Cluster-scoped to Namespace-scoped (Recommended)${RESET_TEXT}"
+        printf '%b\n' "${YELLOW_TEXT}2) Cluster-scoped to Namespace-scoped (Recommended)${RESET_TEXT}"
         if [[ $RUNTIME_MODE == "upgradeOperator" ]]; then
-            echo -e "   ${YELLOW_TEXT}[Tips]${RESET_TEXT}: ${tips[0]}"
-            echo -e "   ${GREEN_TEXT}[Pros]${RESET_TEXT}: ${pros_tips[0]}"
-            echo -e "   ${RED_TEXT}[Cons]${RESET_TEXT}: ${cons_tips[0]}"
+            printf '%b\n' "   ${YELLOW_TEXT}[Tips]${RESET_TEXT}: ${tips[0]}"
+            printf '%b\n' "   ${GREEN_TEXT}[Pros]${RESET_TEXT}: ${pros_tips[0]}"
+            printf '%b\n' "   ${RED_TEXT}[Cons]${RESET_TEXT}: ${cons_tips[0]}"
         fi
 
         read -p "Enter your choice [1 or 2]: " choice
@@ -3930,7 +3903,7 @@ function select_restricted_internet_access(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -3940,7 +3913,7 @@ function select_fips_enable(){
     select_project
     all_fips_enabled_flag=$(${CLI_CMD} get configmap cp4ba-fips-status --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath={.data.all-fips-enabled})
     if [ -z $all_fips_enabled_flag ]; then
-        if [[ ("$DEPLOYMENT_TYPE" == "production" && $DEPLOYMENT_WITH_PROPERTY == "No") || "$DEPLOYMENT_TYPE" == "starter" ]]; then
+        if [[ "$DEPLOYMENT_TYPE" == "starter" ]]; then
             info "Configmap \"cp4ba-fips-status\" was not found in the project \"$CP4BA_SERVICES_NS\". setting \"shared_configuration.enable_fips\" as \"false\" by default in the final custom resource."
             FIPS_ENABLED="false"
         fi
@@ -3959,7 +3932,7 @@ function select_fips_enable(){
                 break
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -3971,7 +3944,7 @@ function select_fips_enable(){
 function select_ldap_type(){
     printf "\n"
     COLUMNS=12
-    echo -e "\x1B[1mWhat is the LDAP type that is used for this deployment? \x1B[0m"
+    printf '%b\n' "\x1B[1mWhat is the LDAP type that is used for this deployment? \x1B[0m"
     options=("Microsoft Active Directory" "IBM Tivoli Directory Server / Security Directory Server")
     PS3='Enter a valid option [1 to 2]: '
     select opt in "${options[@]}"
@@ -4114,7 +4087,7 @@ function set_external_ldap(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -4134,7 +4107,7 @@ function set_external_share_content_pattern(){
             vi ${CONTENT_PATTERN_FILE_TMP} -c ':'"${content_start}"','"${content_stop}"'s/  # /  ' -c ':wq' >/dev/null 2>&1
 
             # un-comment LDAP
-            if [[ $DEPLOYMENT_TYPE == "starter" || ($DEPLOYMENT_TYPE == "production" && $DEPLOYMENT_WITH_PROPERTY == "No") ]]; then
+            if [[ $DEPLOYMENT_TYPE == "starter" ]]; then
                 if [[ "$LDAP_TYPE" == "AD" ]]; then
                     # content_start="$(grep -n "ad:" ${CONTENT_PATTERN_FILE_TMP} | awk 'NR==2{print $1}' | cut -d: -f1)"
                     content_start="$(grep -n "ad:" ${CONTENT_PATTERN_FILE_TMP} | cut -d: -f1)"
@@ -4142,7 +4115,7 @@ function set_external_share_content_pattern(){
                     # content_start="$(grep -n "tds:" ${CONTENT_PATTERN_FILE_TMP} | awk 'NR==2{print $1}' | cut -d: -f1)"
                     content_start="$(grep -n "tds:" ${CONTENT_PATTERN_FILE_TMP} | cut -d: -f1)"
                 fi
-            elif [[ $DEPLOYMENT_TYPE == "production" && $DEPLOYMENT_WITH_PROPERTY == "Yes" ]]; then
+            elif [[ $DEPLOYMENT_TYPE == "production" ]]; then
                 tmp_ldap_type="$(prop_ext_ldap_property_file LDAP_TYPE)"
                 tmp_ldap_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_ldap_type")
                 if [[ $tmp_ldap_type == "Microsoft Active Directory" ]]; then
@@ -4312,7 +4285,7 @@ function set_aca_tenant_pattern(){
         ${COPY_CMD} -rf ${ACA_PATTERN_FILE_BAK} ${ACA_PATTERN_FILE_TMP}
         # ${YQ_CMD} d -i ${ACA_PATTERN_FILE_TMP} spec.datasource_configuration.dc_ca_datasource.tenant_databases
         if [ ${#aca_tenant_arr[@]} -eq 0 ]; then
-            echo -e "\x1B[1;31mNot any element in ACA tenant list found\x1B[0m:\x1B[1m"
+            printf '%b\n' "\x1B[1;31mNot any element in ACA tenant list found\x1B[0m:\x1B[1m"
         else
             for i in ${!aca_tenant_arr[@]}; do
                ${YQ_CMD} -i ".spec.datasource_configuration.dc_ca_datasource.tenant_databases[${i}] = \"${aca_tenant_arr[$i]}\"" ${ACA_PATTERN_FILE_TMP}
@@ -4338,7 +4311,7 @@ function select_automation_service(){
                 break
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -4361,7 +4334,7 @@ function select_cpe_full_storage(){
                 break
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -4384,7 +4357,7 @@ function select_enable_deep_learning(){
                 break
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -4412,7 +4385,7 @@ function select_ae_data_persistence(){
                     break
                     ;;
                 *)
-                    echo -e "Answer must be \"Yes\" or \"No\"\n"
+                    printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                     ;;
                 esac
             done
@@ -4429,7 +4402,7 @@ function select_aca_tenant(){
     do
         read -rp "" aca_tenant_number
         if ! [[ "$aca_tenant_number" =~ ^[0-9]+$ ]]; then
-            echo -e "\x1B[1;31mEnter a valid tenant number\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid tenant number\x1B[0m"
             aca_tenant_number=""
         fi
     done
@@ -4440,7 +4413,7 @@ function select_aca_tenant(){
         printf "\x1B[1mWhat is the name of tenant ${order_number}? \x1B[0m"
         read -rp "" aca_tenant_name
         if [ -z "$aca_tenant_number" ]; then
-            echo -e "\x1B[1;31mEnter a valid tenant name\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid tenant name\x1B[0m"
         else
             aca_tenant_arr=( "${aca_tenant_arr[@]}" "${aca_tenant_name}" )
         fi
@@ -4454,7 +4427,7 @@ function select_baw_only(){
     pattern_arr=()
     pattern_cr_arr=()
     printf "\n"
-    echo -e "\x1B[1mSelect the Cloud Pak for Business Automation capability to install: \x1B[0m"
+    printf '%b\n' "\x1B[1mSelect the Cloud Pak for Business Automation capability to install: \x1B[0m"
     COLUMNS=12
 
     options=("Business Automation Workflow")
@@ -4508,11 +4481,6 @@ function clean_up_temp_file(){
 }
 
 function input_information(){
-    if [[ $DEPLOYMENT_WITH_PROPERTY == "No" || $DEPLOYMENT_TYPE == "starter" ]]; then
-        select_installation_type
-    elif [[ $DEPLOYMENT_WITH_PROPERTY == "Yes" ]]; then
-        INSTALLATION_TYPE="new"
-    fi
     # clean_up_temp_file
     # rm -rf $BAK_FOLDER >/dev/null 2>&1
     # rm -rf $FINAL_CR_FOLDER >/dev/null 2>&1
@@ -4521,59 +4489,55 @@ function input_information(){
     mkdir -p $BAK_FOLDER >/dev/null 2>&1
     mkdir -p $FINAL_CR_FOLDER >/dev/null 2>&1
 
-    if [[ ${INSTALLATION_TYPE} == "existing" ]]; then
-        # INSTALL_BAW_IAWS="No"
-        prepare_pattern_file
-        select_deployment_type
-        if [[ $DEPLOYMENT_TYPE == "production" && (-z $PROFILE_TYPE) ]]; then
-            select_profile_type
-        fi
-        select_platform
-        if [[ ("$PLATFORM_SELECTED" == "OCP" || "$PLATFORM_SELECTED" == "ROKS") && "$DEPLOYMENT_TYPE" == "production" && "$USE_DEFAULT_IAM_ADMIN" == "" && "$NON_DEFAULT_IAM_ADMIN" == "" ]]; then
-            select_iam_default_admin
-        fi
-        if [[ ("$PLATFORM_SELECTED" == "OCP" || "$PLATFORM_SELECTED" == "ROKS") && "$DEPLOYMENT_TYPE" == "starter" ]]; then
-            select_project
-        fi
-        check_ocp_version
-        validate_docker_podman_cli
-    elif [[ ${INSTALLATION_TYPE} == "new" ]]
-    then
-        # select_ocp_olm
-        select_deployment_type
-        if [[ $DEPLOYMENT_WITH_PROPERTY == "Yes" && $DEPLOYMENT_TYPE == "production" ]]; then
-            if [[ ! -z $CP4BA_AUTO_NAMESPACE ]]; then
-                TARGET_PROJECT_NAME=$CP4BA_AUTO_NAMESPACE
-            fi
+    select_deployment_type
+    if [[ $DEPLOYMENT_TYPE == "production" ]]; then
+        # The script will load the temp property file only for production
+        # IF the script can not find property files it will exit out.
+        if [[ $DEPLOYMENT_WITH_PROPERTY == "Yes" ]]; then
             load_property_before_generate
-            show_summary_pattern_selected
+            # IF the flag is set to true , we need to load some details from the live CR and know the script is being executed to update a current deployment, otherwise its a fresh install for the first time
+        else
+            error "The script could not find all property files required to generate the Custom Resource (CR) for this deployment."
+            echo
+            info  "Before executing the \"cp4a-deployment.sh\" script to generate a Custom Resource (CR) file,you must first run \"cp4a-prerequisites.sh\" in the following modes:"
+            info  "1. \" cp4a-prerequisites.sh -m property -n $TARGET_PROJECT_NAME \""
+            info  "2. \" cp4a-prerequisites.sh -m generate -n $TARGET_PROJECT_NAME \""
+            info  "3. \" cp4a-prerequisites.sh -m validate -n $TARGET_PROJECT_NAME \""
+            info  "For more information, refer to the documentation at: https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=pycc-recommended-preparing-databases-secrets-your-chosen-capabilities-by-running-script"
+            info  "The script will now exit."
+            echo 
+            exit
         fi
-        if [[ $DEPLOYMENT_TYPE == "production" && (-z $PROFILE_TYPE) ]]; then
-            select_profile_type
-        fi
-        select_platform
-        if [[ ("$PLATFORM_SELECTED" == "OCP" || "$PLATFORM_SELECTED" == "ROKS") && "$DEPLOYMENT_TYPE" == "production" && "$USE_DEFAULT_IAM_ADMIN" == "" && "$NON_DEFAULT_IAM_ADMIN" == "" ]]; then
-            select_iam_default_admin
-        fi
-        if [[ ("$PLATFORM_SELECTED" == "OCP" || "$PLATFORM_SELECTED" == "ROKS") && "$DEPLOYMENT_TYPE" == "starter" ]]; then
-            select_project
-        fi
-        check_ocp_version
-        validate_docker_podman_cli
-        prepare_pattern_file
-        # select_baw_iaws_installation
     fi
 
-    if [[ "${INSTALLATION_TYPE}" == "existing" ]] && (( ${#EXISTING_PATTERN_ARR[@]} == 0 )); then
-        echo -e "\x1B[1;31mNO EXISTING PATTERN FOUND!\x1B[0m"
-        prompt_press_any_key_to_continue "Install a new pattern"
+    
+    # select_ocp_olm
+    if [[ $DEPLOYMENT_TYPE == "production" ]]; then
+        if [[ ! -z $CP4BA_AUTO_NAMESPACE ]]; then
+            TARGET_PROJECT_NAME=$CP4BA_AUTO_NAMESPACE
+        fi
+        show_summary_pattern_selected
     fi
+    if [[ $DEPLOYMENT_TYPE == "production" && (-z $PROFILE_TYPE) ]]; then
+        select_profile_type
+    fi
+    select_platform
+    if [[ ("$PLATFORM_SELECTED" == "OCP" || "$PLATFORM_SELECTED" == "ROKS") && "$DEPLOYMENT_TYPE" == "production" && "$USE_DEFAULT_IAM_ADMIN" == "" && "$NON_DEFAULT_IAM_ADMIN" == "" ]]; then
+        select_iam_default_admin
+    fi
+    if [[ ("$PLATFORM_SELECTED" == "OCP" || "$PLATFORM_SELECTED" == "ROKS") && "$DEPLOYMENT_TYPE" == "starter" ]]; then
+        select_project
+    fi
+    check_ocp_version
+    validate_docker_podman_cli
+    prepare_pattern_file
+    # select_baw_iaws_installation
 
     if [[ "${INSTALL_BAW_ONLY}" == "No" ]];
     then
-        if [[ $DEPLOYMENT_TYPE == "starter" || $DEPLOYMENT_WITH_PROPERTY == "No" ]]; then
+        if [[ $DEPLOYMENT_TYPE == "starter" ]]; then
             select_pattern
-        elif [[ $DEPLOYMENT_WITH_PROPERTY == "Yes" && $DEPLOYMENT_TYPE == "production" ]]; then
+        elif [[ $DEPLOYMENT_TYPE == "production" ]]; then
             FOUNDATION_CR_SELECTED=($(echo "${foundation_component_arr[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
 
             x=0;while [ ${x} -lt ${#FOUNDATION_CR_SELECTED[*]} ] ; do FOUNDATION_CR_SELECTED_LOWCASE[$x]=$(tr [A-Z] [a-z] <<< ${FOUNDATION_CR_SELECTED[$x]}); let x++; done
@@ -4585,12 +4549,12 @@ function input_information(){
         select_baw_only
     fi
 
-    if [[ $DEPLOYMENT_TYPE == "starter" || $DEPLOYMENT_WITH_PROPERTY == "No" ]]; then
+    if [[ $DEPLOYMENT_TYPE == "starter" ]]; then
         select_optional_component
-    elif [[ $DEPLOYMENT_WITH_PROPERTY == "Yes" && $DEPLOYMENT_TYPE == "production" ]]; then
+    elif [[ $DEPLOYMENT_TYPE == "production" ]]; then
         OPT_COMPONENTS_CR_SELECTED=($(echo "${optional_component_cr_arr[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
         OPTIONAL_COMPONENT_DELETE_LIST=($(echo "${OPT_COMPONENTS_CR_SELECTED[@]}" "${OPTIONAL_COMPONENT_FULL_ARR[@]}" | tr ' ' '\n' | sort | uniq -u))
-        KEEP_COMPOMENTS=($(echo ${FOUNDATION_CR_SELECTED_LOWCASE[@]} ${OPTIONAL_COMPONENT_DELETE_LIST[@]} | tr ' ' '\n' | sort | uniq -d | uniq))
+        KEEP_COMPOMENTS=($(echo "${FOUNDATION_CR_SELECTED_LOWCASE[@]}" "${OPTIONAL_COMPONENT_DELETE_LIST[@]}" | tr ' ' '\n' | sort | uniq -d | uniq))
         OPT_COMPONENTS_SELECTED=($(echo "${optional_component_arr[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
     fi
 
@@ -4600,132 +4564,43 @@ function input_information(){
     if [[ ( -z $CP4BA_JDBC_URL || $CP4BA_JDBC_URL == "") && (( $DEPLOYMENT_TYPE == "starter" ) && (" ${optional_component_cr_arr[@]} " =~ "iccsap") || $DEPLOYMENT_TYPE == "production") ]]; then
         get_jdbc_url
     fi
-    if [[ "$INSTALLATION_TYPE" == "new" ]]; then
-        if [[ $PLATFORM_SELECTED == "other" ]]; then
-            get_entitlement_registry
-        fi
-        if [[ "$use_entitlement" == "no" ]]; then
-            verify_local_registry_password
-        fi
+    
+    if [[ $PLATFORM_SELECTED == "other" ]]; then
+       get_entitlement_registry
+    fi
+    if [[ "$use_entitlement" == "no" ]]; then
+        verify_local_registry_password
+    fi
 
-        # if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]];
-        # then
-        #     get_infra_name
-        # fi
-        # load storage class name
-        if [[ $DEPLOYMENT_TYPE == "starter" || $DEPLOYMENT_WITH_PROPERTY == "No" ]]; then
+    # if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]];
+    # then
+    #     get_infra_name
+    # fi
+    # load storage class name
+    if [[ $DEPLOYMENT_TYPE == "starter" ]]; then
+        get_storage_class_name
+    elif [[ $DEPLOYMENT_TYPE == "production" ]]; then
+        SLOW_STORAGE_CLASS_NAME=$(prop_user_profile_property_file CP4BA.SLOW_FILE_STORAGE_CLASSNAME)
+        MEDIUM_STORAGE_CLASS_NAME=$(prop_user_profile_property_file CP4BA.MEDIUM_FILE_STORAGE_CLASSNAME)
+        FAST_STORAGE_CLASS_NAME=$(prop_user_profile_property_file CP4BA.FAST_FILE_STORAGE_CLASSNAME)
+        BLOCK_STORAGE_CLASS_NAME=$(prop_user_profile_property_file CP4BA.BLOCK_STORAGE_CLASS_NAME)
+        if [[ -z $SLOW_STORAGE_CLASS_NAME || -z $MEDIUM_STORAGE_CLASS_NAME || -z $FAST_STORAGE_CLASS_NAME || -z $BLOCK_STORAGE_CLASS_NAME ]]; then
             get_storage_class_name
-        elif [[ $DEPLOYMENT_WITH_PROPERTY == "Yes" && $DEPLOYMENT_TYPE == "production" ]]; then
-            SLOW_STORAGE_CLASS_NAME=$(prop_user_profile_property_file CP4BA.SLOW_FILE_STORAGE_CLASSNAME)
-            MEDIUM_STORAGE_CLASS_NAME=$(prop_user_profile_property_file CP4BA.MEDIUM_FILE_STORAGE_CLASSNAME)
-            FAST_STORAGE_CLASS_NAME=$(prop_user_profile_property_file CP4BA.FAST_FILE_STORAGE_CLASSNAME)
-            BLOCK_STORAGE_CLASS_NAME=$(prop_user_profile_property_file CP4BA.BLOCK_STORAGE_CLASS_NAME)
-            if [[ -z $SLOW_STORAGE_CLASS_NAME || -z $MEDIUM_STORAGE_CLASS_NAME || -z $FAST_STORAGE_CLASS_NAME || -z $BLOCK_STORAGE_CLASS_NAME ]]; then
-                get_storage_class_name
-            fi
-        fi
-
-        # Select FIPS enable or not
-
-        if  [[ ("$DEPLOYMENT_TYPE" == "production" && $DEPLOYMENT_WITH_PROPERTY == "No") && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS") ]]; then
-            select_fips_enable
-        elif [[ "$DEPLOYMENT_TYPE" == "starter" ]]; then
-            FIPS_ENABLED="false"
-        fi
-
-        if  [[  ("$DEPLOYMENT_TYPE" == "production" && $DEPLOYMENT_WITH_PROPERTY == "No") && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS") ]]; then
-            select_restricted_internet_access
-        elif [[ "$DEPLOYMENT_TYPE" == "starter" ]]; then
-            # For starter deployment, always set sc_restricted_internet_access: true
-            info "For starter deployment, always setting \"sc_restricted_internet_access\" to \"true\" in the final custom resource."
-            RESTRICTED_INTERNET_ACCESS="true"
-        fi
-
-        if [[ "$DEPLOYMENT_TYPE" == "production" && $DEPLOYMENT_WITH_PROPERTY == "No" ]]; then
-
-            # whether wfps authoring require LDAP
-            if [[ "${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" ]]; then
-                select_ldap_type_for_wfps_authoring
-            fi
-
-            if [[ -z $LDAP_WFPS_AUTHORING || $LDAP_WFPS_AUTHORING == "Yes" ]]; then
-                select_ldap_type
-            fi
-
-        fi
-    elif [[ "$INSTALLATION_TYPE" == "existing" ]]
-    then
-        existing_infra_name=`${YQ_CMD} ".spec.shared_configuration.sc_deployment_hostname_suffix // \"\"" "$CP4A_EXISTING_BAK"`
-        if [ ! -z "$existing_infra_name" ]; then
-            chrlen=${#existing_infra_name}
-            INFRA_NAME=${existing_infra_name:21:chrlen}
-        fi
-        existing_ldap_type=`${YQ_CMD} ".spec.ldap_configuration.lc_selected_ldap_type" "$CP4A_EXISTING_BAK"`
-        if [[ "$existing_ldap_type" == "Microsoft Active Directory" ]];then
-            LDAP_TYPE="AD"
-
-        elif [[ "$existing_ldap_type" == "IBM Security Directory Server" ]]
-        then
-            LDAP_TYPE="TDS"
-        fi
-        existing_docker_reg_server=`${YQ_CMD} ".spec.shared_configuration.sc_image_repository" "$CP4A_EXISTING_BAK"`
-        if [[ "$existing_docker_reg_server" == *"icr.io"* ]]; then
-            use_entitlement="yes"
-        fi
-
-        local_registry_server=`${YQ_CMD} ".spec.shared_configuration.sc_image_repository" "$CP4A_EXISTING_BAK"`
-        DOCKER_REG_SERVER="${existing_docker_reg_server}"
-        LOCAL_REGISTRY_SERVER=${local_registry_server}
-        OIFS=$IFS
-        IFS='/' read -r -a docker_reg_url_array <<< "$local_registry_server"
-        delim=""
-        joined=""
-        for item in "${docker_reg_url_array[@]}"; do
-                joined="$joined$delim$item"
-                delim="\/"
-        done
-        IFS=$OIFS
-        CONVERT_LOCAL_REGISTRY_SERVER=${joined}
-        DOCKER_RES_SECRET_NAME=`${YQ_CMD} ".spec.shared_configuration.image_pull_secrets.[0]" "$CP4A_EXISTING_BAK"`
-        STORAGE_CLASS_NAME=`${YQ_CMD} ".spec.shared_configuration.storage_configuration.sc_dynamic_storage_classname" "$CP4A_EXISTING_BAK"`
-        SLOW_STORAGE_CLASS_NAME=`${YQ_CMD} ".spec.shared_configuration.storage_configuration.sc_slow_file_storage_classname" "$CP4A_EXISTING_BAK"`
-        MEDIUM_STORAGE_CLASS_NAME=`${YQ_CMD} ".spec.shared_configuration.storage_configuration.sc_medium_file_storage_classname" "$CP4A_EXISTING_BAK"`
-        FAST_STORAGE_CLASS_NAME=`${YQ_CMD} ".spec.shared_configuration.storage_configuration.sc_fast_file_storage_classname" "$CP4A_EXISTING_BAK"`
-        BLOCK_STORAGE_CLASS_NAME=`${YQ_CMD} ".spec.shared_configuration.storage_configuration.sc_block_storage_classname" "$CP4A_EXISTING_BAK"`
-    fi
-
-    if [[ "$DEPLOYMENT_TYPE" == "production" && $DEPLOYMENT_WITH_PROPERTY == "No" ]]; then
-        if [[ " ${pattern_cr_arr[@]}" =~ "content" || " ${pattern_cr_arr[@]}" =~ "document_processing" ]]; then
-            select_objectstore_number
         fi
     fi
-    if [[ $DEPLOYMENT_TYPE == "starter" || $DEPLOYMENT_WITH_PROPERTY == "No" ]]; then
-        select_cpe_full_storage
 
-        containsElement "document_processing_designer" "${PATTERNS_CR_SELECTED[@]}"
-        retVal=$?
-        if [[ ( $retVal -eq 0 ) && "$DEPLOYMENT_TYPE" == "production" ]]; then
-            select_gpu_document_processing
-        fi
+    # Select FIPS enable or not
 
-        containsElement "document_processing" "${PATTERNS_CR_SELECTED[@]}"
-        retVal=$?
-        if [[ ( $retVal -eq 0 ) && "$DEPLOYMENT_TYPE" == "starter" ]]; then
-            select_enable_deep_learning
-            if [[ $ADP_DL_ENABLED == "Yes" ]]; then
-                select_gpu_document_processing
-            elif [[ $ADP_DL_ENABLED == "No" || -z $ADP_DL_ENABLED ]]; then
-                ENABLE_GPU_ARIA="No"
-            fi
-        fi
+    if [[ "$DEPLOYMENT_TYPE" == "starter" ]]; then
+        FIPS_ENABLED="false"
     fi
-    if [[ ! (" ${PATTERNS_CR_SELECTED[@]} " =~ "content" && "${#PATTERNS_CR_SELECTED[@]}" -eq "1") ]]; then
-        if [[ $IBM_LICENS == "Accept" ]]; then
-            ${YQ_CMD} -i '.spec.ibm_license = "accept"' ${CP4A_PATTERN_FILE_TMP}
-        else
-            ${YQ_CMD} -i '.spec.ibm_license = ""' ${CP4A_PATTERN_FILE_TMP}
-        fi
+
+    if [[ "$DEPLOYMENT_TYPE" == "starter" ]]; then
+        # For starter deployment, always set sc_restricted_internet_access: true
+        info "For starter deployment, always setting \"sc_restricted_internet_access\" to \"true\" in the final custom resource."
+        RESTRICTED_INTERNET_ACCESS="true"
     fi
+
 }
 
 function apply_cp4a_operator(){
@@ -4733,7 +4608,7 @@ function apply_cp4a_operator(){
 
     printf "\n"
     if [[ ("$SCRIPT_MODE" != "review") && ("$SCRIPT_MODE" != "OLM") ]]; then
-        echo -e "\x1B[1mInstalling the Cloud Pak for Business Automation operator...\x1B[0m"
+        printf '%b\n' "\x1B[1mInstalling the Cloud Pak for Business Automation operator...\x1B[0m"
     fi
     # set db2_license
     ${SED_COMMAND} '/baw_license/{n;s/value:.*/value: accept/;}' ${OPERATOR_FILE_TMP}
@@ -4754,22 +4629,20 @@ function apply_cp4a_operator(){
         ${SED_COMMAND} "s/\# runAsUser\: 1001/runAsUser\: 1001/g" ${OPERATOR_FILE_TMP}
     fi
 
-    if [[ $INSTALLATION_TYPE == "new" ]]; then
-        ${CLI_CMD} delete -f ${OPERATOR_FILE_TMP} >/dev/null 2>&1
-        sleep 5
-    fi
+    ${CLI_CMD} delete -f ${OPERATOR_FILE_TMP} >/dev/null 2>&1
+    sleep 5
 
     INSTALL_OPERATOR_CMD="${CLI_CMD} apply -f ${OPERATOR_FILE_TMP}"
     if $INSTALL_OPERATOR_CMD ; then
-        echo -e "\x1B[1mDone\x1B[0m"
+        printf '%b\n' "\x1B[1mDone\x1B[0m"
     else
-        echo -e "\x1B[1;31mFailed\x1B[0m"
+        printf '%b\n' "\x1B[1;31mFailed\x1B[0m"
     fi
 
     ${COPY_CMD} -rf ${OPERATOR_FILE_TMP} ${OPERATOR_FILE_BAK}
     printf "\n"
     # Check deployment rollout status every 5 seconds (max 10 minutes) until complete.
-    echo -e "\x1B[1mWaiting for the Cloud Pak operator to be ready. This might take a few minutes... \x1B[0m"
+    printf '%b\n' "\x1B[1mWaiting for the Cloud Pak operator to be ready. This might take a few minutes... \x1B[0m"
     ATTEMPTS=0
     ROLLOUT_STATUS_CMD="${CLI_CMD} rollout status deployment/ibm-cp4a-operator"
     until $ROLLOUT_STATUS_CMD || [ $ATTEMPTS -eq 120 ]; do
@@ -4778,25 +4651,25 @@ function apply_cp4a_operator(){
         sleep 5
     done
     if $ROLLOUT_STATUS_CMD ; then
-        echo -e "\x1B[1mDone\x1B[0m"
+        printf '%b\n' "\x1B[1mDone\x1B[0m"
     else
-        echo -e "\x1B[1;31mFailed\x1B[0m"
+        printf '%b\n' "\x1B[1;31mFailed\x1B[0m"
     fi
     printf "\n"
 }
 
 function copy_jdbc_driver(){
     # Get pod name
-    echo -e "\x1B[1mCopying the JDBC driver for the operator...\x1B[0m"
+    printf '%b\n' "\x1B[1mCopying the JDBC driver for the operator...\x1B[0m"
     operator_podname=$(${CLI_CMD} get pod|grep ibm-cp4a-operator|grep Running|awk '{print $1}')
 
     # ${CLI_CMD} exec -it ${operator_podname} -- rm -rf /opt/ansible/share/jdbc
     COPY_JDBC_CMD="${CLI_CMD} cp ${JDBC_DRIVER_DIR} ${operator_podname}:/opt/ansible/share/"
 
     if $COPY_JDBC_CMD ; then
-        echo -e "\x1B[1mDone\x1B[0m"
+        printf '%b\n' "\x1B[1mDone\x1B[0m"
     else
-        echo -e "\x1B[1;31mFailed\x1B[0m"
+        printf '%b\n' "\x1B[1;31mFailed\x1B[0m"
     fi
 }
 
@@ -4807,15 +4680,15 @@ function get_jdbc_url(){
     do
         if [ -z "$CP4BA_JDBC_URL" ]; then
             printf "\n"
-            echo -e "\x1B[1mProvide a URL to zip file that contains JDBC and/or ICCSAP drivers.\x1B[0m"
+            printf '%b\n' "\x1B[1mProvide a URL to zip file that contains JDBC and/or ICCSAP drivers.\x1B[0m"
             read -p "(optional - if not provided, the Operator will configure using the default shipped JDBC driver): " CP4BA_JDBC_URL
             if [[ ( -z "$CP4BA_JDBC_URL" ) && (" ${optional_component_cr_arr[@]} " =~ "iccsap") ]]; then
                 printf "\n"
-                echo -e "\x1B[1;31mIBM Content Collector for SAP is selected, provide a URL to zip file that contains ICCSAP drivers.\x1B[0m"
+                printf '%b\n' "\x1B[1;31mIBM Content Collector for SAP is selected, provide a URL to zip file that contains ICCSAP drivers.\x1B[0m"
                 CP4BA_JDBC_URL=""
             elif [[ ( -z "$CP4BA_JDBC_URL" ) && ( ! " ${optional_component_cr_arr[@]} " =~ "iccsap" ) ]]; then
                 printf "\n"
-                echo -e "\x1B[1mThe Operator will configure using the default shipped JDBC driver.\x1B[0m"
+                printf '%b\n' "\x1B[1mThe Operator will configure using the default shipped JDBC driver.\x1B[0m"
                 break
             fi
         fi
@@ -4826,10 +4699,10 @@ function copy_sap_libraries(){
     SAP_LIBS_LIST=("libicudata.so.50" "libicudecnumber.so" "libicui18n.so.50" "libicuuc.so.50" "libsapcrypto.so" "libsapjco3.so" "libsapnwrfc.so" "sapjco3.jar" "libsapucum.so")
     # Get pod name
 
-    echo -e "\x1B[1mCopying the SAP libraries for the operator...\x1B[0m"
+    printf '%b\n' "\x1B[1mCopying the SAP libraries for the operator...\x1B[0m"
     #Check if saplibs folder exists
     if [ ! -d ${SAP_LIB_DIR} ]; then
-        echo -e "\x1B[1;31m\"${SAP_LIB_DIR}\" directory does not exist! Refer to the documentation to get the SAP libraries for ICCSAP. Exiting...
+        printf '%b\n' "\x1B[1;31m\"${SAP_LIB_DIR}\" directory does not exist! Refer to the documentation to get the SAP libraries for ICCSAP. Exiting...
 Check the following KC for details--> https://www.ibm.com/support/knowledgecenter/SSYHZ8_$CP4BA_RELEASE_BASE/com.ibm.dba.install/op_topics/tsk_deploy_demo.html \n\x1B[0m"
         exit 0
     fi
@@ -4838,30 +4711,25 @@ Check the following KC for details--> https://www.ibm.com/support/knowledgecente
     missing_libs="no"
     for file in "${SAP_LIBS_LIST[@]}"; do
         if [ ! -f ${SAP_LIB_DIR}/$file ]; then
-            echo -e "\x1B[1;31m\"${SAP_LIB_DIR}/$file\" file does not exist!\n\x1B[0m"
+            printf '%b\n' "\x1B[1;31m\"${SAP_LIB_DIR}/$file\" file does not exist!\n\x1B[0m"
             missing_libs="yes"
         fi
     done
 
     if [ $missing_libs == "yes" ]; then
-        echo -e "\x1B[1;31mMissing required SAP Libraries. Refer to the documentation to get the SAP libraries for ICCSAP. Exiting...
+        printf '%b\n' "\x1B[1;31mMissing required SAP Libraries. Refer to the documentation to get the SAP libraries for ICCSAP. Exiting...
 Check the following KC for details--> https://www.ibm.com/support/knowledgecenter/SSYHZ8_$CP4BA_RELEASE_BASE/com.ibm.dba.install/op_topics/tsk_deploy_demo.html \n\x1B[0m"
         exit 0
     fi
 
     operator_podname=$(${CLI_CMD} get pod|grep ibm-cp4a-operator|grep Running|awk '{print $1}')
 
-    #Delete existing saplibs directory from /opt/ansible/share/ before creating new one
-    if [[ $INSTALLATION_TYPE == "existing" ]]; then
-        ${CLI_CMD} exec -it ${operator_podname} -- rm -rf /opt/ansible/share/saplibs
-    fi
-
     COPY_SAP_CMD="${CLI_CMD} cp ${SAP_LIB_DIR} ${operator_podname}:/opt/ansible/share/"
 
     if $COPY_SAP_CMD ; then
-        echo -e "\x1B[1mDone\x1B[0m"
+        printf '%b\n' "\x1B[1mDone\x1B[0m"
     else
-        echo -e "\x1B[1;31mFailed\x1B[0m"
+        printf '%b\n' "\x1B[1;31mFailed\x1B[0m"
     fi
 }
 
@@ -4958,18 +4826,9 @@ function merge_pattern(){
                     if [[ "${INSTALL_BAW_ONLY}" == "Yes" ]]; then
                         # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration
                         if [[ $DEPLOYMENT_TYPE == "production" ]];then
-                            # if [[ $INSTALLATION_TYPE == "existing" && (" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow") ]]; then
-                            #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.datasource_configuration.dc_os_datasources
-                            #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.initialize_configuration
-                            #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.bastudio_configuration
-                            #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.baw_configuration
-                            # fi
                             ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WORKFLOW_PATTERN_FILE_BAK}
                         elif [[ $DEPLOYMENT_TYPE == "starter" ]]
                         then
-                            # if [[ $INSTALLATION_TYPE == "existing" && (" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow") ]]; then
-                            #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.baw_configuration
-                            # fi
                             ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WORKFLOW_PATTERN_FILE_BAK}
                             ${YQ_CMD} -i 'del(.spec.bastudio_configuration)' "${CP4A_PATTERN_FILE_TMP}"
                         fi
@@ -4986,11 +4845,6 @@ function merge_pattern(){
 
 
                     if [[ $DEPLOYMENT_TYPE == "production" ]];then
-                        # if [[ $INSTALLATION_TYPE == "existing" && (" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-authoring") ]]; then
-                        #     ${YQ_CMD} d -i ${WORKFLOW_AUTHOR_PATTERN_FILE_BAK} spec.datasource_configuration.dc_os_datasources
-                        #     ${YQ_CMD} d -i ${WORKFLOW_AUTHOR_PATTERN_FILE_BAK} spec.initialize_configuration
-                        #     ${YQ_CMD} d -i ${WORKFLOW_AUTHOR_PATTERN_FILE_BAK} spec.bastudio_configuration
-                        # fi
                         ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WORKFLOW_AUTHOR_PATTERN_FILE_BAK}
                     fi
                     break
@@ -5001,13 +4855,6 @@ function merge_pattern(){
                         if [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "workstreams" && " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-runtime" ]]; then
                             break
                         else
-                            # if [[ $INSTALLATION_TYPE == "existing" ]]; then
-                            #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.baw_configuration
-                            # fi
-                            # if [[ " ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-runtime" ]]; then
-                            #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.datasource_configuration.dc_os_datasources
-                            #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.initialize_configuration
-                            # fi
                             ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WORKFLOW_PATTERN_FILE_BAK}
                         fi
                     elif [[ $DEPLOYMENT_TYPE == "starter" ]]
@@ -5026,24 +4873,7 @@ function merge_pattern(){
                     # set_ldap_type_ww_pattern
                     # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.baw_configuration
                     if [[ $DEPLOYMENT_TYPE == "production" ]];then
-                        if [[ $INSTALLATION_TYPE == "existing" ]]; then
-                            # if [[ !(" ${EXISTING_PATTERN_ARR[@]} " =~ "workstreams") && (" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-runtime") ]]; then
-                            #     ${YQ_CMD} d -i ${WORKSTREAMS_PATTERN_FILE_BAK} spec.datasource_configuration.dc_os_datasources.[1]
-                            #     ${YQ_CMD} d -i ${WORKSTREAMS_PATTERN_FILE_BAK} spec.initialize_configuration.ic_ldap_creation
-                            #     ${YQ_CMD} d -i ${WORKSTREAMS_PATTERN_FILE_BAK} spec.initialize_configuration.ic_obj_store_creation.object_stores.[1]
-                            #     ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${WORKSTREAMS_PATTERN_FILE_BAK}
-                            # elif [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "workstreams") && !(" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-runtime") ]]
-                            # then
-                            #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.datasource_configuration.dc_os_datasources.[3]
-                            #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.initialize_configuration.ic_ldap_creation
-                            #     ${YQ_CMD} d -i ${WORKFLOW_PATTERN_FILE_BAK} spec.initialize_configuration.ic_obj_store_creation.object_stores.[3]
-                            #     ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${WORKFLOW_PATTERN_FILE_BAK}
-                            # fi
-                            ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WW_PATTERN_FILE_BAK}
-                        else
-                            ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WW_PATTERN_FILE_BAK}
-
-                        fi
+                        ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WW_PATTERN_FILE_BAK}
                     elif [[ $DEPLOYMENT_TYPE == "starter" ]]
                     then
                         ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${WW_PATTERN_FILE_BAK}
@@ -5419,7 +5249,7 @@ function get_existing_pattern_name(){
                 starter*|Starter*)     DEPLOYMENT_TYPE="starter";;
                 production*|Production*)    DEPLOYMENT_TYPE="production";;
                 *)
-                    echo -e "\x1B[1;31mInvalid deployment type found in CR, exiting....\n\x1B[0m"
+                    printf '%b\n' "\x1B[1;31mInvalid deployment type found in CR, exiting....\n\x1B[0m"
                     exit 0
                     ;;
             esac
@@ -5428,7 +5258,7 @@ function get_existing_pattern_name(){
                 ROKS*)     PLATFORM_SELECTED="ROKS";;
                 OCP*)    PLATFORM_SELECTED="OCP";;
                 *)
-                    echo -e "\x1B[1;31mInvalid platform type found in CR, exiting....\n\x1B[0m"
+                    printf '%b\n' "\x1B[1;31mInvalid platform type found in CR, exiting....\n\x1B[0m"
                     exit 0
                     ;;
             esac
@@ -5453,7 +5283,7 @@ function get_existing_pattern_name(){
             # ${YQ_CMD} m -a -i -M ${CP4A_PATTERN_FILE_TMP} ${CP4A_PATTERN_FILE_BAK}
             # ${COPY_CMD} -rf "${CP4A_PATTERN_FILE_BAK}" "${CP4A_PATTERN_FILE_TMP}"
         else
-            echo -e "\x1B[1;31m\"$existing_pattern_cr_name\" file does not exist! \n\x1B[0m"
+            printf '%b\n' "\x1B[1;31m\"$existing_pattern_cr_name\" file does not exist! \n\x1B[0m"
             existing_pattern_cr_name=""
         fi
     done
@@ -5477,9 +5307,9 @@ function get_existing_pattern_name(){
     fi
 
     if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-workstreams") && ("${DEPLOYMENT_TYPE}" == "production") ]]; then
-        echo -e "\x1B[1;31mYou are updating existing patterns including workflow-workstreams which is not supported.\x1B[0m"
-        echo -e "\x1B[1;31mRefer to the documentation to upgrade or manually add another pattern.\x1B[0m"
-        echo -e "\x1B[1;31mExiting...\x1B[0m"
+        printf '%b\n' "\x1B[1;31mYou are updating existing patterns including workflow-workstreams which is not supported.\x1B[0m"
+        printf '%b\n' "\x1B[1;31mRefer to the documentation to upgrade or manually add another pattern.\x1B[0m"
+        printf '%b\n' "\x1B[1;31mExiting...\x1B[0m"
         read -rsn1 -p"Press Enter/Return to exit";echo
         exit 1
     fi
@@ -5504,20 +5334,20 @@ function select_objectstore_number(){
         fi
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" && (! " ${pattern_cr_arr[@]}" =~ "content") ]]; then
             read -rp "" content_os_number
-            [[ $content_os_number =~ ^[0-9]+$ ]] || { echo -e "\x1B[1;31mEnter a valid number [0 to 10]\x1B[0m"; continue; }
+            [[ $content_os_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [0 to 10]\x1B[0m"; continue; }
             if [ "$content_os_number" -ge 0 ] && [ "$content_os_number" -le 10 ]; then
                 break
             else
-                echo -e "\x1B[1;31mEnter a valid number [0 to 10]\x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid number [0 to 10]\x1B[0m"
                 content_os_number=""
             fi
         elif [[ " ${pattern_cr_arr[@]}" =~ "content" ]]; then
             read -rp "" content_os_number
-            [[ $content_os_number =~ ^[0-9]+$ ]] || { echo -e "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"; continue; }
+            [[ $content_os_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"; continue; }
             if [ "$content_os_number" -ge 1 ] && [ "$content_os_number" -le 10 ]; then
                 break
             else
-                echo -e "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"
                 content_os_number=""
             fi
         fi
@@ -5542,7 +5372,7 @@ function select_gpu_document_processing(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             set_gpu_enabled=""
             ENABLE_GPU_ARIA=""
             ;;
@@ -5556,7 +5386,7 @@ function select_gpu_document_processing(){
         do
             read -rp "" nodelabel_key
             if [ -z "$nodelabel_key" ]; then
-            echo -e "\x1B[1;31mEnter the node label key.\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter the node label key.\x1B[0m"
             fi
         done
 
@@ -5567,7 +5397,7 @@ function select_gpu_document_processing(){
         do
             read -rp "" nodelabel_value
             if [ -z "$nodelabel_value" ]; then
-            echo -e "\x1B[1;31mEnter the node label value.\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter the node label value.\x1B[0m"
             fi
         done
     fi
@@ -5726,7 +5556,7 @@ function get_oracle_service_name(){
         # Parse format is "jdbc:oracle:thin:@//oracle_server:1521/orcl"
         ORACLE_SERVICE_NAME=$(echo "$JDBC_URL" | cut -d"/" -f4)
     fi
-    ORACLE_SERVICE_NAME=$(echo $ORACLE_SERVICE_NAME | tr '[:lower:]' '[:upper:]')
+    ORACLE_SERVICE_NAME=$(echo "$ORACLE_SERVICE_NAME" | tr '[:lower:]' '[:upper:]')
 }
 
 function sync_property_into_final_cr(){
@@ -5761,7 +5591,7 @@ function sync_property_into_final_cr(){
         fi
         tmp_gcd_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_gcd_db_name")
         if [[ $DB_TYPE == "postgresql" ]]; then
-            tmp_gcd_db_name=$(echo $tmp_gcd_db_name | tr '[:upper:]' '[:lower:]')
+            tmp_gcd_db_name=$(echo "$tmp_gcd_db_name" | tr '[:upper:]' '[:lower:]')
         fi
 
         #https://jsw.ibm.com/browse/DBACLD-158651 << Make ssl_secret_name empty when dc_ssl_enabled value is False>>
@@ -5805,7 +5635,7 @@ function sync_property_into_final_cr(){
         tmp_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_schema_name")
         if [[ $tmp_schema_name != "<Optional>" && $tmp_schema_name != ""  ]]; then
             if [[ $DB_TYPE == "postgresql" ]]; then
-                tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
+                tmp_schema_name=$(echo "$tmp_schema_name" | tr '[:upper:]' '[:lower:]')
             fi
             ${YQ_CMD} -i ".spec.ecm_configuration.cpe_production_setting.gcd_schema = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
         fi
@@ -5855,7 +5685,7 @@ function sync_property_into_final_cr(){
             fi
             # tmp_os_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_os_db_name")
             if [[ $DB_TYPE == "postgresql" ]]; then
-                tmp_os_db_name=$(echo $tmp_os_db_name | tr '[:upper:]' '[:lower:]')
+                tmp_os_db_name=$(echo "$tmp_os_db_name" | tr '[:upper:]' '[:lower:]')
             fi
 
             OS_DATASOURCE_NUMBER=$(grep "^        dc_common_os_datasource_name: " ${CP4A_PATTERN_FILE_TMP} | grep -Fn "FNOS$((j+1))DS"|cut -d':' -f1)
@@ -5927,7 +5757,7 @@ function sync_property_into_final_cr(){
                 tmp_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_schema_name")
                 if [[ $tmp_schema_name != "<Optional>" && $tmp_schema_name != ""  ]]; then
                     if [[ $DB_TYPE == "postgresql" ]]; then
-                        tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
+                        tmp_schema_name=$(echo "$tmp_schema_name" | tr '[:upper:]' '[:lower:]')
                     fi
                     ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
@@ -5964,7 +5794,7 @@ function sync_property_into_final_cr(){
                 fi
                 # tmp_os_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_os_db_name")
                 if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_os_db_name=$(echo $tmp_os_db_name | tr '[:upper:]' '[:lower:]')
+                    tmp_os_db_name=$(echo "$tmp_os_db_name" | tr '[:upper:]' '[:lower:]')
                 fi
                 #https://jsw.ibm.com/browse/DBACLD-158651 << Make ssl_secret_name empty when dc_ssl_enabled value is False>>
                 # Initialize the isfalse variable to validate dc_ssl_enabled is true or false
@@ -5985,7 +5815,7 @@ function sync_property_into_final_cr(){
                     fi
                 done
 
-                tmp_label=$(echo ${BAW_AUTH_OS_ARR[i]} | tr '[:upper:]' '[:lower:]')
+                tmp_label=$(echo "${BAW_AUTH_OS_ARR[i]}" | tr '[:upper:]' '[:lower:]')
                 ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_os_label = \"$tmp_label\"" ${CP4A_PATTERN_FILE_TMP}
                 # remove database_name if oracle
                 if [[ $DB_TYPE == "oracle" ]]; then
@@ -6013,7 +5843,7 @@ function sync_property_into_final_cr(){
                 tmp_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_schema_name")
                 if [[ $tmp_schema_name != "<Optional>" && $tmp_schema_name != ""  ]]; then
                     if [[ $DB_TYPE == "postgresql" ]]; then
-                        tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
+                        tmp_schema_name=$(echo "$tmp_schema_name" | tr '[:upper:]' '[:lower:]')
                     fi
                     ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
@@ -6057,9 +5887,9 @@ function sync_property_into_final_cr(){
                 tmp_val=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_WORKFLOW_DATA_TBL_SPACE)
                 tmp_val=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_val")
                 if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_val=$(echo $tmp_val | tr '[:upper:]' '[:lower:]')
+                    tmp_val=$(echo "$tmp_val" | tr '[:upper:]' '[:lower:]')
                 elif [[ $DB_TYPE == "oracle" ]]; then
-                    tmp_val=$(echo $tmp_val | tr '[:lower:]' '[:upper:]')
+                    tmp_val=$(echo "$tmp_val" | tr '[:lower:]' '[:upper:]')
                 fi
                 ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_data_tbl_space = \"$tmp_val\"" ${CP4A_PATTERN_FILE_TMP}
 
@@ -6095,7 +5925,7 @@ function sync_property_into_final_cr(){
                 fi
                 # tmp_os_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_os_db_name")
                 if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_os_db_name=$(echo $tmp_os_db_name | tr '[:upper:]' '[:lower:]')
+                    tmp_os_db_name=$(echo "$tmp_os_db_name" | tr '[:upper:]' '[:lower:]')
                 fi
                 #https://jsw.ibm.com/browse/DBACLD-158651 << Make ssl_secret_name empty when dc_ssl_enabled value is False>>
                 # Initialize the isfalse variable to validate dc_ssl_enabled is true or false for BAWDOCS
@@ -6115,7 +5945,7 @@ function sync_property_into_final_cr(){
                 fi
                 done
 
-                tmp_label=$(echo ${BAW_AUTH_OS_ARR[i]} | tr '[:upper:]' '[:lower:]')
+                tmp_label=$(echo "${BAW_AUTH_OS_ARR[i]}" | tr '[:upper:]' '[:lower:]')
 
                 ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources.[$OS_DATASOURCE_NUMBER].dc_os_label = \"$tmp_label\"" ${CP4A_PATTERN_FILE_TMP}
 
@@ -6146,7 +5976,7 @@ function sync_property_into_final_cr(){
                 tmp_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_schema_name")
                 if [[ $tmp_schema_name != "<Optional>" && $tmp_schema_name != ""  ]]; then
                     if [[ $DB_TYPE == "postgresql" ]]; then
-                        tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
+                        tmp_schema_name=$(echo "$tmp_schema_name" | tr '[:upper:]' '[:lower:]')
                     fi
                     ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
                 fi
@@ -6192,9 +6022,9 @@ function sync_property_into_final_cr(){
                     tmp_val=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_WORKFLOW_DATA_TBL_SPACE)
                     tmp_val=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_val")
                     if [[ $DB_TYPE == "postgresql" ]]; then
-                        tmp_val=$(echo $tmp_val | tr '[:upper:]' '[:lower:]')
+                        tmp_val=$(echo "$tmp_val" | tr '[:upper:]' '[:lower:]')
                     elif [[ $DB_TYPE == "oracle" ]]; then
-                        tmp_val=$(echo $tmp_val | tr '[:lower:]' '[:upper:]')
+                        tmp_val=$(echo "$tmp_val" | tr '[:lower:]' '[:upper:]')
                     fi
                     ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores.[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_workflow_data_tbl_space = \"$tmp_val\"" ${CP4A_PATTERN_FILE_TMP}
 
@@ -6229,7 +6059,7 @@ function sync_property_into_final_cr(){
             fi
             # tmp_os_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_os_db_name")
             if [[ $DB_TYPE == "postgresql" ]]; then
-                tmp_os_db_name=$(echo $tmp_os_db_name | tr '[:upper:]' '[:lower:]')
+                tmp_os_db_name=$(echo "$tmp_os_db_name" | tr '[:upper:]' '[:lower:]')
             fi
             #https://jsw.ibm.com/browse/DBACLD-158651 << Make ssl_secret_name empty when dc_ssl_enabled value is False>>
             # Initialize the isfalse variable to validate dc_ssl_enabled is true or false for AWSDOCS
@@ -6278,7 +6108,7 @@ function sync_property_into_final_cr(){
             tmp_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_schema_name")
             if [[ $tmp_schema_name != "<Optional>" && $tmp_schema_name != ""  ]]; then
                 if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
+                    tmp_schema_name=$(echo "$tmp_schema_name" | tr '[:upper:]' '[:lower:]')
                 fi
                 ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
             fi
@@ -6334,7 +6164,7 @@ function sync_property_into_final_cr(){
             fi
             # tmp_os_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_os_db_name")
             if [[ $DB_TYPE == "postgresql" ]]; then
-                tmp_os_db_name=$(echo $tmp_os_db_name | tr '[:upper:]' '[:lower:]')
+                tmp_os_db_name=$(echo "$tmp_os_db_name" | tr '[:upper:]' '[:lower:]')
             fi
             #https://jsw.ibm.com/browse/DBACLD-158651 << Make ssl_secret_name empty when dc_ssl_enabled value is False>>
             # Initialize the isfalse variable to validate dc_ssl_enabled is true or false for DEVOS1 
@@ -6395,7 +6225,7 @@ function sync_property_into_final_cr(){
             tmp_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_schema_name")
             if [[ $tmp_schema_name != "<Optional>" && $tmp_schema_name != ""  ]]; then
                 if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
+                    tmp_schema_name=$(echo "$tmp_schema_name" | tr '[:upper:]' '[:lower:]')
                 fi
                 ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
             fi
@@ -6434,7 +6264,7 @@ function sync_property_into_final_cr(){
             fi
             # tmp_os_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_os_db_name")
             if [[ $DB_TYPE == "postgresql" ]]; then
-                tmp_os_db_name=$(echo $tmp_os_db_name | tr '[:upper:]' '[:lower:]')
+                tmp_os_db_name=$(echo "$tmp_os_db_name" | tr '[:upper:]' '[:lower:]')
             fi
             #https://jsw.ibm.com/browse/DBACLD-158651 << Make ssl_secret_name empty when dc_ssl_enabled value is False>>
             # Initialize the isfalse variable to validate dc_ssl_enabled is true or false for AEOS
@@ -6481,7 +6311,7 @@ function sync_property_into_final_cr(){
             tmp_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_schema_name")
             if [[ $tmp_schema_name != "<Optional>" && $tmp_schema_name != ""  ]]; then
                 if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
+                    tmp_schema_name=$(echo "$tmp_schema_name" | tr '[:upper:]' '[:lower:]')
                 fi
                 ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
             fi
@@ -6536,7 +6366,7 @@ function sync_property_into_final_cr(){
             fi
             # tmp_os_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_os_db_name")
             if [[ $DB_TYPE == "postgresql" ]]; then
-                tmp_os_db_name=$(echo $tmp_os_db_name | tr '[:upper:]' '[:lower:]')
+                tmp_os_db_name=$(echo "$tmp_os_db_name" | tr '[:upper:]' '[:lower:]')
             fi
             for i in "${!OSDB_CR_MAPPING[@]}"; do
                 ${YQ_CMD} -i ".spec.datasource_configuration.dc_os_datasources[$OS_DATASOURCE_NUMBER].${OSDB_CR_MAPPING[i]} = \"$(prop_db_server_property_file $tmp_os_db_servername.${OSDB_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
@@ -6570,7 +6400,7 @@ function sync_property_into_final_cr(){
             tmp_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_schema_name")
             if [[ $tmp_schema_name != "<Optional>" && $tmp_schema_name != ""  ]]; then
                 if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
+                    tmp_schema_name=$(echo "$tmp_schema_name" | tr '[:upper:]' '[:lower:]')
                 fi
                 ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_schema_name = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
             fi
@@ -6591,7 +6421,7 @@ function sync_property_into_final_cr(){
             fi
             # tmp_icn_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_icn_db_name")
             if [[ $DB_TYPE == "postgresql" ]]; then
-                tmp_icn_db_name=$(echo $tmp_icn_db_name | tr '[:upper:]' '[:lower:]')
+                tmp_icn_db_name=$(echo "$tmp_icn_db_name" | tr '[:upper:]' '[:lower:]')
             fi
             
             #https://jsw.ibm.com/browse/DBACLD-158651 << Make ssl_secret_name empty when dc_ssl_enabled value is False>>
@@ -6631,7 +6461,7 @@ function sync_property_into_final_cr(){
             tmp_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_schema_name")
             if [[ $tmp_schema_name != "<Optional>" && $tmp_schema_name != ""  ]]; then
                 if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_schema_name=$(echo $tmp_schema_name | tr '[:upper:]' '[:lower:]')
+                    tmp_schema_name=$(echo "$tmp_schema_name" | tr '[:upper:]' '[:lower:]')
                 fi
                 ${YQ_CMD} -i ".spec.navigator_configuration.icn_production_setting.icn_schema = \"${tmp_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
             fi
@@ -6667,10 +6497,10 @@ function sync_property_into_final_cr(){
         # For ODM, set dc_ssl_secret_name only when db is db2/oracle/postgresql with clientAuth
         if [[ $DB_TYPE == "postgresql" ]]; then
             postgresql_ssl_enable=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_odm_db_servername.DATABASE_SSL_ENABLE)")
-            tmp_ssl_flag=$(echo $postgresql_ssl_enable | tr '[:upper:]' '[:lower:]')
+            tmp_ssl_flag=$(echo "$postgresql_ssl_enable" | tr '[:upper:]' '[:lower:]')
 
             postgresql_client_auth_enable=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_odm_db_servername.POSTGRESQL_SSL_CLIENT_SERVER)")
-            tmp_client_auth_flag=$(echo $postgresql_client_auth_enable | tr '[:upper:]' '[:lower:]')
+            tmp_client_auth_flag=$(echo "$postgresql_client_auth_enable" | tr '[:upper:]' '[:lower:]')
         fi
         if [[ $DB_TYPE == "postgresql-edb" ]]; then
             tmp_ssl_flag="true"
@@ -6683,7 +6513,7 @@ function sync_property_into_final_cr(){
         fi
         if [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" || $DB_TYPE == "oracle" || $create_odm_postgresql_secret == "Yes" ]]; then
             tmp_ssl_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_odm_db_servername.DATABASE_SSL_ENABLE)")
-            tmp_ssl_flag=$(echo $tmp_ssl_flag | tr '[:upper:]' '[:lower:]')
+            tmp_ssl_flag=$(echo "$tmp_ssl_flag" | tr '[:upper:]' '[:lower:]')
             if [[ $tmp_ssl_flag == "yes" || $tmp_ssl_flag == "true" || $tmp_ssl_flag == "y" ]]; then
                 ${YQ_CMD} -i ".spec.datasource_configuration.dc_odm_datasource.dc_ssl_secret_name = \"$(prop_db_server_property_file $tmp_odm_db_servername.DATABASE_SSL_SECRET_NAME)\"" ${CP4A_PATTERN_FILE_TMP}
             else
@@ -6694,11 +6524,11 @@ function sync_property_into_final_cr(){
         fi
 
         # set dc_odm_datasource.dc_common_database_instance_secret
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_odm_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        tmp_secret_name=`${CLI_CMD} get secret -l db-name=${tmp_odm_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
         ${YQ_CMD} -i ".spec.datasource_configuration.dc_odm_datasource.dc_common_database_instance_secret = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
 
         if [[ $DB_TYPE == "postgresql" ]]; then
-            tmp_odm_db_name=$(echo $tmp_odm_db_name | tr '[:upper:]' '[:lower:]')
+            tmp_odm_db_name=$(echo "$tmp_odm_db_name" | tr '[:upper:]' '[:lower:]')
         fi
         ${YQ_CMD} -i ".spec.datasource_configuration.dc_odm_datasource.dc_common_database_name = \"$tmp_odm_db_name\"" ${CP4A_PATTERN_FILE_TMP}
         if [[ $DB_TYPE == "oracle" ]]; then
@@ -6734,7 +6564,7 @@ function sync_property_into_final_cr(){
     #     # set workflow_authoring_configuration
     #     ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.workflow_authoring_configuration.database.secret_name "\"$tmp_secret_name\""
     #     if [[ $DB_TYPE == "postgresql" ]]; then
-    #         tmp_baw_authoring_db_name=$(echo $tmp_baw_authoring_db_name | tr '[:upper:]' '[:lower:]')
+    #         tmp_baw_authoring_db_name=$(echo "$tmp_baw_authoring_db_name" | tr '[:upper:]' '[:lower:]')
     #     fi
 
     #     # remove database_name if oracle
@@ -6790,12 +6620,12 @@ function sync_property_into_final_cr(){
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_baw_runtime_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        tmp_secret_name=`${CLI_CMD} get secret -l db-name=${tmp_baw_runtime_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
 
         # set baw_configuration
         ${YQ_CMD} -i ".spec.baw_configuration.[0].database.secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         if [[ $DB_TYPE == "postgresql" ]]; then
-            tmp_baw_runtime_db_name=$(echo $tmp_baw_runtime_db_name | tr '[:upper:]' '[:lower:]')
+            tmp_baw_runtime_db_name=$(echo "$tmp_baw_runtime_db_name" | tr '[:upper:]' '[:lower:]')
         fi
 
         # remove database_name if oracle
@@ -6823,7 +6653,7 @@ function sync_property_into_final_cr(){
             tmp_baw_runtime_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_baw_runtime_db_current_schema_name")
             if [[ $tmp_baw_runtime_db_current_schema_name != "<Optional>" && $tmp_baw_runtime_db_current_schema_name != ""  ]]; then
                 if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_baw_runtime_db_current_schema_name=$(echo $tmp_baw_runtime_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                    tmp_baw_runtime_db_current_schema_name=$(echo "$tmp_baw_runtime_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                 fi
                 ${YQ_CMD} -i ".spec.baw_configuration.[0].database.current_schema = \"$tmp_baw_runtime_db_current_schema_name\"" ${CP4A_PATTERN_FILE_TMP}
             fi
@@ -6876,12 +6706,12 @@ function sync_property_into_final_cr(){
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_baw_runtime_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        tmp_secret_name=`${CLI_CMD} get secret -l db-name=${tmp_baw_runtime_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
 
         # set baw_configuration
         ${YQ_CMD} -i ".spec.baw_configuration.[0].database.secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         if [[ $DB_TYPE == "postgresql" ]]; then
-            tmp_baw_runtime_db_name=$(echo $tmp_baw_runtime_db_name | tr '[:upper:]' '[:lower:]')
+            tmp_baw_runtime_db_name=$(echo "$tmp_baw_runtime_db_name" | tr '[:upper:]' '[:lower:]')
         fi
 
         if [[ $DB_TYPE == "oracle" ]]; then
@@ -6908,7 +6738,7 @@ function sync_property_into_final_cr(){
             tmp_baw_runtime_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_baw_runtime_db_current_schema_name")
             if [[ $tmp_baw_runtime_db_current_schema_name != "<Optional>" && $tmp_baw_runtime_db_current_schema_name != ""  ]]; then
                 if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_baw_runtime_db_current_schema_name=$(echo $tmp_baw_runtime_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                    tmp_baw_runtime_db_current_schema_name=$(echo "$tmp_baw_runtime_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                 fi
 
                 ${YQ_CMD} -i ".spec.baw_configuration.[0].database.current_schema = \"$tmp_baw_runtime_db_current_schema_name\"" ${CP4A_PATTERN_FILE_TMP}
@@ -6954,12 +6784,12 @@ function sync_property_into_final_cr(){
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_aws_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        tmp_secret_name=`${CLI_CMD} get secret -l db-name=${tmp_aws_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
 
         # set baw_configuration
         ${YQ_CMD} -i ".spec.baw_configuration.[1].database.secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         if [[ $DB_TYPE == "postgresql" ]]; then
-            tmp_aws_db_name=$(echo $tmp_aws_db_name | tr '[:upper:]' '[:lower:]')
+            tmp_aws_db_name=$(echo "$tmp_aws_db_name" | tr '[:upper:]' '[:lower:]')
         fi
 
         if [[ $DB_TYPE == "oracle" ]]; then
@@ -6986,7 +6816,7 @@ function sync_property_into_final_cr(){
             tmp_aws_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_aws_db_current_schema_name")
             if [[ $tmp_aws_db_current_schema_name != "<Optional>" && $tmp_aws_db_current_schema_name != ""  ]]; then
                 if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_aws_db_current_schema_name=$(echo $tmp_aws_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                    tmp_aws_db_current_schema_name=$(echo "$tmp_aws_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                 fi
 
                 ${YQ_CMD} -i ".spec.baw_configuration.[1].database.current_schema = \"$tmp_aws_db_current_schema_name\"" ${CP4A_PATTERN_FILE_TMP}
@@ -7033,13 +6863,13 @@ function sync_property_into_final_cr(){
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_aws_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        tmp_secret_name=`${CLI_CMD} get secret -l db-name=${tmp_aws_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
 
         # set baw_configuration
         ${YQ_CMD} -i ".spec.baw_configuration.[0].database.secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
 
         if [[ $DB_TYPE == "postgresql" ]]; then
-            tmp_aws_db_name=$(echo $tmp_aws_db_name | tr '[:upper:]' '[:lower:]')
+            tmp_aws_db_name=$(echo "$tmp_aws_db_name" | tr '[:upper:]' '[:lower:]')
         fi
 
         if [[ $DB_TYPE == "oracle" ]]; then
@@ -7065,7 +6895,7 @@ function sync_property_into_final_cr(){
             tmp_aws_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_aws_db_current_schema_name")
             if [[ $tmp_aws_db_current_schema_name != "<Optional>" && $tmp_aws_db_current_schema_name != ""  ]]; then
                 if [[ $DB_TYPE == "postgresql" ]]; then
-                    tmp_aws_db_current_schema_name=$(echo $tmp_aws_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                    tmp_aws_db_current_schema_name=$(echo "$tmp_aws_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                 fi
 
                 ${YQ_CMD} -i ".spec.baw_configuration.[0].database.current_schema = \"$tmp_aws_db_current_schema_name\"" ${CP4A_PATTERN_FILE_TMP}
@@ -7095,7 +6925,7 @@ function sync_property_into_final_cr(){
         tmp_mongo_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_mongo_flag")
         if [[ $tmp_mongo_flag == "Yes" || $tmp_mongo_flag == "YES" || $tmp_mongo_flag == "Y" || $tmp_mongo_flag == "True" || $tmp_mongo_flag == "true" ]]; then
             # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-            tmp_secret_name=`kubectl get secret -l db-name=ads-mongo -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name // ""' -`
+            tmp_secret_name=`${CLI_CMD} get secret -l db-name=ads-mongo -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name // ""' -`
             if [[ -z $tmp_secret_name ]]; then
                 info "Not found ibm-dba-ads-mongo-secret secret for an external MongoDB"
             fi
@@ -7223,12 +7053,12 @@ function sync_property_into_final_cr(){
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_bas_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        tmp_secret_name=`${CLI_CMD} get secret -l db-name=${tmp_bas_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
 
         # set bastudio_configuration
         ${YQ_CMD} -i ".spec.bastudio_configuration.admin_secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         if [[ $DB_TYPE == "postgresql" ]]; then
-            tmp_bas_db_name=$(echo $tmp_bas_db_name | tr '[:upper:]' '[:lower:]')
+            tmp_bas_db_name=$(echo "$tmp_bas_db_name" | tr '[:upper:]' '[:lower:]')
         fi
 
         # remove database_name if oracle
@@ -7293,12 +7123,12 @@ function sync_property_into_final_cr(){
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_app_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        tmp_secret_name=`${CLI_CMD} get secret -l db-name=${tmp_app_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
 
         # set bastudio_configuration.playback_server
         ${YQ_CMD} -i ".spec.bastudio_configuration.playback_server.admin_secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         if [[ $DB_TYPE == "postgresql" ]]; then
-            tmp_app_db_name=$(echo $tmp_app_db_name | tr '[:upper:]' '[:lower:]')
+            tmp_app_db_name=$(echo "$tmp_app_db_name" | tr '[:upper:]' '[:lower:]')
         fi
 
         # remove database_name if oracle
@@ -7386,12 +7216,12 @@ function sync_property_into_final_cr(){
             fi
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l db-name=${tmp_ae_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        tmp_secret_name=`${CLI_CMD} get secret -l db-name=${tmp_ae_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
 
         # set application_engine_configuration
         ${YQ_CMD} -i ".spec.application_engine_configuration.[0].admin_secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         if [[ $DB_TYPE == "postgresql" ]]; then
-            tmp_ae_db_name=$(echo $tmp_ae_db_name | tr '[:upper:]' '[:lower:]')
+            tmp_ae_db_name=$(echo "$tmp_ae_db_name" | tr '[:upper:]' '[:lower:]')
         fi
         # remove database_name if oracle
         if [[ $DB_TYPE == "oracle" ]]; then
@@ -7474,7 +7304,7 @@ function sync_property_into_final_cr(){
     fi
     # set lc_bind_secret
     # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-    tmp_secret_name=`kubectl get secret -l name=ldap-bind-secret -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+    tmp_secret_name=`${CLI_CMD} get secret -l name=ldap-bind-secret -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
     ${YQ_CMD} -i ".spec.ldap_configuration.lc_bind_secret = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
     # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ldap_configuration.lc_ldap_bind_dn
     # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ldap_configuration.lc_ldap_bind_dn_pwd
@@ -7504,7 +7334,7 @@ function sync_property_into_final_cr(){
 
         # set lc_bind_secret
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
-        tmp_secret_name=`kubectl get secret -l name=ext-ldap-bind-secret -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        tmp_secret_name=`${CLI_CMD} get secret -l name=ext-ldap-bind-secret -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
         ${YQ_CMD} -i ".spec.ext_ldap_configuration.lc_bind_secret = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ext_ldap_configuration.lc_ldap_bind_dn
         # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ext_ldap_configuration.lc_ldap_bind_dn_pwd
@@ -7583,7 +7413,7 @@ function sync_property_into_final_cr(){
 
 # Begin - Modify FOUNDATION pattern yaml according patterns/components selected
 function apply_pattern_cr(){
-    # echo -e "\x1B[1mCreating a custom resource YAML file for IBM CP4A Operator ......\x1B[0m"
+    # printf '%b\n' "\x1B[1mCreating a custom resource YAML file for IBM CP4A Operator ......\x1B[0m"
     # echo "length of optional_component_cr_arr:${#optional_component_cr_arr[@]}"
     # echo "!!optional_component_cr_arr!!!${optional_component_cr_arr[*]}"
     # echo "EXISTING_PATTERN_ARR: ${EXISTING_PATTERN_ARR[*]}"
@@ -7605,21 +7435,6 @@ function apply_pattern_cr(){
     # remove merge issue
     ${YQ_CMD} -i 'del(.metadata.labels.app.*)' "${CP4A_PATTERN_FILE_TMP}"
 
-    # Keep existing value
-    if [[ "${INSTALLATION_TYPE}" == "existing" ]]; then
-        ${YQ_CMD} -i 'del(.spec.shared_configuration.sc_deployment_patterns)' "${CP4A_EXISTING_TMP}"
-        ${YQ_CMD} -i 'del(.spec.shared_configuration.sc_optional_components)' "${CP4A_EXISTING_TMP}"
-        # If a starter deployment CR generated from the form UI is supplied it will not need these fields anymore
-        #For DBACLD-159390
-        keys=("olm_production_workflow_process_service" "olm_production_workflow" "olm_production_document_processing" "olm_production_application" "olm_production_decisions_ads" "olm_production_decisions" "olm_production_content" "olm_production_option" "olm_starter_option" "olm_starter_application" "olm_starter_content" "olm_starter_decisions" "olm_starter_decisions_ads" "olm_starter_document_processing" "olm_starter_workflow")
-        for key in "${keys[@]}"; do
-            ${YQ_CMD} -i "del(.spec.${key})" "${CP4A_EXISTING_TMP}"
-        done
-        ${SED_COMMAND} '/tag: /d' ${CP4A_EXISTING_TMP}
-        # updating the namespace of the existing CR passed by the user to whatever namespace value is passed while executing the script
-        #For DBACLD-159390
-        ${YQ_CMD} -i ".metadata.namespace = \"$CP4BA_SERVICES_NS\"" ${CP4A_EXISTING_TMP}
-    fi
 
     ${SED_COMMAND_FORMAT} ${CP4A_PATTERN_FILE_TMP}
     # ${COPY_CMD} -rf ${CP4A_PATTERN_FILE_TMP} ${CP4A_PATTERN_FILE_BAK}
@@ -7699,122 +7514,6 @@ function apply_pattern_cr(){
     merge_pattern
     merge_optional_components
     set_foundation_components
-
-    if [[ $INSTALLATION_TYPE == "existing" ]]; then
-        if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-authoring") && !(" ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-authoring") ]]; then
-            # Delete Object Store for BAW Authoring
-            object_array=("BAWDOCS" "BAWDOS" "BAWTOS")
-        elif [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-runtime") && !(" ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-runtime") ]]; then
-            # Delete Object Store for BAW Runtime
-            object_array=("BAWINS1DOCS" "BAWINS1DOS" "BAWINS1TOS")
-        elif [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "workstreams") && !(" ${PATTERNS_CR_SELECTED[@]} " =~ "workstreams") ]]; then
-            # Delete Object Store for workstreams
-            object_array=("AWSINS1DOCS")
-        else
-            object_array=()
-        fi
-        if (( ${#object_array[@]} >= 1 ));then
-            for object_name in "${object_array[@]}"
-            do
-                containsObjectStore "$object_name" "${CP4A_EXISTING_TMP}"
-                if (( ${#os_index_array[@]} >= 1 ));then
-                    # ((index_array_temp=${#os_index_array[@]}-1))
-                    for ((j=0;j<${#os_index_array[@]};j++))
-                    do
-                        ((index_os=${os_index_array[$j]}-j))
-                        ${YQ_CMD} -i "del(.spec.datasource_configuration.dc_os_datasources[\"${index_os}\"])" "${CP4A_EXISTING_TMP}"
-                    done
-                fi
-                containsInitObjectStore "$object_name" "${CP4A_EXISTING_TMP}"
-                if (( ${#os_index_array[@]} >= 1 ));then
-                    # ((index_array_temp=${#os_index_array[@]}-1))
-                    for ((j=0;j<${#os_index_array[@]};j++))
-                    do
-                        ((index_os=${os_index_array[$j]}-j))
-                        ${YQ_CMD} -i "del(.spec.initialize_configuration.ic_obj_store_creation.object_stores[\"${index_os}\"])" "${CP4A_EXISTING_TMP}"
-                    done
-                fi
-            done
-            object_array=()
-        fi
-        if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "content") && !(" ${PATTERNS_CR_SELECTED[@]} " =~ "content") ]]; then
-            # Delete Object Store for FNCM
-            object_array=("FNOS1DS" "FNOS2DS" "FNOS3DS" "FNOS4DS" "FNOS5DS" "FNOS6DS" "FNOS7DS" "FNOS8DS" "FNOS9DS" "FNOS10DS")
-        else
-            object_array=()
-        fi
-        if (( ${#object_array[@]} >= 1 ));then
-            for object_name in "${object_array[@]}"
-            do
-                containsObjectStore "$object_name" "${CP4A_EXISTING_TMP}"
-                if (( ${#os_index_array[@]} >= 1 ));then
-                    # ((index_array_temp=${#os_index_array[@]}-1))
-                    for ((j=0;j<${#os_index_array[@]};j++))
-                    do
-                        ((index_os=${os_index_array[$j]}-j))
-                        ${YQ_CMD} -i "del(.spec.datasource_configuration.dc_os_datasources[\"${index_os}\"])" "${CP4A_EXISTING_TMP}"
-                    done
-                fi
-            done
-            object_array=()
-        fi
-
-        if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "content") && (" ${PATTERNS_CR_SELECTED[@]} " =~ "content") ]]; then
-            total_os_new=0
-            total_os_exist=0
-            os_index_array_new=()
-            os_index_array_exist=()
-
-            getTotalFNCMObjectStore "${CP4A_PATTERN_FILE_TMP}"
-            total_os_new=$total_os
-            os_index_array_new=( "${os_index_array[@]}" )
-            # echo "total_os_new: ${total_os_new}"
-            # echo "os_index_array_new: ${os_index_array_new[*]}"
-            # echo "length of os_index_array_new:${#os_index_array_new[@]}"
-
-            getTotalFNCMObjectStore "${CP4A_EXISTING_TMP}"
-            total_os_exist=$total_os
-            os_index_array_exist=( "${os_index_array[@]}" )
-            # echo "total_os_exist: ${total_os_exist}"
-            # echo "os_index_array_exist: ${os_index_array_exist[*]}"
-            # echo "length of os_index_array_exist:${#os_index_array_exist[@]}"
-        fi
-
-        if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow") && !(" ${PATTERNS_CR_SELECTED[@]} " =~ "workflow") ]]; then
-            # Delete BAW Instance
-            baw_name_array=("bawins1")
-        elif [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "workstreams") && !(" ${PATTERNS_CR_SELECTED[@]} " =~ "workstreams") ]]; then
-            baw_name_array=("awsins1")
-        else
-            baw_name_array=()
-        fi
-        if (( ${#baw_name_array[@]} >= 1 ));then
-            for object_name in "${baw_name_array[@]}"
-            do
-                containsBAWInstance "$object_name" "${CP4A_EXISTING_TMP}"
-                if (( ${#baw_index_array[@]} >= 1 ));then
-                    # ((index_array_temp=${#baw_index_array[@]}-1))
-                    for ((j=0;j<${#baw_index_array[@]};j++))
-                    do
-                        ((index_os=${baw_index_array[$j]}-j))
-                        ${YQ_CMD} -i 'del(.spec.baw_configuration)' "${CP4A_EXISTING_TMP}"
-                    done
-                fi
-            done
-            baw_name_array=()
-        fi
-
-        if grep "ums_configuration:" $CP4A_EXISTING_TMP > /dev/null
-        then
-            ${YQ_CMD} -i '.spec.ums_configuration.fix = "dummy"' ${CP4A_EXISTING_TMP}
-        fi
-        # read -rsn1 -p"Before:Press Enter/Return to exit";echo
-        ${YQ_CMD} eval-all -i 'select(fi==0) *+? select(fi==1)' ${CP4A_PATTERN_FILE_TMP} ${CP4A_EXISTING_TMP}
-        # read -rsn1 -p"After:Press Enter/Return to exit";echo
-        ${YQ_CMD} -i 'del(.spec.ums_configuration.fix)' "${CP4A_EXISTING_TMP}"
-        ${SED_COMMAND} "s|ums_configuration: {}|ums_configuration:|g" ${CP4A_EXISTING_TMP}
-        ${SED_COMMAND} "s|ums_configuration: {}|ums_configuration:|g" ${CP4A_PATTERN_FILE_TMP}
-    fi
 
     # ${COPY_CMD} -rf ${CP4A_PATTERN_FILE_BAK} ${CP4A_PATTERN_FILE_TMP}
     if [[ " ${OPT_COMPONENTS_CR_SELECTED[@]} " =~ "ae_data_persistence" ]]; then
@@ -7923,7 +7622,7 @@ function apply_pattern_cr(){
     fi
 
     # Set fips_enable
-    if  [[ ("$DEPLOYMENT_TYPE" == "starter" || ("$DEPLOYMENT_TYPE" == "production" && $DEPLOYMENT_WITH_PROPERTY == "No")) && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS") ]]; then
+    if  [[ ("$DEPLOYMENT_TYPE" == "starter") && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS") ]]; then
         if [[ $FIPS_ENABLED == "true" ]]; then
             ${YQ_CMD} -i '.spec.shared_configuration.enable_fips = true' ${CP4A_PATTERN_FILE_TMP}
         else
@@ -7932,7 +7631,7 @@ function apply_pattern_cr(){
     elif [[ $DEPLOYMENT_WITH_PROPERTY == "Yes" && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS") ]]; then
          fips_flag="$(prop_user_profile_property_file CP4BA.ENABLE_FIPS)"
         fips_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$fips_flag")
-        fips_flag=$(echo $fips_flag | tr '[:upper:]' '[:lower:]')
+        fips_flag=$(echo "$fips_flag" | tr '[:upper:]' '[:lower:]')
         if [[ ! -z $fips_flag ]]; then
             if [[ $fips_flag == "true" ]]; then
                 ${YQ_CMD} -i '.spec.shared_configuration.enable_fips = true' ${CP4A_PATTERN_FILE_TMP}
@@ -7943,7 +7642,7 @@ function apply_pattern_cr(){
     fi
 
     # Set sc_restricted_internet_access
-    if  [[ ("$DEPLOYMENT_TYPE" == "starter" || ("$DEPLOYMENT_TYPE" == "production" && $DEPLOYMENT_WITH_PROPERTY == "No")) && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS") ]]; then
+    if  [[ ("$DEPLOYMENT_TYPE" == "starter") && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS") ]]; then
         if [[ $RESTRICTED_INTERNET_ACCESS == "true" ]]; then
             ${YQ_CMD} -i '.spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access = true' ${CP4A_PATTERN_FILE_TMP}
         else
@@ -7952,7 +7651,7 @@ function apply_pattern_cr(){
     elif [[ $DEPLOYMENT_WITH_PROPERTY == "Yes" && ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS") ]]; then
         restricted_flag="$(prop_user_profile_property_file CP4BA.ENABLE_RESTRICTED_INTERNET_ACCESS)"
         restricted_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$restricted_flag")
-        restricted_flag=$(echo $restricted_flag | tr '[:upper:]' '[:lower:]')
+        restricted_flag=$(echo "$restricted_flag" | tr '[:upper:]' '[:lower:]')
         if [[ ! -z $restricted_flag ]]; then
             if [[ $restricted_flag == "true" ]]; then
                 ${YQ_CMD} -i '.spec.shared_configuration.sc_egress_configuration.sc_restricted_internet_access = true' ${CP4A_PATTERN_FILE_TMP}
@@ -8265,7 +7964,7 @@ function apply_pattern_cr(){
     fi
 
     # Apply value in property file into final cr
-    if [[ $DEPLOYMENT_TYPE == "production" && $DEPLOYMENT_WITH_PROPERTY == "Yes" ]]; then
+    if [[ $DEPLOYMENT_TYPE == "production" ]]; then
         sync_property_into_final_cr
     fi
 
@@ -8360,24 +8059,24 @@ function apply_pattern_cr(){
     # while [[ $TARGET_PROJECT_NAME == "" ]];
     # do
     #     printf "\n"
-    #     echo -e "\x1B[1mWhere (namespace) do you want to deploy CP4BA operands (i.e., runtime pods)? \x1B[0m"
+    #     printf '%b\n' "\x1B[1mWhere (namespace) do you want to deploy CP4BA operands (i.e., runtime pods)? \x1B[0m"
     #     read -p "Enter the name for an existing project (namespace): " TARGET_PROJECT_NAME
     #     if [ -z "$TARGET_PROJECT_NAME" ]; then
-    #         echo -e "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
+    #         printf '%b\n' "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
     #     elif [[ "$TARGET_PROJECT_NAME" == openshift* ]]; then
-    #         echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
+    #         printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
     #         TARGET_PROJECT_NAME=""
     #     elif [[ "$TARGET_PROJECT_NAME" == kube* ]]; then
-    #         echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+    #         printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
     #         TARGET_PROJECT_NAME=""
     #     else
     #         isProjExists=`${CLI_CMD} get project $TARGET_PROJECT_NAME --ignore-not-found | wc -l`  >/dev/null 2>&1
 
     #         if [ "$isProjExists" -ne 2 ] ; then
-    #             echo -e "\x1B[1;31mInvalid project name, enter a existing project name ...\x1B[0m"
+    #             printf '%b\n' "\x1B[1;31mInvalid project name, enter a existing project name ...\x1B[0m"
     #             TARGET_PROJECT_NAME=""
     #         else
-    #             echo -e "\x1B[1mUsing project ${TARGET_PROJECT_NAME}...\x1B[0m"
+    #             printf '%b\n' "\x1B[1mUsing project ${TARGET_PROJECT_NAME}...\x1B[0m"
     #         fi
     #     fi
     # done
@@ -8410,11 +8109,11 @@ function apply_pattern_cr(){
         CP4A_PATTERN_FILE_BAK=$FNCM_SEPARATE_PATTERN_FILE_BAK
     fi
     ${COPY_CMD} -rf ${CP4A_PATTERN_FILE_TMP} ${CP4A_PATTERN_FILE_BAK}
-    if [[ "$DEPLOYMENT_TYPE" == "starter" && "$INSTALLATION_TYPE" == "new" && !("$SCRIPT_MODE" == "review" || "$SCRIPT_MODE" == "OLM") ]];then
+    if [[ "$DEPLOYMENT_TYPE" == "starter" && !("$SCRIPT_MODE" == "review" || "$SCRIPT_MODE" == "OLM") ]];then
         ${CLI_CMD} delete -f ${CP4A_PATTERN_FILE_TMP} >/dev/null 2>&1
         sleep 5
         printf "\n"
-        echo -e "\x1B[1mInstalling the selected Cloud Pak capability...\x1B[0m"
+        printf '%b\n' "\x1B[1mInstalling the selected Cloud Pak capability...\x1B[0m"
 
         if [[ "${ALL_NAMESPACE}" == "Yes" ]]; then
             APPLY_CONTENT_CMD="${CLI_CMD} apply -f ${CP4A_PATTERN_FILE_BAK} -n openshift-operators"
@@ -8422,70 +8121,51 @@ function apply_pattern_cr(){
             APPLY_CONTENT_CMD="${CLI_CMD} apply -f ${CP4A_PATTERN_FILE_BAK} -n $CP4BA_SERVICES_NS"
         fi
         if $APPLY_CONTENT_CMD ; then
-            echo -e "\x1B[1mDone\x1B[0m"
+            printf '%b\n' "\x1B[1mDone\x1B[0m"
         else
-            echo -e "\x1B[1;31mFailed\x1B[0m"
+            printf '%b\n' "\x1B[1;31mFailed\x1B[0m"
         fi
-    elif  [[ "$DEPLOYMENT_TYPE" == "starter" && "$INSTALLATION_TYPE" == "existing" && !("$SCRIPT_MODE" == "review" || "$SCRIPT_MODE" == "OLM") ]]
-    then
-        echo "Applying the existing Custom Resource file supplied to the cluster...\n"
-        # Merging the existing CR sections to the CR that will be applied
-        # For https://jsw.ibm.com/browse/DBACLD-159390
-        ${YQ_CMD} eval-all -i 'select(fi==0) *+ select(fi==1)' ${CP4A_PATTERN_FILE_BAK} ${CP4A_EXISTING_TMP}
-        echo -e "\x1B[1mInstalling the selected Cloud Pak capability...\x1B[0m"
-
-        if [[ "${ALL_NAMESPACE}" == "Yes" ]]; then
-            APPLY_CONTENT_CMD="${CLI_CMD} apply -f ${CP4A_PATTERN_FILE_BAK} -n openshift-operators"
-        else
-            APPLY_CONTENT_CMD="${CLI_CMD} apply -f ${CP4A_PATTERN_FILE_BAK} -n $CP4BA_SERVICES_NS"
-        fi
-
-        if $APPLY_CONTENT_CMD ; then
-            echo -e "\x1B[1mDone\x1B[0m"
-        else
-            echo -e "\x1B[1;31mFailed\x1B[0m"
-        fi
-    elif  [[ "$DEPLOYMENT_TYPE" == "production" && "$INSTALLATION_TYPE" == "new" && "$DEPLOYMENT_WITH_PROPERTY" == "Yes" ]]
+    elif  [[ "$DEPLOYMENT_TYPE" == "production" ]]
     then
         ## CP4BA_APPLY_CR is going to be a environment variable to apply the CR for silent install.
         if [[ "$CP4BA_APPLY_CR" == "Yes" || "$CP4BA_APPLY_CR" == "YES" || "$CP4BA_APPLY_CR" == "yes" || "$CP4BA_APPLY_CR" == "True"  || "$CP4BA_APPLY_CR" == "TRUE"  || "$CP4BA_APPLY_CR" == "true" ]]; then
-           echo -e "\x1B[1mInstalling the selected Cloud Pak capability...\x1B[0m"
-           echo -e "${CP4A_PATTERN_FILE_BAK}"
+           printf '%b\n' "\x1B[1mInstalling the selected Cloud Pak capability...\x1B[0m"
+           printf '%b\n' "${CP4A_PATTERN_FILE_BAK}"
            APPLY_CUSTOM_RESOURCE_CMD="${CLI_CMD} apply -f ${CP4A_PATTERN_FILE_BAK} -n $CP4BA_SERVICES_NS"
            if $APPLY_CUSTOM_RESOURCE_CMD ; then
-               echo -e "\x1B[1mDone\x1B[0m"
+               printf '%b\n' "\x1B[1mDone\x1B[0m"
            else
-               echo -e "\x1B[1;31mFailed\x1B[0m"
+               printf '%b\n' "\x1B[1;31mFailed\x1B[0m"
            fi
         else
             printf "\n"
-            echo -e "${YELLOW_TEXT}[NOTE]${RESET_TEXT} The custom resource (CR) file has been generated, but is not yet deployed (applied).\n"
+            printf '%b\n' "${YELLOW_TEXT}[NOTE]${RESET_TEXT} The custom resource (CR) file has been generated, but is not yet deployed (applied).\n"
 
-            echo -e "${YELLOW_TEXT}[ATTENTION]${RESET_TEXT} Before deploying (applying) the custom resource (CR), follow the steps in the Knowledge Center ${BLUE_TEXT}\"Check and complete your custom resource\"${RESET_TEXT} to add or update any additional configuration to the custom resource file for the capabilities you have selected, which are not configured by the script: ${BLUE_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=deployment-checking-completing-your-custom-resource ${RESET_TEXT}  \n"
+            printf '%b\n' "${YELLOW_TEXT}[ATTENTION]${RESET_TEXT} Before deploying (applying) the custom resource (CR), follow the steps in the Knowledge Center ${BLUE_TEXT}\"Check and complete your custom resource\"${RESET_TEXT} to add or update any additional configuration to the custom resource file for the capabilities you have selected, which are not configured by the script: ${BLUE_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=deployment-checking-completing-your-custom-resource ${RESET_TEXT}  \n"
 
-            echo -e "${YELLOW_TEXT}[ATTENTION]${RESET_TEXT} After finishing configuring the custom resource (CR) file, follow the steps in the Knowledge Center to deploy (apply) your custom resource:${BLUE_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=cpd-option-1b-deploying-custom-resource-you-created-deployment-script ${RESET_TEXT} \n"
+            printf '%b\n' "${YELLOW_TEXT}[ATTENTION]${RESET_TEXT} After finishing configuring the custom resource (CR) file, follow the steps in the Knowledge Center to deploy (apply) your custom resource:${BLUE_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=cpd-option-1b-deploying-custom-resource-you-created-deployment-script ${RESET_TEXT} \n"
         fi
     fi
 
-    echo -e "\x1B[1mThe custom resource file is located at: \"${CP4A_PATTERN_FILE_BAK}\"\x1B[0m"
+    printf '%b\n' "\x1B[1mThe custom resource file is located at: \"${CP4A_PATTERN_FILE_BAK}\"\x1B[0m"
     if [[ "$DEPLOYMENT_TYPE" == "production" && (" ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-workstreams" || " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-runtime" || " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-authoring") ]]; then
         printf "\n"
-        echo -e "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1mIf the cluster is running a Linux on Z (s390x)/Power architecture, remove the \x1B[0m\x1B[1;31mbaml_configuration\x1B[0m \x1B[1msection from \"${CP4A_PATTERN_FILE_BAK}\" before applying the custom resource. Business Automation Machine Learning Server (BAML) is not supported on this architecture.\n\x1B[0m"
+        printf '%b\n' "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1mIf the cluster is running a Linux on Z (s390x)/Power architecture, remove the \x1B[0m\x1B[1;31mbaml_configuration\x1B[0m \x1B[1msection from \"${CP4A_PATTERN_FILE_BAK}\" before applying the custom resource. Business Automation Machine Learning Server (BAML) is not supported on this architecture.\n\x1B[0m"
     fi
     printf "\n"
-    echo -e "\x1B[1mTo monitor the deployment status, follow the Operator logs.\x1B[0m"
-    echo -e "\x1B[1mFor details, refer to the troubleshooting section in Knowledge Center here: \x1B[0m"
-    echo -e "\x1B[1mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-troubleshooting\x1B[0m"
+    printf '%b\n' "\x1B[1mTo monitor the deployment status, follow the Operator logs.\x1B[0m"
+    printf '%b\n' "\x1B[1mFor details, refer to the troubleshooting section in Knowledge Center here: \x1B[0m"
+    printf '%b\n' "\x1B[1mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-troubleshooting\x1B[0m"
 }
 # End - Modify FOUNDATION pattern yaml according pattent/components selected
 
 function show_summary_pattern_selected(){
     printf "\n"
-    echo -e "\x1B[1m*******************************************************\x1B[0m"
-    echo -e "\x1B[1m            Summary of CP4BA capabilities              \x1B[0m"
-    echo -e "\x1B[1m*******************************************************\x1B[0m"
+    printf '%b\n' "\x1B[1m*******************************************************\x1B[0m"
+    printf '%b\n' "\x1B[1m            Summary of CP4BA capabilities              \x1B[0m"
+    printf '%b\n' "\x1B[1m*******************************************************\x1B[0m"
 
-    echo -e "\x1B[1;31m1. Cloud Pak capability to deploy: \x1B[0m"
+    printf '%b\n' "\x1B[1;31m1. Cloud Pak capability to deploy: \x1B[0m"
     if [ "${#pattern_arr[@]}" -eq "0" ]; then
         printf '   * %s\n' "None"
     else
@@ -8499,7 +8179,7 @@ function show_summary_pattern_selected(){
         done
     fi
 
-    echo -e "\x1B[1;31m2. Optional components to deploy: \x1B[0m"
+    printf '%b\n' "\x1B[1;31m2. Optional components to deploy: \x1B[0m"
     if [ "${#optional_component_arr[@]}" -eq "0" ]; then
         printf '   * %s\n' "None"
     else
@@ -8576,18 +8256,18 @@ function show_summary_pattern_selected(){
             fi
         done
     fi
-    echo -e "\x1B[1m*******************************************************\x1B[0m"
+    printf '%b\n' "\x1B[1m*******************************************************\x1B[0m"
     info "Above CP4BA capabilities is already selected in the cp4a-prerequisites.sh script"
     prompt_press_any_key_to_continue
 }
 
 function show_summary(){
     printf "\n"
-    echo -e "\x1B[1m*******************************************************\x1B[0m"
-    echo -e "\x1B[1m                    Summary of input                   \x1B[0m"
-    echo -e "\x1B[1m*******************************************************\x1B[0m"
+    printf '%b\n' "\x1B[1m*******************************************************\x1B[0m"
+    printf '%b\n' "\x1B[1m                    Summary of input                   \x1B[0m"
+    printf '%b\n' "\x1B[1m*******************************************************\x1B[0m"
 
-    echo -e "\x1B[1;31m1. Cloud Pak capability to deploy: \x1B[0m"
+    printf '%b\n' "\x1B[1;31m1. Cloud Pak capability to deploy: \x1B[0m"
     if [ "${#pattern_arr[@]}" -eq "0" ]; then
         printf '   * %s\n' "None"
     else
@@ -8601,7 +8281,7 @@ function show_summary(){
         done
     fi
 
-    echo -e "\x1B[1;31m2. Optional components to deploy: \x1B[0m"
+    printf '%b\n' "\x1B[1;31m2. Optional components to deploy: \x1B[0m"
     if [ "${#OPT_COMPONENTS_SELECTED[@]}" -eq "0" ]; then
         printf '   * %s\n' "None"
     else
@@ -8680,80 +8360,80 @@ function show_summary(){
     fi
 
     if [[ $PLATFORM_SELECTED == "other" ]]; then
-        echo -e "\x1B[1;31m3. Entitlement Registry key:\x1B[0m" # not show plaintext password
-        echo -e "\x1B[1;31m4. Docker registry service name or URL:\x1B[0m ${LOCAL_REGISTRY_SERVER}"
-        echo -e "\x1B[1;31m5. Docker registry user name:\x1B[0m ${LOCAL_REGISTRY_USER}"
-        # echo -e "\x1B[1;31m5. Docker registry password: ${LOCAL_REGISTRY_PWD}\x1B[0m"
-        echo -e "\x1B[1;31m6. Docker registry password:\x1B[0m" # not show plaintext password
+        printf '%b\n' "\x1B[1;31m3. Entitlement Registry key:\x1B[0m" # not show plaintext password
+        printf '%b\n' "\x1B[1;31m4. Docker registry service name or URL:\x1B[0m ${LOCAL_REGISTRY_SERVER}"
+        printf '%b\n' "\x1B[1;31m5. Docker registry user name:\x1B[0m ${LOCAL_REGISTRY_USER}"
+        # printf '%b\n' "\x1B[1;31m5. Docker registry password: ${LOCAL_REGISTRY_PWD}\x1B[0m"
+        printf '%b\n' "\x1B[1;31m6. Docker registry password:\x1B[0m" # not show plaintext password
     fi
     if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]];
     then
         if [ -z "$existing_infra_name" ]; then
             if  [[ $DEPLOYMENT_TYPE == "starter" && $PLATFORM_SELECTED == "OCP" ]];
             then
-                echo -e "\x1B[1;31m3. File storage classname(RWX):\x1B[0m ${STORAGE_CLASS_NAME}"
-                echo -e "\x1B[1;31m4. Block storage classname(RWO):\x1B[0m ${BLOCK_STORAGE_CLASS_NAME}"
+                printf '%b\n' "\x1B[1;31m3. File storage classname(RWX):\x1B[0m ${STORAGE_CLASS_NAME}"
+                printf '%b\n' "\x1B[1;31m4. Block storage classname(RWO):\x1B[0m ${BLOCK_STORAGE_CLASS_NAME}"
                 if [[ " ${optional_component_cr_arr[@]} " =~ "iccsap" ]]; then
-                    echo -e "\x1B[1;31m5. URL to zip file for JDBC and/or ICCSAP drivers:\x1B[0m ${CP4BA_JDBC_URL}"
+                    printf '%b\n' "\x1B[1;31m5. URL to zip file for JDBC and/or ICCSAP drivers:\x1B[0m ${CP4BA_JDBC_URL}"
                 fi
             else
-                echo -e "\x1B[1;31m3. File storage classname(RWX):\x1B[0m"
+                printf '%b\n' "\x1B[1;31m3. File storage classname(RWX):\x1B[0m"
                 printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Slow:" "${SLOW_STORAGE_CLASS_NAME}"
                 printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Medium:" "${MEDIUM_STORAGE_CLASS_NAME}"
                 printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Fast:" "${FAST_STORAGE_CLASS_NAME}"
-                echo -e "\x1B[1;31m4. Block storage classname(RWO): \x1B[0m${BLOCK_STORAGE_CLASS_NAME}"
-                echo -e "\x1B[1;31m5. URL to zip file for JDBC and/or ICCSAP drivers:\x1B[0m ${CP4BA_JDBC_URL}"
+                printf '%b\n' "\x1B[1;31m4. Block storage classname(RWO): \x1B[0m${BLOCK_STORAGE_CLASS_NAME}"
+                printf '%b\n' "\x1B[1;31m5. URL to zip file for JDBC and/or ICCSAP drivers:\x1B[0m ${CP4BA_JDBC_URL}"
             fi
         else
             if  [[ $PLATFORM_SELECTED == "OCP" ]]; then
-                echo -e "\x1B[1;31m3. OCP Infrastructure Node:\x1B[0m ${INFRA_NAME}"
+                printf '%b\n' "\x1B[1;31m3. OCP Infrastructure Node:\x1B[0m ${INFRA_NAME}"
             elif [[ $PLATFORM_SELECTED == "ROKS" ]]
             then
-                echo -e "\x1B[1;31m3. ROKS Infrastructure Node:\x1B[0m ${INFRA_NAME}"
+                printf '%b\n' "\x1B[1;31m3. ROKS Infrastructure Node:\x1B[0m ${INFRA_NAME}"
             fi
             if  [[ $DEPLOYMENT_TYPE == "starter" && $PLATFORM_SELECTED == "OCP" ]];
             then
-                echo -e "\x1B[1;31m4. File storage classname(RWX):\x1B[0m ${STORAGE_CLASS_NAME}"
-                echo -e "\x1B[1;31m5. Block storage classname(RWO):\x1B[0m ${BLOCK_STORAGE_CLASS_NAME}"
+                printf '%b\n' "\x1B[1;31m4. File storage classname(RWX):\x1B[0m ${STORAGE_CLASS_NAME}"
+                printf '%b\n' "\x1B[1;31m5. Block storage classname(RWO):\x1B[0m ${BLOCK_STORAGE_CLASS_NAME}"
                 if [[ " ${optional_component_cr_arr[@]} " =~ "iccsap" ]]; then
-                    echo -e "\x1B[1;31m6. URL to zip file for JDBC and/or ICCSAP drivers:\x1B[0m ${CP4BA_JDBC_URL}"
+                    printf '%b\n' "\x1B[1;31m6. URL to zip file for JDBC and/or ICCSAP drivers:\x1B[0m ${CP4BA_JDBC_URL}"
                 fi
             else
-                echo -e "\x1B[1;31m4. File storage classname(RWX):\x1B[0m"
+                printf '%b\n' "\x1B[1;31m4. File storage classname(RWX):\x1B[0m"
                 printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Slow:" "${SLOW_STORAGE_CLASS_NAME}"
                 printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Medium:" "${MEDIUM_STORAGE_CLASS_NAME}"
                 printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Fast:" "${FAST_STORAGE_CLASS_NAME}"
-                echo -e "\x1B[1;31m5. Block storage classname(RWO): \x1B[0m${BLOCK_STORAGE_CLASS_NAME}"
-                echo -e "\x1B[1;31m6. URL to zip file for JDBC and/or ICCSAP drivers:\x1B[0m ${CP4BA_JDBC_URL}"
+                printf '%b\n' "\x1B[1;31m5. Block storage classname(RWO): \x1B[0m${BLOCK_STORAGE_CLASS_NAME}"
+                printf '%b\n' "\x1B[1;31m6. URL to zip file for JDBC and/or ICCSAP drivers:\x1B[0m ${CP4BA_JDBC_URL}"
             fi
         fi
     else
         if  [[ $DEPLOYMENT_TYPE == "starter" ]];
         then
-            echo -e "\x1B[1;31m3. File storage classname(RWX):\x1B[0m ${STORAGE_CLASS_NAME}"
-            echo -e "\x1B[1;31m4. Block storage classname(RWO):\x1B[0m ${BLOCK_STORAGE_CLASS_NAME}"
+            printf '%b\n' "\x1B[1;31m3. File storage classname(RWX):\x1B[0m ${STORAGE_CLASS_NAME}"
+            printf '%b\n' "\x1B[1;31m4. Block storage classname(RWO):\x1B[0m ${BLOCK_STORAGE_CLASS_NAME}"
             if [[ " ${optional_component_cr_arr[@]} " =~ "iccsap" ]]; then
-                echo -e "\x1B[1;31m5. URL to zip file for JDBC and/or ICCSAP drivers:\x1B[0m ${CP4BA_JDBC_URL}"
+                printf '%b\n' "\x1B[1;31m5. URL to zip file for JDBC and/or ICCSAP drivers:\x1B[0m ${CP4BA_JDBC_URL}"
             fi
         else
             if [[ $PLATFORM_SELECTED == "other" ]]; then
-                echo -e "\x1B[1;31m7. File storage classname(RWX):\x1B[0m"
+                printf '%b\n' "\x1B[1;31m7. File storage classname(RWX):\x1B[0m"
             else
-                echo -e "\x1B[1;31m3. File storage classname(RWX):\x1B[0m"
+                printf '%b\n' "\x1B[1;31m3. File storage classname(RWX):\x1B[0m"
             fi
         fi
         printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Slow:" "${SLOW_STORAGE_CLASS_NAME}"
         printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Medium:" "${MEDIUM_STORAGE_CLASS_NAME}"
         printf '   * \x1B[1;31m%s\x1B[0m %s\n' "Fast:" "${FAST_STORAGE_CLASS_NAME}"
         if [[ $PLATFORM_SELECTED == "other" ]]; then
-            echo -e "\x1B[1;31m8. URL to zip file for JDBC and/or ICCSAP drivers:\x1B[0m ${CP4BA_JDBC_URL}"
+            printf '%b\n' "\x1B[1;31m8. URL to zip file for JDBC and/or ICCSAP drivers:\x1B[0m ${CP4BA_JDBC_URL}"
         fi
         if [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]]; then
-            echo -e "\x1B[1;31m4. Block storage classname(RWO):\x1B[0m ${BLOCK_STORAGE_CLASS_NAME}"
-            echo -e "\x1B[1;31m5. URL to zip file for JDBC and/or ICCSAP drivers:\x1B[0m ${CP4BA_JDBC_URL}"
+            printf '%b\n' "\x1B[1;31m4. Block storage classname(RWO):\x1B[0m ${BLOCK_STORAGE_CLASS_NAME}"
+            printf '%b\n' "\x1B[1;31m5. URL to zip file for JDBC and/or ICCSAP drivers:\x1B[0m ${CP4BA_JDBC_URL}"
         fi
     fi
-    echo -e "\x1B[1m*******************************************************\x1B[0m"
+    printf '%b\n' "\x1B[1m*******************************************************\x1B[0m"
 }
 
 function prepare_pattern_file(){
@@ -8852,7 +8532,7 @@ function startup_operator(){
     local project_name=$1
     local run_mode=$2  # silent
     # info "Scaling up \"IBM Cloud Pak for Business Automation (CP4BA) multi-pattern\" operator"
-    kubectl scale --replicas=1 deployment ibm-cp4a-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=1 deployment ibm-cp4a-operator -n $project_name >/dev/null 2>&1
     if [ $? -eq 0 ]; then
         sleep 1
         if [[ -z "$run_mode" ]]; then
@@ -8863,7 +8543,7 @@ function startup_operator(){
     fi
 
     # info "Scaling up \"IBM CP4BA FileNet Content Manager\" operator"
-    kubectl scale --replicas=1 deployment ibm-content-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=1 deployment ibm-content-operator -n $project_name >/dev/null 2>&1
     if [ $? -eq 0 ]; then
         sleep 1
         if [[ -z "$run_mode" ]]; then
@@ -8874,7 +8554,7 @@ function startup_operator(){
     fi
 
     # info "Scaling up \"IBM CP4BA Foundation\" operator"
-    kubectl scale --replicas=1 deployment icp4a-foundation-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=1 deployment icp4a-foundation-operator -n $project_name >/dev/null 2>&1
     if [ $? -eq 0 ]; then
         sleep 1
         if [[ -z "$run_mode" ]]; then
@@ -8885,7 +8565,7 @@ function startup_operator(){
     fi
 
     # info "Scaling up \"IBM CP4BA Automation Decision Service\" operator"
-    kubectl scale --replicas=1 deployment ibm-ads-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=1 deployment ibm-ads-operator -n $project_name >/dev/null 2>&1
     if [ $? -eq 0 ]; then
         sleep 1
         if [[ -z "$run_mode" ]]; then
@@ -8896,7 +8576,7 @@ function startup_operator(){
     fi
 
     # info "Scaling up \"IBM CP4BA Workflow Process Service\" operator"
-    kubectl scale --replicas=1 deployment ibm-cp4a-wfps-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=1 deployment ibm-cp4a-wfps-operator -n $project_name >/dev/null 2>&1
     if [ $? -eq 0 ]; then
         sleep 1
         if [[ -z "$run_mode" ]]; then
@@ -8907,10 +8587,10 @@ function startup_operator(){
     fi
 
     # DPE only support x86 so check the target cluster arch type
-    arch_type=$(kubectl get cm cluster-config-v1 -n kube-system -o yaml | grep -i architecture|tail -1| awk '{print $2}')
+    arch_type=$(${CLI_CMD} get cm cluster-config-v1 -n kube-system -o yaml | grep -i architecture|tail -1| awk '{print $2}')
     if [[ "$arch_type" == "amd64" ]]; then
         # info "Scaling up \"IBM Document Processing Engine\" operator"
-        kubectl scale --replicas=1 deployment ibm-dpe-operator -n $project_name >/dev/null 2>&1
+        ${CLI_CMD} scale --replicas=1 deployment ibm-dpe-operator -n $project_name >/dev/null 2>&1
         if [ $? -eq 0 ]; then
             sleep 1
             if [[ -z "$run_mode" ]]; then
@@ -8921,7 +8601,7 @@ function startup_operator(){
         fi
     fi
     # info "Scaling up \"IBM CP4BA Insights Engine\" operator"
-    kubectl scale --replicas=1 deployment ibm-insights-engine-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=1 deployment ibm-insights-engine-operator -n $project_name >/dev/null 2>&1
     if [ $? -eq 0 ]; then
         sleep 1
         if [[ -z "$run_mode" ]]; then
@@ -8932,7 +8612,7 @@ function startup_operator(){
     fi
 
     # info "Scaling up \"IBM Operational Decision Manager\" operator"
-    kubectl scale --replicas=1 deployment ibm-odm-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=1 deployment ibm-odm-operator -n $project_name >/dev/null 2>&1
     if [ $? -eq 0 ]; then
         sleep 1
         if [[ -z "$run_mode" ]]; then
@@ -8943,7 +8623,7 @@ function startup_operator(){
     fi
 
     # info "Scaling up \"IBM CP4BA Process Federation Server\" operator"
-    kubectl scale --replicas=1 deployment ibm-pfs-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=1 deployment ibm-pfs-operator -n $project_name >/dev/null 2>&1
     if [ $? -eq 0 ]; then
         sleep 1
         if [[ -z "$run_mode" ]]; then
@@ -8954,7 +8634,7 @@ function startup_operator(){
     fi
 
     # info "Scaling up \"IBM CP4BA Workflow\" operator"
-    kubectl scale --replicas=1 deployment ibm-workflow-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=1 deployment ibm-workflow-operator -n $project_name >/dev/null 2>&1
     if [ $? -eq 0 ]; then
         sleep 1
         if [[ -z "$run_mode" ]]; then
@@ -8969,54 +8649,54 @@ function shutdown_operator(){
     # scale down CP4BA operators
     local project_name=$1
     info "Scaling down \"IBM Cloud Pak for Business Automation (CP4BA) multi-pattern\" operator"
-    kubectl scale --replicas=0 deployment ibm-cp4a-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=0 deployment ibm-cp4a-operator -n $project_name >/dev/null 2>&1
     sleep 1
     echo "Done!"
 
     info "Scaling down \"IBM CP4BA FileNet Content Manager\" operator"
-    kubectl scale --replicas=0 deployment ibm-content-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=0 deployment ibm-content-operator -n $project_name >/dev/null 2>&1
     sleep 1
     echo "Done!"
 
     info "Scaling down \"IBM CP4BA Foundation\" operator"
-    kubectl scale --replicas=0 deployment icp4a-foundation-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=0 deployment icp4a-foundation-operator -n $project_name >/dev/null 2>&1
     sleep 1
     echo "Done!"
 
     info "Scaling down \"IBM CP4BA Automation Decision Service\" operator"
-    kubectl scale --replicas=0 deployment ibm-ads-operator-controller-manager -n $project_name >/dev/null 2>&1
-    kubectl scale --replicas=0 deployment ibm-ads-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=0 deployment ibm-ads-operator-controller-manager -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=0 deployment ibm-ads-operator -n $project_name >/dev/null 2>&1
     sleep 1
     echo "Done!"
 
     info "Scaling down \"IBM CP4BA Workflow Process Service\" operator"
-    kubectl scale --replicas=0 deployment ibm-cp4a-wfps-operator-controller-manager -n $project_name >/dev/null 2>&1
-    kubectl scale --replicas=0 deployment ibm-cp4a-wfps-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=0 deployment ibm-cp4a-wfps-operator-controller-manager -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=0 deployment ibm-cp4a-wfps-operator -n $project_name >/dev/null 2>&1
     sleep 1
     echo "Done!"
 
     info "Scaling down \"IBM Document Processing Engine\" operator"
-    kubectl scale --replicas=0 deployment ibm-dpe-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=0 deployment ibm-dpe-operator -n $project_name >/dev/null 2>&1
     sleep 1
     echo "Done!"
 
     info "Scaling down \"IBM CP4BA Insights Engine\" operator"
-    kubectl scale --replicas=0 deployment ibm-insights-engine-operator -n $project_name >/dev/null 2>&1
-    kubectl scale --replicas=0 deployment iaf-insights-engine-operator-controller-manager -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=0 deployment ibm-insights-engine-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=0 deployment iaf-insights-engine-operator-controller-manager -n $project_name >/dev/null 2>&1
     sleep 1
     echo "Done!"
 
     info "Scaling down \"IBM Operational Decision Manager\" operator"
-    kubectl scale --replicas=0 deployment ibm-odm-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=0 deployment ibm-odm-operator -n $project_name >/dev/null 2>&1
     sleep 1
     echo "Done!"
 
     info "Scaling down \"IBM CP4BA Process Federation Server\" operator"
-    kubectl scale --replicas=0 deployment ibm-pfs-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=0 deployment ibm-pfs-operator -n $project_name >/dev/null 2>&1
     echo "Done!"
 
     info "Scaling down \"IBM CP4BA Workflow\" operator"
-    kubectl scale --replicas=0 deployment ibm-workflow-operator -n $project_name >/dev/null 2>&1
+    ${CLI_CMD} scale --replicas=0 deployment ibm-workflow-operator -n $project_name >/dev/null 2>&1
     echo "Done!"
 }
 
@@ -9039,10 +8719,10 @@ function cncf_install(){
   else
       sed -e '/imagePullSecrets:/{N;d;}' ${CUR_DIR}/../upgradeOperator.yaml > ${CUR_DIR}/../upgradeOperatorsav.yaml ;  mv ${CUR_DIR}/../upgradeOperatorsav.yaml ${CUR_DIR}/../upgradeOperator.yaml
   fi
-  kubectl apply -f ${CUR_DIR}/../descriptors/service_account.yaml --validate=false
-  kubectl apply -f ${CUR_DIR}/../descriptors/role.yaml --validate=false
-  kubectl apply -f ${CUR_DIR}/../descriptors/role_binding.yaml --validate=false
-  kubectl apply -f ${CUR_DIR}/../upgradeOperator.yaml --validate=false
+  ${CLI_CMD} apply -f ${CUR_DIR}/../descriptors/service_account.yaml --validate=false
+  ${CLI_CMD} apply -f ${CUR_DIR}/../descriptors/role.yaml --validate=false
+  ${CLI_CMD} apply -f ${CUR_DIR}/../descriptors/role_binding.yaml --validate=false
+  ${CLI_CMD} apply -f ${CUR_DIR}/../upgradeOperator.yaml --validate=false
 }
 
 ################################################
@@ -9065,7 +8745,7 @@ if [[ ($SCRIPT_MODE == "" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "dev" && $
 then
     prompt_license
 
-    set_script_mode
+    detect_property_files
 
     input_information
 
@@ -9090,27 +8770,25 @@ then
             if [[ ("$SCRIPT_MODE" != "review") && ("$SCRIPT_MODE" != "OLM") ]]; then
                 if [[ $DEPLOYMENT_TYPE == "production" ]];then
                     printf "\n"
-                    echo -e "\x1B[1mCreating the Custom Resource of the Cloud Pak for Business Automation operator...\x1B[0m"
+                    printf '%b\n' "\x1B[1mCreating the Custom Resource of the Cloud Pak for Business Automation operator...\x1B[0m"
                 fi
             fi
             printf "\n"
-            if [[ "${INSTALLATION_TYPE}"  == "new" ]]; then
-                if [[ "$SCRIPT_MODE" == "review" ]]; then
-                    echo -e "\x1B[1mReview mode is running. The final CR will be generated, but the operator will not be deployed.\x1B[0m"
-                    # prompt_press_any_key_to_continue
-                elif [[ "$SCRIPT_MODE" == "OLM" ]]
-                then
-                    echo -e "\x1B[1mA custom resource file for applying to the OCP Catalog is being generated.\x1B[0m"
-                    # prompt_press_any_key_to_continue
-                else
-                    if [ "$use_entitlement" = "no" ] ; then
-                        isReady=$(${CLI_CMD} get secret | grep ibm-entitlement-key)
-                        if [[ -z $isReady ]]; then
-                            echo "Secret \"ibm-entitlement-key\" not found, exiting..."
-                            exit 1
-                        else
-                            echo "Secret \"ibm-entitlement-key\" found, continuing...."
-                        fi
+            if [[ "$SCRIPT_MODE" == "review" ]]; then
+                printf '%b\n' "\x1B[1mReview mode is running. The final CR will be generated, but the operator will not be deployed.\x1B[0m"
+                # prompt_press_any_key_to_continue
+            elif [[ "$SCRIPT_MODE" == "OLM" ]]
+            then
+                printf '%b\n' "\x1B[1mA custom resource file for applying to the OCP Catalog is being generated.\x1B[0m"
+                # prompt_press_any_key_to_continue
+            else
+                if [ "$use_entitlement" = "no" ] ; then
+                    isReady=$(${CLI_CMD} get secret | grep ibm-entitlement-key)
+                    if [[ -z $isReady ]]; then
+                        echo "Secret \"ibm-entitlement-key\" not found, exiting..."
+                        exit 1
+                    else
+                        echo "Secret \"ibm-entitlement-key\" found, continuing...."
                     fi
                 fi
             fi
@@ -9135,7 +8813,7 @@ then
                 then
                     case "$ans" in
                     "1")
-                        if [[ $DEPLOYMENT_TYPE == "starter" || $DEPLOYMENT_WITH_PROPERTY == "No" ]]; then
+                        if [[ $DEPLOYMENT_TYPE == "starter" ]]; then
                             select_pattern
                             select_optional_component
                             if [[ ( -z "$CP4BA_JDBC_URL" ) && (" ${optional_component_cr_arr[@]} " =~ "iccsap") ]]; then
@@ -9148,7 +8826,7 @@ then
                         break
                         ;;
                     "2")
-                        if [[ $DEPLOYMENT_TYPE == "starter" || $DEPLOYMENT_WITH_PROPERTY == "No" ]]; then
+                        if [[ $DEPLOYMENT_TYPE == "starter" ]]; then
                             select_optional_component
                             if [[ ( -z "$CP4BA_JDBC_URL" ) && (" ${optional_component_cr_arr[@]} " =~ "iccsap") ]]; then
                                 get_jdbc_url
@@ -9160,7 +8838,7 @@ then
                         break
                         ;;
                     "3"|"4")
-                        if [[ $DEPLOYMENT_TYPE == "starter" || $DEPLOYMENT_WITH_PROPERTY == "No" ]]; then
+                        if [[ $DEPLOYMENT_TYPE == "starter" ]]; then
                             get_storage_class_name
                         else
                             info "Run cp4a-prerequisites.sh to modify storage class name"
@@ -9173,13 +8851,13 @@ then
                         break
                         ;;
                     *)
-                        echo -e "\x1B[1mEnter a valid number [1 to 5] \x1B[0m"
+                        printf '%b\n' "\x1B[1mEnter a valid number [1 to 5] \x1B[0m"
                         ;;
                     esac
                 else
                     case "$ans" in
                     "1")
-                        if [[ $DEPLOYMENT_TYPE == "starter" || $DEPLOYMENT_WITH_PROPERTY == "No" ]]; then
+                        if [[ $DEPLOYMENT_TYPE == "starter" ]]; then
                             select_pattern
                             select_optional_component
                             if [[ ( -z "$CP4BA_JDBC_URL" ) && (" ${optional_component_cr_arr[@]} " =~ "iccsap") ]]; then
@@ -9192,7 +8870,7 @@ then
                         break
                         ;;
                     "2")
-                        if [[ $DEPLOYMENT_TYPE == "starter" || $DEPLOYMENT_WITH_PROPERTY == "No" ]]; then
+                        if [[ $DEPLOYMENT_TYPE == "starter" ]]; then
                             select_optional_component
                             if [[ ( -z "$CP4BA_JDBC_URL" ) && (" ${optional_component_cr_arr[@]} " =~ "iccsap") ]]; then
                                 get_jdbc_url
@@ -9220,7 +8898,7 @@ then
                         break
                         ;;
                     "7")
-                        if [[ $DEPLOYMENT_TYPE == "starter" || $DEPLOYMENT_WITH_PROPERTY == "No" ]]; then
+                        if [[ $DEPLOYMENT_TYPE == "starter" ]]; then
                             get_storage_class_name
                         else
                             info "Run cp4a-prerequisites.sh to modify storage class name"
@@ -9233,7 +8911,7 @@ then
                         break
                         ;;
                     *)
-                        echo -e "\x1B[1mEnter a valid number [1 to 8] \x1B[0m"
+                        printf '%b\n' "\x1B[1mEnter a valid number [1 to 8] \x1B[0m"
                         ;;
                     esac
                 fi
@@ -9246,11 +8924,11 @@ else
     ENABLE_PRIVATE_CATALOG=0
     # parse_arguments "$@"
     # if [[ -z "$RUNTIME_MODE" ]]; then
-    #     echo -e "\x1B[1;31mInput value for \"-m <MODE_NAME>\" option.\n\x1B[0m"
+    #     printf '%b\n' "\x1B[1;31mInput value for \"-m <MODE_NAME>\" option.\n\x1B[0m"
     #     exit 1
     # fi
     # if [[ -z "$TARGET_PROJECT_NAME" ]]; then
-    #     echo -e "\x1B[1;31mInput value for \"-n <NAME_SPACE>\" option.\n\x1B[0m"
+    #     printf '%b\n' "\x1B[1;31mInput value for \"-n <NAME_SPACE>\" option.\n\x1B[0m"
     #     exit 1
     # fi
 fi
@@ -9350,7 +9028,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             else
                 ${CLI_CMD} get $cr_type $content_cr_name -n $CP4BA_SERVICES_NS -o yaml > ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
                 bai_flag=`${YQ_CMD} ".spec.content_optional_components.bai" "$UPGRADE_DEPLOYMENT_CONTENT_CR_TMP"`
-                bai_flag=$(echo $bai_flag | tr '[:upper:]' '[:lower:]')
+                bai_flag=$(echo "$bai_flag" | tr '[:upper:]' '[:lower:]')
                 CONTENT_CR_EXIST="Yes"
                 cp4ba_root_ca_secret_name=`${YQ_CMD} ".spec.shared_configuration.root_ca_secret" "$UPGRADE_DEPLOYMENT_CONTENT_CR_TMP"`
             fi
@@ -9397,7 +9075,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         # if [[ $test_flag == "false" ]]; then
             info "Found the BAI component selected for this CP4BA deployment in the project \"$CP4BA_SERVICES_NS\"."
             es_to_os_migration_flag=$(${CLI_CMD} get configmap ibm-cp4ba-os-migration-status --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath={.data.opensearch_migration_done})
-            es_to_os_migration_flag=$(echo $es_to_os_migration_flag | tr '[:upper:]' '[:lower:]')
+            es_to_os_migration_flag=$(echo "$es_to_os_migration_flag" | tr '[:upper:]' '[:lower:]')
             if [[ -z $es_to_os_migration_flag || $es_to_os_migration_flag == "no" ]]; then
                 check_es_to_os_migration
             elif [[ $es_to_os_migration_flag == "yes" ]]; then
@@ -9422,7 +9100,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             check_selection_migration
             if [[ $ES_TO_OS_MIGRATION_SELECTED == "Yes" ]]; then
                 es_to_os_migration_flag=$(${CLI_CMD} get configmap ibm-cp4ba-os-migration-status --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath={.data.opensearch_migration_done})
-                es_to_os_migration_flag=$(echo $es_to_os_migration_flag | tr '[:upper:]' '[:lower:]')
+                es_to_os_migration_flag=$(echo "$es_to_os_migration_flag" | tr '[:upper:]' '[:lower:]')
                 if [[ -z $es_to_os_migration_flag || $es_to_os_migration_flag == "no" ]]; then
                     check_es_to_os_migration
                 elif [[ $es_to_os_migration_flag == "yes" ]]; then
@@ -9474,7 +9152,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                 exit 1
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -9504,14 +9182,14 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             ${CLI_CMD} apply -f $UPGRADE_ICP4A_SHARED_INFO_CM_FILE  >/dev/null 2>&1
             if [ $? -eq 0 ]; then
                 success "Created ibm-cp4ba-shared-info configMap in the project \"$CP4BA_SERVICES_NS\"!"
-                ${CLI_CMD} patch configmap ibm-cp4ba-shared-info -n $CP4BA_SERVICES_NS --type=json -p="[{'op': 'add', 'path': '/data/cp4ba_original_csv_ver_for_upgrade_script', 'value': '$(echo $cp4a_operator_csv_version)'}]" >/dev/null 2>&1
+                ${CLI_CMD} patch configmap ibm-cp4ba-shared-info -n $CP4BA_SERVICES_NS --type=json -p="[{'op': 'add', 'path': '/data/cp4ba_original_csv_ver_for_upgrade_script', 'value': '$(echo "$cp4a_operator_csv_version")'}]" >/dev/null 2>&1
                 cp4ba_original_csv_ver_for_upgrade_script=$cp4a_operator_csv_version
             else
                 fail "Failed to create ibm-cp4ba-shared-info configMap in the project \"$CP4BA_SERVICES_NS\"!"
             fi
         else
             success "Found ibm-cp4ba-shared-info configMap under \"$CP4BA_SERVICES_NS\"!"
-            ${CLI_CMD} patch configmap ibm-cp4ba-shared-info -n $CP4BA_SERVICES_NS --type=json -p="[{'op': 'add', 'path': '/data/cp4ba_original_csv_ver_for_upgrade_script', 'value': '$(echo $cp4a_operator_csv_version)'}]" >/dev/null 2>&1
+            ${CLI_CMD} patch configmap ibm-cp4ba-shared-info -n $CP4BA_SERVICES_NS --type=json -p="[{'op': 'add', 'path': '/data/cp4ba_original_csv_ver_for_upgrade_script', 'value': '$(echo "$cp4a_operator_csv_version")'}]" >/dev/null 2>&1
             cp4ba_original_csv_ver_for_upgrade_script=$cp4a_operator_csv_version
         fi
     fi
@@ -9540,14 +9218,14 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                     ${CLI_CMD} apply -f $UPGRADE_ICP4A_CONTENT_SHARED_INFO_CM_FILE  >/dev/null 2>&1
                     if [ $? -eq 0 ]; then
                         success "Created ibm-cp4ba-content-shared-info configMap in the project \"$CP4BA_SERVICES_NS\"!"
-                        ${CLI_CMD} patch configmap ibm-cp4ba-content-shared-info -n $CP4BA_SERVICES_NS --type=json -p="[{'op': 'add', 'path': '/data/cp4ba_original_csv_ver_for_upgrade_script', 'value': '$(echo $cp4a_operator_csv_version)'}]" >/dev/null 2>&1
+                        ${CLI_CMD} patch configmap ibm-cp4ba-content-shared-info -n $CP4BA_SERVICES_NS --type=json -p="[{'op': 'add', 'path': '/data/cp4ba_original_csv_ver_for_upgrade_script', 'value': '$(echo "$cp4a_operator_csv_version")'}]" >/dev/null 2>&1
                         cp4ba_original_csv_ver_for_upgrade_script=$cp4a_operator_csv_version
                     else
                         fail "Failed to create ibm-cp4ba-content-shared-info configMap in the project \"$CP4BA_SERVICES_NS\"!"
                     fi
                 else
                     success "Found ibm-cp4ba-content-shared-info configMap under \"$CP4BA_SERVICES_NS\"!"
-                    ${CLI_CMD} patch configmap ibm-cp4ba-content-shared-info -n $CP4BA_SERVICES_NS --type=json -p="[{'op': 'add', 'path': '/data/cp4ba_original_csv_ver_for_upgrade_script', 'value': '$(echo $cp4a_operator_csv_version)'}]" >/dev/null 2>&1
+                    ${CLI_CMD} patch configmap ibm-cp4ba-content-shared-info -n $CP4BA_SERVICES_NS --type=json -p="[{'op': 'add', 'path': '/data/cp4ba_original_csv_ver_for_upgrade_script', 'value': '$(echo "$cp4a_operator_csv_version")'}]" >/dev/null 2>&1
                     cp4ba_original_csv_ver_for_upgrade_script=$cp4a_operator_csv_version
                 fi
             fi
@@ -9768,7 +9446,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             if [[ ${owner_ref} != "ICP4ACluster" ]]; then
                 CONTENT_CR_EXIST="Yes"
                 css_flag=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.spec.content_optional_components.css' -)
-                css_flag=$(echo $css_flag | tr '[:upper:]' '[:lower:]')
+                css_flag=$(echo "$css_flag" | tr '[:upper:]' '[:lower:]')
                 # Check fncm_secret_name for default ibm-fncm-secret
                 fncm_secret_name_val=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.spec.ecm_configuration.fncm_secret_name // ""' -)
                 if [[ ! -z $fncm_secret_name_val ]]; then
@@ -9826,7 +9504,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         exit 1
                     else
                         sleep 30
-                        echo -n "..."
+                        printf '%s' "..."
                         continue
                     fi
                 else
@@ -9850,7 +9528,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                             exit 1
                         else
                             sleep 15
-                            echo -n "..."
+                            printf '%s' "..."
                             continue
                         fi
                     else
@@ -9868,24 +9546,24 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             fi
             #Patching configmap with the SCIM configuration value
             # https://jsw.ibm.com/browse/DBACLD-157386 https://jsw.ibm.com/browse/DBACLD-178101 https://jsw.ibm.com/browse/DBACLD-177550 https://jsw.ibm.com/browse/DBACLD-177742
-            if ! ${CLI_CMD} patch configmap "$shared_info_configmap" -n "$CP4BA_SERVICES_NS" --type=json -p="[{'op': 'add', 'path': '/data/scim_configured', 'value': '$(echo $IS_SCIM_ENABLED)'}]" >/dev/null 2>&1; then
+            if ! ${CLI_CMD} patch configmap "$shared_info_configmap" -n "$CP4BA_SERVICES_NS" --type=json -p="[{'op': 'add', 'path': '/data/scim_configured', 'value': '$(echo "$IS_SCIM_ENABLED")'}]" >/dev/null 2>&1; then
                 warning "Failed to patch ConfigMap '$shared_info_configmap' in namespace '$CP4BA_SERVICES_NS' with the SCIM configuration details."
             fi
             
             if [[ $IS_SCIM_ENABLED == "True" ]]; then
                 if [[ "$cp4a_operator_csv_version" == "21.3."* && $UPGRADE_MODE == "shared2dedicated" ]]; then
                     printf "\n"
-                    echo -e "\x1B[33;5m[ATTENTION]: \x1B[0mYou ${RED_TEXT}DO NOT${RESET_TEXT} need to run the script ${YELLOW_TEXT}./cp4a-pre-upgrade-and-post-upgrade-optional.sh${RESET_TEXT} in ${YELLOW_TEXT}\"pre-upgrade\"${RESET_TEXT} mode when upgrading CP4BA from 21.0.3 to 24.0.0 (migrating IBM Cloud Pak foundational services from Cluster-scoped to Namespace-scoped)."
+                    printf '%b\n' "\x1B[33;5m[ATTENTION]: \x1B[0mYou ${RED_TEXT}DO NOT${RESET_TEXT} need to run the script ${YELLOW_TEXT}./cp4a-pre-upgrade-and-post-upgrade-optional.sh${RESET_TEXT} in ${YELLOW_TEXT}\"pre-upgrade\"${RESET_TEXT} mode when upgrading CP4BA from 21.0.3 to 24.0.0 (migrating IBM Cloud Pak foundational services from Cluster-scoped to Namespace-scoped)."
                     prompt_press_any_key_to_continue
                 fi
                 if [[ "$cp4a_operator_csv_version" == "22.2."* && $UPGRADE_MODE == "shared2dedicated" ]]; then
                     printf "\n"
-                    echo -e "\x1B[33;5m[ATTENTION]: \x1B[0mYou ${RED_TEXT}DO NOT${RESET_TEXT} need to run the script ${YELLOW_TEXT}./cp4a-pre-upgrade-and-post-upgrade-optional.sh${RESET_TEXT} in ${YELLOW_TEXT}\"pre-upgrade\"${RESET_TEXT} mode when upgrading CP4BA from 22.0.2 to 24.0.0 (migrating IBM Cloud Pak foundational services from Cluster-scoped to Namespace-scoped)."
+                    printf '%b\n' "\x1B[33;5m[ATTENTION]: \x1B[0mYou ${RED_TEXT}DO NOT${RESET_TEXT} need to run the script ${YELLOW_TEXT}./cp4a-pre-upgrade-and-post-upgrade-optional.sh${RESET_TEXT} in ${YELLOW_TEXT}\"pre-upgrade\"${RESET_TEXT} mode when upgrading CP4BA from 22.0.2 to 24.0.0 (migrating IBM Cloud Pak foundational services from Cluster-scoped to Namespace-scoped)."
                     prompt_press_any_key_to_continue
                 fi
                 if [[ "$cp4a_operator_csv_version" == "23.2."* ]]; then
                     printf "\n"
-                    echo -e "\x1B[33;5m[ATTENTION]: \x1B[0mYou ${RED_TEXT}DO NOT${RESET_TEXT} need to run the script ${YELLOW_TEXT}./cp4a-pre-upgrade-and-post-upgrade-optional.sh${RESET_TEXT} in ${YELLOW_TEXT}\"pre-upgrade\"${RESET_TEXT} mode when upgrading CP4BA from 23.0.2 to 24.0.0."
+                    printf '%b\n' "\x1B[33;5m[ATTENTION]: \x1B[0mYou ${RED_TEXT}DO NOT${RESET_TEXT} need to run the script ${YELLOW_TEXT}./cp4a-pre-upgrade-and-post-upgrade-optional.sh${RESET_TEXT} in ${YELLOW_TEXT}\"pre-upgrade\"${RESET_TEXT} mode when upgrading CP4BA from 23.0.2 to 24.0.0."
                     prompt_press_any_key_to_continue
                 fi
                 if [[ "$cp4a_operator_csv_version" == "21.3."* || "$cp4a_operator_csv_version" == "22.2."* ]]; then
@@ -9915,11 +9593,11 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                     fi
                     printf "\n"
                     # post-upgrade mode requird for all CPfs migration mode
-                    echo -e "\x1B[33;5m[ATTENTION]: \x1B[0mAfter upgrading IBM Cloud Pak for Business Automation deployment, you ${RED_TEXT}NEED${RESET_TEXT} to run the script ${YELLOW_TEXT}./cp4a-pre-upgrade-and-post-upgrade-optional.sh${RESET_TEXT} in ${YELLOW_TEXT}\"post-upgrade\"${RESET_TEXT} mode."
+                    printf '%b\n' "\x1B[33;5m[ATTENTION]: \x1B[0mAfter upgrading IBM Cloud Pak for Business Automation deployment, you ${RED_TEXT}NEED${RESET_TEXT} to run the script ${YELLOW_TEXT}./cp4a-pre-upgrade-and-post-upgrade-optional.sh${RESET_TEXT} in ${YELLOW_TEXT}\"post-upgrade\"${RESET_TEXT} mode."
                     prompt_press_any_key_to_continue
                 elif [[ $UPGRADE_MODE == "shared2dedicated" && "$cp4a_operator_csv_version" == "23.2."* ]]; then
                     printf "\n"
-                    echo -e "\x1B[33;5m[ATTENTION]: \x1B[0mAfter upgrading IBM Cloud Pak for Business Automation, you ${RED_TEXT}NEED${RESET_TEXT} to run the script ${YELLOW_TEXT}./cp4a-pre-upgrade-and-post-upgrade-optional.sh${RESET_TEXT} in ${YELLOW_TEXT}\"post-upgrade\"${RESET_TEXT} mode."
+                    printf '%b\n' "\x1B[33;5m[ATTENTION]: \x1B[0mAfter upgrading IBM Cloud Pak for Business Automation, you ${RED_TEXT}NEED${RESET_TEXT} to run the script ${YELLOW_TEXT}./cp4a-pre-upgrade-and-post-upgrade-optional.sh${RESET_TEXT} in ${YELLOW_TEXT}\"post-upgrade\"${RESET_TEXT} mode."
                     prompt_press_any_key_to_continue
                 fi
             fi
@@ -9949,14 +9627,14 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     #             exit 1
     #             ;;
     #         *)
-    #             echo -e "Answer must be \"Yes\" or \"No\"\n"
+    #             printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
     #             ;;
     #         esac
     #     done
     # fi
 
     # Checking CSV for cp4ba-operator/content-operator/bai-operator to decide whether to do BAI save point during IFIX to IFIX upgrade
-    sub_inst_list=$(${CLI_CMD} get subscriptions.operators.coreos.com -n $TEMP_OPERATOR_PROJECT_NAME|grep ibm-cp4a-operator-catalog|awk '{if(NR>0){if(NR==1){ arr=$1; }else{ arr=arr" "$1; }} } END{ print arr }')
+    sub_inst_list=$(${CLI_CMD} get subscription.operators.coreos.com -n $TEMP_OPERATOR_PROJECT_NAME|grep ibm-cp4a-operator-catalog|awk '{if(NR>0){if(NR==1){ arr=$1; }else{ arr=arr" "$1; }} } END{ print arr }')
     if [[ -z $sub_inst_list ]]; then
         info "No existing CP4BA subscriptions found, continuing ..."
         # exit 1
@@ -9966,8 +9644,8 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     for i in ${!sub_array[@]}; do
         if [[ ! -z "${sub_array[i]}" ]]; then
             if [[ ${sub_array[i]} = ibm-cp4a-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = ibm-insights-engine-operator* || ${sub_array[i]} = ibm-workflow-operator* ]]; then
-                current_version=$(${CLI_CMD} get subscriptions.operators.coreos.com ${sub_array[i]} --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
-                installed_version=$(${CLI_CMD} get subscriptions.operators.coreos.com ${sub_array[i]} --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
+                current_version=$(${CLI_CMD} get subscription.operators.coreos.com ${sub_array[i]} --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
+                installed_version=$(${CLI_CMD} get subscription.operators.coreos.com ${sub_array[i]} --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
                 if [[ -z $current_version || -z $installed_version ]]; then
                     error "Failed to retrieve the installed or current CSV. Aborting the upgrade procedure. Check the subscription status of ${sub_array[i]}."
                     exit 1
@@ -10024,7 +9702,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                             if [[ "$machine" == "Mac" ]]; then
                                 which jq &>/dev/null
                                 [[ $? -ne 0 ]] && \
-                                echo -e  "\x1B[1;31mUnable to locate the jq CLI. You must install it to run this script on macOS.\x1B[0m" && \
+                                printf '%b\n'  "\x1B[1;31mUnable to locate the jq CLI. You must install it to run this script on macOS.\x1B[0m" && \
                                 exit 1
                             fi
 
@@ -10162,7 +9840,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                     if [[ "$machine" == "Mac" ]]; then
                         which jq &>/dev/null
                         [[ $? -ne 0 ]] && \
-                        echo -e  "\x1B[1;31mUnable to locate the jq CLI. You must install it to run this script on macOS.\x1B[0m" && \
+                        printf '%b\n'  "\x1B[1;31mUnable to locate the jq CLI. You must install it to run this script on macOS.\x1B[0m" && \
                         exit 1
                     fi
 
@@ -10289,7 +9967,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                             if [[ "$machine" == "Mac" ]]; then
                                 which jq &>/dev/null
                                 [[ $? -ne 0 ]] && \
-                                echo -e  "\x1B[1;31mUnable to locate the jq CLI. You must install it to run this script on macOS.\x1B[0m" && \
+                                printf '%b\n'  "\x1B[1;31mUnable to locate the jq CLI. You must install it to run this script on macOS.\x1B[0m" && \
                                 exit 1
                             fi
 
@@ -10445,7 +10123,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                     if [[ "$machine" == "Mac" ]]; then
                         which jq &>/dev/null
                         [[ $? -ne 0 ]] && \
-                        echo -e  "\x1B[1;31mUnable to locate an jq CLI. You must install it to run this script on MacOS.\x1B[0m" && \
+                        printf '%b\n'  "\x1B[1;31mUnable to locate an jq CLI. You must install it to run this script on MacOS.\x1B[0m" && \
                         exit 1
                     fi
                     info "Create the BAI savepoints for recovery path when merge custom resource"
@@ -10588,7 +10266,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         #  Switch CP4BA Operator to private catalog source
         if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
             # switch CP4BA
-            sub_inst_list=$(${CLI_CMD} get subscriptions.operators.coreos.com -n $TARGET_PROJECT_NAME|grep ibm-cp4a-operator-catalog|awk '{if(NR>0){if(NR==1){ arr=$1; }else{ arr=arr" "$1; }} } END{ print arr }')
+            sub_inst_list=$(${CLI_CMD} get subscription.operators.coreos.com -n $TARGET_PROJECT_NAME|grep ibm-cp4a-operator-catalog|awk '{if(NR>0){if(NR==1){ arr=$1; }else{ arr=arr" "$1; }} } END{ print arr }')
             if [[ -z $sub_inst_list ]]; then
                 info "No existing CP4BA subscriptions found, continuing..."
                 # exit 1
@@ -10598,7 +10276,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             for i in ${!sub_array[@]}; do
                 if [[ ! -z "${sub_array[i]}" ]]; then
                     if [[ ${sub_array[i]} = ibm-cp4a-operator* || ${sub_array[i]} = ibm-cp4a-wfps-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = icp4a-foundation-operator* || ${sub_array[i]} = ibm-pfs-operator* || ${sub_array[i]} = ibm-ads-operator* || ${sub_array[i]} = ibm-dpe-operator* || ${sub_array[i]} = ibm-odm-operator* || ${sub_array[i]} = ibm-insights-engine-operator* || ${sub_array[i]} = ibm-workflow-operator* ]]; then
-                        ${CLI_CMD} patch subscriptions.operators.coreos.com ${sub_array[i]} -n $TARGET_PROJECT_NAME -p '{"spec":{"sourceNamespace":"'"$TARGET_PROJECT_NAME"'"}}' --type=merge >/dev/null 2>&1
+                        ${CLI_CMD} patch subscription.operators.coreos.com ${sub_array[i]} -n $TARGET_PROJECT_NAME -p '{"spec":{"sourceNamespace":"'"$TARGET_PROJECT_NAME"'"}}' --type=merge >/dev/null 2>&1
                         if [ $? -eq 0 ]
                         then
                             sleep 1
@@ -10621,12 +10299,12 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         # DBACLD-165807: Remove logic for patching BTS subscription as we don't really need to do it.  We let CPfS handles it.
         # if [[ ! -z $cp4ba_operators_namespace ]]; then
         #     bts_sub_flag=""
-        #     export bts_sub_flag=$(${CLI_CMD} get subscriptions.operators.coreos.com --no-headers --ignore-not-found -n $cp4ba_operators_namespace|grep ibm-bts-operator|awk '{print $1}')
+        #     export bts_sub_flag=$(${CLI_CMD} get subscription.operators.coreos.com --no-headers --ignore-not-found -n $cp4ba_operators_namespace|grep ibm-bts-operator|awk '{print $1}')
         #     info "BTS subscription name is: $bts_sub_flag"
         #     if [[ ! -z "$bts_sub_flag" ]]; then
         #         info "Updating the catalog source of subscription "${bts_sub_flag}" to $BTS_CATALOG_VERSION"
         #         if [[ $ENABLE_PRIVATE_CATALOG -eq 1 || $PRIVATE_CATALOG_FOUND == "Yes" ]]; then
-        #             ${CLI_CMD} patch subscriptions.operators.coreos.com "${bts_sub_flag}" -n $cp4ba_operators_namespace -p '{"spec":{"sourceNamespace":"'"$cp4ba_operators_namespace"'"}}' --type=merge >/dev/null 2>&1
+        #             ${CLI_CMD} patch subscription.operators.coreos.com "${bts_sub_flag}" -n $cp4ba_operators_namespace -p '{"spec":{"sourceNamespace":"'"$cp4ba_operators_namespace"'"}}' --type=merge >/dev/null 2>&1
         #             if [ $? -eq 0 ]
         #             then
         #                 success "Switch the catalog source of subscription "${bts_sub_flag}" to $cp4ba_operators_namespace"
@@ -10636,7 +10314,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         #                 exit 1
         #             fi
         #         fi
-        #         ${CLI_CMD} patch subscriptions.operators.coreos.com "${bts_sub_flag}" -n $cp4ba_operators_namespace -p '{"spec":{"source":"'"$BTS_CATALOG_VERSION"'"}}' --type=merge >/dev/null 2>&1
+        #         ${CLI_CMD} patch subscription.operators.coreos.com "${bts_sub_flag}" -n $cp4ba_operators_namespace -p '{"spec":{"source":"'"$BTS_CATALOG_VERSION"'"}}' --type=merge >/dev/null 2>&1
         #         if [ $? -eq 0 ]
         #         then
         #             success "Updated the catalog source of subscription "${bts_sub_flag}" to $BTS_CATALOG_VERSION"
@@ -10647,7 +10325,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         #         fi
         #         #  Swtich BTS channel to v3.34
         #         info "Updating the channel of subscription "${bts_sub_flag}" to $BTS_CHANNEL_VERSION"
-        #         ${CLI_CMD} patch subscriptions.operators.coreos.com "${bts_sub_flag}" -n $cp4ba_operators_namespace -p '{"spec":{"channel":"'"$BTS_CHANNEL_VERSION"'"}}' --type=merge >/dev/null 2>&1
+        #         ${CLI_CMD} patch subscription.operators.coreos.com "${bts_sub_flag}" -n $cp4ba_operators_namespace -p '{"spec":{"channel":"'"$BTS_CHANNEL_VERSION"'"}}' --type=merge >/dev/null 2>&1
         #         if [ $? -eq 0 ]
         #         then
         #             success "Updated the channel of subscription "${bts_sub_flag}" to $BTS_CHANNEL_VERSION"
@@ -10660,7 +10338,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         # fi
         
         #  Patch CP4BA channel to latest version, wait for all the operators are upgraded before applying operandRequest.
-        sub_inst_list=$(${CLI_CMD} get subscriptions.operators.coreos.com -n $TEMP_OPERATOR_PROJECT_NAME|grep ibm-cp4a-operator-catalog|awk '{if(NR>0){if(NR==1){ arr=$1; }else{ arr=arr" "$1; }} } END{ print arr }')
+        sub_inst_list=$(${CLI_CMD} get subscription.operators.coreos.com -n $TEMP_OPERATOR_PROJECT_NAME|grep ibm-cp4a-operator-catalog|awk '{if(NR>0){if(NR==1){ arr=$1; }else{ arr=arr" "$1; }} } END{ print arr }')
         if [[ -z $sub_inst_list ]]; then
             info "No existing CP4BA subscriptions found, continuing..."
             # exit 1
@@ -10670,7 +10348,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         for i in ${!sub_array[@]}; do
             if [[ ! -z "${sub_array[i]}" ]]; then
                 if [[ ${sub_array[i]} = ibm-cp4a-operator* || ${sub_array[i]} = ibm-cp4a-wfps-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = icp4a-foundation-operator* || ${sub_array[i]} = ibm-pfs-operator* || ${sub_array[i]} = ibm-ads-operator* || ${sub_array[i]} = ibm-dpe-operator* || ${sub_array[i]} = ibm-odm-operator* || ${sub_array[i]} = ibm-insights-engine-operator* || ${sub_array[i]} = ibm-workflow-operator* ]]; then
-                    ${CLI_CMD} patch subscriptions.operators.coreos.com ${sub_array[i]} -n $TEMP_OPERATOR_PROJECT_NAME -p '{"spec":{"channel":"'"$CP4BA_CHANNEL_VERSION"'"}}' --type=merge >/dev/null 2>&1
+                    ${CLI_CMD} patch subscription.operators.coreos.com ${sub_array[i]} -n $TEMP_OPERATOR_PROJECT_NAME -p '{"spec":{"channel":"'"$CP4BA_CHANNEL_VERSION"'"}}' --type=merge >/dev/null 2>&1
                     if [ $? -eq 0 ]
                     then
                         success "Updated the channel of subscription '${sub_array[i]}' to $CP4BA_CHANNEL_VERSION"
@@ -10811,7 +10489,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         exit 1
                     else
                         sleep 30
-                        echo -n "..."
+                        printf '%s' "..."
                         continue
                     fi
                 else
@@ -10847,15 +10525,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         if [[ $ENABLE_PRIVATE_CATALOG -eq 0 ]]; then
             cloud_native_postgresql_ready="Yes"
             ibm_bts_operator_ready="Yes"
-            # cloud_native_postgresql_flag=$(${CLI_CMD} get subscriptions.operators.coreos.com cloud-native-postgresql --no-headers --ignore-not-found -n $cs_service_target_namespace | wc -l)
-            #ibm_bts_operator_flag=$(${CLI_CMD} get subscriptions.operators.coreos.com "${bts_sub_flag}" --no-headers --ignore-not-found -n $cs_service_target_namespace | wc -l)
+            # cloud_native_postgresql_flag=$(${CLI_CMD} get subscription.operators.coreos.com cloud-native-postgresql --no-headers --ignore-not-found -n $cs_service_target_namespace | wc -l)
+            #ibm_bts_operator_flag=$(${CLI_CMD} get subscription.operators.coreos.com "${bts_sub_flag}" --no-headers --ignore-not-found -n $cs_service_target_namespace | wc -l)
             # maxRetry=50
             # if [ $cloud_native_postgresql_flag -ne 0 ]; then
             #     info "Checking the version of subscription 'cloud-native-postgresql' in the project \"$cs_service_target_namespace\""
             #     sleep 60
             #     for ((retry=0;retry<=${maxRetry};retry++)); do
-            #         current_version_postgresql=$(${CLI_CMD} get subscriptions.operators.coreos.com cloud-native-postgresql --no-headers --ignore-not-found -n $cs_service_target_namespace -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
-            #         installed_version_postgresql=$(${CLI_CMD} get subscriptions.operators.coreos.com cloud-native-postgresql --no-headers --ignore-not-found -n $cs_service_target_namespace -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
+            #         current_version_postgresql=$(${CLI_CMD} get subscription.operators.coreos.com cloud-native-postgresql --no-headers --ignore-not-found -n $cs_service_target_namespace -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
+            #         installed_version_postgresql=$(${CLI_CMD} get subscription.operators.coreos.com cloud-native-postgresql --no-headers --ignore-not-found -n $cs_service_target_namespace -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
             #         prefix_postgresql="cloud-native-postgresql.v"
             #         current_version_postgresql=${current_version_postgresql#"$prefix_postgresql"}
             #         installed_version_postgresql=${installed_version_postgresql#"$prefix_postgresql"}
@@ -10867,7 +10545,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             #                 break
             #             else
             #                 sleep 30
-            #                 echo -n "..."
+            #                 printf '%s' "..."
             #                 continue
 
             #             fi
@@ -10884,8 +10562,8 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             # if [ $ibm_bts_operator_flag -ne 0 ]; then
             #     info "Checking the version of subscription "${bts_sub_flag}" in the project \"$cs_service_target_namespace\""
             #     for ((retry=0;retry<=${maxRetry};retry++)); do
-            #         current_version_bts=$(${CLI_CMD} get subscriptions.operators.coreos.com "${bts_sub_flag}" --no-headers --ignore-not-found -n $cs_service_target_namespace -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
-            #         installed_version_bts=$(${CLI_CMD} get subscriptions.operators.coreos.com "${bts_sub_flag}" --no-headers --ignore-not-found -n $cs_service_target_namespace -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
+            #         current_version_bts=$(${CLI_CMD} get subscription.operators.coreos.com "${bts_sub_flag}" --no-headers --ignore-not-found -n $cs_service_target_namespace -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
+            #         installed_version_bts=$(${CLI_CMD} get subscription.operators.coreos.com "${bts_sub_flag}" --no-headers --ignore-not-found -n $cs_service_target_namespace -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
             #         prefix_bts="ibm-bts-operator.v"
             #         current_version_bts=${current_version_bts#"$prefix_bts"}
             #         installed_version_bts=${installed_version_bts#"$prefix_bts"}
@@ -10897,7 +10575,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             #                 break
             #             else
             #                 sleep 30
-            #                 echo -n "..."
+            #                 printf '%s' "..."
             #                 continue
             #             fi
             #         else
@@ -10911,15 +10589,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             # fi
 
             if [[ "$cp4a_operator_csv_version" == "21.3."* || "$cp4a_operator_csv_version" == "22.2."* ]]; then
-                ibm_cp4a_wfps_operator_flag=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/ibm-cp4a-wfps-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
+                ibm_cp4a_wfps_operator_flag=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/ibm-cp4a-wfps-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
 
                 if [ $ibm_cp4a_wfps_operator_flag -ne 0 ]; then
-                    ibm_cp4a_wfps_sub_name=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/ibm-cp4a-wfps-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
+                    ibm_cp4a_wfps_sub_name=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/ibm-cp4a-wfps-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
 
                     info "Checking the version of subscription '$ibm_cp4a_wfps_sub_name' in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
                     for ((retry=0;retry<=${maxRetry};retry++)); do
-                        current_version_wfps=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_wfps_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
-                        installed_version_wfps=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_wfps_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
+                        current_version_wfps=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_wfps_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
+                        installed_version_wfps=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_wfps_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
                         prefix_bts="ibm-cp4a-wfps-operator.v"
                         current_version_wfps=${current_version_wfps#"$prefix_bts"}
                         installed_version_wfps=${installed_version_wfps#"$prefix_bts"}
@@ -10931,7 +10609,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                 break
                             else
                                 sleep 30
-                                echo -n "..."
+                                printf '%s' "..."
                                 continue
                             fi
                         else
@@ -10945,15 +10623,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
 
             if [[ "$cp4a_operator_csv_version" == "22.2."* ]]; then
                 # Check ADS Operator upgrade done or not
-                ibm_cp4a_ads_operator_flag=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/ibm-ads-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
+                ibm_cp4a_ads_operator_flag=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/ibm-ads-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
 
                 if [ $ibm_cp4a_ads_operator_flag -ne 0 ]; then
-                    ibm_cp4a_ads_sub_name=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/ibm-ads-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
+                    ibm_cp4a_ads_sub_name=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/ibm-ads-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
 
                     info "Checking the version of subscription '$ibm_cp4a_ads_sub_name' in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
                     for ((retry=0;retry<=${maxRetry};retry++)); do
-                        current_version_ads=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_ads_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
-                        installed_version_ads=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_ads_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
+                        current_version_ads=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_ads_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
+                        installed_version_ads=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_ads_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
                         prefix_bts="ibm-ads-operator.v"
                         current_version_ads=${current_version_ads#"$prefix_bts"}
                         installed_version_ads=${installed_version_ads#"$prefix_bts"}
@@ -10965,7 +10643,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                 break
                             else
                                 sleep 30
-                                echo -n "..."
+                                printf '%s' "..."
                                 continue
                             fi
                         else
@@ -10976,15 +10654,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                     done
                 fi
                 # Check Content Operator upgrade done or not
-                ibm_cp4a_content_operator_flag=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/ibm-content-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
+                ibm_cp4a_content_operator_flag=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/ibm-content-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
 
                 if [ $ibm_cp4a_content_operator_flag -ne 0 ]; then
-                    ibm_cp4a_content_sub_name=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/ibm-content-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
+                    ibm_cp4a_content_sub_name=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/ibm-content-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
 
                     info "Checking the version of subscription '$ibm_cp4a_content_sub_name' in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
                     for ((retry=0;retry<=${maxRetry};retry++)); do
-                        current_version_content=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_content_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
-                        installed_version_content=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_content_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
+                        current_version_content=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_content_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
+                        installed_version_content=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_content_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
                         prefix_bts="ibm-content-operator.v"
                         current_version_content=${current_version_content#"$prefix_bts"}
                         installed_version_content=${installed_version_content#"$prefix_bts"}
@@ -10996,7 +10674,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                 break
                             else
                                 sleep 30
-                                echo -n "..."
+                                printf '%s' "..."
                                 continue
                             fi
                         else
@@ -11007,15 +10685,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                     done
                 fi
                 # Check PFS Operator upgrade done or not
-                ibm_cp4a_pfs_operator_flag=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/ibm-pfs-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
+                ibm_cp4a_pfs_operator_flag=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/ibm-pfs-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
 
                 if [ $ibm_cp4a_pfs_operator_flag -ne 0 ]; then
-                    ibm_cp4a_pfs_sub_name=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/ibm-pfs-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
+                    ibm_cp4a_pfs_sub_name=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/ibm-pfs-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
 
                     info "Checking the version of subscription '$ibm_cp4a_pfs_sub_name' in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
                     for ((retry=0;retry<=${maxRetry};retry++)); do
-                        current_version_pfs=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_pfs_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
-                        installed_version_pfs=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_pfs_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
+                        current_version_pfs=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_pfs_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
+                        installed_version_pfs=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_pfs_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
                         prefix_bts="ibm-pfs-operator.v"
                         current_version_pfs=${current_version_pfs#"$prefix_bts"}
                         installed_version_pfs=${installed_version_pfs#"$prefix_bts"}
@@ -11027,7 +10705,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                 break
                             else
                                 sleep 30
-                                echo -n "..."
+                                printf '%s' "..."
                                 continue
                             fi
                         else
@@ -11038,15 +10716,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                     done
                 fi
                 # Check Foundation Operator upgrade done or not
-                ibm_cp4a_foundation_operator_flag=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/icp4a-foundation-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
+                ibm_cp4a_foundation_operator_flag=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/icp4a-foundation-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
 
                 if [ $ibm_cp4a_foundation_operator_flag -ne 0 ]; then
-                    ibm_cp4a_foundation_sub_name=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/icp4a-foundation-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
+                    ibm_cp4a_foundation_sub_name=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/icp4a-foundation-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
 
                     info "Checking the version of subscription '$ibm_cp4a_foundation_sub_name' in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
                     for ((retry=0;retry<=${maxRetry};retry++)); do
-                        current_version_foundation=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_foundation_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
-                        installed_version_foundation=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_foundation_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
+                        current_version_foundation=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_foundation_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
+                        installed_version_foundation=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_foundation_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
                         prefix_bts="icp4a-foundation-operator.v"
                         current_version_foundation=${current_version_foundation#"$prefix_bts"}
                         installed_version_foundation=${installed_version_foundation#"$prefix_bts"}
@@ -11058,7 +10736,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                 break
                             else
                                 sleep 30
-                                echo -n "..."
+                                printf '%s' "..."
                                 continue
                             fi
                         else
@@ -11076,15 +10754,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             cloud_native_postgresql_ready="Yes"
 
             if [[ "$cp4a_operator_csv_version" == "21.3."* || "$cp4a_operator_csv_version" == "22.2."* ]]; then
-                ibm_cp4a_wfps_operator_flag=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/ibm-cp4a-wfps-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
+                ibm_cp4a_wfps_operator_flag=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/ibm-cp4a-wfps-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
 
                 if [ $ibm_cp4a_wfps_operator_flag -ne 0 ]; then
-                    ibm_cp4a_wfps_sub_name=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/ibm-cp4a-wfps-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
+                    ibm_cp4a_wfps_sub_name=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/ibm-cp4a-wfps-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
 
                     info "Checking the version of subscription '$ibm_cp4a_wfps_sub_name' in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
                     for ((retry=0;retry<=${maxRetry};retry++)); do
-                        current_version_wfps=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_wfps_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
-                        installed_version_wfps=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_wfps_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
+                        current_version_wfps=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_wfps_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
+                        installed_version_wfps=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_wfps_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
                         prefix_bts="ibm-cp4a-wfps-operator.v"
                         current_version_wfps=${current_version_wfps#"$prefix_bts"}
                         installed_version_wfps=${installed_version_wfps#"$prefix_bts"}
@@ -11096,7 +10774,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                 break
                             else
                                 sleep 30
-                                echo -n "..."
+                                printf '%s' "..."
                                 continue
                             fi
                         else
@@ -11110,15 +10788,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
 
             if [[ "$cp4a_operator_csv_version" == "22.2."* ]]; then
                 # Check ADS Operator upgrade done or not
-                ibm_cp4a_ads_operator_flag=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/ibm-ads-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
+                ibm_cp4a_ads_operator_flag=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/ibm-ads-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
 
                 if [ $ibm_cp4a_ads_operator_flag -ne 0 ]; then
-                    ibm_cp4a_ads_sub_name=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/ibm-ads-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
+                    ibm_cp4a_ads_sub_name=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/ibm-ads-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
 
                     info "Checking the version of subscription '$ibm_cp4a_ads_sub_name' in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
                     for ((retry=0;retry<=${maxRetry};retry++)); do
-                        current_version_ads=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_ads_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
-                        installed_version_ads=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_ads_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
+                        current_version_ads=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_ads_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
+                        installed_version_ads=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_ads_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
                         prefix_bts="ibm-ads-operator.v"
                         current_version_ads=${current_version_ads#"$prefix_bts"}
                         installed_version_ads=${installed_version_ads#"$prefix_bts"}
@@ -11130,7 +10808,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                 break
                             else
                                 sleep 30
-                                echo -n "..."
+                                printf '%s' "..."
                                 continue
                             fi
                         else
@@ -11141,15 +10819,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                     done
                 fi
                 # Check Content Operator upgrade done or not
-                ibm_cp4a_content_operator_flag=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/ibm-content-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
+                ibm_cp4a_content_operator_flag=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/ibm-content-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
 
                 if [ $ibm_cp4a_content_operator_flag -ne 0 ]; then
-                    ibm_cp4a_content_sub_name=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/ibm-content-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
+                    ibm_cp4a_content_sub_name=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/ibm-content-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
 
                     info "Checking the version of subscription '$ibm_cp4a_content_sub_name' in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
                     for ((retry=0;retry<=${maxRetry};retry++)); do
-                        current_version_content=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_content_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
-                        installed_version_content=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_content_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
+                        current_version_content=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_content_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
+                        installed_version_content=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_content_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
                         prefix_bts="ibm-content-operator.v"
                         current_version_content=${current_version_content#"$prefix_bts"}
                         installed_version_content=${installed_version_content#"$prefix_bts"}
@@ -11161,7 +10839,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                 break
                             else
                                 sleep 30
-                                echo -n "..."
+                                printf '%s' "..."
                                 continue
                             fi
                         else
@@ -11172,15 +10850,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                     done
                 fi
                 # Check PFS Operator upgrade done or not
-                ibm_cp4a_pfs_operator_flag=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/ibm-pfs-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
+                ibm_cp4a_pfs_operator_flag=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/ibm-pfs-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
 
                 if [ $ibm_cp4a_pfs_operator_flag -ne 0 ]; then
-                    ibm_cp4a_pfs_sub_name=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/ibm-pfs-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
+                    ibm_cp4a_pfs_sub_name=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/ibm-pfs-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
 
                     info "Checking the version of subscription '$ibm_cp4a_pfs_sub_name' in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
                     for ((retry=0;retry<=${maxRetry};retry++)); do
-                        current_version_pfs=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_pfs_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
-                        installed_version_pfs=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_pfs_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
+                        current_version_pfs=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_pfs_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
+                        installed_version_pfs=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_pfs_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
                         prefix_bts="ibm-pfs-operator.v"
                         current_version_pfs=${current_version_pfs#"$prefix_bts"}
                         installed_version_pfs=${installed_version_pfs#"$prefix_bts"}
@@ -11192,7 +10870,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                 break
                             else
                                 sleep 30
-                                echo -n "..."
+                                printf '%s' "..."
                                 continue
                             fi
                         else
@@ -11203,15 +10881,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                     done
                 fi
                 # Check Foundation Operator upgrade done or not
-                ibm_cp4a_foundation_operator_flag=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/icp4a-foundation-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
+                ibm_cp4a_foundation_operator_flag=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/icp4a-foundation-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | wc -l)
 
                 if [ $ibm_cp4a_foundation_operator_flag -ne 0 ]; then
-                    ibm_cp4a_foundation_sub_name=$(${CLI_CMD} get subscriptions.operators.coreos.com -l=operators.coreos.com/icp4a-foundation-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
+                    ibm_cp4a_foundation_sub_name=$(${CLI_CMD} get subscription.operators.coreos.com -l=operators.coreos.com/icp4a-foundation-operator.$TEMP_OPERATOR_PROJECT_NAME --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME | awk '{print $1}')
 
                     info "Checking the version of subscription '$ibm_cp4a_foundation_sub_name' in the project \"$TEMP_OPERATOR_PROJECT_NAME\""
                     for ((retry=0;retry<=${maxRetry};retry++)); do
-                        current_version_foundation=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_foundation_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
-                        installed_version_foundation=$(${CLI_CMD} get subscriptions.operators.coreos.com $ibm_cp4a_foundation_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
+                        current_version_foundation=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_foundation_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
+                        installed_version_foundation=$(${CLI_CMD} get subscription.operators.coreos.com $ibm_cp4a_foundation_sub_name --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
                         prefix_bts="icp4a-foundation-operator.v"
                         current_version_foundation=${current_version_foundation#"$prefix_bts"}
                         installed_version_foundation=${installed_version_foundation#"$prefix_bts"}
@@ -11223,7 +10901,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                 break
                             else
                                 sleep 30
-                                echo -n "..."
+                                printf '%s' "..."
                                 continue
                             fi
                         else
@@ -11324,11 +11002,11 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         if [[ $retry -eq ${maxRetry} ]]; then
                             printf "\n"
                             warning "Timeout waiting for IBM Automation Foundation be removed from the project \"$TEMP_OPERATOR_PROJECT_NAME\""
-                            echo -e "\x1B[1mRemove IAF manually using the command: \"${CUR_DIR}/helper/upgrade/remove_iaf.sh $cr_type $cp4ba_cr_metaname $TARGET_PROJECT_NAME $control_namespace \"icp4ba\" \"none\"\"\x1B[0m"
+                            printf '%b\n' "\x1B[1mRemove IAF manually using the command: \"${CUR_DIR}/helper/upgrade/remove_iaf.sh $cr_type $cp4ba_cr_metaname $TARGET_PROJECT_NAME $control_namespace \"icp4ba\" \"none\"\"\x1B[0m"
                             exit 1
                         else
                             sleep 30
-                            echo -n "..."
+                            printf '%s' "..."
                             continue
                         fi
                     else
@@ -11870,16 +11548,16 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                 if [[ $retry -eq ${maxRetry} ]]; then
                 printf "\n"
                 warning "Timeout waiting for IBM Cloud Pak foundational operator to start"
-                echo -e "\x1B[1mCheck the status of the Pod by issuing the following command:\x1B[0m"
+                printf '%b\n' "\x1B[1mCheck the status of the Pod by issuing the following command:\x1B[0m"
                 echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $TEMP_OPERATOR_PROJECT_NAME|grep ibm-common-service-operator|awk '{print $1}') -n $TEMP_OPERATOR_PROJECT_NAME"
                 printf "\n"
-                echo -e "\x1B[1mCheck the status of the ReplicaSet issuing the following command:\x1B[0m"
+                printf '%b\n' "\x1B[1mCheck the status of the ReplicaSet issuing the following command:\x1B[0m"
                 echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $TEMP_OPERATOR_PROJECT_NAME|grep ibm-common-service-operator|awk '{print $1}') -n $TEMP_OPERATOR_PROJECT_NAME"
                 printf "\n"
                 exit 1
                 else
                 sleep 30
-                echo -n "..."
+                printf '%s' "..."
                 continue
                 fi
             elif [[ $isReady == "Succeeded" ]]; then
@@ -11910,16 +11588,16 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         #             if [[ $retry -eq ${maxRetry} ]]; then
         #             printf "\n"
         #             warning "Timeout waiting for IBM Events operator to start"
-        #             echo -e "\x1B[1mCheck the status of Pod by issuing the command:\x1B[0m"
+        #             printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the command:\x1B[0m"
         #             echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $TEMP_OPERATOR_PROJECT_NAME|grep ibm-events-operator|awk '{print $1}') -n $TEMP_OPERATOR_PROJECT_NAME"
         #             printf "\n"
-        #             echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the command:\x1B[0m"
+        #             printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the command:\x1B[0m"
         #             echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $TEMP_OPERATOR_PROJECT_NAME|grep ibm-events-operator|awk '{print $1}') -n $TEMP_OPERATOR_PROJECT_NAME"
         #             printf "\n"
         #             exit 1
         #             else
         #             sleep 30
-        #             echo -n "..."
+        #             printf '%s' "..."
         #             continue
         #             fi
         #         elif [[ $isReady == "Succeeded" ]]; then
@@ -11941,7 +11619,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
 
         # Checking CP4BA operator CSV
         # change this value for $CP4BA_RELEASE_BASE-IFIX
-        sub_inst_list=$(${CLI_CMD} get subscriptions.operators.coreos.com -n $TEMP_OPERATOR_PROJECT_NAME|grep ibm-cp4a-operator-catalog|awk '{if(NR>0){if(NR==1){ arr=$1; }else{ arr=arr" "$1; }} } END{ print arr }')
+        sub_inst_list=$(${CLI_CMD} get subscription.operators.coreos.com -n $TEMP_OPERATOR_PROJECT_NAME|grep ibm-cp4a-operator-catalog|awk '{if(NR>0){if(NR==1){ arr=$1; }else{ arr=arr" "$1; }} } END{ print arr }')
         if [[ -z $sub_inst_list ]]; then
             fail "No existing CP4BA subscriptions (version $CP4BA_CSV_VERSION) found! Exiting ..."
             exit 1
@@ -11952,7 +11630,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             if [[ ! -z "${sub_array[i]}" ]]; then
                 if [[ ${sub_array[i]} = ibm-cp4a-operator* || ${sub_array[i]} = ibm-cp4a-wfps-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = icp4a-foundation-operator* || ${sub_array[i]} = ibm-pfs-operator* || ${sub_array[i]} = ibm-ads-operator* || ${sub_array[i]} = ibm-dpe-operator* || ${sub_array[i]} = ibm-odm-operator* || ${sub_array[i]} = ibm-insights-engine-operator* || ${sub_array[i]} = ibm-workflow-operator* ]]; then
                 info "Checking the channel of subscription '${sub_array[i]}'!"
-                currentChannel=$(${CLI_CMD} get subscriptions.operators.coreos.com ${sub_array[i]} -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.spec.channel}') >/dev/null 2>&1
+                currentChannel=$(${CLI_CMD} get subscription.operators.coreos.com ${sub_array[i]} -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.spec.channel}') >/dev/null 2>&1
                     if [[ "$currentChannel" == "$CP4BA_CHANNEL_VERSION" ]]
                     then
                         success "The channel of subscription '${sub_array[i]}' is $currentChannel!"
@@ -11960,8 +11638,8 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         maxRetry=40
                         info "Waiting for the \"${sub_array[i]}\" subscription be upgraded to the ClusterServiceVersions(CSV) \"v$target_csv_version\""
                         for ((retry=0;retry<=${maxRetry};retry++)); do
-                            current_version=$(${CLI_CMD} get subscriptions.operators.coreos.com ${sub_array[i]} --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
-                            installed_version=$(${CLI_CMD} get subscriptions.operators.coreos.com ${sub_array[i]} --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
+                            current_version=$(${CLI_CMD} get subscription.operators.coreos.com ${sub_array[i]} --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.currentCSV}') >/dev/null 2>&1
+                            installed_version=$(${CLI_CMD} get subscription.operators.coreos.com ${sub_array[i]} --no-headers --ignore-not-found -n $TEMP_OPERATOR_PROJECT_NAME -o 'jsonpath={.status.installedCSV}') >/dev/null 2>&1
                             if [[ -z $current_version || -z $installed_version ]]; then
                                 error "Failed to retrieve installed or current CSV. Aborting the upgrade procedure. Check the subscription status of ${sub_array[i]}."
                                 exit 1
@@ -12012,7 +11690,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                     break
                                 else
                                     sleep 10
-                                    echo -n "..."
+                                    printf '%s' "..."
                                     continue
                                 fi
                             else
@@ -12060,7 +11738,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             printf "\n"
             if [[ $CONTENT_CR_EXIST == "Yes" || (" ${EXISTING_PATTERN_ARR[@]} " =~ "content") || ((" ${EXISTING_PATTERN_ARR[@]} " =~ "workflow") && (! " ${EXISTING_PATTERN_ARR[@]} " =~ "workflow-process-service")) || (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "baw_authoring") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "ae_data_persistence") ]]; then
                 if [[ $UPGRADE_MODE == "shared2dedicated" ]]; then
-                    echo -e "\x1B[33;5m[ATTENTION]: \x1B[0m${RED_TEXT}You DO NOT need to run \"./cp4a-pre-upgrade-and-post-upgrade-optional.sh\" in \"pre-upgrade\" mode when migrate IBM Cloud Pak foundational services from \"Cluster-scoped\" to \"Namespace-scoped\"!${RESET_TEXT}"
+                    printf '%b\n' "\x1B[33;5m[ATTENTION]: \x1B[0m${RED_TEXT}You DO NOT need to run \"./cp4a-pre-upgrade-and-post-upgrade-optional.sh\" in \"pre-upgrade\" mode when migrate IBM Cloud Pak foundational services from \"Cluster-scoped\" to \"Namespace-scoped\"!${RESET_TEXT}"
                     prompt_press_any_key_to_continue
                 fi
             fi
@@ -12187,7 +11865,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperatorStatus" ]; then
             else
                 ${CLI_CMD} get $cr_type $content_cr_name -n $CP4BA_SERVICES_NS -o yaml > ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}
                 bai_flag=`${YQ_CMD} ".spec.content_optional_components.bai" "$UPGRADE_DEPLOYMENT_CONTENT_CR_TMP"`
-                bai_flag=$(echo $bai_flag | tr '[:upper:]' '[:lower:]')
+                bai_flag=$(echo "$bai_flag" | tr '[:upper:]' '[:lower:]')
                 CONTENT_CR_EXIST="Yes"
                 cp4ba_root_ca_secret_name=`${YQ_CMD} ".spec.shared_configuration.root_ca_secret" "$UPGRADE_DEPLOYMENT_CONTENT_CR_TMP"`
             fi
@@ -12331,7 +12009,7 @@ if [ "$RUNTIME_MODE" == "upgradeDeployment" ]; then
                             exit 1
                             ;;
                         *)
-                            echo -e "Answer must be \"Yes\" or \"No\"\n"
+                            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                             ;;
                         esac
                     done
@@ -12359,7 +12037,7 @@ if [ "$RUNTIME_MODE" == "upgradeDeployment" ]; then
                     exit 1
                     ;;
                 *)
-                    echo -e "Answer must be \"Yes\" or \"No\"\n"
+                    printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                     ;;
                 esac
             done
@@ -12470,12 +12148,12 @@ if [ "$RUNTIME_MODE" == "upgradeDeployment" ]; then
 
     # if [[  " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "bai" || "${bai_flag}" == "true" ]]; then
     #     printf "\n"
-    #     echo -e "\x1B[33;5m[ATTENTION]: \x1B[0m${YELLOW_TEXT}AFTER UPGRADING IBM CLOUD PAK FOR BUSINESS AUTOMATION (CP4BA) DEPLOYMENT SUCCESSFULLY, YOU NEED TO REMOVE${RESET_TEXT} ${RED_TEXT}\"recovery_path\"${RESET_TEXT} ${YELLOW_TEXT}FROM CUSTOM RESOURCE UNDER${RESET_TEXT} ${RED_TEXT}\"bai_configuration\"${RESET_TEXT} ${YELLOW_TEXT}MANUALLY IF EXISTING.${RESET_TEXT}"
+    #     printf '%b\n' "\x1B[33;5m[ATTENTION]: \x1B[0m${YELLOW_TEXT}AFTER UPGRADING IBM CLOUD PAK FOR BUSINESS AUTOMATION (CP4BA) DEPLOYMENT SUCCESSFULLY, YOU NEED TO REMOVE${RESET_TEXT} ${RED_TEXT}\"recovery_path\"${RESET_TEXT} ${YELLOW_TEXT}FROM CUSTOM RESOURCE UNDER${RESET_TEXT} ${RED_TEXT}\"bai_configuration\"${RESET_TEXT} ${YELLOW_TEXT}MANUALLY IF EXISTING.${RESET_TEXT}"
     # fi
 
     # if [[ $CONTENT_CR_EXIST == "Yes" || " ${EXISTING_PATTERN_ARR[@]}" =~ "workflow-runtime" || " ${EXISTING_PATTERN_ARR[@]}" =~ "workflow-authoring" || " ${EXISTING_PATTERN_ARR[@]}" =~ "content" || " ${EXISTING_PATTERN_ARR[@]}" =~ "document_processing" || "${EXISTING_OPT_COMPONENT_ARR[@]}" =~ "ae_data_persistence" ]]; then
     #     printf "\n"
-    #     echo -e "\x1B[33;5m[ATTENTION]: \x1B[0m${YELLOW_TEXT}AFTER UPGRADING IBM CLOUD PAK FOR BUSINESS AUTOMATION (CP4BA) DEPLOYMENT SUCCESSFULLY, YOU NEED TO RUN${RESET_TEXT} ${RED_TEXT}\"./cp4a-pre-upgrade-and-post-upgrade-optional.sh post-upgrade\"${RESET_TEXT}, ${YELLOW_TEXT}AND THEN CLEAN BROWSER COOKIE BEFORE LOGIN${RESET_TEXT} ${RED_TEXT}[NOTES: DO NOT need to run it when upgrade CP4BA from 23.0.2.X to 24.0.0 (migration IBM Cloud Pak foundational services from Cluster-scoped -> Cluster-scoped or Namespace-scoped -> Namespace-scoped)]${RESET_TEXT}"
+    #     printf '%b\n' "\x1B[33;5m[ATTENTION]: \x1B[0m${YELLOW_TEXT}AFTER UPGRADING IBM CLOUD PAK FOR BUSINESS AUTOMATION (CP4BA) DEPLOYMENT SUCCESSFULLY, YOU NEED TO RUN${RESET_TEXT} ${RED_TEXT}\"./cp4a-pre-upgrade-and-post-upgrade-optional.sh post-upgrade\"${RESET_TEXT}, ${YELLOW_TEXT}AND THEN CLEAN BROWSER COOKIE BEFORE LOGIN${RESET_TEXT} ${RED_TEXT}[NOTES: DO NOT need to run it when upgrade CP4BA from 23.0.2.X to 24.0.0 (migration IBM Cloud Pak foundational services from Cluster-scoped -> Cluster-scoped or Namespace-scoped -> Namespace-scoped)]${RESET_TEXT}"
     # fi
 fi
 
@@ -12501,7 +12179,7 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
         rm -fr $TEMP_CP_CONSOLE_FILE
         local tmp_cp_console=$( ${CLI_CMD} get route $CP_CONSOLE --no-headers --ignore-not-found  -n $TARGET_PROJECT_NAME_CS | awk '{print $1}' )
         if [ -n $tmp_cp_console  ]; then
-            # echo -e "${BLUE}Creating backup yaml for route $CP_CONSOLE${COLOR_OFF}"
+            # printf '%b\n' "${BLUE}Creating backup yaml for route $CP_CONSOLE${COLOR_OFF}"
             ${CLI_CMD} get route $CP_CONSOLE -o yaml -n $TARGET_PROJECT_NAME_CS > $TEMP_CP_CONSOLE_FILE
             CP_CONSOLE_HOST=$(${YQ_CMD} ".spec.host" $TEMP_CP_CONSOLE_FILE)
             ID_MGMT_CP_CONSOLE=$( echo "id-mgmt-${CP_CONSOLE_HOST}" | sed   "s/-$TARGET_PROJECT_NAME_CS//g" )
@@ -12538,7 +12216,7 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
             ${YQ_CMD} -i '.metadata.annotations."haproxy.router.openshift.io/rewrite-target" = "/"' $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
             fi
 
-            # echo -e "Creating new route named $ID_PROVIDER_ROUTE_NAME"
+            # printf '%b\n' "Creating new route named $ID_PROVIDER_ROUTE_NAME"
             ${CLI_CMD} apply -f $TEMP_CP_CONSOLE_FILE_ID_PROVIDER -n $TARGET_PROJECT_NAME_CS >/dev/null 2>&1
             if [ $? -ne 0 ]; then
                 warning "Failed to create route named $ID_PROVIDER_ROUTE_NAME in the project \"$TARGET_PROJECT_NAME_CS\"!"
@@ -12576,7 +12254,7 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
 
             fi
 
-            # echo -e "Creating new route named $ID_MGMT_ROUTE_NAME"
+            # printf '%b\n' "Creating new route named $ID_MGMT_ROUTE_NAME"
             ${CLI_CMD} apply -f $TEMP_CP_CONSOLE_FILE_ID_MGMT -n $TARGET_PROJECT_NAME_CS >/dev/null 2>&1
             if [ $? -ne 0 ]; then
                 warning "Failed to create route named $ID_MGMT_ROUTE_NAME in the project \"$TARGET_PROJECT_NAME_CS\"!"
@@ -12704,6 +12382,11 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
             fail "The release version: \"$cr_version\" in icp4acluster custom resource \"$icp4acluster_cr_name\" is incorrect. Apply the new version of the CR first."
             exit 1
         fi
+        
+        # Patch bastudio_configuration.storage.size_for_logstore for ifix upgrades (24.0.0 only)
+        if [[ "$cr_version" == "24.0.0" ]]; then
+            patch_cluster_baw_logstore_size "$CP4BA_SERVICES_NS" "$icp4acluster_cr_name"
+        fi
     fi
     # info "Scaling up \"IBM CP4BA FileNet Content Manager\" operator"
     # ${CLI_CMD} scale --replicas=1 deployment ibm-content-operator -n $TEMP_OPERATOR_PROJECT_NAME >/dev/null 2>&1
@@ -12738,167 +12421,50 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
         if [[ -z "$isReady_cp4ba" && -z "$isReady_foundation" ]]; then
             CP4BA_DEPLOYMENT_STATUS="Getting Upgrade Status ..."
             printf '%s %s\n' "$(date)" "[refresh interval: 30s]"
-            echo -en "[Press Ctrl+C to exit] \t\t"
+            printf '%b' "[Press Ctrl+C to exit] \t\t"
             printHeaderMessage "CP4BA Upgrade Status"
-            echo -en "${GREEN_TEXT}$CP4BA_DEPLOYMENT_STATUS${RESET_TEXT}"
+            printf '%b' "${GREEN_TEXT}$CP4BA_DEPLOYMENT_STATUS${RESET_TEXT}"
             sleep 30
         else
             break
         fi
     done
 
-   # check for zenStatus and currentverison for zen
+    # The control variable used to detect if the strimzi patch function has to be executed.
+    strimzi_patched=false
 
-    zen_service_name=$(${CLI_CMD} get zenService --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS |awk '{print $1}')
-    if [[ ! -z "$zen_service_name" ]]; then
-        clear
-        maxRetry=360
-        skip_edb_check="false"
-        # The control variable used to detect if the strimzi patch function has to be executed.
-        strimzi_patched=false
-        for ((retry=0;retry<=${maxRetry};retry++)); do
-            # As a workaround for a known issue where the customer upgrade from 22.0.2-IF006/21.0.3-IF031 to 24.0.0-IF004 or above (shared to dedicated), a new postgresql-operator-controller-manager-config secret is created in the CP4BA_SERVICES_NS, this secret does not have the ibm-bts/skip-updates: "true" annotation. 
-            # This causes the license of EDB instance to be expired since old BTS pod updated the license
-            # The check_edb_license function will return edb_license_expired. If edb_license_expired is empty, this means we don't have any expired license hence we'll skip the license check.            
-            if [[ "$skip_edb_check" == "false" ]]; then
-                check_edb_license
-            fi
-            # # As workaround for https://github.ibm.com/IBMPrivateCloud/roadmap/issues/64207
-            # # update secret postgresql-operator-controller-manager-config in <cp4ba> namespace and/or ibm-common-services namespace and add this annotation ibm-bts/skip-updates: "true"
-            # if ${CLI_CMD} get secret -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | grep postgresql-operator-controller-manager-config >/dev/null 2>&1; then
-            #     ${CLI_CMD} patch secret postgresql-operator-controller-manager-config -n $CP4BA_SERVICES_NS -p '{"metadata": {"annotations": {"ibm-bts/skip-updates": "true"}}}' >/dev/null 2>&1
-            # fi
 
-            zenservice_version=$(${CLI_CMD} get zenService $zen_service_name --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath='{.status.currentVersion}')
-            isCompleted=$(${CLI_CMD} get zenService $zen_service_name --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath='{.status.zenStatus}')
-            isProgressDone=$(${CLI_CMD} get zenService $zen_service_name --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath='{.status.Progress}')
+    # Check if the deployment is SaaS
+    if [[ "$CONTENT_CR_EXIST" == "Yes" ]]; then
+        top_level_cr_kind="content"
+        top_level_cr_name="$content_cr_name"
 
-            if [[ "$isCompleted" != "Completed" || "$isProgressDone" != "100%" || "$zenservice_version" != "${ZEN_OPERATOR_VERSION//v/}" ]]; then
-                clear
-                CP4BA_DEPLOYMENT_STATUS="Waiting for the zenService to be ready (could take up to 120 minutes) before upgrade the CP4BA capabilities..."
-                printf '%s %s\n' "$(date)" "[refresh interval: 60s]"
-                echo -en "[Press Ctrl+C to exit] \t\t"
-                printf "\n"
-                echo "${YELLOW_TEXT}$CP4BA_DEPLOYMENT_STATUS${RESET_TEXT}"
-                printHeaderMessage "CP4BA Upgrade Status"
-                if [[ "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
-                    echo "zenService Version (Expected - ${ZEN_OPERATOR_VERSION//v/})       : ${GREEN_TEXT}$zenservice_version${RESET_TEXT}"
-                else
-                    echo "zenService Version (Expected - ${ZEN_OPERATOR_VERSION//v/})       : ${RED_TEXT}$zenservice_version${RESET_TEXT}"
-                fi
-                if [[ "$isCompleted" == "Completed" && "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
-                    echo "zenService Status (Expected - Completed)    : ${GREEN_TEXT}$isCompleted${RESET_TEXT}"
-                else
-                    echo "zenService Status (Expected - Completed)    : ${RED_TEXT}$isCompleted${RESET_TEXT}"
-                fi
-
-                if [[ "$isProgressDone" == "100%" && "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
-                    echo "zenService Progress (Expected - 100%)       : ${GREEN_TEXT}$isProgressDone${RESET_TEXT}"
-                else
-                    echo "zenService Progress (Expected - 100%)       : ${RED_TEXT}$isProgressDone${RESET_TEXT}"
-                fi
-                sleep 60
-            elif [[ "$isCompleted" == "Completed" && "$isProgressDone" == "100%" && "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
-                break
-            elif [[ $retry -eq ${maxRetry} ]]; then
-                printf "\n"
-                warning "Timeout waiting for the Zen Service to start"
-                echo -e "\x1B[1mCheck the status of the Zen Service\x1B[0m"
-                printf "\n"
-                exit 1
-            fi
-            # Each refresh of the zen upgrade , we check if we need to update the kafka strimzi podset
-            # The function patch_strimzi_podset which is defined in common.sh will set strimzi_patched  to true once the patch is completed
-            # For upgrades to 24.0.1 or newer, kafka tasks in the cp4a-operator happen after zen is upgraded so this block is after zen upgrade completes
-            # For upgrades to 24.0.0, kafka tasks in the cp4a-operator happen before zen is upgraded
-            if [[ $strimzi_patched == "false" ]]; then
-                patch_strimzi_podset $cp4ba_operators_namespace $cp4ba_services_namespace
-            fi
-        done
-        clear
-        # success "The Zen Service (${ZEN_OPERATOR_VERSION//v/}) is ready for CP4BA"
-        CP4BA_DEPLOYMENT_STATUS="The Zen Service (${ZEN_OPERATOR_VERSION//v/}) is ready for CP4BA"
-        printf '%s %s\n' "$(date)" "[refresh interval: 30s]"
-        echo -en "[Press Ctrl+C to exit] \t\t"
-        printf "\n"
-        echo "${YELLOW_TEXT}$CP4BA_DEPLOYMENT_STATUS${RESET_TEXT}"
-        info "Starting all CP4BA Operators to upgrade CP4BA capabilities"
-        printHeaderMessage "CP4BA Upgrade Status"
-        if [[ "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
-            echo "zenService Version        : ${GREEN_TEXT}$zenservice_version${RESET_TEXT}"
-        else
-            echo "zenService Version        : ${RED_TEXT}$zenservice_version${RESET_TEXT}"
-        fi
-        if [[ "$isCompleted" == "Completed" ]]; then
-            echo "zenService Status         : ${GREEN_TEXT}$isCompleted${RESET_TEXT}"
-        else
-            echo "zenService Status         : ${RED_TEXT}$isCompleted${RESET_TEXT}"
-        fi
-
-        if [[ "$isProgressDone" == "100%" && "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
-            echo "zenService Progress       : ${GREEN_TEXT}$isProgressDone${RESET_TEXT}"
-        else
-            echo "zenService Progress       : ${RED_TEXT}$isProgressDone${RESET_TEXT}"
-        fi
-
-        ## Apply workaround for https://jsw.ibm.com/browse/DBACLD-148543 for 24.0.0 IF002
-        if [[ "$cp4ba_original_csv_ver_for_upgrade_script" == "24.0."* ]]; then
-            tmp_val_result=$(${CLI_CMD} get job create-postgres-license-config -n $cp4ba_services_namespace --no-headers --ignore-not-found)
-            if [[ ! -z $tmp_val_result ]]; then
-                ${CLI_CMD} delete job create-postgres-license-config -n $cp4ba_services_namespace >/dev/null 2>&1
-            fi
-
-            tmp_val_result=$(${CLI_CMD} get pod -l name=operand-deployment-lifecycle-manager -n $cp4ba_services_namespace --no-headers --ignore-not-found)
-            if [[ ! -z $tmp_val_result ]]; then
-                ${CLI_CMD} delete pod -l name=operand-deployment-lifecycle-manager -n $cp4ba_services_namespace >/dev/null 2>&1
-            fi
-
-            tmp_val_result=$(${CLI_CMD} get job create-postgres-license-config -n $cp4ba_operators_namespace --no-headers --ignore-not-found)
-            if [[ ! -z $tmp_val_result ]]; then
-                ${CLI_CMD} delete job create-postgres-license-config -n $cp4ba_operators_namespace >/dev/null 2>&1
-            fi
-
-            tmp_val_result=$(${CLI_CMD} get pod -l name=operand-deployment-lifecycle-manager -n $cp4ba_operators_namespace --no-headers --ignore-not-found)
-            if [[ ! -z $tmp_val_result ]]; then
-                ${CLI_CMD} delete pod -l name=operand-deployment-lifecycle-manager -n $cp4ba_operators_namespace >/dev/null 2>&1
-            fi
-        fi
-
-        if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "24.0."*) ]]; then
-            ## Create tow route after zenService ready
-            TARGET_PROJECT_NAME_CS=$(${CLI_CMD} get route --no-headers --ignore-not-found  -A |grep  cp-console-iam-provider|awk '{print $1}')
-            if [[ -z $TARGET_PROJECT_NAME_CS ]]; then
-                warning "cp-console-iam-provider not found in the cluster. continuing..."
-            else
-                get_default_cp_console_route
-                res=$?
-                if [[ ${res} == "0" ]]; then
-                    create_custom_idprovider_route "platform-identity-provider"
-                    create_custom_idmgmt_route "platform-identity-management"
-                fi
-            fi
-
-            # start all cp4ba operators after zen/im ready
-            startup_operator $TEMP_OPERATOR_PROJECT_NAME "silent"
-            sleep 10
-
-            ## Apply workaround for https://jsw.ibm.com/browse/DBACLD-137719 before start migration CPfs
-            ## scale up ibm-bts-operator-controller-manager in ibm-common-services project after zenService ready
-            if [[ $ALL_NAMESPACE_FLAG == "yes" ]]; then
-                bts_operator_name=$(${CLI_CMD} get deployment ibm-bts-operator-controller-manager --no-headers --ignore-not-found -n ibm-common-services -o name)
-                if [[ ! -z $bts_operator_name ]]; then
-                    ${CLI_CMD} scale --replicas=1 deployment ibm-bts-operator-controller-manager -n ibm-common-services >/dev/null 2>&1
-                    if [[ $? -ne 0 ]]; then
-                        warning "Failed to scale up ibm-bts-operator-controller-manager operator in the project \"ibm-common-services\". Scale up the ibm-bts-operator-controller-manager operator manually."
-                    fi
-                fi
-            fi
-        fi
     else
-        fail "ZenService not found in the project \"$CP4BA_SERVICES_NS\", exiting..."
-        echo "****************************************************************************"
-        exit 1
+        top_level_cr_kind="icp4acluster"
+        top_level_cr_name="$icp4acluster_cr_name"
     fi
+
+    # Call function to check if the deployment SaaS
+    is_saas_deployment=false
+    if check_saas_deployment "$top_level_cr_kind" "$top_level_cr_name" "$CP4BA_SERVICES_NS"; then
+        is_saas_deployment=true
+    else
+        is_saas_deployment=false
+    fi
+
+    # check for zenStatus and currentverison for zen only if the deployment is NOT SaaS.
+    # If the deployment is SaaS we can skip the Zen related checks
+    if [[ "$is_saas_deployment" == "false" ]]; then
+        # Moved the entire Zen Upgrade Status check code into its own function so that the main upgrade flow is much cleaner
+        validate_zen_upgrade_status
+    fi
+
+    # Start up all other CP4BA operators
+    # This was happening inside a zen upgrade check condition after zen was upgraded
+    # This will maintain the same behavior but also allow operators to be scaled up when the deployment is SaaS and there is no Zen
+    startup_operator $TARGET_PROJECT_NAME "silent"
+
+    
 
     # show_cp4ba_upgrade_status
     while true

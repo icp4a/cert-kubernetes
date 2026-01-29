@@ -126,12 +126,12 @@ function create_fncm_osdb_sqlserver_sql_file(){
     if [ -z $6 ]; then
         tablespace="PRIMARY"
     else 
-        tablespace=$(echo $tablespace | tr '[:lower:]' '[:upper:]')
+        tablespace=$(echo "$tablespace" | tr '[:lower:]' '[:upper:]')
     fi
 
     if [[ $tablespace_table != "" ]]; then
         tablespace_table="${dbname}_${tablespace_table}"
-        tablespace_table=$(echo $tablespace_table | tr '[:lower:]' '[:upper:]')
+        tablespace_table=$(echo "$tablespace_table" | tr '[:lower:]' '[:upper:]')
         tablespace_table_filegroup="
 FILEGROUP $tablespace_table
 (  NAME = ${tablespace_table},
@@ -144,7 +144,7 @@ FILEGROUP $tablespace_table
         # Tablespaces must be unique,to make it unique the DB name will be appended as a prefix to all tablespaces created
         # https://jsw.ibm.com/browse/DBACLD-175710
         tablespace_index="${dbname}_${tablespace_index}"
-        tablespace_index=$(echo $tablespace_index | tr '[:lower:]' '[:upper:]')
+        tablespace_index=$(echo "$tablespace_index" | tr '[:lower:]' '[:upper:]')
         tablespace_index_filegroup="
 FILEGROUP $tablespace_index
 (  NAME = ${tablespace_index},
@@ -157,7 +157,7 @@ FILEGROUP $tablespace_index
         # Tablespaces must be unique,to make it unique the DB name will be appended as a prefix to all tablespaces created
         # https://jsw.ibm.com/browse/DBACLD-175710
         tablespace_lob="${dbname}_${tablespace_lob}"
-        tablespace_lob=$(echo $tablespace_lob | tr '[:lower:]' '[:upper:]')
+        tablespace_lob=$(echo "$tablespace_lob" | tr '[:lower:]' '[:upper:]')
         tablespace_lob_filegroup="
 FILEGROUP $tablespace_lob
 (  NAME = ${tablespace_lob},

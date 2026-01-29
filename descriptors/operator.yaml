@@ -76,7 +76,7 @@ spec:
                       - ppc64le
       initContainers:
         - name: folder-prepare-container
-          image: icr.io/cpopen/icp4a-operator@sha256:490f1a11d9e6bd5f97cbabe7c0858ad52742cc21c62565a6dc3817595ffc4391
+          image: icr.io/cpopen/icp4a-operator@sha256:35b3f1a65bf700092cb8e6350a32d08f97071b009472fbfe57e9a8b05c98382e
           securityContext:
             readOnlyRootFilesystem: true
           volumeMounts:
@@ -102,8 +102,24 @@ spec:
               cp -rp /opt/ibm/* /ibm-folder 
       containers:
         - name: operator
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 6789
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 10
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 6789
+            initialDelaySeconds: 5 
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
           # Replace this with the built image name
-          image: icr.io/cpopen/icp4a-operator@sha256:490f1a11d9e6bd5f97cbabe7c0858ad52742cc21c62565a6dc3817595ffc4391
+          image: icr.io/cpopen/icp4a-operator@sha256:35b3f1a65bf700092cb8e6350a32d08f97071b009472fbfe57e9a8b05c98382e
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

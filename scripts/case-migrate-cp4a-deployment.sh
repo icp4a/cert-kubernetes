@@ -41,7 +41,7 @@ function case_migration_replace(){
     local param_q1=$3
 
     MIG_PROP_TEMP=$(${YQ_CMD} ".$param_in1" ${CASE_MIGRATION_PROPERTY_FILE})
-    #echo -e $MIG_PROP_TEMP
+    #printf '%b\n' "$MIG_PROP_TEMP"
     if [ "$param_q1" = "q" ] ;
     then 
         ${YQ_CMD} -i ".$param_out1 = \"${MIG_PROP_TEMP}\" | .$param_out1 style=\"double\"" ${CP4A_PATTERN_FILE_BAK_TEMP}
@@ -65,7 +65,7 @@ function case_migration_apply_pattern_cr() {
     if [ -e $CP4A_PATTERN_FILE_BAK ] ; 
     then  
         ${COPY_CMD} -rf "${CP4A_PATTERN_FILE_BAK}" "${CP4A_PATTERN_FILE_BAK_TEMP}"
-        #echo -e "Temp file created"
+        #printf '%b\n' "Temp file created"
     else 
         error "CR Generation Failed"
         exit 1
@@ -73,7 +73,7 @@ function case_migration_apply_pattern_cr() {
 
     #Retrieve TO OS Number 
     TOS_NUM="$(prop_tmp_property_file TOS_NUM)"
-    #echo -e "Tos Number fromn file is : $TOS_NUM"
+    #printf '%b\n' "Tos Number fromn file is : $TOS_NUM"
     ## Removing the initialize_configuration Section from CR 
     ## This section is not needed because you are reusing the existing FileNet domain, Object stores, and LDAP.
     ${YQ_CMD} -i 'del(.spec.initialize_configuration)' "${CP4A_PATTERN_FILE_BAK_TEMP}"
@@ -137,15 +137,15 @@ function case_migration_apply_pattern_cr() {
     fi
 
     content_os_number="$(prop_tmp_property_file CONTENT_OS_NUMBER)"
-    #echo -e "Total content_os_number Objects in CR : $content_os_number"
+    #printf '%b\n' "Total content_os_number Objects in CR : $content_os_number"
     os_num_cr=$((os_num_cr + content_os_number + TOS_NUM + 2 ))
     initial_os_cr=$((initial_os_cr + content_os_number ))
     os_num_prop=$((os_num_prop + TOS_NUM +2 ))
-    #echo -e "Total os_num_prop Objects in CR : $os_num_prop"
+    #printf '%b\n' "Total os_num_prop Objects in CR : $os_num_prop"
 
     local prop_flag=false    
-    #echo -e "Total OS Objects in CR : $os_num_cr"
-    #echo -e "Total OS Objects in Property File : $os_num_prop"
+    #printf '%b\n' "Total OS Objects in CR : $os_num_cr"
+    #printf '%b\n' "Total OS Objects in Property File : $os_num_prop"
     local os_count=$initial_os_cr
     for ((j=0;j<${os_num_prop};j++))
         do
@@ -209,7 +209,7 @@ function case_migration_apply_pattern_cr() {
                             content_tmp=$(( $content_start - 1))
                             content_tmp="$(tail -n +$content_start < ${CP4A_PATTERN_FILE_BAK_TEMP} | grep -n "dc_hadr_max_retries_for_client_reroute:" | head -n1 | cut -d: -f1)"
                             content_stop=$(( $content_start + $content_tmp - 1))
-                            #echo -e "Content Start Line : ${content_start} And Content End Line : ${content_stop}"
+                            #printf '%b\n' "Content Start Line : ${content_start} And Content End Line : ${content_stop}"
                             vi ${CP4A_PATTERN_FILE_BAK_TEMP} -c ':'"${content_start}"','"${content_stop}"' copy '"${content_stop}"'' -c ':wq' >/dev/null 2>&1
                         done
                         prop_flag=true
@@ -422,7 +422,7 @@ then
     ##########################################
     # Migration Function to do changes on cr based on migration requirement
     case_migration_apply_pattern_cr  
-    echo -e "Generated CR is $CP4A_PATTERN_FILE_BAK"
+    printf '%b\n' "Generated CR is $CP4A_PATTERN_FILE_BAK"
     ##########################################
     ##########################################
     ##########################################

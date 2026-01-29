@@ -3,6 +3,7 @@ kind: NetworkPolicy
 metadata:
   labels:
     component: cpfs3
+    service: zen
   name: egress-zen-watchdog-create-tables-job
   namespace: "zenNamespace"
 spec:

@@ -217,7 +217,15 @@ data:
         done
         
         #[2.2.3] Reset platform metadata and configuration data
-        #[2.2.3.1] Reset database
+        #[2.2.3.1] Remove active connections
+        CNPG_PRIMARY_POD=`oc -n ${ZEN_NAMESPACE} get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}"` && \
+        oc -n ${ZEN_NAMESPACE} exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = 'zen' AND pid <> pg_backend_pid();" && \
+        oc -n ${ZEN_NAMESPACE} exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "SELECT * FROM pg_stat_activity WHERE datname = 'zen';"
+
+        #we no longer do this step because we are using pgdump/pgrestore
+        #dropping the database like this will cause pgrestore to fail since it expects the database and its structure to already be there
+        #keeping the comment for cross referencing what is done in zen team docs
+        #[2.2.3.2] Reset database
         # return_value=""
         # return_value=$(oc get cm ibm-zen-metastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED_DATABASE}{"\n"}')
         # if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
@@ -229,8 +237,8 @@ data:
         #     info "IS_EMBEDDED_DATABASE value false, skipping metastoredb reset."
         # fi
 
-        #[2.2.3.2] reset object storage
-        #[2.2.3.2.1] read object storage connection and credentials
+        #[2.2.3.3] reset object storage
+        #[2.2.3.3.1] read object storage connection and credentials
         return_value=""
         return_value=$(oc -n $ZEN_NAMESPACE get cm ibm-zen-objectstore-cm -o jsonpath='{.data.IS_EMBEDDED_OBJECTSTORE}{"\n"}')
         if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
@@ -240,7 +248,7 @@ data:
             OBJECTSTORE_ENDPOINT=$(oc get cm ibm-zen-objectstore-cm -o jsonpath="{.data.OBJECTSTORE_ENDPOINT}" -n $ZEN_NAMESPACE)
             oc -n $ZEN_NAMESPACE extract secret/ibm-zen-objectstore-secret --to=$BACKUP_DIR/workspace --confirm
 
-            #[2.2.3.2.2] Remove and recreate Zen bucket
+            #[2.2.3.3.2] Remove and recreate Zen bucket
             info "Remove and recreate Zen bucket."
             oc -n $ZEN_NAMESPACE exec -t zen-minio-0 -- bash -c "rm -rf /workdir/home/.minio/backup && mkdir -p /workdir/home/.minio/backup && export HOME=/workdir/home/.minio && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/workdir/home/.minio/.mc --insecure && /workdir/bin/mc ls zenobjstore/${IBM_ZEN_BUCKET_NAME} --insecure && /workdir/bin/mc rb zenobjstore/${IBM_ZEN_BUCKET_NAME} --force --dangerous --insecure && /workdir/bin/mc mb zenobjstore/${IBM_ZEN_BUCKET_NAME} --insecure"
         else
@@ -258,7 +266,7 @@ data:
             oc exec $CNPG_PRIMARY_POD -n $ZEN_NAMESPACE -- mkdir -p /run/zen_backup
             oc cp $BACKUP_DIR/database/zen_db_backup.dump $ZEN_NAMESPACE/$CNPG_PRIMARY_POD:/run/zen_backup/zen_db_backup.dump
             oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-            oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname zen --format=c --clean --exit-on-error -v /run/zen_backup/zen_db_backup.dump
+            oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname zen --format=c --clean --exit-on-error --if-exists -v /run/zen_backup/zen_db_backup.dump
             # oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d zen -f /run/zen_backup/zen_db_backup.dump
             oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
         else
@@ -297,10 +305,10 @@ data:
             info "usermgmt deployment not scaled up before rerunning, setting replica value to 2"
             USERMGMT_RC=2
         fi
-        oc scale deploy zen-core-api --replicas=$ZEN_CORE_API_RC -n $ZEN_NAMESPACE
+        oc scale deploy zen-core --replicas=$ZEN_CORE_RC -n $ZEN_NAMESPACE
         oc scale deploy usermgmt --replicas=$USERMGMT_RC -n $ZEN_NAMESPACE
         sleep 15
-        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-core-api --timeout=180s -n ${ZEN_NAMESPACE}
+        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-core --timeout=180s -n ${ZEN_NAMESPACE}
         oc wait pod --for=condition=Ready -l app.kubernetes.io/component=usermgmt --timeout=180s -n ${ZEN_NAMESPACE}
         
         ./zen5/customize-zen-extensions.sh $ZEN_NAMESPACE false
@@ -312,7 +320,6 @@ data:
             info "ibm-nginx deployment not scaled up before rerunning, setting replica value to 2"
             IBM_NGINX_RC=2
         fi
-        
         if [[ $ZEN_CORE_API_RC == "0" ]]; then
             info "zen-core-api deployment not scaled up before rerunning, setting replica value to 2"
             ZEN_CORE_API_RC=2
@@ -323,7 +330,7 @@ data:
         fi
         
         oc scale deploy zen-watcher --replicas=$ZEN_WATCHER_RC -n $ZEN_NAMESPACE
-        oc scale deploy zen-core --replicas=$ZEN_CORE_RC -n $ZEN_NAMESPACE
+        oc scale deploy zen-core-api --replicas=$ZEN_CORE_API_RC -n $ZEN_NAMESPACE
         oc scale deploy ibm-nginx --replicas=$IBM_NGINX_RC -n $ZEN_NAMESPACE
         if [[ $zen_watchdog_present != "fail" ]]; then
             oc scale deploy zen-watchdog --replicas=1 -n $ZEN_NAMESPACE # (Only for CloudPak for Data)
@@ -332,7 +339,7 @@ data:
         #[2.2.5.2] Wait for deployments
         info "Wait for deployments to come ready again."
         oc wait pod --for=condition=Ready -l app.kubernetes.io/component=ibm-nginx --timeout=180s -n ${ZEN_NAMESPACE}
-        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-core --timeout=180s -n ${ZEN_NAMESPACE}
+        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-core-api --timeout=180s -n ${ZEN_NAMESPACE}
         oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-watcher --timeout=180s -n ${ZEN_NAMESPACE}
         
         if [[ $zen_watchdog_present != "fail" ]]; then # Only for CloudPak for Data

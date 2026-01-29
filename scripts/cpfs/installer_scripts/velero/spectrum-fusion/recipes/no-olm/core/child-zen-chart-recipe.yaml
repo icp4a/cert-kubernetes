@@ -1,0 +1,75 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  labels:
+    dp.isf.ibm.com/parent-recipe: cpfs-parent-recipe
+    dp.isf.ibm.com/parent-recipe-namespace: <parent recipe namespace>
+  name: zen-child-recipe
+  namespace: <child recipe namespace>
+spec:
+  appType: zen
+  groups:
+    - includeClusterResources: true
+      includedResourceTypes:
+        - clusterrole
+        - clusterrolebinding
+        - customresourcedefinitions.apiextensions.k8s.io
+      labelSelector: foundationservices.cloudpak.ibm.com=zen-cluster
+      name: zen-cluster-resources
+      type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        - role
+        - rolebinding
+        - serviceaccount
+        - deployments
+        - secrets
+        - zenservices.zen.cpd.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=zen-chart
+      name: zen-resources
+      type: resource
+    - backupRef: zen-resources
+      includedResourceTypes:
+        - serviceaccount
+        - role
+        - rolebinding
+        - secrets
+      name: zen-rbac-resources
+      type: resource
+    - backupRef: zen-resources
+      includedResourceTypes:
+        - zenservices.zen.cpd.ibm.com
+      name: zenservice
+      type: resource
+    - backupRef: zen-resources
+      includedResourceTypes:
+        - deployments
+      name: zen-deployment
+      type: resource
+  hooks:
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: zen-check
+      nameSelector: ibm-zen-operator
+      namespace: <operator_ns>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+  workflows:
+    - name: chart-backup
+      priority: 0
+      sequence:
+        - group: zen-cluster-resources
+        - group: zen-resources
+    - name: chart-restore
+      priority: 2
+      sequence:
+        - group: zen-cluster-resources
+        - group: zen-rbac-resources
+        - group: zen-deployment
+        - group: zenservice
+        - hook: zen-check/podReady

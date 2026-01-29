@@ -652,6 +652,7 @@ function install_cs_operator() {
                     # config commonservice operator_namespace and service_namespace
                     configure_cs_kind $ns
                     # upgrade operator
+                    warning "Found another ibm-common-service-operator subscription in namespace $ns, please make sure it is needed for CloudPak, checking upgrade...\n"
                     validate_operator_catalogsource $pm $ns $op_source $op_source_ns $CHANNEL op_source op_source_ns
                     update_operator $pm $ns $CHANNEL $op_source $op_source_ns $INSTALL_MODE
                     wait_for_operator_upgrade $ns $pm $CHANNEL $INSTALL_MODE

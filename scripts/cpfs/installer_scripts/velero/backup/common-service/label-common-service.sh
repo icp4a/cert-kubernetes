@@ -73,16 +73,18 @@ function main() {
     fi
     label_ns_and_related 
     label_configmap
-    label_subscription
-    if [[ $ENABLE_CERT_MANAGER -eq 1 ]]; then
-        label_cert_manager
+    if [[ $NO_OLM == "false" ]]; then
+        if [[ $ENABLE_CERT_MANAGER -eq 1 ]]; then
+            label_cert_manager
+        fi
+        if [[ $ENABLE_LSR -eq 1 ]]; then
+            label_lsr
+        fi
+        label_cs
     fi
-    if [[ $ENABLE_LSR -eq 1 ]]; then
-        label_lsr
-    fi
-    label_cs
+
     if [[ $SERVICES_NS != "" ]]; then
-        label_nss
+        label_nss    
     fi
     label_mcsp
     success "Successfully labeled all the resources"
@@ -267,7 +269,15 @@ function label_ibm_catalogsources() {
 function label_ns_and_related() {
 
     title "Start to label the namespaces, operatorgroups and secrets... "
-    namespaces=$(${OC} get configmap namespace-scope -n $OPERATOR_NS -oyaml | awk '/^data:/ {flag=1; next} /^  namespaces:/ {print $2; next} flag && /^  [^ ]+: / {flag=0}')
+    # namespaces=$(${OC} get configmap namespace-scope -n $OPERATOR_NS -oyaml | awk '/^data:/ {flag=1; next} /^  namespaces:/ {print $2; next} flag && /^  [^ ]+: / {flag=0}')
+    namespaces=${OPERATOR_NS}
+    if [[ $SERVICES_NS != "" ]]; then
+        namespaces+=",$SERVICES_NS"
+    fi
+
+    if [[ $TETHERED_NS != "" ]]; then
+        namespaces+=",$TETHERED_NS"
+    fi
     # add cert-manager namespace and licensing namespace and lsr namespace into the list with comma separated
     if [[ $CONTROL_NS != "" ]]; then
         namespaces+=",$CONTROL_NS"
@@ -515,6 +525,7 @@ function label_helm_cluster_scope(){
     ${OC} label secret sh.helm.release.v1.$odlm_release_name.v1 -n $odlm_release_namespace foundationservices.cloudpak.ibm.com=odlm-cluster  --overwrite=true 2>/dev/null
 
     #cs operator cluster resources (crds, clusterrole, clusterrolebinding), crd covered elsewhere in script
+    ${OC} label customresourcedefinition commonservices.operator.ibm.com foundationservices.cloudpak.ibm.com=crd --overwrite=true 2>/dev/null
     ${OC} label clusterrole ibm-common-service-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
     ${OC} label clusterrolebinding ibm-common-service-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
     cs_release_name=$(${OC} get crd commonservices.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
@@ -534,6 +545,12 @@ function label_helm_cluster_scope(){
     ui_release_name=$(${OC} get crd commonwebuis.operators.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
     ui_release_namespace=$(${OC} get crd commonwebuis.operators.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
     ${OC} label secret sh.helm.release.v1.$ui_release_name.v1 -n $ui_release_namespace foundationservices.cloudpak.ibm.com=ui-cluster  --overwrite=true 2>/dev/null
+
+    # UMS (crds)
+    ${OC} label crd ibmservicemeterdefinitions.operator.ibm.com ibmusagemeterings.operator.ibm.com foundationservices.cloudpak.ibm.com=ums  --overwrite=true 2>/dev/null
+    ums_release_name=$(${OC} get crd ibmusagemeterings.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    ums_release_namespace=$(${OC} get crd ibmusagemeterings.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$ums_release_name.v1 -n $ums_release_namespace foundationservices.cloudpak.ibm.com=ums  --overwrite=true 2>/dev/null
 
     #edb (crds, clusterrole, clusterrolebinding, webhooks) 
     ${OC} label crd backups.postgresql.k8s.enterprisedb.io clusters.postgresql.k8s.enterprisedb.io poolers.postgresql.k8s.enterprisedb.io scheduledbackups.postgresql.k8s.enterprisedb.io clusterimagecatalogs.postgresql.k8s.enterprisedb.io imagecatalogs.postgresql.k8s.enterprisedb.io publications.postgresql.k8s.enterprisedb.io subscriptions.postgresql.k8s.enterprisedb.io databases.postgresql.k8s.enterprisedb.io foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
@@ -571,7 +588,7 @@ function label_helm_namespace_scope(){
     ${OC} label rolebinding operand-deployment-lifecycle-manager foundationservices.cloudpak.ibm.com=odlm-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
     
     #cs operator
-    #cs CR handled in label_cs
+    ${OC} label commonservices common-service foundationservices.cloudpak.ibm.com=commonservice -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label deployment ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label serviceaccount ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label role ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
@@ -600,6 +617,30 @@ function label_helm_namespace_scope(){
     ${OC} label role ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
     ${OC} label rolebinding ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label rolebinding ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
+
+    # UMS (namespace resources: deployments, serviceaccounts, roles, rolebindings, configmaps, CRs)
+    for ns in "$OPERATOR_NS" "$SERVICES_NS"; do
+        # UMS operator deployment and serviceaccounts
+        ${OC} label deployment ibm-usage-metering-operator foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
+        # UMS CR named ibmusagemetering-sample
+        ${OC} label ibmusagemeterings.operator.ibm.com ibmusagemetering-sample foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
+        
+        for sa in ibm-usage-metering-operator ibm-usage-metering-instance; do
+            ${OC} label serviceaccount $sa foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
+        done
+
+        # UMS roles (role name containing 'metering')
+        metering_roles=$(${OC} get role -n $ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
+        for role in $metering_roles; do
+            ${OC} label role "$role" foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
+        done
+
+        # UMS rolebindings (rolebinding name containing 'metering')
+        metering_rbs=$(${OC} get rolebinding -n $ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
+        for rb in $metering_rbs; do
+            ${OC} label rolebinding "$rb" foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
+        done
+    done
         
     #edb
     deploy=$(${OC} get deploy -n $OPERATOR_NS | grep postgresql-operator-controller-manager | awk '{print $1}')
@@ -647,13 +688,21 @@ function label_helm_namespace_scope(){
             ${OC} label role ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $namespace --overwrite=true 2>/dev/null
             ${OC} label rolebinding ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $namespace --overwrite=true 2>/dev/null
 
-            #edb
-            ${OC} label role postgresql-operator-controller-manager foundationservices.cloudpak.ibm.com=edb-chart -n $namespace --overwrite=true 2>/dev/null
-            ${OC} label rolebinding postgresql-operator-controller-manager foundationservices.cloudpak.ibm.com=edb-chart -n $namespace --overwrite=true 2>/dev/null
-            
-            #zen
-            ${OC} label role ibm-zen-operator-role foundationservices.cloudpak.ibm.com=zen-chart -n $namespace --overwrite=true 2>/dev/null
-            ${OC} label rolebinding ibm-zen-operator-rolebinding foundationservices.cloudpak.ibm.com=zen-chart -n $namespace --overwrite=true 2>/dev/null
+            # UMS (add deployment, serviceaccounts, roles, rolebindings, configmap, CRs)
+            ${OC} label deployment ibm-usage-metering-operator foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
+             # UMS CR named ibmusagemetering-sample
+            ${OC} label ibmusagemeterings.operator.ibm.com ibmusagemetering-sample foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
+            for sa in ibm-usage-metering-operator ibm-usage-metering-instance; do
+                ${OC} label serviceaccount $sa foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
+            done
+            metering_roles=$(${OC} get role -n $namespace -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
+            for role in $metering_roles; do
+                ${OC} label role "$role" foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
+            done
+            metering_rbs=$(${OC} get rolebinding -n $namespace -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
+            for rb in $metering_rbs; do
+                ${OC} label rolebinding "$rb" foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
+            done
         done
     fi
 

@@ -19,9 +19,9 @@ OLM_SUBSCRIPTION_TMP=${TEMP_FOLDER}/.subscription.yaml
 function select_uninstall_type(){
     local returnValue
     if [[ $RUNTIME_MODE == "baw" || $RUNTIME_MODE == "baw-dev" ]];then
-        kubectl get subscription -n $NAMESPACE| grep ibm-baw-operator-catalog-subscription >/dev/null 2>&1
+        kubectl get subscription.operators.coreos.com -n $NAMESPACE| grep ibm-baw-operator-catalog-subscription >/dev/null 2>&1
     else
-        kubectl get subscription -n $NAMESPACE| grep ibm-cp4a-operator-catalog-subscription >/dev/null 2>&1
+        kubectl get subscription.operators.coreos.com -n $NAMESPACE| grep ibm-cp4a-operator-catalog-subscription >/dev/null 2>&1
     fi
     returnValue=$?
     if [ "$returnValue" == 0 ] ; then
@@ -54,7 +54,7 @@ function uninstall_olm_cp4a(){
     ${SED_COMMAND} '/namespace: /d' ${OLM_SUBSCRIPTION_TMP}
     if [[ $RUNTIME_MODE == "baw" || $RUNTIME_MODE == "baw-dev" ]];then
         # - get csv name
-        csvName=$(kubectl get subscription "ibm-baw-operator-catalog-subscription" -n $NAMESPACE -o go-template --template '{{.status.installedCSV}}')
+        csvName=$(kubectl get subscription.operators.coreos.com "ibm-baw-operator-catalog-subscription" -n $NAMESPACE -o go-template --template '{{.status.installedCSV}}')
         # - remove the subscription
         echo "Removing the subscription for ibm-baw-operator-catalog-subscription"
         kubectl delete -f ${OLM_SUBSCRIPTION_TMP} -n $NAMESPACE
@@ -73,12 +73,12 @@ function uninstall_olm_cp4a(){
         fi
     else
         kubectl get subscription.operators.coreos.com -n $NAMESPACE -o=jsonpath='{range .items[*]}{.metadata.name}{" "}{.spec.source}{"\n"}{end}' | while read -r line; do
-            subName=$(echo $line | awk '{print $1}')
-            source=$(echo $line | awk '{print $2}')
+            subName=$(echo "$line" | awk '{print $1}')
+            source=$(echo "$line" | awk '{print $2}')
             echo "***********************************"
             if [[ "$source" == "ibm-cp4a-operator-catalog" ]]; then
                 # - get csv anme
-                csvName=$(kubectl get subscription $subName -n $NAMESPACE -o=jsonpath='{.status.installedCSV}')
+                csvName=$(kubectl get subscription.operators.coreos.com $subName -n $NAMESPACE -o=jsonpath='{.status.installedCSV}')
                 # - remove the subscription
                 echo "Removing the subscription for $subName"
                 kubectl delete subscription $subName -n $NAMESPACE
@@ -101,10 +101,10 @@ function uninstall_olm_cp4a(){
 }
 
 function show_help {
-    echo -e "\nPrerequisite:"
-    echo -e "1. Login your cluster;"
-    echo -e "2. CR was applied in your project."
-    echo -e "Usage for other platform: deleteOperator.sh -n namespace\n"
+    printf '%b\n' "\nPrerequisite:"
+    printf '%b\n' "1. Login your cluster;"
+    printf '%b\n' "2. CR was applied in your project."
+    printf '%b\n' "Usage for other platform: deleteOperator.sh -n namespace\n"
     echo "Options:"
     echo "  -h  Display help"
     echo "  -n  The namespace to delete Operator"

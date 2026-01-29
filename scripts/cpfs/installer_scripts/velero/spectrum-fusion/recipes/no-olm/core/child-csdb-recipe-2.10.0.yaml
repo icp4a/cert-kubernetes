@@ -1,0 +1,139 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  labels:
+    dp.isf.ibm.com/parent-recipe: cpfs-parent-recipe
+    dp.isf.ibm.com/parent-recipe-namespace: <parent recipe namespace>
+  name: csdb-child
+  namespace: <child recipe namespace>
+spec:
+  appType: common-service
+  groups:
+    - labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
+      name: cs-db-volume
+      type: volume
+    - includeClusterResources: true
+      labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
+      includedResourceTypes:
+        - serviceaccount
+        - role
+        - rolebinding
+        - configmaps
+      name: cs-db-pre-deploy
+      type: resource
+    - includeClusterResources: true
+      labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
+      includedResourceTypes:
+        - deployments
+      name: cs-db-deployment
+      type: resource
+  hooks:
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      labelSelector: 'k8s.enterprisedb.io/cluster=common-service-db,role=primary'
+      name: common-service-db-check
+      namespace: <child recipe namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
+      name: cs-db-deployment
+      namespace: <child recipe namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: platform-identity-provider
+      nameSelector: platform-identity-provider
+      namespace: <child recipe namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: platform-auth-service
+      nameSelector: platform-auth-service
+      namespace: <child recipe namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: platform-identity-management
+      nameSelector: platform-identity-management
+      namespace: <child recipe namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
+      name: cs-db-data
+      namespace: <child recipe namespace>
+      onError: fail
+      ops:
+        - command: |
+            ["/bin/bash", "-c", "/cs-db/br_cs-db.sh backup <child recipe namespace>"]
+          container: cs-db-br
+          name: cs-db-backup-pre
+          timeout: 600
+        - command: |
+            ["/bin/bash", "-c", "rm -rf /cs-db/cs-db-backup/database"]
+          container: cs-db-br
+          name: cs-db-backup-post
+          timeout: 600
+        - command: |
+            ["/bin/bash", "-c", "sleep 120 && /cs-db/br_cs-db.sh restore <child recipe namespace>"]
+          container: cs-db-br
+          name: restore
+          timeout: 2000
+      selectResource: pod
+      type: exec
+  workflows:
+    - name: pre-backup
+      priority: 2
+      sequence:
+        #csdb
+        - hook: cs-db-data/cs-db-backup-pre
+        - group: cs-db-pre-deploy
+        - group: cs-db-deployment
+    - name: post-backup
+      priority: 0
+      sequence:
+        #volumes (should happen at the end)
+        - group: cs-db-volume
+        - hook: cs-db-data/cs-db-backup-post
+    - name: data-restore
+      priority: 2
+      sequence:
+        #csdb
+        - hook: common-service-db-check/podReady
+        - group: cs-db-pre-deploy
+        - group: cs-db-volume
+        - group: cs-db-deployment
+        - hook: cs-db-deployment/podReady
+        - hook: platform-identity-management/podReady
+        - hook: platform-auth-service/podReady
+        - hook: platform-identity-provider/podReady
+    

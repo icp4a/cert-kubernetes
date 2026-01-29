@@ -79,8 +79,8 @@ function extract_odm_image_list(){
   ODM_IMAGE_REPOSITORY_LIST=("cp.icr.io/cp/cp4a/odm/odm-decisioncenter" "cp.icr.io/cp/cp4a/odm/dbserver" "cp.icr.io/cp/cp4a/odm/odm-decisionrunner" "cp.icr.io/cp/cp4a/odm/odm-decisionserverconsole" "cp.icr.io/cp/cp4a/odm/odm-decisionserverruntime" "cp.icr.io/cp/cp4a/odm/dba-keytool-initcontainer")
   for repo_item in "${ODM_IMAGE_REPOSITORY_LIST[@]}"
   do
-    echo ${repo_item} >> ${IMAGE_REPOSITORY_LIST_FILE}
-    echo ${ODM_IMAGE_TAG} >> ${IMAGE_TAG_LIST_FILE}
+    echo "${repo_item}" >> ${IMAGE_REPOSITORY_LIST_FILE}
+    echo "${ODM_IMAGE_TAG}" >> ${IMAGE_TAG_LIST_FILE}
   done
 
   # For debug purpose, dev would pull from staging image registry

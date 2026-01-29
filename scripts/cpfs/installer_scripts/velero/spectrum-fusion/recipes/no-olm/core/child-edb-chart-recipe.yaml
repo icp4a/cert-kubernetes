@@ -1,0 +1,79 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  labels:
+    dp.isf.ibm.com/parent-recipe: cpfs-parent-recipe
+    dp.isf.ibm.com/parent-recipe-namespace: <parent recipe namespace>
+  name: edb-child-recipe
+  namespace: <child recipe namespace>
+spec:
+  appType: edb
+  groups:
+    - includeClusterResources: true
+      includedResourceTypes:
+        - clusterrole
+        - clusterrolebinding
+        - customresourcedefinitions.apiextensions.k8s.io
+        - validatingwebhookconfigurations.admissionregistration.k8s.io
+        - mutatingwebhookconfigurations.admissionregistration.k8s.io
+      labelSelector: foundationservices.cloudpak.ibm.com=edb-cluster
+      name: edb-cluster-resources
+      type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        - role
+        - rolebinding
+        - serviceaccount
+        - deployments
+        - secrets
+        - configmaps
+        - services
+      labelSelector: foundationservices.cloudpak.ibm.com=edb-chart
+      name: edb-resources
+      type: resource
+    - backupRef: edb-resources
+      includedResourceTypes:
+        - secrets
+        - configmaps
+        - services
+      name: edb-workload-resources
+      type: resource
+    - backupRef: edb-resources
+      includedResourceTypes:
+        - serviceaccount
+        - role
+        - rolebinding
+      name: edb-rbac-resources
+      type: resource
+    - backupRef: edb-resources
+      includedResourceTypes:
+        - deployments
+      name: edb-deployment
+      type: resource
+  hooks:
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: edb-check
+      labelSelector: foundationservices.cloudpak.ibm.com=edb-chart
+      namespace: <operator_ns>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+  workflows:
+    - name: chart-backup
+      priority: 0
+      sequence:
+        - group: edb-cluster-resources
+        - group: edb-resources
+    - name: chart-restore
+      priority: 6
+      sequence:
+        - group: edb-workload-resources
+        - group: edb-cluster-resources
+        - group: edb-rbac-resources
+        - group: edb-deployment
+        - hook: edb-check/podReady

@@ -5,6 +5,7 @@ metadata:
   namespace: "opNamespace"
   labels:
     component: cpfs3
+    service: opensearch
 spec:
   podSelector: 
     matchLabels:

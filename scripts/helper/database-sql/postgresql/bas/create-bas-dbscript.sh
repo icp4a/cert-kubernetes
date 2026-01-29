@@ -26,8 +26,8 @@ function create_bas_studio_db_postgresql_sql_file(){
     dbschema=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbschema")
 
     # convert to lowercase for postgreSQL dbname
-    dbname=$(echo $dbname | tr '[:upper:]' '[:lower:]')
-    dbschema=$(echo $dbschema | tr '[:upper:]' '[:lower:]')
+    dbname=$(echo "$dbname" | tr '[:upper:]' '[:lower:]')
+    dbschema=$(echo "$dbschema" | tr '[:upper:]' '[:lower:]')
 
     # use dbuser as schema when schema is empty
     if [[ $dbschema == "" ]]; then

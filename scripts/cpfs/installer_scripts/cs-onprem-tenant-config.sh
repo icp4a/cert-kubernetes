@@ -57,9 +57,9 @@ checkIfhostReachable() {
   if [ -n "$custom_hostname" ]; then
       echo "Given Custom Hostname: $custom_hostname"
       if host "$custom_hostname" >/dev/null 2>&1; then
-        echo "Host is reachable. Proceeding further..."
+        echo "Domain is defined. Proceeding further..."
       else
-        echo "$custom_hostname is not reachable. Exiting the script."
+        echo "$custom_hostname is not defined. Exiting the script."
         exit 1
       fi
   fi
@@ -87,7 +87,16 @@ checkIfSecretExist
 
 # delete completed job if exists
 echo "Deleting old job of iam-custom-hostname if exists"
-oc delete job iam-custom-hostname --ignore-not-found -n $csNamespace
+oc delete job iam-custom-hostname --ignore-not-found -n $map_to_common_service_namespace
+
+operator_token=$(oc create token ibm-iam-operator -n $csNamespace)
+if [[ -z "${operator_token}" ]]
+then
+    >&2 echo "Failed to set a ServiceAccount token; exit"
+    return 1
+fi
+
+oc project $map_to_common_service_namespace
 
 echo "Running custom hostname job"
 tmpfile=$(mktemp)
@@ -96,7 +105,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: iam-custom-hostname
-  namespace: $csNamespace
+  namespace: $map_to_common_service_namespace
   labels:
     app: iam-custom-hostname
 spec:
@@ -106,30 +115,42 @@ spec:
         app: iam-custom-hostname
     spec:
       containers:
-      - name: iam-custom-hostname
-        image: icr.io/cpopen/cpfs/iam-custom-hostname:latest
-        command: ["python3", "/scripts/saas_script.py"]
-        imagePullPolicy: Always
-        env:
-          - name: OPENSHIFT_URL
-            value: https://kubernetes.default:443
-          - name: IDENTITY_PROVIDER_URL
-            value: https://platform-identity-provider.$map_to_common_service_namespace.svc:4300
-          - name: PLATFORM_AUTH_URL
-            value: https://platform-auth-service.$map_to_common_service_namespace.svc:9443
-          - name: POD_NAMESPACE
-            value: $map_to_common_service_namespace
-          - name: WLP_CLIENT_ID
-            value: $wlp_client_id
-          - name: WLP_CLIENT_SECRET
-            value: $wlp_client_secret
-          - name: OAUTH2_CLIENT_REGISTRATION_SECRET
-            value: $oauth2_client_registration_secret
-          - name: DEFAULT_ADMIN_USER
-            value: $admin_username
-          - name: DEFAULT_ADMIN_PASSWORD
-            value: $admin_password
-      serviceAccountName: ibm-iam-operator
+        - name: iam-custom-hostname
+          image: icr.io/cpopen/cpfs/iam-custom-hostname:latest
+          command: ["python3", "/scripts/saas_script.py"]
+          imagePullPolicy: Always
+          env:
+            - name: OPERATOR_TOKEN
+              value: $operator_token
+            - name: OPENSHIFT_URL
+              value: https://kubernetes.default:443
+            - name: IDENTITY_PROVIDER_URL
+              value: https://platform-identity-provider.$map_to_common_service_namespace.svc:4300
+            - name: PLATFORM_AUTH_URL
+              value: https://platform-auth-service:9443
+            - name: POD_NAMESPACE
+              value: $map_to_common_service_namespace
+            - name: WLP_CLIENT_ID
+              value: $wlp_client_id
+            - name: WLP_CLIENT_SECRET
+              value: $wlp_client_secret
+            - name: OAUTH2_CLIENT_REGISTRATION_SECRET
+              value: $oauth2_client_registration_secret
+            - name: DEFAULT_ADMIN_USER
+              value: $admin_username
+            - name: DEFAULT_ADMIN_PASSWORD
+              value: $admin_password
+          volumeMounts:
+            - name: provider-ca-volume
+              mountPath: /custom-certs
+              readOnly: true
+      volumes:
+        - name: provider-ca-volume
+          secret:
+            secretName: identity-provider-secret
+            items:
+              - key: ca.crt
+                path: ca.crt
       restartPolicy: OnFailure
 EOF
 oc apply -f "$tmpfile"
@@ -143,6 +164,12 @@ check_job_completion() {
 # Call the function to check job completion
 check_job_completion iam-custom-hostname $csNamespace
 
+#sleep for 10s and compare existing custom_hostname with the current route
+sleep 15
+
+oc delete pod -l app=platform-auth-service -n $map_to_common_service_namespace
+echo "Triggered restart of platform-auth-service pods"
+
 deployment_name="platform-auth-service"
 timeout_seconds=180  # assuming auth-service will come in 3 mins after restart
 
@@ -151,13 +178,9 @@ end_time=$((start_time + timeout_seconds))
 
 while true; do
   status=$(oc get deployment "$deployment_name" -n $map_to_common_service_namespace  -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
-  
-  echo "Triggered restart of platform-auth-service pod"
-  oc delete pod -l app=platform-auth-service -n "$map_to_common_service_namespace"
-  pod_phase=$(oc get pod -l app=platform-auth-service -n "$map_to_common_service_namespace" -o jsonpath='{.items[0].status.phase}' 2>/dev/null)
 
-  if [[ "$status" == "True" &&  "$pod_phase" == "Running" ]]; then
-    echo "$deployment_name deployment is available and pod is running"
+  if [[ "$status" == "True" ]]; then
+    echo "$deployment_name is available."
     break
   fi
 
@@ -170,11 +193,8 @@ while true; do
   sleep 5  # Wait for 5 seconds before checking again
 done
 
-#sleep for 10s and compare existing custom_hostname with the current route
-sleep 15
-
-username=$(oc get secret platform-auth-idp-credentials -n ibm-common-services -o json | jq -r .data.admin_username| base64 -d)
-password=$(oc get secret platform-auth-idp-credentials -n ibm-common-services -o json | jq -r .data.admin_password | base64 -d)
+username=$(oc get secret platform-auth-idp-credentials -n $map_to_common_service_namespace -o json | jq -r .data.admin_username| base64 -d)
+password=$(oc get secret platform-auth-idp-credentials -n $map_to_common_service_namespace -o json | jq -r .data.admin_password | base64 -d)
 route=$(oc get routes cp-console -o jsonpath='{.spec.host}')
 
 
@@ -190,7 +210,6 @@ else
 fi
 
 new_hostname=$(oc get routes cp-console --no-headers | awk '{print $2}')
-
 if [ "$new_hostname" = "$custom_hostname" ]; then
     echo "successfully updated the custom hostname"
 else

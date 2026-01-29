@@ -74,11 +74,11 @@ cat << EOF > ${CP4A_LDAP_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-cp4a-ldap-ssl-cert-secret.sh 
 if [[ -f "<cp4a-ldap-crt-file-in-local>/ldap-cert.crt" ]]; then
-  kubectl delete secret "<cp4a-ldap_ssl_secret_name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
-  kubectl create secret generic "<cp4a-ldap_ssl_secret_name>" --from-file=tls.crt="<cp4a-ldap-crt-file-in-local>/ldap-cert.crt" -n "$CP4BA_SERVICES_NS"
-  kubectl label secret "<cp4a-ldap_ssl_secret_name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} delete secret "<cp4a-ldap_ssl_secret_name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "<cp4a-ldap_ssl_secret_name>" --from-file=tls.crt="<cp4a-ldap-crt-file-in-local>/ldap-cert.crt" -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "<cp4a-ldap_ssl_secret_name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"ldap-cert.crt\" into \"<cp4a-ldap-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"ldap-cert.crt\" into \"<cp4a-ldap-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -96,11 +96,11 @@ cat << EOF > ${CP4A_EXT_LDAP_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-cp4ba-external-ldap-ssl-cert-secret.sh
 if [[ -f "<cp4a-ldap-crt-file-in-local>/external-ldap-cert.crt" ]]; then
-  kubectl delete secret "<cp4a-ldap_ssl_secret_name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
-  kubectl create secret generic "<cp4a-ldap_ssl_secret_name>" --from-file=tls.crt="<cp4a-ldap-crt-file-in-local>/external-ldap-cert.crt" -n "$CP4BA_SERVICES_NS"
-  kubectl label secret "<cp4a-ldap_ssl_secret_name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} delete secret "<cp4a-ldap_ssl_secret_name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "<cp4a-ldap_ssl_secret_name>" --from-file=tls.crt="<cp4a-ldap-crt-file-in-local>/external-ldap-cert.crt" -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "<cp4a-ldap_ssl_secret_name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"external-ldap-cert.crt\" into \"<cp4a-ldap-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"external-ldap-cert.crt\" into \"<cp4a-ldap-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -117,11 +117,11 @@ cat << EOF > ${CP4A_AE_REDIS_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-cp4a-redis-ssl-cert-secret.sh 
 if [[ -f "<cp4a-redis-crt-file-in-local>/redis.pem" ]]; then
-  kubectl delete secret "<cp4a-redis_ssl_secret_name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
-  kubectl create secret generic "<cp4a-redis_ssl_secret_name>" --from-file=tls.crt="<cp4a-redis-crt-file-in-local>/redis.pem" -n "$CP4BA_SERVICES_NS"
-  kubectl label secret "<cp4a-redis_ssl_secret_name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} delete secret "<cp4a-redis_ssl_secret_name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "<cp4a-redis_ssl_secret_name>" --from-file=tls.crt="<cp4a-redis-crt-file-in-local>/redis.pem" -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "<cp4a-redis_ssl_secret_name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"redis.pem\" into \"<cp4a-redis-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"redis.pem\" into \"<cp4a-redis-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -139,11 +139,11 @@ cat << EOF > ${CP4A_PLAYBACK_REDIS_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-cp4a-redis-ssl-cert-secret.sh 
 if [[ -f "<cp4a-redis-crt-file-in-local>/redis.pem" ]]; then
-  kubectl delete secret "<cp4a-redis_ssl_secret_name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
-  kubectl create secret generic "<cp4a-redis_ssl_secret_name>" --from-file=tls.crt="<cp4a-redis-crt-file-in-local>/redis.pem" -n "$CP4BA_SERVICES_NS"
-  kubectl label secret "<cp4a-redis_ssl_secret_name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} delete secret "<cp4a-redis_ssl_secret_name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "<cp4a-redis_ssl_secret_name>" --from-file=tls.crt="<cp4a-redis-crt-file-in-local>/redis.pem" -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "<cp4a-redis_ssl_secret_name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"redis.pem\" into \"<cp4a-redis-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"redis.pem\" into \"<cp4a-redis-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -194,20 +194,20 @@ function create_cp4a_db_ssl_template(){
   mkdir -p $DB_SSL_SECRET_FOLDER/$dbserver >/dev/null 2>&1
   CP4A_DB_SSL_SECRET_FILE=${DB_SSL_SECRET_FOLDER}/$dbserver/ibm-cp4ba-db-ssl-cert-secret-for-${dbserver}.sh
   tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $dbserver.POSTGRESQL_SSL_CLIENT_SERVER)")
-  tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+  tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
 if [[ $DB_TYPE != "postgresql" ]]; then
 cat << EOF > ${CP4A_DB_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-cp4a-db-ssl-cert-secret
 
 if [[ -f "<cp4a-db-crt-file-in-local>/db-cert.crt" ]]; then
-  kubectl delete secret "<cp4a-db-ssl-secret-name>" -n "${CP4BA_SERVICES_NS}" >/dev/null 2>&1
-  kubectl create secret generic "<cp4a-db-ssl-secret-name>" \
+  ${CLI_CMD} delete secret "<cp4a-db-ssl-secret-name>" -n "${CP4BA_SERVICES_NS}" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "<cp4a-db-ssl-secret-name>" \
   --from-file=tls.crt="<cp4a-db-crt-file-in-local>/db-cert.crt" \
   --from-file=cacert.crt="<cp4a-db-crt-file-in-local>/db-cert.crt" -n "$CP4BA_SERVICES_NS"
-  kubectl label secret "<cp4a-db-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "<cp4a-db-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt\" into \"<cp4a-db-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -217,13 +217,13 @@ cat << EOF > ${CP4A_DB_SSL_SECRET_FILE}
 # Shell template for ibm-cp4a-db-ssl-cert-secret
 
 if [[ -f "<cp4a-db-crt-file-in-local>/db-cert.crt" ]]; then
-  kubectl delete secret "<cp4a-db-ssl-secret-name>" -n "${CP4BA_SERVICES_NS}" >/dev/null 2>&1
-  kubectl create secret generic "<cp4a-db-ssl-secret-name>" \
+  ${CLI_CMD} delete secret "<cp4a-db-ssl-secret-name>" -n "${CP4BA_SERVICES_NS}" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "<cp4a-db-ssl-secret-name>" \
   --from-file=tls.crt="<cp4a-db-crt-file-in-local>/db-cert.crt" \
   --from-file=serverca.pem="<cp4a-db-crt-file-in-local>/db-cert.crt" -n "${CP4BA_SERVICES_NS}"
-  kubectl label secret "<cp4a-db-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "<cp4a-db-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt\" into \"<cp4a-db-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -233,15 +233,15 @@ cat << EOF > ${CP4A_DB_SSL_SECRET_FILE}
 # Shell template for ibm-cp4a-db-ssl-cert-secret
 
 if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-local>/client.crt" && -f "<cp4a-db-crt-file-in-local>/client.key" ]]; then
-  kubectl delete secret "<cp4a-db-ssl-secret-name>" -n "${CP4BA_SERVICES_NS}" >/dev/null 2>&1
-  kubectl create secret generic "<cp4a-db-ssl-secret-name>" \
+  ${CLI_CMD} delete secret "<cp4a-db-ssl-secret-name>" -n "${CP4BA_SERVICES_NS}" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "<cp4a-db-ssl-secret-name>" \
   --from-file=tls.crt="<cp4a-db-crt-file-in-local>/client.crt" \
   --from-file=ca.crt="<cp4a-db-crt-file-in-local>/root.crt" \
   --from-file=tls.key="<cp4a-db-crt-file-in-local>/client.key" \
   --from-literal=sslmode=[require|verify-ca|verify-full] -n "${CP4BA_SERVICES_NS}"
-  kubectl label secret "<cp4a-db-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "<cp4a-db-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -286,7 +286,7 @@ metadata:
   labels:
     cp4ba.ibm.com/backup-type: mandatory
 stringData:
-  keystorePassword: "changeit"
+  keystorePassword: "<KEYSTORE_PASSWORD>"
 EOF
 }
 
@@ -305,7 +305,7 @@ metadata:
   labels:
     cp4ba.ibm.com/backup-type: mandatory
 stringData:
-  keystorePassword: "changeit"
+  keystorePassword: "<KEYSTORE_PASSWORD>"
 EOF
 }
 
@@ -381,11 +381,11 @@ cat << EOF > ${BAN_DB_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-ban-db-ssl-cert-secret
 if [[ -f "<ban-crt-file-in-local>/db-cert.crt" ]]; then
-  kubectl delete secret "<ban-db-ssl-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
-  kubectl create secret generic "<ban-db-ssl-secret-name>" --from-file=tls.crt="<ban-crt-file-in-local>" -n "$CP4BA_SERVICES_NS"
-  kubectl label secret "<ban-db-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} delete secret "<ban-db-ssl-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "<ban-db-ssl-secret-name>" --from-file=tls.crt="<ban-crt-file-in-local>" -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "<ban-db-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt"\" into \"<ban-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt"\" into \"<ban-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -438,9 +438,6 @@ function create_aca_db_secret_template(){
     # Add basedb pwd
     local tmp_basedbuserpwd="$(prop_db_name_user_property_file ADP_BASE_DB_USER_PASSWORD)"
     local tmp_basedbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_basedbuserpwd")
-    # For https://jsw.ibm.com/browse/DBACLD-157020
-    # Function that updates the secret template with the base64 password
-    update_secret_template_passwords "$tmp_basedbuserpwd" "BASE_DB_CONFIG" "$ADP_BASE_DB_SECRET_YAML_FILE"
 
     local db_name_array=()
     local db_user_array=()
@@ -463,7 +460,15 @@ function create_aca_db_secret_template(){
     local tmp_postgresql_client_flag="false"
     if [[ "$DB_TYPE" == "postgresql" ]]; then
         tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
-        tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+        tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
+    fi
+
+    #If Postgres client-auth is enabled, DO NOT add BASE_DB_CONFIG password field
+    # https://jsw.ibm.com/browse/DBACLD-203570
+    if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
+        ${YQ_CMD} -i 'del(.stringData.BASE_DB_CONFIG)' "$ADP_BASE_DB_SECRET_YAML_FILE"
+    else
+        update_secret_template_passwords "$tmp_basedbuserpwd" "BASE_DB_CONFIG" "$ADP_BASE_DB_SECRET_YAML_FILE"
     fi
 
     if [[ $DB_TYPE = "postgresql-edb" ]]; then
@@ -477,7 +482,7 @@ function create_aca_db_secret_template(){
         # ADP only supports 1 database server, so only the first property in array will be used
         tmp_dbservername=${db_server_array[0]}
         local db_ssl_enable=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.DATABASE_SSL_ENABLE)")
-        db_ssl_enable=$(echo $db_ssl_enable| tr '[:upper:]' '[:lower:]')
+        db_ssl_enable=$(echo "$db_ssl_enable"| tr '[:upper:]' '[:lower:]')
 
         if [[ "$db_ssl_enable" == "true" || "$db_ssl_enable" == "yes" || "$db_ssl_enable" == "y" ]]; then
 
@@ -488,7 +493,7 @@ function create_aca_db_secret_template(){
             ssl_folder_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$ssl_folder_path")
             if [[ "$DB_TYPE" == "postgresql" ]]; then                  
                 local tmp_postgresql_client_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
-                tmp_postgresql_client_flag=$(echo $tmp_postgresql_client_flag | tr '[:upper:]' '[:lower:]') 
+                tmp_postgresql_client_flag=$(echo "$tmp_postgresql_client_flag" | tr '[:upper:]' '[:lower:]') 
                 if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then       
                     base64_clientcrt=$(encode_crt_file_to_base64 "${ssl_folder_path}/client.crt")
                     ${YQ_CMD} -i ".data.CERT = \"$base64_clientcrt\"" "$ADP_BASE_DB_SECRET_YAML_FILE"
@@ -509,7 +514,7 @@ function create_aca_db_secret_template(){
         fi
         for num in "${!db_name_array[@]}"; do
             tmp_dbname=${db_name_array[num]}
-            tmp_dbname=$(echo $tmp_dbname | tr '[:lower:]' '[:upper:]')
+            tmp_dbname=$(echo "$tmp_dbname" | tr '[:lower:]' '[:upper:]')
             tmp_dbuser=${db_user_array[num]}
             tmp_dbuserpwd=${db_userpwd_array[num]}
             # If Postgres client-auth is enabled for the ADP DB server, DO NOT add per-project DB password fields.
@@ -569,11 +574,11 @@ cat << EOF > ${ADP_GIT_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-adp-git-tls-secret
 if [[ -f "<adp-git-crt-file-in-local>/git-cert.crt" ]]; then
-  kubectl delete secret "<adp-git-ssl-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
-  kubectl create secret generic "<adp-git-ssl-secret-name>" --from-file=tls.crt="<adp-git-crt-file-in-local>/git-cert.crt" -n "$CP4BA_SERVICES_NS"
-  kubectl label secret "<adp-git-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} delete secret "<adp-git-ssl-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "<adp-git-ssl-secret-name>" --from-file=tls.crt="<adp-git-crt-file-in-local>/git-cert.crt" -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "<adp-git-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"git-cert.crt\" into \"<adp-git-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"git-cert.crt\" into \"<adp-git-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -589,11 +594,11 @@ cat << EOF > ${ADP_CDRA_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-adp-cdra-tls-secret
 if [[ -f "<adp-cdra-crt-file-in-local>/cdra_tls_cert.crt" ]]; then
-  kubectl delete secret "<adp-cdra-ssl-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
-  kubectl create secret generic "<adp-cdra-ssl-secret-name>" --from-file=tls.crt="<adp-cdra-crt-file-in-local>/cdra_tls_cert.crt" -n "$CP4BA_SERVICES_NS"
-  kubectl label secret "<adp-cdra-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} delete secret "<adp-cdra-ssl-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "<adp-cdra-ssl-secret-name>" --from-file=tls.crt="<adp-cdra-crt-file-in-local>/cdra_tls_cert.crt" -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "<adp-cdra-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"cdra_tls_cert.crt\" into \"<adp-cdra-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"cdra_tls_cert.crt\" into \"<adp-cdra-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -608,10 +613,10 @@ function create_aca_design_api_key_template(){
 cat << EOF > ${ADP_ACA_DESIGN_API_KEY_SECRET_FILE}
 #!/bin/bash
 # Shell template for ibm-adp-cdra-tls-secret
-  kubectl delete secret "<cp4a-aca-design-api-key-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
-  kubectl create secret generic "<cp4a-aca-design-api-key-secret-name>" \
+  ${CLI_CMD} delete secret "<cp4a-aca-design-api-key-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "<cp4a-aca-design-api-key-secret-name>" \
   --from-literal=ZenApiKey=<cp4a-aca-design-api-user>:<cp4a-aca-design-zen-api-key> -n "$CP4BA_SERVICES_NS"
-  kubectl label secret "<cp4a-aca-design-api-key-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "<cp4a-aca-design-api-key-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 EOF
   success "Creating ADP ACA design api key secret YAML template\n"
   chmod 755 ${ADP_ACA_DESIGN_API_KEY_SECRET_FILE}
@@ -664,11 +669,11 @@ cat << EOF > ${APP_ORACLE_SSO_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for storing wallet SSO binary file when an SSL connection is enabled and Oracle database is selected for Application Engine/Playback server.
 if [[ -f "<your-oracle-sso-wallet-file-path>/cwallet.sso" ]]; then
-  kubectl delete secret "<your-oracle-sso-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
-  kubectl create secret generic "<your-oracle-sso-secret-name>" --from-file=cwallet.sso="<your-oracle-sso-wallet-file-path>/cwallet.sso" -n "$CP4BA_SERVICES_NS"
-  kubectl label secret "<your-oracle-sso-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} delete secret "<your-oracle-sso-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "<your-oracle-sso-secret-name>" --from-file=cwallet.sso="<your-oracle-sso-wallet-file-path>/cwallet.sso" -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "<your-oracle-sso-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"cwallet.sso\" into \"<your-oracle-sso-wallet-file-path>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"cwallet.sso\" into \"<your-oracle-sso-wallet-file-path>\" first."
   exit 1
 fi
 
@@ -933,14 +938,14 @@ if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-loca
 
   openssl x509 -in <cp4a-db-crt-file-in-local>/root.crt -outform PEM -out <cp4a-db-crt-file-in-local>/root.pem >/dev/null 2>&1
 
-  kubectl delete secret "ibm-zen-metastore-edb-secret" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
-  kubectl create secret generic "ibm-zen-metastore-edb-secret" --from-file=ca.crt="<cp4a-db-crt-file-in-local>/root.pem"\
+  ${CLI_CMD} delete secret "ibm-zen-metastore-edb-secret" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "ibm-zen-metastore-edb-secret" --from-file=ca.crt="<cp4a-db-crt-file-in-local>/root.pem"\
   --from-file=tls.crt="<cp4a-db-crt-file-in-local>/client.pem"\
   --from-file=tls.key="<cp4a-db-crt-file-in-local>/client_key.pem"\
   --type=kubernetes.io/tls -n "$CP4BA_SERVICES_NS" 
-  kubectl label secret "ibm-zen-metastore-edb-secret" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "ibm-zen-metastore-edb-secret" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -990,14 +995,14 @@ if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-loca
   openssl rsa -in <cp4a-db-crt-file-in-local>/client.key -outform PEM -out <cp4a-db-crt-file-in-local>/client_key.pem >/dev/null 2>&1
   openssl x509 -in <cp4a-db-crt-file-in-local>/client.crt -outform PEM -out <cp4a-db-crt-file-in-local>/client.pem >/dev/null 2>&1
   openssl x509 -in <cp4a-db-crt-file-in-local>/root.crt -outform PEM -out <cp4a-db-crt-file-in-local>/root.pem >/dev/null 2>&1
-  kubectl delete secret "im-datastore-edb-secret" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
-  kubectl create secret generic "im-datastore-edb-secret" --from-file=ca.crt="<cp4a-db-crt-file-in-local>/root.pem"\
+  ${CLI_CMD} delete secret "im-datastore-edb-secret" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "im-datastore-edb-secret" --from-file=ca.crt="<cp4a-db-crt-file-in-local>/root.pem"\
   --from-file=tls.crt="<cp4a-db-crt-file-in-local>/client.pem"\
   --from-file=tls.key="<cp4a-db-crt-file-in-local>/client_key.pem"\
   --type=kubernetes.io/tls -n "$CP4BA_SERVICES_NS"
-  kubectl label secret "im-datastore-edb-secret" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "im-datastore-edb-secret" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -1046,13 +1051,13 @@ if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-loca
   openssl x509 -in <cp4a-db-crt-file-in-local>/client.crt -outform PEM -out <cp4a-db-crt-file-in-local>/client.pem >/dev/null 2>&1
   openssl x509 -in <cp4a-db-crt-file-in-local>/root.crt -outform PEM -out <cp4a-db-crt-file-in-local>/root.pem >/dev/null 2>&1
   openssl pkcs8 -topk8 -inform PEM -in <cp4a-db-crt-file-in-local>/client_key.pem -outform DER -nocrypt -out <cp4a-db-crt-file-in-local>/tls_key.pk8
-  kubectl delete secret "bts-datastore-edb-secret" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
-  kubectl create secret generic "bts-datastore-edb-secret" --from-file=ca.crt="<cp4a-db-crt-file-in-local>/root.pem"\
+  ${CLI_CMD} delete secret "bts-datastore-edb-secret" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "bts-datastore-edb-secret" --from-file=ca.crt="<cp4a-db-crt-file-in-local>/root.pem"\
   --from-file=tls.crt="<cp4a-db-crt-file-in-local>/client.pem"\
   --from-file=tls.key="<cp4a-db-crt-file-in-local>/tls_key.pk8" -n "$CP4BA_SERVICES_NS"
-  kubectl label secret "bts-datastore-edb-secret" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "bts-datastore-edb-secret" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -1100,13 +1105,13 @@ if [[ -f "<cp4a-issuer-tls-crt-file-in-local>/tls.crt" && -f "<cp4a-issuer-tls-c
   openssl rsa -in <cp4a-issuer-tls-crt-file-in-local>/tls.key -outform PEM -out <cp4a-issuer-tls-crt-file-in-local>/tls_key.pem >/dev/null 2>&1
   openssl x509 -in <cp4a-issuer-tls-crt-file-in-local>/tls.crt -outform PEM -out <cp4a-issuer-tls-crt-file-in-local>/tls.pem >/dev/null 2>&1
   
-  kubectl delete secret "ibm-cp4ba-tls-issuer-secret" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
-  kubectl create secret generic "ibm-cp4ba-tls-issuer-secret" --from-file=tls.crt="<cp4a-issuer-tls-crt-file-in-local>/tls.pem"\
+  ${CLI_CMD} delete secret "ibm-cp4ba-tls-issuer-secret" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "ibm-cp4ba-tls-issuer-secret" --from-file=tls.crt="<cp4a-issuer-tls-crt-file-in-local>/tls.pem"\
   --from-file=tls.key="<cp4a-issuer-tls-crt-file-in-local>/tls_key.pem"\
   --type=kubernetes.io/tls -n "$CP4BA_SERVICES_NS"
-  kubectl label secret "ibm-cp4ba-tls-issuer-secret" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "ibm-cp4ba-tls-issuer-secret" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"tls.crt\" and \"tls.key\" into \"<cp4a-issuer-tls-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"tls.crt\" and \"tls.key\" into \"<cp4a-issuer-tls-crt-file-in-local>\" first."
   exit 1
 fi
 EOF

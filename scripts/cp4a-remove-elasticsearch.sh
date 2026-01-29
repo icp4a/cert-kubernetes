@@ -61,8 +61,8 @@ if [ -z "$(oc get project "${ES_NAMESPACE}" 2>/dev/null)" ]; then
 	echo " ERROR: Namespace ${ES_NAMESPACE} does not exist. Specify an existing namespace where Elasticsearch is installed." && exit 1
 fi
 
-echo -e "The Elasticsearch namespace entered: ${ES_NAMESPACE}\n"
-echo -e "\x1B[1;31m[ATTENTION]: \x1B[0m\x1B[1;31mThis script is designed to delete deprecated Elasticsearch resources from your cluster, Please ensure that you have completed the data migration from Elasticsearch to OpenSearch before running this script.\x1B[0m\n"
+printf '%b\n' "The Elasticsearch namespace entered: ${ES_NAMESPACE}\n"
+printf '%b\n' "\x1B[1;31m[ATTENTION]: \x1B[0m\x1B[1;31mThis script is designed to delete deprecated Elasticsearch resources from your cluster, Please ensure that you have completed the data migration from Elasticsearch to OpenSearch before running this script.\x1B[0m\n"
 if [[ $SKIP_CONFIRM == "false" ]]; then
 	echo "Would you like to clean up Elasticsearch resources right now?"
 	echo "Use -s option to skip this confirmation, -h for help."

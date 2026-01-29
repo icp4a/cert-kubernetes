@@ -253,12 +253,12 @@ fi
 if [ -z "${runtimeUseZen}" ] || [ "${runtimeUseZen}" != true ]
  then
 	CMD="./helper_getUMSToken.sh --acceptLanguage ${acceptLanguage} --url ${runtimeUmsUrl} --id ${runtimeUmsClientId} --secret ${runtimeUmsClientSecret} --usr ${runtimeUser} --pwd ${runtimePwd}"
-	echo Getting RunTime UMSToken ... 
+	echo "Getting RunTime UMSToken ..." 
 	#${CMD}
 	RUN_BEARER=$(${CMD})
  else
 	CMD="./helper_getZENToken.sh --acceptLanguage ${acceptLanguage} --iamurl ${runtimeZenIamUrl} --zenurl ${runtimeZenUrl} --usr ${runtimeUser} --pwd ${runtimePwd}"
-	echo Getting RunTime ZENToken ...
+	echo "Getting RunTime ZENToken ..."
 	#${CMD}
 	RUN_BEARER=$(${CMD})
 fi
@@ -270,7 +270,7 @@ if [ "${cleanTeamsOptions}" = "" ]
 then
 	cleanTeamsOptions="$delOption"
 fi
-echo $cleanTeamsOptions
+echo "$cleanTeamsOptions"
 
 
 
