@@ -1662,7 +1662,7 @@ function check_property_file(){
     # Add ADS parameters to OPTIONAL_PARAMETERS_LIST if tmp_mongo_flag = ADS.USE_EXTERNAL_MONGODB in cp4ba_user_profile.property is "No"
     tmp_mongo_flag="$(prop_user_profile_property_file ADS.USE_EXTERNAL_MONGODB)"
 
-    if [[ "$tmp_mongo_flag_lc" =~ ^(no|n|false)$ ]]; then
+    if [[ $(echo "$tmp_mongo_flag" | tr '[:upper:]' '[:lower:]') =~ ^(no|n|false)$ ]]; then
         OPTIONAL_PARAMETERS_LIST+=("ADS.EXTERNAL_GIT_MONGO_URI")
         OPTIONAL_PARAMETERS_LIST+=("ADS.EXTERNAL_MONGO_URI")
         OPTIONAL_PARAMETERS_LIST+=("ADS.EXTERNAL_MONGO_HISTORY_URI")
