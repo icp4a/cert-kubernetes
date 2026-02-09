@@ -9460,10 +9460,10 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         info "Found cs-onprem-tenant-config ConfigMap, extracting custom configuration..."
 
         # Extract custom_hostname
-        custom_hostname=$(${CLI_CMD} get configmap cs-onprem-tenant-config -n ${cs_data_ns} -o jsonpath='{.data.custom_hostname}' 2>/dev/null)
+        custom_hostname=$(${CLI_CMD} get configmap cs-onprem-tenant-config -n ${cs_data_ns} -o jsonpath='{.data.custom_hostname}' 2>>"$LOG_FILE")
 
         # Extract custom_host_certificate_secret
-        custom_cert_secret=$(${CLI_CMD} get configmap cs-onprem-tenant-config -n ${cs_data_ns} -o jsonpath='{.data.custom_host_certificate_secret}' 2>/dev/null)
+        custom_cert_secret=$(${CLI_CMD} get configmap cs-onprem-tenant-config -n ${cs_data_ns} -o jsonpath='{.data.custom_host_certificate_secret}' 2>>"$LOG_FILE")
 
         # Persist to dedicated property file if values exist
         if [[ -n "$custom_hostname" || -n "$custom_cert_secret" ]]; then
@@ -11808,8 +11808,8 @@ EOF
             fi
 
             # Read persisted values from property file
-            CUSTOM_HOSTNAME=$(grep "^CUSTOM_HOSTNAME=" "${CS_CUSTOM_CONFIG_FILE}" 2>/dev/null | cut -d'=' -f2-)
-            CUSTOM_CERT_SECRET=$(grep "^CUSTOM_CERT_SECRET=" "${CS_CUSTOM_CONFIG_FILE}" 2>/dev/null | cut -d'=' -f2-)
+            CUSTOM_HOSTNAME=$(grep "^CUSTOM_HOSTNAME=" "${CS_CUSTOM_CONFIG_FILE}" 2>>"$LOG_FILE" | cut -d'=' -f2-)
+            CUSTOM_CERT_SECRET=$(grep "^CUSTOM_CERT_SECRET=" "${CS_CUSTOM_CONFIG_FILE}" 2>>"$LOG_FILE" | cut -d'=' -f2-)
 
             if [[ -n "${CUSTOM_HOSTNAME}" || -n "${CUSTOM_CERT_SECRET}" ]]; then
                 info "Found custom configuration to restore:"
@@ -11819,7 +11819,7 @@ EOF
                 # Wait for CommonService CR to be ready
                 maxRetry=20
                 for ((retry=0;retry<=${maxRetry};retry++)); do
-                    cs_exists=$(${CLI_CMD} get commonservice common-service -n ${cs_operators_ns} --ignore-not-found 2>/dev/null | wc -l)
+                    cs_exists=$(${CLI_CMD} get commonservice common-service -n ${cs_operators_ns} --ignore-not-found 2>>"$LOG_FILE" | wc -l)
                     if [[ ${cs_exists} -gt 0 ]]; then
                         success "CommonService CR 'common-service' found in namespace ${cs_operators_ns}"
                         break
@@ -11839,7 +11839,7 @@ EOF
                     info "Applying custom configuration to CommonService CR via ibm-im-operator service..."
 
                     # Check if ibm-im-operator service already exists in the CR
-                    ibm_im_operator_exists=$(${CLI_CMD} get commonservice common-service -n ${cs_operators_ns} -o jsonpath='{.spec.services[?(@.name=="ibm-im-operator")].name}' 2>/dev/null)
+                    ibm_im_operator_exists=$(${CLI_CMD} get commonservice common-service -n ${cs_operators_ns} -o jsonpath='{.spec.services[?(@.name=="ibm-im-operator")].name}' 2>>"$LOG_FILE")
 
                     # Build the ingress config based on what values exist
                     ingress_config=""
@@ -11855,14 +11855,14 @@ EOF
                         # Service exists, update it using merge patch
                         info "ibm-im-operator service found, updating configuration..."
                         patch_json="{\"spec\":{\"services\":[{\"name\":\"ibm-im-operator\",\"spec\":{\"authentication\":{\"config\":{\"ingress\":{${ingress_config}}}}}}]}}"
-                        ${CLI_CMD} patch commonservice common-service -n ${cs_operators_ns} --type=merge -p "${patch_json}" 2>/dev/null
+                        ${CLI_CMD} patch commonservice common-service -n ${cs_operators_ns} --type=merge -p "${patch_json}" 2>>"$LOG_FILE"
                         patch_result=$?
                     else
                         # Service doesn't exist, create it using JSON patch add operation
                         info "ibm-im-operator service not found, creating it with configuration..."
 
                         # First check if spec.services array exists
-                        services_exists=$(${CLI_CMD} get commonservice common-service -n ${cs_operators_ns} -o jsonpath='{.spec.services}' 2>/dev/null)
+                        services_exists=$(${CLI_CMD} get commonservice common-service -n ${cs_operators_ns} -o jsonpath='{.spec.services}' 2>>"$LOG_FILE")
 
                         if [[ -z "${services_exists}" || "${services_exists}" == "null" ]]; then
                             # No services array exists, create it with our service
@@ -11872,7 +11872,7 @@ EOF
                             patch_json="[{\"op\":\"add\",\"path\":\"/spec/services/-\",\"value\":{\"name\":\"ibm-im-operator\",\"spec\":{\"authentication\":{\"config\":{\"ingress\":{${ingress_config}}}}}}}]"
                         fi
 
-                        ${CLI_CMD} patch commonservice common-service -n ${cs_operators_ns} --type=json -p "${patch_json}" 2>/dev/null
+                        ${CLI_CMD} patch commonservice common-service -n ${cs_operators_ns} --type=json -p "${patch_json}" 2>>"$LOG_FILE"
                         patch_result=$?
                     fi
 
