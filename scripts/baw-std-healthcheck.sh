@@ -35,7 +35,7 @@ function validate_kube_oc_cli(){
     elif which oc >/dev/null 2>&1; then
         CLI_CMD=oc
     else
-        echo -e  "\x1B[1;31mUnable to locate Kubernetes CLI or OpenShift CLI. You must install it to run this script.\x1B[0m" && \
+        printf '%b\n'  "\x1B[1;31mUnable to locate Kubernetes CLI or OpenShift CLI. You must install it to run this script.\x1B[0m" && \
         exit 1
     fi
 }

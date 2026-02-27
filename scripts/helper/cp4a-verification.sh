@@ -37,19 +37,19 @@ EOF
   
     # CREATE_PVC_CMD="kubectl apply -f ${STORAGE_CLASS_SAMPLE}"
     # if $CREATE_PVC_CMD ; then
-    #     echo -e "\x1B[1mDone\x1B[0m"
+    #     printf '%b\n' "\x1B[1mDone\x1B[0m"
     # else
-    #     echo -e "\x1B[1;31mFailed\x1B[0m"
+    #     printf '%b\n' "\x1B[1;31mFailed\x1B[0m"
     # fi
    # Check Operator Persistent Volume status every 5 seconds (max 1 minutes) until allocate.
-    ${CLI_CMD} apply -f ${STORAGE_CLASS_SAMPLE} >/dev/null 2>&1
+    ${CLI_CMD} apply -f ${STORAGE_CLASS_SAMPLE} >&3 2>&3
     ATTEMPTS=0
     TIMEOUT=12
     printf "\n"
     info "Checking the storage class: \"${sc_name}\"..."
     until ${CLI_CMD} get pvc | grep ${sample_pvc_name}| grep -q -m 1 "Bound" || [ $ATTEMPTS -eq $TIMEOUT ]; do
         ATTEMPTS=$((ATTEMPTS + 1))
-        echo -e "......"
+        printf '%b\n' "......"
         sleep 5
         if [ $ATTEMPTS -eq $TIMEOUT ] ; then
             fail "Failed to allocate the persistent volumes using storage class: \"${sc_name}\"!"
@@ -63,8 +63,8 @@ EOF
             printf "\n"
     fi
     #DBACLD-197700: Clean up sample PVC regardless of pass or fail
-    ${CLI_CMD} delete -f ${STORAGE_CLASS_SAMPLE} >/dev/null 2>&1
-    rm -rf ${STORAGE_CLASS_SAMPLE} >/dev/null 2>&1
+    ${CLI_CMD} delete -f ${STORAGE_CLASS_SAMPLE} >&3 2>&3
+    rm -rf ${STORAGE_CLASS_SAMPLE} >&3 2>&3
 }
 
 
@@ -242,7 +242,7 @@ function verify_ldap_connection(){
       #For https://jsw.ibm.com/browse/DBACLD-158315
       success "Connected to LDAP \"$ldap_server\" using BindDN:\"$ldap_binddn\" successfully, PASSED!"
       printf "\n"
-      connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
+      connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
       if [[ ! -z $connection_time ]]; then
         display_latency_warning $connection_time "LDAP"
       fi
@@ -274,7 +274,7 @@ function verify_ldap_connection(){
       #For https://jsw.ibm.com/browse/DBACLD-158315
       success "Connected to LDAP \"$ldap_server\" using BindDN:\"$ldap_binddn\" successfully, PASSED!"
       printf "\n"
-      connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
+      connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
       if [[ ! -z $connection_time ]]; then
         display_latency_warning $connection_time "LDAP"
       fi
@@ -353,7 +353,7 @@ function verify_db_connection(){
   fi
   tmp_dbssl_flag="$(prop_db_server_property_file $db_server_list_element.DATABASE_SSL_ENABLE)"
   tmp_dbssl_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbssl_flag")
-  tmp_dbssl_flag=$(echo $tmp_dbssl_flag| tr '[:upper:]' '[:lower:]')
+  tmp_dbssl_flag=$(echo "$tmp_dbssl_flag"| tr '[:upper:]' '[:lower:]')
 
   if [[ $tmp_dbssl_flag == "true" || $tmp_dbssl_flag == "yes" || $tmp_dbssl_flag == "y" ]]; then
     dbcafolder="$(prop_db_server_property_file $db_server_list_element.DATABASE_SSL_CERT_FILE_FOLDER)"
@@ -372,7 +372,7 @@ function verify_db_connection(){
       fi
     elif [[ $DB_TYPE == "postgresql" ]]; then
         tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $db_server_list_element.POSTGRESQL_SSL_CLIENT_SERVER)")
-        tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+        tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
         if [[ $tmp_flag == "no" || $tmp_flag == "false" || $tmp_flag == "" || -z $tmp_flag ]]; then
           if [[ ! -f "${dbcafolder}/db-cert.crt" ]]; then
             fail "Not found required server certificate file \"db-cert.crt\" under \"$dbcafolder\" for $DB_TYPE database server \"$dbserver\", exit..."
@@ -407,7 +407,7 @@ function verify_db_connection(){
               if [[ "$output" == *"Connected to the database Success"* ]]; then
                 success "Check for DB connection for \"$dbname\" on database server \"$dbserver\", has PASSED!"
                 printf "\n"
-                connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
+                connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
                 if [[ ! -z $connection_time ]]; then
                   display_latency_warning $connection_time "Database"
                 fi
@@ -446,7 +446,7 @@ function verify_db_connection(){
               if [[ "$output" == *"Connected to the database Success"* && "$result" == *"SUCCESS"* ]]; then
                 success "Check for DB connection for \"$dbuser\" using JDBC URL \"$oracle_url\", has PASSED!"
                 printf "\n"
-                connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
+                connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
                 if [[ ! -z $connection_time ]]; then
                   display_latency_warning $connection_time "Database"
                 fi
@@ -481,7 +481,7 @@ function verify_db_connection(){
               if [[ "$output" == *"Connected to the database Success"* && "$result" == *"SUCCESS"* ]]; then
                 success "Check for DB connection for \"$dbname\" on database server \"$dbserver\", has PASSED!"
                 printf "\n"
-                connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
+                connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
                 if [[ ! -z $connection_time ]]; then
                   display_latency_warning $connection_time "Database"
                 fi
@@ -493,14 +493,14 @@ function verify_db_connection(){
               ;;
           "postgresql")
               tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $db_server_list_element.POSTGRESQL_SSL_CLIENT_SERVER)")
-              tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+              tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
               if [[ $tmp_flag == "no" || $tmp_flag == "false" || $tmp_flag == "" || -z $tmp_flag ]]; then
                 postgres_cafile="${dbcafolder}/db-cert.crt"
                 output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode require -ca $postgres_cafile 2>&1)
                 if [[ "$output" == *"Connected to the database Success"* ]]; then
                   success "Check for DB connection for \"$dbname\" on database server \"$dbserver\", has PASSED!"
                   printf "\n"
-                  connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
+                  connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
                   if [[ ! -z $connection_time ]]; then
                     display_latency_warning $connection_time "Database"
                   fi
@@ -520,7 +520,7 @@ function verify_db_connection(){
                 if [[ "$output" == *"Connected to the database Success"* ]]; then
                   success "Check for DB connection for \"$dbname\" on database server \"$dbserver\", has PASSED!"
                   printf "\n"
-                  connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
+                  connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
                   if [[ ! -z $connection_time ]]; then
                     display_latency_warning $connection_time "Database"
                   fi
@@ -548,7 +548,7 @@ function verify_db_connection(){
               if [[ "$output" == *"Connected to the database Success"* ]]; then
                 success "Check for DB connection for \"$dbname\" on database host server \"$dbserver\", has PASSED!"
                 printf "\n"
-                connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
+                connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
                 if [[ ! -z $connection_time ]]; then
                   display_latency_warning $connection_time "Database"
                 fi
@@ -568,13 +568,13 @@ function verify_db_connection(){
               if [[ "$output" == *"Connected to the database Success"* ]]; then
                 success "Check for DB connection for \"$dbuser\" using JDBC URL \"$oracle_url\", has PASSED!"
                 printf "\n"
-                connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
+                connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
                 if [[ ! -z $connection_time ]]; then
                   display_latency_warning $connection_time "Database"
                 fi
               else
                 warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp \"${DB_JDBC_NAME}/ojdbc8.jar:${DB_CONNECTION_JAR_PATH}/OracleJDBCConnection.jar\" OracleConnection -url \"$oracle_url\" -u $dbuser -pwd ******" && \
-                echo -e  "\x1B[1;31mUnable to connect to database \"$dbuser\" using JDBC URL \"$oracle_url\", please check configuration again.\x1B[0m"
+                printf '%b\n'  "\x1B[1;31mUnable to connect to database \"$dbuser\" using JDBC URL \"$oracle_url\", please check configuration again.\x1B[0m"
               fi
               break
               ;;
@@ -583,7 +583,7 @@ function verify_db_connection(){
               if [[ "$output" == *"Connected to the database Success"* ]]; then
                 success "Check for DB connection for \"$dbname\" on database host server \"$dbserver\", has PASSED!"
                 printf "\n"
-                connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
+                connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
                 if [[ ! -z $connection_time ]]; then
                   display_latency_warning $connection_time "Database"
                 fi
@@ -598,7 +598,7 @@ function verify_db_connection(){
               if [[ "$output" == *"Connected to the database Success"* ]]; then
                 success "Check for DB connection for \"$dbname\" on database host server \"$dbserver\", has PASSED!"
                 printf "\n"
-                connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
+                connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
                 if [[ ! -z $connection_time ]]; then
                   display_latency_warning $connection_time "Database"
                 fi

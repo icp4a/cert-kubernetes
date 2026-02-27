@@ -103,11 +103,11 @@ function select_pattern(){
         for ((j=0;j<${#options_cr_val[@]};j++));
         do [ "${options_cr_val[$j]}" = "$1" ] && { i=$j; break; }
         done
-        echo $i
+        echo "$i"
     }
     menu() {
         clear
-        echo -e "\x1B[1mSelect the Cloud Pak for Business Automation capability to install: \x1B[0m"
+        printf '%b\n' "\x1B[1mSelect the Cloud Pak for Business Automation capability to install: \x1B[0m"
         for i in ${!options[@]}; do
             if [[ $DEPLOYMENT_TYPE == "starter" ]];then
                 containsElement "${options_cr_val[i]}" "${EXISTING_PATTERN_ARR[@]}"
@@ -250,23 +250,23 @@ function select_pattern(){
         if [[ "$msg" ]]; then echo "$msg"; fi
         printf "\n"
         if [[ $DEPLOYMENT_TYPE == "production" ]]; then
-            echo -e "${baw_iaws_tips}"
+            printf '%b\n' "${baw_iaws_tips}"
         fi
         
         if [[ $DEPLOYMENT_TYPE == "production" ]]; then
-            echo -e "${pattern_custom_tips}"
-            echo -e "${linux_custom_tips}"
+            printf '%b\n' "${pattern_custom_tips}"
+            printf '%b\n' "${linux_custom_tips}"
         else
-            echo -e "${pattern_starter_tips}"
-            echo -e "${linux_starter_tips}"
+            printf '%b\n' "${pattern_starter_tips}"
+            printf '%b\n' "${linux_starter_tips}"
         fi       
         # Show different tips according components select or unselect
         containsElement "(Selected)" "${choices_pattern[@]}"
         retVal=$?
         if [ $retVal -ne 0 ]; then
-            echo -e "${tips1}"
+            printf '%b\n' "${tips1}"
         else
-            echo -e "${tips2}"
+            printf '%b\n' "${tips2}"
         fi
 # ##########################DEBUG############################
 #     for i in "${!choices_pattern[@]}"; do
@@ -532,7 +532,7 @@ function select_pattern(){
             fi
         fi
     done
-    # echo -e "$msg"
+    # printf '%b\n' "$msg"
 
     # 4Q: add workflow-workstream into pattern list when select both workflow-runtime and workstream
     if [[ " ${pattern_cr_arr[@]} " =~ "workflow" && " ${pattern_cr_arr[@]} " =~ "workstreams" && "${DEPLOYMENT_TYPE}" == "production" ]]; then
@@ -564,4 +564,4 @@ function select_pattern(){
 }
 
 select_pattern
-echo -e "Selected patterns: $PATTERNS_SELECTED \n"
+printf '%b\n' "Selected patterns: $PATTERNS_SELECTED \n"

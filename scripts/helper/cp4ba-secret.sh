@@ -78,7 +78,7 @@ if [[ -f "<cp4a-ldap-crt-file-in-local>/ldap-cert.crt" ]]; then
   ${CLI_CMD} create secret generic "<cp4a-ldap_ssl_secret_name>" --from-file=tls.crt="<cp4a-ldap-crt-file-in-local>/ldap-cert.crt" -n "$CP4BA_SERVICES_NS"
   ${CLI_CMD} label secret "<cp4a-ldap_ssl_secret_name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"ldap-cert.crt\" into \"<cp4a-ldap-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"ldap-cert.crt\" into \"<cp4a-ldap-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -100,7 +100,7 @@ if [[ -f "<cp4a-ldap-crt-file-in-local>/external-ldap-cert.crt" ]]; then
   ${CLI_CMD} create secret generic "<cp4a-ldap_ssl_secret_name>" --from-file=tls.crt="<cp4a-ldap-crt-file-in-local>/external-ldap-cert.crt" -n "$CP4BA_SERVICES_NS"
   ${CLI_CMD} label secret "<cp4a-ldap_ssl_secret_name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"external-ldap-cert.crt\" into \"<cp4a-ldap-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"external-ldap-cert.crt\" into \"<cp4a-ldap-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -121,7 +121,7 @@ if [[ -f "<cp4a-redis-crt-file-in-local>/redis.pem" ]]; then
   ${CLI_CMD} create secret generic "<cp4a-redis_ssl_secret_name>" --from-file=tls.crt="<cp4a-redis-crt-file-in-local>/redis.pem" -n "$CP4BA_SERVICES_NS"
   ${CLI_CMD} label secret "<cp4a-redis_ssl_secret_name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"redis.pem\" into \"<cp4a-redis-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"redis.pem\" into \"<cp4a-redis-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -143,7 +143,7 @@ if [[ -f "<cp4a-redis-crt-file-in-local>/redis.pem" ]]; then
   ${CLI_CMD} create secret generic "<cp4a-redis_ssl_secret_name>" --from-file=tls.crt="<cp4a-redis-crt-file-in-local>/redis.pem" -n "$CP4BA_SERVICES_NS"
   ${CLI_CMD} label secret "<cp4a-redis_ssl_secret_name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"redis.pem\" into \"<cp4a-redis-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"redis.pem\" into \"<cp4a-redis-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -194,7 +194,7 @@ function create_cp4a_db_ssl_template(){
   mkdir -p $DB_SSL_SECRET_FOLDER/$dbserver >/dev/null 2>&1
   CP4A_DB_SSL_SECRET_FILE=${DB_SSL_SECRET_FOLDER}/$dbserver/ibm-cp4ba-db-ssl-cert-secret-for-${dbserver}.sh
   tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $dbserver.POSTGRESQL_SSL_CLIENT_SERVER)")
-  tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+  tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
 if [[ $DB_TYPE != "postgresql" ]]; then
 cat << EOF > ${CP4A_DB_SSL_SECRET_FILE}
 #!/bin/bash
@@ -207,7 +207,7 @@ if [[ -f "<cp4a-db-crt-file-in-local>/db-cert.crt" ]]; then
   --from-file=cacert.crt="<cp4a-db-crt-file-in-local>/db-cert.crt" -n "$CP4BA_SERVICES_NS"
   ${CLI_CMD} label secret "<cp4a-db-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt\" into \"<cp4a-db-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -223,7 +223,7 @@ if [[ -f "<cp4a-db-crt-file-in-local>/db-cert.crt" ]]; then
   --from-file=serverca.pem="<cp4a-db-crt-file-in-local>/db-cert.crt" -n "${CP4BA_SERVICES_NS}"
   ${CLI_CMD} label secret "<cp4a-db-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt\" into \"<cp4a-db-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -241,7 +241,7 @@ if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-loca
   --from-literal=sslmode=[require|verify-ca|verify-full] -n "${CP4BA_SERVICES_NS}"
   ${CLI_CMD} label secret "<cp4a-db-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -305,7 +305,7 @@ metadata:
   labels:
     cp4ba.ibm.com/backup-type: mandatory
 stringData:
-  keystorePassword: "changeit"
+  keystorePassword: "<KEYSTORE_PASSWORD>"
 EOF
 }
 
@@ -385,7 +385,7 @@ if [[ -f "<ban-crt-file-in-local>/db-cert.crt" ]]; then
   ${CLI_CMD} create secret generic "<ban-db-ssl-secret-name>" --from-file=tls.crt="<ban-crt-file-in-local>" -n "$CP4BA_SERVICES_NS"
   ${CLI_CMD} label secret "<ban-db-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt"\" into \"<ban-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt"\" into \"<ban-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -438,9 +438,6 @@ function create_aca_db_secret_template(){
     # Add basedb pwd
     local tmp_basedbuserpwd="$(prop_db_name_user_property_file ADP_BASE_DB_USER_PASSWORD)"
     local tmp_basedbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_basedbuserpwd")
-    # For https://jsw.ibm.com/browse/DBACLD-157020
-    # Function that updates the secret template with the base64 password
-    update_secret_template_passwords "$tmp_basedbuserpwd" "BASE_DB_CONFIG" "$ADP_BASE_DB_SECRET_YAML_FILE"
 
     local db_name_array=()
     local db_user_array=()
@@ -459,6 +456,21 @@ function create_aca_db_secret_template(){
     IFS=',' read -ra db_userpwd_array <<< "$tmp_dbuserpwd"
     IFS=$OIFS
 
+    # Determine postgres client-auth flag for the ADP DB server (used to decide whether to add per-project DB passwords)
+    local tmp_postgresql_client_flag="false"
+    if [[ "$DB_TYPE" == "postgresql" ]]; then
+        tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
+        tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
+    fi
+
+    #If Postgres client-auth is enabled, DO NOT add BASE_DB_CONFIG password field
+    # For https://jsw.ibm.com/browse/DBACLD-203570
+    if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then
+        ${YQ_CMD} -i 'del(.stringData.BASE_DB_CONFIG)' "$ADP_BASE_DB_SECRET_YAML_FILE"
+    else
+        update_secret_template_passwords "$tmp_basedbuserpwd" "BASE_DB_CONFIG" "$ADP_BASE_DB_SECRET_YAML_FILE"
+    fi
+
     if [[ ${#db_name_array[@]} != ${#db_user_array[@]} || ${#db_user_array[@]} != ${#db_userpwd_array[@]} ]]; then
         fail "The number of values of: ADP_PROJECT_DB_NAME, ADP_PROJECT_DB_USER_NAME, ADP_PROJECT_DB_USER_PASSWORD must all be equal. Exit ..."
     else
@@ -466,7 +478,7 @@ function create_aca_db_secret_template(){
         # ADP only supports 1 database server, so only the first property in array will be used
         tmp_dbservername=${db_server_array[0]}
         local db_ssl_enable=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.DATABASE_SSL_ENABLE)")
-        db_ssl_enable=$(echo $db_ssl_enable| tr '[:upper:]' '[:lower:]')
+        db_ssl_enable=$(echo "$db_ssl_enable"| tr '[:upper:]' '[:lower:]')
 
         if [[ "$db_ssl_enable" == "true" || "$db_ssl_enable" == "yes" || "$db_ssl_enable" == "y" ]]; then
 
@@ -477,7 +489,7 @@ function create_aca_db_secret_template(){
             ssl_folder_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$ssl_folder_path")
             if [[ "$DB_TYPE" == "postgresql" ]]; then                  
                 local tmp_postgresql_client_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
-                tmp_postgresql_client_flag=$(echo $tmp_postgresql_client_flag | tr '[:upper:]' '[:lower:]') 
+                tmp_postgresql_client_flag=$(echo "$tmp_postgresql_client_flag" | tr '[:upper:]' '[:lower:]') 
                 if [[ $tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y" ]]; then       
                     base64_clientcrt=$(encode_crt_file_to_base64 "${ssl_folder_path}/client.crt")
                     ${YQ_CMD} -i ".data.CERT = \"$base64_clientcrt\"" "$ADP_BASE_DB_SECRET_YAML_FILE"
@@ -499,10 +511,14 @@ function create_aca_db_secret_template(){
 
         for num in "${!db_name_array[@]}"; do
             tmp_dbname=${db_name_array[num]}
-            tmp_dbname=$(echo $tmp_dbname | tr '[:lower:]' '[:upper:]')
+            tmp_dbname=$(echo "$tmp_dbname" | tr '[:lower:]' '[:upper:]')
             tmp_dbuser=${db_user_array[num]}
             tmp_dbuserpwd=${db_userpwd_array[num]}
-            update_secret_template_passwords "$tmp_dbuserpwd" "${tmp_dbname}_DB_CONFIG" "$ADP_BASE_DB_SECRET_YAML_FILE"
+            # https://jsw.ibm.com/browse/DBACLD-202027 If Postgres client-auth is enabled for the ADP DB server, DO NOT add per-project DB password fields.
+            # Other DB types will still add the PROJ_DB_CONFIG passwords.
+            if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
+                update_secret_template_passwords "$tmp_dbuserpwd" "${tmp_dbname}_DB_CONFIG" "$ADP_BASE_DB_SECRET_YAML_FILE"
+            fi
         done
 
     fi
@@ -561,7 +577,7 @@ if [[ -f "<adp-git-crt-file-in-local>/git-cert.crt" ]]; then
   ${CLI_CMD} label secret "<adp-git-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
   
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"git-cert.crt\" into \"<adp-git-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"git-cert.crt\" into \"<adp-git-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -581,7 +597,7 @@ if [[ -f "<adp-cdra-crt-file-in-local>/cdra_tls_cert.crt" ]]; then
   ${CLI_CMD} create secret generic "<adp-cdra-ssl-secret-name>" --from-file=tls.crt="<adp-cdra-crt-file-in-local>/cdra_tls_cert.crt" -n "$CP4BA_SERVICES_NS"
   ${CLI_CMD} label secret "<adp-cdra-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"cdra_tls_cert.crt\" into \"<adp-cdra-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"cdra_tls_cert.crt\" into \"<adp-cdra-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -656,7 +672,7 @@ if [[ -f "<your-oracle-sso-wallet-file-path>/cwallet.sso" ]]; then
   ${CLI_CMD} create secret generic "<your-oracle-sso-secret-name>" --from-file=cwallet.sso="<your-oracle-sso-wallet-file-path>/cwallet.sso" -n "$CP4BA_SERVICES_NS"
   ${CLI_CMD} label secret "<your-oracle-sso-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"cwallet.sso\" into \"<your-oracle-sso-wallet-file-path>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"cwallet.sso\" into \"<your-oracle-sso-wallet-file-path>\" first."
   exit 1
 fi
 
@@ -963,7 +979,7 @@ if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-loca
   --type=kubernetes.io/tls -n "$CP4BA_SERVICES_NS"
   ${CLI_CMD} label secret "ibm-zen-metastore-edb-secret" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -1023,7 +1039,7 @@ if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-loca
   --type=kubernetes.io/tls -n "$CP4BA_SERVICES_NS"
   ${CLI_CMD} label secret "im-datastore-edb-secret" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -1078,7 +1094,7 @@ if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-loca
   --from-file=tls.key="<cp4a-db-crt-file-in-local>/tls_key.pk8" -n "$CP4BA_SERVICES_NS"
   ${CLI_CMD} label secret "bts-datastore-edb-secret" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
@@ -1132,7 +1148,7 @@ if [[ -f "<cp4a-issuer-tls-crt-file-in-local>/tls.crt" && -f "<cp4a-issuer-tls-c
   --type=kubernetes.io/tls -n "$CP4BA_SERVICES_NS"
   ${CLI_CMD} label secret "ibm-cp4ba-tls-issuer-secret" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
-  echo -e "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"tls.crt\" and \"tls.key\" into \"<cp4a-issuer-tls-crt-file-in-local>\" first."
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"tls.crt\" and \"tls.key\" into \"<cp4a-issuer-tls-crt-file-in-local>\" first."
   exit 1
 fi
 EOF

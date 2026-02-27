@@ -18,7 +18,7 @@ source ${CUR_DIR}/helper/common.sh
 source ${CUR_DIR}/helper/messages.sh
 
 function show_help() {
-    echo -e "\nUsage: cp4a-prerequisites.sh -m [modetype] -n [cp4baNamespace] [options]\n"
+    printf '%b\n' "\nUsage: cp4a-prerequisites.sh -m [modetype] -n [cp4baNamespace] [options]\n"
     echo "Options:"
     echo "  -h  Display help"
     echo "  -m  The valid mode types are: [property], [generate], or [validate]"
@@ -61,27 +61,27 @@ function parse_arguments() {
             TARGET_PROJECT_NAME="${args[$i]}"
             case "$TARGET_PROJECT_NAME" in
             "")
-                echo -e "\x1B[1;31mEnter a valid namespace name, namespace name can not be blank\x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid namespace name, namespace name can not be blank\x1B[0m"
                 exit 1
                 ;;
             "openshift"*)
-                echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
                 exit 1
                 ;;
             "kube"*)
-                echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
                 exit 1
                 ;;
             *)
                 # Check cluster login
                 check_cluster_login
                 # Check project name
-                isProjExists=`${CLI_CMD} get project $TARGET_PROJECT_NAME --ignore-not-found | wc -l`  >/dev/null 2>&1
+                isProjExists=`${CLI_CMD} get project $TARGET_PROJECT_NAME --ignore-not-found | wc -l`  >&3 2>&3
                 if [ $isProjExists -ne 2 ] ; then
-                    echo -e "\x1B[1;31mInvalid project name \"$TARGET_PROJECT_NAME\", please set a existing project name.\x1B[0m"
+                    printf '%b\n' "\x1B[1;31mInvalid project name \"$TARGET_PROJECT_NAME\", please set a existing project name.\x1B[0m"
                     exit 1
                 fi
-                echo -n
+                : # Null command - validation passed, continue execution
                 ;;
             esac
             ;;
@@ -101,7 +101,7 @@ function parse_arguments() {
             CUSTOM_JAVA_PATH="${args[$i]}"
             # Verify the path exists
             if [ ! -d "$CUSTOM_JAVA_PATH" ]; then
-                echo -e "\x1B[1;31mThe specified Java (JRE) path does not exist: ${CUSTOM_JAVA_PATH}\x1B[0m"
+                printf '%b\n' "\x1B[1;31mThe specified Java (JRE) path does not exist: ${CUSTOM_JAVA_PATH}\x1B[0m"
                 exit 1
             fi
             ;;
@@ -113,7 +113,7 @@ function parse_arguments() {
             fi
             # Verify the path exists
             if [ ! -d "$CUSTOM_JAVA_PATH" ]; then
-                echo -e "\x1B[1;31mThe specified Java (JRE) path does not exist: ${CUSTOM_JAVA_PATH}\x1B[0m"
+                printf '%b\n' "\x1B[1;31mThe specified Java (JRE) path does not exist: ${CUSTOM_JAVA_PATH}\x1B[0m"
                 exit 1
             fi
             ;;
@@ -136,12 +136,12 @@ parse_arguments "$@"
 source ${CUR_DIR}/helper/cp4a-verification.sh
 
 if [[ -z "$RUNTIME_MODE" ]]; then
-    echo -e "\x1B[1;31mPlease input value for \"-m <MODE_TYPE>\" option.\n\x1B[0m"
+    printf '%b\n' "\x1B[1;31mPlease input value for \"-m <MODE_TYPE>\" option.\n\x1B[0m"
     show_help
     exit 1
 fi
 if [[ -z "$TARGET_PROJECT_NAME" ]]; then
-    echo -e "\x1B[1;31mPlease input value for \"-n <CP4BA_NAMESPACE>\" option.\n\x1B[0m"
+    printf '%b\n' "\x1B[1;31mPlease input value for \"-n <CP4BA_NAMESPACE>\" option.\n\x1B[0m"
     show_help
     exit 1
 fi
@@ -195,8 +195,8 @@ function prompt_license(){
     retVal_baw=$?
 
     if [[ $retVal_baw -eq 1 ]]; then
-        echo -e "\x1B[1;31mIMPORTANT: Review the IBM Cloud Pak for Business Automation license information here: \n\x1B[0m"
-        echo -e "\x1B[1;31mhttps://www.ibm.com/support/customer/csol/terms/?id=L-LDYZ-7V4YJ4&lc=en\n\x1B[0m"
+        printf '%b\n' "\x1B[1;31mIMPORTANT: Review the IBM Cloud Pak for Business Automation license information here: \n\x1B[0m"
+        printf '%b\n' "\x1B[1;31mhttps://www.ibm.com/support/customer/csol/terms/?id=L-LDYZ-7V4YJ4&lc=en\n\x1B[0m"
         INSTALL_BAW_ONLY="No"
     fi
 
@@ -222,33 +222,33 @@ function prompt_license(){
                 #     case "$ans" in
                 #     "y"|"Y"|"yes"|"Yes"|"YES")
                 #         printf "\n"
-                #         echo -e "\x1B[1;31mThe cp4a-deployment.sh can not work with existing Content CR together, exiting now...\x1B[0m\n"
+                #         printf '%b\n' "\x1B[1;31mThe cp4a-deployment.sh can not work with existing Content CR together, exiting now...\x1B[0m\n"
                 #         exit 1
 
                 #         ;;
                 #     "n"|"N"|"no"|"No"|"NO"|"")
-                #         echo -e "Continuing...\n"
+                #         printf '%b\n' "Continuing...\n"
                 #         break
                 #         ;;
                 #     *)
-                #         echo -e "Answer must be \"Yes\" or \"No\"\n"
+                #         printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 #         ;;
                 #     esac
                 # done
-            # echo -e "*****************************************************"
-            # echo -e "**** Starting to prepare DB script for CP4BA ... ****"
-            # echo -e "*****************************************************"
+            # printf '%b\n' "*****************************************************"
+            # printf '%b\n' "**** Starting to prepare DB script for CP4BA ... ****"
+            # printf '%b\n' "*****************************************************"
             # sleep 2
             IBM_LICENSE="Accept"
             validate_cli
             break
             ;;
         "n"|"N"|"no"|"No"|"NO"|"")
-            echo -e "Exiting...\n"
+            printf '%b\n' "Exiting...\n"
             exit 0
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -257,7 +257,7 @@ function prompt_license(){
 function validate_utility_tool_for_validation(){
     which kubectl &>/dev/null
     if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate Kubernetes CLI. Kubernetes CLI must be installed to run this script.\x1B[0m" && \
+        printf '%b\n'  "\x1B[1;31mUnable to locate Kubernetes CLI. Kubernetes CLI must be installed to run this script.\x1B[0m" && \
         while true; do
             printf "\x1B[1mDo you want install the Kubernetes CLI by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
             read -rp "" ans
@@ -271,7 +271,7 @@ function validate_utility_tool_for_validation(){
                 exit 1
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -283,7 +283,7 @@ function validate_utility_tool_for_validation(){
 
     which openssl &>/dev/null
     if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate openssl. OpenSSL must be installed to run this script.\x1B[0m" && \
+        printf '%b\n'  "\x1B[1;31mUnable to locate openssl. OpenSSL must be installed to run this script.\x1B[0m" && \
         while true; do
             printf "\x1B[1mDo you want install the OpenSSL by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
             read -rp "" ans
@@ -297,7 +297,7 @@ function validate_utility_tool_for_validation(){
                 exit 1
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -394,11 +394,11 @@ function select_pattern(){
         for ((j=0;j<${#options_cr_val[@]};j++));
         do [ "${options_cr_val[$j]}" = "$1" ] && { i=$j; break; }
         done
-        echo $i
+        echo "$i"
     }
     menu() {
         clear
-        echo -e "\x1B[1mSelect the Cloud Pak for Business Automation capability to install: \x1B[0m"
+        printf '%b\n' "\x1B[1mSelect the Cloud Pak for Business Automation capability to install: \x1B[0m"
         for i in ${!options[@]}; do
             if [[ $DEPLOYMENT_TYPE == "starter" ]];then
                 containsElement "${options_cr_val[i]}" "${EXISTING_PATTERN_ARR[@]}"
@@ -544,23 +544,23 @@ function select_pattern(){
         if [[ "$msg" ]]; then echo "$msg"; fi
         printf "\n"
         if [[ $DEPLOYMENT_TYPE == "production" ]]; then
-            echo -e "${baw_iaws_tips}"
+            printf '%b\n' "${baw_iaws_tips}"
         fi
 
         if [[ $DEPLOYMENT_TYPE == "production" ]]; then
-            echo -e "${pattern_production_tips}"
-            echo -e "${linux_production_tips}"
+            printf '%b\n' "${pattern_production_tips}"
+            printf '%b\n' "${linux_production_tips}"
         else
-            echo -e "${pattern_starter_tips}"
-            echo -e "${linux_starter_tips}"
+            printf '%b\n' "${pattern_starter_tips}"
+            printf '%b\n' "${linux_starter_tips}"
         fi
         # Show different tips according components select or unselect
         containsElement "(Selected)" "${choices_pattern[@]}"
         retVal=$?
         if [ $retVal -ne 0 ]; then
-            echo -e "${tips1}"
+            printf '%b\n' "${tips1}"
         else
-            echo -e "${tips2}"
+            printf '%b\n' "${tips2}"
         fi
 # ##########################DEBUG############################
 #     for i in "${!choices_pattern[@]}"; do
@@ -834,7 +834,7 @@ function select_pattern(){
             fi
         fi
     done
-    # echo -e "$msg"
+    # printf '%b\n' "$msg"
 
     # 4Q: add workflow-workstream into pattern list when select both workflow-runtime and workstream
     # https://jsw.ibm.com/browse/DBACLD-174822 (modified if condition by changing workflow to workflow-runtime)
@@ -903,12 +903,12 @@ function select_optional_component(){
             for ((j=0;j<${#optional_component_cr_arr[@]};j++));
             do [ "${optional_component_cr_arr[$j]}" = "$1" ] && { i=$j; break; }
             done
-            echo $i
+            echo "$i"
         }
         menu() {
             clear
-            echo -e "\x1B[1;31mPattern \"$item_pattern\": \x1B[0m\x1B[1mSelect optional components: \x1B[0m"
-            # echo -e "\x1B[1mSelect optional components: \x1B[0m"
+            printf '%b\n' "\x1B[1;31mPattern \"$item_pattern\": \x1B[0m\x1B[1mSelect optional components: \x1B[0m"
+            # printf '%b\n' "\x1B[1mSelect optional components: \x1B[0m"
             containsElement "bai" "${EXISTING_OPT_COMPONENT_ARR[@]}"
             bai_cr_retVal=$?
             for i in ${!optional_components_list[@]}; do
@@ -963,41 +963,41 @@ function select_optional_component(){
             printf "\n"
 
             if [[ "${item_pattern}" == "Automation Decision Services" ]]; then
-                echo -e "${ads_tips}"
+                printf '%b\n' "${ads_tips}"
             fi
             if [[ "${item_pattern}" == "Operational Decision Manager" ]]; then
-                echo -e "\x1B[33;5mATTENTION: \x1B[0m\x1B[1;31m You must select at least one of ODM components\x1B[0m.\n"
-                echo -e "${decision_tips}"
+                printf '%b\n' "\x1B[33;5mATTENTION: \x1B[0m\x1B[1;31m You must select at least one of ODM components\x1B[0m.\n"
+                printf '%b\n' "${decision_tips}"
             fi
             if [[ "${item_pattern}" == "Business Automation Application" ]]; then
 
-                echo -e "${application_tips}"
+                printf '%b\n' "${application_tips}"
                 if [[ $DEPLOYMENT_TYPE == "starter" ]];then
-                    echo -e "${application_tips_demo}"
+                    printf '%b\n' "${application_tips_demo}"
                 elif [[ $DEPLOYMENT_TYPE == "production" ]]
                 then
-                    echo -e "${application_tips_ent}"
+                    printf '%b\n' "${application_tips_ent}"
                 fi
             fi
 
             if [[ "${item_pattern}" == "FileNet Content Manager" ]]; then
                 if [[ $DEPLOYMENT_TYPE == "starter" ]];then
-                    echo -e "${linux_starter_tips}"
+                    printf '%b\n' "${linux_starter_tips}"
                 elif [[ $DEPLOYMENT_TYPE == "production" ]]
                 then
-                    echo -e "${linux_production_tips}"
+                    printf '%b\n' "${linux_production_tips}"
                 fi
             fi
             # Show different tips according components select or unselect
             containsElement "(Selected)" "${choices_component[@]}"
             retVal=$?
             if [ $retVal -eq 0 ]; then
-                echo -e "${tips2}"
+                printf '%b\n' "${tips2}"
             elif [ $selectedVal -eq 0 ]
             then
-                echo -e "${tips2}"
+                printf '%b\n' "${tips2}"
             else
-                echo -e "${tips1}"
+                printf '%b\n' "${tips1}"
             fi
 # ##########################DEBUG############################
 #         for i in "${!choices_component[@]}"; do
@@ -1239,7 +1239,7 @@ function select_optional_component(){
                 fi
             fi
         done
-        # echo -e "$msg"
+        # printf '%b\n' "$msg"
 
         if [ "${#optional_component_arr[@]}" -eq "0" ]; then
             COMPONENTS_SELECTED="None"
@@ -1511,7 +1511,7 @@ function select_optional_component(){
 
     OPT_COMPONENTS_CR_SELECTED=($(echo "${optional_component_cr_arr[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
     OPTIONAL_COMPONENT_DELETE_LIST=($(echo "${OPT_COMPONENTS_CR_SELECTED[@]}" "${OPTIONAL_COMPONENT_FULL_ARR[@]}" | tr ' ' '\n' | sort | uniq -u))
-    KEEP_COMPOMENTS=($(echo ${FOUNDATION_CR_SELECTED_LOWCASE[@]} ${OPTIONAL_COMPONENT_DELETE_LIST[@]} | tr ' ' '\n' | sort | uniq -d | uniq))
+    KEEP_COMPOMENTS=($(echo "${FOUNDATION_CR_SELECTED_LOWCASE[@]}" "${OPTIONAL_COMPONENT_DELETE_LIST[@]}" | tr ' ' '\n' | sort | uniq -d | uniq))
     OPT_COMPONENTS_SELECTED=($(echo "${optional_component_arr[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
 
     # Will an external LDAP be used as part of the configuration?
@@ -1558,13 +1558,13 @@ function check_dbserver_name_valid(){
     if [[ ! ( "${input_servername}" == \#* ) ]]; then
         if [[ ! (" ${tmp_db_array[@]}" =~ "${input_servername}") ]]; then
             error "The prefix \"$input_servername\" in front of \"$parameter_name\" is not in the definition DB_SERVER_LIST=\"${temp}\", please check follow example to configure"
-            echo -e "***************** example *****************"
-            echo -e "if DB_SERVER_LIST=\"DBSERVER1\""
-            echo -e "You need to change"
-            echo -e "<DB_ALIAS_NAME>.GCD_DB_NAME=\"GCDDB\""
-            echo -e "to"
-            echo -e "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
-            echo -e "***************** example *****************"
+            printf '%b\n' "***************** example *****************"
+            printf '%b\n' "if DB_SERVER_LIST=\"DBSERVER1\""
+            printf '%b\n' "You need to change"
+            printf '%b\n' "<DB_ALIAS_NAME>.GCD_DB_NAME=\"GCDDB\""
+            printf '%b\n' "to"
+            printf '%b\n' "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
+            printf '%b\n' "***************** example *****************"
             exit 1
         fi
     fi
@@ -1596,7 +1596,7 @@ function check_property_file(){
     # Add ADS parameters to OPTIONAL_PARAMETERS_LIST if tmp_mongo_flag = ADS.USE_EXTERNAL_MONGODB in cp4ba_user_profile.property is "No"
     tmp_mongo_flag="$(prop_user_profile_property_file ADS.USE_EXTERNAL_MONGODB)"
 
-    if [[ ${tmp_mongo_flag,,} =~ ^(no|n|false)$ ]]; then
+    if [[ $(echo "$tmp_mongo_flag" | tr '[:upper:]' '[:lower:]') =~ ^(no|n|false)$ ]]; then
         OPTIONAL_PARAMETERS_LIST+=("ADS.EXTERNAL_GIT_MONGO_URI")
         OPTIONAL_PARAMETERS_LIST+=("ADS.EXTERNAL_MONGO_URI")
         OPTIONAL_PARAMETERS_LIST+=("ADS.EXTERNAL_MONGO_HISTORY_URI")
@@ -1732,13 +1732,13 @@ function check_property_file(){
         if [[ ! ( "${item}" == \#* ) ]]; then
             if [[ ! (" ${db_server_array[@]}" =~ "${item}") ]]; then
                 error "The prefix \"$item\" is not in the definition DB_SERVER_LIST=\"${tmp_db_array}\", please check follow example to configure \"${DB_NAME_USER_PROPERTY_FILE}\" again."
-                echo -e "***************** example *****************"
-                echo -e "if DB_SERVER_LIST=\"DBSERVER1\""
-                echo -e "You need to change"
-                echo -e "<DB_ALIAS_NAME>.GCD_DB_NAME=\"GCDDB\""
-                echo -e "to"
-                echo -e "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
-                echo -e "***************** example *****************"
+                printf '%b\n' "***************** example *****************"
+                printf '%b\n' "if DB_SERVER_LIST=\"DBSERVER1\""
+                printf '%b\n' "You need to change"
+                printf '%b\n' "<DB_ALIAS_NAME>.GCD_DB_NAME=\"GCDDB\""
+                printf '%b\n' "to"
+                printf '%b\n' "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
+                printf '%b\n' "***************** example *****************"
                 empty_value_tag=1
                 break
             fi
@@ -1751,13 +1751,13 @@ function check_property_file(){
     do
         if [[ ! (" ${db_server_array[@]}" =~ "${item}") ]]; then
             error "The prefix \"$item\" is not in the definition DB_SERVER_LIST=\"${tmp_db_array}\", please check follow example to configure \"${DB_SERVER_INFO_PROPERTY_FILE}\" again."
-            echo -e "********************* example *********************"
-            echo -e "if DB_SERVER_LIST=\"DBSERVER1\""
-            echo -e "You need to change"
-            echo -e "<DB_ALIAS_NAME>.DATABASE_SERVERNAME=\"samplehost\""
-            echo -e "to"
-            echo -e "DBSERVER1.DATABASE_SERVERNAME=\"samplehost\""
-            echo -e "********************* example *********************"
+            printf '%b\n' "********************* example *********************"
+            printf '%b\n' "if DB_SERVER_LIST=\"DBSERVER1\""
+            printf '%b\n' "You need to change"
+            printf '%b\n' "<DB_ALIAS_NAME>.DATABASE_SERVERNAME=\"samplehost\""
+            printf '%b\n' "to"
+            printf '%b\n' "DBSERVER1.DATABASE_SERVERNAME=\"samplehost\""
+            printf '%b\n' "********************* example *********************"
             empty_value_tag=1
             break
         fi
@@ -1776,15 +1776,15 @@ function check_property_file(){
         client_auth_flag="$(prop_db_server_property_file ${item}.POSTGRESQL_SSL_CLIENT_SERVER)"
         db_ssl_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$db_ssl_flag")
         client_auth_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$client_auth_flag")
-        db_ssl_flag_tmp=$(echo $db_ssl_flag | tr '[:upper:]' '[:lower:]')
-        client_auth_flag_tmp=$(echo $client_auth_flag | tr '[:upper:]' '[:lower:]')
+        db_ssl_flag_tmp=$(echo "$db_ssl_flag" | tr '[:upper:]' '[:lower:]')
+        client_auth_flag_tmp=$(echo "$client_auth_flag" | tr '[:upper:]' '[:lower:]')
         if [[ ($db_ssl_flag_tmp == "no" || $db_ssl_flag_tmp == "false" || $db_ssl_flag_tmp == "" || -z $db_ssl_flag_tmp) && ($client_auth_flag_tmp == "yes" || $client_auth_flag_tmp == "true") ]]; then
             error "The property \"${item}.DATABASE_SSL_ENABLE\" is \"$db_ssl_flag\", but the property \"${item}.POSTGRESQL_SSL_CLIENT_SERVER\" is \"$client_auth_flag\""
-            echo -e "********************* example *********************"
-            echo -e "if ${item}.DATABASE_SSL_ENABLE=\"False\""
-            echo -e "You also need to change"
-            echo -e "${item}.POSTGRESQL_SSL_CLIENT_SERVER=\"False\""
-            echo -e "********************* example *********************"
+            printf '%b\n' "********************* example *********************"
+            printf '%b\n' "if ${item}.DATABASE_SSL_ENABLE=\"False\""
+            printf '%b\n' "You also need to change"
+            printf '%b\n' "${item}.POSTGRESQL_SSL_CLIENT_SERVER=\"False\""
+            printf '%b\n' "********************* example *********************"
             error_value_tag=1
         fi
     done
@@ -1842,7 +1842,7 @@ function check_property_file(){
     # Check keystorePassword in ibm-fncm-secret and ibm-ban-secret must exceed 16 characters when fips enabled.
     fips_flag="$(prop_user_profile_property_file CP4BA.ENABLE_FIPS)"
     fips_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$fips_flag")
-    fips_flag=$(echo $fips_flag | tr '[:upper:]' '[:lower:]')
+    fips_flag=$(echo "$fips_flag" | tr '[:upper:]' '[:lower:]')
 
     if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring" || " ${pattern_cr_arr[@]}" =~ "workstreams" || " ${pattern_cr_arr[@]}" =~ "content" || " ${pattern_cr_arr[@]}" =~ "document_processing" || "${optional_component_cr_arr[@]}" =~ "ae_data_persistence" ]]; then
         if [[ (! -z $fips_flag) && $fips_flag == "true" ]]; then
@@ -1900,7 +1900,7 @@ function check_property_file(){
     # IM metastore external Postgres DB
     cert_dir_array=()
     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_IM_FLAG)")
-    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
     if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
         im_external_db_cert_folder="$(prop_user_profile_property_file CP4BA.IM_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER)"
         im_external_db_cert_folder=$(sed -e 's/^"//' -e 's/"$//' <<<"$im_external_db_cert_folder")
@@ -1909,7 +1909,7 @@ function check_property_file(){
 
     # Zen metastore external Postgres DB
     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_ZEN_FLAG)")
-    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
     if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
         zen_external_db_cert_folder="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER)"
         zen_external_db_cert_folder=$(sed -e 's/^"//' -e 's/"$//' <<<"$zen_external_db_cert_folder")
@@ -1918,7 +1918,7 @@ function check_property_file(){
 
     # BTS metastore external Postgres DB
     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_BTS_FLAG)")
-    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
     if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
         bts_external_db_cert_folder="$(prop_user_profile_property_file CP4BA.BTS_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER)"
         bts_external_db_cert_folder=$(sed -e 's/^"//' -e 's/"$//' <<<"$bts_external_db_cert_folder")
@@ -1926,7 +1926,7 @@ function check_property_file(){
     fi
     # Issuer to make Opensearch/Kafka use external certificate
     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_CERT_OPENSEARCH_KAFKA_FLAG)")
-    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
     if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
         external_cert_issuer_folder="$(prop_user_profile_property_file CP4BA.EXTERNAL_ROOT_CA_FOR_OPENSEARCH_KAFKA_FOLDER)"
         external_cert_issuer_folder=$(sed -e 's/^"//' -e 's/"$//' <<<"$external_cert_issuer_folder")
@@ -2062,7 +2062,7 @@ function create_prerequisites() {
         # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
         if [[ $DB_TYPE = "postgresql" ]]; then
             tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_gcd_db_servername.POSTGRESQL_SSL_CLIENT_SERVER)")
-            tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+            tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
         fi
 
         if [[ $DB_TYPE = "postgresql-edb" ]]; then
@@ -2092,7 +2092,7 @@ function create_prerequisites() {
                 # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
                 if [[ $DB_TYPE = "postgresql" ]]; then
                     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_os_db_servername.POSTGRESQL_SSL_CLIENT_SERVER)")
-                    tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+                    tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
                 fi
 
                 if [[ $DB_TYPE = "postgresql-edb" ]]; then
@@ -2122,7 +2122,7 @@ function create_prerequisites() {
             # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
             if [[ $DB_TYPE = "postgresql" ]]; then
                 tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_os_db_servername.POSTGRESQL_SSL_CLIENT_SERVER)")
-                tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+                tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
             fi
 
             if [[ $DB_TYPE = "postgresql-edb" ]]; then
@@ -2152,7 +2152,7 @@ function create_prerequisites() {
                 # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
                 if [[ $DB_TYPE = "postgresql" ]]; then
                     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_os_db_servername.POSTGRESQL_SSL_CLIENT_SERVER)")
-                    tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+                    tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
                 fi
 
                 if [[ $DB_TYPE = "postgresql-edb" ]]; then
@@ -2179,7 +2179,7 @@ function create_prerequisites() {
                 # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
                 if [[ $DB_TYPE = "postgresql" ]]; then
                     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_os_db_servername.POSTGRESQL_SSL_CLIENT_SERVER)")
-                    tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+                    tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
                 fi
 
                 if [[ $DB_TYPE = "postgresql-edb" ]]; then
@@ -2207,7 +2207,7 @@ function create_prerequisites() {
             # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
             if [[ $DB_TYPE = "postgresql" ]]; then
                 tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_os_db_servername.POSTGRESQL_SSL_CLIENT_SERVER)")
-                tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+                tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
             fi
 
             if [[ $DB_TYPE = "postgresql-edb" ]]; then
@@ -2237,7 +2237,7 @@ function create_prerequisites() {
                 # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
                 if [[ $DB_TYPE = "postgresql" ]]; then
                     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_os_db_servername.POSTGRESQL_SSL_CLIENT_SERVER)")
-                    tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+                    tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
                 fi
 
                 if [[ $DB_TYPE = "postgresql-edb" ]]; then
@@ -2266,7 +2266,7 @@ function create_prerequisites() {
             # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
             if [[ $DB_TYPE = "postgresql" ]]; then
                 tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_os_db_servername.POSTGRESQL_SSL_CLIENT_SERVER)")
-                tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+                tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
             fi
 
             if [[ $DB_TYPE = "postgresql-edb" ]]; then
@@ -2345,7 +2345,7 @@ function create_prerequisites() {
             # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
             if [[ $DB_TYPE = "postgresql" ]]; then
                 tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
-                tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+                tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
             fi
 
             if [[ $DB_TYPE = "postgresql-edb" ]]; then
@@ -2420,7 +2420,7 @@ function create_prerequisites() {
         # get db type for the db server
         tmp_dbtype="$(prop_db_server_property_file $tmp_dbservername.DATABASE_TYPE)"
         tmp_dbtype=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbtype")
-        tmp_dbtype=$(echo $tmp_dbtype | tr '[:upper:]' '[:lower:]')
+        tmp_dbtype=$(echo "$tmp_dbtype" | tr '[:upper:]' '[:lower:]')
 
         if [[ $tmp_dbtype != "oracle" ]]; then
             tmp_dbname="$(prop_db_name_user_property_file ADP_BASE_DB_NAME)"
@@ -2482,12 +2482,12 @@ function create_prerequisites() {
             # Get DB type for ADP GG
             tmp_dbtype="$(prop_db_server_property_file $tmp_dbservername.DATABASE_TYPE)"
             tmp_dbtype=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbtype")
-            tmp_dbtype=$(echo $tmp_dbtype | tr '[:upper:]' '[:lower:]')
+            tmp_dbtype=$(echo "$tmp_dbtype" | tr '[:upper:]' '[:lower:]')
 
             # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
             if [[ $tmp_dbtype == "postgresql" ]]; then
                 tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
-                tmp_adpgg_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+                tmp_adpgg_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
             else
                 tmp_adpgg_postgresql_client_flag="true"
             fi
@@ -2547,7 +2547,7 @@ function create_prerequisites() {
             # create template for aca-design-api-key
             enable_flag="$(prop_user_profile_property_file ADP.RUNTIME_FEEDBACK_ENABLED)"
             enable_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$enable_flag")
-            enable_flag=$(echo $enable_flag | tr '[:upper:]' '[:lower:]')
+            enable_flag=$(echo "$enable_flag" | tr '[:upper:]' '[:lower:]')
 
             type_flag="$(prop_user_profile_property_file ADP.RUNTIME_FEEDBACK_RUNTIME_TYPE)"
             type_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$type_flag")
@@ -2599,7 +2599,7 @@ function create_prerequisites() {
         # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
         if [[ $DB_TYPE = "postgresql" ]]; then
             tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
-            tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+            tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
         fi
 
         if [[ $DB_TYPE = "postgresql-edb" ]]; then
@@ -2663,7 +2663,7 @@ function create_prerequisites() {
         # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
         if [[ $DB_TYPE = "postgresql" ]]; then
             tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
-            tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+            tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
         fi
 
         if [[ $DB_TYPE = "postgresql-edb" ]]; then
@@ -2703,7 +2703,7 @@ function create_prerequisites() {
         # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
         if [[ $DB_TYPE = "postgresql" ]]; then
             tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
-            tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+            tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
         fi
         if [[ $DB_TYPE = "postgresql-edb" ]]; then
             tmp_postgresql_client_flag="true"
@@ -2741,7 +2741,7 @@ function create_prerequisites() {
         # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
         if [[ $DB_TYPE = "postgresql" ]]; then
             tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
-            tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+            tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
         fi
         if [[ $DB_TYPE = "postgresql-edb" ]]; then
             tmp_postgresql_client_flag="true"
@@ -2816,7 +2816,7 @@ function create_prerequisites() {
         # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
         if [[ $DB_TYPE = "postgresql" ]]; then
             tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
-            tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+            tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
         fi
         if [[ $DB_TYPE = "postgresql-edb" ]]; then
             tmp_postgresql_client_flag="true"
@@ -2856,7 +2856,7 @@ function create_prerequisites() {
         # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
         if [[ $DB_TYPE = "postgresql" ]]; then
             tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
-            tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+            tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
         fi
         if [[ $DB_TYPE = "postgresql-edb" ]]; then
             tmp_postgresql_client_flag="true"
@@ -2893,7 +2893,7 @@ function create_prerequisites() {
         # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
         if [[ $DB_TYPE = "postgresql" ]]; then
             tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
-            tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+            tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
         fi
         if [[ $DB_TYPE = "postgresql-edb" ]]; then
             tmp_postgresql_client_flag="true"
@@ -2928,7 +2928,7 @@ function create_prerequisites() {
         # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
         if [[ $DB_TYPE = "postgresql" ]]; then
             tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
-            tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+            tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
         fi
         if [[ $DB_TYPE = "postgresql-edb" ]]; then
             tmp_postgresql_client_flag="true"
@@ -2971,7 +2971,7 @@ function create_prerequisites() {
             # Get DB type for ADS Designer
             tmp_dbtype="$(prop_db_server_property_file $tmp_dbservername.DATABASE_TYPE)"
             tmp_dbtype=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbtype")
-            tmp_dbtype=$(echo $tmp_dbtype | tr '[:upper:]' '[:lower:]')
+            tmp_dbtype=$(echo "$tmp_dbtype" | tr '[:upper:]' '[:lower:]')
 
             tmp_dbname="$(prop_db_name_user_property_file ADS_DESIGNER_DB_NAME)"
             tmp_dbuser="$(prop_db_name_user_property_file ADS_DESIGNER_DB_USER_NAME)"
@@ -2983,7 +2983,7 @@ function create_prerequisites() {
             # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
             if [[ $tmp_dbtype == "postgresql" ]]; then
                 tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
-                tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+                tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
             else
                 tmp_postgresql_client_flag="true"
             fi
@@ -3006,7 +3006,7 @@ function create_prerequisites() {
             # Get DB type for ADS Runtime
             tmp_dbtype="$(prop_db_server_property_file $tmp_dbservername.DATABASE_TYPE)"
             tmp_dbtype=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbtype")
-            tmp_dbtype=$(echo $tmp_dbtype | tr '[:upper:]' '[:lower:]')
+            tmp_dbtype=$(echo "$tmp_dbtype" | tr '[:upper:]' '[:lower:]')
 
             tmp_dbname="$(prop_db_name_user_property_file ADS_RUNTIME_DB_NAME)"
             tmp_dbuser="$(prop_db_name_user_property_file ADS_RUNTIME_DB_USER_NAME)"
@@ -3018,7 +3018,7 @@ function create_prerequisites() {
             # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER
             if [[ $tmp_dbtype == "postgresql" ]]; then
                 tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
-                tmp_postgresql_client_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+                tmp_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
             else
                 tmp_postgresql_client_flag="true"
             fi
@@ -3046,7 +3046,7 @@ function create_prerequisites() {
 
             # DB SSL Enabled
             tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.DATABASE_SSL_ENABLE)")
-            tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+            tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
             while true; do
                 case "$tmp_flag" in
                 "true"|"yes"|"y")
@@ -3067,7 +3067,7 @@ function create_prerequisites() {
                     #  replace sslMode for postgresql
                     if [[ $DB_TYPE == "postgresql" ]]; then
                         ssl_tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.POSTGRESQL_SSL_CLIENT_SERVER)")
-                        ssl_tmp_flag=$(echo $ssl_tmp_flag | tr '[:upper:]' '[:lower:]')
+                        ssl_tmp_flag=$(echo "$ssl_tmp_flag" | tr '[:upper:]' '[:lower:]')
                         if [[ $ssl_tmp_flag == "yes" || $ssl_tmp_flag == "true" ]]; then
                             tmp_name="$(prop_db_server_property_file $item.POSTGRESQL_SSL_MODE)"
                             tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
@@ -3108,7 +3108,7 @@ function create_prerequisites() {
     if [[ ! ("${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "No") ]]; then
         # LDAP SSL Enabled
         tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_ldap_property_file LDAP_SSL_ENABLED)")
-        tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+        tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
         while true; do
             case "$tmp_flag" in
             "true"|"yes"|"y")
@@ -3141,7 +3141,7 @@ function create_prerequisites() {
         # External LDAP SSL Enabled
         if [[ $SET_EXT_LDAP == "Yes" ]]; then
             tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_ext_ldap_property_file LDAP_SSL_ENABLED)")
-            tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+            tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
             while true; do
                 case "$tmp_flag" in
                 "true"|"yes"|"y")
@@ -3175,7 +3175,7 @@ function create_prerequisites() {
 
     # Create Secret/configMap for IM metastore external Postgres DB
     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_IM_FLAG)")
-    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
     if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
         create_im_external_db_secret_template
         #  replace secret file folder
@@ -3215,7 +3215,7 @@ function create_prerequisites() {
 
     # Create Secret/configMap for Zen metastore external Postgres DB
     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_ZEN_FLAG)")
-    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
     if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
         create_zen_external_db_secret_template
         #  replace secret file folder
@@ -3266,7 +3266,7 @@ function create_prerequisites() {
 
     # Create Secret/configMap for BTS metastore external Postgres DB
     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_BTS_FLAG)")
-    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
     if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
         create_bts_external_db_secret_template
         #  replace secret file folder
@@ -3311,7 +3311,7 @@ function create_prerequisites() {
 
     # Create Issuer to make Opensearch/Kafka use external certificate
     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_CERT_OPENSEARCH_KAFKA_FLAG)")
-    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
     if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
         create_cp4ba_tls_issuer_template
         #  replace secret file folder
@@ -3324,7 +3324,6 @@ function create_prerequisites() {
     fi
 
     tips
-    msgB "* Enter the <Required> values in the YAML templates for the secrets under $SECRET_FILE_FOLDER"
 
     # Show which certificate file should be copied into which folder
     tmp_db_array=$(prop_db_server_property_file DB_SERVER_LIST)
@@ -3336,7 +3335,7 @@ function create_prerequisites() {
     for item in "${db_server_array[@]}"; do
         # DB SSL Enabled
         tmp_ssl_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.DATABASE_SSL_ENABLE)")
-        tmp_ssl_flag=$(echo $tmp_ssl_flag | tr '[:upper:]' '[:lower:]')
+        tmp_ssl_flag=$(echo "$tmp_ssl_flag" | tr '[:upper:]' '[:lower:]')
         while true; do
             case "$tmp_ssl_flag" in
             "true"|"yes"|"y")
@@ -3349,7 +3348,7 @@ function create_prerequisites() {
                 # No longer needed as we share this info prior to generate mode 
                 #if [[ $DB_TYPE == "postgresql" ]]; then
                 #    tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.POSTGRESQL_SSL_CLIENT_SERVER)")
-                #    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+                #    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
                 #    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
                 #        msgB "* You enabled PostgreSQL database with both server and client authentication, please get \"<your-server-certification: root.crt>\" \"<your-client-certification: client.crt>\" \"<your-client-key: client.key>\" on your local or remote database server \"$tmp_dbserver\", and copy them into folder \"$tmp_folder\" before you create the secret for PostgreSQL database SSL"
                 #    elif [[ $tmp_flag == "false" || $tmp_flag == "no" || $tmp_flag == "n" || $tmp_flag == "" ]]; then
@@ -3573,11 +3572,11 @@ function create_property_file(){
         local DB_SERVER_PREFIX="<DB_ALIAS_NAME>"
     fi
     printf "\n"
-    # mkdir -p $PREREQUISITES_FOLDER_BAK >/dev/null 2>&1
+    # mkdir -p $PREREQUISITES_FOLDER_BAK 
 
     if [[ -d "$PROPERTY_FILE_FOLDER" ]]; then
         tmp_property_file_dir="${PROPERTY_FILE_FOLDER_BAK}_$(date +%Y-%m-%d-%H:%M:%S)"
-        mkdir -p "$tmp_property_file_dir" >/dev/null 2>&1
+        mkdir -p "$tmp_property_file_dir" >&3 2>&3
         ${COPY_CMD} -rf "${PROPERTY_FILE_FOLDER}" "${tmp_property_file_dir}"
     fi
     rm -rf $PROPERTY_FILE_FOLDER >/dev/null 2>&1
@@ -3604,9 +3603,9 @@ function create_property_file(){
             delim=","
         done
         tip="## Please input the value for the multiple database server/instance name, this key supports comma-separated lists. ##"
-        echo $tip >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "$tip" >> ${DB_SERVER_INFO_PROPERTY_FILE}
         tip="## (NOTES: The value (CAN NOT CONTAIN DOT CHARACTER) is alias name for database server/instance, it is not real database server/instance host name.) ##"
-        echo $tip >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "$tip" >> ${DB_SERVER_INFO_PROPERTY_FILE}
         echo "DB_SERVER_LIST=\"$db_server_joined\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
         echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
 
@@ -3619,14 +3618,14 @@ function create_property_file(){
     IFS=$OIFS
 
     for item in "${db_server_array[@]}"; do
-        item_tmp=$(echo $item| tr '[:upper:]' '[:lower:]')
+        item_tmp=$(echo "$item"| tr '[:upper:]' '[:lower:]')
         replace_str="-"
         item_tmp=${item_tmp//_/$replace_str}
 
         mkdir -p "${DB_SSL_CERT_FOLDER}/$item" >/dev/null 2>&1
         tip="## Property for Database Server \"$item\" required by IBM Cloud Pak for Business Automation on ${DB_TYPE} type database ##"
         echo "####################################################" >> ${DB_SERVER_INFO_PROPERTY_FILE}
-        echo $tip >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "$tip" >> ${DB_SERVER_INFO_PROPERTY_FILE}
         echo "####################################################" >> ${DB_SERVER_INFO_PROPERTY_FILE}
 
         for i in "${!GCDDB_COMMON_PROPERTY[@]}"; do
@@ -3793,7 +3792,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         tip="## Property file for ${LDAP_TYPE} ##"
 
         echo "###########################" >> ${LDAP_PROPERTY_FILE}
-        echo $tip >> ${LDAP_PROPERTY_FILE}
+        echo "$tip" >> ${LDAP_PROPERTY_FILE}
         echo "###########################" >> ${LDAP_PROPERTY_FILE}
         for i in "${!LDAP_COMMON_PROPERTY[@]}"; do
             echo "${COMMENTS_LDAP_PROPERTY[i]}" >> ${LDAP_PROPERTY_FILE}
@@ -3864,7 +3863,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         > ${EXTERNAL_LDAP_PROPERTY_FILE}
         tip="## Property file for External LDAP ##"
         echo "#####################################" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
-        echo $tip >> ${EXTERNAL_LDAP_PROPERTY_FILE}
+        echo "$tip" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
         echo "#####################################" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
         for i in "${!LDAP_COMMON_PROPERTY[@]}"; do
             echo "${COMMENTS_LDAP_PROPERTY[i]}" >> ${EXTERNAL_LDAP_PROPERTY_FILE}
@@ -3942,7 +3941,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         tip="## NOTES: Please change the \"$DB_SERVER_PREFIX\" variable to assign each database to a database server or instance. ##\n"
         tip+="##        The \"$DB_SERVER_PREFIX\" must be in [${db_server_array[*]}] ##"
         echo "#################################################################################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-        echo -e "$tip" >> "$DB_NAME_USER_PROPERTY_FILE"
+        printf '%b\n' "$tip" >> "$DB_NAME_USER_PROPERTY_FILE"
         echo "################################################################################################################# " >> ${DB_NAME_USER_PROPERTY_FILE}
         echo "" >> ${DB_NAME_USER_PROPERTY_FILE}
         fi
@@ -3956,7 +3955,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
     # Add global property into user_profile for CP4BA
     tip="##           USER Property for CP4BA               ##"
     echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
-    echo $tip >> ${USER_PROFILE_PROPERTY_FILE}
+    echo "$tip" >> ${USER_PROFILE_PROPERTY_FILE}
     echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
     # license
     echo "## Use this parameter to specify the license for the CP4A deployment and" >> ${USER_PROFILE_PROPERTY_FILE}
@@ -4040,7 +4039,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         wait_msg "Creating Property file for IBM FileNet Content Manager GCD"
         tip="## Property for FNCM's GCD Database Name and User on ${DB_TYPE} type database ##"
         echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-        echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
+        echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
         echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
 
         if [[ $DB_TYPE != "oracle" ]]; then
@@ -4094,7 +4093,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         # Add property into user_profile for FNCM/ICCSAP/IER
         tip="##           USER Property for FNCM                ##"
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo $tip >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "$tip" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
 
         # appLoginUsername/appLoginPassword for FNCM
@@ -4142,7 +4141,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         # user profile for content initialization
         tip="##       USER Property for Content initialization   ##"
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo $tip >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "$tip" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores," >> ${USER_PROFILE_PROPERTY_FILE}
         echo "## creation/configuration of CSS servers, and initialization of Navigator (ICN)." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -4205,7 +4204,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             tip="## Property for FNCM's Object store Database Name and User on ${DB_TYPE} type database ##"
 
             echo "###################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "###################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
 
             if (( content_os_number > 0 )); then
@@ -4633,7 +4632,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             tip="## Property for BAN's ICN Database Name and User on ${DB_TYPE} type database ##"
 
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
             if [[ $DB_TYPE != "oracle" ]]; then
                 if [[ $DB_TYPE != "postgresql-edb" ]]; then
@@ -4685,7 +4684,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             # user profile for content initialization
             tip="##       USER Property for BAN   ##"
             echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
-            echo $tip >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "$tip" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
             # appLoginUsername/appLoginPassword for BAN
             echo "## Provide the user name for the Navigator administrator. For example: \"BANAdmin\"" >> ${USER_PROFILE_PROPERTY_FILE}
@@ -4727,7 +4726,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         tip="## Property for  ODM's an external database Name and User on ${DB_TYPE} type database ##"
 
         echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-        echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
+        echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
         echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
         if [[ $DB_TYPE != "oracle" ]]; then
             if [[ $DB_TYPE != "postgresql-edb" ]]; then
@@ -4789,8 +4788,8 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                 tip="## Property for Document Processing Engine (DPE) databases required for Gitgateway"
                 note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
                 echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo $note >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$note" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "## The designated database name for Automation Document Processing. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "$DB_SERVER_PREFIX.ADP_GG_DB_NAME=\"adpggdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4808,8 +4807,8 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                 tip="## Property for Document Processing Engine (DPE) databases required for Gitgateway ##"
                 note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
                 echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo $note >> ${DB_NAME_USER_PROPERTY_FILE} 
+                echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$note" >> ${DB_NAME_USER_PROPERTY_FILE} 
                 echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "## The designated database name for Automation Document Processing. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "$DB_SERVER_PREFIX.ADP_GG_DB_NAME=\"adpggdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4915,7 +4914,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             tip="## Property for ADP Git Gateway Database Name and User on ${DB_TYPE} type database ##"
 
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## Provide the name of the database for ADS. For example: \"adpggdb\" (Notes: the database name must be lowercase)" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.ADP_GG_DB_NAME=\"adpggdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4937,7 +4936,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         # user profile for ADP
         tip="##       USER Property for ADP   ##"
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo $tip >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "$tip" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
 
         # serviceUser/servicePwd for ADP
@@ -5048,7 +5047,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         tip="## Property for Application Engine database required on ${DB_TYPE} type database ##"
 
         echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-        echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
+        echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
         echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
         if [[ $DB_TYPE != "oracle" ]]; then
             if [[ $DB_TYPE != "postgresql-edb" ]]; then
@@ -5101,7 +5100,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         # Add user property into user_profile for Application Engine
         tip="##           USER Property for AE                 ##"
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo $tip >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "$tip" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
         # AE Admin
         echo "## Designate an existing LDAP user for the Application Engine admin user." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5181,7 +5180,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         tip="## Property for Business Automation Workflow Runtime's database on ${DB_TYPE} ##"
 
         echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-        echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
+        echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
         echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
 
         if [[ $DB_TYPE != "oracle" ]]; then
@@ -5257,7 +5256,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         # Add user property into user_profile for BAW runtime
         tip="##           USER Property for Workflow Runtime        ##"
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo $tip >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "$tip" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
         # BAW runtime profile
         echo "## Designate an existing LDAP user for the Workflow Server admin user." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5274,7 +5273,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         tip="## Property for Automation Workstream Services's database on ${DB_TYPE} ##"
 
         echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-        echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
+        echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
         echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
 
         if [[ $DB_TYPE != "oracle" ]]; then
@@ -5351,7 +5350,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         # Add user property into user_profile for AWS
         tip="##           USER Property for Automation Workstream Services        ##"
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo $tip >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "$tip" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
         # AWS profile
         echo "## Designate an existing LDAP user for the Workstreams Server admin user." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5369,7 +5368,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         tip="## Property for Application Engine Playback database on ${DB_TYPE} type database ##"
 
         echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-        echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
+        echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
         echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
         if [[ $DB_TYPE != "oracle" ]]; then
             if [[ $DB_TYPE != "postgresql-edb" ]]; then
@@ -5417,7 +5416,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         # Add user property into user_profile for playback server
         tip="##       USER Property for App Engine Playback Server         ##"
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo $tip >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "$tip" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
         # playback user profile
         echo "## Designate an existing LDAP user for the Playback Application Engine admin user." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5469,8 +5468,8 @@ if [[ "${pattern_cr_arr[@]}" =~ "decisions_ads" && "$DB_TYPE" = "postgresql-edb"
             tip="## Property for Automation Decision Services(ADS) with Decision Designer as optional component ##"
             note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo $note >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$note" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## The designated database name on the Automation Decision Services(ADS) with Decision Designer as optional component. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.ADS_DESIGNER_DB_NAME=\"adsdesignerdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5485,8 +5484,8 @@ if [[ "${pattern_cr_arr[@]}" =~ "decisions_ads" && "$DB_TYPE" = "postgresql-edb"
             tip="## Property for Automation Decision Services(ADS) with Decision Runtime as optional component ##"
             note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo $note >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$note" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## The designated database name on the Automation Decision Services(ADS) with Decision Runtime as optional component. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.ADS_RUNTIME_DB_NAME=\"adsruntimedb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5506,7 +5505,7 @@ fi
         tip="## Property for Business Automation Studio's Studio database required on ${DB_TYPE} type database ##"
 
         echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-        echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
+        echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
         echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
 
         if [[ $DB_TYPE != "oracle" ]]; then
@@ -5557,7 +5556,7 @@ fi
         # Add user property into user_profile for BAS
         tip="##           USER Property for BAS                ##"
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo $tip >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "$tip" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
         # BAS user profile
         echo "## Designate an existing LDAP user for the BAStudio admin user." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5578,7 +5577,7 @@ fi
         if [[ " ${optional_component_cr_arr[@]} " =~ " ads_designer " ]]; then
             tip="## ADS's Property for ADS DESIGNER Database Name and User on ${DB_TYPE} type database ##"
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## Provide the name of the database for ADS. For example: \"adsdesignerdb\" (Notes: the database name must be lowercase)" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.ADS_DESIGNER_DB_NAME=\"adsdesignerdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5600,7 +5599,7 @@ fi
         if [[ " ${optional_component_cr_arr[@]} " =~ " ads_runtime " ]]; then
             tip="## ADS's Property for ADS RUNTIME Database Name and User on ${DB_TYPE} type database ##"
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## Provide the name of the database for ADS. For example: \"adsruntimedb\" (Notes: the database name must be lowercase)" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.ADS_RUNTIME_DB_NAME=\"adsruntimedb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5629,8 +5628,8 @@ if [[ "${pattern_cr_arr[@]}" =~ "decisions_ads" && "$DB_TYPE" != "postgresql-edb
             tip="## Property for Automation Decision Services(ADS) with Decision Designer as optional component ##"
             note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo $note >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$note" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## The designated database name on the Automation Decision Services(ADS) with Decision Designer as optional component. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.ADS_DESIGNER_DB_NAME=\"adsdesignerdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5647,8 +5646,8 @@ if [[ "${pattern_cr_arr[@]}" =~ "decisions_ads" && "$DB_TYPE" != "postgresql-edb
             tip="## Property for Automation Decision Services(ADS) with Decision Runtime as optional component ##"
             note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo $tip >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo $note >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$note" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## The designated database name on the Automation Decision Services(ADS) with Decision Runtime as optional component. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.ADS_RUNTIME_DB_NAME=\"adsruntimedb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5678,7 +5677,7 @@ fi
             # user profile SCMI User section
             tip="##       USER Property for the customized IAM SCIM LDAP attributes for the LDAP ($LDAP_NAME) configuration       ##"
             echo "###########################################################################################" >> ${USER_PROFILE_PROPERTY_FILE}
-            echo $tip >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "$tip" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "###########################################################################################" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
@@ -5928,7 +5927,7 @@ fi
 
     # Show some tips for property file
     tips
-    echo -e  "Enter the <Required> values in the property files under $PROPERTY_FILE_FOLDER"
+    printf '%b\n'  "Enter the <Required> values in the property files under $PROPERTY_FILE_FOLDER"
     msgRed   "The key name in the property file is created by the cp4a-prerequisites.sh and is NOT EDITABLE."
     msgRed   "The value in the property file must be within double quotes."
     msgRed   "The value for User/Password in [cp4ba_db_name_user.property] [cp4ba_user_profile.property] file should NOT include special characters: single quotation \"'\""
@@ -5936,50 +5935,50 @@ fi
     
     
     if (( db_server_number > 0 )); then
-        echo -e  "\x1b[32m* [cp4ba_db_server.property]:\x1B[0m"
-        echo -e  "  - Properties for database server used by CP4BA deployment, such as DATABASE_SERVERNAME/DATABASE_PORT/DATABASE_SSL_ENABLE.\n"
-        echo -e  "  - The value of \"<DB_SERVER_LIST>\" is an alias for the database servers. The key supports comma-separated lists.\n"
+        printf '%b\n'  "\x1b[32m* [cp4ba_db_server.property]:\x1B[0m"
+        printf '%b\n'  "  - Properties for database server used by CP4BA deployment, such as DATABASE_SERVERNAME/DATABASE_PORT/DATABASE_SSL_ENABLE.\n"
+        printf '%b\n'  "  - The value of \"<DB_SERVER_LIST>\" is an alias for the database servers. The key supports comma-separated lists.\n"
 
-        echo -e  "\x1b[32m* [cp4ba_db_name_user.property]:\x1B[0m"
-        echo -e  "  - Properties for database name and user name required by each component of the CP4BA deployment, such as GCD_DB_NAME/GCD_DB_USER_NAME/GCD_DB_USER_PASSWORD.\n"
-        echo -e  "  - Change the prefix \"<DB_ALIAS_NAME>\" to assign which database is used by the component.\n"
-        echo -e  "  - The value of \"<DB_ALIAS_NAME>\" must match the value of <DB_SERVER_LIST> that is defined in \"<DB_SERVER_LIST>\" of \"cp4ba_db_server.property\".\n"
+        printf '%b\n'  "\x1b[32m* [cp4ba_db_name_user.property]:\x1B[0m"
+        printf '%b\n'  "  - Properties for database name and user name required by each component of the CP4BA deployment, such as GCD_DB_NAME/GCD_DB_USER_NAME/GCD_DB_USER_PASSWORD.\n"
+        printf '%b\n'  "  - Change the prefix \"<DB_ALIAS_NAME>\" to assign which database is used by the component.\n"
+        printf '%b\n'  "  - The value of \"<DB_ALIAS_NAME>\" must match the value of <DB_SERVER_LIST> that is defined in \"<DB_SERVER_LIST>\" of \"cp4ba_db_server.property\".\n"
 
-        echo -e "\x1b[32m* [Database SSL Certificates]:\x1B[0m"
+        printf '%b\n' "\x1b[32m* [Database SSL Certificates]:\x1B[0m"
         echo
         # We want to inform the customer that the SSL certificates for Databases must be added into the property files folder prior to running generate mode
         # This is because aca-basedb uses the ssl cert value and base64 encodes it into a string while generating the template.
         # This is unlike the LDAP ssl secret which uses --from-file based format for the SSL certificates which allows the user to add the ssl certs to the folders even after the secret templates are generated.
         # https://jsw.ibm.com/browse/DBACLD-179824
         if [[ $DB_TYPE == "postgresql" ]]; then
-            echo -e " - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your PostgreSQL database server and SSL is configured with both server and client authentication, retrieve the following certificates from your database server: the server certificate, client certificate, and client private key. Copy them into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The files must be named root.crt, client.crt, and client.key respectively.$RESET_TEXT"
+            printf '%b\n' " - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your PostgreSQL database server and SSL is configured with both server and client authentication, retrieve the following certificates from your database server: the server certificate, client certificate, and client private key. Copy them into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The files must be named root.crt, client.crt, and client.key respectively.$RESET_TEXT"
             echo
-            echo -e " - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your PostgreSQL database server and SSL is configured with server-only authentication, retrieve the server certificate from your database server and copy it into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named db-cert.crt $RESET_TEXT"
+            printf '%b\n' " - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your PostgreSQL database server and SSL is configured with server-only authentication, retrieve the server certificate from your database server and copy it into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named db-cert.crt $RESET_TEXT"
             echo
         else
-            echo -e " - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your database server, retrieve the server certificate file from your remote database server and copy it into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named db-cert.crt. $RESET_TEXT"  
+            printf '%b\n' " - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your database server, retrieve the server certificate file from your remote database server and copy it into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named db-cert.crt. $RESET_TEXT"  
             echo
         fi
     fi
     if [[ ! ("${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "No") ]]; then
-        echo -e  "\x1b[32m* [cp4ba_LDAP.property]:\x1B[0m"
-        echo -e  "  - Properties for the LDAP server that is used by the CP4BA deployment, such as LDAP_SERVER/LDAP_PORT/LDAP_BASE_DN/LDAP_BIND_DN/LDAP_BIND_DN_PASSWORD.\n"
+        printf '%b\n'  "\x1b[32m* [cp4ba_LDAP.property]:\x1B[0m"
+        printf '%b\n'  "  - Properties for the LDAP server that is used by the CP4BA deployment, such as LDAP_SERVER/LDAP_PORT/LDAP_BASE_DN/LDAP_BIND_DN/LDAP_BIND_DN_PASSWORD.\n"
         
         # We want to inform the customer that the SSL certificates for LDAP must be copied prior to running generate mode
         # https://jsw.ibm.com/browse/DBACLD-179824
         echo
-        echo -e "\x1b[32m* [LDAP SSL Certificates]:\x1B[0m"
+        printf '%b\n' "\x1b[32m* [LDAP SSL Certificates]:\x1B[0m"
         echo
-        echo -e "  - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your LDAP server, retrieve the server certificate file from your remote LDAP server and copy it into the folder \"$LDAP_SSL_CERT_FOLDER\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named ldap-cert.crt. $RESET_TEXT"  
+        printf '%b\n' "  - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your LDAP server, retrieve the server certificate file from your remote LDAP server and copy it into the folder \"$LDAP_SSL_CERT_FOLDER\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named ldap-cert.crt. $RESET_TEXT"  
         echo
 
         if [[ $SET_EXT_LDAP == "Yes" ]]; then
-            echo -e  "\x1b[32m* [cp4ba_External_LDAP.property]:\x1B[0m"
-            echo -e  "  - Properties for the External LDAP server that is used by External Share, such as LDAP_SERVER/LDAP_PORT/LDAP_BASE_DN/LDAP_BIND_DN/LDAP_BIND_DN_PASSWORD.\n"
+            printf '%b\n'  "\x1b[32m* [cp4ba_External_LDAP.property]:\x1B[0m"
+            printf '%b\n'  "  - Properties for the External LDAP server that is used by External Share, such as LDAP_SERVER/LDAP_PORT/LDAP_BASE_DN/LDAP_BIND_DN/LDAP_BIND_DN_PASSWORD.\n"
             echo
-            echo -e "\x1b[32m* [External LDAP SSL Certificates]:\x1B[0m"
+            printf '%b\n' "\x1b[32m* [External LDAP SSL Certificates]:\x1B[0m"
             echo
-            echo -e "  - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your external LDAP server, retrieve the server certificate file from your remote LDAP server and copy it into the folder \"$LDAP_SSL_CERT_FOLDER\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named external-ldap-cert.crt. $RESET_TEXT"  
+            printf '%b\n' "  - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your external LDAP server, retrieve the server certificate file from your remote LDAP server and copy it into the folder \"$LDAP_SSL_CERT_FOLDER\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named external-ldap-cert.crt. $RESET_TEXT"  
             echo
         fi
     fi
@@ -5999,14 +5998,14 @@ fi
         msgB "* You have enabled BTS metastore external Postgres DB, please get \"<your-server-certification: root.crt>\" \"<your-client-certification: client.crt>\" \"<your-client-key: client.key>\" from your local or remote database server, and copy them into folder \"$BTS_DB_SSL_CERT_FOLDER\" before you execute the generate mode of cp4a-prerequisites.sh script."
     fi
 
-    echo -e  "\x1b[32m* [cp4ba_user_profile.property]:\x1B[0m"
-    echo -e  "  - Properties for the global value used by the CP4BA deployment, such as \"sc_deployment_license\".\n"
-    echo -e  "  - properties for the value used by each component of CP4BA, such as <APPLOGIN_USER>/<APPLOGIN_PASSWORD>\n"
+    printf '%b\n'  "\x1b[32m* [cp4ba_user_profile.property]:\x1B[0m"
+    printf '%b\n'  "  - Properties for the global value used by the CP4BA deployment, such as \"sc_deployment_license\".\n"
+    printf '%b\n'  "  - properties for the value used by each component of CP4BA, such as <APPLOGIN_USER>/<APPLOGIN_PASSWORD>\n"
 
     #DBACLD-196427 - clear next-step instruction after running with -m property mode
-    echo -e "\x1b[32m* [Next Step]:\x1B[0m"
-    echo -e "  - When all the required certificates and property files are prepared, run the following command to generate the database scripts and secret YAML files:"
-    echo -e "    $RED_TEXT\"./cp4a-prerequisites.sh -m generate -n $CP4BA_SERVICES_NS\"${RESET_TEXT}"
+    printf '%b\n' "\x1b[32m* [Next Step]:\x1B[0m"
+    printf '%b\n' "  - When all the required certificates and property files are prepared, run the following command to generate the database scripts and secret YAML files:"
+    printf '%b\n' "    $RED_TEXT\"./cp4a-prerequisites.sh -m generate -n $CP4BA_SERVICES_NS\"${RESET_TEXT}"
 }
 
 function select_storage_class(){
@@ -6026,7 +6025,7 @@ function select_storage_class(){
         printf "\x1B[1mplease enter the file storage classname for slow storage(RWX): \x1B[0m"
         read -rp "" sc_slow_file_storage_classname
         if [ -z "$sc_slow_file_storage_classname" ]; then
-        echo -e "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
+        printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
         fi
     done
 
@@ -6035,7 +6034,7 @@ function select_storage_class(){
         printf "\x1B[1mplease enter the file storage classname for medium storage(RWX): \x1B[0m"
         read -rp "" sc_medium_file_storage_classname
         if [ -z "$sc_medium_file_storage_classname" ]; then
-        echo -e "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
+        printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
         fi
     done
 
@@ -6044,7 +6043,7 @@ function select_storage_class(){
         printf "\x1B[1mplease enter the file storage classname for fast storage(RWX): \x1B[0m"
         read -rp "" sc_fast_file_storage_classname
         if [ -z "$sc_fast_file_storage_classname" ]; then
-        echo -e "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
+        printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
         fi
     done
 
@@ -6053,7 +6052,7 @@ function select_storage_class(){
         printf "\x1B[1mplease enter the block storage classname for Zen(RWO): \x1B[0m"
         read -rp "" block_storage_class_name
         if [ -z "$block_storage_class_name" ]; then
-        echo -e "\x1B[1;31mEnter a valid block storage classname(RWO)\x1B[0m"
+        printf '%b\n' "\x1B[1;31mEnter a valid block storage classname(RWO)\x1B[0m"
         fi
     done
 
@@ -6139,7 +6138,7 @@ function load_property_before_generate(){
     # Handle LDAP SSL parameters
     if [[ $SELECTED_LDAP == "Yes" ]]; then
         tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_ldap_property_file LDAP_SSL_ENABLED)")
-        tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+        tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
         if [[ ${tmp_flag} =~ ^(no|n|false)$ ]]; then
             OPTIONAL_PARAMETERS_LIST+=("LDAP_SSL_SECRET_NAME")
             OPTIONAL_PARAMETERS_LIST+=("LDAP_SSL_CERT_FILE_FOLDER")
@@ -6148,7 +6147,7 @@ function load_property_before_generate(){
 
     if [[ $SET_EXT_LDAP == "Yes" ]]; then
         tmp_ext_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_ext_ldap_property_file LDAP_SSL_ENABLED)")
-        tmp_ext_flag=$(echo $tmp_ext_flag | tr '[:upper:]' '[:lower:]')
+        tmp_ext_flag=$(echo "$tmp_ext_flag" | tr '[:upper:]' '[:lower:]')
         if [[ ${tmp_ext_flag} =~ ^(no|n|false)$ ]]; then
             OPTIONAL_PARAMETERS_LIST+=("EXT_LDAP_SSL_SECRET_NAME")
             OPTIONAL_PARAMETERS_LIST+=("EXT_LDAP_SSL_CERT_FILE_FOLDER")
@@ -6187,7 +6186,7 @@ function create_db_script(){
 
             if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                 # db name should be lower case
-                tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
             fi
 
             tmp_dbuser="$(prop_db_name_user_property_file ADS_DESIGNER_DB_USER_NAME)"
@@ -6217,7 +6216,7 @@ function create_db_script(){
 
             if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                 # db name should be lower case
-                tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
             fi
 
             tmp_dbuser="$(prop_db_name_user_property_file ADS_RUNTIME_DB_USER_NAME)"
@@ -6253,7 +6252,7 @@ function create_db_script(){
                     tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
                     if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                         if [[ $DB_TYPE == "postgresql" ]]; then
-                            tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                            tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                         fi
                         tmp_dbschemaname=$tmp_db_current_schema_name
                     fi
@@ -6346,7 +6345,7 @@ function create_db_script(){
                         tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
                         if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                             if [[ $DB_TYPE == "postgresql" ]]; then
-                                tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                                tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                             fi
                             tmp_dbschemaname=$tmp_db_current_schema_name
                         fi
@@ -6423,7 +6422,7 @@ function create_db_script(){
                         tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
                         if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                             if [[ $DB_TYPE == "postgresql" ]]; then
-                                tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                                tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                             fi
                             tmp_dbschemaname=$tmp_db_current_schema_name
                         fi
@@ -6652,7 +6651,7 @@ function create_db_script(){
                             tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
                             if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                                 if [[ $DB_TYPE == "postgresql" ]]; then
-                                    tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                                    tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                                 fi
                                 tmp_dbschemaname=$tmp_db_current_schema_name
                             fi
@@ -6744,7 +6743,7 @@ function create_db_script(){
                         tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
                         if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                             if [[ $DB_TYPE == "postgresql" ]]; then
-                                tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                                tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                             fi
                             tmp_dbschemaname=$tmp_db_current_schema_name
                         fi
@@ -6795,7 +6794,7 @@ function create_db_script(){
                         tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
                         if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                             if [[ $DB_TYPE == "postgresql" ]]; then
-                                tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                                tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                             fi
                             tmp_dbschemaname=$tmp_db_current_schema_name
                         fi
@@ -6864,7 +6863,7 @@ function create_db_script(){
                         tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
                         if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                             if [[ $DB_TYPE == "postgresql" ]]; then
-                                tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                                tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                             fi
                             tmp_dbschemaname=$tmp_db_current_schema_name
                         fi
@@ -7007,7 +7006,7 @@ function create_db_script(){
                 tmp_dbport=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.DATABASE_PORT)")
 
                 db_ssl_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_dbservername.DATABASE_SSL_ENABLE)")
-                db_ssl_flag=$(echo $db_ssl_flag| tr '[:upper:]' '[:lower:]')
+                db_ssl_flag=$(echo "$db_ssl_flag"| tr '[:upper:]' '[:lower:]')
 
                 # db_name_full_array=(${db_name_full_array[@]} $tmp_dbname)
                 # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
@@ -7068,7 +7067,7 @@ function create_db_script(){
 
             if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                 # db name should be lower case
-                tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
             fi
 
             tmp_dbuser="$(prop_db_name_user_property_file ADP_GG_DB_USER_NAME)"
@@ -7135,7 +7134,7 @@ function create_db_script(){
                     tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
                     if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                         if [[ $DB_TYPE == "postgresql" ]]; then
-                            tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                            tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                         fi
                         tmp_dbschemaname=$tmp_db_current_schema_name
                     fi
@@ -7234,7 +7233,7 @@ function create_db_script(){
                         tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
                         if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                             if [[ $DB_TYPE == "postgresql" ]]; then
-                                tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                                tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                             fi
                             tmp_dbschemaname=$tmp_db_current_schema_name
                         fi
@@ -7282,7 +7281,7 @@ function create_db_script(){
                         tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
                         if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                             if [[ $DB_TYPE == "postgresql" ]]; then
-                                tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                                tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                             fi
                             tmp_dbschemaname=$tmp_db_current_schema_name
                         fi
@@ -7325,7 +7324,7 @@ function create_db_script(){
                         tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
                         if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                             if [[ $DB_TYPE == "postgresql" ]]; then
-                                tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                                tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                             fi
                             tmp_dbschemaname=$tmp_db_current_schema_name
                         fi
@@ -7368,7 +7367,7 @@ function create_db_script(){
                         tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
                         if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                             if [[ $DB_TYPE == "postgresql" ]]; then
-                                tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                                tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                             fi
                             tmp_dbschemaname=$tmp_db_current_schema_name
                         fi
@@ -7503,7 +7502,7 @@ function create_db_script(){
                     tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
                     if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                         if [[ $DB_TYPE == "postgresql" ]]; then
-                            tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                            tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                         fi
                         tmp_dbschemaname=$tmp_db_current_schema_name
                     fi
@@ -7575,7 +7574,7 @@ function create_db_script(){
                     tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
                     if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                         if [[ $DB_TYPE == "postgresql" ]]; then
-                            tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                            tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                         fi
                         tmp_dbschemaname=$tmp_db_current_schema_name
                     fi
@@ -7648,7 +7647,7 @@ function create_db_script(){
                     tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
                     if [[ $tmp_db_current_schema_name != "<Optional>" && $tmp_db_current_schema_name != "" ]]; then
                         if [[ $DB_TYPE == "postgresql" ]]; then
-                            tmp_db_current_schema_name=$(echo $tmp_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                            tmp_db_current_schema_name=$(echo "$tmp_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
                         fi
                         tmp_dbschemaname=$tmp_db_current_schema_name
                     fi
@@ -7763,7 +7762,7 @@ function select_ldap_type_for_wfps_authoring(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -7785,7 +7784,7 @@ function select_external_postgresdb_for_im(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -7807,7 +7806,7 @@ function select_external_postgresdb_for_zen(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -7829,7 +7828,7 @@ function select_external_postgresdb_for_bts(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -7851,7 +7850,7 @@ function select_external_cert_opensearch_kafka(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -7874,7 +7873,7 @@ function generate_sample_network_policies(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -7884,24 +7883,24 @@ function select_project() {
     while [[ $TARGET_PROJECT_NAME == "" ]];
     do
         printf "\n"
-        echo -e "\x1B[1mWhere do you want to deploy Cloud Pak for Business Automation?\x1B[0m"
+        printf '%b\n' "\x1B[1mWhere do you want to deploy Cloud Pak for Business Automation?\x1B[0m"
         read -p "Enter the name for an existing project (namespace): " TARGET_PROJECT_NAME
         if [ -z "$TARGET_PROJECT_NAME" ]; then
-            echo -e "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
         elif [[ "$TARGET_PROJECT_NAME" == openshift* ]]; then
-            echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
             TARGET_PROJECT_NAME=""
         elif [[ "$TARGET_PROJECT_NAME" == kube* ]]; then
-            echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
             TARGET_PROJECT_NAME=""
         else
-            isProjExists=`${CLI_CMD} get project $TARGET_PROJECT_NAME --ignore-not-found | wc -l`  >/dev/null 2>&1
+            isProjExists=`${CLI_CMD} get project $TARGET_PROJECT_NAME --ignore-not-found | wc -l`  >&3 2>&3
 
             if [ "$isProjExists" -ne 2 ] ; then
-                echo -e "\x1B[1;31mInvalid project name, please enter a existing project name ...\x1B[0m"
+                printf '%b\n' "\x1B[1;31mInvalid project name, please enter a existing project name ...\x1B[0m"
                 TARGET_PROJECT_NAME=""
             else
-                echo -e "\x1B[1mUsing project ${TARGET_PROJECT_NAME}...\x1B[0m"
+                printf '%b\n' "\x1B[1mUsing project ${TARGET_PROJECT_NAME}...\x1B[0m"
             fi
         fi
     done
@@ -7934,7 +7933,7 @@ function select_fips_enable(){
                 break
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -7947,7 +7946,7 @@ function select_ldap_type(){
     printf "\n"
     COLUMNS=12
 
-    echo -e "\x1B[1mWhat is the LDAP type that is used for this deployment? \x1B[0m"
+    printf '%b\n' "\x1B[1mWhat is the LDAP type that is used for this deployment? \x1B[0m"
     options=("Microsoft Active Directory" "IBM Tivoli Directory Server / Security Directory Server" "PingDirectory Server")
     PS3='Enter a valid option [1 to 3]: '
     select opt in "${options[@]}"
@@ -7975,7 +7974,7 @@ function select_ldap_type(){
 function select_profile_type(){
     printf "\n"
     COLUMNS=12
-    echo -e "\x1B[1mPlease select the deployment profile (default: small).  Refer to the documentation in CP4BA Knowledge Center for details on profile.\x1B[0m"
+    printf '%b\n' "\x1B[1mPlease select the deployment profile (default: small).  Refer to the documentation in CP4BA Knowledge Center for details on profile.\x1B[0m"
     options=("small" "medium" "large")
     if [ -z "$existing_profile_type" ]; then
         PS3='Enter a valid option [1 to 3]: '
@@ -8006,8 +8005,8 @@ function select_profile_type(){
                 printf "%1d) %s\n" $((i+1)) "${options[i]}"
             fi
         done
-        echo -e "\x1B[1;31mExisting profile size type found in CR: \"$existing_profile_type\"\x1B[0m"
-        # echo -e "\x1B[1;31mDo not need to select again.\n\x1B[0m"
+        printf '%b\n' "\x1B[1;31mExisting profile size type found in CR: \"$existing_profile_type\"\x1B[0m"
+        # printf '%b\n' "\x1B[1;31mDo not need to select again.\n\x1B[0m"
         prompt_press_any_key_to_continue
     fi
 }
@@ -8015,7 +8014,7 @@ function select_profile_type(){
 function select_db_type(){
     printf "\n"
     COLUMNS=12
-    echo -e "\x1B[1mWhat is the Database type that is used for this deployment? \x1B[0m"
+    printf '%b\n' "\x1B[1mWhat is the Database type that is used for this deployment? \x1B[0m"
     if [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "document_processing" ]]; then
         # if [[ $PROFILE_TYPE == "small" ]]; then
         ## -- https://jsw.ibm.com/browse/DBACLD-170077 <updating the name of the DB type of PostgreSQL>
@@ -8142,7 +8141,7 @@ function set_external_ldap(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -8165,7 +8164,7 @@ function select_cpe_full_storage(){
                 break
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -8191,7 +8190,7 @@ function select_gpu_document_processing(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             set_gpu_enabled=""
             ENABLE_GPU_ARIA=""
             ;;
@@ -8205,7 +8204,7 @@ function select_gpu_document_processing(){
         do
             read -rp "" nodelabel_key
             if [ -z "$nodelabel_key" ]; then
-            echo -e "\x1B[1;31mEnter the node label key.\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter the node label key.\x1B[0m"
             fi
         done
 
@@ -8216,7 +8215,7 @@ function select_gpu_document_processing(){
         do
             read -rp "" nodelabel_value
             if [ -z "$nodelabel_value" ]; then
-            echo -e "\x1B[1;31mEnter the node label value.\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter the node label value.\x1B[0m"
             fi
         done
     fi
@@ -8243,7 +8242,7 @@ function select_ae_data_persistence(){
                     break
                     ;;
                 *)
-                    echo -e "Answer must be \"Yes\" or \"No\"\n"
+                    printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                     ;;
                 esac
             done
@@ -8255,7 +8254,7 @@ function select_baw_only(){
     pattern_arr=()
     pattern_cr_arr=()
     printf "\n"
-    echo -e "\x1B[1mSelect the Cloud Pak for Business Automation capability to install: \x1B[0m"
+    printf '%b\n' "\x1B[1mSelect the Cloud Pak for Business Automation capability to install: \x1B[0m"
     COLUMNS=12
 
     options=("Business Automation Workflow")
@@ -8295,7 +8294,7 @@ function input_information(){
     EXISTING_OPT_COMPONENT_ARR=()
     EXISTING_PATTERN_ARR=()
     retVal_baw=1
-    # rm -rf $TEMPORARY_PROPERTY_FILE >/dev/null 2>&1
+    # rm -rf $TEMPORARY_PROPERTY_FILE 
     if [[ "${INSTALL_BAW_ONLY}" == "No" ]];
     then
         DEPLOYMENT_TYPE="production"
@@ -8402,20 +8401,20 @@ function select_objectstore_number(){
 
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" ]]; then
             read -rp "" content_os_number
-            [[ $content_os_number =~ ^[0-9]+$ ]] || { echo -e "\x1B[1;31mEnter a valid number [0 to 10]\x1B[0m"; continue; }
+            [[ $content_os_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [0 to 10]\x1B[0m"; continue; }
             if [ "$content_os_number" -ge 0 ] && [ "$content_os_number" -le 10 ]; then
                 break
             else
-                echo -e "\x1B[1;31mEnter a valid number [0 to 10]\x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid number [0 to 10]\x1B[0m"
                 content_os_number=""
             fi
         elif [[ " ${pattern_cr_arr[@]}" =~ "content" ]]; then
             read -rp "" content_os_number
-            [[ $content_os_number =~ ^[0-9]+$ ]] || { echo -e "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"; continue; }
+            [[ $content_os_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"; continue; }
             if [ "$content_os_number" -ge 1 ] && [ "$content_os_number" -le 10 ]; then
                 break
             else
-                echo -e "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"
                 content_os_number=""
             fi
         fi
@@ -8428,11 +8427,11 @@ function select_db_server_number(){
         printf "\n"
         printf "\x1B[1mHow many database servers or instances will be used for the CP4BA deployment? \x1B[0m"
         read -rp "" db_server_number
-        [[ $db_server_number =~ ^[0-9]+$ ]] || { echo -e "\x1B[1;31mEnter a valid number [1 to 999]\x1B[0m"; continue; }
+        [[ $db_server_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 999]\x1B[0m"; continue; }
         if [ "$db_server_number" -ge 1 ] && [ "$db_server_number" -le 999 ]; then
             break
         else
-            echo -e "\x1B[1;31mEnter a valid number [1 to 999]\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 999]\x1B[0m"
             db_server_number=""
         fi
     done
@@ -8443,10 +8442,10 @@ function get_db_server_list(){
     while true; do
         printf "\n"
         printf "\x1B[1mEnter the alias name(s) for the database server(s)/instance(s) to be used by the CP4BA deployment.\x1B[0m\n"
-        echo -e "\x1B[1;31m(NOTE: NOT the host name of the database server, and CANNOT include a dot[.] character)\x1B[0m"
-        echo -e "\x1B[1;31m(NOTE: This key supports comma-separated lists (for example: dbserver1,dbserver2,dbserver3)\x1B[0m"
+        printf '%b\n' "\x1B[1;31m(NOTE: NOT the host name of the database server, and CANNOT include a dot[.] character)\x1B[0m"
+        printf '%b\n' "\x1B[1;31m(NOTE: This key supports comma-separated lists (for example: dbserver1,dbserver2,dbserver3)\x1B[0m"
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" ]]; then
-            echo -e "\x1B[1;31m(NOTE: IBM Automation Document Processing only supports 1 database server. For Automation Document processing, only the first database server in the list is used.)\x1B[0m"
+            printf '%b\n' "\x1B[1;31m(NOTE: IBM Automation Document Processing only supports 1 database server. For Automation Document processing, only the first database server in the list is used.)\x1B[0m"
         fi
         read -rp "The alias name(s): " db_server_list_input
         value_empty=`echo "${db_server_list_input}" | grep '\.' | wc -l`  >/dev/null 2>&1
@@ -8505,7 +8504,7 @@ function validate_prerequisites(){
     verify_storage_class_valid $tmp_storage_classname "ReadWriteOnce" $sample_pvc_name
 
     if [[ $verification_sc_passed == "No" ]]; then
-        ${CLI_CMD} delete pvc -l cp4ba=test-only >/dev/null 2>&1
+        ${CLI_CMD} delete pvc -l cp4ba=test-only >&3 2>&3
         exit 0
     fi
     # Validate Secret for CP4BA
@@ -8518,10 +8517,10 @@ function validate_prerequisites(){
         tmp_serverport="$(prop_ldap_property_file LDAP_PORT)"
         tmp_basdn="$(prop_ldap_property_file LDAP_BASE_DN)"
         tmp_ldapssl="$(prop_ldap_property_file LDAP_SSL_ENABLED)"
-        tmp_user=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o jsonpath='{.items[0].data.ldapUsername}' | base64 -w 0 --decode)
+        tmp_user=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o jsonpath='{.items[0].data.ldapUsername}' | ${BASE64_DECODE})
         ## <https://jsw.ibm.com/browse/DBACLD-172803> - We are now asking user to use {xor} for special characters in password, so we need to use decode_xor_password to get the password decoded before validation.
         cp4a_operator=$( $CLI_CMD get pods -l name=ibm-cp4a-operator --no-headers --ignore-not-found -n $cp4ba_operators_namespace | awk '{print $1}' )
-        tmp_userpwd=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o jsonpath='{.items[0].data.ldapPassword}' | base64 -w 0 --decode)
+        tmp_userpwd=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o jsonpath='{.items[0].data.ldapPassword}' | ${BASE64_DECODE})
         if [[ "$tmp_userpwd" =~ "{xor}" ]]; then
             tmp_userpwd=$(decode_xor_password $tmp_userpwd $cp4ba_operators_namespace $cp4a_operator)
         fi
@@ -8529,7 +8528,7 @@ function validate_prerequisites(){
         tmp_serverport=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_serverport")
         tmp_basdn=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_basdn")
         tmp_ldapssl=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_ldapssl")
-        tmp_ldapssl=$(echo $tmp_ldapssl | tr '[:upper:]' '[:lower:]')
+        tmp_ldapssl=$(echo "$tmp_ldapssl" | tr '[:upper:]' '[:lower:]')
         tmp_user=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_user")
         tmp_userpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_userpwd")
 
@@ -8552,10 +8551,10 @@ function validate_prerequisites(){
             tmp_serverport="$(prop_ext_ldap_property_file LDAP_PORT)"
             tmp_basdn="$(prop_ext_ldap_property_file LDAP_BASE_DN)"
             tmp_ldapssl="$(prop_ext_ldap_property_file LDAP_SSL_ENABLED)"
-            tmp_user=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ext-ldap-bind-secret -o jsonpath='{.items[0].data.ldapUsername}' | base64 -w 0 --decode)
+            tmp_user=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ext-ldap-bind-secret -o jsonpath='{.items[0].data.ldapUsername}' | ${BASE64_DECODE})
             ## <https://jsw.ibm.com/browse/DBACLD-172803> - We are now asking user to use {xor} for special characters in password, so we need to use decode_xor_password to get the password decoded before validation.
             cp4a_operator=$( $CLI_CMD get pods -l name=ibm-cp4a-operator --no-headers --ignore-not-found -n $cp4ba_operators_namespace | awk '{print $1}' )
-            tmp_userpwd=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ext-ldap-bind-secret -o jsonpath='{.items[0].data.ldapPassword}' | base64 -w 0 --decode)
+            tmp_userpwd=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ext-ldap-bind-secret -o jsonpath='{.items[0].data.ldapPassword}' | ${BASE64_DECODE})
             if [[ "$tmp_userpwd" =~ "{xor}" ]]; then
                 tmp_userpwd=$(decode_xor_password $tmp_userpwd $cp4ba_operators_namespace $cp4a_operator)
             fi
@@ -8564,7 +8563,7 @@ function validate_prerequisites(){
             tmp_serverport=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_serverport")
             tmp_basdn=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_basdn")
             tmp_ldapssl=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_ldapssl")
-            tmp_ldapssl=$(echo $tmp_ldapssl | tr '[:upper:]' '[:lower:]')
+            tmp_ldapssl=$(echo "$tmp_ldapssl" | tr '[:upper:]' '[:lower:]')
             tmp_user=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_user")
             tmp_userpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_userpwd")
 
@@ -8887,7 +8886,7 @@ function validate_prerequisites(){
                     tmp_dbusername=${db_user_array[num]}
                     # tmp_dbuserpassword=${db_userpwd_array[num]}
                     # the "aca-basedb" secret uses all upper-case DB name in the field name for the DB pwd, example:TEST1PROJ1_DB_CONFIG
-                    tmp_dbname_caps=$(echo $tmp_dbname | tr '[:lower:]' '[:upper:]')
+                    tmp_dbname_caps=$(echo "$tmp_dbname" | tr '[:lower:]' '[:upper:]')
                     tmp_dbuserpassword=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l base-db-name=${tmp_base_dbname} -o yaml | ${YQ_CMD} ".items[0].data.${tmp_dbname_caps}_DB_CONFIG" - | base64 --decode`
                     tmp_dbserver=${db_server_array[num]}
 
@@ -9115,7 +9114,7 @@ function validate_prerequisites(){
     local DB_CONNECTION_JAR_PATH=${CUR_DIR}/helper/verification/postgresql
 
     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_IM_FLAG)")
-    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
     if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
         printf "\n"
         im_external_db_cert_folder="$(prop_user_profile_property_file CP4BA.IM_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER)"
@@ -9142,7 +9141,7 @@ function validate_prerequisites(){
 
         output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${im_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
         retVal_verify_db_tmp=$?
-        connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
+        connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
         if [[ ! -z $connection_time ]]; then
             display_latency_warning $connection_time "Database"
         fi
@@ -9155,7 +9154,7 @@ function validate_prerequisites(){
     fi
 
     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_ZEN_FLAG)")
-    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
     if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
         printf "\n"
         zen_external_db_cert_folder="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER)"
@@ -9182,7 +9181,7 @@ function validate_prerequisites(){
 
         output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${zen_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
         retVal_verify_db_tmp=$?
-        connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
+        connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
         if [[ ! -z $connection_time ]]; then
             display_latency_warning $connection_time "Database"
         fi
@@ -9195,7 +9194,7 @@ function validate_prerequisites(){
     fi
 
     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_BTS_FLAG)")
-    tmp_flag=$(echo $tmp_flag | tr '[:upper:]' '[:lower:]')
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
     if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
         printf "\n"
         bts_external_db_cert_folder="$(prop_user_profile_property_file CP4BA.BTS_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER)"
@@ -9222,7 +9221,7 @@ function validate_prerequisites(){
 
         output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${bts_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
         retVal_verify_db_tmp=$?
-        connection_time=$(echo $output | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
+        connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
         if [[ ! -z $connection_time ]]; then
             display_latency_warning $connection_time "Database"
         fi
@@ -9248,8 +9247,8 @@ clear
 if [[ $RUNTIME_MODE == "property" ]]; then
     check_cp4ba_separate_operand $TARGET_PROJECT_NAME
     if [[ -n "${CP4BA_SERVICES_NS:-}" && "$TARGET_PROJECT_NAME" != "$CP4BA_SERVICES_NS" ]]; then
-        echo -e "\x1B[1;31m[ERROR]\x1B[0m The -n value must be the CP4BA operand namespace in Separation-of-Duty deployments."
-        echo -e "         Re-run: ./cp4a-prerequisites.sh -m ${RUNTIME_MODE} -n ${CP4BA_SERVICES_NS}"
+        printf '%b\n' "\x1B[1;31m[ERROR]\x1B[0m The -n value must be the CP4BA operand namespace in Separation-of-Duty deployments."
+        printf '%b\n' "         Re-run: ./cp4a-prerequisites.sh -m ${RUNTIME_MODE} -n ${CP4BA_SERVICES_NS}"
         exit 1
     fi
     
@@ -9260,8 +9259,8 @@ fi
 if [[ $RUNTIME_MODE == "generate" ]]; then
     check_cp4ba_separate_operand $TARGET_PROJECT_NAME
     if [[ -n "${CP4BA_SERVICES_NS:-}" && "$TARGET_PROJECT_NAME" != "$CP4BA_SERVICES_NS" ]]; then
-        echo -e "\x1B[1;31m[ERROR]\x1B[0m The -n value must be the CP4BA operand namespace in Separation-of-Duty deployments."
-        echo -e "         Re-run: ./cp4a-prerequisites.sh -m ${RUNTIME_MODE} -n ${CP4BA_SERVICES_NS}"
+        printf '%b\n' "\x1B[1;31m[ERROR]\x1B[0m The -n value must be the CP4BA operand namespace in Separation-of-Duty deployments."
+        printf '%b\n' "         Re-run: ./cp4a-prerequisites.sh -m ${RUNTIME_MODE} -n ${CP4BA_SERVICES_NS}"
         exit 1
     fi 
     
@@ -9319,8 +9318,8 @@ if [[ $RUNTIME_MODE == "validate" ]]; then
     echo  "*****************************************************"
     check_cp4ba_separate_operand $TARGET_PROJECT_NAME
     if [[ -n "${CP4BA_SERVICES_NS:-}" && "$TARGET_PROJECT_NAME" != "$CP4BA_SERVICES_NS" ]]; then
-        echo -e "\x1B[1;31m[ERROR]\x1B[0m The -n value must be the CP4BA operand namespace in Separation-of-Duty deployments."
-        echo -e "         Re-run: ./cp4a-prerequisites.sh -m ${RUNTIME_MODE} -n ${CP4BA_SERVICES_NS}"
+        printf '%b\n' "\x1B[1;31m[ERROR]\x1B[0m The -n value must be the CP4BA operand namespace in Separation-of-Duty deployments."
+        printf '%b\n' "         Re-run: ./cp4a-prerequisites.sh -m ${RUNTIME_MODE} -n ${CP4BA_SERVICES_NS}"
         exit 1
     fi
     

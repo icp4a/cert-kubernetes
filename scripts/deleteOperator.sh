@@ -73,8 +73,8 @@ function uninstall_olm_cp4a(){
         fi
     else
         kubectl get subscription.operators.coreos.com -n $NAMESPACE -o=jsonpath='{range .items[*]}{.metadata.name}{" "}{.spec.source}{"\n"}{end}' | while read -r line; do
-            subName=$(echo $line | awk '{print $1}')
-            source=$(echo $line | awk '{print $2}')
+            subName=$(echo "$line" | awk '{print $1}')
+            source=$(echo "$line" | awk '{print $2}')
             echo "***********************************"
             if [[ "$source" == "ibm-cp4a-operator-catalog" ]]; then
                 # - get csv anme
@@ -101,10 +101,10 @@ function uninstall_olm_cp4a(){
 }
 
 function show_help {
-    echo -e "\nPrerequisite:"
-    echo -e "1. Login your cluster;"
-    echo -e "2. CR was applied in your project."
-    echo -e "Usage for other platform: deleteOperator.sh -n namespace\n"
+    printf '%b\n' "\nPrerequisite:"
+    printf '%b\n' "1. Login your cluster;"
+    printf '%b\n' "2. CR was applied in your project."
+    printf '%b\n' "Usage for other platform: deleteOperator.sh -n namespace\n"
     echo "Options:"
     echo "  -h  Display help"
     echo "  -n  The namespace to delete Operator"

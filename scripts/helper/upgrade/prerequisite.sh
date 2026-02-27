@@ -20,7 +20,7 @@ function install_ibm_cert_manager(){
     wait_msg "Installing IBM Cert-manager Operator..."
     mkdir -p $UPGRADE_PREREQUISITE_FOLDER >/dev/null 2>&1
     ${CLI_CMD} new-project ibm-cert-manager >/dev/null 2>&1
-    install_plan_approval_flag=$(echo $install_plan_approval | tr '[:upper:]' '[:lower:]')
+    install_plan_approval_flag=$(echo "$install_plan_approval" | tr '[:upper:]' '[:lower:]')
     if [[ $install_plan_approval_flag == "automatic" ]]; then
         install_plan_approval="Automatic"
     elif [[ $install_plan_approval_flag == "manual" ]]; then
@@ -73,7 +73,7 @@ EOF
         if [[ -z $isReadyWebhook || -z $isReadyCertmanager || -z $isReadyCainjector || -z $isReadyCertmanagerOperator ]]; then
             if [[ $retry -eq ${maxRetry} ]]; then
                 echo "Timeout waiting for IBM Cert-manager Operator to start"
-                echo -e "\x1B[1mPlease check the status of Pod by issue cmd: \x1B[0m"
+                printf '%b\n' "\x1B[1mPlease check the status of Pod by issue cmd: \x1B[0m"
                 if [[ -z $isReadyWebhook ]]; then
                     echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -l=app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=ibm-cert-manager-webhook --all-namespaces --no-headers|awk '{print $1}') --all-namespaces"
                 fi
@@ -89,7 +89,7 @@ EOF
                 exit 1
             else
                 sleep 10
-                echo -n "..."
+                printf '%s' "..."
                 continue
             fi
         else
@@ -113,7 +113,7 @@ EOF
 #     install_plan_approval="Automatic"
 #     fi
 
-#     install_plan_approval_flag=$(echo $install_plan_approval | tr '[:upper:]' '[:lower:]')
+#     install_plan_approval_flag=$(echo "$install_plan_approval" | tr '[:upper:]' '[:lower:]')
 #     if [[ $install_plan_approval_flag == "automatic" ]]; then
 #         install_plan_approval="Automatic"
 #     elif [[ $install_plan_approval_flag == "manual" ]]; then
@@ -169,7 +169,7 @@ EOF
 #         if [[ -z $isReadyibmlicenseOperator || -z $isReadyibmlicenseInstance ]]; then
 #             if [[ $retry -eq ${maxRetry} ]]; then
 #                 echo "Timeout waiting for IBM Licensing Operator to start"
-#                 echo -e "\x1B[1mPlease check the status of Pod by issue cmd: \x1B[0m"
+#                 printf '%b\n' "\x1B[1mPlease check the status of Pod by issue cmd: \x1B[0m"
 #                 if [[ -z $isReadyibmlicenseOperator ]]; then
 #                     echo "kubectl describe pod $(kubectl get pod -l=app.kubernetes.io/name=ibm-licensing,app.kubernetes.io/instance=ibm-licensing-operator -n $project_name --no-headers|awk '{print $1}') -n $project_name"
 #                 fi
@@ -179,7 +179,7 @@ EOF
 #                 exit 1
 #             else
 #                 sleep 20
-#                 echo -n "..."
+#                 printf '%s' "..."
 #                 continue
 #             fi
 #         else

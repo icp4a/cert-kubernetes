@@ -70,6 +70,12 @@ if ! [ -x "$(command -v ${CLI_CMD})" ]; then
 	exit 1
 fi
 
+# Check if jq is installed
+which jq &>/dev/null
+[[ $? -ne 0 ]] && \
+printf '%b\n'  "\x1B[1;31mUnable to locate the jq CLI. You must install it to run this script.\x1B[0m" && \
+exit 1
+
 # Check cluster login
 check_cluster_login
 
@@ -115,11 +121,11 @@ if [ -z "$(${CLI_CMD} get project "${CP4BA_NAMESPACE}" 2>/dev/null)" ]; then
 	exit 1
 fi
 
-echo -e "The CP4BA namespace entered:\n- ${CP4BA_NAMESPACE}\n"
-echo -e "Note: Please ensure you are using the intended namespace for cleanup.\n"
+printf '%b\n' "The CP4BA namespace entered:\n- ${CP4BA_NAMESPACE}\n"
+printf '%b\n' "Note: Please ensure you are using the intended namespace for cleanup.\n"
 success "All prerequisites passed. Ready for clean up."
 echo
-echo -e "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;33mThis script is only intended to delete any remaining resources in the Cloud Pak for Business Automation and Cloud Pak foundational services namespace(s), and it is not intended for uninstalling Cloud Pak for Business Automation and Cloud Pak foundational services deployment. The script also does not support cleaning up shared Cloud Pak foundational services.\x1B[0m\n"
+printf '%b\n' "\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;33mThis script is only intended to delete any remaining resources in the Cloud Pak for Business Automation and Cloud Pak foundational services namespace(s), and it is not intended for uninstalling Cloud Pak for Business Automation and Cloud Pak foundational services deployment. The script also does not support cleaning up shared Cloud Pak foundational services.\x1B[0m\n"
 
 # <https://jsw.ibm.com/browse/DBACLD-156516> - User need to provide the service namespace in separation of duties
 # Check if ibm-cp4ba-common-config is present in the namespace
@@ -158,7 +164,7 @@ if [[ "$ALL_NAMESPACE" == "false" ]]; then
 		error "No Cloud Pak foundational services mapping was detected, Cloud Pak foundational services could be shared or does not exist. The script aborted."
 		exit 1
 	else
-		CS_MAPS_YAML=$(mktemp) 
+		CS_MAPS_YAML=$(mktemp)
 		echo "$CS_MAP" > "$CS_MAPS_YAML"
 		CS_NAMESPACE_COUNT=$(${YQ_CMD} eval '.namespaceMapping | length' "$CS_MAPS_YAML")
 		for(( i = 0; i < $CS_NAMESPACE_COUNT; i++ ))
@@ -192,10 +198,10 @@ if [[ "$ALL_NAMESPACE" == "false" ]]; then
 			exit 1
 		else
 			# CPFS mapped to CP4BA namespace found
-			echo -e "\nCloud Pak foundational services namespace:\n- ${CPFS_SHARED_NAMESPACE}"
+			printf '%b\n' "\nCloud Pak foundational services namespace:\n- ${CPFS_SHARED_NAMESPACE}"
 			if [[ "${SHARED_NAMESPACE_COUNT}" -gt 0 ]]; then
-				echo -e "\nList of namespace(s) that use Cloud Pak foundational services:"
-				echo -e "$NAMESPACES_MAPPED_TO_CS"
+				printf '%b\n' "\nList of namespace(s) that use Cloud Pak foundational services:"
+				printf '%b\n' "$NAMESPACES_MAPPED_TO_CS"
 			fi
 
 			if [[ "${SHARED_NAMESPACE_COUNT}" -gt 1 && "${SEPARATION_DUTY}" == "false" ]]; then
@@ -216,8 +222,8 @@ fi
 
 # Check if Multiple CP4BA are installed in the same cluster
 while true; do
-	echo -e "\x1B[1m\nAre there multiple CP4BA deployments on your cluster? (Yes/No, default: Yes)\x1B[0m"
-	read -rp "" ans 
+	printf '%b\n' "\x1B[1m\nAre there multiple CP4BA deployments on your cluster? (Yes/No, default: Yes)\x1B[0m"
+	read -rp "" ans
 	ans=$(echo "${ans}" | tr '[:upper:]' '[:lower:]')
 	case "$ans" in
 	"y"|"yes"|"")
@@ -416,7 +422,7 @@ for webhook in $webhook_configs; do
 	[ -n "$webhook" ] || continue
 	# Only list webhooks that point to the namespace being cleaned
 	if webhook_belongs_to_namespace "$webhook" "ValidatingWebhookConfiguration"; then
-		echo -e "ValidatingWebhookConfiguration/${webhook}"
+		printf '%b\n' "ValidatingWebhookConfiguration/${webhook}"
 	fi
 done
 
@@ -425,7 +431,7 @@ for webhook in $webhook_configs; do
 	[ -n "$webhook" ] || continue
 	# Only list webhooks that point to the namespace being cleaned
 	if webhook_belongs_to_namespace "$webhook" "MutatingWebhookConfiguration"; then
-		echo -e "MutatingWebhookConfiguration/${webhook}"
+		printf '%b\n' "MutatingWebhookConfiguration/${webhook}"
 	fi
 done
 
@@ -486,12 +492,12 @@ if [[ $CLEAN_CPFS == "true" ]]; then
 
 	webhook_configs=$(${CLI_CMD} get ValidatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers | grep -E "$pattern2|$pattern3")
 	for webhook in $webhook_configs; do
-		echo -e "ValidatingWebhookConfiguration/${webhook}"
+		printf '%b\n' "ValidatingWebhookConfiguration/${webhook}"
 	done
 
 	webhook_configs=$(${CLI_CMD} get MutatingWebhookConfiguration -o custom-columns=:metadata.name --no-headers | grep -E "$pattern4|$pattern5|$pattern6")
 	for webhook in $webhook_configs; do
-		echo -e "MutatingWebhookConfiguration/${webhook}"
+		printf '%b\n' "MutatingWebhookConfiguration/${webhook}"
 	done
 fi
 
@@ -738,40 +744,29 @@ fi
 # Update/delete configmaps in kube-public
 if [[ $IS_SHARED_CPFS == "true" ]]; then
 	INFO "Remove mapping from ${COMMON_SERVICES_CM_NAMESPACE} namespace"
-	# Remove mapping from common-service-maps.yaml and apply it back
-	NEW_CS_MAPS=$(${YQ_CMD} -i "del(.namespaceMapping[${CS_MAP_INDEX}].requested-from-namespace[${REQUEST_NS_INDEX}])" "$CS_MAPS_YAML")
-	padded_yaml=$(echo "$NEW_CS_MAPS" | awk '$0="    "$0')
-	NEW_CS_MAPS_YAML="$(
-	cat <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: common-service-maps
-  namespace: kube-public
-data:
-  common-service-maps.yaml: |
-${padded_yaml}
-EOF
-)"
-	echo "$NEW_CS_MAPS_YAML" | ${CLI_CMD} apply -f -
-else
+	# Remove only the specific namespace from requested-from-namespace array
+ 	NEW_CS_MAPS=$(${YQ_CMD} eval "del(.namespaceMapping[${CS_MAP_INDEX}].requested-from-namespace[${REQUEST_NS_INDEX}])" "$CS_MAPS_YAML")
+	PATCH=$(jq -n --arg v "$NEW_CS_MAPS" \
+  	'[{"op":"replace","path":"/data/common-service-maps.yaml","value":$v}]')
+	${CLI_CMD} patch configmap common-service-maps -n "${COMMON_SERVICES_CM_NAMESPACE}" --type=json -p "$PATCH"
+ 
+elif [[ $CLEAN_CPFS == "true" ]]; then
 	INFO "Remove mapping from ${COMMON_SERVICES_CM_NAMESPACE} namespace"
-	# Remove mapping from common-service-maps.yaml and apply it back
-	NEW_CS_MAPS=$(${YQ_CMD} -i "del(.namespaceMapping[${CS_MAP_INDEX}])" "$CS_MAPS_YAML")
-	padded_yaml=$(echo "$NEW_CS_MAPS" | awk '$0="    "$0')
-	NEW_CS_MAPS_YAML="$(
-		cat <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: common-service-maps
-  namespace: kube-public
-data:
-  common-service-maps.yaml: |
-${padded_yaml}
-EOF
-)"
-	echo "$NEW_CS_MAPS_YAML" | ${CLI_CMD} apply -f -
+	# Check if there are other namespace mappings besides the one being deleted
+	REMAINING_MAPPINGS=$(${YQ_CMD} eval '.namespaceMapping | length' "$CS_MAPS_YAML")
+	if [[ $REMAINING_MAPPINGS -gt 1 ]]; then
+		# <https://jsw.ibm.com/browse/DBACLD-201104> If there are multiple deployments, only remove this specific mapping
+		info "Multiple CP4BA deployments detected. Removing only the mapping for namespace: ${CP4BA_NAMESPACE}"
+		# Use yq to remove the mapping, then patch with JSON patch
+		NEW_CS_MAPS=$(${YQ_CMD} eval "del(.namespaceMapping[${CS_MAP_INDEX}])" "$CS_MAPS_YAML")
+		PATCH=$(jq -n --arg v "$NEW_CS_MAPS" \
+  		'[{"op":"replace","path":"/data/common-service-maps.yaml","value":$v}]')
+		${CLI_CMD} patch configmap common-service-maps -n "${COMMON_SERVICES_CM_NAMESPACE}" --type=json -p "$PATCH"
+	else
+		# This is the last deployment, delete the entire ConfigMap
+		INFO "Only one CP4BA deployment detected, deleting common-service-maps ConfigMap"
+		${CLI_CMD} delete configmap common-service-maps -n "${COMMON_SERVICES_CM_NAMESPACE}" --ignore-not-found=true
+	fi
 fi
 
 # Delete resource in openshift-operator namespace

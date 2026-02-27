@@ -181,16 +181,16 @@ done
 if [ -z "${runtimeUseZen}" ] || [ "${runtimeUseZen}" != true ]
  then
 	CMD="./helper_getUMSToken.sh --acceptLanguage ${acceptLanguage} --url ${runtimeUmsUrl} --id ${runtimeUmsClientId} --secret ${runtimeUmsClientSecret} --usr ${runtimeUser} --pwd ${runtimePwd}"
-	echo Getting RunTime UMSToken ... 
+	echo "Getting RunTime UMSToken ..." 
 	#${CMD}
 	RUNTIME_BEARER=$(${CMD})
  else
 	CMD="./helper_getZENToken.sh --acceptLanguage ${acceptLanguage} --iamurl ${runtimeZenIamUrl} --zenurl ${runtimeZenUrl} --usr ${runtimeUser} --pwd ${runtimePwd}"
-	echo Getting RunTime ZENToken ...
+	echo "Getting RunTime ZENToken ..."
 	#${CMD}
 	RUNTIME_BEARER=$(${CMD})
 fi
 #echo 
 
-echo Retrieving deploymentRecord ...
+echo "Retrieving deploymentRecord ..."
 curl -X GET --header "Accept-Language:${acceptLanguage}" --header 'Content-Type:application/json' --header 'Accept:application/json' --header "Authorization:Bearer ${RUNTIME_BEARER}" "${runtimeCpdsUrl}/ibm-dba-content-deployment/v1/deploymentrecords/${deploymentRecId}?repositoryIdentifier=${runtimeObjectStore}" -w '\nReturn Code=%{http_code}\n\n'  -k

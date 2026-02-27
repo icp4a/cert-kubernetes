@@ -26,8 +26,8 @@ function create_fncm_gcddb_postgresql_sql_file(){
     dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
     dbschema=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbschema")
     # convert to lowercase for postgreSQL dbname
-    dbname=$(echo $dbname | tr '[:upper:]' '[:lower:]')
-    dbschema=$(echo $dbschema | tr '[:upper:]' '[:lower:]')
+    dbname=$(echo "$dbname" | tr '[:upper:]' '[:lower:]')
+    dbschema=$(echo "$dbschema" | tr '[:upper:]' '[:lower:]')
 
     tablespace="${dbname}_tbs"
 
@@ -87,8 +87,8 @@ function create_fncm_osdb_postgresql_sql_file(){
 
     # convert to lowercase for postgreSQL dbname
     dbfile_name=$dbname
-    dbname=$(echo $dbname | tr '[:upper:]' '[:lower:]')
-    dbschema=$(echo $dbschema | tr '[:upper:]' '[:lower:]')
+    dbname=$(echo "$dbname" | tr '[:upper:]' '[:lower:]')
+    dbschema=$(echo "$dbschema" | tr '[:upper:]' '[:lower:]')
 
     # use dbuser as schema when schema is empty
     if [[ $dbschema == "" ]]; then
@@ -104,14 +104,14 @@ function create_fncm_osdb_postgresql_sql_file(){
     if [ -z $6 ]; then
         tablespace="${dbname}_tbs"
     else
-        tablespace=$(echo $tablespace | tr '[:upper:]' '[:lower:]')
+        tablespace=$(echo "$tablespace" | tr '[:upper:]' '[:lower:]')
     fi
 
     if [[ $tablespace_table != "" ]]; then
         # Tablespaces must be unique,to make it unique the DB name will be appended as a prefix to all tablespaces created
         # https://jsw.ibm.com/browse/DBACLD-175710
         tablespace_table="${dbname}_${tablespace_table}"
-        tablespace_table=$(echo $tablespace_table | tr '[:upper:]' '[:lower:]')
+        tablespace_table=$(echo "$tablespace_table" | tr '[:upper:]' '[:lower:]')
         tablespace_table_create="create tablespace ${tablespace_table} owner ${dbuser} location '/pgsqldata/${dbname}/${tablespace_table}';"
         tablespace_table_grant="grant create on tablespace ${tablespace_table} to ${dbuser};"
     fi
@@ -119,7 +119,7 @@ function create_fncm_osdb_postgresql_sql_file(){
         # Tablespaces must be unique,to make it unique the DB name will be appended as a prefix to all tablespaces created
         # https://jsw.ibm.com/browse/DBACLD-175710
         tablespace_index="${dbname}_${tablespace_index}"
-        tablespace_index=$(echo $tablespace_index | tr '[:upper:]' '[:lower:]')
+        tablespace_index=$(echo "$tablespace_index" | tr '[:upper:]' '[:lower:]')
         tablespace_index_create="create tablespace ${tablespace_index} owner ${dbuser} location '/pgsqldata/${dbname}/${tablespace_index}';"
         tablespace_index_grant="grant create on tablespace ${tablespace_index} to ${dbuser};"
     fi
@@ -127,7 +127,7 @@ function create_fncm_osdb_postgresql_sql_file(){
         # Tablespaces must be unique,to make it unique the DB name will be appended as a prefix to all tablespaces created
         # https://jsw.ibm.com/browse/DBACLD-175710
         tablespace_lob="${dbname}_${tablespace_lob}"
-        tablespace_lob=$(echo $tablespace_lob | tr '[:upper:]' '[:lower:]')
+        tablespace_lob=$(echo "$tablespace_lob" | tr '[:upper:]' '[:lower:]')
         tablespace_lob_create="create tablespace ${tablespace_lob} owner ${dbuser} location '/pgsqldata/${dbname}/${tablespace_lob}';"
         tablespace_lob_grant="grant create on tablespace ${tablespace_lob} to ${dbuser};"
     fi

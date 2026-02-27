@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: icp4a-foundation-operator-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      name: icp4a-foundation-operator
+  unhealthyPodEvictionPolicy: AlwaysAllow

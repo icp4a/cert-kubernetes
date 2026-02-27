@@ -1,0 +1,24 @@
+[
+  {
+    "op": "replace",
+    "path": "/spec/install/spec/deployments/0/spec/template/spec/volumes",
+    "value": [
+      {
+        "name": "tmp-folder-pvc",
+        "emptyDir": {}
+      },
+      {
+        "name": "ansible-folder-pvc",
+        "emptyDir": {}
+      },
+      {
+        "name": "log-folder-pvc",
+        "emptyDir": {}
+      },
+      {
+        "name": "ibm-folder-pvc",
+        "emptyDir": {}
+      }
+    ]
+  }
+]

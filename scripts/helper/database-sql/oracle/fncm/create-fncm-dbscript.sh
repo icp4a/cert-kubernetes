@@ -18,7 +18,7 @@ function create_fncm_gcddb_oracle_sql_file(){
     dbserver=$3
     # remove quotes from beginning and end of string
     dbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuser")
-    dbuser=$(echo $dbuser | tr '[:lower:]' '[:upper:]')
+    dbuser=$(echo "$dbuser" | tr '[:lower:]' '[:upper:]')
     dbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuserpwd")
     dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
 
@@ -80,7 +80,7 @@ function create_fncm_osdb_oracle_sql_file(){
 
     # remove quotes from beginning and end of string
     dbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuser")
-    dbuser=$(echo $dbuser | tr '[:lower:]' '[:upper:]')
+    dbuser=$(echo "$dbuser" | tr '[:lower:]' '[:upper:]')
     dbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuserpwd")
     dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
     tablespace=$(sed -e 's/^"//' -e 's/"$//' <<<"$tablespace")

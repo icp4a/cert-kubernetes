@@ -172,6 +172,8 @@ function add_quotes_to_values(){
     "$input_yaml")
     for path in $jvm_options_paths; do
         current_value=$(${YQ_CMD} ".$path" "${input_yaml}")
+	# DBACLD-190549 - Remove "null" values from jvm_customize_options
+        current_value=$(echo "$current_value" | tr ',' '\n' | grep -v '^\s*null\s*$' | grep -v '^$' | paste -sd,)
         #Quote the value in jvm_customize_options so that shell does not expand the string if it has spaces. If it expands the string, YQ thinks there are more than 3 values being passed and throws a syntax error 
         ${YQ_CMD} -i ".$path = \"$current_value\"" "${input_yaml}"
     done
@@ -568,7 +570,7 @@ function select_apply_cr(){
     #         break
     #         ;;
     #     *)
-    #         echo -e "Answer must be \"Yes\" or \"No\"\n"
+    #         printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
     #         ;;
     #     esac
     # done
@@ -723,7 +725,7 @@ function upgrade_deployment(){
                 if [[ "$is_ifix_to_ifix_upgrade" == "false" ]]; then
                     # Merge BAI save point into content cr, to check whether BAI savepoints are needed for the upgrade
                     bai_flag=`${YQ_CMD} ".spec.content_optional_components.bai" "$UPGRADE_DEPLOYMENT_CONTENT_CR_TMP"`
-                    bai_flag=$(echo $bai_flag | tr '[:upper:]' '[:lower:]')
+                    bai_flag=$(echo "$bai_flag" | tr '[:upper:]' '[:lower:]')
                     if [[ $bai_flag == "true" ]]; then
                         info "Merging Flink job savepoint from \"${UPGRADE_DEPLOYMENT_BAI_TMP}\" into new version of custom resource \"${UPGRADE_DEPLOYMENT_CONTENT_CR}\"."
                         if [ -s ${UPGRADE_DEPLOYMENT_BAI_TMP} ]; then
@@ -1013,16 +1015,16 @@ function upgrade_deployment(){
                     if [[ $retry -eq ${maxRetry} ]]; then
                     printf "\n"
                     warning "Timeout waiting for IBM CP4BA Workflow Process Service operator to start"
-                    echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
+                    printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
                     echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
                     printf "\n"
-                    echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
+                    printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
                     echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
                     printf "\n"
                     exit 1
                     else
                     sleep 30
-                    echo -n "..."
+                    printf '%s' "..."
                     continue
                     fi
                 elif [[ $isReady == "Succeeded" ]]; then
@@ -1297,12 +1299,12 @@ function upgrade_deployment(){
                     if [[ -z $bas_db_user_name ]]; then
                         bas_db_user_name=$(${CLI_CMD} get secret $bas_db_secret_name --no-headers --ignore-not-found -n $deployment_project_name -o jsonpath='{.stringData.dbUsername}' | base64 -d)
                         if [[ ! -z $bas_db_user_name ]]; then
-                            ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"stringData":{"dbUsername":"'$(echo -n "$baw_auth_db_user_name" | base64)'"}}' >/dev/null 2>&1
+                            ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"stringData":{"dbUsername":"'$(printf '%s' "$baw_auth_db_user_name" | base64)'"}}' >/dev/null 2>&1
                         else
                             warning "Not found the value of \"dbUsername\" from secret $bas_db_secret_name in the project \"$deployment_project_name\"."
                         fi
                     else
-                        ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"data":{"dbUsername":"'$(echo -n "$baw_auth_db_user_name" | base64)'"}}' >/dev/null 2>&1
+                        ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"data":{"dbUsername":"'$(printf '%s' "$baw_auth_db_user_name" | base64)'"}}' >/dev/null 2>&1
                     fi
 
                     # Update User Password
@@ -1310,12 +1312,12 @@ function upgrade_deployment(){
                     if [[ -z $bas_db_user_pwd ]]; then
                         bas_db_user_pwd=$(${CLI_CMD} get secret $bas_db_secret_name --no-headers --ignore-not-found -n $deployment_project_name -o jsonpath='{.stringData.dbPassword}' | base64 -d)
                         if [[ ! -z $bas_db_user_pwd ]]; then
-                            ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"stringData":{"dbPassword":"'$(echo -n "$baw_auth_db_user_pwd" | base64)'"}}' >/dev/null 2>&1
+                            ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"stringData":{"dbPassword":"'$(printf '%s' "$baw_auth_db_user_pwd" | base64)'"}}' >/dev/null 2>&1
                         else
                             warning "Not found the value of \"dbPassword\" from secret $bas_db_secret_name in the project \"$deployment_project_name\"."
                         fi
                     else
-                        ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"data":{"dbPassword":"'$(echo -n "$baw_auth_db_user_pwd" | base64)'"}}' >/dev/null 2>&1
+                        ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"data":{"dbPassword":"'$(printf '%s' "$baw_auth_db_user_pwd" | base64)'"}}' >/dev/null 2>&1
                     fi
                 else
                     warning "Not found the value of \"spec.bastudio_configuration.admin_secret_name\" from ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}"
@@ -1660,7 +1662,7 @@ function upgrade_deployment(){
                                                     ${YQ_CMD} -i ".spec.workflow_authoring_configuration.case.tos_list[${tos_instance_index}].connection_point_name = \"$tos_connection\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
                                                 fi
                                                 # if [[ -z "$baw_target_environment_name" ]]; then
-                                                #     tmp_val_ds_name=$(echo $tos_datasource_name | tr '[:upper:]' '[:lower:]')
+                                                #     tmp_val_ds_name=$(echo "$tos_datasource_name" | tr '[:upper:]' '[:lower:]')
                                                 #     ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.workflow_authoring_configuration.case.tos_list.[${tos_instance_index}].target_environment_name "$tmp_val_ds_name"
                                                 # fi
                                             fi
@@ -1809,7 +1811,7 @@ function upgrade_deployment(){
                                                             ${YQ_CMD} -i ".spec.baw_configuration[${baw_instance_index}].case.tos_list[${tos_instance_index}].connection_point_name = \"$tos_connection\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
                                                         fi
                                                         # if [[ -z "$baw_target_environment_name" ]]; then
-                                                        #     tmp_val_ds_name=$(echo $tos_datasource_name | tr '[:upper:]' '[:lower:]')
+                                                        #     tmp_val_ds_name=$(echo "$tos_datasource_name" | tr '[:upper:]' '[:lower:]')
                                                         #     ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.baw_configuration.[${baw_instance_index}].case.tos_list.[${tos_instance_index}].target_environment_name "$tmp_val_ds_name"
                                                         # fi
                                                     fi
@@ -2091,7 +2093,7 @@ function upgrade_deployment(){
             step_num=1
             for element in "${EXISTING_PATTERN_ARR[@]}"; do
                 if [[ "$element" != "decisions" && "$element" == "decisions_ads" && "$allow_direct_upgrade" == 1 ]]; then
-                    echo -e "\x1B[33;5m- Automation Decision Services capability is installed in this CP4BA deployment: \x1B[0m"
+                    printf '%b\n' "\x1B[33;5m- Automation Decision Services capability is installed in this CP4BA deployment: \x1B[0m"
                     echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Refer to the Knowledge Center: \"Upgrading IBM Automation Decision Services\" topic:"
                     echo "    - if upgrading from 21.0.3 or 22.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=deployment-upgrading-automation-decision-services]"
                     echo "    - if upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=ucreciyd-upgrading-automation-decision-services]"
@@ -2108,7 +2110,7 @@ function upgrade_deployment(){
             
             # output info for upgrading ADS (from 24.0.1 to 25.0.0)
             if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $cr_version == "24.0.1" && ${CP4BA_RELEASE_BASE} == "25.0.0" && (" ${EXISTING_PATTERN_ARR[@]} " =~ "decisions_ads") ]]; then
-                echo -e "\x1B[33;5m- Automation Decision Services capability is installed in this CP4BA deployment: \x1B[0m"
+                printf '%b\n' "\x1B[33;5m- Automation Decision Services capability is installed in this CP4BA deployment: \x1B[0m"
                 if [[ $upgrade_scenario == "edb-already-exists" ]]; then
                         echo "        - You are upgrading from 24.0.1 to 25.0.0, and EDB Postgres instance \"$EDB_INSTANCE_CP4BA_NAME\" is already installed for IBM Cloud Pak for Business Automation.  Before proceeding, make sure you: "
                         echo "            a. ${RED_TEXT}(Required)${RESET_TEXT} create ADS designer and/or runtime database(s) on this EDB Postgres instance. (from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-upgrading, navigate to \"Upgrading your IBM Cloud Pak deployment from 24.0.1 -> Option 1\" for the sample scripts)."
@@ -2131,7 +2133,7 @@ function upgrade_deployment(){
 
             # output info for upgrading document process databases
             if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") ]]; then
-                    echo -e "\x1B[33;5m- Automation Document Processing capability is installed in this CP4BA deployment: \x1B[0m"
+                    printf '%b\n' "\x1B[33;5m- Automation Document Processing capability is installed in this CP4BA deployment: \x1B[0m"
                     echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Upgrade the Automation Document Processing databases"
                 if [[ $allow_direct_upgrade == 1 ]]; then # only show the direct upgrade link if the user is allowed to do a direct upgrade
                     echo "    - If you are upgrading from 21.0.3 or 22.0.2, refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-your-automation-document-processing-databases"
@@ -2169,7 +2171,7 @@ function upgrade_deployment(){
             # Adding a statement to delete the old elastic search CR since we are updating the elastic search CR to switch the quiesce flag from false to true in 24.0.1 to 25.0.0 upgrade
             # https://jsw.ibm.com/browse/DBACLD-166681
             if [[ (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "bai") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "pfs") ]]; then
-                echo -e "\x1B[33;5m- Optional Components Business Automation Insights (BAI) or Data Collector and Data Indexer (PFS) are installed in this CP4BA deployment: \x1B[0m"
+                printf '%b\n' "\x1B[33;5m- Optional Components Business Automation Insights (BAI) or Data Collector and Data Indexer (PFS) are installed in this CP4BA deployment: \x1B[0m"
                 echo "${YELLOW_TEXT}[IMPORTANT]: ${RESET_TEXT}From ($CP4BA_RELEASE_BASE) ,CP4BA will be moving from Opensearch version 2.17.0 (kind: ElasticsearchCluster) to Opensearch version 2.19.x (kind: Cluster). The upgrade process will automatically migrate all the existing indices to new Opensearch version.After the upgrade is completed you must validate and verify all the existing indices are migrated successfully."
                 echo "Once you have verified that indices are migrated successfully you may delete the old Opensearch instance (kind: ElasticsearchCluster) by executing \"${GREEN_TEXT} ${CLI_CMD} delete ElasticsearchCluster opensearch -n $deployment_project_name${RESET_TEXT} \" . "
                 echo "${YELLOW_TEXT}[NOTE]: ${RESET_TEXT} There will be no functional impact of leaving the old Opensearch  (kind: ElasticsearchCluster) running in the cluster."

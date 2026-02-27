@@ -18,7 +18,7 @@ function create_bawaws1_db_oracle_sql_file(){
     dbserver=$3
     # remove quotes from beginning and end of string
     dbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuser")
-    dbuser=$(echo $dbuser | tr '[:lower:]' '[:upper:]')
+    dbuser=$(echo "$dbuser" | tr '[:lower:]' '[:upper:]')
     dbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuserpwd")
     dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
     mkdir -p $BAW_AWS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
@@ -86,7 +86,7 @@ function create_bawaws2_db_oracle_sql_file(){
     dbserver=$3
     # remove quotes from beginning and end of string
     dbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuser")
-    dbuser=$(echo $dbuser | tr '[:lower:]' '[:upper:]')
+    dbuser=$(echo "$dbuser" | tr '[:lower:]' '[:upper:]')
     dbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuserpwd")
     dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
     mkdir -p $BAW_AWS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1

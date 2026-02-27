@@ -26,8 +26,8 @@ function create_ban_postgresql_sql_file(){
     dbschema=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbschema")
 
     # convert to lowercase for postgreSQL dbname
-    dbname=$(echo $dbname | tr '[:upper:]' '[:lower:]')
-    dbschema=$(echo $dbschema | tr '[:upper:]' '[:lower:]')
+    dbname=$(echo "$dbname" | tr '[:upper:]' '[:lower:]')
+    dbschema=$(echo "$dbschema" | tr '[:upper:]' '[:lower:]')
 
     tablespace="${dbname}_tbs"
 

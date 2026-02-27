@@ -1,0 +1,7 @@
+[
+  {
+    "op": "replace",
+    "path": "/spec/install/spec/deployments/0/spec/replicas",
+    "value": 2
+  }
+]

@@ -16,7 +16,7 @@ CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source ${CUR_DIR}/baw-property.sh
 
 function func_sync_profile_size_into_cr() {
-    profile_size=$(echo $PROFILE_TYPE | tr '[:upper:]' '[:lower:]')
+    profile_size=$(echo "$PROFILE_TYPE" | tr '[:upper:]' '[:lower:]')
 
     # set sc_deployment_profile_size
     ${YQ_CMD} -i ".spec.shared_configuration.sc_deployment_profile_size = \"$profile_size\"" ${BAW_STD_PATTERN_FILE_TMP}
@@ -153,7 +153,7 @@ function func_sync_gcd_ds_property_into_cr(){
     fi
     tmp_gcd_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_gcd_db_name")
     if [[ $DB_TYPE == "postgresql" ]]; then
-        tmp_gcd_db_name=$(echo $tmp_gcd_db_name | tr '[:upper:]' '[:lower:]')
+        tmp_gcd_db_name=$(echo "$tmp_gcd_db_name" | tr '[:upper:]' '[:lower:]')
     fi
 
     for i in "${!GCDDB_CR_MAPPING[@]}"; do
@@ -189,7 +189,7 @@ function func_sync_os_ds_property_into_cr(){
             fi
             tmp_os_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_os_db_name")
             if [[ $DB_TYPE == "postgresql" ]]; then
-                tmp_os_db_name=$(echo $tmp_os_db_name | tr '[:upper:]' '[:lower:]')
+                tmp_os_db_name=$(echo "$tmp_os_db_name" | tr '[:upper:]' '[:lower:]')
             fi
 
             for j in "${!OSDB_CR_MAPPING[@]}"; do
@@ -219,7 +219,7 @@ function func_sync_ae_os_ds_property_into_cr(){
         fi
         tmp_os_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_os_db_name")
         if [[ $DB_TYPE == "postgresql" ]]; then
-            tmp_os_db_name=$(echo $tmp_os_db_name | tr '[:upper:]' '[:lower:]')
+            tmp_os_db_name=$(echo "$tmp_os_db_name" | tr '[:upper:]' '[:lower:]')
         fi
 
         for i in "${!OSDB_CR_MAPPING[@]}"; do
@@ -243,7 +243,7 @@ function func_sync_icn_ds_property_into_cr(){
     fi
     tmp_icn_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_icn_db_name")
     if [[ $DB_TYPE == "postgresql" ]]; then
-        tmp_icn_db_name=$(echo $tmp_icn_db_name | tr '[:upper:]' '[:lower:]')
+        tmp_icn_db_name=$(echo "$tmp_icn_db_name" | tr '[:upper:]' '[:lower:]')
     fi
 
     for i in "${!ICNDB_CR_MAPPING[@]}"; do
@@ -272,7 +272,7 @@ function func_sync_ums_ds_property_into_cr(){
     fi
     tmp_ums_oauth_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_ums_oauth_db_name")
     if [[ $DB_TYPE == "postgresql" ]]; then
-        tmp_ums_oauth_db_name=$(echo $tmp_ums_oauth_db_name | tr '[:upper:]' '[:lower:]')
+        tmp_ums_oauth_db_name=$(echo "$tmp_ums_oauth_db_name" | tr '[:upper:]' '[:lower:]')
     fi
 
     for i in "${!UMSDB_OAUTH_CR_MAPPING[@]}"; do
@@ -296,7 +296,7 @@ function func_sync_ums_ds_property_into_cr(){
     fi
     tmp_ums_ts_db_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_ums_ts_db_name")
     if [[ $DB_TYPE == "postgresql" ]]; then
-        tmp_ums_ts_db_name=$(echo $tmp_ums_ts_db_name | tr '[:upper:]' '[:lower:]')
+        tmp_ums_ts_db_name=$(echo "$tmp_ums_ts_db_name" | tr '[:upper:]' '[:lower:]')
     fi
 
     for i in "${!UMSDB_TS_CR_MAPPING[@]}"; do
@@ -345,7 +345,7 @@ function func_sync_baw_std_property_file_into_cr(){
 
     # if DB ssl enabled is false, set db_cert_secret_name value to empty
     db_ssl_enable=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_baw_runtime_db_servername.DATABASE_SSL_ENABLE)")
-    tmp_db_ssl_flag=$(echo $db_ssl_enable | tr '[:upper:]' '[:lower:]')
+    tmp_db_ssl_flag=$(echo "$db_ssl_enable" | tr '[:upper:]' '[:lower:]')
     if [[ $tmp_db_ssl_flag == "no" || $tmp_db_ssl_flag == "false" || $tmp_db_ssl_flag == "" || -z $tmp_db_ssl_flag ]]; then
         ${YQ_CMD} -i '.spec.baw_configuration[0].database.db_cert_secret_name = ""' ${BAW_STD_PATTERN_FILE_TMP}
     fi
@@ -355,7 +355,7 @@ function func_sync_baw_std_property_file_into_cr(){
     # set baw_configuration
     ${YQ_CMD} -i '.spec.baw_configuration[0].database.secret_name = "ibm-baw-wfs-server-db-secret"' ${BAW_STD_PATTERN_FILE_TMP}
     if [[ $DB_TYPE == "postgresql" ]]; then
-        tmp_baw_runtime_db_name=$(echo $tmp_baw_runtime_db_name | tr '[:upper:]' '[:lower:]')
+        tmp_baw_runtime_db_name=$(echo "$tmp_baw_runtime_db_name" | tr '[:upper:]' '[:lower:]')
     fi
     
     # set current schema name for db2 and postgresql
@@ -364,7 +364,7 @@ function func_sync_baw_std_property_file_into_cr(){
         tmp_baw_runtime_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_baw_runtime_db_current_schema_name")
         if [[ $tmp_baw_runtime_db_current_schema_name != "<Optional>" && $tmp_baw_runtime_db_current_schema_name != ""  ]]; then
             if [[ $DB_TYPE == "postgresql" ]]; then
-                tmp_baw_runtime_db_current_schema_name=$(echo $tmp_baw_runtime_db_current_schema_name | tr '[:upper:]' '[:lower:]')
+                tmp_baw_runtime_db_current_schema_name=$(echo "$tmp_baw_runtime_db_current_schema_name" | tr '[:upper:]' '[:lower:]')
             fi
 
             ${YQ_CMD} -i ".spec.baw_configuration.[0].database.current_schema = \"$tmp_baw_runtime_db_current_schema_name\"" ${BAW_STD_PATTERN_FILE_TMP}
@@ -444,7 +444,7 @@ function func_sync_aae_property_file_into_cr() {
     # set application_engine_configuration
     ${YQ_CMD} -i '.spec.application_engine_configuration[0].admin_secret_name = "icp4adeploy-workspace-aae-app-engine-admin-secret"' ${BAW_STD_PATTERN_FILE_TMP}
     if [[ $DB_TYPE == "postgresql" ]]; then
-        tmp_ae_db_name=$(echo $tmp_ae_db_name | tr '[:upper:]' '[:lower:]')
+        tmp_ae_db_name=$(echo "$tmp_ae_db_name" | tr '[:upper:]' '[:lower:]')
     fi
     
     # remove database_name if oracle
@@ -535,9 +535,9 @@ function func_set_initialize_configuration_in_cr() {
                     tmp_val=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_val")
 
                     if [[ $DB_TYPE == "postgresql" ]]; then
-                        tmp_val=$(echo $tmp_val | tr '[:upper:]' '[:lower:]')
+                        tmp_val=$(echo "$tmp_val" | tr '[:upper:]' '[:lower:]')
                     elif [[ $DB_TYPE == "oracle" ]]; then
-                        tmp_val=$(echo $tmp_val | tr '[:lower:]' '[:upper:]')
+                        tmp_val=$(echo "$tmp_val" | tr '[:lower:]' '[:upper:]')
                     fi
 
                     ${YQ_CMD} -i ".spec.initialize_configuration.ic_obj_store_creation.object_stores[$OS_DATASOURCE_NUMBER].oc_cpe_obj_store_enable_workflow = \"true\"" ${BAW_STD_PATTERN_FILE_TMP}
@@ -660,7 +660,7 @@ function generate_baw_std_cr_file(){
     # load restricted access flag and set generate_sample_network_policies
     generate_network_policy_flag="$(prop_user_profile_property_file CP4BA.ENABLE_GENERATE_SAMPLE_NETWORK_POLICIES)"
     generate_network_policy_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$generate_network_policy_flag")
-    generate_network_policy_flag=$(echo $generate_network_policy_flag | tr '[:upper:]' '[:lower:]')
+    generate_network_policy_flag=$(echo "$generate_network_policy_flag" | tr '[:upper:]' '[:lower:]')
     if [[ (! -z $generate_network_policy_flag) && $generate_network_policy_flag == "true" ]]; then
         ${YQ_CMD} -i '.spec.shared_configuration.sc_generate_sample_network_policies = true' ${BAW_STD_PATTERN_FILE_TMP}
     else

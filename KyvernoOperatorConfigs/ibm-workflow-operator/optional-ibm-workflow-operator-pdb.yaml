@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ibm-workflow-operator-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      name: ibm-workflow-operator
+  unhealthyPodEvictionPolicy: AlwaysAllow

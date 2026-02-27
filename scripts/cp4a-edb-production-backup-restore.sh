@@ -71,35 +71,35 @@ function select_project(){
     do
         if [ -z "$CP4BA_AUTO_NAMESPACE" ]; then
             echo
-            # echo -e "\x1B[1mWhere do you want to deploy Cloud Pak for Business Automation?\x1B[0m"
+            # printf '%b\n' "\x1B[1mWhere do you want to deploy Cloud Pak for Business Automation?\x1B[0m"
             read -p "Enter the name for an existing project (namespace): " TARGET_PROJECT_NAME
         else
             if [[ "$CP4BA_AUTO_NAMESPACE" == openshift* ]]; then
-                echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
                 exit 1
             elif [[ "$CP4BA_AUTO_NAMESPACE" == kube* ]]; then
-                echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
                 exit 1
             fi
             TARGET_PROJECT_NAME=$CP4BA_AUTO_NAMESPACE
         fi
 
         if [ -z "$TARGET_PROJECT_NAME" ]; then
-            echo -e "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
         elif [[ "$TARGET_PROJECT_NAME" == openshift* ]]; then
-            echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
             TARGET_PROJECT_NAME=""
         elif [[ "$TARGET_PROJECT_NAME" == kube* ]]; then
-            echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
             TARGET_PROJECT_NAME=""
         else
             isProjExists=`${CLI_CMD} get project $TARGET_PROJECT_NAME --ignore-not-found | wc -l`  >/dev/null 2>&1
 
             if [ "$isProjExists" -ne 2 ] ; then
-                echo -e "\x1B[1;31mInvalid project name, please enter a existing project name ...\x1B[0m"
+                printf '%b\n' "\x1B[1;31mInvalid project name, please enter a existing project name ...\x1B[0m"
                 TARGET_PROJECT_NAME=""
             else
-                echo -e "\x1B[1mUsing project ${TARGET_PROJECT_NAME}...\x1B[0m"
+                printf '%b\n' "\x1B[1mUsing project ${TARGET_PROJECT_NAME}...\x1B[0m"
             fi
         fi
     done
@@ -127,7 +127,7 @@ function enter_input() {
     #read -r  $opt  prompt_ans
     if [[ "$prompt_ans" != "" ]] ; then
       req=""
-      echo -n "${prompt_ans}"
+      printf '%s' "${prompt_ans}"
       break;
     else
       req="$RED_TEXT[REQUIRED]$RESET_TEXT "
@@ -147,7 +147,7 @@ function display_input_custom() {
     if [[ "${prompt_ans}" != "" ]] ; then
       case "${arr[@]}" in
       *"${prompt_ans}"* ) 
-        echo -n "${prompt_ans}"
+        printf '%s' "${prompt_ans}"
         break
         ;;
       * )
@@ -175,7 +175,7 @@ function display_input_yes_no() {
     elif [[ "$prompt_ans" != "" && ( "$prompt_ans" == "Yes"  || "$prompt_ans" == "yes"  || "$prompt_ans" == "YeS"  || "$prompt_ans" == "yES"  || "$prompt_ans" == "yeS"  || "$prompt_ans" == "Y"  || "$prompt_ans" == "y"  ) ]] ; then
       req=""
       session_token='yes'
-      echo $session_token
+      echo "$session_token"
       #printf "\n"
       break;
     elif [[ "$prompt_ans" == "" ]] ; then
@@ -489,7 +489,7 @@ function google_cloud_storage() {
   # kubectl create secret generic backup-creds --from-file=gcsCredentials=gcs_credentials_file.json
   rm -fr ${GOOGLE_SECRET_SCRIPT_FILE}
   touch ${GOOGLE_SECRET_SCRIPT_FILE}
-  echo -e "${CLI_CMD} create secret generic backup-creds --from-file=gcsCredentials=$GOOGLE_JSON_FILE_PATH" > ${GOOGLE_SECRET_SCRIPT_FILE}
+  printf '%b\n' "${CLI_CMD} create secret generic backup-creds --from-file=gcsCredentials=$GOOGLE_JSON_FILE_PATH" > ${GOOGLE_SECRET_SCRIPT_FILE}
 
   if [[ "${DEBUG}" == "True" || "${DEBUG}" == "TRUE" || "${DEBUG}" == "true" ]] ; then
     printf "\n*************** DEBUG MSG ***********************\n"

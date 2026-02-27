@@ -392,7 +392,7 @@ process_image_storage_location(){
                 break
                 ;;
                 no|n)
-                info "The script will use the Private Registry's default path as the location where images will be stored after mirroring has been completed .\n"
+                info "A Specific path to mirror images to the Private Registry is required to store images.\n The script will use the default path.\n"
                 CUSTOM_IMAGE_STORAGE_PATH="false"
                 break
                 ;;

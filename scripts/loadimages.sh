@@ -13,15 +13,15 @@
 CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 
-echo -e "\033[1;31mImportant! The load image sample script is for x86_64, amd64, or i386 platforms only. \033[0m"
-echo -e "\033[1;31mImportant! Please ensure that: \n\
+printf '%b\n' "\033[1;31mImportant! The load image sample script is for x86_64, amd64, or i386 platforms only. \033[0m"
+printf '%b\n' "\033[1;31mImportant! Please ensure that: \n\
     1. you had login to the target Docker registry in advance. \n\
     2. you had login to IBM Entitiled Image Registry in advance.  \n\
     3. you had skopeo installed in advance. \033[0m \n" 
 
 
 function showHelp {
-    echo -e "\nUsage: loadimages.sh -r docker_registry [-m]\n"
+    printf '%b\n' "\nUsage: loadimages.sh -r docker_registry [-m]\n"
     echo "Options:"
     echo "  -h  Display help"
     echo "  -r  Target Docker registry"

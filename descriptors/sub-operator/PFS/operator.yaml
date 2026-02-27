@@ -41,6 +41,19 @@ spec:
         productName: "Process Federation Server - CP4BA"
         productVersion: "25.0.0"
     spec:
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            name: ibm-cp4a-pfs-operator
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            name: ibm-cp4a-pfs-operator
       hostNetwork: false
       hostPID: false
       hostIPC: false
@@ -70,7 +83,10 @@ spec:
                 - ppc64le
       containers:
         - name: operator
-          image: icr.io/cpopen/icp4a-pfs-operator@sha256:896d2bba5968f74f8b0b457f4ea70251d9549fb06de1ed1105bf6f9d05441538
+          args:
+          - --leader-elect
+          - --leader-election-id=ibm-pfs-operator
+          image: icr.io/cpopen/icp4a-pfs-operator@sha256:6b516970b61a667c32b53cec601b351e7fa7ccb00b3b20ab0fb2dcfcc7ba4961
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
