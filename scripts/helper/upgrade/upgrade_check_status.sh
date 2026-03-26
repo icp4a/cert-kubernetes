@@ -129,7 +129,7 @@ function check_cp4ba_operator_version(){
                 exit 1
             else
                 sleep 2
-                echo -n "..."
+                printf '%s' "..."
                 continue
             fi
         fi
@@ -172,7 +172,7 @@ function check_content_operator_version(){
                 exit 1
             else
                 sleep 2
-                echo -n "..."
+                printf '%s' "..."
                 continue
             fi
         fi
@@ -199,16 +199,16 @@ function check_operator_status(){
                 if [[ $retry -eq ${maxRetry} ]]; then
                 printf "\n"
                 warning "Timeout waiting for IBM Cloud Pak foundational operator to start"
-                echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
+                printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
                 echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-common-service-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
-                echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
+                printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
                 echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-common-service-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
                 exit 1
                 else
                 sleep 30
-                echo -n "..."
+                printf '%s' "..."
                 continue
                 fi
             elif [[ $isReady == "Succeeded" ]]; then
@@ -241,16 +241,16 @@ function check_operator_status(){
     #                 if [[ $retry -eq ${maxRetry} ]]; then
     #                 printf "\n"
     #                 warning "Timeout waiting for IBM Events operator to start"
-    #                 echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+    #                 printf '%b\n' "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
     #                 echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-events-operator|awk '{print $1}') -n $project_name"
     #                 printf "\n"
-    #                 echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+    #                 printf '%b\n' "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
     #                 echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-events-operator|awk '{print $1}') -n $project_name"
     #                 printf "\n"
     #                 exit 1
     #                 else
     #                 sleep 30
-    #                 echo -n "..."
+    #                 printf '%s' "..."
     #                 continue
     #                 fi
     #             elif [[ $isReady == "Succeeded" ]]; then
@@ -287,16 +287,16 @@ function check_operator_status(){
                 if [[ $retry -eq ${maxRetry} ]]; then
                 printf "\n"
                 warning "Timeout waiting for IBM Cloud Pak for Business Automation (CP4BA) multi-pattern operator to start"
-                echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
+                printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
                 echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-cp4a-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
-                echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
+                printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
                 echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-cp4a-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
                 exit 1
                 else
                 sleep 30
-                echo -n "..."
+                printf '%s' "..."
                 continue
                 fi
             elif [[ $isReady == "Succeeded" ]]; then
@@ -338,7 +338,7 @@ function check_operator_status(){
                     exit 1
                 else
                     sleep 30
-                    echo -n "..."
+                    printf '%s' "..."
                     continue
                 fi
             fi
@@ -346,16 +346,16 @@ function check_operator_status(){
             if [[ $retry -eq ${maxRetry} ]]; then
                 printf "\n"
                 warning "Timeout waiting for IBM CP4BA FileNet Content Manager operator to start"
-                echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
+                printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
                 echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-content-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
-                echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
+                printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
                 echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-content-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
                 exit 1
             else
                 sleep 30
-                echo -n "..."
+                printf '%s' "..."
                 continue
             fi
         elif [[ $isReady == "Succeeded" ]]; then
@@ -396,7 +396,7 @@ function check_operator_status(){
                     exit 1
                 else
                     sleep 30
-                    echo -n "..."
+                    printf '%s' "..."
                     continue
                 fi
             fi
@@ -404,16 +404,16 @@ function check_operator_status(){
             if [[ $retry -eq ${maxRetry} ]]; then
             printf "\n"
             warning "Timeout waiting for CP4BA Foundation operator to start"
-            echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
+            printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
             echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep icp4a-foundation-operator|awk '{print $1}') -n $project_name"
             printf "\n"
-            echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
+            printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
             echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep icp4a-foundation-operator|awk '{print $1}') -n $project_name"
             printf "\n"
             exit 1
             else
             sleep 30
-            echo -n "..."
+            printf '%s' "..."
             continue
             fi
         elif [[ $isReady == "Succeeded" ]]; then
@@ -454,7 +454,7 @@ function check_operator_status(){
                     exit 1
                 else
                     sleep 30
-                    echo -n "..."
+                    printf '%s' "..."
                     continue
                 fi
             fi
@@ -462,16 +462,16 @@ function check_operator_status(){
             if [[ $retry -eq ${maxRetry} ]]; then
             printf "\n"
             warning "Timeout waiting for IBM CP4BA Automation Decision Service operator to start"
-            echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
+            printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
             echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-ads-operator|awk '{print $1}') -n $project_name"
             printf "\n"
-            echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
+            printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
             echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-ads-operator|awk '{print $1}') -n $project_name"
             printf "\n"
             exit 1
             else
             sleep 30
-            echo -n "..."
+            printf '%s' "..."
             continue
             fi
         elif [[ $isReady == "Succeeded" ]]; then
@@ -514,7 +514,7 @@ function check_operator_status(){
                         exit 1
                     else
                         sleep 30
-                        echo -n "..."
+                        printf '%s' "..."
                         continue
                     fi
                 fi
@@ -522,16 +522,16 @@ function check_operator_status(){
                 if [[ $retry -eq ${maxRetry} ]]; then
                 printf "\n"
                 warning "Timeout waiting for IBM Operational Decision Manager operator to start"
-                echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
+                printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
                 echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-odm-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
-                echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
+                printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
                 echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-odm-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
                 exit 1
                 else
                 sleep 30
-                echo -n "..."
+                printf '%s' "..."
                 continue
                 fi
             elif [[ $isReady == "Succeeded" ]]; then
@@ -578,7 +578,7 @@ function check_operator_status(){
                             exit 1
                         else
                             sleep 30
-                            echo -n "..."
+                            printf '%s' "..."
                             continue
                         fi
                     fi
@@ -586,16 +586,16 @@ function check_operator_status(){
                     if [[ $retry -eq ${maxRetry} ]]; then
                     printf "\n"
                     warning "Timeout waiting for IBM Document Processing Engine operator to start"
-                    echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
+                    printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
                     echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-dpe-operator|awk '{print $1}') -n $project_name"
                     printf "\n"
-                    echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
+                    printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
                     echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-dpe-operator|awk '{print $1}') -n $project_name"
                     printf "\n"
                     exit 1
                     else
                     sleep 30
-                    echo -n "..."
+                    printf '%s' "..."
                     continue
                     fi
                 elif [[ $isReady == "Succeeded" ]]; then
@@ -637,7 +637,7 @@ function check_operator_status(){
                     exit 1
                 else
                     sleep 30
-                    echo -n "..."
+                    printf '%s' "..."
                     continue
                 fi
             fi
@@ -646,16 +646,16 @@ function check_operator_status(){
             if [[ $retry -eq ${maxRetry} ]]; then
             printf "\n"
             warning "Timeout waiting for IBM CP4BA Workflow Process Service operator to start"
-            echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
+            printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
             echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $project_name"
             printf "\n"
-            echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
+            printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
             echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $project_name"
             printf "\n"
             exit 1
             else
             sleep 30
-            echo -n "..."
+            printf '%s' "..."
             continue
             fi
         elif [[ $isReady == "Succeeded" ]]; then
@@ -697,7 +697,7 @@ function check_operator_status(){
                         exit 1
                     else
                         sleep 30
-                        echo -n "..."
+                        printf '%s' "..."
                         continue
                     fi
                 fi
@@ -705,16 +705,16 @@ function check_operator_status(){
                 if [[ $retry -eq ${maxRetry} ]]; then
                 printf "\n"
                 warning "Timeout waiting for IBM CP4BA Insights Engine operator to start"
-                echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
+                printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
                 echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-insights-engine-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
-                echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
+                printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
                 echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-insights-engine-operator|awk '{print $1}') -n $project_name"
                 printf "\n"
                 exit 1
                 else
                 sleep 30
-                echo -n "..."
+                printf '%s' "..."
                 continue
                 fi
             elif [[ $isReady == "Succeeded" ]]; then
@@ -756,7 +756,7 @@ function check_operator_status(){
                     exit 1
                 else
                     sleep 30
-                    echo -n "..."
+                    printf '%s' "..."
                     continue
                 fi
             fi
@@ -764,16 +764,16 @@ function check_operator_status(){
             if [[ $retry -eq ${maxRetry} ]]; then
             printf "\n"
             warning "Timeout waiting for IBM CP4BA Process Federation Server operator to start"
-            echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
+            printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
             echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-pfs-operator|awk '{print $1}') -n $project_name"
             printf "\n"
-            echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
+            printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
             echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-pfs-operator|awk '{print $1}') -n $project_name"
             printf "\n"
             exit 1
             else
             sleep 30
-            echo -n "..."
+            printf '%s' "..."
             continue
             fi
         elif [[ $isReady == "Succeeded" ]]; then
@@ -815,7 +815,7 @@ function check_operator_status(){
                     exit 1
                 else
                     sleep 30
-                    echo -n "..."
+                    printf '%s' "..."
                     continue
                 fi
             fi
@@ -823,16 +823,16 @@ function check_operator_status(){
             if [[ $retry -eq ${maxRetry} ]]; then
             printf "\n"
             warning "Timeout waiting for IBM CP4BA Workflow operator to start"
-            echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
+            printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
             echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-workflow-operator|awk '{print $1}') -n $project_name"
             printf "\n"
-            echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
+            printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
             echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-workflow-operator|awk '{print $1}') -n $project_name"
             printf "\n"
             exit 1
             else
             sleep 30
-            echo -n "..."
+            printf '%s' "..."
             continue
             fi
         elif [[ $isReady == "Succeeded" ]]; then
@@ -1065,7 +1065,7 @@ function show_cp4ba_upgrade_status() {
         if [[  " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "bai" || "${bai_flag}" == "true" ]]; then
             printf "\n"
             echo "${YELLOW_TEXT}[ATTENTION] ${RESET_TEXT}${RED_TEXT}(REQUIRED)${RESET_TEXT}:"
-            echo -e "  ${YELLOW_TEXT}-  AFTER UPGRADING IBM CLOUD PAK FOR BUSINESS AUTOMATION (CP4BA) DEPLOYMENT SUCCESSFULLY, YOU NEED TO REMOVE${RESET_TEXT} ${RED_TEXT}\"recovery_path\"${RESET_TEXT} ${YELLOW_TEXT}FROM CUSTOM RESOURCE UNDER${RESET_TEXT} ${RED_TEXT}\"bai_configuration\"${RESET_TEXT} ${YELLOW_TEXT}MANUALLY IF EXISTING.${RESET_TEXT}"
+            printf '%b\n' "  ${YELLOW_TEXT}-  AFTER UPGRADING IBM CLOUD PAK FOR BUSINESS AUTOMATION (CP4BA) DEPLOYMENT SUCCESSFULLY, YOU NEED TO REMOVE${RESET_TEXT} ${RED_TEXT}\"recovery_path\"${RESET_TEXT} ${YELLOW_TEXT}FROM CUSTOM RESOURCE UNDER${RESET_TEXT} ${RED_TEXT}\"bai_configuration\"${RESET_TEXT} ${YELLOW_TEXT}MANUALLY IF EXISTING.${RESET_TEXT}"
         fi
 
         printf "\n"
@@ -1118,27 +1118,27 @@ function check_cp4ba_separate_operand(){
         do
             printf "\n"
             if [[ ($SCRIPT_MODE == "" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "dev" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "review" && $RUNTIME_MODE == "") || ($SCRIPT_MODE == "baw-dev" && $RUNTIME_MODE == "") ]]; then
-                echo -e "\x1B[1mWhere (namespace) do you want to deploy CP4BA operands (i.e., runtime pods)? \x1B[0m"
+                printf '%b\n' "\x1B[1mWhere (namespace) do you want to deploy CP4BA operands (i.e., runtime pods)? \x1B[0m"
             else
-                echo -e "\x1B[1mWhere (namespace) did you deploy CP4BA operands (i.e., runtime pods)? \x1B[0m"
+                printf '%b\n' "\x1B[1mWhere (namespace) did you deploy CP4BA operands (i.e., runtime pods)? \x1B[0m"
             fi
             read -p "Enter the name for an existing project (namespace): " CP4BA_SERVICES_NS
             if [ -z "$CP4BA_SERVICES_NS" ]; then
-                echo -e "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
             elif [[ "$CP4BA_SERVICES_NS" == openshift* ]]; then
-                echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
                 CP4BA_SERVICES_NS=""
             elif [[ "$CP4BA_SERVICES_NS" == kube* ]]; then
-                echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
                 CP4BA_SERVICES_NS=""
             else
                 isProjExists=`${CLI_CMD} get project $CP4BA_SERVICES_NS --ignore-not-found | wc -l`  >/dev/null 2>&1
 
                 if [ "$isProjExists" -ne 2 ] ; then
-                    echo -e "\x1B[1;31mInvalid project name, enter a existing project name ...\x1B[0m"
+                    printf '%b\n' "\x1B[1;31mInvalid project name, enter a existing project name ...\x1B[0m"
                     CP4BA_SERVICES_NS=""
                 else
-                    echo -e "\x1B[1mUsing project ${CP4BA_SERVICES_NS}...\x1B[0m"
+                    printf '%b\n' "\x1B[1mUsing project ${CP4BA_SERVICES_NS}...\x1B[0m"
                     if ${CLI_CMD} get configMap ibm-cp4ba-common-config -n $CP4BA_SERVICES_NS >/dev/null 2>&1; then
                         success "Found \"ibm-cp4ba-common-config\" configMap in the project \"$CP4BA_SERVICES_NS\"."
                     else

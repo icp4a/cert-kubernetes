@@ -54,7 +54,7 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
         pull_policy: IfNotPresent
         # The pull secret list
         # Examples:
@@ -64,7 +64,7 @@ spec:
         pull_secrets: []
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
         pull_policy: IfNotPresent
         # The pull secret list
         # Examples:
@@ -120,9 +120,9 @@ spec:
       sc_restricted_internet_access: true
 
     ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
-    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## By default, the sc_is_multiple_az parameter is set to true. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
-    sc_is_multiple_az: false
+    sc_is_multiple_az: true
 
   ########################################################################
   ########   IBM Process Federation Server configuration          ########
@@ -172,7 +172,7 @@ spec:
       ## The default repository is the IBM Entitled Registry.
       repository: cp.icr.io/cp/cp4a/baw/pfs-prod
       ## Process Federation Server image tag
-      tag: "24.0.1-IF006"
+      tag: "24.0.1-IF007"
       ## Process Federation Server image pull policy. This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
       # The pull secret list
@@ -367,7 +367,7 @@ spec:
     application_engine:
       workplace_image:
         repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
         pull_policy: IfNotPresent
         # The pull secret list
         # Examples:
@@ -459,7 +459,7 @@ spec:
       ## Elasticsearch image
       repository: cp.icr.io/cp/cp4a/baw/pfs-opensearch-prod
       ## Elasticsearch image tag
-      tag: "24.0.1-IF006"
+      tag: "24.0.1-IF007"
       ## Elasticsearch image pull policy
       pull_policy: IfNotPresent
       # The pull secret list

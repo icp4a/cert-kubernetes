@@ -235,7 +235,6 @@ GO
 EXEC sp_addrolemember 'db_ddladmin', ${dbuser};
 EXEC sp_addrolemember 'db_datareader', ${dbuser};
 EXEC sp_addrolemember 'db_datawriter', ${dbuser};
-EXEC sp_addrolemember 'db_securityadmin', ${dbuser};
 EXEC sp_addsrvrolemember ${dbuser}, 'bulkadmin';
 GO
 EOF

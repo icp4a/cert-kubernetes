@@ -18,7 +18,7 @@
 # DRY_RUN="none" # none|client|server
 
 function show_help() {
-    echo -e "\nUsage: remove_iaf.sh <CLOUD_PAK_CR_KIND> <CLOUD_PAK_CR_NAME> <CLOUD_PAK_NAMESPACE> <FOUNDATION_NAMESPACE> <CARTRIDGE_NAME> <DRY_RUN>\n"
+    printf '%b\n' "\nUsage: remove_iaf.sh <CLOUD_PAK_CR_KIND> <CLOUD_PAK_CR_NAME> <CLOUD_PAK_NAMESPACE> <FOUNDATION_NAMESPACE> <CARTRIDGE_NAME> <DRY_RUN>\n"
     echo "Options:"
     echo "  -h  Display the help"
 }
@@ -57,7 +57,7 @@ function fail() {
 
 function msgB() {
 
-  echo -e "\x1B[1m${1}\x1B[0m\n"
+  printf '%b\n' "\x1B[1m${1}\x1B[0m\n"
 
 }
 function patch_finalizers(){

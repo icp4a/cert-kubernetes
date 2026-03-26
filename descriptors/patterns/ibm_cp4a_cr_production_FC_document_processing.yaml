@@ -249,9 +249,13 @@ spec:
     sc_service_ip_families:
 
     ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
-    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## By default, the sc_is_multiple_az parameter is set to true. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
-    sc_is_multiple_az: false
+    sc_is_multiple_az: true
+
+    ## The global flag to enable or disable Pod Disruption Budget (PDB) creation across all components.  This flag can be overridden at specific configuration sections (eg: ecm_configuration.cpe.enable_pdb).  Default is true
+    ## A PDB will be created with a 'minAvailable: 1' only if the replica count of a particular deployment is greater than 1.  Otherwise, the PDB will have 'minAvailable: 0' if the replica is 1.
+    sc_enable_pdb: true
 
     ## Audit logging configuration for CP4BA components. The default value is "false".  If set to "true", then the audit logging will be enabled for all the CP4BA components.
     ## These settings can be overridden at the component level by setting the "audit_logging" parameter in the component configuration such as ecm_configuration, ads_configuration, etc...
@@ -942,7 +946,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -985,6 +989,10 @@ spec:
         min_replicas: "<Required>"
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: "<Required>"
+      
+      ## This flag enable or disable Pod Disruption Budget (PDB) creation for CPE component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+      ## A PDB for CPE will be created with a 'minAvailable: 1' only if the CPE replica count is greater than 1.  Otherwise, the PDB will have 'minAvailable: 0' if the replica is 1.
+      enable_pdb: true
 
       ## Below are the default CPE Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       cpe_production_setting:
@@ -1096,7 +1104,7 @@ spec:
       #     pull_policy: IfNotPresent
       #     ## The default repository is the IBM Entitled Registry.
       #     repository: cp.icr.io/cp/cp4a/fncm/lscollector
-      #     tag: "24.0.1-IF006"
+      #     tag: "24.0.1-IF007"
       #   ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
       #   ## If more resources are needed, make the changes here to meet your requirement.
       #   resources:
@@ -1132,7 +1140,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1239,7 +1247,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1268,6 +1276,10 @@ spec:
         min_replicas: "<Required>"
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: "<Required>"
+
+      ## This flag enable or disable Pod Disruption Budget (PDB) creation for cmis component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+      ## A PDB for cmis will be created with a 'minAvailable: 1' only if the cmis replica count is greater than 1.  Otherwise, the PDB will have 'minAvailable: 0' if the replica is 1.
+      enable_pdb: true
 
       ## Below are the default CMIS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       cmis_production_setting:
@@ -1397,7 +1409,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1426,6 +1438,10 @@ spec:
         min_replicas: "<Required>"
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: "<Required>"
+
+      ## This flag enable or disable Pod Disruption Budget (PDB) creation for GraphQL component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+      ## A PDB for graphql will be created with a 'minAvailable: 1' only if the GraphQL replica count is greater than 1.  Otherwise, the PDB will have 'minAvailable: 0' if the replica is 1.
+      enable_pdb: true
 
       ## Below are the default CMIS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       graphql_production_setting:
@@ -1522,7 +1538,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1547,6 +1563,10 @@ spec:
         min_replicas: "<Required>"
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: "<Required>"
+
+      ## This flag enable or disable Pod Disruption Budget (PDB) creation for ExtShare component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+      ## A PDB for ExtShare will be created with a 'minAvailable: 1' only if the ExtShare replica count is greater than 1.  Otherwise, the PDB will have 'minAvailable: 0' if the replica is 1.
+      enable_pdb: true
 
       ## Below are the default External Share Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       es_production_setting:
@@ -1629,7 +1649,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1655,6 +1675,10 @@ spec:
         ## This is the default cpu percentage before autoscaling occurs.
         target_cpu_utilization_percentage: "<Required>"
 
+      ## This flag enable or disable Pod Disruption Budget (PDB) creation for Task Manager component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+      ## A PDB for TM will be created with a 'minAvailable: 1' only if the TM replica count is greater than 1.  Otherwise, the PDB will have 'minAvailable: 0' if the replica is 1.
+      enable_pdb: true
+      
       ## Below are the default TM Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       tm_production_setting:
         time_zone: Etc/UTC
@@ -1771,7 +1795,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/mongo_adp
-          tag: 7.0.23
+          tag: 7.0.28
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1822,7 +1846,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/gitgateway
-          tag: "24.0.1-IF006"
+          tag: "24.0.1-IF007"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1845,6 +1869,11 @@ spec:
           min_replicas: "<Required>"
           ## This is the default cpu percentage before autoscaling occurs.
           target_cpu_utilization_percentage: "<Required>"
+
+        ## This flag enable or disable Pod Disruption Budget (PDB) creation for gitgateway component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+        ## A PDB for gitgateway will be created with a `minAvailable: 1` only if the gitgateway replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+        enable_pdb: true
+
         # Below are the default Git Gateway settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
         production_setting:
           git_gateway_timeout: 60000
@@ -1885,7 +1914,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cds
-          tag: "24.0.1-IF006"
+          tag: "24.0.1-IF007"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1958,7 +1987,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cdra
-          tag: "24.0.1-IF006"
+          tag: "24.0.1-IF007"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1983,6 +2012,10 @@ spec:
           min_replicas: "<Required>"
           ## This is the default cpu percentage before autoscaling occurs.
           target_cpu_utilization_percentage: "<Required>"
+        
+        ## This flag enable or disable Pod Disruption Budget (PDB) creation for cdra component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+        ## A PDB for cdra will be created with a `minAvailable: 1` only if the cdra replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+        enable_pdb: true
 
         # Below are the default CDS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
         production_setting:
@@ -2050,7 +2083,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cpds
-          tag: "24.0.1-IF006"
+          tag: "24.0.1-IF007"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2147,7 +2180,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/viewone
-          tag: "24.0.1-IF006"
+          tag: "24.0.1-IF007"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2172,6 +2205,10 @@ spec:
           min_replicas: "<Required>"
           ## This is the default cpu percentage before autoscaling occurs.
           target_cpu_utilization_percentage: "<Required>"
+
+        ## This flag enable or disable Pod Disruption Budget (PDB) creation for viewone component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+        ## A PDB for viewone will be created with a `minAvailable: 1` only if the viewone replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+        enable_pdb: true
 
         ## Below are the default ViewOne Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
         production_setting:
@@ -2243,7 +2280,7 @@ spec:
     #    pull_policy: IfNotPresent
     #    ## The default repository is the IBM Entitled Registry.
     #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-    #    tag: "24.0.1-IF006"
+    #    tag: "24.0.1-IF007"
     #  ## Below are the default LSReporter Production settings.
     #  ## Make the necessary changes as you see fit.
     #  product_settings:
@@ -2331,7 +2368,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "24.0.1-IF006"
+      tag: "24.0.1-IF007"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2623,7 +2660,7 @@ spec:
         max_replicas: "<Required>"  # Required if enable set to "true"
       image:
         repository: "cp.icr.io/cp/cp4a/iadp"
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
         pull_policy: "IfNotPresent"
 ## Overwrite the default SHA digest for Document Processing engine containers by providing the SHA for each containers below.  To use SHA digest, you must comment out the `tag` parameter or leave it blank and you must use entilement registry as the repository.
         doc_processing_digest:

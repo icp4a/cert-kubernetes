@@ -101,10 +101,10 @@ function uninstall_olm_cp4a(){
 }
 
 function show_help {
-    echo -e "\nPrerequisite:"
-    echo -e "1. Login your cluster;"
-    echo -e "2. CR was applied in your project."
-    echo -e "Usage for other platform: deleteOperator.sh -n namespace\n"
+    printf '%b\n' "\nPrerequisite:"
+    printf '%b\n' "1. Login your cluster;"
+    printf '%b\n' "2. CR was applied in your project."
+    printf '%b\n' "Usage for other platform: deleteOperator.sh -n namespace\n"
     echo "Options:"
     echo "  -h  Display help"
     echo "  -n  The namespace to delete Operator"

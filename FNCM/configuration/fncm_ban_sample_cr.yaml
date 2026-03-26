@@ -189,7 +189,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -253,7 +253,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -305,7 +305,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
         pull_policy: IfNotPresent
       ## Logging for workloads
       log:
@@ -383,7 +383,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
         pull_policy: IfNotPresent
       ## resource
       resources:
@@ -441,7 +441,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
         pull_policy: IfNotPresent
       ## resource
       resources:
@@ -503,7 +503,7 @@ spec:
     # run_as_user: 1000110001
       image:
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
         pull_policy: IfNotPresent
      ## LOGGING FOR WORKLOADS
       log:
@@ -572,7 +572,7 @@ spec:
     # run_as_user: 1000110001
     image:
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "24.0.1-IF006"
+      tag: "24.0.1-IF007"
       pull_policy: IfNotPresent
       arbitrary_uid_enabled: true
     ## Logging for workloads

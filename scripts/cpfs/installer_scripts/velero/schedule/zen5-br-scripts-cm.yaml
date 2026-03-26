@@ -266,7 +266,7 @@ data:
             oc exec $CNPG_PRIMARY_POD -n $ZEN_NAMESPACE -- mkdir -p /run/zen_backup
             oc cp $BACKUP_DIR/database/zen_db_backup.dump $ZEN_NAMESPACE/$CNPG_PRIMARY_POD:/run/zen_backup/zen_db_backup.dump
             oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-            oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname zen --format=c --clean --exit-on-error -v /run/zen_backup/zen_db_backup.dump
+            oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname zen --format=c --clean --exit-on-error --if-exists -v /run/zen_backup/zen_db_backup.dump
             # oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d zen -f /run/zen_backup/zen_db_backup.dump
             oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
         else
@@ -305,10 +305,10 @@ data:
             info "usermgmt deployment not scaled up before rerunning, setting replica value to 2"
             USERMGMT_RC=2
         fi
-        oc scale deploy zen-core-api --replicas=$ZEN_CORE_API_RC -n $ZEN_NAMESPACE
+        oc scale deploy zen-core --replicas=$ZEN_CORE_RC -n $ZEN_NAMESPACE
         oc scale deploy usermgmt --replicas=$USERMGMT_RC -n $ZEN_NAMESPACE
         sleep 15
-        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-core-api --timeout=180s -n ${ZEN_NAMESPACE}
+        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-core --timeout=180s -n ${ZEN_NAMESPACE}
         oc wait pod --for=condition=Ready -l app.kubernetes.io/component=usermgmt --timeout=180s -n ${ZEN_NAMESPACE}
         
         ./zen5/customize-zen-extensions.sh $ZEN_NAMESPACE false
@@ -320,7 +320,6 @@ data:
             info "ibm-nginx deployment not scaled up before rerunning, setting replica value to 2"
             IBM_NGINX_RC=2
         fi
-        
         if [[ $ZEN_CORE_API_RC == "0" ]]; then
             info "zen-core-api deployment not scaled up before rerunning, setting replica value to 2"
             ZEN_CORE_API_RC=2
@@ -331,7 +330,7 @@ data:
         fi
         
         oc scale deploy zen-watcher --replicas=$ZEN_WATCHER_RC -n $ZEN_NAMESPACE
-        oc scale deploy zen-core --replicas=$ZEN_CORE_RC -n $ZEN_NAMESPACE
+        oc scale deploy zen-core-api --replicas=$ZEN_CORE_API_RC -n $ZEN_NAMESPACE
         oc scale deploy ibm-nginx --replicas=$IBM_NGINX_RC -n $ZEN_NAMESPACE
         if [[ $zen_watchdog_present != "fail" ]]; then
             oc scale deploy zen-watchdog --replicas=1 -n $ZEN_NAMESPACE # (Only for CloudPak for Data)
@@ -340,7 +339,7 @@ data:
         #[2.2.5.2] Wait for deployments
         info "Wait for deployments to come ready again."
         oc wait pod --for=condition=Ready -l app.kubernetes.io/component=ibm-nginx --timeout=180s -n ${ZEN_NAMESPACE}
-        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-core --timeout=180s -n ${ZEN_NAMESPACE}
+        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-core-api --timeout=180s -n ${ZEN_NAMESPACE}
         oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-watcher --timeout=180s -n ${ZEN_NAMESPACE}
         
         if [[ $zen_watchdog_present != "fail" ]]; then # Only for CloudPak for Data

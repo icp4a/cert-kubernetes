@@ -344,7 +344,7 @@ create_secret_multi_tos() {
     db_user_list+=",$MIG_PROP_TEMP"
     
     MIG_OS_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
-    #echo -e "Docs  is $MIG_OS_TEMP . "stringData.${MIG_OS_TEMP}DBUsername""
+    #printf '%b\n' "Docs  is $MIG_OS_TEMP . "stringData.${MIG_OS_TEMP}DBUsername""
     ${YQ_CMD} -i ".stringData.${MIG_OS_TEMP}DBUsername = \"${MIG_PROP_TEMP}\" | .stringData.${MIG_OS_TEMP}DBUsername style=\"double\"" ${FNCM_SECRET_FILE}
     MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_password" ${CASE_MIGRATION_PROPERTY_FILE})
     db_user_pwd_list+=",$MIG_PROP_TEMP"
@@ -437,7 +437,7 @@ create_secret_multi_tos() {
 
             
             MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_database_password" ${CASE_MIGRATION_PROPERTY_FILE})
-            #echo -e "$MIG_PROP_TEMP"
+            #printf '%b\n' "$MIG_PROP_TEMP"
             MIG_PROP_KEY_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
             MIG_PROP_KEY_TEMP=""$MIG_PROP_KEY_TEMP"DBPassword"
             db_user_pwd_list+=",$MIG_PROP_TEMP"
@@ -583,7 +583,7 @@ create_secret_multi_tos() {
     fi
     echo "DB_USER_LIST=$db_user_list" >> ${TEMPORARY_PROPERTY_FILE}
     echo "DB_USER_PWD_LIST=$db_user_pwd_list" >> ${TEMPORARY_PROPERTY_FILE}
-    #echo -e "$db_name_list"
+    #printf '%b\n' "$db_name_list"
 
 
 }
@@ -592,12 +592,12 @@ create_secret_multi_tos() {
 function load_case_migrate_property_before_generate(){
     if [[ ! -f $TEMPORARY_PROPERTY_FILE || ! -f $CASE_MIGRATION_PROPERTY_FILE || ! -f $DB_NAME_USER_PROPERTY_FILE || ! -f $DB_SERVER_INFO_PROPERTY_FILE || ! -f $LDAP_PROPERTY_FILE ]]; then
         fail "Not Found existing property file under \"$PROPERTY_FILE_FOLDER\""
-        echo -e "CASE_MIGRATION_PROPERTY_FILE $CASE_MIGRATION_PROPERTY_FILE"
-        echo -e "PROPERTY_FILE_FOLDER $PROPERTY_FILE_FOLDER"
-        echo -e "TEMPORARY_PROPERTY_FILE $TEMPORARY_PROPERTY_FILE"
-        echo -e "DB_NAME_USER_PROPERTY_FILE $DB_NAME_USER_PROPERTY_FILE"
-        echo -e "DB_SERVER_INFO_PROPERTY_FILE $DB_SERVER_INFO_PROPERTY_FILE"
-        echo -e "LDAP_PROPERTY_FILE $LDAP_PROPERTY_FILE"
+        printf '%b\n' "CASE_MIGRATION_PROPERTY_FILE $CASE_MIGRATION_PROPERTY_FILE"
+        printf '%b\n' "PROPERTY_FILE_FOLDER $PROPERTY_FILE_FOLDER"
+        printf '%b\n' "TEMPORARY_PROPERTY_FILE $TEMPORARY_PROPERTY_FILE"
+        printf '%b\n' "DB_NAME_USER_PROPERTY_FILE $DB_NAME_USER_PROPERTY_FILE"
+        printf '%b\n' "DB_SERVER_INFO_PROPERTY_FILE $DB_SERVER_INFO_PROPERTY_FILE"
+        printf '%b\n' "LDAP_PROPERTY_FILE $LDAP_PROPERTY_FILE"
         #exit 1
     fi
 
@@ -660,13 +660,13 @@ function check_dbserver_name_valid(){
     if [[ ! ( "${input_servername}" == \#* ) ]]; then
         if [[ ! (" ${tmp_db_array[@]}" =~ "${input_servername}") ]]; then
             error "The prefix \"$input_servername\" in front of \"$parameter_name\" is not in the definition DB_SERVER_LIST=\"${temp}\", Check the following example to configure"
-            echo -e "***************** example *****************"
-            echo -e "if DB_SERVER_LIST=\"DBSERVER1\""
-            echo -e "You need to change"
-            echo -e "<DB_SERVER_NAME>.GCD_DB_NAME=\"GCDDB\""
-            echo -e "to"
-            echo -e "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
-            echo -e "***************** example *****************"
+            printf '%b\n' "***************** example *****************"
+            printf '%b\n' "if DB_SERVER_LIST=\"DBSERVER1\""
+            printf '%b\n' "You need to change"
+            printf '%b\n' "<DB_SERVER_NAME>.GCD_DB_NAME=\"GCDDB\""
+            printf '%b\n' "to"
+            printf '%b\n' "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
+            printf '%b\n' "***************** example *****************"
             exit 1
         fi
     fi
@@ -1322,10 +1322,10 @@ function containsElement(){
 function validate_utility_tool_for_validation(){
     which kubectl &>/dev/null
     if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate Kubernetes CLI. You must install it to run this script.\x1B[0m" && \
+        printf '%b\n'  "\x1B[1;31mUnable to locate Kubernetes CLI. You must install it to run this script.\x1B[0m" && \
         while true; do
             printf "\x1B[1mDo you want install the Kubernetes CLI by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
-            read -rp "" ans
+            read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 install_kubectl_cli
@@ -1336,7 +1336,7 @@ function validate_utility_tool_for_validation(){
                 exit 1
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -1348,10 +1348,10 @@ function validate_utility_tool_for_validation(){
 
     which openssl &>/dev/null
     if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate openssl. You must install it to run this script.\x1B[0m" && \
+        printf '%b\n'  "\x1B[1;31mUnable to locate openssl. You must install it to run this script.\x1B[0m" && \
         while true; do
             printf "\x1B[1mDo you want install the OpenSSL by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
-            read -rp "" ans
+            read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 install_openssl
@@ -1362,7 +1362,7 @@ function validate_utility_tool_for_validation(){
                 exit 1
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -1370,7 +1370,7 @@ function validate_utility_tool_for_validation(){
 }
 
 function show_help() {
-    echo -e "\nUsage: case-migrate-cp4a-prerequisites.sh -m [modetype] [-j java_path]\n"
+    printf '%b\n' "\nUsage: case-migrate-cp4a-prerequisites.sh -m [modetype] [-j java_path]\n"
     echo "Options:"
     echo "  -h  Display help"
     echo "  -m  The valid mode types are: [property], [generate], or [validate]"
@@ -1441,7 +1441,7 @@ if [[ $RUNTIME_MODE == "property" ]]; then
     valid_int=false
     while [ "$valid_int" = false ]; do
         printf "\x1B[1mProvide Number of Target Object Stores \x1B[0m \x1B[33m[Minimum 1] \x1B[0m :"
-        read -rp "" TOS_NUM
+        read -erp "" TOS_NUM
         #if [[ $TOS_NUM =~ ^[1-9]+$ ]];
         if [[ $TOS_NUM -ge 1 ]];
         then 
@@ -1449,9 +1449,9 @@ if [[ $RUNTIME_MODE == "property" ]]; then
             success "Number of Target Object Stores provided : ${TOS_NUM}"
             create_case_migration_property_file
             ${SED_COMMAND_FORMAT} ${CASE_MIGRATION_PROPERTY_FILE}
-            echo -e "Update the property file ${CASE_MIGRATION_PROPERTY_FILE} and rerun the migration with generate"
+            printf '%b\n' "Update the property file ${CASE_MIGRATION_PROPERTY_FILE} and rerun the migration with generate"
         else 
-            echo -e "\x1B[1;31mProvide a valid input for Number of Target Object Stores\x1B[0m"
+            printf '%b\n' "\x1B[1;31mProvide a valid input for Number of Target Object Stores\x1B[0m"
         fi
     done 
 
@@ -1493,7 +1493,7 @@ elif [[ $RUNTIME_MODE == "generate" ]]; then
     ##########################################
     # Migration Function to do changes on cr based on migration requirement
     #migration_apply_pattern_cr  
-    #echo -e "Generated CR is $CP4A_PATTERN_FILE_BAK"
+    #printf '%b\n' "Generated CR is $CP4A_PATTERN_FILE_BAK"
     ##########################################
 
 

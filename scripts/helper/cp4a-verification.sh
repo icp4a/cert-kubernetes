@@ -36,19 +36,19 @@ EOF
   
     # CREATE_PVC_CMD="kubectl apply -f ${STORAGE_CLASS_SAMPLE}"
     # if $CREATE_PVC_CMD ; then
-    #     echo -e "\x1B[1mDone\x1B[0m"
+    #     printf '%b\n' "\x1B[1mDone\x1B[0m"
     # else
-    #     echo -e "\x1B[1;31mFailed\x1B[0m"
+    #     printf '%b\n' "\x1B[1;31mFailed\x1B[0m"
     # fi
    # Check Operator Persistent Volume status every 5 seconds (max 1 minutes) until allocate.
-    ${CLI_CMD} apply -f ${STORAGE_CLASS_SAMPLE} >/dev/null 2>&1
+    ${CLI_CMD} apply -f ${STORAGE_CLASS_SAMPLE} >&3 2>&3
     ATTEMPTS=0
     TIMEOUT=12
     printf "\n"
     info "Checking the storage class: \"${sc_name}\"..."
     until ${CLI_CMD} get pvc | grep ${sample_pvc_name}| grep -q -m 1 "Bound" || [ $ATTEMPTS -eq $TIMEOUT ]; do
         ATTEMPTS=$((ATTEMPTS + 1))
-        echo -e "......"
+        printf '%b\n' "......"
         sleep 5
         if [ $ATTEMPTS -eq $TIMEOUT ] ; then
             fail "Failed to allocate the persistent volumes using storage class: \"${sc_name}\"!"
@@ -63,8 +63,8 @@ EOF
     fi
 
     #DBACLD-197700: Clean up sample PVC regardless of pass or fail
-    ${CLI_CMD} delete -f ${STORAGE_CLASS_SAMPLE} >/dev/null 2>&1
-    rm -rf ${STORAGE_CLASS_SAMPLE} >/dev/null 2>&1
+    ${CLI_CMD} delete -f ${STORAGE_CLASS_SAMPLE} >&3 2>&3
+    rm -rf ${STORAGE_CLASS_SAMPLE} >&3 2>&3
 }
 
 # https://jsw.ibm.com/browse/DBACLD-176287
@@ -458,7 +458,7 @@ function verify_db_connection(){
                 fi
               else
                 warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp \"${DB_JDBC_NAME}/ojdbc8.jar:${DB_CONNECTION_JAR_PATH}/OracleJDBCConnection.jar\" OracleConnection -url \"$oracle_url\" -u $dbuser -pwd ******" && \
-                echo -e  "\x1B[1;31mUnable to connect to database \"$dbuser\" using JDBC URL \"$oracle_url\", please check configuration again.\x1B[0m"
+                printf '%b\n'  "\x1B[1;31mUnable to connect to database \"$dbuser\" using JDBC URL \"$oracle_url\", please check configuration again.\x1B[0m"
               fi
               break
               ;;

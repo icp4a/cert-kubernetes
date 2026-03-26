@@ -16,7 +16,7 @@ CLI_CMD="kubectl"
 source ${CUR_DIR}/helper/common.sh
 source ${CUR_DIR}/helper/messages.sh
 function show_help() {
-    echo -e "\nUsage: cp4a-prerequisites.sh -m [modetype] -n [cp4baNamespace] [options]\n"
+    printf '%b\n' "\nUsage: cp4a-prerequisites.sh -m [modetype] -n [cp4baNamespace] [options]\n"
     echo "Options:"
     echo "  -h  Display help"
     echo "  -m  The valid mode types are: [property], [generate], or [validate]"
@@ -59,15 +59,15 @@ function parse_arguments() {
             TARGET_PROJECT_NAME="${args[$i]}"
             case "$TARGET_PROJECT_NAME" in
             "")
-                echo -e "\x1B[1;31mEnter a valid namespace name, namespace name can not be blank\x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid namespace name, namespace name can not be blank\x1B[0m"
                 exit 1
                 ;;
             "openshift"*)
-                echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
                 exit 1
                 ;;
             "kube"*)
-                echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
                 exit 1
                 ;;
             *)
@@ -76,10 +76,10 @@ function parse_arguments() {
                 # Check project name
                 isProjExists=`${CLI_CMD} get project $TARGET_PROJECT_NAME --ignore-not-found | wc -l`  >/dev/null 2>&1
                 if [ $isProjExists -ne 2 ] ; then
-                    echo -e "\x1B[1;31mInvalid project name \"$TARGET_PROJECT_NAME\", please set a existing project name.\x1B[0m"
+                    printf '%b\n' "\x1B[1;31mInvalid project name \"$TARGET_PROJECT_NAME\", please set a existing project name.\x1B[0m"
                     exit 1
                 fi
-                echo -n
+                : # Null command - validation passed, continue execution
                 ;;
             esac
             ;;
@@ -99,7 +99,7 @@ function parse_arguments() {
             CUSTOM_JAVA_PATH="${args[$i]}"
             # Verify the path exists
             if [ ! -d "$CUSTOM_JAVA_PATH" ]; then
-                echo -e "\x1B[1;31mThe specified Java (JRE) path does not exist: ${CUSTOM_JAVA_PATH}\x1B[0m"
+                printf '%b\n' "\x1B[1;31mThe specified Java (JRE) path does not exist: ${CUSTOM_JAVA_PATH}\x1B[0m"
                 exit 1
             fi
             ;;
@@ -111,7 +111,7 @@ function parse_arguments() {
             fi
             # Verify the path exists
             if [ ! -d "$CUSTOM_JAVA_PATH" ]; then
-                echo -e "\x1B[1;31mThe specified Java (JRE) path does not exist: ${CUSTOM_JAVA_PATH}\x1B[0m"
+                printf '%b\n' "\x1B[1;31mThe specified Java (JRE) path does not exist: ${CUSTOM_JAVA_PATH}\x1B[0m"
                 exit 1
             fi
             ;;
@@ -129,12 +129,12 @@ function parse_arguments() {
 parse_arguments "$@"
 
 if [[ -z "$RUNTIME_MODE" ]]; then
-    echo -e "\x1B[1;31mPlease input value for \"-m <MODE_TYPE>\" option.\n\x1B[0m"
+    printf '%b\n' "\x1B[1;31mPlease input value for \"-m <MODE_TYPE>\" option.\n\x1B[0m"
     show_help
     exit 1
 fi
 if [[ -z "$TARGET_PROJECT_NAME" ]]; then
-    echo -e "\x1B[1;31mPlease input value for \"-n <CP4BA_NAMESPACE>\" option.\n\x1B[0m"
+    printf '%b\n' "\x1B[1;31mPlease input value for \"-n <CP4BA_NAMESPACE>\" option.\n\x1B[0m"
     show_help
     exit 1
 fi
@@ -188,8 +188,8 @@ function prompt_license(){
     retVal_baw=$?
 
     if [[ $retVal_baw -eq 1 ]]; then
-        echo -e "\x1B[1;31mIMPORTANT: Review the IBM Cloud Pak for Business Automation license information here: \n\x1B[0m"
-        echo -e "\x1B[1;31mhttps://www14.software.ibm.com/cgi-bin/weblap/lap.pl?li_formnum=L-FNHF-F9RU7N\n\x1B[0m"
+        printf '%b\n' "\x1B[1;31mIMPORTANT: Review the IBM Cloud Pak for Business Automation license information here: \n\x1B[0m"
+        printf '%b\n' "\x1B[1;31mhttps://www14.software.ibm.com/cgi-bin/weblap/lap.pl?li_formnum=L-FNHF-F9RU7N\n\x1B[0m"
         INSTALL_BAW_ONLY="No"
     fi
 
@@ -200,7 +200,7 @@ function prompt_license(){
         if [[ $retVal_baw -eq 1 ]]; then
             printf "\x1B[1mDo you accept the IBM Cloud Pak for Business Automation license? (Yes/No, default: No): \x1B[0m"
         fi
-        read -rp "" ans
+        read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
                 printf "\n"
@@ -211,37 +211,37 @@ function prompt_license(){
                 #     if [[ $retVal_baw -eq 1 ]]; then
                 #         printf "\x1B[1mDid you deploy Content CR (CRD: contents.icp4a.ibm.com) in current cluster? (Yes/No, default: No): \x1B[0m"
                 #     fi
-                #     read -rp "" ans
+                #     read -erp "" ans
                 #     case "$ans" in
                 #     "y"|"Y"|"yes"|"Yes"|"YES")
                 #         printf "\n"
-                #         echo -e "\x1B[1;31mThe cp4a-deployment.sh can not work with existing Content CR together, exiting now...\x1B[0m\n"
+                #         printf '%b\n' "\x1B[1;31mThe cp4a-deployment.sh can not work with existing Content CR together, exiting now...\x1B[0m\n"
                 #         exit 1
 
                 #         ;;
                 #     "n"|"N"|"no"|"No"|"NO"|"")
-                #         echo -e "Continuing...\n"
+                #         printf '%b\n' "Continuing...\n"
                 #         break
                 #         ;;
                 #     *)
-                #         echo -e "Answer must be \"Yes\" or \"No\"\n"
+                #         printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 #         ;;
                 #     esac
                 # done
-            # echo -e "*****************************************************"
-            # echo -e "**** Starting to prepare DB script for CP4BA ... ****"
-            # echo -e "*****************************************************"
+            # printf '%b\n' "*****************************************************"
+            # printf '%b\n' "**** Starting to prepare DB script for CP4BA ... ****"
+            # printf '%b\n' "*****************************************************"
             # sleep 2
             IBM_LICENS="Accept"
             validate_cli
             break
             ;;
         "n"|"N"|"no"|"No"|"NO"|"")
-            echo -e "Exiting...\n"
+            printf '%b\n' "Exiting...\n"
             exit 0
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -250,10 +250,10 @@ function prompt_license(){
 function validate_utility_tool_for_validation(){
     which kubectl &>/dev/null
     if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate Kubernetes CLI. Kubernetes CLI must be installed to run this script.\x1B[0m" && \
+        printf '%b\n'  "\x1B[1;31mUnable to locate Kubernetes CLI. Kubernetes CLI must be installed to run this script.\x1B[0m" && \
         while true; do
             printf "\x1B[1mDo you want install the Kubernetes CLI by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
-            read -rp "" ans
+            read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 install_kubectl_cli
@@ -264,7 +264,7 @@ function validate_utility_tool_for_validation(){
                 exit 1
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -276,10 +276,10 @@ function validate_utility_tool_for_validation(){
 
     which openssl &>/dev/null
     if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate openssl. OpenSSL must be installed to run this script.\x1B[0m" && \
+        printf '%b\n'  "\x1B[1;31mUnable to locate openssl. OpenSSL must be installed to run this script.\x1B[0m" && \
         while true; do
             printf "\x1B[1mDo you want install the OpenSSL by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
-            read -rp "" ans
+            read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 install_openssl
@@ -290,7 +290,7 @@ function validate_utility_tool_for_validation(){
                 exit 1
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -391,7 +391,7 @@ function select_pattern(){
     }
     menu() {
         clear
-        echo -e "\x1B[1mSelect the Cloud Pak for Business Automation capability to install: \x1B[0m"
+        printf '%b\n' "\x1B[1mSelect the Cloud Pak for Business Automation capability to install: \x1B[0m"
         for i in ${!options[@]}; do
             if [[ $DEPLOYMENT_TYPE == "starter" ]];then
                 containsElement "${options_cr_val[i]}" "${EXISTING_PATTERN_ARR[@]}"
@@ -537,23 +537,23 @@ function select_pattern(){
         if [[ "$msg" ]]; then echo "$msg"; fi
         printf "\n"
         if [[ $DEPLOYMENT_TYPE == "production" ]]; then
-            echo -e "${baw_iaws_tips}"
+            printf '%b\n' "${baw_iaws_tips}"
         fi
 
         if [[ $DEPLOYMENT_TYPE == "production" ]]; then
-            echo -e "${pattern_production_tips}"
-            echo -e "${linux_production_tips}"
+            printf '%b\n' "${pattern_production_tips}"
+            printf '%b\n' "${linux_production_tips}"
         else
-            echo -e "${pattern_starter_tips}"
-            echo -e "${linux_starter_tips}"
+            printf '%b\n' "${pattern_starter_tips}"
+            printf '%b\n' "${linux_starter_tips}"
         fi
         # Show different tips according components select or unselect
         containsElement "(Selected)" "${choices_pattern[@]}"
         retVal=$?
         if [ $retVal -ne 0 ]; then
-            echo -e "${tips1}"
+            printf '%b\n' "${tips1}"
         else
-            echo -e "${tips2}"
+            printf '%b\n' "${tips2}"
         fi
 # ##########################DEBUG############################
 #     for i in "${!choices_pattern[@]}"; do
@@ -569,7 +569,7 @@ function select_pattern(){
         prompt="Enter a valid option [1 to 4, 5a, 5b, 6, 7a, 7b, 8]: "
     fi
 
-    while menu && read -rp "$prompt" num && [[ "$num" ]]; do
+    while menu && read -erp "$prompt" num && [[ "$num" ]]; do
         if [[ $DEPLOYMENT_TYPE == "starter" ]]; then
             [[ "$num" != *[![:digit:]]* ]] &&
             (( num > 0 && num <= ${#options[@]} )) ||
@@ -827,7 +827,7 @@ function select_pattern(){
             fi
         fi
     done
-    # echo -e "$msg"
+    # printf '%b\n' "$msg"
 
     # 4Q: add workflow-workstream into pattern list when select both workflow-runtime and workstream
     # https://jsw.ibm.com/browse/DBACLD-174822 (modified if condition by changing workflow to workflow-runtime)
@@ -900,8 +900,8 @@ function select_optional_component(){
         }
         menu() {
             clear
-            echo -e "\x1B[1;31mPattern \"$item_pattern\": \x1B[0m\x1B[1mSelect optional components: \x1B[0m"
-            # echo -e "\x1B[1mSelect optional components: \x1B[0m"
+            printf '%b\n' "\x1B[1;31mPattern \"$item_pattern\": \x1B[0m\x1B[1mSelect optional components: \x1B[0m"
+            # printf '%b\n' "\x1B[1mSelect optional components: \x1B[0m"
             containsElement "bai" "${EXISTING_OPT_COMPONENT_ARR[@]}"
             bai_cr_retVal=$?
             for i in ${!optional_components_list[@]}; do
@@ -956,41 +956,41 @@ function select_optional_component(){
             printf "\n"
 
             if [[ "${item_pattern}" == "Automation Decision Services" ]]; then
-                echo -e "${ads_tips}"
+                printf '%b\n' "${ads_tips}"
             fi
             if [[ "${item_pattern}" == "Operational Decision Manager" ]]; then
-                echo -e "\x1B[33;5mATTENTION: \x1B[0m\x1B[1;31m You must select at least one of ODM components\x1B[0m.\n"
-                echo -e "${decision_tips}"
+                printf '%b\n' "\x1B[33;5mATTENTION: \x1B[0m\x1B[1;31m You must select at least one of ODM components\x1B[0m.\n"
+                printf '%b\n' "${decision_tips}"
             fi
             if [[ "${item_pattern}" == "Business Automation Application" ]]; then
 
-                echo -e "${application_tips}"
+                printf '%b\n' "${application_tips}"
                 if [[ $DEPLOYMENT_TYPE == "starter" ]];then
-                    echo -e "${application_tips_demo}"
+                    printf '%b\n' "${application_tips_demo}"
                 elif [[ $DEPLOYMENT_TYPE == "production" ]]
                 then
-                    echo -e "${application_tips_ent}"
+                    printf '%b\n' "${application_tips_ent}"
                 fi
             fi
 
             if [[ "${item_pattern}" == "FileNet Content Manager" ]]; then
                 if [[ $DEPLOYMENT_TYPE == "starter" ]];then
-                    echo -e "${linux_starter_tips}"
+                    printf '%b\n' "${linux_starter_tips}"
                 elif [[ $DEPLOYMENT_TYPE == "production" ]]
                 then
-                    echo -e "${linux_production_tips}"
+                    printf '%b\n' "${linux_production_tips}"
                 fi
             fi
             # Show different tips according components select or unselect
             containsElement "(Selected)" "${choices_component[@]}"
             retVal=$?
             if [ $retVal -eq 0 ]; then
-                echo -e "${tips2}"
+                printf '%b\n' "${tips2}"
             elif [ $selectedVal -eq 0 ]
             then
-                echo -e "${tips2}"
+                printf '%b\n' "${tips2}"
             else
-                echo -e "${tips1}"
+                printf '%b\n' "${tips1}"
             fi
 # ##########################DEBUG############################
 #         for i in "${!choices_component[@]}"; do
@@ -1000,7 +1000,7 @@ function select_optional_component(){
         }
 
         prompt="Enter a valid option [1 to ${#optional_components_list[@]} or ENTER]: "
-        while menu && read -rp "$prompt" num && [[ "$num" ]]; do
+        while menu && read -erp "$prompt" num && [[ "$num" ]]; do
             [[ "$num" != *[![:digit:]]* ]] &&
             (( num > 0 && num <= ${#optional_components_list[@]} )) ||
             { msg="Invalid option: $num"; continue; }
@@ -1232,7 +1232,7 @@ function select_optional_component(){
                 fi
             fi
         done
-        # echo -e "$msg"
+        # printf '%b\n' "$msg"
 
         if [ "${#optional_component_arr[@]}" -eq "0" ]; then
             COMPONENTS_SELECTED="None"
@@ -1551,13 +1551,13 @@ function check_dbserver_name_valid(){
     if [[ ! ( "${input_servername}" == \#* ) ]]; then
         if [[ ! (" ${tmp_db_array[@]}" =~ "${input_servername}") ]]; then
             error "The prefix \"$input_servername\" in front of \"$parameter_name\" is not in the definition DB_SERVER_LIST=\"${temp}\", please check follow example to configure"
-            echo -e "***************** example *****************"
-            echo -e "if DB_SERVER_LIST=\"DBSERVER1\""
-            echo -e "You need to change"
-            echo -e "<DB_ALIAS_NAME>.GCD_DB_NAME=\"GCDDB\""
-            echo -e "to"
-            echo -e "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
-            echo -e "***************** example *****************"
+            printf '%b\n' "***************** example *****************"
+            printf '%b\n' "if DB_SERVER_LIST=\"DBSERVER1\""
+            printf '%b\n' "You need to change"
+            printf '%b\n' "<DB_ALIAS_NAME>.GCD_DB_NAME=\"GCDDB\""
+            printf '%b\n' "to"
+            printf '%b\n' "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
+            printf '%b\n' "***************** example *****************"
             exit 1
         fi
     fi
@@ -1663,7 +1663,7 @@ function check_property_file(){
     # Add ADS parameters to OPTIONAL_PARAMETERS_LIST if tmp_mongo_flag = ADS.USE_EXTERNAL_MONGODB in cp4ba_user_profile.property is "No"
     tmp_mongo_flag="$(prop_user_profile_property_file ADS.USE_EXTERNAL_MONGODB)"
 
-    if [[ ${tmp_mongo_flag,,} =~ ^(no|n|false)$ ]]; then
+    if [[ $(echo "$tmp_mongo_flag" | tr '[:upper:]' '[:lower:]') =~ ^(no|n|false)$ ]]; then
         OPTIONAL_PARAMETERS_LIST+=("ADS.EXTERNAL_GIT_MONGO_URI")
         OPTIONAL_PARAMETERS_LIST+=("ADS.EXTERNAL_MONGO_URI")
         OPTIONAL_PARAMETERS_LIST+=("ADS.EXTERNAL_MONGO_HISTORY_URI")
@@ -1765,7 +1765,7 @@ function check_property_file(){
     fi
 
     ## --https://jsw.ibm.com/browse/DBACLD-158616 <- ## Check for missing "{Base64}<yourpassword>" placeholders in the user profile property file and display an error message if not provided.>
-    value_empty=`grep -E '^[[:space:]]*[^#[:space:]]+.*="{Base64}<yourpassword>"' "${DB_NAME_USER_PROPERTY_FILE}" | wc -l`  >/dev/null 2>&1
+    value_empty=`grep -E '^[[:space:]]*[^#[:space:]]+.*="{Base64}<yourpassword>"' "${DB_NAME_USER_PROPERTY_FILE}" | wc -l`  >/dev/null 2>&1 
     if [ $value_empty -ne 0 ] ; then
         parameter_name=$(grep -E '^[[:space:]]*[^#[:space:]]+.*="{Base64}<yourpassword>"' "${DB_NAME_USER_PROPERTY_FILE}" | awk -F'=' '{print $1}'  | tr -d ' ' | paste -sd ',' -)
         error "Found invalid value(s) \"{Base64}<yourpassword>\" for parameter \"$parameter_name\" in property file \"${DB_NAME_USER_PROPERTY_FILE}\", please input the correct value."
@@ -1799,13 +1799,13 @@ function check_property_file(){
         if [[ ! ( "${item}" == \#* ) ]]; then
             if [[ ! (" ${db_server_array[@]}" =~ "${item}") ]]; then
                 error "The prefix \"$item\" is not in the definition DB_SERVER_LIST=\"${tmp_db_array}\", please check follow example to configure \"${DB_NAME_USER_PROPERTY_FILE}\" again."
-                echo -e "***************** example *****************"
-                echo -e "if DB_SERVER_LIST=\"DBSERVER1\""
-                echo -e "You need to change"
-                echo -e "<DB_ALIAS_NAME>.GCD_DB_NAME=\"GCDDB\""
-                echo -e "to"
-                echo -e "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
-                echo -e "***************** example *****************"
+                printf '%b\n' "***************** example *****************"
+                printf '%b\n' "if DB_SERVER_LIST=\"DBSERVER1\""
+                printf '%b\n' "You need to change"
+                printf '%b\n' "<DB_ALIAS_NAME>.GCD_DB_NAME=\"GCDDB\""
+                printf '%b\n' "to"
+                printf '%b\n' "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
+                printf '%b\n' "***************** example *****************"
                 empty_value_tag=1
                 break
             fi
@@ -1818,13 +1818,13 @@ function check_property_file(){
     do
         if [[ ! (" ${db_server_array[@]}" =~ "${item}") ]]; then
             error "The prefix \"$item\" is not in the definition DB_SERVER_LIST=\"${tmp_db_array}\", please check follow example to configure \"${DB_SERVER_INFO_PROPERTY_FILE}\" again."
-            echo -e "********************* example *********************"
-            echo -e "if DB_SERVER_LIST=\"DBSERVER1\""
-            echo -e "You need to change"
-            echo -e "<DB_ALIAS_NAME>.DATABASE_SERVERNAME=\"samplehost\""
-            echo -e "to"
-            echo -e "DBSERVER1.DATABASE_SERVERNAME=\"samplehost\""
-            echo -e "********************* example *********************"
+            printf '%b\n' "********************* example *********************"
+            printf '%b\n' "if DB_SERVER_LIST=\"DBSERVER1\""
+            printf '%b\n' "You need to change"
+            printf '%b\n' "<DB_ALIAS_NAME>.DATABASE_SERVERNAME=\"samplehost\""
+            printf '%b\n' "to"
+            printf '%b\n' "DBSERVER1.DATABASE_SERVERNAME=\"samplehost\""
+            printf '%b\n' "********************* example *********************"
             empty_value_tag=1
             break
         fi
@@ -1845,11 +1845,11 @@ function check_property_file(){
         client_auth_flag_tmp=$(echo $client_auth_flag | tr '[:upper:]' '[:lower:]')
         if [[ ($db_ssl_flag_tmp == "no" || $db_ssl_flag_tmp == "false" || $db_ssl_flag_tmp == "" || -z $db_ssl_flag_tmp) && ($client_auth_flag_tmp == "yes" || $client_auth_flag_tmp == "true") ]]; then
             error "The property \"${item}.DATABASE_SSL_ENABLE\" is \"$db_ssl_flag\", but the property \"${item}.POSTGRESQL_SSL_CLIENT_SERVER\" is \"$client_auth_flag\""
-            echo -e "********************* example *********************"
-            echo -e "if ${item}.DATABASE_SSL_ENABLE=\"False\""
-            echo -e "You also need to change"
-            echo -e "${item}.POSTGRESQL_SSL_CLIENT_SERVER=\"False\""
-            echo -e "********************* example *********************"
+            printf '%b\n' "********************* example *********************"
+            printf '%b\n' "if ${item}.DATABASE_SSL_ENABLE=\"False\""
+            printf '%b\n' "You also need to change"
+            printf '%b\n' "${item}.POSTGRESQL_SSL_CLIENT_SERVER=\"False\""
+            printf '%b\n' "********************* example *********************"
             error_value_tag=1
         fi
     done
@@ -3312,7 +3312,6 @@ function create_prerequisites() {
     fi
 
     tips
-    msgB "* Enter the <Required> values in the YAML templates for the secrets under $SECRET_FILE_FOLDER"
 
     # Show which certificate file should be copied into which folder
     tmp_db_array=$(prop_db_server_property_file DB_SERVER_LIST)
@@ -3389,7 +3388,7 @@ function create_prerequisites() {
 
 
     msgB "* You can use this shell script to create the secret automatically (NOTE: In case separation of operators and operands is selected - SWITCH TO CP4BA DEPLOYMENT PROJECT): $CREATE_SECRET_SCRIPT_FILE"
-    msgB "* Create the databases and Kubernetes secrets manually based on your modified \"DB SQL statement file\" and \"YAML template for secret\".\n* And then run the  \"cp4a-prerequisites.sh -m validate\" command to verify that the databases and secrets are created correctly"
+    msgB "* Create the databases and Kubernetes secrets manually based on your modified \"DB SQL statement file\" and \"YAML template for secret\".\n* And then run the command  \"./cp4a-prerequisites.sh -m validate -n $CP4BA_SERVICES_NS\" to verify all configurations selected for this deployment and also verify that all required secrets have been created correctly."
     # msgB "And then run cp4a-prerequisites.sh -m validate script to validate prerequisites"
 }
 
@@ -3562,11 +3561,11 @@ function create_property_file(){
         local DB_SERVER_PREFIX="<DB_ALIAS_NAME>"
     fi
     printf "\n"
-    # mkdir -p $PREREQUISITES_FOLDER_BAK >/dev/null 2>&1
+    # mkdir -p $PREREQUISITES_FOLDER_BAK 
 
     if [[ -d "$PROPERTY_FILE_FOLDER" ]]; then
         tmp_property_file_dir="${PROPERTY_FILE_FOLDER_BAK}_$(date +%Y-%m-%d-%H:%M:%S)"
-        mkdir -p "$tmp_property_file_dir" >/dev/null 2>&1
+        mkdir -p "$tmp_property_file_dir" >&3 2>&3
         ${COPY_CMD} -rf "${PROPERTY_FILE_FOLDER}" "${tmp_property_file_dir}"
     fi
     rm -rf $PROPERTY_FILE_FOLDER >/dev/null 2>&1
@@ -3890,7 +3889,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         tip="## NOTES: Please change the \"$DB_SERVER_PREFIX\" variable to assign each database to a database server or instance. ##\n"
         tip+="##        The \"$DB_SERVER_PREFIX\" must be in [${db_server_array[*]}] ##"
         echo "#################################################################################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-        echo -e "$tip" >> "$DB_NAME_USER_PROPERTY_FILE"
+        printf '%b\n' "$tip" >> "$DB_NAME_USER_PROPERTY_FILE"
         echo "#################################################################################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
         echo "" >> ${DB_NAME_USER_PROPERTY_FILE}
         fi
@@ -4234,6 +4233,9 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
 
             # generate property for Object store required by BAW authoring or BAW Runtime or BAW+AWS
             if [[ " ${pattern_cr_arr[@]}" =~ "workflow-authoring" || (" ${pattern_cr_arr[@]}" =~ "workflow-runtime" && (! " ${pattern_cr_arr[@]}" =~ "workflow-workstreams")) || " ${pattern_cr_arr[@]}" =~ "workflow-workstreams" ]]; then
+                echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## Property for BAW's Object Store Database Name and User on ${DB_TYPE} type database ##" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
                 wait_msg "Creating Property file for IBM FileNet Content Manager Object Store required by BAW authoring or BAW Runtime"
                 for i in "${!BAW_AUTH_OS_ARR[@]}"; do
                     if [[ $DB_TYPE != "oracle" ]]; then
@@ -4907,7 +4909,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
             echo "## In 24.0.1, the feedback feature is enhanced to support 'distributed' for the 'runtime_type' parameter. The 'distributed' runtime type is only supported in the Runtime environment."  >> ${USER_PROFILE_PROPERTY_FILE}
-            echo "## For more information please refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=project-using-feedback-documents-from-applications-improve-training" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## For more information, from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE, navigate to Document Processing --> Creating a document processing project --> Using feedback documents from applications to improve training" >> ${USER_PROFILE_PROPERTY_FILE}
 
             echo "## Default is true." >> ${USER_PROFILE_PROPERTY_FILE}
             echo "ADP.RUNTIME_FEEDBACK_ENABLED=\"true\"" >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5497,8 +5499,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
             echo "## [NOTES:]" >> ${USER_PROFILE_PROPERTY_FILE}
-            echo "## For information about SCIM parameters used by the CP4BA deployment, you can refer below link: " >> ${USER_PROFILE_PROPERTY_FILE}
-            echo "## https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=parameters-ldap-configuration#ldap_kubernetes__scim." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## For information about SCIM parameters used by the CP4BA deployment, from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE, navigate to Reference --> CP4BA multi-pattern deployment reference --> Custom resource configuration parameters --> Shared configuration parameters --> LDAP Configuration" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "## For information about LDAP attributes, you can use the ldapsearch tool or other LDAP browser utilitise." >> ${USER_PROFILE_PROPERTY_FILE}
             echo "## How to use ldapsearch tool to get LDAP attributes, you can refer below link: " >> ${USER_PROFILE_PROPERTY_FILE}
             echo "## https://www.ibm.com/docs/en/cloud-paks/foundational-services/$CS_CHANNEL_KC?topic=users-updating-scim-ldap-attributes-mapping#about_ldap_attributes." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -5708,56 +5709,56 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
 
     # Show some tips for property file
     tips
-    echo -e  "Enter the <Required> values in the property files under $PROPERTY_FILE_FOLDER"
+    printf '%b\n'  "Enter the <Required> values in the property files under $PROPERTY_FILE_FOLDER"
     msgRed   "The key name in the property file is created by the cp4a-prerequisites.sh and is NOT EDITABLE."
     msgRed   "The value in the property file must be within double quotes."
     msgRed   "The value for User/Password in [cp4ba_db_name_user.property] [cp4ba_user_profile.property] file should NOT include special characters: single quotation \"'\""
     msgRed   "The value in [cp4ba_LDAP.property] or [cp4ba_External_LDAP.property] [cp4ba_user_profile.property] file should NOT include special character '\"'"
 
     if (( db_server_number > 0 )); then
-        echo -e  "\x1b[32m* [cp4ba_db_server.property]:\x1B[0m"
-        echo -e  "  - Properties for database server used by CP4BA deployment, such as DATABASE_SERVERNAME/DATABASE_PORT/DATABASE_SSL_ENABLE.\n"
-        echo -e  "  - The value of \"<DB_SERVER_LIST>\" is an alias for the database servers. The key supports comma-separated lists.\n"
+        printf '%b\n'  "\x1b[32m* [cp4ba_db_server.property]:\x1B[0m"
+        printf '%b\n'  "  - Properties for database server used by CP4BA deployment, such as DATABASE_SERVERNAME/DATABASE_PORT/DATABASE_SSL_ENABLE.\n"
+        printf '%b\n'  "  - The value of \"<DB_SERVER_LIST>\" is an alias for the database servers. The key supports comma-separated lists.\n"
 
-        echo -e  "\x1b[32m* [cp4ba_db_name_user.property]:\x1B[0m"
-        echo -e  "  - Properties for database name and user name required by each component of the CP4BA deployment, such as GCD_DB_NAME/GCD_DB_USER_NAME/GCD_DB_USER_PASSWORD.\n"
-        echo -e  "  - Change the prefix \"<DB_ALIAS_NAME>\" to assign which database is used by the component.\n"
-        echo -e  "  - The value of \"<DB_ALIAS_NAME>\" must match the value of <DB_SERVER_LIST> that is defined in \"<DB_SERVER_LIST>\" of \"cp4ba_db_server.property\".\n"
+        printf '%b\n'  "\x1b[32m* [cp4ba_db_name_user.property]:\x1B[0m"
+        printf '%b\n'  "  - Properties for database name and user name required by each component of the CP4BA deployment, such as GCD_DB_NAME/GCD_DB_USER_NAME/GCD_DB_USER_PASSWORD.\n"
+        printf '%b\n'  "  - Change the prefix \"<DB_ALIAS_NAME>\" to assign which database is used by the component.\n"
+        printf '%b\n'  "  - The value of \"<DB_ALIAS_NAME>\" must match the value of <DB_SERVER_LIST> that is defined in \"<DB_SERVER_LIST>\" of \"cp4ba_db_server.property\".\n"
     
-        echo -e "\x1b[32m* [Database SSL Certificates]:\x1B[0m"
+        printf '%b\n' "\x1b[32m* [Database SSL Certificates]:\x1B[0m"
         echo
         # We want to inform the customer that the SSL certificates for Databases must be added into the property files folder prior to running generate mode
         # This is because aca-basedb uses the ssl cert value and base64 encodes it into a string while generating the template.
         # This is unlike the LDAP ssl secret which uses --from-file based format for the SSL certificates which allows the user to add the ssl certs to the folders even after the secret templates are generated.
         # https://jsw.ibm.com/browse/DBACLD-179824
         if [[ $DB_TYPE == "postgresql" ]]; then
-            echo -e " - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your PostgreSQL database server and SSL is configured with both server and client authentication, retrieve the following certificates from your database server: the server certificate, client certificate, and client private key. Copy them into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The files must be named root.crt, client.crt, and client.key respectively.$RESET_TEXT"
+            printf '%b\n' " - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your PostgreSQL database server and SSL is configured with both server and client authentication, retrieve the following certificates from your database server: the server certificate, client certificate, and client private key. Copy them into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The files must be named root.crt, client.crt, and client.key respectively.$RESET_TEXT"
             echo
-            echo -e " - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your PostgreSQL database server and SSL is configured with server-only authentication, retrieve the server certificate from your database server and copy it into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named db-cert.crt $RESET_TEXT"
+            printf '%b\n' " - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your PostgreSQL database server and SSL is configured with server-only authentication, retrieve the server certificate from your database server and copy it into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named db-cert.crt $RESET_TEXT"
             echo
         else
-            echo -e " - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your database server, retrieve the server certificate file from your remote database server and copy it into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named db-cert.crt. $RESET_TEXT"  
+            printf '%b\n' " - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your database server, retrieve the server certificate file from your remote database server and copy it into the folder \"$DB_SSL_CERT_FOLDER/<DB_ALIAS_NAME>\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named db-cert.crt. $RESET_TEXT"  
             echo
         fi
     fi
     if [[ ! ("${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "No") ]]; then
-        echo -e  "\x1b[32m* [cp4ba_LDAP.property]:\x1B[0m"
-        echo -e  "  - Properties for the LDAP server that is used by the CP4BA deployment, such as LDAP_SERVER/LDAP_PORT/LDAP_BASE_DN/LDAP_BIND_DN/LDAP_BIND_DN_PASSWORD.\n"
+        printf '%b\n'  "\x1b[32m* [cp4ba_LDAP.property]:\x1B[0m"
+        printf '%b\n'  "  - Properties for the LDAP server that is used by the CP4BA deployment, such as LDAP_SERVER/LDAP_PORT/LDAP_BASE_DN/LDAP_BIND_DN/LDAP_BIND_DN_PASSWORD.\n"
         # We want to inform the customer that the SSL certificates for LDAP must be copied prior to running generate mode
         # https://jsw.ibm.com/browse/DBACLD-179824
         echo
-        echo -e "\x1b[32m* [LDAP SSL Certificates]:\x1B[0m"
+        printf '%b\n' "\x1b[32m* [LDAP SSL Certificates]:\x1B[0m"
         echo
-        echo -e "  - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your LDAP server, retrieve the server certificate file from your remote LDAP server and copy it into the folder \"$LDAP_SSL_CERT_FOLDER\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named ldap-cert.crt. $RESET_TEXT"  
+        printf '%b\n' "  - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your LDAP server, retrieve the server certificate file from your remote LDAP server and copy it into the folder \"$LDAP_SSL_CERT_FOLDER\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named ldap-cert.crt. $RESET_TEXT"  
         echo
 
         if [[ $SET_EXT_LDAP == "Yes" ]]; then
-            echo -e  "\x1b[32m* [cp4ba_External_LDAP.property]:\x1B[0m"
-            echo -e  "  - Properties for the External LDAP server that is used by External Share, such as LDAP_SERVER/LDAP_PORT/LDAP_BASE_DN/LDAP_BIND_DN/LDAP_BIND_DN_PASSWORD.\n"
+            printf '%b\n'  "\x1b[32m* [cp4ba_External_LDAP.property]:\x1B[0m"
+            printf '%b\n'  "  - Properties for the External LDAP server that is used by External Share, such as LDAP_SERVER/LDAP_PORT/LDAP_BASE_DN/LDAP_BIND_DN/LDAP_BIND_DN_PASSWORD.\n"
             echo
-            echo -e "\x1b[32m* [External LDAP SSL Certificates]:\x1B[0m"
+            printf '%b\n' "\x1b[32m* [External LDAP SSL Certificates]:\x1B[0m"
             echo
-            echo -e "  - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your external LDAP server, retrieve the server certificate file from your remote LDAP server and copy it into the folder \"$LDAP_SSL_CERT_FOLDER\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named external-ldap-cert.crt. $RESET_TEXT"  
+            printf '%b\n' "  - $RED_TEXT[REQUIRED]$RESET_TEXT If you plan to enable SSL-based connections for your external LDAP server, retrieve the server certificate file from your remote LDAP server and copy it into the folder \"$LDAP_SSL_CERT_FOLDER\" before running the cp4a-prerequisites.sh script in \"generate\" mode.$RED_TEXT The certificate must be named external-ldap-cert.crt. $RESET_TEXT"  
             echo
         fi
     fi
@@ -5777,14 +5778,14 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         msgB "* You have enabled BTS metastore external Postgres DB, please get \"<your-server-certification: root.crt>\" \"<your-client-certification: client.crt>\" \"<your-client-key: client.key>\" from your local or remote database server, and copy them into folder \"$BTS_DB_SSL_CERT_FOLDER\" before you execute the generate mode of cp4a-prerequisites.sh script."
     fi
 
-    echo -e  "\x1b[32m* [cp4ba_user_profile.property]:\x1B[0m"
-    echo -e  "  - Properties for the global value used by the CP4BA deployment, such as \"sc_deployment_license\".\n"
-    echo -e  "  - properties for the value used by each component of CP4BA, such as <APPLOGIN_USER>/<APPLOGIN_PASSWORD>\n"
+    printf '%b\n'  "\x1b[32m* [cp4ba_user_profile.property]:\x1B[0m"
+    printf '%b\n'  "  - Properties for the global value used by the CP4BA deployment, such as \"sc_deployment_license\".\n"
+    printf '%b\n'  "  - properties for the value used by each component of CP4BA, such as <APPLOGIN_USER>/<APPLOGIN_PASSWORD>\n"
 
    #DBACLD-196427 - clear next-step instruction after running with -m property mode
-    echo -e "\x1b[32m* [Next Step]:\x1B[0m"
-    echo -e "  - When all the required certificates and property files are prepared, run the following command to generate the database scripts and secret YAML files:"
-    echo -e "    $RED_TEXT\"./cp4a-prerequisites.sh -m generate -n $CP4BA_SERVICES_NS\"${RESET_TEXT}"
+    printf '%b\n' "\x1b[32m* [Next Step]:\x1B[0m"
+    printf '%b\n' "  - When all the required certificates and property files are prepared, run the following command to generate the database scripts and secret YAML files:"
+    printf '%b\n' "    $RED_TEXT\"./cp4a-prerequisites.sh -m generate -n $CP4BA_SERVICES_NS\"${RESET_TEXT}"
 }
 
 function select_storage_class(){
@@ -5802,36 +5803,36 @@ function select_storage_class(){
     while [[ $sc_slow_file_storage_classname == "" ]] # While get slow storage clase name
     do
         printf "\x1B[1mplease enter the file storage classname for slow storage(RWX): \x1B[0m"
-        read -rp "" sc_slow_file_storage_classname
+        read -erp "" sc_slow_file_storage_classname
         if [ -z "$sc_slow_file_storage_classname" ]; then
-        echo -e "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
+        printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
         fi
     done
 
     while [[ $sc_medium_file_storage_classname == "" ]] # While get medium storage clase name
     do
         printf "\x1B[1mplease enter the file storage classname for medium storage(RWX): \x1B[0m"
-        read -rp "" sc_medium_file_storage_classname
+        read -erp "" sc_medium_file_storage_classname
         if [ -z "$sc_medium_file_storage_classname" ]; then
-        echo -e "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
+        printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
         fi
     done
 
     while [[ $sc_fast_file_storage_classname == "" ]] # While get fast storage clase name
     do
         printf "\x1B[1mplease enter the file storage classname for fast storage(RWX): \x1B[0m"
-        read -rp "" sc_fast_file_storage_classname
+        read -erp "" sc_fast_file_storage_classname
         if [ -z "$sc_fast_file_storage_classname" ]; then
-        echo -e "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
+        printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
         fi
     done
 
     while [[ $block_storage_class_name == "" ]] # While get block storage clase name
     do
         printf "\x1B[1mplease enter the block storage classname for Zen(RWO): \x1B[0m"
-        read -rp "" block_storage_class_name
+        read -erp "" block_storage_class_name
         if [ -z "$block_storage_class_name" ]; then
-        echo -e "\x1B[1;31mEnter a valid block storage classname(RWO)\x1B[0m"
+        printf '%b\n' "\x1B[1;31mEnter a valid block storage classname(RWO)\x1B[0m"
         fi
     done
 
@@ -5953,22 +5954,22 @@ function create_db_script(){
                 tmp_dbuserpwd="$(prop_db_name_user_property_file GCD_DB_USER_PASSWORD)"
                 tmp_dbservername="$(prop_db_name_user_property_file_for_server_name GCD_DB_USER_NAME)"
 
-                check_dbserver_name_valid $tmp_dbservername "GCD_DB_USER_NAME"
+                check_dbserver_name_valid "$tmp_dbservername" "GCD_DB_USER_NAME"
                 # db_name_full_array=(${db_name_full_array[@]} $tmp_dbname)
                 # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                 # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                 # Check base64 encoded or plain text
                 if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                     tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $tmp_dbuserpwd "GCD_DB_USER_PASSWORD"
+                    check_single_quotes_password "$tmp_dbuserpwd" "GCD_DB_USER_PASSWORD"
                 fi
                 if [[ $DB_TYPE == "sqlserver" ]]; then
-                    create_fncm_gcddb_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                    create_fncm_gcddb_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                 elif [[ $DB_TYPE == "postgresql" ]]; then
-                    create_fncm_gcddb_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername $tmp_dbschemaname
+                    create_fncm_gcddb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_dbschemaname"
                 elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                    check_db2_name_valid $tmp_dbname $tmp_dbservername "GCD_DB_NAME"
-                    create_fncm_gcddb_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername $tmp_dbschemaname
+                    check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "GCD_DB_NAME"
+                    create_fncm_gcddb_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" "$tmp_dbschemaname"
                 fi
                 break
                 ;;
@@ -5976,15 +5977,15 @@ function create_db_script(){
                 tmp_dbuser="$(prop_db_name_user_property_file GCD_DB_USER_NAME)"
                 tmp_dbuserpwd="$(prop_db_name_user_property_file GCD_DB_USER_PASSWORD)"
                 tmp_dbservername="$(prop_db_name_user_property_file_for_server_name GCD_DB_USER_NAME)"
-                check_dbserver_name_valid $tmp_dbservername "GCD_DB_USER_NAME"
+                check_dbserver_name_valid "$tmp_dbservername" "GCD_DB_USER_NAME"
                 # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                 # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                 # Check base64 encoded or plain text
                 if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                     tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $tmp_dbuserpwd "GCD_DB_USER_PASSWORD"
+                    check_single_quotes_password "$tmp_dbuserpwd" "GCD_DB_USER_PASSWORD"
                 fi
-                create_fncm_gcddb_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                create_fncm_gcddb_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                 break
                 ;;
             esac
@@ -6039,25 +6040,25 @@ function create_db_script(){
                     tmp_dbuser="$(prop_db_name_user_property_file OS${j}_DB_USER_NAME)"
                     tmp_dbuserpwd="$(prop_db_name_user_property_file OS${j}_DB_USER_PASSWORD)"
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name OS${j}_DB_USER_NAME)"
-                    check_dbserver_name_valid $tmp_dbservername "OS${j}_DB_USER_NAME"
+                    check_dbserver_name_valid "$tmp_dbservername" "OS${j}_DB_USER_NAME"
                     # db_name_full_array=(${db_name_full_array[@]} $tmp_dbname)
                     # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                     # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                     # Check base64 encoded or plain text
                     if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                         tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $tmp_dbuserpwd "OS${j}_DB_USER_PASSWORD"
+                        check_single_quotes_password "$tmp_dbuserpwd" "OS${j}_DB_USER_PASSWORD"
                     fi
                     if [[ $DB_TYPE == "sqlserver" ]]; then
-                        create_fncm_osdb_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername ${j} "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                        create_fncm_osdb_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" ${j} "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                         # remove db_securityadmin/bulkadmin
                         ${SED_COMMAND} '/db_securityadmin/d' $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$tmp_dbservername/createOS${j}DB.sql
                         ${SED_COMMAND} '/bulkadmin/d' $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$tmp_dbservername/createOS${j}DB.sql
                     elif [[ $DB_TYPE == "postgresql" ]]; then
-                        create_fncm_osdb_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername ${j} "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                        create_fncm_osdb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" ${j} "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                     elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                        check_db2_name_valid $tmp_dbname $tmp_dbservername "OS${j}_DB_NAME"
-                        create_fncm_osdb_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername ${j} "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                        check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "OS${j}_DB_NAME"
+                        create_fncm_osdb_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" ${j} "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                     fi
                     break
                     ;;
@@ -6065,15 +6066,15 @@ function create_db_script(){
                     tmp_dbuser="$(prop_db_name_user_property_file OS${j}_DB_USER_NAME)"
                     tmp_dbuserpwd="$(prop_db_name_user_property_file OS${j}_DB_USER_PASSWORD)"
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name OS${j}_DB_USER_NAME)"
-                    check_dbserver_name_valid $tmp_dbservername "OS${j}_DB_USER_NAME"
+                    check_dbserver_name_valid "$tmp_dbservername" "OS${j}_DB_USER_NAME"
                     # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                     # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                     # Check base64 encoded or plain text
                     if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                         tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $tmp_dbuserpwd "OS${j}_DB_USER_PASSWORD"
+                        check_single_quotes_password "$tmp_dbuserpwd" "OS${j}_DB_USER_PASSWORD"
                     fi
-                    create_fncm_osdb_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername ${j} "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                    create_fncm_osdb_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" ${j} "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                     break
                     ;;
                 esac
@@ -6108,22 +6109,22 @@ function create_db_script(){
                     tmp_dbuser="$(prop_db_name_user_property_file ICN_DB_USER_NAME)"
                     tmp_dbuserpwd="$(prop_db_name_user_property_file ICN_DB_USER_PASSWORD)"
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name ICN_DB_USER_NAME)"
-                    check_dbserver_name_valid $tmp_dbservername "ICN_DB_USER_NAME"
+                    check_dbserver_name_valid "$tmp_dbservername" "ICN_DB_USER_NAME"
                     # db_name_full_array=(${db_name_full_array[@]} $tmp_dbname)
                     # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                     # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                     # Check base64 encoded or plain text
                     if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                         tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $tmp_dbuserpwd "ICN_DB_USER_PASSWORD"
+                        check_single_quotes_password "$tmp_dbuserpwd" "ICN_DB_USER_PASSWORD"
                     fi
                     if [[ $DB_TYPE == "sqlserver" ]]; then
-                        create_ban_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                        create_ban_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                     elif [[ $DB_TYPE == "postgresql" ]]; then
-                        create_ban_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername $tmp_dbschemaname
+                        create_ban_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_dbschemaname"
                     elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                        check_db2_name_valid $tmp_dbname $tmp_dbservername "ICN_DB_NAME"
-                        create_ban_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername $tmp_dbschemaname
+                        check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "ICN_DB_NAME"
+                        create_ban_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" "$tmp_dbschemaname"
                     fi
                     break
                     ;;
@@ -6131,15 +6132,15 @@ function create_db_script(){
                     tmp_dbuser="$(prop_db_name_user_property_file ICN_DB_USER_NAME)"
                     tmp_dbuserpwd="$(prop_db_name_user_property_file ICN_DB_USER_PASSWORD)"
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name ICN_DB_USER_NAME)"
-                    check_dbserver_name_valid $tmp_dbservername "ICN_DB_USER_NAME"
+                    check_dbserver_name_valid "$tmp_dbservername" "ICN_DB_USER_NAME"
                     # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                     # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                     # Check base64 encoded or plain text
                     if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                         tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $tmp_dbuserpwd "ICN_DB_USER_PASSWORD"
+                        check_single_quotes_password "$tmp_dbuserpwd" "ICN_DB_USER_PASSWORD"
                     fi
-                    create_ban_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                    create_ban_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                     break
                     ;;
                 esac
@@ -6160,22 +6161,22 @@ function create_db_script(){
                 tmp_dbuser="$(prop_db_name_user_property_file ODM_DB_USER_NAME)"
                 tmp_dbuserpwd="$(prop_db_name_user_property_file ODM_DB_USER_PASSWORD)"
                 tmp_dbservername="$(prop_db_name_user_property_file_for_server_name ODM_DB_USER_NAME)"
-                check_dbserver_name_valid $tmp_dbservername "ODM_DB_USER_NAME"
+                check_dbserver_name_valid "$tmp_dbservername" "ODM_DB_USER_NAME"
                 # db_name_full_array=(${db_name_full_array[@]} $tmp_dbname)
                 # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                 # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                 # Check base64 encoded or plain text
                 if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                     tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $tmp_dbuserpwd "ODM_DB_USER_PASSWORD"
+                    check_single_quotes_password "$tmp_dbuserpwd" "ODM_DB_USER_PASSWORD"
                 fi
                 if [[ $DB_TYPE == "sqlserver" ]]; then
-                    create_odm_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                    create_odm_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                 elif [[ $DB_TYPE == "postgresql" ]]; then
-                    create_odm_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                    create_odm_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                 elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                    check_db2_name_valid $tmp_dbname $tmp_dbservername "ODM_DB_NAME"
-                    create_odm_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername
+                    check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "ODM_DB_NAME"
+                    create_odm_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername"
                 fi
                 break
                 ;;
@@ -6183,15 +6184,15 @@ function create_db_script(){
                 tmp_dbuser="$(prop_db_name_user_property_file ODM_DB_USER_NAME)"
                 tmp_dbuserpwd="$(prop_db_name_user_property_file ODM_DB_USER_PASSWORD)"
                 tmp_dbservername="$(prop_db_name_user_property_file_for_server_name ODM_DB_USER_NAME)"
-                check_dbserver_name_valid $tmp_dbservername "ODM_DB_USER_NAME"
+                check_dbserver_name_valid "$tmp_dbservername" "ODM_DB_USER_NAME"
                 # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                 # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                 # Check base64 encoded or plain text
                 if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                     tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $tmp_dbuserpwd "ODM_DB_USER_PASSWORD"
+                    check_single_quotes_password "$tmp_dbuserpwd" "ODM_DB_USER_PASSWORD"
                 fi
-                create_odm_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                create_odm_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                 break
                 ;;
             esac
@@ -6209,13 +6210,13 @@ function create_db_script(){
                         tmp_dbuser=$(prop_db_name_user_property_file ${BAW_AUTH_OS_ARR[i]}_DB_USER_NAME)
                         tmp_dbuserpwd=$(prop_db_name_user_property_file ${BAW_AUTH_OS_ARR[i]}_DB_USER_PASSWORD)
                         tmp_dbservername="$(prop_db_name_user_property_file_for_server_name ${BAW_AUTH_OS_ARR[i]}_DB_USER_NAME)"
-                        check_dbserver_name_valid $tmp_dbservername "${BAW_AUTH_OS_ARR[i]}_DB_USER_NAME"
+                        check_dbserver_name_valid "$tmp_dbservername" "${BAW_AUTH_OS_ARR[i]}_DB_USER_NAME"
                         # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                         # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                         # Check base64 encoded or plain text
                         if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                             tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                            check_single_quotes_password $tmp_dbuserpwd "${BAW_AUTH_OS_ARR[i]}_DB_USER_PASSWORD"
+                            check_single_quotes_password "$tmp_dbuserpwd" "${BAW_AUTH_OS_ARR[i]}_DB_USER_PASSWORD"
                         fi
                         # echo "$tmp_dbuser"; sleep 3
                         wait_msg "Creating the DB SQL statement file for BAW: ${BAW_AUTH_OS_ARR[i]}"
@@ -6238,9 +6239,9 @@ function create_db_script(){
                         fi
                         if [[ "${BAW_AUTH_OS_ARR[i]}" == "BAWTOS" ]]; then
                             tmp_tablespace=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_WORKFLOW_DATA_TBL_SPACE)
-                            create_fncm_osdb_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername "" "$tmp_tablespace" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                            create_fncm_osdb_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "" "$tmp_tablespace" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                         else
-                            create_fncm_osdb_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername "" "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                            create_fncm_osdb_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "" "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                         fi
                         success "DB SQL statement file for BAW: ${BAW_AUTH_OS_ARR[i]} has been created.\n"
                     done
@@ -6251,16 +6252,16 @@ function create_db_script(){
                     tmp_dbuserpwd=$(prop_db_name_user_property_file CHOS_DB_USER_PASSWORD)
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name CHOS_DB_USER_NAME)"
                     if [[ $tmp_dbservername != \#* ]] ; then
-                        check_dbserver_name_valid $tmp_dbservername "CHOS_DB_USER_NAME"
+                        check_dbserver_name_valid "$tmp_dbservername" "CHOS_DB_USER_NAME"
                         # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                         # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                         # Check base64 encoded or plain text
                         if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                             tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                            check_single_quotes_password $tmp_dbuserpwd "CHOS_DB_USER_PASSWORD"
+                            check_single_quotes_password "$tmp_dbuserpwd" "CHOS_DB_USER_PASSWORD"
                         fi
                         wait_msg "Creating the DB SQL statement file for Case History: $tmp_dbuser"
-                        create_fncm_osdb_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                        create_fncm_osdb_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                         success "DB SQL statement file for Case History: $tmp_dbuser has been created.\n"
                     fi
                 fi
@@ -6286,17 +6287,17 @@ function create_db_script(){
                     tmp_dbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbuser")
                     tmp_dbuserpwd=$(prop_db_name_user_property_file AWSDOCS_DB_USER_PASSWORD)
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name AWSDOCS_DB_USER_NAME)"
-                    check_dbserver_name_valid $tmp_dbservername "AWSDOCS_DB_USER_NAME"
+                    check_dbserver_name_valid "$tmp_dbservername" "AWSDOCS_DB_USER_NAME"
                     # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                     # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                     # Check base64 encoded or plain text
                     if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                         tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $tmp_dbuserpwd "AWSDOCS_DB_USER_PASSWORD"
+                        check_single_quotes_password "$tmp_dbuserpwd" "AWSDOCS_DB_USER_PASSWORD"
                     fi
                     # echo "$tmp_dbuser"; sleep 3
                     wait_msg "Creating the DB SQL statement file for BAW: $tmp_dbuser"
-                    create_fncm_osdb_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername "" "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                    create_fncm_osdb_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "" "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                     success "DB SQL statement file for BAW: $tmp_dbuser has been created.\n"
                 fi
                 break
@@ -6322,7 +6323,7 @@ function create_db_script(){
 
                         tmp_dbuserpwd=$(prop_db_name_user_property_file ${BAW_AUTH_OS_ARR[i]}_DB_USER_PASSWORD)
                         tmp_dbservername="$(prop_db_name_user_property_file_for_server_name ${BAW_AUTH_OS_ARR[i]}_DB_USER_NAME)"
-                        check_dbserver_name_valid $tmp_dbservername "${BAW_AUTH_OS_ARR[i]}_DB_USER_NAME"
+                        check_dbserver_name_valid "$tmp_dbservername" "${BAW_AUTH_OS_ARR[i]}_DB_USER_NAME"
 
                         # db_name_full_array=(${db_name_full_array[@]} $tmp_dbname)
                         # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
@@ -6330,7 +6331,7 @@ function create_db_script(){
                         # Check base64 encoded or plain text
                         if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                             tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                            check_single_quotes_password $tmp_dbuserpwd "${BAW_AUTH_OS_ARR[i]}_DB_USER_PASSWORD"
+                            check_single_quotes_password "$tmp_dbuserpwd" "${BAW_AUTH_OS_ARR[i]}_DB_USER_PASSWORD"
                         fi
 
                         ## Retrieving the tables,index, and lob storage location from the properties files
@@ -6356,9 +6357,9 @@ function create_db_script(){
                         if [[ $DB_TYPE == "sqlserver" ]]; then
                             if [[ "${BAW_AUTH_OS_ARR[i]}" == "BAWTOS" ]]; then
                                 tmp_tablespace=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_WORKFLOW_DATA_TBL_SPACE)
-                                create_fncm_osdb_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername "" "$tmp_tablespace" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                                create_fncm_osdb_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "" "$tmp_tablespace" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                             else
-                                create_fncm_osdb_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername "" "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                                create_fncm_osdb_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "" "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                             fi
 
                             if [[ ! ("${BAW_AUTH_OS_ARR[i]}" == "BAWTOS" || "${BAW_AUTH_OS_ARR[i]}" == "BAWDOS") ]]; then
@@ -6368,17 +6369,17 @@ function create_db_script(){
                         elif [[ $DB_TYPE == "postgresql" ]]; then
                             if [[ "${BAW_AUTH_OS_ARR[i]}" == "BAWTOS" ]]; then
                                 tmp_tablespace=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_WORKFLOW_DATA_TBL_SPACE)
-                                create_fncm_osdb_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername "" $tmp_tablespace "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                                create_fncm_osdb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "" "$tmp_tablespace" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                             else
-                                create_fncm_osdb_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername "" "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                                create_fncm_osdb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "" "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                             fi
                         elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                            check_db2_name_valid $tmp_dbname $tmp_dbservername "${BAW_AUTH_OS_ARR[i]}_DB_NAME"
+                            check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "${BAW_AUTH_OS_ARR[i]}_DB_NAME"
                             if [[ "${BAW_AUTH_OS_ARR[i]}" == "BAWTOS" ]]; then
                                 tmp_tablespace=$(prop_user_profile_property_file CONTENT_INITIALIZATION.CPE_OBJ_STORE_WORKFLOW_DATA_TBL_SPACE)
-                                create_fncm_osdb_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername "" $tmp_tablespace $tmp_dbschemaname "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                                create_fncm_osdb_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" "" "$tmp_tablespace" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                             else
-                                create_fncm_osdb_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername "" "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                                create_fncm_osdb_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" "" "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                             fi
                         fi
                         success "DB SQL statement file for BAW: ${BAW_AUTH_OS_ARR[i]} has been created.\n"
@@ -6401,7 +6402,7 @@ function create_db_script(){
 
                     tmp_dbuser=$(prop_db_name_user_property_file CHOS_DB_USER_NAME)
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name CHOS_DB_USER_NAME)"
-                    check_dbserver_name_valid $tmp_dbservername "CHOS_DB_USER_NAME"
+                    check_dbserver_name_valid "$tmp_dbservername" "CHOS_DB_USER_NAME"
                     tmp_dbuserpwd="$(prop_db_name_user_property_file CHOS_DB_USER_PASSWORD)"
 
                     # db_name_full_array=(${db_name_full_array[@]} $tmp_dbname)
@@ -6410,20 +6411,20 @@ function create_db_script(){
                     # Check base64 encoded or plain text
                     if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                         tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $tmp_dbuserpwd "CHOS_DB_USER_PASSWORD"
+                        check_single_quotes_password "$tmp_dbuserpwd" "CHOS_DB_USER_PASSWORD"
                     fi
                     if [[ $tmp_dbservername != \#* ]] ; then
                         wait_msg "Creating the DB SQL statement file for Case History: $tmp_dbname"
                         if [[ $DB_TYPE == "sqlserver" ]]; then
-                            create_fncm_osdb_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                            create_fncm_osdb_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                             # remove db_securityadmin/bulkadmin
                             ${SED_COMMAND} '/db_securityadmin/d' $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$tmp_dbservername/create$tmp_dbname.sql
                             ${SED_COMMAND} '/bulkadmin/d' $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$tmp_dbservername/create$tmp_dbname.sql
                         elif [[ $DB_TYPE == "postgresql" ]]; then
-                            create_fncm_osdb_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername "" "" $tmp_dbschemaname
+                            create_fncm_osdb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "" "" "$tmp_dbschemaname"
                         elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                            check_db2_name_valid $tmp_dbname $tmp_dbservername "CHOS_DB_NAME"
-                            create_fncm_osdb_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername "" "" $tmp_dbschemaname
+                            check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "CHOS_DB_NAME"
+                            create_fncm_osdb_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" "" "" "$tmp_dbschemaname"
                         fi
                         success "DB SQL statement file for Case History: $tmp_dbname has been created.\n"
                     fi
@@ -6446,7 +6447,7 @@ function create_db_script(){
 
                     tmp_dbuser=$(prop_db_name_user_property_file AWSDOCS_DB_USER_NAME)
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name AWSDOCS_DB_USER_NAME)"
-                    check_dbserver_name_valid $tmp_dbservername "AWSDOCS_DB_USER_NAME"
+                    check_dbserver_name_valid "$tmp_dbservername" "AWSDOCS_DB_USER_NAME"
                     tmp_dbuserpwd="$(prop_db_name_user_property_file AWSDOCS_DB_USER_PASSWORD)"
 
 
@@ -6474,19 +6475,19 @@ function create_db_script(){
                     # Check base64 encoded or plain text
                     if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                         tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $tmp_dbuserpwd "AWSDOCS_DB_USER_PASSWORD"
+                        check_single_quotes_password "$tmp_dbuserpwd" "AWSDOCS_DB_USER_PASSWORD"
                     fi
                     wait_msg "Creating the DB SQL statement file for BAW: $tmp_dbname"
                     if [[ $DB_TYPE == "sqlserver" ]]; then
-                        create_fncm_osdb_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername "" "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                        create_fncm_osdb_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "" "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                         # remove db_securityadmin/bulkadmin
                         ${SED_COMMAND} '/db_securityadmin/d' $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$tmp_dbservername/create$tmp_dbname.sql
                         ${SED_COMMAND} '/bulkadmin/d' $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$tmp_dbservername/create$tmp_dbname.sql
                     elif [[ $DB_TYPE == "postgresql" ]]; then
-                        create_fncm_osdb_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername "" "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                        create_fncm_osdb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "" "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                     elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                        check_db2_name_valid $tmp_dbname $tmp_dbservername "AWSDOCS_DB_NAME"
-                        create_fncm_osdb_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername "" "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                        check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "AWSDOCS_DB_NAME"
+                        create_fncm_osdb_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" "" "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                     fi
                     success "DB SQL statement file for BAW: $tmp_dbname has been created.\n"
                 fi
@@ -6508,7 +6509,7 @@ function create_db_script(){
 
                     tmp_dbuser=$(prop_db_name_user_property_file DEVOS_DB_USER_NAME)
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name DEVOS_DB_USER_NAME)"
-                    check_dbserver_name_valid $tmp_dbservername "DEVOS_DB_USER_NAME"
+                    check_dbserver_name_valid "$tmp_dbservername" "DEVOS_DB_USER_NAME"
                     tmp_dbuserpwd="$(prop_db_name_user_property_file DEVOS_DB_USER_PASSWORD)"
 
                     ## Retrieving the tables,index, and lob storage location from the properties files
@@ -6534,19 +6535,19 @@ function create_db_script(){
                     # Check base64 encoded or plain text
                     if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                         tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $tmp_dbuserpwd "DEVOS_DB_USER_PASSWORD"
+                        check_single_quotes_password "$tmp_dbuserpwd" "DEVOS_DB_USER_PASSWORD"
                     fi
                     wait_msg "Creating the DB SQL statement file for ADP: $tmp_dbname"
                     if [[ $DB_TYPE == "sqlserver" ]]; then
-                        create_fncm_osdb_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername "" "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                        create_fncm_osdb_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "" "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                         # remove db_securityadmin/bulkadmin
                         ${SED_COMMAND} '/db_securityadmin/d' $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$tmp_dbservername/create$tmp_dbname.sql
                         ${SED_COMMAND} '/bulkadmin/d' $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$tmp_dbservername/create$tmp_dbname.sql
                     elif [[ $DB_TYPE == "postgresql" ]]; then
-                        create_fncm_osdb_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername "" "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                        create_fncm_osdb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "" "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                     elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                        check_db2_name_valid $tmp_dbname $tmp_dbservername "DEVOS_DB_NAME"
-                        create_fncm_osdb_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername "" "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                        check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "DEVOS_DB_NAME"
+                        create_fncm_osdb_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" "" "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                     fi
                     success "DB SQL statement file for ADP: $tmp_dbname has been created.\n"
                 fi
@@ -6567,22 +6568,22 @@ function create_db_script(){
         base_dbuser=$(prop_db_name_user_property_file ADP_BASE_DB_USER_NAME)
         base_dbuserpwd=$(prop_db_name_user_property_file ADP_BASE_DB_USER_PASSWORD)
         base_dbservername="$(prop_db_name_user_property_file_for_server_name ADP_BASE_DB_USER_NAME)"
-        check_dbserver_name_valid $base_dbservername "ADP_BASE_DB_USER_NAME"
+        check_dbserver_name_valid "$base_dbservername" "ADP_BASE_DB_USER_NAME"
         db_name_full_array=(${db_name_full_array[@]} $base_dbname)
         db_user_full_array=(${db_user_full_array[@]} $base_dbuser)
         db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $base_dbuserpwd)
 
         wait_msg "Creating the DB SQL statement file for Document Processing Engine databases"
         if [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-          check_db2_name_valid $base_dbname $base_dbservername "ADP_BASE_DB_NAME"
+          check_db2_name_valid "$base_dbname" "$base_dbservername" "ADP_BASE_DB_NAME"
         fi
         # Create script for creating base database
-        create_adp_basedb_sql $base_dbname $base_dbuser $base_dbservername
+        create_adp_basedb_sql "$base_dbname" "$base_dbuser" "$base_dbservername"
         # For DB2, there is separate SQL script for granting permissions on DB
         if [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-          grant_perms_adp_basedb_sql $base_dbname $base_dbuser $base_dbservername
+          grant_perms_adp_basedb_sql "$base_dbname" "$base_dbuser" "$base_dbservername"
         fi
-        create_adp_basedb_tables_sql $base_dbname $base_dbuser $base_dbservername
+        create_adp_basedb_tables_sql "$base_dbname" "$base_dbuser" "$base_dbservername"
         success "DB SQL statement file for Document Processing Engine Base database: $base_dbname has been created.\n"
 
         tmp_dbname=$(prop_db_name_user_property_file ADP_PROJECT_DB_NAME)
@@ -6628,17 +6629,17 @@ function create_db_script(){
                 wait_msg "Creating the DB SQL statement files for Document Processing Engine Project databases: ${db_name_array[num]}"
                 # Create script to create tenant DB
                 if [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                  check_db2_name_valid $tmp_dbname $tmp_dbservername "ADP_PROJECT_DB_NAME" ${j}
+                  check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "ADP_PROJECT_DB_NAME" ${j}
                 fi
-                create_adp_tenantdb_sql $tmp_dbname $tmp_dbuser $tmp_dbservername ${j}
+                create_adp_tenantdb_sql "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" ${j}
                 # For DB2, there is separate SQL script for granting permissions on DB
                 if [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                   grant_perms_adp_tenantdb_sql $tmp_dbname $tmp_dbuser $tmp_dbservername ${j}
+                   grant_perms_adp_tenantdb_sql "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" ${j}
                 fi
                 # Create script to create tables in tenant DB
-                create_adp_tenantdb_tables_sql $tmp_dbname $tmp_dbuser $tmp_ontology $tmp_dbservername ${j}
+                create_adp_tenantdb_tables_sql "$tmp_dbname" "$tmp_dbuser" "$tmp_ontology" "$tmp_dbservername" ${j}
                 # Create script for inserting tenant into base DB
-                create_adp_insert_tenant_sql $base_dbname $base_dbuser $tmp_dbname $tmp_dbuser $tmp_ontology $tmp_dbservername $db_ssl_flag ${j} $tmp_dbserver $tmp_dbport
+                create_adp_insert_tenant_sql "$base_dbname" "$base_dbuser" "$tmp_dbname" "$tmp_dbuser" "$tmp_ontology" "$tmp_dbservername" "$db_ssl_flag" ${j} "$tmp_dbserver" "$tmp_dbport"
                 success "DB SQL statement files for Document Processing Engine Project databases: ${db_name_array[num]} has been created.\n"
             done
         fi
@@ -6676,15 +6677,15 @@ function create_db_script(){
                 tmp_dbuser="$(prop_db_name_user_property_file AEOS_DB_USER_NAME)"
                 tmp_dbuserpwd="$(prop_db_name_user_property_file AEOS_DB_USER_PASSWORD)"
                 tmp_dbservername="$(prop_db_name_user_property_file_for_server_name AEOS_DB_USER_NAME)"
-                check_dbserver_name_valid $tmp_dbservername "AEOS_DB_USER_NAME"
+                check_dbserver_name_valid "$tmp_dbservername" "AEOS_DB_USER_NAME"
                 # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                 # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                 # Check base64 encoded or plain text
                 if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                     tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $tmp_dbuserpwd "AEOS_DB_USER_PASSWORD"
+                    check_single_quotes_password "$tmp_dbuserpwd" "AEOS_DB_USER_PASSWORD"
                 fi
-                create_fncm_osdb_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername "" "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                create_fncm_osdb_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "" "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                 break
                 ;;
             "db2"|"sqlserver"|"postgresql")
@@ -6706,25 +6707,25 @@ function create_db_script(){
                 tmp_dbuser="$(prop_db_name_user_property_file AEOS_DB_USER_NAME)"
                 tmp_dbuserpwd="$(prop_db_name_user_property_file AEOS_DB_USER_PASSWORD)"
                 tmp_dbservername="$(prop_db_name_user_property_file_for_server_name AEOS_DB_USER_NAME)"
-                check_dbserver_name_valid $tmp_dbservername "AEOS_DB_USER_NAME"
+                check_dbserver_name_valid "$tmp_dbservername" "AEOS_DB_USER_NAME"
                 # db_name_full_array=(${db_name_full_array[@]} $tmp_dbname)
                 # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                 # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                 # Check base64 encoded or plain text
                 if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                     tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $tmp_dbuserpwd "AEOS_DB_USER_PASSWORD"
+                    check_single_quotes_password "$tmp_dbuserpwd" "AEOS_DB_USER_PASSWORD"
                 fi
                 if [[ $DB_TYPE == "sqlserver" ]]; then
-                    create_fncm_osdb_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername "" "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                    create_fncm_osdb_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "" "" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                     # remove db_securityadmin/bulkadmin
                     ${SED_COMMAND} '/db_securityadmin/d' $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$tmp_dbservername/create$tmp_dbname.sql
                     ${SED_COMMAND} '/bulkadmin/d' $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$tmp_dbservername/create$tmp_dbname.sql
                 elif [[ $DB_TYPE == "postgresql" ]]; then
-                    create_fncm_osdb_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername "" "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                    create_fncm_osdb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "" "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                 elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                    check_db2_name_valid $tmp_dbname $tmp_dbservername "AEOS_DB_NAME"
-                    create_fncm_osdb_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername "" "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
+                    check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "AEOS_DB_NAME"
+                    create_fncm_osdb_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" "" "" "$tmp_dbschemaname" "$tmp_table_storage_location" "$tmp_index_storage_location" "$tmp_lob_storage_location"
                 fi
                 break
                 ;;
@@ -6745,16 +6746,16 @@ function create_db_script(){
     #             tmp_dbuser="$(prop_db_name_user_property_file AUTHORING_DB_USER_NAME)"
     #             tmp_dbuserpwd="$(prop_db_name_user_property_file AUTHORING_DB_USER_PASSWORD)"
     #             tmp_dbservername="$(prop_db_name_user_property_file_for_server_name AUTHORING_DB_USER_NAME)"
-    #             check_dbserver_name_valid $tmp_dbservername "AUTHORING_DB_USER_NAME"
+    #             check_dbserver_name_valid "$tmp_dbservername" "AUTHORING_DB_USER_NAME"
     #             db_name_full_array=(${db_name_full_array[@]} $tmp_dbname)
     #             db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
     #             db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
     #             if [[ $DB_TYPE == "sqlserver" ]]; then
-    #                 create_baw_db_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+    #                 create_baw_db_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
     #             elif [[ $DB_TYPE == "postgresql" ]]; then
-    #                 create_baw_db_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+    #                 create_baw_db_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
     #             elif [[ $DB_TYPE == "db2" ]]; then
-    #                 create_baw_db_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername
+    #                 create_baw_db_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername"
     #             fi
     #             break
     #             ;;
@@ -6762,11 +6763,11 @@ function create_db_script(){
     #             tmp_dbuser="$(prop_db_name_user_property_file AUTHORING_DB_USER_NAME)"
     #             tmp_dbuserpwd="$(prop_db_name_user_property_file AUTHORING_DB_USER_PASSWORD)"
     #             tmp_dbservername="$(prop_db_name_user_property_file_for_server_name AUTHORING_DB_USER_NAME)"
-    #             check_dbserver_name_valid $tmp_dbservername "AUTHORING_DB_USER_NAME"
+    #             check_dbserver_name_valid "$tmp_dbservername" "AUTHORING_DB_USER_NAME"
     #             db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
     #             db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
 
-    #             create_baw_db_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+    #             create_baw_db_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
     #             break
     #             ;;
     #         esac
@@ -6798,7 +6799,7 @@ function create_db_script(){
                     tmp_dbname="$(prop_db_name_user_property_file BAW_RUNTIME_DB_NAME)"
                     tmp_dbuserpwd="$(prop_db_name_user_property_file BAW_RUNTIME_DB_USER_PASSWORD)"
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name BAW_RUNTIME_DB_USER_NAME)"
-                    check_dbserver_name_valid $tmp_dbservername "BAW_RUNTIME_DB_USER_NAME"
+                    check_dbserver_name_valid "$tmp_dbservername" "BAW_RUNTIME_DB_USER_NAME"
 
                     # db_name_full_array=(${db_name_full_array[@]} $tmp_dbname)
                     # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
@@ -6806,16 +6807,16 @@ function create_db_script(){
                     # Check base64 encoded or plain text
                     if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                         tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $tmp_dbuserpwd "BAW_RUNTIME_DB_USER_PASSWORD"
+                        check_single_quotes_password "$tmp_dbuserpwd" "BAW_RUNTIME_DB_USER_PASSWORD"
                     fi
                     wait_msg "Creating the DB SQL statement file for Business Automation Workflow database instance1 required by BAW."
                     if [[ $DB_TYPE == "sqlserver" ]]; then
-                        create_bawaws1_db_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                        create_bawaws1_db_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                     elif [[ $DB_TYPE == "postgresql" ]]; then
-                        create_bawaws1_db_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername $tmp_dbschemaname
+                        create_bawaws1_db_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_dbschemaname"
                     elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                        check_db2_name_valid $tmp_dbname $tmp_dbservername "BAW_RUNTIME_DB_NAME"
-                        create_bawaws1_db_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername $tmp_dbschemaname
+                        check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "BAW_RUNTIME_DB_NAME"
+                        create_bawaws1_db_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" "$tmp_dbschemaname"
                     fi
                     success "DB SQL statement file for Business Automation Workflow database instance1 required by BAW has been created.\n"
 
@@ -6823,7 +6824,7 @@ function create_db_script(){
                     tmp_dbname="$(prop_db_name_user_property_file AWS_DB_NAME)"
                     tmp_dbuserpwd="$(prop_db_name_user_property_file AWS_DB_USER_PASSWORD)"
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name AWS_DB_USER_NAME)"
-                    check_dbserver_name_valid $tmp_dbservername "AWS_DB_USER_NAME"
+                    check_dbserver_name_valid "$tmp_dbservername" "AWS_DB_USER_NAME"
 
                     tmp_dbschemaname=""
                     if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
@@ -6843,16 +6844,16 @@ function create_db_script(){
                     # Check base64 encoded or plain text
                     if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                         tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $tmp_dbuserpwd "AWS_DB_USER_PASSWORD"
+                        check_single_quotes_password "$tmp_dbuserpwd" "AWS_DB_USER_PASSWORD"
                     fi
                     wait_msg "Creating the DB SQL statement file for Business Automation Workflow database instance2 required by AWS"
                     if [[ $DB_TYPE == "sqlserver" ]]; then
-                        create_bawaws2_db_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                        create_bawaws2_db_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                     elif [[ $DB_TYPE == "postgresql" ]]; then
-                        create_bawaws2_db_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername $tmp_dbschemaname
+                        create_bawaws2_db_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_dbschemaname"
                     elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                        check_db2_name_valid $tmp_dbname $tmp_dbservername "AWS_DB_NAME"
-                        create_bawaws2_db_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername $tmp_dbschemaname
+                        check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "AWS_DB_NAME"
+                        create_bawaws2_db_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" "$tmp_dbschemaname"
                     fi
                     success "DB SQL statement file for Business Automation Workflow database instance2 required by AWS has been created.\n"
                 elif [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" && (! " ${pattern_cr_arr[@]}" =~ "workflow-workstreams" ) ]]; then
@@ -6860,7 +6861,7 @@ function create_db_script(){
                     tmp_dbname="$(prop_db_name_user_property_file BAW_RUNTIME_DB_NAME)"
                     tmp_dbuserpwd="$(prop_db_name_user_property_file BAW_RUNTIME_DB_USER_PASSWORD)"
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name BAW_RUNTIME_DB_USER_NAME)"
-                    check_dbserver_name_valid $tmp_dbservername "BAW_RUNTIME_DB_USER_NAME"
+                    check_dbserver_name_valid "$tmp_dbservername" "BAW_RUNTIME_DB_USER_NAME"
 
                     tmp_dbschemaname=""
                     if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
@@ -6879,16 +6880,16 @@ function create_db_script(){
                     # Check base64 encoded or plain text
                     if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                         tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $tmp_dbuserpwd "BAW_RUNTIME_DB_USER_PASSWORD"
+                        check_single_quotes_password "$tmp_dbuserpwd" "BAW_RUNTIME_DB_USER_PASSWORD"
                     fi
                     wait_msg "Creating the DB SQL statement file for database required by Business Automation Workflow Runtime"
                     if [[ $DB_TYPE == "sqlserver" ]]; then
-                        create_bawaws1_db_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                        create_bawaws1_db_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                     elif [[ $DB_TYPE == "postgresql" ]]; then
-                        create_bawaws1_db_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername $tmp_dbschemaname
+                        create_bawaws1_db_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_dbschemaname"
                     elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                        check_db2_name_valid $tmp_dbname $tmp_dbservername "BAW_RUNTIME_DB_NAME"
-                        create_bawaws1_db_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername $tmp_dbschemaname
+                        check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "BAW_RUNTIME_DB_NAME"
+                        create_bawaws1_db_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" "$tmp_dbschemaname"
                     fi
                     success "DB SQL statement file for database required by Business Automation Workflow Runtime has been created.\n"
                 elif [[ " ${pattern_cr_arr[@]}" =~ "workstreams" && (! " ${pattern_cr_arr[@]}" =~ "workflow-workstreams" ) ]]; then
@@ -6896,7 +6897,7 @@ function create_db_script(){
                     tmp_dbname="$(prop_db_name_user_property_file AWS_DB_NAME)"
                     tmp_dbuserpwd="$(prop_db_name_user_property_file AWS_DB_USER_PASSWORD)"
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name AWS_DB_USER_NAME)"
-                    check_dbserver_name_valid $tmp_dbservername "AWS_DB_USER_NAME"
+                    check_dbserver_name_valid "$tmp_dbservername" "AWS_DB_USER_NAME"
 
                     tmp_dbschemaname=""
                     if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
@@ -6917,17 +6918,17 @@ function create_db_script(){
                     # Check base64 encoded or plain text
                     if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                         tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $tmp_dbuserpwd "AWS_DB_USER_PASSWORD"
+                        check_single_quotes_password "$tmp_dbuserpwd" "AWS_DB_USER_PASSWORD"
                     fi
 
                     wait_msg "Creating the DB SQL statement file for database required by Automation Workstream Services"
                     if [[ $DB_TYPE == "sqlserver" ]]; then
-                        create_bawaws2_db_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                        create_bawaws2_db_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                     elif [[ $DB_TYPE == "postgresql" ]]; then
-                        create_bawaws2_db_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername $tmp_dbschemaname
+                        create_bawaws2_db_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_dbschemaname"
                     elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                        check_db2_name_valid $tmp_dbname $tmp_dbservername "AWS_DB_NAME"
-                        create_bawaws2_db_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername $tmp_dbschemaname
+                        check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "AWS_DB_NAME"
+                        create_bawaws2_db_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" "$tmp_dbschemaname"
                     fi
                     success "DB SQL statement file for database required by Automation Workstream Services has been created.\n"
                 fi
@@ -6938,41 +6939,41 @@ function create_db_script(){
                     tmp_dbuser="$(prop_db_name_user_property_file BAW_RUNTIME_DB_USER_NAME)"
                     tmp_dbuserpwd="$(prop_db_name_user_property_file BAW_RUNTIME_DB_USER_PASSWORD)"
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name BAW_RUNTIME_DB_USER_NAME)"
-                    check_dbserver_name_valid $tmp_dbservername "BAW_RUNTIME_DB_USER_NAME"
+                    check_dbserver_name_valid "$tmp_dbservername" "BAW_RUNTIME_DB_USER_NAME"
 
                     # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                     # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                     # Check base64 encoded or plain text
                     if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                         tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $tmp_dbuserpwd "BAW_RUNTIME_DB_USER_PASSWORD"
+                        check_single_quotes_password "$tmp_dbuserpwd" "BAW_RUNTIME_DB_USER_PASSWORD"
                     fi
 
                     wait_msg "Creating the DB SQL statement file for Business Automation Workflow database instance1 required by BAW."
-                    create_bawaws1_db_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                    create_bawaws1_db_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                     success "DB SQL statement file for Business Automation Workflow database instance1 required by BAW has been created.\n"
 
                     tmp_dbuser="$(prop_db_name_user_property_file AWS_DB_USER_NAME)"
                     tmp_dbuserpwd="$(prop_db_name_user_property_file AWS_DB_USER_PASSWORD)"
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name AWS_DB_USER_NAME)"
-                    check_dbserver_name_valid $tmp_dbservername "AWS_DB_USER_NAME"
+                    check_dbserver_name_valid "$tmp_dbservername" "AWS_DB_USER_NAME"
 
                     # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                     # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                     # Check base64 encoded or plain text
                     if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                         tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $tmp_dbuserpwd "AWS_DB_USER_PASSWORD"
+                        check_single_quotes_password "$tmp_dbuserpwd" "AWS_DB_USER_PASSWORD"
                     fi
 
                     wait_msg "Creating the DB SQL statement file for Business Automation Workflow database instance1 required by BAW"
-                    create_bawaws2_db_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                    create_bawaws2_db_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                     success "DB SQL statement file for Business Automation Workflow database instance1 required by BAW has been created.\n"
                 elif [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" && (! " ${pattern_cr_arr[@]}" =~ "workflow-workstreams" ) ]]; then
                     tmp_dbuser="$(prop_db_name_user_property_file BAW_RUNTIME_DB_USER_NAME)"
                     tmp_dbuserpwd="$(prop_db_name_user_property_file BAW_RUNTIME_DB_USER_PASSWORD)"
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name BAW_RUNTIME_DB_USER_NAME)"
-                    check_dbserver_name_valid $tmp_dbservername "BAW_RUNTIME_DB_USER_NAME"
+                    check_dbserver_name_valid "$tmp_dbservername" "BAW_RUNTIME_DB_USER_NAME"
 
                     # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                     # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
@@ -6980,18 +6981,18 @@ function create_db_script(){
                     # Check base64 encoded or plain text
                     if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                         tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $tmp_dbuserpwd "BAW_RUNTIME_DB_USER_PASSWORD"
+                        check_single_quotes_password "$tmp_dbuserpwd" "BAW_RUNTIME_DB_USER_PASSWORD"
                     fi
 
                     wait_msg "Creating the DB SQL statement file for database required by Business Automation Workflow Runtime."
-                    create_bawaws1_db_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                    create_bawaws1_db_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                     success "DB SQL statement file for database required by Business Automation Workflow Runtime has been created.\n"
 
                 elif [[ " ${pattern_cr_arr[@]}" =~ "workstreams" && (! " ${pattern_cr_arr[@]}" =~ "workflow-workstreams" ) ]]; then
                     tmp_dbuser="$(prop_db_name_user_property_file AWS_DB_USER_NAME)"
                     tmp_dbuserpwd="$(prop_db_name_user_property_file AWS_DB_USER_PASSWORD)"
                     tmp_dbservername="$(prop_db_name_user_property_file_for_server_name AWS_DB_USER_NAME)"
-                    check_dbserver_name_valid $tmp_dbservername "AWS_DB_USER_NAME"
+                    check_dbserver_name_valid "$tmp_dbservername" "AWS_DB_USER_NAME"
 
                     # db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                     # db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
@@ -6999,11 +7000,11 @@ function create_db_script(){
                     # Check base64 encoded or plain text
                     if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                         tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                        check_single_quotes_password $tmp_dbuserpwd "AWS_DB_USER_PASSWORD"
+                        check_single_quotes_password "$tmp_dbuserpwd" "AWS_DB_USER_PASSWORD"
                     fi
 
                     wait_msg "Creating the DB SQL statement file for database required by Business Automation Workflow Runtime."
-                    create_bawaws2_db_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                    create_bawaws2_db_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                     success "DB SQL statement file for database required by Business Automation Workflow Runtime has been created.\n"
 
                 fi
@@ -7024,7 +7025,7 @@ function create_db_script(){
                 tmp_dbuser="$(prop_db_name_user_property_file STUDIO_DB_USER_NAME)"
                 tmp_dbuserpwd="$(prop_db_name_user_property_file STUDIO_DB_USER_PASSWORD)"
                 tmp_dbservername="$(prop_db_name_user_property_file_for_server_name STUDIO_DB_USER_NAME)"
-                check_dbserver_name_valid $tmp_dbservername "STUDIO_DB_USER_NAME"
+                check_dbserver_name_valid "$tmp_dbservername" "STUDIO_DB_USER_NAME"
 
                 tmp_dbschemaname=""
                 if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
@@ -7041,19 +7042,19 @@ function create_db_script(){
                 # Check base64 encoded or plain text
                 if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                     tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $tmp_dbuserpwd "STUDIO_DB_USER_PASSWORD"
+                    check_single_quotes_password "$tmp_dbuserpwd" "STUDIO_DB_USER_PASSWORD"
                 fi
 
                 db_name_full_array=(${db_name_full_array[@]} $tmp_dbname)
                 db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                 db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                 if [[ $DB_TYPE == "sqlserver" ]]; then
-                    create_bas_studio_db_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                    create_bas_studio_db_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                 elif [[ $DB_TYPE == "postgresql" ]]; then
-                    create_bas_studio_db_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername $tmp_dbschemaname
+                    create_bas_studio_db_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_dbschemaname"
                 elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                    check_db2_name_valid $tmp_dbname $tmp_dbservername "STUDIO_DB_NAME"
-                    create_bas_studio_db_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername $tmp_dbschemaname
+                    check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "STUDIO_DB_NAME"
+                    create_bas_studio_db_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" "$tmp_dbschemaname"
                 fi
                 break
                 ;;
@@ -7061,17 +7062,17 @@ function create_db_script(){
                 tmp_dbuser="$(prop_db_name_user_property_file STUDIO_DB_USER_NAME)"
                 tmp_dbuserpwd="$(prop_db_name_user_property_file STUDIO_DB_USER_PASSWORD)"
                 tmp_dbservername="$(prop_db_name_user_property_file_for_server_name STUDIO_DB_USER_NAME)"
-                check_dbserver_name_valid $tmp_dbservername "STUDIO_DB_USER_NAME"
+                check_dbserver_name_valid "$tmp_dbservername" "STUDIO_DB_USER_NAME"
 
                 # Check base64 encoded or plain text
                 if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                     tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $tmp_dbuserpwd "STUDIO_DB_USER_PASSWORD"
+                    check_single_quotes_password "$tmp_dbuserpwd" "STUDIO_DB_USER_PASSWORD"
                 fi
 
                 db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                 db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
-                create_bas_studio_db_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                create_bas_studio_db_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                 break
                 ;;
             esac
@@ -7089,7 +7090,7 @@ function create_db_script(){
                 tmp_dbuser="$(prop_db_name_user_property_file APP_PLAYBACK_DB_USER_NAME)"
                 tmp_dbuserpwd="$(prop_db_name_user_property_file APP_PLAYBACK_DB_USER_PASSWORD)"
                 tmp_dbservername="$(prop_db_name_user_property_file_for_server_name APP_PLAYBACK_DB_USER_NAME)"
-                check_dbserver_name_valid $tmp_dbservername "APP_PLAYBACK_DB_USER_NAME"
+                check_dbserver_name_valid "$tmp_dbservername" "APP_PLAYBACK_DB_USER_NAME"
 
                 tmp_dbschemaname=""
                 if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
@@ -7106,19 +7107,19 @@ function create_db_script(){
                 # Check base64 encoded or plain text
                 if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                     tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $tmp_dbuserpwd "APP_PLAYBACK_DB_USER_PASSWORD"
+                    check_single_quotes_password "$tmp_dbuserpwd" "APP_PLAYBACK_DB_USER_PASSWORD"
                 fi
 
                 db_name_full_array=(${db_name_full_array[@]} $tmp_dbname)
                 db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                 db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                 if [[ $DB_TYPE == "sqlserver" ]]; then
-                    create_ae_playback_db_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                    create_ae_playback_db_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                 elif [[ $DB_TYPE == "postgresql" ]]; then
-                    create_ae_playback_db_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername $tmp_dbschemaname
+                    create_ae_playback_db_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_dbschemaname"
                 elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                    check_db2_name_valid $tmp_dbname $tmp_dbservername "APP_PLAYBACK_DB_NAME"
-                    create_ae_playback_db_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername $tmp_dbschemaname
+                    check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "APP_PLAYBACK_DB_NAME"
+                    create_ae_playback_db_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" "$tmp_dbschemaname"
                 fi
                 break
                 ;;
@@ -7126,17 +7127,17 @@ function create_db_script(){
                 tmp_dbuser="$(prop_db_name_user_property_file APP_PLAYBACK_DB_USER_NAME)"
                 tmp_dbuserpwd="$(prop_db_name_user_property_file APP_PLAYBACK_DB_USER_PASSWORD)"
                 tmp_dbservername="$(prop_db_name_user_property_file_for_server_name APP_PLAYBACK_DB_USER_NAME)"
-                check_dbserver_name_valid $tmp_dbservername "APP_PLAYBACK_DB_USER_NAME"
+                check_dbserver_name_valid "$tmp_dbservername" "APP_PLAYBACK_DB_USER_NAME"
 
                 # Check base64 encoded or plain text
                 if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                     tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $tmp_dbuserpwd "APP_PLAYBACK_DB_USER_PASSWORD"
+                    check_single_quotes_password "$tmp_dbuserpwd" "APP_PLAYBACK_DB_USER_PASSWORD"
                 fi
 
                 db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                 db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
-                create_ae_playback_db_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                create_ae_playback_db_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                 break
                 ;;
             esac
@@ -7155,7 +7156,7 @@ function create_db_script(){
                 tmp_dbuser="$(prop_db_name_user_property_file APP_ENGINE_DB_USER_NAME)"
                 tmp_dbuserpwd="$(prop_db_name_user_property_file APP_ENGINE_DB_USER_PASSWORD)"
                 tmp_dbservername="$(prop_db_name_user_property_file_for_server_name APP_ENGINE_DB_USER_NAME)"
-                check_dbserver_name_valid $tmp_dbservername "APP_ENGINE_DB_USER_NAME"
+                check_dbserver_name_valid "$tmp_dbservername" "APP_ENGINE_DB_USER_NAME"
 
                 tmp_dbschemaname=""
                 if [[ $DB_TYPE == "postgresql" || $DB_TYPE == "db2" ]]; then
@@ -7172,19 +7173,19 @@ function create_db_script(){
                 # Check base64 encoded or plain text
                 if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                     tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $tmp_dbuserpwd "APP_ENGINE_DB_USER_PASSWORD"
+                    check_single_quotes_password "$tmp_dbuserpwd" "APP_ENGINE_DB_USER_PASSWORD"
                 fi
                 # echo "debug"; sleep 3000
                 db_name_full_array=(${db_name_full_array[@]} $tmp_dbname)
                 db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                 db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
                 if [[ $DB_TYPE == "sqlserver" ]]; then
-                    create_baa_app_engine_db_sqlserver_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                    create_baa_app_engine_db_sqlserver_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                 elif [[ $DB_TYPE == "postgresql" ]]; then
-                    create_baa_app_engine_db_postgresql_sql_file $tmp_dbname $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername $tmp_dbschemaname
+                    create_baa_app_engine_db_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_dbschemaname"
                 elif [[ $DB_TYPE == "db2" || $DB_TYPE == "db2HADR" ]]; then
-                    check_db2_name_valid $tmp_dbname $tmp_dbservername "APP_ENGINE_DB_NAME"
-                    create_baa_app_engine_db_db2_sql_file $tmp_dbname $tmp_dbuser $tmp_dbservername $tmp_dbschemaname
+                    check_db2_name_valid "$tmp_dbname" "$tmp_dbservername" "APP_ENGINE_DB_NAME"
+                    create_baa_app_engine_db_db2_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbservername" "$tmp_dbschemaname"
                 fi
                 break
                 ;;
@@ -7192,17 +7193,17 @@ function create_db_script(){
                 tmp_dbuser="$(prop_db_name_user_property_file APP_ENGINE_DB_USER_NAME)"
                 tmp_dbuserpwd="$(prop_db_name_user_property_file APP_ENGINE_DB_USER_PASSWORD)"
                 tmp_dbservername="$(prop_db_name_user_property_file_for_server_name APP_ENGINE_DB_USER_NAME)"
-                check_dbserver_name_valid $tmp_dbservername "APP_ENGINE_DB_USER_NAME"
+                check_dbserver_name_valid "$tmp_dbservername" "APP_ENGINE_DB_USER_NAME"
 
                 # Check base64 encoded or plain text
                 if [[ "${tmp_dbuserpwd:0:8}" == "{Base64}"  ]]; then
                     tmp_dbuserpwd=$(echo "$tmp_dbuserpwd" | sed -e "s/^{Base64}//" | base64 --decode)
-                    check_single_quotes_password $tmp_dbuserpwd "APP_ENGINE_DB_USER_PASSWORD"
+                    check_single_quotes_password "$tmp_dbuserpwd" "APP_ENGINE_DB_USER_PASSWORD"
                 fi
 
                 db_user_full_array=(${db_user_full_array[@]} $tmp_dbuser)
                 db_user_pwd_full_array=(${db_user_pwd_full_array[@]} $tmp_dbuserpwd)
-                create_baa_app_engine_db_oracle_sql_file $tmp_dbuser $tmp_dbuserpwd $tmp_dbservername
+                create_baa_app_engine_db_oracle_sql_file "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername"
                 break
                 ;;
             esac
@@ -7257,10 +7258,10 @@ function create_db_script(){
 }
 
 function select_ldap_type_for_wfps_authoring(){
-    info "LDAP configuration is not required for the IBM Workflow Process Service Authoring, but if you want to login with LDAP user, please select Yes. If you select No, you can do post actions with https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=cpbaf-business-automation-studio to add the LDAP connection manually after install."
+    info "LDAP configuration is not required for the IBM Workflow Process Service Authoring, but if you want to login with LDAP user, please select Yes. If you select No, you can do post actions to add the LDAP connection manually after install. For more information, from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE, navigate to Installing --> Installing Production Deployment --> Installing a CP4BA multi-pattern production deployment --> Completing post-installation tasks --> Cloud Pak for Business Automation Foundation --> Business Automation Studio."
     while true; do
         printf "\x1B[1mDo you want use the LDAP for the IBM Workflow Process Service Authoring? (Yes/No): \x1B[0m"
-        read -rp "" ans
+        read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
             LDAP_WFPS_AUTHORING="Yes"
@@ -7271,7 +7272,7 @@ function select_ldap_type_for_wfps_authoring(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -7282,7 +7283,7 @@ function select_external_postgresdb_for_im(){
     echo ""
     while true; do
         printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE${RESET_TEXT}. ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/$CS_CHANNEL_KC?topic=im-setting-up-external-edb-postgresql-database-server#dbcreate${RESET_TEXT}] \x1B[1mas IM metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: IM service can use an external Postgres DB to store IM data. If select \"Yes\", IM service uses an external Postgres DB as IM metastore DB. If select \"No\", IM service uses an embedded cloud native postgresql DB as IM metastore DB.)${RESET_TEXT} (Yes/No, default: No): "
-        read -rp "" ans
+        read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
             EXTERNAL_POSTGRESDB_FOR_IM="true"
@@ -7293,7 +7294,7 @@ function select_external_postgresdb_for_im(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -7304,7 +7305,7 @@ function select_external_postgresdb_for_zen(){
     echo ""
     while true; do
         printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE${RESET_TEXT}. ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/$CS_CHANNEL_KC?topic=im-setting-up-external-edb-postgresql-database-server#dbcreate${RESET_TEXT}]\x1B[1m as Zen metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Zen stores all metadata such as users, groups, service instances, vault integration and secret references in metastore DB. If select \"Yes\", Zen service uses an external Postgres DB as Zen metastore DB. If select \"No\", Zen service uses an embedded cloud native postgresql DB as Zen metastore DB )${RESET_TEXT} (Yes/No, default: No): "
-        read -rp "" ans
+        read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
             EXTERNAL_POSTGRESDB_FOR_ZEN="true"
@@ -7315,7 +7316,7 @@ function select_external_postgresdb_for_zen(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -7326,7 +7327,7 @@ function select_external_postgresdb_for_bts(){
     echo ""
     while true; do
         printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE${RESET_TEXT}, ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/$CS_CHANNEL_KC?topic=service-external-database#configuring-an-external-database-with-the-bts-custom-resource${RESET_TEXT}]\x1B[1m as BTS metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: BTS service can use an external Postgres DB to store meta data. If select \"Yes\", BTS service uses an external Postgres DB as BTS metastore DB. If select \"No\", BTS service uses an embedded cloud native postgresql DB as BTS metastore DB )${RESET_TEXT} (Yes/No, default: No): "
-        read -rp "" ans
+        read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
             EXTERNAL_POSTGRESDB_FOR_BTS="true"
@@ -7337,7 +7338,7 @@ function select_external_postgresdb_for_bts(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -7348,7 +7349,7 @@ function select_external_cert_opensearch_kafka(){
     echo ""
     while true; do
         printf "\x1B[1mDo you want to use an external certificate (root CA) for this Opensearch/Kafka deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Opensearch/Kafka operator can consume external tls certificate. If select \"No\", CP4BA operator will create leaf certificates based on CP4BA's root CA )${RESET_TEXT} (Yes/No, default: No): "
-        read -rp "" ans
+        read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
             EXTERNAL_CERT_OPENSEARCH_KAFKA="true"
@@ -7359,7 +7360,7 @@ function select_external_cert_opensearch_kafka(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -7371,7 +7372,7 @@ function select_restricted_internet_access(){
     echo ""
     while true; do
         printf "\x1B[1mDo you want to restrict network egress to unknown external destination for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: CP4BA $CP4BA_RELEASE_BASE prevents all network egress to unknown destinations by default. You can either (1) enable all egress or (2) accept the new default and create network policies to allow your specific communication targets as documented in the knowledge center.)${RESET_TEXT} (Yes/No, default: Yes): "
-        read -rp "" ans
+        read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES"|"")
             RESTRICTED_INTERNET_ACCESS="true"
@@ -7382,7 +7383,7 @@ function select_restricted_internet_access(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -7392,24 +7393,24 @@ function select_project() {
     while [[ $TARGET_PROJECT_NAME == "" ]];
     do
         printf "\n"
-        echo -e "\x1B[1mWhere do you want to deploy Cloud Pak for Business Automation?\x1B[0m"
+        printf '%b\n' "\x1B[1mWhere do you want to deploy Cloud Pak for Business Automation?\x1B[0m"
         read -p "Enter the name for an existing project (namespace): " TARGET_PROJECT_NAME
         if [ -z "$TARGET_PROJECT_NAME" ]; then
-            echo -e "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
         elif [[ "$TARGET_PROJECT_NAME" == openshift* ]]; then
-            echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
             TARGET_PROJECT_NAME=""
         elif [[ "$TARGET_PROJECT_NAME" == kube* ]]; then
-            echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
             TARGET_PROJECT_NAME=""
         else
-            isProjExists=`${CLI_CMD} get project $TARGET_PROJECT_NAME --ignore-not-found | wc -l`  >/dev/null 2>&1
+            isProjExists=`${CLI_CMD} get project $TARGET_PROJECT_NAME --ignore-not-found | wc -l`  >&3 2>&3
 
             if [ "$isProjExists" -ne 2 ] ; then
-                echo -e "\x1B[1;31mInvalid project name, please enter a existing project name ...\x1B[0m"
+                printf '%b\n' "\x1B[1;31mInvalid project name, please enter a existing project name ...\x1B[0m"
                 TARGET_PROJECT_NAME=""
             else
-                echo -e "\x1B[1mUsing project ${TARGET_PROJECT_NAME}...\x1B[0m"
+                printf '%b\n' "\x1B[1mUsing project ${TARGET_PROJECT_NAME}...\x1B[0m"
             fi
         fi
     done
@@ -7431,7 +7432,7 @@ function select_fips_enable(){
         printf "\n"
         while true; do
             printf "\x1B[1mYour OCP cluster has FIPS enabled, do you want to enable FIPS with this CP4BA deployment？\x1B[0m${YELLOW_TEXT} (Notes: If you select \"Yes\", in order to complete enablement of FIPS for CP4BA, please refer to \"FIPS wall\" configuration in IBM documentation.)${RESET_TEXT} (Yes/No, default: No): "
-            read -rp "" ans
+            read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
             FIPS_ENABLED="true"
@@ -7442,7 +7443,7 @@ function select_fips_enable(){
                 break
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -7455,7 +7456,7 @@ function select_ldap_type(){
     printf "\n"
     COLUMNS=12
 
-    echo -e "\x1B[1mWhat is the LDAP type that is used for this deployment? \x1B[0m"
+    printf '%b\n' "\x1B[1mWhat is the LDAP type that is used for this deployment? \x1B[0m"
     options=("Microsoft Active Directory" "IBM Tivoli Directory Server / Security Directory Server")
     PS3='Enter a valid option [1 to 2]: '
     select opt in "${options[@]}"
@@ -7479,7 +7480,7 @@ function select_ldap_type(){
 function select_profile_type(){
     printf "\n"
     COLUMNS=12
-    echo -e "\x1B[1mPlease select the deployment profile (default: small).  Refer to the documentation in CP4BA Knowledge Center for details on profile.\x1B[0m"
+    printf '%b\n' "\x1B[1mPlease select the deployment profile (default: small).  Refer to the documentation in CP4BA Knowledge Center for details on profile.\x1B[0m"
     options=("small" "medium" "large")
     if [ -z "$existing_profile_type" ]; then
         PS3='Enter a valid option [1 to 3]: '
@@ -7510,8 +7511,8 @@ function select_profile_type(){
                 printf "%1d) %s\n" $((i+1)) "${options[i]}"
             fi
         done
-        echo -e "\x1B[1;31mExisting profile size type found in CR: \"$existing_profile_type\"\x1B[0m"
-        # echo -e "\x1B[1;31mDo not need to select again.\n\x1B[0m"
+        printf '%b\n' "\x1B[1;31mExisting profile size type found in CR: \"$existing_profile_type\"\x1B[0m"
+        # printf '%b\n' "\x1B[1;31mDo not need to select again.\n\x1B[0m"
         prompt_press_any_key_to_continue
     fi
 }
@@ -7519,7 +7520,7 @@ function select_profile_type(){
 function select_db_type(){
     printf "\n"
     COLUMNS=12
-    echo -e "\x1B[1mWhat is the Database type that is used for this deployment? \x1B[0m"
+    printf '%b\n' "\x1B[1mWhat is the Database type that is used for this deployment? \x1B[0m"
     if [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "document_processing" ]]; then
         # if [[ $PROFILE_TYPE == "small" ]]; then
         ## -- https://jsw.ibm.com/browse/DBACLD-170077 <updating the name of the DB type of PostgreSQL>
@@ -7623,7 +7624,7 @@ function set_external_ldap(){
     while true; do
         printf "\x1B[1mWill an external LDAP be used as part of the configuration?: \x1B[0m"
 
-        read -rp "" ans
+        read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
             SET_EXT_LDAP="Yes"
@@ -7634,7 +7635,7 @@ function set_external_ldap(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -7646,7 +7647,7 @@ function select_cpe_full_storage(){
         printf "\n"
         while true; do
             printf "\x1B[1mDo you want limited CPE storage support? (Yes/No): \x1B[0m"
-            read -rp "" ans
+            read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 CPE_FULL_STORAGE="No"
@@ -7657,7 +7658,7 @@ function select_cpe_full_storage(){
                 break
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -7672,7 +7673,7 @@ function select_gpu_document_processing(){
     while [[ $set_gpu_enabled == "" ]];
     do
         printf "\x1B[1mAre there GPU enabled worker nodes (Yes/No)? \x1B[0m"
-        read -rp "" set_gpu_enabled
+        read -erp "" set_gpu_enabled
         case "$set_gpu_enabled" in
         "y"|"Y"|"yes"|"Yes"|"YES")
             ENABLE_GPU_ARIA="Yes"
@@ -7683,7 +7684,7 @@ function select_gpu_document_processing(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             set_gpu_enabled=""
             ENABLE_GPU_ARIA=""
             ;;
@@ -7695,9 +7696,9 @@ function select_gpu_document_processing(){
         nodelabel_key=""
         while [[ $nodelabel_key == "" ]];
         do
-            read -rp "" nodelabel_key
+            read -erp "" nodelabel_key
             if [ -z "$nodelabel_key" ]; then
-            echo -e "\x1B[1;31mEnter the node label key.\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter the node label key.\x1B[0m"
             fi
         done
 
@@ -7706,9 +7707,9 @@ function select_gpu_document_processing(){
         nodelabel_value=""
         while [[ $nodelabel_value == "" ]];
         do
-            read -rp "" nodelabel_value
+            read -erp "" nodelabel_value
             if [ -z "$nodelabel_value" ]; then
-            echo -e "\x1B[1;31mEnter the node label value.\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter the node label value.\x1B[0m"
             fi
         done
     fi
@@ -7723,7 +7724,7 @@ function select_ae_data_persistence(){
             printf "\n"
             while true; do
                 printf "\x1B[1mDo you want to enable Business Automation Application Data Persistence? (Yes/No, default: No): \x1B[0m"
-                read -rp "" ans
+                read -erp "" ans
                 case "$ans" in
                 "y"|"Y"|"yes"|"Yes"|"YES")
                     foundation_component_arr=( "${foundation_component_arr[@]}" "AE" )
@@ -7735,7 +7736,7 @@ function select_ae_data_persistence(){
                     break
                     ;;
                 *)
-                    echo -e "Answer must be \"Yes\" or \"No\"\n"
+                    printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                     ;;
                 esac
             done
@@ -7747,7 +7748,7 @@ function select_baw_only(){
     pattern_arr=()
     pattern_cr_arr=()
     printf "\n"
-    echo -e "\x1B[1mSelect the Cloud Pak for Business Automation capability to install: \x1B[0m"
+    printf '%b\n' "\x1B[1mSelect the Cloud Pak for Business Automation capability to install: \x1B[0m"
     COLUMNS=12
 
     options=("Business Automation Workflow")
@@ -7787,7 +7788,7 @@ function input_information(){
     EXISTING_OPT_COMPONENT_ARR=()
     EXISTING_PATTERN_ARR=()
     retVal_baw=1
-    # rm -rf $TEMPORARY_PROPERTY_FILE >/dev/null 2>&1
+    # rm -rf $TEMPORARY_PROPERTY_FILE 
     if [[ "${INSTALL_BAW_ONLY}" == "No" ]];
     then
         DEPLOYMENT_TYPE="production"
@@ -7891,21 +7892,21 @@ function select_objectstore_number(){
         fi
 
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" ]]; then
-            read -rp "" content_os_number
-            [[ $content_os_number =~ ^[0-9]+$ ]] || { echo -e "\x1B[1;31mEnter a valid number [0 to 10]\x1B[0m"; continue; }
+            read -erp "" content_os_number
+            [[ $content_os_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [0 to 10]\x1B[0m"; continue; }
             if [ "$content_os_number" -ge 0 ] && [ "$content_os_number" -le 10 ]; then
                 break
             else
-                echo -e "\x1B[1;31mEnter a valid number [0 to 10]\x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid number [0 to 10]\x1B[0m"
                 content_os_number=""
             fi
         elif [[ " ${pattern_cr_arr[@]}" =~ "content" ]]; then
-            read -rp "" content_os_number
-            [[ $content_os_number =~ ^[0-9]+$ ]] || { echo -e "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"; continue; }
+            read -erp "" content_os_number
+            [[ $content_os_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"; continue; }
             if [ "$content_os_number" -ge 1 ] && [ "$content_os_number" -le 10 ]; then
                 break
             else
-                echo -e "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"
                 content_os_number=""
             fi
         fi
@@ -7917,12 +7918,12 @@ function select_db_server_number(){
     while true; do
         printf "\n"
         printf "\x1B[1mHow many database servers or instances will be used for the CP4BA deployment? \x1B[0m"
-        read -rp "" db_server_number
-        [[ $db_server_number =~ ^[0-9]+$ ]] || { echo -e "\x1B[1;31mEnter a valid number [1 to 999]\x1B[0m"; continue; }
+        read -erp "" db_server_number
+        [[ $db_server_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 999]\x1B[0m"; continue; }
         if [ "$db_server_number" -ge 1 ] && [ "$db_server_number" -le 999 ]; then
             break
         else
-            echo -e "\x1B[1;31mEnter a valid number [1 to 999]\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 999]\x1B[0m"
             db_server_number=""
         fi
     done
@@ -7933,12 +7934,12 @@ function get_db_server_list(){
     while true; do
         printf "\n"
         printf "\x1B[1mEnter the alias name(s) for the database server(s)/instance(s) to be used by the CP4BA deployment.\x1B[0m\n"
-        echo -e "\x1B[1;31m(NOTE: NOT the host name of the database server, and CANNOT include a dot[.] character)\x1B[0m"
-        echo -e "\x1B[1;31m(NOTE: This key supports comma-separated lists (for example: dbserver1,dbserver2,dbserver3)\x1B[0m"
+        printf '%b\n' "\x1B[1;31m(NOTE: NOT the host name of the database server, and CANNOT include a dot[.] character)\x1B[0m"
+        printf '%b\n' "\x1B[1;31m(NOTE: This key supports comma-separated lists (for example: dbserver1,dbserver2,dbserver3)\x1B[0m"
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" ]]; then
-            echo -e "\x1B[1;31m(NOTE: IBM Automation Document Processing only supports 1 database server. For Automation Document processing, only the first database server in the list is used.)\x1B[0m"
+            printf '%b\n' "\x1B[1;31m(NOTE: IBM Automation Document Processing only supports 1 database server. For Automation Document processing, only the first database server in the list is used.)\x1B[0m"
         fi
-        read -rp "The alias name(s): " db_server_list_input
+        read -erp "The alias name(s): " db_server_list_input
         value_empty=`echo "${db_server_list_input}" | grep '\.' | wc -l`  >/dev/null 2>&1
         if [ $value_empty -ne 0 ] ; then
             error "Found dot character(.) in your input value. Please do not contain dot character(.)!"
@@ -8036,7 +8037,7 @@ function validate_secret_in_cluster(){
                 secret_name_tmp=$(sed -e 's/^"//' -e 's/"$//' <<<"$secret_name_tmp")
                 # need to check ibm-zen-metastore-edb-cm/im-datastore-edb-cm for Zen/IM and ibm-bts-config-extension external postgresql db support
                 if [[ $secret_name_tmp != "ibm-zen-metastore-edb-cm" && $secret_name_tmp != "im-datastore-edb-cm" && $secret_name_tmp != "ibm-bts-config-extension" && $secret_name_tmp != "cp4ba-tls-issuer" ]]; then
-                    secret_exists=`${CLI_CMD} get secret $secret_name_tmp -n "$CP4BA_SERVICES_NS" --ignore-not-found | wc -l`  >/dev/null 2>&1
+                    secret_exists=`${CLI_CMD} get secret $secret_name_tmp -n "$CP4BA_SERVICES_NS" --ignore-not-found | wc -l`  >&3 2>&3
                     if [ "$secret_exists" -ne 2 ] ; then
                         error "Secret \"$secret_name_tmp\" not found in Kubernetes cluster! please create it first before deployment CP4BA"
                         SECRET_CREATE_PASSED="false"
@@ -8045,7 +8046,7 @@ function validate_secret_in_cluster(){
                     fi
                 else
                     if [[ $secret_name_tmp == "cp4ba-tls-issuer" ]]; then
-                        secret_exists=`${CLI_CMD} get Issuer $secret_name_tmp -n "$CP4BA_SERVICES_NS" --ignore-not-found | wc -l`  >/dev/null 2>&1
+                        secret_exists=`${CLI_CMD} get Issuer $secret_name_tmp -n "$CP4BA_SERVICES_NS" --ignore-not-found | wc -l`  >&3 2>&3
                         if [ "$secret_exists" -ne 2 ] ; then
                             error "Issuer \"$secret_name_tmp\" not found in Kubernetes cluster! please create it first before deployment CP4BA"
                             SECRET_CREATE_PASSED="false"
@@ -8053,7 +8054,7 @@ function validate_secret_in_cluster(){
                             success "Issuer \"$secret_name_tmp\" found in Kubernetes cluster, PASSED!"
                         fi
                     else
-                        secret_exists=`${CLI_CMD} get configmap $secret_name_tmp -n "$CP4BA_SERVICES_NS" --ignore-not-found | wc -l`  >/dev/null 2>&1
+                        secret_exists=`${CLI_CMD} get configmap $secret_name_tmp -n "$CP4BA_SERVICES_NS" --ignore-not-found | wc -l`  >&3 2>&3
                         if [ "$secret_exists" -ne 2 ] ; then
                             error "ConfigMap \"$secret_name_tmp\" not found in Kubernetes cluster! please create it first before deployment CP4BA"
                             SECRET_CREATE_PASSED="false"
@@ -8084,7 +8085,7 @@ function validate_secret_in_cluster(){
                 exit 1
             else
                 secret_name_tmp=$(sed -e 's/^"//' -e 's/"$//' <<<"$secret_name_tmp")
-                secret_exists=`${CLI_CMD} get secret $secret_name_tmp -n "$CP4BA_SERVICES_NS" --ignore-not-found | wc -l`  >/dev/null 2>&1
+                secret_exists=`${CLI_CMD} get secret $secret_name_tmp -n "$CP4BA_SERVICES_NS" --ignore-not-found | wc -l`  >&3 2>&3
                 if [ "$secret_exists" -ne 2 ] ; then
                     error "Secret \"$secret_name_tmp\" not found in Kubernetes cluster! please create it first before deployment CP4BA"
                     SECRET_CREATE_PASSED="false"
@@ -8136,7 +8137,7 @@ function validate_prerequisites(){
     verify_storage_class_valid $tmp_storage_classname "ReadWriteOnce" $sample_pvc_name
 
     if [[ $verification_sc_passed == "No" ]]; then
-        ${CLI_CMD} delete pvc -l cp4ba=test-only >/dev/null 2>&1
+        ${CLI_CMD} delete pvc -l cp4ba=test-only >&3 2>&3
         exit 0
     fi
     # Validate Secret for CP4BA
@@ -8149,10 +8150,10 @@ function validate_prerequisites(){
         tmp_serverport="$(prop_ldap_property_file LDAP_PORT)"
         tmp_basdn="$(prop_ldap_property_file LDAP_BASE_DN)"
         tmp_ldapssl="$(prop_ldap_property_file LDAP_SSL_ENABLED)"
-        tmp_user=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o jsonpath='{.items[0].data.ldapUsername}' | base64 -w 0 --decode)
+        tmp_user=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o jsonpath='{.items[0].data.ldapUsername}' | ${BASE64_DECODE})
         ## <https://jsw.ibm.com/browse/DBACLD-172803> - We are now asking user to use {xor} for special characters in password, so we need to use decode_xor_password to get the password decoded before validation.
         cp4a_operator=$( $CLI_CMD get pods -l name=ibm-cp4a-operator --no-headers --ignore-not-found -n $cp4ba_operators_namespace | awk '{print $1}' )
-        tmp_userpwd=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o jsonpath='{.items[0].data.ldapPassword}' | base64 -w 0 --decode)
+        tmp_userpwd=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ldap-bind-secret -o jsonpath='{.items[0].data.ldapPassword}' | ${BASE64_DECODE})
         if [[ "$tmp_userpwd" =~ "{xor}" ]]; then
             tmp_userpwd=$(decode_xor_password $tmp_userpwd $cp4ba_operators_namespace $cp4a_operator)
         fi
@@ -8184,10 +8185,10 @@ function validate_prerequisites(){
             tmp_serverport="$(prop_ext_ldap_property_file LDAP_PORT)"
             tmp_basdn="$(prop_ext_ldap_property_file LDAP_BASE_DN)"
             tmp_ldapssl="$(prop_ext_ldap_property_file LDAP_SSL_ENABLED)"
-            tmp_user=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ext-ldap-bind-secret -o jsonpath='{.items[0].data.ldapUsername}' | base64 -w 0 --decode)
+            tmp_user=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ext-ldap-bind-secret -o jsonpath='{.items[0].data.ldapUsername}' | ${BASE64_DECODE})
             ## <https://jsw.ibm.com/browse/DBACLD-172803> - We are now asking user to use {xor} for special characters in password, so we need to use decode_xor_password to get the password decoded before validation.
             cp4a_operator=$( $CLI_CMD get pods -l name=ibm-cp4a-operator --no-headers --ignore-not-found -n $cp4ba_operators_namespace | awk '{print $1}' )
-            tmp_userpwd=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ext-ldap-bind-secret -o jsonpath='{.items[0].data.ldapPassword}' | base64 -w 0 --decode)
+            tmp_userpwd=$($CLI_CMD get secret -n "$CP4BA_SERVICES_NS" -l name=ext-ldap-bind-secret -o jsonpath='{.items[0].data.ldapPassword}' | ${BASE64_DECODE})
             if [[ "$tmp_userpwd" =~ "{xor}" ]]; then
                 tmp_userpwd=$(decode_xor_password $tmp_userpwd $cp4ba_operators_namespace $cp4a_operator)
             fi
@@ -8839,8 +8840,8 @@ clear
 if [[ $RUNTIME_MODE == "property" ]]; then
     check_cp4ba_separate_operand $TARGET_PROJECT_NAME
     if [[ -n "${CP4BA_SERVICES_NS:-}" && "$TARGET_PROJECT_NAME" != "$CP4BA_SERVICES_NS" ]]; then
-        echo -e "\x1B[1;31m[ERROR]\x1B[0m The -n value must be the CP4BA operand namespace in Separation-of-Duty deployments."
-        echo -e "         Re-run: ./cp4a-prerequisites.sh -m ${RUNTIME_MODE} -n ${CP4BA_SERVICES_NS}"
+        printf '%b\n' "\x1B[1;31m[ERROR]\x1B[0m The -n value must be the CP4BA operand namespace in Separation-of-Duty deployments."
+        printf '%b\n' "         Re-run: ./cp4a-prerequisites.sh -m ${RUNTIME_MODE} -n ${CP4BA_SERVICES_NS}"
         exit 1
     fi
 
@@ -8851,8 +8852,8 @@ fi
 if [[ $RUNTIME_MODE == "generate" ]]; then
     check_cp4ba_separate_operand $TARGET_PROJECT_NAME
     if [[ -n "${CP4BA_SERVICES_NS:-}" && "$TARGET_PROJECT_NAME" != "$CP4BA_SERVICES_NS" ]]; then
-        echo -e "\x1B[1;31m[ERROR]\x1B[0m The -n value must be the CP4BA operand namespace in Separation-of-Duty deployments."
-        echo -e "         Re-run: ./cp4a-prerequisites.sh -m ${RUNTIME_MODE} -n ${CP4BA_SERVICES_NS}"
+        printf '%b\n' "\x1B[1;31m[ERROR]\x1B[0m The -n value must be the CP4BA operand namespace in Separation-of-Duty deployments."
+        printf '%b\n' "         Re-run: ./cp4a-prerequisites.sh -m ${RUNTIME_MODE} -n ${CP4BA_SERVICES_NS}"
         exit 1
     fi
     
@@ -8905,8 +8906,8 @@ if [[ $RUNTIME_MODE == "validate" ]]; then
     echo  "*****************************************************"
     check_cp4ba_separate_operand $TARGET_PROJECT_NAME
     if [[ -n "${CP4BA_SERVICES_NS:-}" && "$TARGET_PROJECT_NAME" != "$CP4BA_SERVICES_NS" ]]; then
-        echo -e "\x1B[1;31m[ERROR]\x1B[0m The -n value must be the CP4BA operand namespace in Separation-of-Duty deployments."
-        echo -e "         Re-run: ./cp4a-prerequisites.sh -m ${RUNTIME_MODE} -n ${CP4BA_SERVICES_NS}"
+        printf '%b\n' "\x1B[1;31m[ERROR]\x1B[0m The -n value must be the CP4BA operand namespace in Separation-of-Duty deployments."
+        printf '%b\n' "         Re-run: ./cp4a-prerequisites.sh -m ${RUNTIME_MODE} -n ${CP4BA_SERVICES_NS}"
         exit 1
     fi
     

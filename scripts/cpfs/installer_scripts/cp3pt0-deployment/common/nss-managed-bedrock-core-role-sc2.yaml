@@ -710,6 +710,20 @@ rules:
       - kafkamirrormaker2s/status
       - kafkarebalances/status
   - verbs:
+      - update
+    apiGroups:
+      - ibmevents.ibm.com
+    resources:
+      - kafkas/finalizers
+      - kafkanodepools/finalizers
+      - kafkaconnects/finalizers
+      - kafkaconnectors/finalizers
+      - kafkabridges/finalizers
+      - kafkamirrormaker2s/finalizers
+      - kafkarebalances/finalizers
+      - kafkatopics/finalizers
+      - kafkausers/finalizers
+  - verbs:
       - get
       - list
       - watch
@@ -729,6 +743,12 @@ rules:
       - core.ibmevents.ibm.com
     resources:
       - strimzipodsets/status
+  - verbs:
+      - update
+    apiGroups:
+      - core.ibmevents.ibm.com
+    resources:
+      - strimzipodsets/finalizers
   - verbs:
       - get
       - list

@@ -50,7 +50,7 @@ spec:
         - /baw-operator
         args:
         - --leader-elect
-        image: icr.io/cpopen/icp4a-workflow-operator@sha256:c55b22bf4b84ffd8a4e3e77fcb4bf6f33ec4b4ad37034c196732051fb08f5294
+        image: icr.io/cpopen/icp4a-workflow-operator@sha256:8c74178fa017fd8939550a4cc651aa2e348d6538988ef195fa61135b2e36b14a
         imagePullPolicy: IfNotPresent
         name: operator
         securityContext:

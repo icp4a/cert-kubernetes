@@ -10,8 +10,8 @@
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
 #
 ###############################################################################
-echo -e "\033[1;31mImportant! Please ensure that you had login to the target Docker registry in advance. \033[0m"
-echo -e "\033[1;31mImportant! The load image sample script is for x86_64, amd64, or i386 platforms only.\n \033[0m"
+printf '%b\n' "\033[1;31mImportant! Please ensure that you had login to the target Docker registry in advance. \033[0m"
+printf '%b\n' "\033[1;31mImportant! The load image sample script is for x86_64, amd64, or i386 platforms only.\n \033[0m"
 
 ARCH=$(arch)
 case ${ARCH} in
@@ -26,7 +26,7 @@ esac
 
 
 function showHelp {
-    echo -e "\nUsage: loadPrereqImages.sh -r docker_registry [-t] [-l]\n"
+    printf '%b\n' "\nUsage: loadPrereqImages.sh -r docker_registry [-t] [-l]\n"
     echo "Options:"
     echo "  -h  Display help"
     echo "  -r  Target Docker registry and namespace"
@@ -111,7 +111,7 @@ function loginEntitlementRepo() {
         read -rsp "" entitlement_key
         if [ -z "$entitlement_key" ]; then
             printf "\n"
-            echo -e "\x1B[1;31mEnter a valid Entitlement Registry key\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid Entitlement Registry key\x1B[0m"
         else
             if  [[ $entitlement_key == iamapikey:* ]] ;
             then
@@ -170,7 +170,7 @@ for image in "${prereqimages[@]}"
 do
   getimagerepo
   origin_image=${image_repo}${image}
-  echo -e "\x1B[1mPull image: ${origin_image}.\n\x1B[0m"   
+  printf '%b\n' "\x1B[1mPull image: ${origin_image}.\n\x1B[0m"   
   ${cli_cmd} pull ${origin_image}
 
   if [ "${cli_cmd}" = "docker" ]
@@ -189,13 +189,13 @@ do
         then
           ${cli_cmd} push ${target_docker_repo}/${image} | grep -e repository -e digest -e unauthorized
           ${cli_cmd} rmi -f ${origin_image} ${target_docker_repo}/${image} | grep -e unauthorized
-          echo -e "\x1B[1mPushed image: ${target_docker_repo}/${image} \n\x1B[0m"  
+          printf '%b\n' "\x1B[1mPushed image: ${target_docker_repo}/${image} \n\x1B[0m"  
 
       elif [ "${cli_cmd}" = "podman" ]
         then
           ${cli_cmd} push --tls-verify=false ${local_repo_prefix}${image} ${target_docker_repo}/${image} | grep -e repository -e digest -e unauthorized
           ${cli_cmd} rmi -f ${origin_image} ${local_repo_prefix}${image}| grep -e unauthorized
-          echo -e "\x1B[1mPushed image: ${target_docker_repo}/${image} \n\x1B[0m" 
+          printf '%b\n' "\x1B[1mPushed image: ${target_docker_repo}/${image} \n\x1B[0m" 
       fi
   fi
 done
@@ -207,7 +207,7 @@ then
 else
     status="push"
 fi
-echo -e "\nDocker images ${status} to ${target_docker_repo} completed, and check the following images in the Docker registry:"
+printf '%b\n' "\nDocker images ${status} to ${target_docker_repo} completed, and check the following images in the Docker registry:"
 for img_load in ${prereqimages[@]}
 do
     echo "     -  ${target_docker_repo}/${img_load}"

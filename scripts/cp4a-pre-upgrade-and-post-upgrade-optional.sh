@@ -71,7 +71,7 @@ WHITE='\033[0;37m'
 source ${CUR_DIR}/helper/common.sh
 
 function show_help() {
-    echo -e "\nUsage: cp4a-pre-upgrade-and-post-upgrade-optional.sh scim-enabled/pre-upgrade/post-upgrade\n"
+    printf '%b\n' "\nUsage: cp4a-pre-upgrade-and-post-upgrade-optional.sh scim-enabled/pre-upgrade/post-upgrade\n"
     echo "Options:"
     echo "  -h  Display help"
     echo "  scim-enabled - Check if SCIM is configured and if pre-upgrade/post-upgrade are needed to be executed for upgrading"
@@ -99,9 +99,9 @@ function select_upgrade_mode(){
           choice=1
         else
           printf "\n"
-          echo -e "\x1B[1mWhich migration mode for the IBM Cloud Pak foundational services are you migrating to? \x1B[0m"
-          echo -e "\x1B[1m1) cluster-scoped to cluster-scoped\x1B[0m"
-          echo -e "\x1B[1m2) cluster-scoped to namespace-scoped\x1B[0m"
+          printf '%b\n' "\x1B[1mWhich migration mode for the IBM Cloud Pak foundational services are you migrating to? \x1B[0m"
+          printf '%b\n' "\x1B[1m1) cluster-scoped to cluster-scoped\x1B[0m"
+          printf '%b\n' "\x1B[1m2) cluster-scoped to namespace-scoped\x1B[0m"
 
           read -p "Enter your choice [1 or 2]: " choice
         fi
@@ -139,7 +139,7 @@ function get_default_cp_console_route() {
   rm -fr $TEMP_CP_CONSOLE_FILE
   local tmp_cp_console=$( ${CLI_CMD} get route $CP_CONSOLE --no-headers --ignore-not-found  -n $TARGET_PROJECT_NAME_CS | awk '{print $1}' )
   if [ -n $tmp_cp_console  ]; then
-    echo -e "${BLUE}Creating backup yaml for route $CP_CONSOLE${COLOR_OFF}"
+    printf '%b\n' "${BLUE}Creating backup yaml for route $CP_CONSOLE${COLOR_OFF}"
     ${CLI_CMD} get route $CP_CONSOLE -o yaml -n $TARGET_PROJECT_NAME_CS > $TEMP_CP_CONSOLE_FILE
     CP_CONSOLE_HOST=$(${YQ_CMD} ".spec.host" $TEMP_CP_CONSOLE_FILE)
     ID_MGMT_CP_CONSOLE=$( echo "id-mgmt-${CP_CONSOLE_HOST}" | sed   "s/-$TARGET_PROJECT_NAME_CS//g" )
@@ -147,7 +147,7 @@ function get_default_cp_console_route() {
     cp $TEMP_CP_CONSOLE_FILE $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
     cp $TEMP_CP_CONSOLE_FILE $TEMP_CP_CONSOLE_FILE_ID_MGMT
   else
-    echo -e "${RED}Could not find the route $CP_CONSOLE${COLOR_OFF}"
+    printf '%b\n' "${RED}Could not find the route $CP_CONSOLE${COLOR_OFF}"
     return 1
   fi
 
@@ -177,10 +177,10 @@ function create_custom_idprovider_route() {
       ${YQ_CMD} -i '.metadata.annotations."haproxy.router.openshift.io/rewrite-target" = "/"' $TEMP_CP_CONSOLE_FILE_ID_PROVIDER
     fi
 
-    echo -e "Creating new route named $ID_PROVIDER_ROUTE_NAME"
+    printf '%b\n' "Creating new route named $ID_PROVIDER_ROUTE_NAME"
     ${CLI_CMD} apply -f $TEMP_CP_CONSOLE_FILE_ID_PROVIDER -n $TARGET_PROJECT_NAME_CS
   else
-    echo -e "${RED}File not found:${COLOR_OFF} ${TEMP_CP_CONSOLE_FILE_ID_PROVIDER}"
+    printf '%b\n' "${RED}File not found:${COLOR_OFF} ${TEMP_CP_CONSOLE_FILE_ID_PROVIDER}"
     return -1
   fi
 
@@ -211,10 +211,10 @@ function create_custom_idmgmt_route() {
 
     fi
 
-    echo -e "Creating new route named $ID_MGMT_ROUTE_NAME"
+    printf '%b\n' "Creating new route named $ID_MGMT_ROUTE_NAME"
     ${CLI_CMD} apply -f $TEMP_CP_CONSOLE_FILE_ID_MGMT -n $TARGET_PROJECT_NAME_CS
   else
-    echo -e "${RED}File not found:${COLOR_OFF} ${TEMP_CP_CONSOLE_FILE_ID_MGMT}"
+    printf '%b\n' "${RED}File not found:${COLOR_OFF} ${TEMP_CP_CONSOLE_FILE_ID_MGMT}"
     return -1
   fi
 
@@ -223,7 +223,7 @@ function create_custom_idmgmt_route() {
 }
 
 function validate_new_routes() {
-  echo -e "${BLUE}Going to validate new custom cp console routes before upgrading${COLOR_OFF}"
+  printf '%b\n' "${BLUE}Going to validate new custom cp console routes before upgrading${COLOR_OFF}"
 
   local app_login_user=$( $CLI_CMD get secret $IBM_FNCM_SECRET_NAME -n $TARGET_PROJECT_NAME -o jsonpath='{ .data.appLoginUsername }' | base64 -d )
   local app_login_pwd=$( $CLI_CMD get secret $IBM_FNCM_SECRET_NAME -n $TARGET_PROJECT_NAME -o jsonpath='{ .data.appLoginPassword }' | base64 -d )
@@ -235,24 +235,24 @@ function validate_new_routes() {
 
   if [[ $access_token != "" ]]; then
 
-    echo -e "${BLUE}We were able to successfuly retrive an access token for user ${app_login_user}${COLOR_OFF}"
-    echo -e "${BLUE}Waiting 30 seconds before validating route $ID_MGMT_CP_CONSOLE${COLOR_OFF}"
+    printf '%b\n' "${BLUE}We were able to successfuly retrive an access token for user ${app_login_user}${COLOR_OFF}"
+    printf '%b\n' "${BLUE}Waiting 30 seconds before validating route $ID_MGMT_CP_CONSOLE${COLOR_OFF}"
     sleep 30s
-    echo -e "${BLUE}With the access_token, we're going to verify if we're able to make a scim call with the host $ID_MGMT_CP_CONSOLE${COLOR_OFF}"
+    printf '%b\n' "${BLUE}With the access_token, we're going to verify if we're able to make a scim call with the host $ID_MGMT_CP_CONSOLE${COLOR_OFF}"
 
     local scim=$(  curl -H "Authorization: Bearer ${access_token}" -k -X GET -s  "https://$ID_MGMT_CP_CONSOLE/idmgmt/identity/api/v1/scim/Users?filter=userName%20eq%20%22${app_login_user}%22&attributes=displayName,name,externalId,groups,id,userName&count=1&searchScope=sp"  )
     local totalResults=$(echo "$scim" | ${YQ_CMD} e -p=json -r '.totalResults // "0"' -)
 
     if [[ $totalResults == "1" ]]; then
-      echo -e "${BLUE}Successfuly retrieve user by using the $ID_MGMT_CP_CONSOLE${COLOR_OFF}"
+      printf '%b\n' "${BLUE}Successfuly retrieve user by using the $ID_MGMT_CP_CONSOLE${COLOR_OFF}"
       return 0
     else
-      echo -e "${RED}Unable to retrieve user by using the route $ID_MGMT_CP_CONSOLE${COLOR_OFF}"
+      printf '%b\n' "${RED}Unable to retrieve user by using the route $ID_MGMT_CP_CONSOLE${COLOR_OFF}"
       return 1
     fi
 
   else
-    echo -e "${RED}Failed to validate the new cp console routes${COLOR_OFF}"
+    printf '%b\n' "${RED}Failed to validate the new cp console routes${COLOR_OFF}"
     return  1
   fi
 
@@ -267,7 +267,7 @@ function select_project(){
         if [ -z "$CP4BA_AUTO_ALL_NAMESPACES" ]; then
             printf "\x1B[1mIs your $CP4BA_FULL_NAME Operator in a 'All Namespaces' scope? (Yes/No, default: No): \x1B[0m"
 
-            read -rp "" ans
+            read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 ALL_NAMESPACE="Yes"
@@ -279,7 +279,7 @@ function select_project(){
                 ;;
             *)
                 ALL_NAMESPACE=""
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         else
@@ -295,7 +295,7 @@ function select_project(){
                 ;;
             *)
                 ALL_NAMESPACE=""
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 exit 1
                 ;;
             esac
@@ -307,28 +307,28 @@ function select_project(){
       do
           read -p "Enter the project name where $CP4BA_FULL_NAME Operator is in for 'All Namespace' scope (default: openshift-operators): " OPERATOR_PROJECT_NAME
           if [ -z "$OPERATOR_PROJECT_NAME" ]; then
-              # echo -e "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
+              # printf '%b\n' "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
               OPERATOR_PROJECT_NAME="openshift-operators"
               isProjExists=$( ${CLI_CMD} get project $OPERATOR_PROJECT_NAME --ignore-not-found | wc -l)  >/dev/null 2>&1
 
               if [ "$isProjExists" -ne 2 ] ; then
-                  echo -e "\x1B[1;31mInvalid project name, please enter a existing project name ...\x1B[0m"
+                  printf '%b\n' "\x1B[1;31mInvalid project name, please enter a existing project name ...\x1B[0m"
                   OPERATOR_PROJECT_NAME=""
               else
-                  echo -e "\x1B[1mUsing project ${OPERATOR_PROJECT_NAME}...\x1B[0m"
+                  printf '%b\n' "\x1B[1mUsing project ${OPERATOR_PROJECT_NAME}...\x1B[0m"
               fi
 
           elif [[ "$OPERATOR_PROJECT_NAME" == kube* ]]; then
-              echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+              printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
               OPERATOR_PROJECT_NAME=""
           else
               isProjExists=$( ${CLI_CMD} get project $OPERATOR_PROJECT_NAME --ignore-not-found | wc -l )  >/dev/null 2>&1
 
               if [ "$isProjExists" -ne 2 ] ; then
-                  echo -e "\x1B[1;31mInvalid project name, please enter a existing project name ...\x1B[0m"
+                  printf '%b\n' "\x1B[1;31mInvalid project name, please enter a existing project name ...\x1B[0m"
                   OPERATOR_PROJECT_NAME=""
               else
-                  echo -e "\x1B[1mUsing project ${OPERATOR_PROJECT_NAME}...\x1B[0m"
+                  printf '%b\n' "\x1B[1mUsing project ${OPERATOR_PROJECT_NAME}...\x1B[0m"
               fi
           fi
       done
@@ -339,35 +339,35 @@ function select_project(){
     do
         if [ -z "$CP4BA_AUTO_NAMESPACE" ]; then
             echo
-            echo -e "\x1B[1mWhere do you deploy Cloud Pak for Business Automation?\x1B[0m"
+            printf '%b\n' "\x1B[1mWhere do you deploy Cloud Pak for Business Automation?\x1B[0m"
             read -p "Enter the name for an existing project (namespace): " TARGET_PROJECT_NAME
         else
             if [[ "$CP4BA_AUTO_NAMESPACE" == openshift* ]]; then
-                echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
                 exit 1
             elif [[ "$CP4BA_AUTO_NAMESPACE" == kube* ]]; then
-                echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+                printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
                 exit 1
             fi
             TARGET_PROJECT_NAME=$CP4BA_AUTO_NAMESPACE
         fi
 
         if [ -z "$TARGET_PROJECT_NAME" ]; then
-            echo -e "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
         elif [[ "$TARGET_PROJECT_NAME" == openshift* ]]; then
-            echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
             TARGET_PROJECT_NAME=""
         elif [[ "$TARGET_PROJECT_NAME" == kube* ]]; then
-            echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+            printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
             TARGET_PROJECT_NAME=""
         else
             isProjExists=`${CLI_CMD} get project $TARGET_PROJECT_NAME --ignore-not-found | wc -l`  >/dev/null 2>&1
 
             if [ "$isProjExists" -ne 2 ] ; then
-                echo -e "\x1B[1;31mInvalid project name, please enter a existing project name ...\x1B[0m"
+                printf '%b\n' "\x1B[1;31mInvalid project name, please enter a existing project name ...\x1B[0m"
                 TARGET_PROJECT_NAME=""
             else
-                echo -e "\x1B[1mUsing project ${TARGET_PROJECT_NAME}...\x1B[0m"
+                printf '%b\n' "\x1B[1mUsing project ${TARGET_PROJECT_NAME}...\x1B[0m"
                 if [[ $ALL_NAMESPACE == "No"  ]]; then
                   OPERATOR_PROJECT_NAME="${TARGET_PROJECT_NAME}"
                 fi
@@ -423,21 +423,21 @@ function check_cs_mode(){
     # read -p "Enter the IBM Cloud Pak foundational services namespace ${YELLOW_TEXT}(Notes: If you want to migrate a single shared instance of IBM Cloud Pak foundational services to dedicated, you need to provide the name of the namespace that CP4BA currently deploys on. If you want to keep your IBM Cloud Pak foundational services as-is [i.e: you want to keep IBM Cloud Pak foundational services in a shared configuration], you need to provide the name of the namespace that IBM Cloud Pak foundational services currently deploys on.)${RESET_TEXT}: " TARGET_PROJECT_NAME_CS
 
     if [ -z "$TARGET_PROJECT_NAME_CS" ]; then
-        echo -e "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
+        printf '%b\n' "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
     elif [[ "$TARGET_PROJECT_NAME_CS" == openshift* ]]; then
-        echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
+        printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
         TARGET_PROJECT_NAME_CS=""
     elif [[ "$TARGET_PROJECT_NAME" == kube* ]]; then
-        echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+        printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
         TARGET_PROJECT_NAME_CS=""
     else
         isProjExists=`${CLI_CMD} get project $TARGET_PROJECT_NAME_CS --ignore-not-found | wc -l`  >/dev/null 2>&1
 
         if [ "$isProjExists" -ne 2 ] ; then
-            echo -e "\x1B[1;31mInvalid project name, please enter a existing project name ...\x1B[0m"
+            printf '%b\n' "\x1B[1;31mInvalid project name, please enter a existing project name ...\x1B[0m"
             TARGET_PROJECT_NAME_CS=""
         else
-            echo -e "\x1B[1mIBM Cloud Pak foundational services is using project ${TARGET_PROJECT_NAME_CS}...\x1B[0m"
+            printf '%b\n' "\x1B[1mIBM Cloud Pak foundational services is using project ${TARGET_PROJECT_NAME_CS}...\x1B[0m"
         fi
     fi
   done
@@ -447,7 +447,7 @@ function set_fncm_secret() {
 
     while [[ $IBM_FNCM_SECRET_NAME  == "" ]];
     do
-      # echo -e "\x1B[1mEnter the ibm fncm secret \x1B[0m"
+      # printf '%b\n' "\x1B[1mEnter the ibm fncm secret \x1B[0m"
       read -p "Enter the name of ibm fncm secret (ibm-fncm-secret): " IBM_FNCM_SECRET_NAME
       if [[ $IBM_FNCM_SECRET_NAME == "" ]]; then
         IBM_FNCM_SECRET_NAME='ibm-fncm-secret'
@@ -455,7 +455,7 @@ function set_fncm_secret() {
 
       local ibm_fncm_secret_result=$($CLI_CMD get secret --no-headers --ignore-not-found $IBM_FNCM_SECRET_NAME -n ${TARGET_PROJECT_NAME} | awk '{print $1}')
       if [ -z $ibm_fncm_secret_result ]; then
-         echo -e "\x1B[1mInvalid secret name, please enter a valid secret name\x1B[0m"
+         printf '%b\n' "\x1B[1mInvalid secret name, please enter a valid secret name\x1B[0m"
          IBM_FNCM_SECRET_NAME=""
       fi
     done
@@ -484,10 +484,10 @@ function retrieve_dependencies(){
       $CLI_CMD cp $cpe_pod:${POST_UPGRADE_CPE_TRUSTSTORE_PATH} ${TEMP_FOLDER}/${POST_UPGRADE_TRUSTSTORE_NAME} -n $TARGET_PROJECT_NAME  >/dev/null 2>&1
     fi
   else
-    echo -e "${RED}We were unable to retrieve the required dependecies.${COLOR_OFF}"
-    echo -e "${RED}Please verify that your Content Process Engine deployment is not scaled down to 0 when executing this script.${COLOR_OFF}"
-    echo -e "${RED}If your Content Process Engine deployment is scaled down to 0, please scale the deployment up to at least 1 replica.${COLOR_OFF}"
-    echo -e "${RED}Once Content Process Engine is in a ready state, please rerun the script $SCRIPT_NAME.${COLOR_OFF}"
+    printf '%b\n' "${RED}We were unable to retrieve the required dependecies.${COLOR_OFF}"
+    printf '%b\n' "${RED}Please verify that your Content Process Engine deployment is not scaled down to 0 when executing this script.${COLOR_OFF}"
+    printf '%b\n' "${RED}If your Content Process Engine deployment is scaled down to 0, please scale the deployment up to at least 1 replica.${COLOR_OFF}"
+    printf '%b\n' "${RED}Once Content Process Engine is in a ready state, please rerun the script $SCRIPT_NAME.${COLOR_OFF}"
     return 1
   fi
 
@@ -513,11 +513,11 @@ function retrieve_dependencies(){
    fi
 
   else
-    echo -e "${RED}We were unable to retrieve the required dependecies.${COLOR_OFF}"
-    echo -e "${RED}Please verify that your IBM Cloud Pak for Business Automation operator is not scaled to 0 before running this script.${COLOR_OFF}"
-    echo -e "${RED}Please verify that your IBM CP4BA FileNet Content Manager operator is not scaled to 0 before running this script.${COLOR_OFF}"
-    echo -e "${RED}If your operators deployments are scaled down to 0, please scale the deployments up to 1 replica.${COLOR_OFF}"
-    echo -e "${RED}Once these operators are in a ready state, please rerun the script $SCRIPT_NAME.${COLOR_OFF}"
+    printf '%b\n' "${RED}We were unable to retrieve the required dependecies.${COLOR_OFF}"
+    printf '%b\n' "${RED}Please verify that your IBM Cloud Pak for Business Automation operator is not scaled to 0 before running this script.${COLOR_OFF}"
+    printf '%b\n' "${RED}Please verify that your IBM CP4BA FileNet Content Manager operator is not scaled to 0 before running this script.${COLOR_OFF}"
+    printf '%b\n' "${RED}If your operators deployments are scaled down to 0, please scale the deployments up to 1 replica.${COLOR_OFF}"
+    printf '%b\n' "${RED}Once these operators are in a ready state, please rerun the script $SCRIPT_NAME.${COLOR_OFF}"
     return 1
   fi
 
@@ -707,7 +707,7 @@ else
             if [[ ${res} == "0" ]]; then
               update_acce SCIMENABLED
             else
-              echo -e "${RED}Failed to retrieve dependencies${COLOR_OFF}"
+              printf '%b\n' "${RED}Failed to retrieve dependencies${COLOR_OFF}"
               exit 1
             fi
           else

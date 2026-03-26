@@ -111,9 +111,9 @@ spec:
     enable_fips: false
 
     ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
-    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## By default, the sc_is_multiple_az parameter is set to true. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
-    sc_is_multiple_az: false
+    sc_is_multiple_az: true
 
   #--------------------------------------------------------------------------------------------------------------------------------
   # This section contains CPE and GraphQL for Business Automation Application Data Persistence(ae_data_persistence)
@@ -208,7 +208,7 @@ spec:
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/cpe
-  #       tag: "24.0.1-IF006"
+  #       tag: "24.0.1-IF007"
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
@@ -355,7 +355,7 @@ spec:
   #         pull_policy: IfNotPresent
   #         ## The default repository is the IBM Entitled Registry.
   #         repository: cp.icr.io/cp/cp4a/fncm/lscollector
-  #         tag: "24.0.1-IF006"
+  #         tag: "24.0.1-IF007"
   #       ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
   #       ## If more resources are needed, make the changes here to meet your requirement.
   #       resources:
@@ -391,7 +391,7 @@ spec:
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/graphql
-  #       tag: "24.0.1-IF006"
+  #       tag: "24.0.1-IF007"
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
@@ -507,7 +507,7 @@ spec:
   #  #    pull_policy: IfNotPresent
   #  #    ## The default repository is the IBM Entitled Registry.
   #  #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-  #  #    tag: "24.0.1-IF006"
+  #  #    tag: "24.0.1-IF007"
   #  # #  #  ## Below are the default LSReporter Production settings.
   #  #  ## Make the necessary changes as you see fit.
   #  #  product_settings:

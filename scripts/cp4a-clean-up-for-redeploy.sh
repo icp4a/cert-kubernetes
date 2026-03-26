@@ -55,10 +55,10 @@ check_cluster_login
 # CP4BA Namespace check
 while [ -z "$CP4BA_NAMESPACE" ]; do
 	printf "\x1B[1mEnter namespace of your CP4BA deployment: \x1B[0m"
-	read -rp "" ans 
+	read -erp "" ans 
 	CP4BA_NAMESPACE=$ans
 	if [ -z "$(${CLI_CMD} get project "${CP4BA_NAMESPACE}" 2>/dev/null)" ]; then
-		echo -e "\x1B[1;31mError: Namespace ${CP4BA_NAMESPACE} does not exist. Please re-enter the namespace.\x1B[0m"
+		printf '%b\n' "\x1B[1;31mError: Namespace ${CP4BA_NAMESPACE} does not exist. Please re-enter the namespace.\x1B[0m"
 		CP4BA_NAMESPACE=""
 	fi
 	echo
@@ -72,7 +72,7 @@ if [ -z "$CP4BA_SERVICE_NAMESPACE" ]; then
 	max_retries=0
 	while [ $max_retries -lt 4 ]; do
 		printf "\x1B[1m\nDid you install CP4BA with Separation of Duties? (Yes/No, default: No) \x1B[0m"
-		read -rp "" ans 
+		read -erp "" ans 
 		# If the user provides no input, set the default to 'No'
 		if [ -z "$ans" ]; then
 			ans="No"
@@ -83,10 +83,10 @@ if [ -z "$CP4BA_SERVICE_NAMESPACE" ]; then
 				max_counter=0
 				while [ $max_counter -lt 4 ]; do
 					printf "\x1B[1mEnter Operand namespace of your CP4BA deployment: \x1B[0m"
-					read -rp "" ans 
+					read -erp "" ans 
 					CP4BA_SERVICE_NAMESPACE=$ans
 						if [ -z "$(${CLI_CMD} get project "${CP4BA_SERVICE_NAMESPACE}" 2>/dev/null)" ]; then
-							echo -e "\x1B[1;31mError: Namespace ${CP4BA_SERVICE_NAMESPACE} does not exist. Please re-enter the namespace. \x1B[0m\n"
+							printf '%b\n' "\x1B[1;31mError: Namespace ${CP4BA_SERVICE_NAMESPACE} does not exist. Please re-enter the namespace. \x1B[0m\n"
 							CP4BA_SERVICE_NAMESPACE=""
 							max_counter=$(($max_counter + 1))
 						else
@@ -98,10 +98,10 @@ if [ -z "$CP4BA_SERVICE_NAMESPACE" ]; then
 					error "Maximum retries for incorrect inputs exceeded. The script will now exit.."
 					exit
 				fi
-				echo -e "\x1B[1mGetting Operator Namespace... \x1B[0m"
+				printf '%b\n' "\x1B[1mGetting Operator Namespace... \x1B[0m"
 				CP4BA_NAMESPACE=$(${CLI_CMD} get cm ibm-cp4ba-common-config -n $CP4BA_SERVICE_NAMESPACE --ignore-not-found -o jsonpath="{ .data.operators_namespace}")
 				if [[ -z "$CP4BA_NAMESPACE" ]]; then
-					echo -e "\x1B[31;5mError: ibm-cp4ba-common-config ConfigMap not found in ${CP4BA_SERVICE_NAMESPACE} \x1B[0m\n"
+					printf '%b\n' "\x1B[31;5mError: ibm-cp4ba-common-config ConfigMap not found in ${CP4BA_SERVICE_NAMESPACE} \x1B[0m\n"
 					exit 1
 				fi 
 				break
@@ -123,55 +123,55 @@ fi
 
 # Validate CP4BA_NAMESPACE env var is for existing namespace
 if [ -z "$(${CLI_CMD} get project "${CP4BA_SERVICE_NAMESPACE}" 2>/dev/null)" ]; then
-	echo -e "\x1B[1;31mError: Namespace ${CP4BA_SERVICE_NAMESPACE} does not exist. Specify an existing namespace where CP4BA is deployed.\x1B[0m" && exit 1
+	printf '%b\n' "\x1B[1;31mError: Namespace ${CP4BA_SERVICE_NAMESPACE} does not exist. Specify an existing namespace where CP4BA is deployed.\x1B[0m" && exit 1
 fi
 
 # Check for namespace to prvent accidental deletion to other important namespaces.
 if [[ "$CP4BA_SERVICE_NAMESPACE" == openshift* ]]; then
-    echo -e "\x1B[1;31mThe current namespace must not be 'openshift' or start with 'openshift'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
+    printf '%b\n' "\x1B[1;31mThe current namespace must not be 'openshift' or start with 'openshift'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
     exit 1
 elif [[ "$CP4BA_SERVICE_NAMESPACE" == kube* ]]; then
-    echo -e "\x1B[1;31mThe current namespace must not be 'kube' or start with 'kube'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
+    printf '%b\n' "\x1B[1;31mThe current namespace must not be 'kube' or start with 'kube'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
     exit 1
 elif [[ "$CP4BA_SERVICE_NAMESPACE" == "services" ]]; then
-    echo -e "\x1B[1;31mThe current namespace must not be 'services'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
+    printf '%b\n' "\x1B[1;31mThe current namespace must not be 'services'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
     exit 1
 elif [[ "$CP4BA_SERVICE_NAMESPACE" == "default" ]]; then
-    echo -e "\x1B[1;31mThe current namespace must not be 'default'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
+    printf '%b\n' "\x1B[1;31mThe current namespace must not be 'default'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
     exit 1
 elif [[ "$CP4BA_SERVICE_NAMESPACE" == "calico-system" ]]; then
-    echo -e "\x1B[1;31mThe current namespace must not be 'calico-system'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
+    printf '%b\n' "\x1B[1;31mThe current namespace must not be 'calico-system'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
     exit 1
 elif [[ "$CP4BA_SERVICE_NAMESPACE" == "ibm-cert-store" ]]; then
-    echo -e "\x1B[1;31mThe current namespace must not be 'ibm-cert-store'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
+    printf '%b\n' "\x1B[1;31mThe current namespace must not be 'ibm-cert-store'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
     exit 1
 elif [[ "$CP4BA_SERVICE_NAMESPACE" == "ibm-observe" ]]; then
-    echo -e "\x1B[1;31mThe current namespace must not be 'ibm-observe'. It should be the namespace where CP4BA is installed. The script has been  aborted. \x1B[0m"
+    printf '%b\n' "\x1B[1;31mThe current namespace must not be 'ibm-observe'. It should be the namespace where CP4BA is installed. The script has been  aborted. \x1B[0m"
     exit 1
 elif [[ "$CP4BA_SERVICE_NAMESPACE" == "ibm-odf-validation-webhook" ]]; then
-    echo -e "\x1B[1;31mThe current namespace must not be 'default'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
+    printf '%b\n' "\x1B[1;31mThe current namespace must not be 'default'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
     exit 1
 elif [[ "$CP4BA_SERVICE_NAMESPACE" == "ibm-system" ]]; then
-    echo -e "\x1B[1;31mThe current namespace must not be 'ibm-system'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
+    printf '%b\n' "\x1B[1;31mThe current namespace must not be 'ibm-system'. It should be the namespace where CP4BA is installed. The script has been aborted. \x1B[0m"
     exit 1
 fi
 
-echo -e "The CP4BA namespace entered: ${CP4BA_SERVICE_NAMESPACE}\n"
+printf '%b\n' "The CP4BA namespace entered: ${CP4BA_SERVICE_NAMESPACE}\n"
 if [[ "$CP4BA_SERVICE_NAMESPACE" != "$CP4BA_NAMESPACE" ]]; then
-	echo -e "The CP4BA operator namespace is ${CP4BA_NAMESPACE}"
+	printf '%b\n' "The CP4BA operator namespace is ${CP4BA_NAMESPACE}"
 fi
-echo -e "\x1B[1mNote: Please ensure you are using the intended namespace for cleanup.\n\x1B[0m"
-echo -e "\x1B[33;5mATTENTION: \x1B[0m\x1B[1;31mThis clean-up script is only intended to be run after you have deleted your ICP4ACluster or Content CR instance for your CP4BA deployment. This clean-up script will delete all Client CRs and zenExtensions, and some secrets that would cause failure in re-deployment. \x1B[0m\n"
+printf '%b\n' "\x1B[1mNote: Please ensure you are using the intended namespace for cleanup.\n\x1B[0m"
+printf '%b\n' "\x1B[33;5mATTENTION: \x1B[0m\x1B[1;31mThis clean-up script is only intended to be run after you have deleted your ICP4ACluster or Content CR instance for your CP4BA deployment. This clean-up script will delete all Client CRs and zenExtensions, and some secrets that would cause failure in re-deployment. \x1B[0m\n"
 
 # Confirm to clean up
-echo -e "\x1B[1mPlease confirm if you would like to proceed with this clean up.\x1B[0m"
+printf '%b\n' "\x1B[1mPlease confirm if you would like to proceed with this clean up.\x1B[0m"
 read -p "Enter Y or y to continue: " -n 1 -r
 echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-	echo -e "\nYou did not confirm to proceed with this clean up. Exit clean-up script."
+	printf '%b\n' "\nYou did not confirm to proceed with this clean up. Exit clean-up script."
 	exit 0
 fi
-echo -e "You have confirmed to continue this clean up.\n"
+printf '%b\n' "You have confirmed to continue this clean up.\n"
 sleep 2
 
 function delete_resource() {
@@ -187,19 +187,19 @@ function delete_resource() {
 }
 
 # Clean up clients
-echo -e "\x1B[1mCleaning up Clients... \x1B[0m\n"
+printf '%b\n' "\x1B[1mCleaning up Clients... \x1B[0m\n"
 delete_resource client "${CP4BA_SERVICE_NAMESPACE}"
-echo -e "\n\x1B[1mFinsished cleaning up all Clients. \x1B[0m\n"
+printf '%b\n' "\n\x1B[1mFinsished cleaning up all Clients. \x1B[0m\n"
 # Clean up zenExtension
-echo -e "\x1B[1mCleaning up zenExtensions... \x1B[0m\n"
+printf '%b\n' "\x1B[1mCleaning up zenExtensions... \x1B[0m\n"
 delete_resource zenextension "${CP4BA_SERVICE_NAMESPACE}"
-echo -e "\n\x1B[1mFinsihed cleaning up all zenExtensions. \x1B[0m\n"
+printf '%b\n' "\n\x1B[1mFinsihed cleaning up all zenExtensions. \x1B[0m\n"
 # Clean up zen-metastore-edb secret
-echo -e "\x1B[1mCleaning up zen-metastore-edb secrets... \x1B[0m\n"
+printf '%b\n' "\x1B[1mCleaning up zen-metastore-edb secrets... \x1B[0m\n"
 for i in $(${CLI_CMD} get secrets --no-headers|awk '{print $1}'| grep 'zen-metastore-edb'); do
     ${CLI_CMD} delete secret "$i" -n "$CP4BA_SERVICE_NAMESPACE"
 done
-echo -e "\n\x1B[1mFinsihed cleaning up all zen-metastore-edb related secrets. \x1B[0m\n"
+printf '%b\n' "\n\x1B[1mFinsihed cleaning up all zen-metastore-edb related secrets. \x1B[0m\n"
 
 # delete FlinkDeployment CR
 echo "Deleting FlinkDeployment CR"
@@ -215,4 +215,4 @@ if [[ "$CP4BA_SERVICE_NAMESPACE" != "$CP4BA_NAMESPACE" ]]; then
 	${CLI_CMD} delete secret flink-operator-cert -n $CP4BA_NAMESPACE --ignore-not-found=true --wait=true
 fi
 
-echo -e "\x1B[1m \nCP4BA clean up has completed.\x1B[0m\n"
+printf '%b\n' "\x1B[1m \nCP4BA clean up has completed.\x1B[0m\n"

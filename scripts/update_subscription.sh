@@ -104,71 +104,71 @@ function prereq_check() {
     fi
     oc get pod >/dev/null 2>&1
     if [ $? -gt 0 ]; then
-        echo -e "oc login required" >&2
+        printf '%b\n' "oc login required" >&2
         exit 1
     fi
     if oc get cm -n kube-public common-service-maps &> /dev/null; then 
         if [ -z "${NAMESPACE}" ]; then
-            echo -e "Error: CP4BA namespace must be provided." >&2
+            printf '%b\n' "Error: CP4BA namespace must be provided." >&2
             exit 1
         fi
         if [ -z "${CS_NS}" ]; then
-            echo -e "Error: CS namespace must be provided." >&2
+            printf '%b\n' "Error: CS namespace must be provided." >&2
             exit 1
         fi
         if [ -z "${CS_CTRL_NS}" ]; then
-            echo -e "Error: CS Control namespace must be provided." >&2
+            printf '%b\n' "Error: CS Control namespace must be provided." >&2
             exit 1
         fi
     elif [ -z "${NAMESPACE}" ]; then
         CP4BA_SUB=$(oc get subscription.operators.coreos.com -A | grep "ibm-cp4a-operator " | grep -v "wfps")
         CP4BA_SUB_COUNT=$(oc get subscription.operators.coreos.com -A | grep "ibm-cp4a-operator " | grep -v -c "wfps")
         if [ "${CP4BA_SUB_COUNT}" -le "0" ]; then
-            echo -e "Error: CP4BA subscription not found in any namespace." >&2
+            printf '%b\n' "Error: CP4BA subscription not found in any namespace." >&2
             exit 1
         elif [ "${CP4BA_SUB_COUNT}" -eq "1" ]; then
             NAMESPACE=$(echo "${CP4BA_SUB}" | awk '{print $1}')
         else
-            echo -e "Error: More than one project with CP4BA subscription found, please specify namespace using '-n'" >&2
+            printf '%b\n' "Error: More than one project with CP4BA subscription found, please specify namespace using '-n'" >&2
             exit 1
         fi
     fi
     CP4BA_SUB_COUNT=$(oc get subscription.operators.coreos.com -n "${NAMESPACE}" | grep "ibm-cp4a-operator " | grep -v -c "wfps")
     if ! [[ ${NAMESPACE} =~ ^[0-9a-z][-0-9a-zA-Z]{2,62}$ ]]; then
-        echo -e "Error: Invalid namespace input '${NAMESPACE}'." >&2
+        printf '%b\n' "Error: Invalid namespace input '${NAMESPACE}'." >&2
         exit 1
     elif [[ ${NAMESPACE} == "default" ]]; then
-        echo -e "Error: CP4BA should not be deploy on default namespace '${NAMESPACE}'." >&2
+        printf '%b\n' "Error: CP4BA should not be deploy on default namespace '${NAMESPACE}'." >&2
         exit 1
     elif [[ ${NAMESPACE} == "openshift-"* ]] && [[ ${NAMESPACE} != "openshift-operators" ]]; then
-        echo -e "Error: CP4BA should not be deploy on openshift namespace '${NAMESPACE}'." >&2
+        printf '%b\n' "Error: CP4BA should not be deploy on openshift namespace '${NAMESPACE}'." >&2
         exit 1
     elif [[ "${CP4BA_SUB_COUNT}" -eq "0" ]]; then
-        echo -e "Error: CP4BA subscription not found in provided namespace: '${NAMESPACE}'." >&2
+        printf '%b\n' "Error: CP4BA subscription not found in provided namespace: '${NAMESPACE}'." >&2
         exit 1
     fi
     if [ -z "$(oc get project "${NAMESPACE}" 2>/dev/null)" ]; then
-        echo -e "Error: Project ${NAMESPACE} does not exist. Specify an existing project where CP4BA is installed." >&2
+        printf '%b\n' "Error: Project ${NAMESPACE} does not exist. Specify an existing project where CP4BA is installed." >&2
         exit 1
     fi
-    echo -e "CP4BA operators namespace: ${NAMESPACE}"
+    printf '%b\n' "CP4BA operators namespace: ${NAMESPACE}"
 
     local opencloud_check
     for catalog in ${CS_CATALOG_LIST}; do
         if ! [ "$(oc get catalogsource "${catalog}" -n openshift-marketplace --ignore-not-found)" ]; then 
-            echo -e "Error: check your catalogsource, \"${catalog}\" is missing."
+            printf '%b\n' "Error: check your catalogsource, \"${catalog}\" is missing."
             exit 1;
         fi
         opencloud_check=$(oc get catalogsource "${catalog}" -n openshift-marketplace -o yaml | grep -c 'bedrock_catalogsource_priority:')
         if [ "${opencloud_check}" -lt 1 ]; then
-            echo -e "Error: CatalogSource \"${catalog}\" missing annotation \"bedrock_catalogsource_priority: '1'\""
+            printf '%b\n' "Error: CatalogSource \"${catalog}\" missing annotation \"bedrock_catalogsource_priority: '1'\""
             exit 1
         fi
     done
 
     for catalog in ${CP4BA_CATALOG_LIST}; do
         if ! [ "$(oc get catalogsource "${catalog}" -n openshift-marketplace --ignore-not-found)" ]; then 
-            echo -e "Error: check your catalogsource, \"${catalog}\" is missing."
+            printf '%b\n' "Error: check your catalogsource, \"${catalog}\" is missing."
             exit 1;
         fi
     done
@@ -296,15 +296,15 @@ function patch_ns_sub() {
 # Check if any subscription still using ibm-operator-catalog, repatch if needed
 ###############################################################################
 function validate_sub() {
-    echo -e "\nValidating subscription in '$1' namespace..."
+    printf '%b\n' "\nValidating subscription in '$1' namespace..."
     x=$VALIDATE_COUNTS
     while :; do
         if [ "$x" -le 0 ]; then 
-            echo -e "Failed to patch following subscriptions from 'ibm-operator-catalog' to pinned-catalogs!"
-            echo -e "(Ignore this error if below operator subscriptions is not one of the CP4BA operators)"
-            echo -e "---------------------------------------------------------------------------------------"
+            printf '%b\n' "Failed to patch following subscriptions from 'ibm-operator-catalog' to pinned-catalogs!"
+            printf '%b\n' "(Ignore this error if below operator subscriptions is not one of the CP4BA operators)"
+            printf '%b\n' "---------------------------------------------------------------------------------------"
             oc get subscription.operators.coreos.com -n "$1" | grep -E 'ibm-operator-catalog |NAME'
-            echo -e "---------------------------------------------------------------------------------------\n"
+            printf '%b\n' "---------------------------------------------------------------------------------------\n"
             VALIDATE_PASS=0
             break
         fi
@@ -314,7 +314,7 @@ function validate_sub() {
             elif [ "$1" == "${NAMESPACE}" ]; then patch_ns_sub; fi 
             sleep 2
         else
-            echo -e "Subscription validation completed for '$1' namespace."
+            printf '%b\n' "Subscription validation completed for '$1' namespace."
             VALIDATE_PASS=1
             break
         fi
@@ -333,21 +333,21 @@ echo "All prereq checks passed!"
 echo
 
 if [[ "${SKIP_CONFIRM}" -eq "0" ]]; then
-    echo -e "This script will update subscription for 'IBM Cloud Pak for Business Autmation' operator and it's dependencies, 
+    printf '%b\n' "This script will update subscription for 'IBM Cloud Pak for Business Autmation' operator and it's dependencies, 
         including 'IBM Automation Foundation' and 'IBM Cloud Pak foundational services'."
-    echo -e "Use -s argument to skip this confirmation, -h for help."
+    printf '%b\n' "Use -s argument to skip this confirmation, -h for help."
     read -p "Press 'Y' to continue: " -n 1 -r
     echo
     if [[ ! ${REPLY} =~ ^[Yy]$ ]]; then
         echo "Exiting..."
         exit 0
     fi
-    echo -e "OK. Continuing...."
+    printf '%b\n' "OK. Continuing...."
     echo
 fi
 
 oc project "${CS_NS}" >/dev/null
-echo -e "Recreating operandregistry common-service..."
+printf '%b\n' "Recreating operandregistry common-service..."
 oc delete opreg common-service -n "${CS_NS}" 
 oc delete pod "$(oc get pod -n "${CS_NS}" | grep ibm-common-service-operator | awk '{print $1}')" -n "${CS_NS}"
 sleep 3
@@ -360,16 +360,16 @@ while :; do
     fi
 done
 
-echo -e "\nUpdating subscription in '${CS_NS}' (CS namespace)..."
+printf '%b\n' "\nUpdating subscription in '${CS_NS}' (CS namespace)..."
 patch_cs_sub
 
-echo -e "\nUpdating subscription in '${CS_CTRL_NS}' (CS Control namespace)..."
+printf '%b\n' "\nUpdating subscription in '${CS_CTRL_NS}' (CS Control namespace)..."
 patch_cs_ctrl_sub
 
-echo -e "\nUpdating subscription in '${NAMESPACE}' (CP4BA namespace)..."
+printf '%b\n' "\nUpdating subscription in '${NAMESPACE}' (CP4BA namespace)..."
 patch_ns_sub
 
-echo -e "\nWait ${VALIDATE_WAIT} seconds before validating Subscriptions..."
+printf '%b\n' "\nWait ${VALIDATE_WAIT} seconds before validating Subscriptions..."
 sleep $((VALIDATE_WAIT))
 
 validate_sub "${CS_NS}"
@@ -377,7 +377,7 @@ validate_sub "${CS_CTRL_NS}"
 validate_sub "${NAMESPACE}"
 
 if [ "${VALIDATE_PASS}" -eq 1 ]; then
-    echo -e "\nDone! Subscriptions now using pinned-catalogsources!"
+    printf '%b\n' "\nDone! Subscriptions now using pinned-catalogsources!"
 else
-    echo -e "\nFailed!"
+    printf '%b\n' "\nFailed!"
 fi

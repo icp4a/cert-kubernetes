@@ -97,9 +97,9 @@ spec:
     enable_fips: false
 
     ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
-    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## By default, the sc_is_multiple_az parameter is set to true. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
-    sc_is_multiple_az: false
+    sc_is_multiple_az: true
 
   ########################################################################
   ########   IBM Business Automation Decision Services            ########
@@ -182,7 +182,7 @@ spec:
     rr_integration:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
 
       resources:
         requests:
@@ -200,7 +200,7 @@ spec:
       admin_secret_name: ibm-dba-ads-mongo-secret
       image:
         repository: cp.icr.io/cp/cp4a/ads/mongo
-        tag: 7.0.23
+        tag: 7.0.28
 
       persistence:
         use_dynamic_provisioning: true
@@ -222,7 +222,7 @@ spec:
     rest_api:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-restapi
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
       replica_count: 1
 
       resources:
@@ -238,7 +238,7 @@ spec:
     credentials_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-credentials
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
       replica_count: 1
 
       resources:
@@ -252,7 +252,7 @@ spec:
     git_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
       replica_count: 1
 
       resources:
@@ -266,7 +266,7 @@ spec:
     parsing_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-parsing
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
       replica_count: 1
 
       resources:
@@ -286,7 +286,7 @@ spec:
     run_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-run
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
       replica_count: 1
 
       resources:
@@ -306,7 +306,7 @@ spec:
     decision_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: "24.0.1-IF006"
+        tag: "24.0.1-IF007"
       replica_count: 1
 
       # Whether the decision runtime should include an exception stack trace when an incident occurs.
