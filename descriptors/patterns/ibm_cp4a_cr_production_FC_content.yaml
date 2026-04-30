@@ -109,7 +109,7 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/common/dba-keytool-initcontainer
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
 
     ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
     ## based on input from the user.
@@ -235,9 +235,9 @@ spec:
     sc_service_ip_families:
 
     ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
-    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## By default, the sc_is_multiple_az parameter is set to true. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
-    sc_is_multiple_az: false
+    sc_is_multiple_az: true
 
     ## Audit logging configuration for CP4BA components. The default value is "false".  If set to "true", then the audit logging will be enabled for all the CP4BA components.
     ## These settings can be overridden at the component level by setting the "audit_logging" parameter in the component configuration such as ecm_configuration, ads_configuration, etc...
@@ -932,7 +932,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1113,7 +1113,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/fncm/cpe-audit-log
-          tag: "25.0.1"
+          tag: "25.0.1-IF001"
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
         initresources:
@@ -1213,7 +1213,7 @@ spec:
       #     pull_policy: IfNotPresent
       #     ## The default repository is the IBM Entitled Registry.
       #     repository: cp.icr.io/cp/cp4a/fncm/lscollector
-      #     tag: "25.0.1"
+      #     tag: "25.0.1-IF001"
       #   ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
       #   ## If more resources are needed, make the changes here to meet your requirement.
       #   resources:
@@ -1254,7 +1254,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1361,7 +1361,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1560,7 +1560,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1705,7 +1705,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1831,7 +1831,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1983,7 +1983,7 @@ spec:
     #    pull_policy: IfNotPresent
     #    ## The default repository is the IBM Entitled Registry.
     #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-    #    tag: "25.0.1"
+    #    tag: "25.0.1-IF001"
     #   #  ## Below are the default LSReporter Production settings.
     #  ## Make the necessary changes as you see fit.
     #  product_settings:
@@ -2084,7 +2084,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "25.0.1"
+      tag: "25.0.1-IF001"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2340,6 +2340,12 @@ spec:
       ic_ldap_admins_groups_name:
       - "<Required>" # group name for P8 domain admin, for example, "P8Administrators".  This parameter accepts a list of values.
       ic_ldap_name: "ldap_name"
+      # Type of LDAP connection that is created.
+      # Set to "ADAM" only when initializing Microsoft Active Directory Lightweight Directory Services (called AD LDS or ADAM).
+      # Operator can set other values according to lc_selected_ldap_type.
+      ic_ldap_type: ""
+      # Enable users to sign in with their email address or user principle name (UPN).
+      ic_allow_email_or_upn_short_names: false
     ic_obj_store_creation:
       object_stores:
       - oc_cpe_obj_store_display_name: "OS01" # Required display name of the object store, for example, "OS01"
@@ -2508,7 +2514,7 @@ spec:
 
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -2524,6 +2530,13 @@ spec:
           cpu: 1
           memory: 1536Mi
           ephemeral_storage: "1Gi"
+
+      ## Rolling update settings for ICCSAP deployment.
+      ## By default, maxUnavailable is set to '25%' and maxSurge is set '1'. You can override these values by specifying max_unavailable and max_surge below. 
+      ## The values can be defined as either a percentage (e.g., '25%') or an absolute number (e.g., 1).
+      rolling_update:
+        max_unavailable: '25%'
+        max_surge: '1'
 
      # Horizontal Pod Autoscaler
       auto_scaling:
@@ -2631,7 +2644,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: "25.0.1"
+      tag: "25.0.1-IF001"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent

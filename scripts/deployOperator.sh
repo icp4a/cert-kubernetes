@@ -34,7 +34,7 @@ OLM_SUBSCRIPTION_TMP=${TEMP_FOLDER}/.subscription.yaml
 mkdir -p $TEMP_FOLDER >/dev/null 2>&1
 
 function show_help {
-    echo -e "\nUsage: deployOperator.sh -i operator_image [-p 'secret_name']\n"
+    printf '%b\n' "\nUsage: deployOperator.sh -i operator_image [-p 'secret_name']\n"
     echo "Options:"
     echo "  -h  Display help"
     echo "  -i  Operator image name"
@@ -69,7 +69,7 @@ function prepare_olm_install() {
       if [[ -z $isReady ]]; then
         if [[ $retry -eq ${maxRetry} ]]; then 
           echo "Timeout waiting for  CP4BA Operator Catalog pod to start"
-          echo -e "\x1B[1mPlease check the status of Pod by issue cmd: \x1B[0m"
+          printf '%b\n' "\x1B[1mPlease check the status of Pod by issue cmd: \x1B[0m"
           echo "oc describe pod $(oc get pod -n openshift-marketplace|grep $online_source|awk '{print $1}') -n openshift-marketplace" 
           exit 1
         else
@@ -116,19 +116,19 @@ function prepare_olm_install() {
       if [[ -z $isReady ]]; then
         if [[ $retry -eq ${maxRetry} ]]; then 
           echo "Timeout waiting for CP4BA operator to start"
-          echo -e "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
+          printf '%b\n' "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
           echo "oc describe pod $(oc get pod -n $project_name|grep ibm-cp4a-operator|awk '{print $1}') -n $project_name"
           printf "\n"
-          echo -e "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
+          printf '%b\n' "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
           echo "oc describe rs $(oc get rs -n $project_name|grep ibm-cp4a-operator|awk '{print $1}') -n $project_name"
           printf "\n"
-          echo -e "\x1B[1mPlease check the status of PVC by issue cmd:\x1B[0m"
+          printf '%b\n' "\x1B[1mPlease check the status of PVC by issue cmd:\x1B[0m"
           echo "oc describe pvc $(oc get pvc -n $project_name|grep operator-shared-pvc|awk '{print $1}') -n $project_name"
           echo "oc describe pvc $(oc get pvc -n $project_name|grep cp4a-shared-log-pvc|awk '{print $1}') -n $project_name"
           exit 1
         else
           sleep 30
-          echo -n "..."
+          printf '%s' "..."
           continue
         fi
       else
@@ -185,23 +185,23 @@ cp ${CUR_DIR}/../descriptors/cluster_role_binding.yaml ${CUR_DIR}/../cluster_rol
 
 # Show license file
 function readLicense() {
-    echo -e "\033[32mYou need to read the International Program License Agreement before start\033[0m"
+    printf '%b\n' "\033[32mYou need to read the International Program License Agreement before start\033[0m"
     sleep 3
     more LICENSE
 }
 
 # Get user's input on whether accept the license
 function userInput() {
-    echo -e "\033[32mDo you accept the International Program License?(y/n)\033[0m"
+    printf '%b\n' "\033[32mDo you accept the International Program License?(y/n)\033[0m"
     read -e choice
     if [[ "$choice" == "y" || "$choice" == "Y" ]]; then
         LICENSE_ACCEPTED=accept
     elif [[ "$choice" == "n" || "$choice" == "N" ]]; then
-        echo -e "\033[31mScript will exit ...\033[0m"
+        printf '%b\n' "\033[31mScript will exit ...\033[0m"
         sleep 2
         exit 0
     else
-        echo -e "\033[31mUnexpected input\033[0m"
+        printf '%b\n' "\033[31mUnexpected input\033[0m"
         userInput
     fi
 }
@@ -259,8 +259,8 @@ if [[ $LICENSE_ACCEPTED == "accept" ]]; then
     #kubectl apply -f ${CUR_DIR}/../deployoperator.yaml --validate=false
 
     prepare_olm_install
-    echo -e "\033[32mAll descriptors have been successfully applied. Monitor the pod status with 'oc get pods -w'.\033[0m"
+    printf '%b\n' "\033[32mAll descriptors have been successfully applied. Monitor the pod status with 'oc get pods -w'.\033[0m"
 else
-  echo -e "\033[31mIBM software license unexpected error, there is no LICENSE_ACCEPTED variable in setProperties.sh\033[0m"
+  printf '%b\n' "\033[31mIBM software license unexpected error, there is no LICENSE_ACCEPTED variable in setProperties.sh\033[0m"
   exit 1
 fi

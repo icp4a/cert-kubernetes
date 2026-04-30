@@ -20,8 +20,8 @@ HELP=""
 UNINSTALL=""
 CR_NAME=""
 
-function info() { echo -e "\033[34m[INFO]\033[0m $1"; }
-function error() { echo -e "\033[31m[ERROR]\033[0m $1"; exit 1; }
+function info() { printf '%b\n' "\033[34m[INFO]\033[0m $1"; }
+function error() { printf '%b\n' "\033[31m[ERROR]\033[0m $1"; exit 1; }
 
 function check_cluster_login() {
   if ! ${CLI_CMD} whoami >/dev/null 2>&1; then

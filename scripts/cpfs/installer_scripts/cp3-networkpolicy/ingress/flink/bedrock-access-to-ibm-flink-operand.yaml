@@ -5,6 +5,7 @@ metadata:
   namespace: "flinkNamespace"
   labels:
     component: cpfs3
+    service: flink
 spec:
   podSelector: 
     matchLabels:

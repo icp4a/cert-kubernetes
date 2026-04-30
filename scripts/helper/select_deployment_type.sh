@@ -24,7 +24,7 @@ function select_deployment_type(){
     if [[ "$SCRIPT_MODE" == "OLM" ]]
     then
         DEPLOYMENT_TYPE="production"
-        echo -e "An enterprise deployment will be prepared for the OCP Catalog."
+        printf '%b\n' "An enterprise deployment will be prepared for the OCP Catalog."
         # read -rsn1 -p"Press any key to continue ...";echo
         # options=("Starter")
         # PS3='Enter a valid option [1 to 1]: '
@@ -39,13 +39,13 @@ function select_deployment_type(){
         #     esac
         # done
     else
-        echo -e "\x1B[1mWhat type of deployment is being performed?\x1B[0m"
+        printf '%b\n' "\x1B[1mWhat type of deployment is being performed?\x1B[0m"
 
         COLUMNS=12
         options=("Starter" "Production")
         if [ -z "$existing_deployment_type" ]; then
             if skip_edb_for_2501; then
-                info "Note: Please be aware that for this 25.0.1 GA Limited Support Release, Starter deployment is not supported. Starter deployment support will be available in the upcoming iFix and next release."
+                info "Note: Please be aware that for this ${VERSION_TO_SKIP_EDB} Limited Support Release, Starter deployment is not supported. Starter deployment support will be available in the upcoming iFix and next release."
                 options=("Production")
                 PS3='Enter a valid option [1]: '
             else
@@ -74,8 +74,8 @@ function select_deployment_type(){
                     printf "%1d) %s\n" $((i+1)) "${options[i]}"
                 fi
             done
-            echo -e "\x1B[1;31mExisting deployment type found in CR: \"$existing_deployment_type\"\x1B[0m"
-            # echo -e "\x1B[1;31mDo not need to select again.\n\x1B[0m"
+            printf '%b\n' "\x1B[1;31mExisting deployment type found in CR: \"$existing_deployment_type\"\x1B[0m"
+            # printf '%b\n' "\x1B[1;31mDo not need to select again.\n\x1B[0m"
             prompt_press_any_key_to_continue
         fi
     fi

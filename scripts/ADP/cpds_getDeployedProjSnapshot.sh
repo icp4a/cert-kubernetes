@@ -210,17 +210,17 @@ done
 if [ -z "${runtimeUseZen}" ] || [ "${runtimeUseZen}" != true ]
  then
 	CMD="./helper_getUMSToken.sh --acceptLanguage ${acceptLanguage} --url ${runtimeUmsUrl} --id ${runtimeUmsClientId} --secret ${runtimeUmsClientSecret} --usr ${runtimeUser} --pwd ${runtimePwd}"
-	echo Getting RunTime UMSToken ... 
+	echo "Getting RunTime UMSToken ... "
 	#${CMD}
 	RUNTIME_BEARER=$(${CMD})
  else
 	CMD="./helper_getZENToken.sh --acceptLanguage ${acceptLanguage} --iamurl ${runtimeZenIamUrl} --zenurl ${runtimeZenUrl} --usr ${runtimeUser} --pwd ${runtimePwd}"
-	echo Getting RunTime ZENToken ...
+	echo "Getting RunTime ZENToken ..."
 	#${CMD}
 	RUNTIME_BEARER=$(${CMD})
 fi
 #echo 
 
 # Call CPDS deploy REST pass in both bearer tokens with different header
-echo Retrieving the deployed project information for ${runtimeObjectStore}/${projectName}/${snapshotVersion} ...
+echo "Retrieving the deployed project information for ${runtimeObjectStore}/${projectName}/${snapshotVersion} ..."
 curl -X GET --header "Accept-Language:${acceptLanguage}" --header Content-Type:application/json --header Accept:application/json --header "Authorization:Bearer ${RUNTIME_BEARER}" -w '\nReturn Code=%{http_code}\n\n' ${runtimeCpdsUrl}/ibm-dba-content-deployment/v1/deployment/projects/${projectName}/branches/master/snapshots/${snapshotVersion}?repositoryIdentifier=${runtimeObjectStore} -k

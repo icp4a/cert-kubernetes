@@ -147,7 +147,7 @@ BAW_PATTERN_FILE_BAK_TEMP_JSON=$FINAL_CR_FOLDER/.ibm_cp4a_cr_production_FC_workf
 ########################################
 
 function show_help() {     
-    echo -e "\nUsage: case-migrate-baw-prerequisites.sh -m [modetype]\n"     
+    printf '%b\n' "\nUsage: case-migrate-baw-prerequisites.sh -m [modetype]\n"     
     echo "Options:"     
     echo "  -h  Display help"     
     echo "  -m  The valid mode types are [property], [generate], [validate], or [generate-cr]"
@@ -168,7 +168,7 @@ function case_migration_replace(){
     local param_q1=$3
 
     MIG_PROP_TEMP=$(${YQ_CMD} ".$param_in1" ${CASE_MIGRATION_PROPERTY_FILE})
-    #echo -e $MIG_PROP_TEMP
+    #printf '%b\n' "$MIG_PROP_TEMP"
     if [ "$param_q1" = "q" ] ;
     then 
         if [ "$MIG_PROP_TEMP" = "*" ] ; then 
@@ -492,7 +492,7 @@ create_secret_multi_tos() {
     db_user_list+=",$MIG_PROP_TEMP"
     
     MIG_OS_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
-    #echo -e "Docs  is $MIG_OS_TEMP . "stringData.${MIG_OS_TEMP}DBUsername""
+    #printf '%b\n' "Docs  is $MIG_OS_TEMP . "stringData.${MIG_OS_TEMP}DBUsername""
     ${YQ_CMD} -i ".stringData.${MIG_OS_TEMP}DBUsername = \"${MIG_PROP_TEMP}\" | .stringData.${MIG_OS_TEMP}DBUsername style=\"double\"" ${FNCM_SECRET_FILE}
     MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[0].dc_bawdocs_database_password" ${CASE_MIGRATION_PROPERTY_FILE})
     db_user_pwd_list+=",$MIG_PROP_TEMP"
@@ -579,7 +579,7 @@ create_secret_multi_tos() {
 
             
             MIG_PROP_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_database_password" ${CASE_MIGRATION_PROPERTY_FILE})
-            #echo -e "$MIG_PROP_TEMP"
+            #printf '%b\n' "$MIG_PROP_TEMP"
             MIG_PROP_KEY_TEMP=$(${YQ_CMD} ".datasource_configuration.dc_os_datasources[$((i+1))].dc_bawtos$((i))_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
             MIG_PROP_KEY_TEMP="stringData."$MIG_PROP_KEY_TEMP"DBPassword"
             db_user_pwd_list+=",$MIG_PROP_TEMP"
@@ -668,7 +668,7 @@ create_secret_multi_tos() {
     fi
     echo "DB_USER_LIST=$db_user_list" >> ${TEMPORARY_PROPERTY_FILE}
     echo "DB_USER_PWD_LIST=$db_user_pwd_list" >> ${TEMPORARY_PROPERTY_FILE}
-    #echo -e "$db_name_list"
+    #printf '%b\n' "$db_name_list"
 
 
 }
@@ -765,7 +765,7 @@ function validate_case_migrate_prerequisites(){
     tmp_serverport=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_serverport")
     tmp_basdn=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_basdn")
     tmp_ldapssl=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_ldapssl")
-    tmp_ldapssl=$(echo $tmp_ldapssl | tr '[:upper:]' '[:lower:]')
+    tmp_ldapssl=$(echo "$tmp_ldapssl" | tr '[:upper:]' '[:lower:]')
     tmp_user=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_user")
     tmp_userpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_userpwd")
 
@@ -785,7 +785,7 @@ function validate_case_migrate_prerequisites(){
         tmp_serverport=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_serverport")
         tmp_basdn=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_basdn")
         tmp_ldapssl=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_ldapssl")
-        tmp_ldapssl=$(echo $tmp_ldapssl | tr '[:upper:]' '[:lower:]')
+        tmp_ldapssl=$(echo "$tmp_ldapssl" | tr '[:upper:]' '[:lower:]')
         tmp_user=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_user")
         tmp_userpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_userpwd")
 
@@ -922,7 +922,7 @@ function validate_case_migrate_prerequisites(){
     #tmp_dbserver="$(prop_db_name_user_property_file_for_server_name CHOS_DB_USER_NAME)"
     
     #check_dbserver_name_valid $tmp_dbserver "CHOS_DB_USER_NAME"
-    # tmp_label=$(echo ${BAW_AUTH_OS_ARR[i]}| tr '[:upper:]' '[:lower:]')
+    # tmp_label=$(echo "${BAW_AUTH_OS_ARR[i]}"| tr '[:upper:]' '[:lower:]')
     tmp_label=$(${YQ_CMD} ".datasource_configuration.dc_cpe_datasources[0].dc_os_label" ${CASE_MIGRATION_PROPERTY_FILE})
     tmp_dbusername=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBUsername" - | base64 --decode`
     tmp_dbuserpassword=`kubectl get secret -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} ".items[0].data.${tmp_label}DBPassword" - | base64 --decode`
@@ -1019,13 +1019,13 @@ function check_dbserver_name_valid(){
     if [[ ! ( "${input_servername}" == \#* ) ]]; then
         if [[ ! (" ${tmp_db_array[@]}" =~ "${input_servername}") ]]; then
             error "The prefix \"$input_servername\" in front of \"$parameter_name\" is not in the definition DB_SERVER_LIST=\"${temp}\", Check the following example to configure"
-            echo -e "***************** example *****************"
-            echo -e "if DB_SERVER_LIST=\"DBSERVER1\""
-            echo -e "You need to change"
-            echo -e "<DB_SERVER_NAME>.GCD_DB_NAME=\"GCDDB\""
-            echo -e "to"
-            echo -e "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
-            echo -e "***************** example *****************"
+            printf '%b\n' "***************** example *****************"
+            printf '%b\n' "if DB_SERVER_LIST=\"DBSERVER1\""
+            printf '%b\n' "You need to change"
+            printf '%b\n' "<DB_SERVER_NAME>.GCD_DB_NAME=\"GCDDB\""
+            printf '%b\n' "to"
+            printf '%b\n' "DBSERVER1.GCD_DB_NAME=\"GCDDB\""
+            printf '%b\n' "***************** example *****************"
             exit 1
         fi
     fi
@@ -1112,10 +1112,10 @@ function containsElement(){
 function validate_utility_tool_for_validation(){
     which kubectl &>/dev/null
     if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate Kubernetes CLI. You must install it to run this script.\x1B[0m" && \
+        printf '%b\n'  "\x1B[1;31mUnable to locate Kubernetes CLI. You must install it to run this script.\x1B[0m" && \
         while true; do
             printf "\x1B[1mDo you want install the Kubernetes CLI by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
-            read -rp "" ans
+            read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 install_kubectl_cli
@@ -1126,17 +1126,17 @@ function validate_utility_tool_for_validation(){
                 exit 1
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
     fi
     which java &>/dev/null
     if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate java. You must install it to run this script.\x1B[0m" && \
+        printf '%b\n'  "\x1B[1;31mUnable to locate java. You must install it to run this script.\x1B[0m" && \
         while true; do
             printf "\x1B[1mDo you want install the IBM JRE by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
-            read -rp "" ans
+            read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 install_ibm_jre
@@ -1147,17 +1147,17 @@ function validate_utility_tool_for_validation(){
                 exit 1
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
     else
         java -version &>/dev/null
         if [[ $? -ne 0 ]]; then
-            echo -e  "\x1B[1;31mUnable to locate a Java Runtime. You must install JRE to run this script.\x1B[0m" && \
+            printf '%b\n'  "\x1B[1;31mUnable to locate a Java Runtime. You must install JRE to run this script.\x1B[0m" && \
             while true; do
                 printf "\x1B[1mDo you want install the IBM JRE by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
-                read -rp "" ans
+                read -erp "" ans
                 case "$ans" in
                 "y"|"Y"|"yes"|"Yes"|"YES")
                     install_ibm_jre
@@ -1168,7 +1168,7 @@ function validate_utility_tool_for_validation(){
                     exit 1
                     ;;
                 *)
-                    echo -e "Answer must be \"Yes\" or \"No\"\n"
+                    printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                     ;;
                 esac
             done    
@@ -1176,22 +1176,22 @@ function validate_utility_tool_for_validation(){
     fi
     which keytool &>/dev/null
     if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate keytool. You must add it in \"\$PATH\" to run this script.\x1B[0m" && \
+        printf '%b\n'  "\x1B[1;31mUnable to locate keytool. You must add it in \"\$PATH\" to run this script.\x1B[0m" && \
         exit 1
     else
         keytool -help &>/dev/null
         if [[ $? -ne 0 ]]; then
-            echo -e  "\x1B[1;31mUnable to locate keytool. You must install the IBM JRE or other JRE and add keytool in \"\$PATH\" to run this script\x1B[0m" && \
+            printf '%b\n'  "\x1B[1;31mUnable to locate keytool. You must install the IBM JRE or other JRE and add keytool in \"\$PATH\" to run this script\x1B[0m" && \
             exit 1     
         fi
     fi
 
     which openssl &>/dev/null
     if [[ $? -ne 0 ]]; then
-        echo -e  "\x1B[1;31mUnable to locate openssl. You must install it to run this script.\x1B[0m" && \
+        printf '%b\n'  "\x1B[1;31mUnable to locate openssl. You must install it to run this script.\x1B[0m" && \
         while true; do
             printf "\x1B[1mDo you want install the OpenSSL by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
-            read -rp "" ans
+            read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 install_openssl
@@ -1202,7 +1202,7 @@ function validate_utility_tool_for_validation(){
                 exit 1
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -1225,7 +1225,7 @@ function case_migration_apply_pattern_cr() {
     if [ -e $BAW_PATTERN_FILE_BAK ] ; 
     then  
         ${COPY_CMD} -rf "${BAW_PATTERN_FILE_BAK}" "${BAW_PATTERN_FILE_BAK_TEMP}"
-        #echo -e "Temp file created"
+        #printf '%b\n' "Temp file created"
     else 
         error "CR Generation Failed"
         exit 1
@@ -1233,7 +1233,7 @@ function case_migration_apply_pattern_cr() {
 
     #Retrieve TO OS Number 
     TOS_NUM="$(prop_tmp_property_file TOS_NUM)"
-    #echo -e "Tos Number fromn file is : $TOS_NUM"
+    #printf '%b\n' "Tos Number fromn file is : $TOS_NUM"
     ## Removing the initialize_configuration Section from CR 
     ## This section is not needed because you are reusing the existing FileNet domain, Object stores, and LDAP.
     ${YQ_CMD} -i 'del(.spec.initialize_configuration)' "${BAW_PATTERN_FILE_BAK_TEMP}"
@@ -1271,15 +1271,15 @@ function case_migration_apply_pattern_cr() {
     
 
     content_os_number="$(prop_tmp_property_file CONTENT_OS_NUMBER)"
-    #echo -e "Total content_os_number Objects in CR : $content_os_number"
+    #printf '%b\n' "Total content_os_number Objects in CR : $content_os_number"
     os_num_cr=$((os_num_cr + content_os_number + TOS_NUM + 2 ))
     initial_os_cr=$((initial_os_cr + content_os_number ))
     os_num_prop=$((os_num_prop + TOS_NUM +2 ))
-    #echo -e "Total os_num_prop Objects in CR : $os_num_prop"
+    #printf '%b\n' "Total os_num_prop Objects in CR : $os_num_prop"
 
     local prop_flag=false    
-    #echo -e "Total OS Objects in CR : $os_num_cr"
-    #echo -e "Total OS Objects in Property File : $os_num_prop"
+    #printf '%b\n' "Total OS Objects in CR : $os_num_cr"
+    #printf '%b\n' "Total OS Objects in Property File : $os_num_prop"
     local os_count=$initial_os_cr
     for ((j=0;j<${os_num_prop};j++))
         do
@@ -1343,7 +1343,7 @@ function case_migration_apply_pattern_cr() {
                             content_tmp=$(( $content_start - 1))
                             content_tmp="$(tail -n +$content_start < ${BAW_PATTERN_FILE_BAK_TEMP} | grep -n "dc_hadr_max_retries_for_client_reroute:" | head -n1 | cut -d: -f1)"
                             content_stop=$(( $content_start + $content_tmp - 1))
-                            #echo -e "Content Start Line : ${content_start} And Content End Line : ${content_stop}"
+                            #printf '%b\n' "Content Start Line : ${content_start} And Content End Line : ${content_stop}"
                             vi ${BAW_PATTERN_FILE_BAK_TEMP} -c ':'"${content_start}"','"${content_stop}"' copy '"${content_stop}"'' -c ':wq' >/dev/null 2>&1
                         done
                         prop_flag=true
@@ -1519,7 +1519,7 @@ if [[ $RUNTIME_MODE == "property" ]]; then
     valid_int=false
     while [ "$valid_int" = false ]; do
         printf "\x1B[1mProvide Number of Target Object Stores \x1B[0m \x1B[33m[Minimum 1] \x1B[0m :"
-        read -rp "" TOS_NUM
+        read -erp "" TOS_NUM
         
         if [[ $TOS_NUM -ge 1 ]];
         then 
@@ -1527,10 +1527,10 @@ if [[ $RUNTIME_MODE == "property" ]]; then
             success "Number of Target Object Stores provided : ${TOS_NUM}"
             create_case_migration_property_file
             ${SED_COMMAND_FORMAT} ${CASE_MIGRATION_PROPERTY_FILE}
-            echo -e  "\x1B[33;5m* [baw_case_migration.property]:\x1B[0m"
-            echo -e "  - Update the property file ${CASE_MIGRATION_PROPERTY_FILE} and rerun the migration with generate"
+            printf '%b\n'  "\x1B[33;5m* [baw_case_migration.property]:\x1B[0m"
+            printf '%b\n' "  - Update the property file ${CASE_MIGRATION_PROPERTY_FILE} and rerun the migration with generate"
         else 
-            echo -e "\x1B[1;31mProvide a valid input for Number of Target Object Stores\x1B[0m"
+            printf '%b\n' "\x1B[1;31mProvide a valid input for Number of Target Object Stores\x1B[0m"
             
         fi
     done 
@@ -1602,7 +1602,7 @@ if [[ $RUNTIME_MODE == "generate-cr" ]]; then
     ##########################################
     # Migration Function to do changes on cr based on migration requirement
     case_migration_apply_pattern_cr  
-    echo -e "Generated CR is $BAW_PATTERN_FILE_BAK"
+    printf '%b\n' "Generated CR is $BAW_PATTERN_FILE_BAK"
     ##########################################
     ##########################################
     ##########################################

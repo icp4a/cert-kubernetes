@@ -3,6 +3,7 @@ kind: NetworkPolicy
 metadata:
   labels:
     component: cpfs3
+    service: zen
   name: access-to-edb-postgres
   namespace: "zenNamespace"
 spec:

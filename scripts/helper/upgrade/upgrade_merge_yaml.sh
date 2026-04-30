@@ -162,20 +162,8 @@ process_datavolumes() {
 # For DBACLD-159463 where we need to add quotes around the jvm options string passed. In addition all custom annotations defined in the CR must be in strings
 function add_quotes_to_values(){
     local input_yaml="$1"
-    jvm_options_paths=$(${YQ_CMD} \
-    '.. | path
-        | select(length>0)
-        | select(.[-1]=="jvm_customize_options")
-        | ( .[] | select((. | tag) == "!!int") |= (["[", tostring, "]"] | join("")) )
-        | join(".")
-        | sub("\\.\\[","[")' \
-    "$input_yaml")
-    for path in $jvm_options_paths; do
-        current_value=$(${YQ_CMD} ".$path" "${input_yaml}")
-
-        #Quote the value in jvm_customize_options so that shell does not expand the string if it has spaces. If it expands the string, YQ thinks there are more than 3 values being passed and throws a syntax error 
-        ${YQ_CMD} -i ".$path = \"$current_value\"" "${input_yaml}"
-    done
+    # Use sed to add quotes around jvm_customize_options values if not already quoted
+    ${SED_COMMAND} -E '/jvm_customize_options:/ { /: *["'"'"']/ ! s/: *(.+)/: "\1"/ }' "${input_yaml}"
 
     annotations_paths=$(${YQ_CMD} \
     '.. | path
@@ -481,6 +469,8 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: ibm-cp4ba-common-config
+  labels:
+    cp4ba.ibm.com/backup-type: mandatory
 data:
   ## The namespace for Common Service Operator
   operators_namespace: ""
@@ -569,7 +559,7 @@ function select_apply_cr(){
     #         break
     #         ;;
     #     *)
-    #         echo -e "Answer must be \"Yes\" or \"No\"\n"
+    #         printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
     #         ;;
     #     esac
     # done
@@ -685,6 +675,17 @@ function upgrade_deployment(){
                 ${COPY_CMD} -rf ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} ${UPGRADE_DEPLOYMENT_CONTENT_CR_BAK}
                 # fi
 
+		# DBACLD-190549 - Remove "null" values from jvm_customize_options before any yq operations
+                ${SED_COMMAND} -E '
+                  /jvm_customize_options/ {
+                    s/: "null, */: "/g
+                    s/: null, */: /g
+                    s/, *null, */,/g
+                    s/, *null"/"/g
+                    s/, *null$//g
+                  }
+                ' "${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}"
+
                 info "Merging existing CP4BA Content Custom Resource with new version ($CP4BA_RELEASE_BASE)"
                 # Delete unnecessary section in CR
                 ${YQ_CMD} -i 'del(.status)' "${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}"
@@ -724,7 +725,7 @@ function upgrade_deployment(){
                 if [[ "$is_ifix_to_ifix_upgrade" == "false" ]]; then
                     # Merge BAI save point into content cr, to check whether BAI savepoints are needed for the upgrade
                     bai_flag=`${YQ_CMD} ".spec.content_optional_components.bai" "$UPGRADE_DEPLOYMENT_CONTENT_CR_TMP"`
-                    bai_flag=$(echo $bai_flag | tr '[:upper:]' '[:lower:]')
+                    bai_flag=$(echo "$bai_flag" | tr '[:upper:]' '[:lower:]')
                     if [[ $bai_flag == "true" ]]; then
                         info "Merging Flink job savepoint from \"${UPGRADE_DEPLOYMENT_BAI_TMP}\" into new version of custom resource \"${UPGRADE_DEPLOYMENT_CONTENT_CR}\"."
                         if [ -s ${UPGRADE_DEPLOYMENT_BAI_TMP} ]; then
@@ -889,11 +890,11 @@ function upgrade_deployment(){
 
                     echo "${YELLOW_TEXT}- Refer to the Knowledge Center: \"Updating the custom resource for each capability in your deployment\" topic to complete REQUIRED steps for the installed pattern(s)."
                     if [[ $allow_direct_upgrade == 1 ]]; then
-                        echo "  - If upgrading from 21.0.3 or 22.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpd-updating-custom-resource-each-capability-in-your-deployment]"
-                        echo "  - If upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment]"
-                        echo "  - If upgrading from 24.0.0: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment]${RESET_TEXT}"
+                        echo "  - If upgrading from 21.0.3 or 22.0.2: [From https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0 navigate to Upgrading --> Upgrading from 21.0.3 or 22.0.2 --> Upgrading CP4BA multi-pattern cluster from 21.0.3 or 22.0.2 --> Upgrading your IBM Cloud Pak deployment --> Updating the custom resource for each capability in your deployment]"
+                        echo "  - If upgrading from 23.0.2: [From https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0 navigate to Upgrading --> Upgrading from 23.0.2 --> Upgrading CP4BA multi-pattern cluster from 23.0.2 --> Upgrading your IBM Cloud Pak deployment from 23.0.2 --> Updating the custom resource for each capability in your deployment]"
+                        echo "  - If upgrading from 24.0.0: [From https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1 navigate to Upgrading --> Upgrading from 24.0.0 --> Upgrading CP4BA multi-pattern cluster from 24.0.0 --> Upgrading your IBM Cloud Pak deployment from 24.0.0 --> Updating the custom resource for each capability in your deployment]${RESET_TEXT}"
                     fi
-                    echo "  - If upgrading from 24.0.1: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment] ${RESET_TEXT}"
+                    echo "  - If upgrading from 24.0.1: [From https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE navigate to Upgrading --> Upgrading from 24.0.1 --> Upgrading CP4BA multi-pattern cluster from 24.0.1 --> Upgrading your IBM Cloud Pak deployment from 24.0.1 --> Updating the custom resource for each capability in your deployment] ${RESET_TEXT}"
                     echo "${YELLOW_TEXT}- After reviewing or modifying the custom resource file \"${UPGRADE_DEPLOYMENT_CONTENT_CR}\", you need to follow the steps below to upgrade this CP4BA deployment.${RESET_TEXT}"
 
                     # As a part of DBACLD-149126 solution we no longer needed the user to patch or annotate the custom resource file
@@ -1014,16 +1015,16 @@ function upgrade_deployment(){
                     if [[ $retry -eq ${maxRetry} ]]; then
                     printf "\n"
                     warning "Timeout waiting for IBM CP4BA Workflow Process Service operator to start"
-                    echo -e "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
+                    printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
                     echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
                     printf "\n"
-                    echo -e "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
+                    printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
                     echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
                     printf "\n"
                     exit 1
                     else
                     sleep 30
-                    echo -n "..."
+                    printf '%s' "..."
                     continue
                     fi
                 elif [[ $isReady == "Succeeded" ]]; then
@@ -1135,7 +1136,7 @@ function upgrade_deployment(){
             ${YQ_CMD} -i '.spec.datasource_configuration.dc_adp_datasource.database_name = "adpggdb"' $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP
 
             info "Determining if EnterpriseDB PostgreSQL \"$EDB_INSTANCE_CP4BA_NAME\" is installed for IBM Cloud Pak for Business Automation."
-            edb_instance_cp4ba_cr=$( ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n $deployment_project_name --no-headers --ignore-not-found $EDB_INSTANCE_CP4BA_NAME | awk '{print $1}' )
+            edb_instance_cp4ba_cr=$( ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n $deployment_project_name --no-headers --ignore-not-found $EDB_INSTANCE_CP4BA_NAME >/dev/null 2>&1 | awk '{print $1}' )
 	    if [[ $edb_instance_cp4ba_cr == $EDB_INSTANCE_CP4BA_NAME ]]; then
                 info "Found EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\"" 
                 upgrade_scenario="edb-already-exists"  # Postgres EDB exists
@@ -1176,7 +1177,7 @@ function upgrade_deployment(){
             ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource.current_schema = "adsdesigner"' $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP
             ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource.database_instance_secret = "ibm-ads-designer-database"' $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP
             info "Determining if EnterpriseDB PostgreSQL \"$EDB_INSTANCE_CP4BA_NAME\" is installed for IBM Cloud Pak for Business Automation."
-            edb_instance_cp4ba_cr=$( ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n $deployment_project_name --no-headers --ignore-not-found $EDB_INSTANCE_CP4BA_NAME | awk '{print $1}' )
+            edb_instance_cp4ba_cr=$( ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n $deployment_project_name --no-headers --ignore-not-found $EDB_INSTANCE_CP4BA_NAME >/dev/null 2>&1 | awk '{print $1}' )
 	    if [[ $edb_instance_cp4ba_cr == $EDB_INSTANCE_CP4BA_NAME ]]; then
                 info "Found EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\"" 
                 upgrade_scenario="edb-already-exists"  # Postgres EDB exists
@@ -1219,7 +1220,7 @@ function upgrade_deployment(){
             ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.current_schema = "adsruntime"' $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP
             ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.database_instance_secret = "ibm-ads-runtime-database"' $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP
             info "Determining if EnterpriseDB PostgreSQL \"$EDB_INSTANCE_CP4BA_NAME\" is installed for IBM Cloud Pak for Business Automation."
-            edb_instance_cp4ba_cr=$( ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n $deployment_project_name --no-headers --ignore-not-found $EDB_INSTANCE_CP4BA_NAME | awk '{print $1}' )
+            edb_instance_cp4ba_cr=$( ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n $deployment_project_name --no-headers --ignore-not-found $EDB_INSTANCE_CP4BA_NAME >/dev/null 2>&1 | awk '{print $1}' )
 	    if [[ $edb_instance_cp4ba_cr == $EDB_INSTANCE_CP4BA_NAME ]]; then
                 info "Found EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\"" 
                 upgrade_scenario="edb-already-exists"  # Postgres EDB exists
@@ -1298,12 +1299,12 @@ function upgrade_deployment(){
                     if [[ -z $bas_db_user_name ]]; then
                         bas_db_user_name=$(${CLI_CMD} get secret $bas_db_secret_name --no-headers --ignore-not-found -n $deployment_project_name -o jsonpath='{.stringData.dbUsername}' | base64 -d)
                         if [[ ! -z $bas_db_user_name ]]; then
-                            ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"stringData":{"dbUsername":"'$(echo -n "$baw_auth_db_user_name" | base64)'"}}' >/dev/null 2>&1
+                            ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"stringData":{"dbUsername":"'$(printf '%s' "$baw_auth_db_user_name" | base64)'"}}' >/dev/null 2>&1
                         else
                             warning "Not found the value of \"dbUsername\" from secret $bas_db_secret_name in the project \"$deployment_project_name\"."
                         fi
                     else
-                        ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"data":{"dbUsername":"'$(echo -n "$baw_auth_db_user_name" | base64)'"}}' >/dev/null 2>&1
+                        ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"data":{"dbUsername":"'$(printf '%s' "$baw_auth_db_user_name" | base64)'"}}' >/dev/null 2>&1
                     fi
 
                     # Update User Password
@@ -1311,12 +1312,12 @@ function upgrade_deployment(){
                     if [[ -z $bas_db_user_pwd ]]; then
                         bas_db_user_pwd=$(${CLI_CMD} get secret $bas_db_secret_name --no-headers --ignore-not-found -n $deployment_project_name -o jsonpath='{.stringData.dbPassword}' | base64 -d)
                         if [[ ! -z $bas_db_user_pwd ]]; then
-                            ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"stringData":{"dbPassword":"'$(echo -n "$baw_auth_db_user_pwd" | base64)'"}}' >/dev/null 2>&1
+                            ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"stringData":{"dbPassword":"'$(printf '%s' "$baw_auth_db_user_pwd" | base64)'"}}' >/dev/null 2>&1
                         else
                             warning "Not found the value of \"dbPassword\" from secret $bas_db_secret_name in the project \"$deployment_project_name\"."
                         fi
                     else
-                        ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"data":{"dbPassword":"'$(echo -n "$baw_auth_db_user_pwd" | base64)'"}}' >/dev/null 2>&1
+                        ${CLI_CMD} patch secret $bas_db_secret_name -n $deployment_project_name -p '{"data":{"dbPassword":"'$(printf '%s' "$baw_auth_db_user_pwd" | base64)'"}}' >/dev/null 2>&1
                     fi
                 else
                     warning "Not found the value of \"spec.bastudio_configuration.admin_secret_name\" from ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}"
@@ -1582,7 +1583,7 @@ function upgrade_deployment(){
                     baw_desktop_name=`${YQ_CMD} ".spec.workflow_authoring_configuration.case.desktop_name // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
 
                     if [[ (-z $baw_connection_point_name_tos || -z $baw_object_store_name_tos) && (-z $init_section) ]]; then
-                        warning "Not found both workflow_authoring_configuration.case.connection_point_name_tos/object_store_name_tos and oc_cpe_obj_store_workflow_pe_conn_point_name under initialize_configuration, refer KC https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-business-automation-workflow-authoring"
+                        warning "Not found both workflow_authoring_configuration.case.connection_point_name_tos/object_store_name_tos and oc_cpe_obj_store_workflow_pe_conn_point_name under initialize_configuration, refer KC from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE navigate to Upgrading --> Upgrading from 24.0.0 --> Upgrading CP4BA multi-pattern cluster from 24.0.0 --> Upgrading your IBM Cloud Pak deployment from 24.0.0 --> Updating the custom resource for each capability in your deployment --> Upgrading IBM Business Automation Workflow Authoring"
                     fi
                     if [[ ! -z "$baw_object_store_name_tos" ]]; then
                         ${YQ_CMD} -i ".spec.workflow_authoring_configuration.case.tos_list[0].object_store_name = \"$baw_object_store_name_tos\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
@@ -1661,7 +1662,7 @@ function upgrade_deployment(){
                                                     ${YQ_CMD} -i ".spec.workflow_authoring_configuration.case.tos_list[${tos_instance_index}].connection_point_name = \"$tos_connection\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
                                                 fi
                                                 # if [[ -z "$baw_target_environment_name" ]]; then
-                                                #     tmp_val_ds_name=$(echo $tos_datasource_name | tr '[:upper:]' '[:lower:]')
+                                                #     tmp_val_ds_name=$(echo "$tos_datasource_name" | tr '[:upper:]' '[:lower:]')
                                                 #     ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.workflow_authoring_configuration.case.tos_list.[${tos_instance_index}].target_environment_name "$tmp_val_ds_name"
                                                 # fi
                                             fi
@@ -1695,7 +1696,7 @@ function upgrade_deployment(){
                         baw_target_environment_name=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.target_environment_name // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
                         baw_desktop_name=`${YQ_CMD} ".spec.baw_configuration.[${baw_instance_index}].case.desktop_name // \"\"" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"`
                         if [[ (-z $baw_connection_point_name_tos || -z $baw_object_store_name_tos) && (-z $init_section) ]]; then
-                            warning "Not found both baw_configuration.[${baw_instance_index}].case.connection_point_name_tos/object_store_name_tos and oc_cpe_obj_store_workflow_pe_conn_point_name under initialize_configuration, refer KC https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-business-automation-workflow-runtime"
+                            warning "Not found both baw_configuration.[${baw_instance_index}].case.connection_point_name_tos/object_store_name_tos and oc_cpe_obj_store_workflow_pe_conn_point_name under initialize_configuration, refer KC from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE navigate to Upgrading --> Upgrading from 24.0.0 --> Upgrading CP4BA multi-pattern cluster from 24.0.0 --> Upgrading your IBM Cloud Pak deployment from 24.0.0 --> Updating the custom resource for each capability in your deployment --> Upgrading IBM Business Automation Workflow Runtime"
                         fi
                         if [[ ! -z "$baw_object_store_name_tos" ]]; then
                             ${YQ_CMD} -i ".spec.baw_configuration[${baw_instance_index}].case.tos_list[0].object_store_name = \"$baw_object_store_name_tos\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
@@ -1810,7 +1811,7 @@ function upgrade_deployment(){
                                                             ${YQ_CMD} -i ".spec.baw_configuration[${baw_instance_index}].case.tos_list[${tos_instance_index}].connection_point_name = \"$tos_connection\"" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
                                                         fi
                                                         # if [[ -z "$baw_target_environment_name" ]]; then
-                                                        #     tmp_val_ds_name=$(echo $tos_datasource_name | tr '[:upper:]' '[:lower:]')
+                                                        #     tmp_val_ds_name=$(echo "$tos_datasource_name" | tr '[:upper:]' '[:lower:]')
                                                         #     ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} spec.baw_configuration.[${baw_instance_index}].case.tos_list.[${tos_instance_index}].target_environment_name "$tmp_val_ds_name"
                                                         # fi
                                                     fi
@@ -2092,10 +2093,10 @@ function upgrade_deployment(){
             step_num=1
             for element in "${EXISTING_PATTERN_ARR[@]}"; do
                 if [[ "$element" != "decisions" && "$element" == "decisions_ads" && "$allow_direct_upgrade" == 1 ]]; then
-                    echo -e "\x1B[33;5m- Automation Decision Services capability is installed in this CP4BA deployment: \x1B[0m"
+                    printf '%b\n' "\x1B[33;5m- Automation Decision Services capability is installed in this CP4BA deployment: \x1B[0m"
                     echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Refer to the Knowledge Center: \"Upgrading IBM Automation Decision Services\" topic:"
-                    echo "    - if upgrading from 21.0.3 or 22.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=deployment-upgrading-automation-decision-services]"
-                    echo "    - if upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=ucreciyd-upgrading-automation-decision-services]"
+                    echo "    - if upgrading from 21.0.3 or 22.0.2: [From https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0 navigate to Upgrading --> Upgrading from 21.0.3 or 22.0.2 --> Upgrading CP4BA multi-pattern cluster from 21.0.3 or 22.0.2 --> Upgrading your IBM Cloud Pak deployment --> Updating the custom resource for each capability in your deployment --> Upgrading IBM Automation Decision Services]"
+                    echo "    - if upgrading from 23.0.2: [From https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0 navigate to Upgrading --> Upgrading from 23.0.2 --> Upgrading CP4BA multi-pattern cluster from 23.0.2 --> Upgrading your IBM Cloud Pak deployment from 23.0.2 --> Updating the custom resource for each capability in your deployment --> Upgrading IBM Automation Decision Services]"
                     echo "  - Add the storage_configuration.sc_block_storage_classname property in the CR file if it is not already included."
                     # echo "  - Optional: If the decision runtime secret was manually created, add the following properties:"
                     # echo "    - deploymentSpaceManagerUsername"
@@ -2109,7 +2110,7 @@ function upgrade_deployment(){
             
             # output info for upgrading ADS (from 24.0.1 to 25.0.0)
             if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $cr_version == "24.0.1" && ${CP4BA_RELEASE_BASE} == "25.0.0" && (" ${EXISTING_PATTERN_ARR[@]} " =~ "decisions_ads") ]]; then
-                echo -e "\x1B[33;5m- Automation Decision Services capability is installed in this CP4BA deployment: \x1B[0m"
+                printf '%b\n' "\x1B[33;5m- Automation Decision Services capability is installed in this CP4BA deployment: \x1B[0m"
                 if [[ $upgrade_scenario == "edb-already-exists" ]]; then
                         echo "        - You are upgrading from 24.0.1 to 25.0.0, and EDB Postgres instance \"$EDB_INSTANCE_CP4BA_NAME\" is already installed for IBM Cloud Pak for Business Automation.  Before proceeding, make sure you: "
                         echo "            a. ${RED_TEXT}(Required)${RESET_TEXT} create ADS designer and/or runtime database(s) on this EDB Postgres instance. (from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-upgrading, navigate to \"Upgrading your IBM Cloud Pak deployment from 24.0.1 -> Option 1\" for the sample scripts)."
@@ -2121,7 +2122,7 @@ function upgrade_deployment(){
                         echo "            a. ${RED_TEXT}(Required)${RESET_TEXT} create ADS designer and/or runtime database(s) on this external PostgreSQL. (from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-upgrading, navigate to \"Upgrading your IBM Cloud Pak deployment from 24.0.1 -> Option 2\" for the sample scripts)."
                         echo "            b. ${RED_TEXT}(Required)${RESET_TEXT} create ADS database_instance_secret secret(s) for ADS designer/runtime database 's username and password. (from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-upgrading, navigate to \"Upgrading your IBM Cloud Pak deployment from 24.0.1 -> Option 2\" for the sample scripts)."
                         echo "            c. ${RED_TEXT}(Required)${RESET_TEXT} review and modify dc_ads_designer_datasource and/or dc_ads_runtime_datasource section(s) in the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\" to match your external PostgreSQL configuration. "
-                        echo " ${RED_TEXT}[IMPORTANT]${RESET_TEXT} If you have set \"sc_restricted_internet_access\" to \"true\" in your applied custom resource file , you must follow the information detailed in https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=uycpdf2-option-2-upgrading-cp4ba-deployment-that-uses-external-postgresql to create any custom Network policies before applying the generated Custom Resource file."
+                        echo " ${RED_TEXT}[IMPORTANT]${RESET_TEXT} If you have set \"sc_restricted_internet_access\" to \"true\" in your applied custom resource file , you must create any custom Network policies before applying the generated Custom Resource file, for more information from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE navigate to Upgrading --> Upgrading from 24.0.1 --> Upgrading CP4BA multi-pattern cluster from 24.0.1 --> Upgrading your IBM Cloud Pak deployment from 24.0.1 --> Option2 Upgrading a CP4BA deployment that uses an external PostgreSQL."
                         printf "\n"
                 elif [[ $upgrade_scenario == "new-edb" ]]; then
                         echo "        - You are upgrading from 24.0.1 to 25.0.0, EDB Postgres instance \"$EDB_INSTANCE_CP4BA_NAME\" will be provisioned for ADS Designer/Runtime database.  Before proceeding, make sure you: "
@@ -2132,14 +2133,14 @@ function upgrade_deployment(){
 
             # output info for upgrading document process databases
             if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") ]]; then
-                    echo -e "\x1B[33;5m- Automation Document Processing capability is installed in this CP4BA deployment: \x1B[0m"
+                    printf '%b\n' "\x1B[33;5m- Automation Document Processing capability is installed in this CP4BA deployment: \x1B[0m"
                     echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Upgrade the Automation Document Processing databases"
                 if [[ $allow_direct_upgrade == 1 ]]; then # only show the direct upgrade link if the user is allowed to do a direct upgrade
-                    echo "    - If you are upgrading from 21.0.3 or 22.0.2, refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-your-automation-document-processing-databases"
-                    echo "    - If you are upgrading from 23.0.2, refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=ucreciyd-upgrading-automation-document-processing#tasktask_upgrd_adp__postreq__1"
-                    echo "    - If you are upgrading from 24.0.0, refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-automation-document-processing#tasktask_upgrd_adp__postreq__1"
+                    echo "    - If you are upgrading from 21.0.3 or 22.0.2, refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE navigate to Upgrading --> Upgrading from 21.0.3 or 22.0.2 --> Upgrading CP4BA multi-pattern cluster from 21.0.3 or 22.0.2 --> Upgrading your IBM Cloud Pak deployment --> Updating the custom resource for each capability in your deployment --> Upgrading IBM Automation Document Processing"
+                    echo "    - If you are upgrading from 23.0.2, refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE navigate to Upgrading --> Upgrading from 23.0.2 --> Upgrading CP4BA multi-pattern cluster from 23.0.2 --> Upgrading your IBM Cloud Pak deployment from 23.0.2 --> Updating the custom resource for each capability in your deployment --> Upgrading IBM Automation Document Processing"
+                    echo "    - If you are upgrading from 24.0.0, refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE navigate to Upgrading --> Upgrading from 24.0.0 --> Upgrading CP4BA multi-pattern cluster from 24.0.0 --> Upgrading your IBM Cloud Pak deployment from 24.0.0 --> Updating the custom resource for each capability in your deployment --> Upgrading IBM Automation Document Processing"
                 fi
-                echo "        - If you are upgrading from 24.0.1, refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-upgrading-automation-document-processing#tasktask_upgrd_adp__postreq__1"
+                echo "        - If you are upgrading from 24.0.1, refer to the Knowledge Center topic: ${GREEN_TEXT}\"Upgrading your Automation Document Processing databases\"${RESET_TEXT} from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE navigate to Upgrading --> Upgrading from 24.0.1 --> Upgrading CP4BA multi-pattern cluster from 24.0.1 --> Upgrading your IBM Cloud Pak deployment from 24.0.1 --> Updating the custom resource for each capability in your deployment --> Upgrading IBM Automation Document Processing"
                 step_num=$((step_num + 1))
                 printf "\n"
                 if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && $cr_version == "24.0.1" && ${CP4BA_RELEASE_BASE} == "25.0.0" && (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "document_processing_designer")]]; then
@@ -2170,18 +2171,18 @@ function upgrade_deployment(){
             # Adding a statement to delete the old elastic search CR since we are updating the elastic search CR to switch the quiesce flag from false to true in 24.0.1 to 25.0.0 upgrade
             # https://jsw.ibm.com/browse/DBACLD-166681
             if [[ (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "bai") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "pfs") ]]; then
-                echo -e "\x1B[33;5m- Optional Components Business Automation Insights (BAI) or Data Collector and Data Indexer (PFS) are installed in this CP4BA deployment: \x1B[0m"
+                printf '%b\n' "\x1B[33;5m- Optional Components Business Automation Insights (BAI) or Data Collector and Data Indexer (PFS) are installed in this CP4BA deployment: \x1B[0m"
                 echo "${YELLOW_TEXT}[IMPORTANT]: ${RESET_TEXT}From ($CP4BA_RELEASE_BASE) ,CP4BA will be moving from Opensearch version 2.17.0 (kind: ElasticsearchCluster) to Opensearch version 2.19.x (kind: Cluster). The upgrade process will automatically migrate all the existing indices to new Opensearch version.After the upgrade is completed you must validate and verify all the existing indices are migrated successfully."
                 echo "Once you have verified that indices are migrated successfully you may delete the old Opensearch instance (kind: ElasticsearchCluster) by executing \"${GREEN_TEXT} ${CLI_CMD} delete ElasticsearchCluster opensearch -n $deployment_project_name${RESET_TEXT} \" . "
                 echo "${YELLOW_TEXT}[NOTE]: ${RESET_TEXT} There will be no functional impact of leaving the old Opensearch  (kind: ElasticsearchCluster) running in the cluster."
                 printf "\n"
             fi
             if [[ $allow_direct_upgrade == 1 ]]; then
-                echo "  - If upgrading from 21.0.3 or 22.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpd-updating-custom-resource-each-capability-in-your-deployment]"
-                echo "  - If upgrading from 23.0.2: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment] ${RESET_TEXT}"
-                echo "  - If upgrading from 24.0.0: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment] ${RESET_TEXT}"
+                echo "  - If upgrading from 21.0.3 or 22.0.2: [From https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0 navigate to Upgrading --> Upgrading from 21.0.3 or 22.0.2 --> Upgrading CP4BA multi-pattern cluster from 21.0.3 or 22.0.2 --> Upgrading your IBM Cloud Pak deployment --> Updating the custom resource for each capability in your deployment]"
+                echo "  - If upgrading from 23.0.2: [From https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.0 navigate to Upgrading --> Upgrading from 23.0.2 --> Upgrading CP4BA multi-pattern cluster from 23.0.2 --> Upgrading your IBM Cloud Pak deployment from 23.0.2 --> Updating the custom resource for each capability in your deployment] ${RESET_TEXT}"
+                echo "  - If upgrading from 24.0.0: [From https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1 navigate to Upgrading --> Upgrading from 24.0.0 --> Upgrading CP4BA multi-pattern cluster from 24.0.0 --> Upgrading your IBM Cloud Pak deployment from 24.0.0 --> Updating the custom resource for each capability in your deployment] ${RESET_TEXT}"
             fi
-                echo "  - If upgrading from 24.0.1: [https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=uycpdf2-updating-custom-resource-each-capability-in-your-deployment] ${RESET_TEXT}"
+                echo "  - If upgrading from 24.0.1: [From https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE navigate to Upgrading --> Upgrading from 24.0.1 --> Upgrading CP4BA multi-pattern cluster from 24.0.1 --> Upgrading your IBM Cloud Pak deployment from 24.0.1 --> Updating the custom resource for each capability in your deployment] ${RESET_TEXT}"
                 echo "${YELLOW_TEXT}- After reviewing or modifying the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\", you need to follow the steps below to upgrade this CP4BA deployment.${RESET_TEXT}"
             # As a part of DBACLD-149126 solution we no longer needed the user to patch or annotate the custom resource file
             echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR} -n $deployment_project_name${RESET_TEXT}"  && step_num=$((step_num + 1))

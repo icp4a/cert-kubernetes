@@ -151,7 +151,7 @@ function echo_impl() {
     local MSG=${1:?Missing message to echo}
     local PREFIX=${2:?Missing message prefix}
     #local SUFFIX=${3:?Missing message suffix}
-    echo -e "\x1B[1${PREFIX}${MSG}\x1B[0m"
+    printf '%b\n' "\x1B[1${PREFIX}${MSG}\x1B[0m"
 }
 
 function echo_bold() {
@@ -189,13 +189,13 @@ function prop_airgap_mirroring_file() {
 
 function base64_encode() {
     local input="$1"
-    local encoded=$(echo -n "$input" | base64)
+    local encoded=$(printf '%s' "$input" | base64)
     eval "$2='$encoded'"
 }
 
 function base64_decode() {
     local input="$1"
-    local decoded=$(echo -n "$input" | base64 --decode)
+    local decoded=$(printf '%s' "$input" | base64 --decode)
     eval "$2='$decoded'"
 }
 
@@ -385,7 +385,6 @@ function edit_image_set_config_file(){
 }
 
 
-
 # Function to display menu with different patterns that can be deployed and collect user input
 # Multi select menu
 function select_filter_options() {
@@ -561,7 +560,7 @@ function modify_metadata_files(){
 }
 
 
-# Edited for https://jsw.ibm.com/browse/DBACLD-207571 to be YQ 4 Compatible
+# Syntax updates made For https://jsw.ibm.com/browse/DBACLD-207571 to be YQ 4 compatible
 # Function to update Image set configfile for staging based dev mode
 # IF images are still in staging the image set config file needs to be updated to use staging based catalog sources 
 # also we need to do a skopeo copy the staging image to "oci:///root/<catalog-source-name>" and use that image in the image-set-config yaml file

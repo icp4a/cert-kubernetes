@@ -652,7 +652,7 @@ function check_pods_running_status() {
     else
       info "Waiting for pods to be ready... ($ready_pods/$total_pods ready) - retry $((retry+1))/$((maxRetry+1))"
       sleep 15
-      echo -n "..."
+      printf '%s' "..."
     fi
   done
 }

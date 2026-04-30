@@ -254,12 +254,12 @@ done
 if [ -z "${runtimeUseZen}" ] || [ "${runtimeUseZen}" != true ]
  then
 	CMD="./helper_getUMSToken.sh --acceptLanguage ${acceptLanguage} --url ${runtimeUmsUrl} --id ${runtimeUmsClientId} --secret ${runtimeUmsClientSecret} --usr ${runtimeUser} --pwd ${runtimePwd}"
-	echo Getting RunTime UMSToken ... 
+	echo "Getting RunTime UMSToken ... "
 	#${CMD}
 	RUN_BEARER=$(${CMD})
  else
 	CMD="./helper_getZENToken.sh --acceptLanguage ${acceptLanguage} --iamurl ${runtimeZenIamUrl} --zenurl ${runtimeZenUrl} --usr ${runtimeUser} --pwd ${runtimePwd}"
-	echo Getting RunTime ZENToken ...
+	echo "Getting RunTime ZENToken ..."
 	#${CMD}
 	RUN_BEARER=$(${CMD})
 fi
@@ -276,6 +276,6 @@ fi
 getConfirmation
 
 # Call CPDS REST pass in bearer tokens 
-echo Cleaning project ...
+echo "Cleaning project ..."
 curl -X POST --header "Accept-Language:${acceptLanguage}" --header 'Content-Type:application/json' --header 'Accept:application/json' --header "Authorization:Bearer ${RUN_BEARER}" -w '\nReturn Code=%{http_code}\n\n' "${runtimeCpdsUrl}/ibm-dba-content-deployment/v1/projects/${deployedProjectId}/cleanup?repositoryIdentifier=${runtimeObjectStore}" -k -d "{ ${cleanProjOptions} }"
 

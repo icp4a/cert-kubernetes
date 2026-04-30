@@ -32,13 +32,27 @@ function displayUpgradeOperatorMessage() {
 #DBACLD-185209: function to ask if customer want to enable Vault. This is a tech-preview feature  for 25.0.1 and only support "FileNet Content Manager" capability
 # Default is No
 function ask_enable_vault() {
-    echo "${YELLOW_TEXT}[NOTE]: Vault integration is a technology preview feature for CP4BA "$CP4BA_RELEASE_BASE".  Only \"FileNet Content Manager\" capability with Production deployment is supported in this release. Refer to Knowledge Center for more information.${RESET_TEXT}"
-    info "Do you want to enable external Vault integration for FileNet Content Manager (Yes/No, default: No)?"
-    read -r enable_vault
-    case $(tr [A-Z] [a-z] <<< ${enable_vault}) in
-        y|yes) info "Enabling Vault..."; VAULT_ENABLED=true ;;
-        *) info "Vault will not be enabled."; VAULT_ENABLED=false ;;
-    esac
+echo "${YELLOW_TEXT}[NOTE]: Vault integration is a technology preview feature for CP4BA "$CP4BA_RELEASE_BASE".  Only \"FileNet Content Manager\" capability with Production deployment is supported in this release. Refer to Knowledge Center for more information.${RESET_TEXT}"
+     while true; do
+          info "Do you want to enable external Vault integration for FileNet Content Manager (Yes/No, default: No)?"
+          read -r enable_vault
+
+          case $(tr '[:upper:]' '[:lower:]' <<< "$enable_vault") in
+              y|yes)
+                  info "Enabling Vault..."
+                  VAULT_ENABLED=true
+                  break
+                  ;;
+              n|no|"")
+                  info "Vault will not be enabled."
+                  VAULT_ENABLED=false
+                  break
+                  ;;
+              *)
+                  echo "[ERROR] Invalid input. Please enter Yes/No (Y/N)."
+                  ;;
+          esac
+      done
 }
 function generateImZenBTSMessage() {
   local component=$1
@@ -114,4 +128,30 @@ function generateImZenBTSMessage() {
     echo "CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_SCHEMA=\"public\"" >> ${USER_PROFILE_PROPERTY_FILE}
     echo "" >> ${USER_PROFILE_PROPERTY_FILE}
   fi
+}
+
+# Function to display the manual steps for StrimziPodset Update
+function displayManualStrimziPodsetPatchingMessage(){
+  local operator_namespace=$1
+  local services_namespace=$2
+
+  echo "=============================================================================================="
+  echo " ${YELLOW_TEXT}[IMPORTANT] Manual Steps to Patch Kafka StrimziPodSet Resource:${RESET_TEXT}"
+  echo "=============================================================================================="
+  echo
+  echo "1. Verify the Events Operator is running:"
+  echo "     ${CLI_CMD} get pods -n ${operator_namespace} | grep ibm-events-operator"
+  echo
+  echo "2. Check the StrimziPodSet exists:"
+  echo "     ${CLI_CMD} get strimzipodset iaf-system-kafka -n ${services_namespace}"
+  echo
+  echo "3. Get the current kafka version annotation:"
+  echo "     KAFKA_VERSION=\$(${CLI_CMD} get strimzipodset iaf-system-kafka -n ${services_namespace} -o jsonpath='{.metadata.annotations.strimzi\.io/kafka-version}')"
+  echo
+  echo "4. Apply the patch manually:"
+  echo "     ${CLI_CMD} patch strimzipodset iaf-system-kafka -n ${services_namespace} --type=merge -p \"{\\\"metadata\\\":{\\\"annotations\\\":{\\\"strimzi.io/kafka-version\\\":null,\\\"ibmevents.ibm.com/kafka-version\\\":\\\"\$KAFKA_VERSION\\\"}}}\""
+  echo
+  echo "5. If there are issues with patching the iaf-system-kafka strimzipodset, you must reach out to the IBM CloudPak Foundation Services Team for further assistance."
+  echo
+  echo "================================================================================"
 }

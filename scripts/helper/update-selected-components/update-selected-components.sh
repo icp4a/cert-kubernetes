@@ -270,35 +270,36 @@ function check_required_files() {
 
 # Function that checks if the SSL cert folder exists when the user is executing the script in update-components mopde
 # IF it does we only recreate the empty directories, any 
-function recreate_empty_ssl_directories() {
-    local folder_path="$1"
-    
-    # Check if the folder path exists
-    if [ ! -d "$folder_path" ]; then
-        echo "Error: Directory '$folder_path' does not exist"
-        return 1
-    fi
-    
-    # Find all directories recursively
-    find "$folder_path" -type d | while read -r dir; do
-        # Check if the directory has atleast 1 file
-        file_count=$(find "$dir" -maxdepth 1 -type f -name "*.crt" | wc -l)
-        
-        # IF it does not have any files we can enter this loop to check if it does not have any sub directories
-        if [ "$file_count" -eq 0 ]; then
-            # check if the directory is a sub directory or not
-            subdir_count=$(find "$dir" -mindepth 1 -maxdepth 1 -type d | wc -l)
-            
-            # If it has no files and no subdirectories, it's completely empty
-            if [ "$subdir_count" -eq 0 ]; then
-                # Remove and recreate the directory
-                rm -rf "$dir"
-                mkdir -p "$dir"
-            fi
-        fi
-    done
-
-}
+# Currently not needed as simply using mkdir -p would work to keep existing ones as is and recreating if that folder is not present
+#function recreate_empty_ssl_directories() {
+#    local folder_path="$1"
+#    
+#    # Check if the folder path exists
+#    if [ ! -d "$folder_path" ]; then
+#        echo "Error: Directory '$folder_path' does not exist"
+#        return 1
+#    fi
+#    
+#    # Find all directories recursively
+#    find "$folder_path" -type d | while read -r dir; do
+#        # Check if the directory has atleast 1 file
+#        file_count=$(find "$dir" -maxdepth 1 -type f -name "*.crt" | wc -l)
+#        
+#        # IF it does not have any files we can enter this loop to check if it does not have any sub directories
+#        if [ "$file_count" -eq 0 ]; then
+#            # check if the directory is a sub directory or not
+#            subdir_count=$(find "$dir" -mindepth 1 -maxdepth 1 -type d | wc -l)
+#            
+#            # If it has no files and no subdirectories, it's completely empty
+#            if [ "$subdir_count" -eq 0 ]; then
+#                # Remove and recreate the directory
+#                rm -rf "$dir"
+#                mkdir -p "$dir"
+#            fi
+#        fi
+#    done
+#
+#}
 
 
 ####################################
@@ -715,13 +716,14 @@ function required_icp4acluster_cr() {
 # Function that scaled down the foundation operator and deletes the foundation-cr-info configmap that is a required step when the new CR is ICP4ACluster CR and the live CR is Content type
 function remove_foundation_cr_resources(){
     local cr_namespace=$1
+    local operator_namespace=$2
     local foundation_deployment="icp4a-foundation-operator"
     local foundation_cr_info_configmap="ibm-cp4ba-foundation-cr-info"
 
-    if $CLI_CMD get deployment "$foundation_deployment" -n "$cr_namespace" &>/dev/null; then
-        $CLI_CMD scale deployment "$foundation_deployment" --replicas=0 -n "$cr_namespace"
+    if $CLI_CMD get deployment "$foundation_deployment" -n "$operator_namespace" &>/dev/null; then
+        $CLI_CMD scale deployment "$foundation_deployment" --replicas=0 -n "$operator_namespace"
     else
-        info "Deployment $foundation_deployment not found.If the \"$foundation_deployment\" deployment is found in $cr_namespace namespace, make sure it has been scaled down before applying the new custom resource file."
+        info "Deployment $foundation_deployment not found.If the \"$foundation_deployment\" deployment is found in $operator_namespace namespace, make sure it has been scaled down before applying the new custom resource file."
     fi
 
     if $CLI_CMD get configmap "$foundation_cr_info_configmap" -n "$cr_namespace" &>/dev/null; then
@@ -790,7 +792,9 @@ function retrieve_current_specifications(){
         if [[ "$cr_type" == "content" ]]; then
             if required_icp4acluster_cr; then
                 echo
-                remove_foundation_cr_resources "$cr_namespace"
+                # Handle the separation of duties scenario by passing in the cp4ba_operators_namespace which is set in the check_cp4ba_separate_operand executed as a first step for each mode of the scripts
+                # https://jsw.ibm.com/browse/DBACLD-206248
+                remove_foundation_cr_resources "$cr_namespace" "$cp4ba_operators_namespace"
             fi
         fi
     fi
@@ -841,7 +845,7 @@ function retrieve_existing_property_files() {
                     break
                     ;;
                 *)
-                    echo -e "\033[1;33mPlease enter 'yes' or 'no'.\033[0m"
+                    printf '%b\n' "\033[1;33mPlease enter 'yes' or 'no'.\033[0m"
                     ;;
             esac
         done

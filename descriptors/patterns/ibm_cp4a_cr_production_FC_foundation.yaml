@@ -78,16 +78,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -198,9 +198,9 @@ spec:
     enable_fips: false
 
     ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
-    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## By default, the sc_is_multiple_az parameter is set to true. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
-    sc_is_multiple_az: false
+    sc_is_multiple_az: true
 
     ## Audit logging configuration for CP4BA components. The default value is "false".  If set to "true", then the audit logging will be enabled for all the CP4BA components.
     ## These settings can be overridden at the component level by setting the "audit_logging" parameter in the component configuration such as ecm_configuration, ads_configuration, etc...
@@ -582,7 +582,7 @@ spec:
 
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: "25.0.1"
+      tag: "25.0.1-IF001"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -784,7 +784,7 @@ spec:
       pull_policy: IfNotPresent
       resource_registry:
         repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
     admin_secret_name: resource-registry-admin-secret
     replica_size: 1
     probe:
@@ -883,7 +883,7 @@ spec:
       pull_policy: IfNotPresent
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
     #Adjust this one if you created the secret with name other than the default
     admin_secret_name: "{{ meta.name }}-bas-admin-secret"
     #-----------------------------------------------------------------------
@@ -1155,10 +1155,10 @@ spec:
         pull_policy: IfNotPresent
         db_job:
           repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-          tag: "25.0.1"
+          tag: "25.0.1-IF001"
         solution_server:
           repository: cp.icr.io/cp/cp4a/aae/solution-server
-          tag: "25.0.1"
+          tag: "25.0.1-IF001"
       # For most cases, you don't need to input hostname and port here. They can be calculated with your environment informations
       # And all the endpoints can be visit through unified external URL
       # With none zen mode. If you want to customize external hostname and port. Update values here. They will be used as application playback server external visit hostname and port.
@@ -1472,7 +1472,7 @@ spec:
     application_setup:
       image:
         repository: cp.icr.io/cp/cp4a/bai/insights-engine-application-setup
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
       # The back-off limit property specifies the number of retries before the setup job is considered failed. Default: 6.
       backoff_limit: 7
       resources:
@@ -1496,7 +1496,7 @@ spec:
     setup:
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-setup
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
       # The back-off limit property specifies the number of retries before the setup job is considered failed. Default: 6.
       backoff_limit: 7
       resources:
@@ -1519,7 +1519,7 @@ spec:
     management:
       image:
         repository: cp.icr.io/cp/cp4a/bai/insights-engine-management
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
       ## Rolling update settings for BAI Management deployment.
       ## By default, maxUnavailable is set to '25%' and maxSurge is set '25%'. You can override these values by specifying max_unavailable and max_surge below. 
       ## The values can be defined as either a percentage (e.g., '25%') or an absolute number (e.g., 1).  
@@ -1529,7 +1529,7 @@ spec:
       backend:
         image:
           repository: cp.icr.io/cp/cp4a/bai/insights-engine-management-backend
-          tag: "25.0.1"
+          tag: "25.0.1-IF001"
       # You can use this parameter to customize the hostname of the management service route.
       # If not set, the value of shared_configuration.sc_deployment_hostname_suffix is used.
       hostname: "management.bai.{{ shared_configuration.sc_deployment_hostname_suffix }}"
@@ -1674,7 +1674,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-bpmn
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1712,7 +1712,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-bawadv
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1744,7 +1744,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-icm
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1781,7 +1781,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-flink
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1813,7 +1813,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-flink
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1845,7 +1845,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-flink
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1878,7 +1878,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-flink
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1910,7 +1910,7 @@ spec:
     init_image:
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-init
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
 
     # Business data dashboarding.
     business_performance_center:
@@ -1918,7 +1918,7 @@ spec:
       install: true    
       image:
         repository: cp.icr.io/cp/cp4a/bai/insights-engine-cockpit
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
       ## Rolling update settings for BAI Business Performance Center deployment.
       ## By default, maxUnavailable is set to '25%' and maxSurge is set '25%'. You can override these values by specifying max_unavailable and max_surge below. 
       ## The values can be defined as either a percentage (e.g., '25%') or an absolute number (e.g., 1).        
@@ -1944,7 +1944,7 @@ spec:
       init_ums:
         image:
           repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
-          tag: "25.0.1"
+          tag: "25.0.1-IF001"
       ## For SaaS
       oidc:
         # The internal communication with single-sign-on (SSO) service.
@@ -2070,10 +2070,10 @@ spec:
       pull_policy: IfNotPresent
       solution_server:
         repository: cp.icr.io/cp/cp4a/aae/solution-server
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
       db_job:
         repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-        tag: "25.0.1"
+        tag: "25.0.1-IF001"
     # If you inputed hostname and port here. They will be used always
     # If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value)
     # Then you don't need to fill the hostname and port. It will use shared_configuration.sc_deployment_hostname_suffix to generate one

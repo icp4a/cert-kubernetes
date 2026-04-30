@@ -3,6 +3,7 @@ kind: NetworkPolicy
 metadata:
   labels:
     component: cpfs3
+    service: mongo
   name: access-to-icp-mongodb
   namespace: "csNamespace"
 spec:

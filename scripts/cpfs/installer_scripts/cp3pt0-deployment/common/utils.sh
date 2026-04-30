@@ -110,6 +110,43 @@ function translate_step() {
     echo "${step}" | tr '[1-9]' '[a-i]'
 }
 
+function check_for_condition() {
+    local condition=$1
+    local retries=$2
+    local sleep_time=$3
+    local wait_message=$4
+    local success_message=$5
+    local error_message=$6
+    local debug_condition=${7:-}
+
+    info "${wait_message}"
+    while true; do
+        result=$(eval "${condition}")
+
+        if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
+            return 1
+        fi
+
+        sleep ${sleep_time}
+        result=$(eval "${condition}")
+
+        if [[ -z "${result}" ]]; then
+            if [[ ! -z "${debug_condition}" ]]; then
+                debug "${debug_condition} -> \n$(eval "${debug_condition}")\n"
+            fi
+
+            info "RETRYING: ${wait_message} (${retries} left)"
+            retries=$(( retries - 1 ))
+        else
+            break
+        fi
+    done
+
+    if [[ ! -z "${success_message}" ]]; then
+        return 0
+    fi
+}
+
 function wait_for_condition() {
     local condition=$1
     local retries=$2
@@ -248,7 +285,7 @@ function wait_for_operator() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
-function wait_for_issuer() {
+function check_for_issuer() {
     local issuer=$1
     local namespace=$2
     local condition="${OC} -n ${namespace} get issuer.v1.cert-manager.io ${issuer} --ignore-not-found -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' | grep 'True'"
@@ -259,10 +296,11 @@ function wait_for_issuer() {
     local success_message="Issuer ${issuer} in namespace ${namespace} is Ready"
     local error_message="Timeout after ${total_time_mins} minutes waiting for Issuer ${issuer} in namespace ${namespace} to be Ready"
 
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    check_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    return $?
 }
 
-function wait_for_certificate() {
+function check_for_certificate() {
     local certificate=$1
     local namespace=$2
     local condition="${OC} -n ${namespace} get certificate.v1.cert-manager.io ${certificate} --ignore-not-found -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' | grep 'True'"
@@ -273,7 +311,8 @@ function wait_for_certificate() {
     local success_message="Certificate ${certificate} in namespace ${namespace} is Ready"
     local error_message="Timeout after ${total_time_mins} minutes waiting for Certificate ${certificate} in namespace ${namespace} to be Ready"
 
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    check_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    return $?
 }
 
 function wait_for_csv() {
@@ -774,10 +813,15 @@ function cm_smoke_test(){
     cleanup_cm_resources $issuer_name $cert_name $sercret_name $namespace
     create_issuer $issuer_name $namespace
     create_certificate $issuer_name $cert_name $sercret_name $namespace
-    wait_for_issuer $issuer_name $namespace
-    wait_for_certificate $cert_name $namespace
-    if [[ $? -eq 0 ]]; then
-        cleanup_cm_resources $issuer_name $cert_name $sercret_name $namespace
+    check_for_issuer $issuer_name $namespace
+    ret1=$?
+    check_for_certificate $cert_name $namespace
+    ret2=$?
+    cleanup_cm_resources $issuer_name $cert_name $sercret_name $namespace
+    if [[ $ret1 -eq 0 && $ret2 -eq 0 ]]; then
+        return 0
+    else
+        return 1
     fi
 }
 

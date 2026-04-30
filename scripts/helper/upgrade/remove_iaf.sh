@@ -18,7 +18,7 @@
 # DRY_RUN="none" # none|client|server
 
 function show_help() {
-    echo -e "\nUsage: remove_iaf.sh <CLOUD_PAK_CR_KIND> <CLOUD_PAK_CR_NAME> <CLOUD_PAK_NAMESPACE> <FOUNDATION_NAMESPACE> <CARTRIDGE_NAME> <DRY_RUN>\n"
+    printf '%b\n' "\nUsage: remove_iaf.sh <CLOUD_PAK_CR_KIND> <CLOUD_PAK_CR_NAME> <CLOUD_PAK_NAMESPACE> <FOUNDATION_NAMESPACE> <CARTRIDGE_NAME> <DRY_RUN>\n"
     echo "Options:"
     echo "  -h  Display the help"
 }
@@ -57,7 +57,7 @@ function fail() {
 
 function msgB() {
 
-  echo -e "\x1B[1m${1}\x1B[0m\n"
+  printf '%b\n' "\x1B[1m${1}\x1B[0m\n"
 
 }
 function patch_finalizers(){
@@ -178,12 +178,12 @@ fi
 
 OPERATOR_NAMESPACE=$CLOUD_PAK_NAMESPACE
 
-CP4BA_SUB_COUNT=$(oc get sub --no-headers --ignore-not-found  -n ${CLOUD_PAK_NAMESPACE}|grep ibm-cp4a-operator | wc -l | xargs)
+CP4BA_SUB_COUNT=$(oc get subscription.operators.coreos.com --no-headers --ignore-not-found  -n ${CLOUD_PAK_NAMESPACE}|grep ibm-cp4a-operator | wc -l | xargs)
 if [ $CP4BA_SUB_COUNT -gt 0 ]; then
   OPERATOR_NAMESPACE=$CLOUD_PAK_NAMESPACE 
   info "Found CP4BA Subscription in namespace $OPERATOR_NAMESPACE"
 else
-  CP4BA_SUB_COUNT=$(oc get sub --no-headers --ignore-not-found  -n openshift-operators |grep ibm-cp4a-operator | wc -l | xargs)
+  CP4BA_SUB_COUNT=$(oc get subscription.operators.coreos.com --no-headers --ignore-not-found  -n openshift-operators |grep ibm-cp4a-operator | wc -l | xargs)
   if [ $CP4BA_SUB_COUNT -gt 0 ]; then
     OPERATOR_NAMESPACE=openshift-operators
     info "Found CP4BA Subscription in namespace $OPERATOR_NAMESPACE"

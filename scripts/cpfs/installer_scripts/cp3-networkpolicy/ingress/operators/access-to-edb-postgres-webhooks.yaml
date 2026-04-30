@@ -3,6 +3,7 @@ kind: NetworkPolicy
 metadata:
   labels:
     component: cpfs3
+    service: edb
   name: access-to-edb-postgres-webhooks
   namespace: "opNamespace"
 spec:

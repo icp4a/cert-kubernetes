@@ -20,11 +20,11 @@
 
 function select_platform(){
     printf "\n"
-    echo -e "\x1B[1mSelect the cloud platform to deploy: \x1B[0m"
+    printf '%b\n' "\x1B[1mSelect the cloud platform to deploy: \x1B[0m"
     COLUMNS=12
     if [ -z "$existing_platform_type" ]; then
         if [[ $DEPLOYMENT_TYPE == "starter" ]];then
-            # echo -e "\x1B[1mOnly Openshift Container Platform (OCP) - Private Cloud is supported.\x1B[0m"
+            # printf '%b\n' "\x1B[1mOnly Openshift Container Platform (OCP) - Private Cloud is supported.\x1B[0m"
             # PLATFORM_SELECTED="OCP"
             # read -rsn1 -p"Press any key to continue";echo
             options=("RedHat OpenShift Kubernetes Service (ROKS) - Public Cloud" "Openshift Container Platform (OCP) - Private Cloud")
@@ -62,7 +62,7 @@ function select_platform(){
         done
     else
         if [[ $DEPLOYMENT_TYPE == "starter" ]];then
-            # echo -e "\x1B[1mOnly Openshift Container Platform (OCP) - Private Cloud is supported.\x1B[0m"
+            # printf '%b\n' "\x1B[1mOnly Openshift Container Platform (OCP) - Private Cloud is supported.\x1B[0m"
             # PLATFORM_SELECTED="OCP"
             # read -rsn1 -p"Press any key to continue";echo
             options=("RedHat OpenShift Kubernetes Service (ROKS) - Public Cloud" "Openshift Container Platform (OCP) - Private Cloud")
@@ -84,8 +84,8 @@ function select_platform(){
                 printf "%1d) %s\n" $((i+1)) "${options[i]}"
             fi
         done
-        echo -e "\x1B[1;31mExisting platform type found in CR: \"$existing_platform_type\"\x1B[0m"
-        # echo -e "\x1B[1;31mDo not need to select again.\n\x1B[0m"
+        printf '%b\n' "\x1B[1;31mExisting platform type found in CR: \"$existing_platform_type\"\x1B[0m"
+        # printf '%b\n' "\x1B[1;31mDo not need to select again.\n\x1B[0m"
         prompt_press_any_key_to_continue
     fi
 

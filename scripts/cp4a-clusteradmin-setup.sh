@@ -11,6 +11,10 @@
 ###############################################################################
 CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
+
+# Open file descriptor 3 for suppressing output
+exec 3>/dev/null
+
 # Import common utilities and environment variables
 source ${CUR_DIR}/helper/common.sh
 RUNTIME_MODE=$1
@@ -50,9 +54,9 @@ COMMON_SERVICES_CRD_DIRECTORY_OCP311=${PARENT_DIR}/descriptors/common-services/s
 COMMON_SERVICES_CRD_DIRECTORY=${PARENT_DIR}/descriptors/common-services/crds
 COMMON_SERVICES_OPERATOR_ROLES=${PARENT_DIR}/descriptors/common-services/roles
 COMMON_SERVICES_TEMP_DIR=$TMEP_FOLDER
-COMMON_SERVICES_CM_NAMESPACE="kube-public"
-COMMON_SERVICES_CM_DEDICATED_NAME="common-service-maps"
-COMMON_SERVICES_CM_SHARED_NAME="ibm-common-services-status"
+# COMMON_SERVICES_CM_NAMESPACE="kube-public"
+# COMMON_SERVICES_CM_DEDICATED_NAME="common-service-maps"
+# COMMON_SERVICES_CM_SHARED_NAME="ibm-common-services-status"
 COMMON_SERVICES_NAME="IBM Cloud Pak foundational services"
 COMMON_SERVICES_CM_DEDICATE_FILE_NAME_UPDATE="common-service-maps-update.yaml"
 COMMON_SERVICES_CM_DEDICATE_FILE_NAME="common-service-maps.yaml"
@@ -69,49 +73,49 @@ mkdir -p $TEMP_FOLDER >/dev/null 2>&1
   function check_kubectl_installed() {
       if ! command -v kubectl >/dev/null 2>&1; then
   	printf "\n\n\n"
-          echo -e "\x1B[1;31mkubectl is required to run the script.\nPlease refer to the topic \"Preparing a client to connect to the cluster\" from IBM documentation:\nhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation\x1B[0m"
+          printf '%b\n' "${BOLD_TEXT}${RED_TEXT}kubectl is required to run the script.\nPlease refer to the topic \"Preparing a client to connect to the cluster\" from IBM documentation:\nhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation${RESET_TEXT}"
           exit 1
       fi
   }
 
 function prompt_wfps_license(){
     clear
-    echo -e "\x1B[1;31mIMPORTANT: Review the IBM Process Flow license information here: \n\x1B[0m"
-    echo -e "\x1B[1;31mhttps://www.ibm.com/support/customer/csol/terms/?id=L-PXVP-93U8VP\n\x1B[0m"
+    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}IMPORTANT: Review the IBM Process Flow license information here: \n${RESET_TEXT}"
+    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}https://www.ibm.com/support/customer/csol/terms/?id=L-PXVP-93U8VP\n${RESET_TEXT}"
 
     printf "\n"
     while true; do
         if [ -z "$AUTO_LICENSE_ACCEPT" ]; then
-            printf "\x1B[1mDo you accept the IBM Process Flow license? (Yes/No, default: No): \x1B[0m"
-            read -rp "" ans
+            printf "${BOLD_TEXT}Do you accept the IBM Process Flow license? (Yes/No, default: No): ${RESET_TEXT}"
+            read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 printf "\n"
-                echo -e "done"
+                printf '%b\n' "done"
                 break
                 ;;
             "n"|"N"|"no"|"No"|"NO"|"")
-                echo -e "Exiting...\n"
+                printf '%b\n' "Exiting...\n"
                 exit 0
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         else
-            printf "\x1B[1mDo you accept the IBM Process Flow license? (Yes/No, default: No): \x1B[0m"
+            printf "${BOLD_TEXT}Do you accept the IBM Process Flow license? (Yes/No, default: No): ${RESET_TEXT}"
             case "$AUTO_LICENSE_ACCEPT" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 printf "\n"
-                echo -e "done"
+                printf '%b\n' "done"
                 break
                 ;;
             "n"|"N"|"no"|"No"|"NO"|"")
-                echo -e "Exiting...\n"
+                printf '%b\n' "Exiting...\n"
                 exit 0
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 exit 1
                 ;;
             esac
@@ -209,9 +213,9 @@ function validate_cli(){
     fi
 
     if [[ "${SCRIPT_MODE}" == "OLM" ]];then
-        echo -e "\x1B[1mThis script prepares the OLM for deploying certain $CP4BA_FULL_NAME capabilities \x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}This script prepares the OLM for deploying certain $CP4BA_FULL_NAME capabilities ${RESET_TEXT}"
     else
-        echo -e "\x1B[1mThis script prepares the environment for deploying certain $CP4BA_FULL_NAME capabilities \x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}This script prepares the environment for deploying certain $CP4BA_FULL_NAME capabilities ${RESET_TEXT}"
     fi
     echo
     if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]]; then
@@ -241,10 +245,10 @@ function check_fips_enable(){
         echo "${YELLOW_TEXT}[NOTES] If you plan to enable FIPS for the CP4BA deployment, this script can verify whether FIPS is enabled on the compute nodes of the OCP cluster.${RESET_TEXT}"
         while true; do       
             if [ -z "$CP4BA_AUTO_FIPS_CHECK" ]; then
-                printf "\x1B[1mWould you like to proceed with this check? (Yes/No, default: No): \x1B[0m"
-                read -rp "" ans
+                printf "${BOLD_TEXT}Would you like to proceed with this check? (Yes/No, default: No): ${RESET_TEXT}"
+                read -erp "" ans
             else
-                printf "\x1B[1mWould you like to proceed with this check? (Yes/No, default: No): $CP4BA_AUTO_FIPS_CHECK\x1B[0m"
+                printf "${BOLD_TEXT}Would you like to proceed with this check? (Yes/No, default: No): $CP4BA_AUTO_FIPS_CHECK${RESET_TEXT}"
                 ans=$CP4BA_AUTO_FIPS_CHECK
             fi
             case "$ans" in
@@ -288,7 +292,7 @@ function check_fips_enable(){
                 break
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         done
@@ -318,8 +322,8 @@ metadata:
 data:
   all-fips-enabled: "$ALL_FIPS_ENABLED"
 EOF
-    ${CLI_CMD} delete -f ${TEMP_FOLDER}/cp4ba-fips-status-configmap.yaml >/dev/null 2>&1
-    ${CLI_CMD} apply -f ${TEMP_FOLDER}/cp4ba-fips-status-configmap.yaml >/dev/null 2>&1
+    ${CLI_CMD} delete -f ${TEMP_FOLDER}/cp4ba-fips-status-configmap.yaml >&3 2>&3
+    ${CLI_CMD} apply -f ${TEMP_FOLDER}/cp4ba-fips-status-configmap.yaml >&3 2>&3
     if [ $? -eq 0 ]; then
         success "The cp4ba-fips-status ConfigMap has been created in the project. \"$cp4ba_namespace\"."
     else
@@ -335,7 +339,7 @@ function install_cert_license_operator(){
     if [[ $PRIVATE_CATALOG == "No" ]]; then
         
         OLM_CATALOG=${PARENT_DIR}/descriptors/op-olm/catalog_source.yaml
-        ${CLI_CMD} apply -f $OLM_CATALOG >/dev/null 2>&1
+        ${CLI_CMD} apply -f $OLM_CATALOG >&3 2>&3
         if [ $? -eq 0 ]; then
             success "The IBM CP4BA Operator catalog source has been updated!"
 
@@ -344,7 +348,7 @@ function install_cert_license_operator(){
             exit 1
         fi
     else
-        ${CLI_CMD} apply -f $OLM_CATALOG_TMP >/dev/null 2>&1
+        ${CLI_CMD} apply -f $OLM_CATALOG_TMP >&3 2>&3
         if [ $? -eq 0 ]; then
             success "The IBM CP4BA Operator catalog source has been updated!"
         else
@@ -389,7 +393,7 @@ function install_cert_license_operator(){
                 exit 1
             else
                 sleep 30
-                echo -n "..."
+                printf '%s' "..."
                 continue
             fi
         else
@@ -411,7 +415,7 @@ function install_cert_license_operator(){
                 exit 1
             else
                 sleep 30
-                echo -n "..."
+                printf '%s' "..."
                 continue
             fi
         else
@@ -451,7 +455,7 @@ function install_cert_license_operator(){
                     exit 1
                 else
                     sleep 20
-                    echo -n "..."
+                    printf '%s' "..."
                     continue                        
                 fi
             else
@@ -476,7 +480,7 @@ function install_cert_license_operator(){
                     exit 1
                 else
                     sleep 20
-                    echo -n "..."
+                    printf '%s' "..."
                     continue                        
                 fi
             else
@@ -495,10 +499,10 @@ function select_private_catalog(){
     echo "${YELLOW_TEXT}[NOTES] You can install the CP4BA deployment as either a private catalog (namespace scope) or the global catalog namespace (GCN). The private option uses the same target namespace of the CP4BA deployment, while the GCN uses the openshift-marketplace namespace.${RESET_TEXT}"
     while true; do
         if [[ -z "$CP4BA_AUTO_PRIVATE_CATALOG" ]]; then
-            printf "\x1B[1mWould you like to deploy CP4BA using the private catalog (recommended)? (Yes/No, default: Yes): \x1B[0m"
-            read -rp "" ans
+            printf "${BOLD_TEXT}Would you like to deploy CP4BA using the private catalog (recommended)? (Yes/No, default: Yes): ${RESET_TEXT}"
+            read -erp "" ans
         else
-            printf "\x1B[1mWould you like to deploy CP4BA using the private catalog (recommended)? (Yes/No, default: Yes): $CP4BA_AUTO_PRIVATE_CATALOG\x1B[0m\n"
+            printf "${BOLD_TEXT}Would you like to deploy CP4BA using the private catalog (recommended)? (Yes/No, default: Yes): $CP4BA_AUTO_PRIVATE_CATALOG${RESET_TEXT}\n"
             ans=$CP4BA_AUTO_PRIVATE_CATALOG
         fi
         case "$ans" in
@@ -512,7 +516,7 @@ function select_private_catalog(){
             ;;
         *)
             PRIVATE_CATALOG=""
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -523,10 +527,10 @@ function select_separate_operator(){
     echo "${YELLOW_TEXT}[NOTES] The CP4BA deployment supports the separation of operators and operands. This script can deploy the CP4BA operators and their capabilities in different projects.${RESET_TEXT}"
     while true; do
         if [[ -z "$CP4BA_AUTO_SEPARATE_OPERATOR" ]]; then
-            printf "\x1B[1mWould you like to deploy CP4BA with the separation of operators and operands? (Yes/No, default: No): \x1B[0m"
-            read -rp "" ans
+            printf "${BOLD_TEXT}Would you like to deploy CP4BA with the separation of operators and operands? (Yes/No, default: No): ${RESET_TEXT}"
+            read -erp "" ans
         else
-            printf "\x1B[1mWould you like to deploy CP4BA with the separation of operators and operands? (Yes/No, default: No): $CP4BA_AUTO_SEPARATE_OPERATOR\x1B[0m\n"
+            printf "${BOLD_TEXT}Would you like to deploy CP4BA with the separation of operators and operands? (Yes/No, default: No): $CP4BA_AUTO_SEPARATE_OPERATOR${RESET_TEXT}\n"
             ans=$CP4BA_AUTO_SEPARATE_OPERATOR
         fi
         case "$ans" in
@@ -540,7 +544,7 @@ function select_separate_operator(){
             ;;
         *)
             SEPARATE_OPERATOR=""
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -550,10 +554,10 @@ function select_separate_operator(){
     #     echo "${YELLOW_TEXT}[NOTES] The script supports to setup cluster for multiple deployments of CP4BA in the same cluster sharing one namespace for operators.${RESET_TEXT}"
     #     while true; do
     #         if [[ -z "$CP4BA_AUTO_MULTIPLE_DEPLOYMENT" ]]; then
-    #             printf "\x1B[1mDo you want to deploy multiple deployments of CP4BA in the same cluster? (Yes/No, default: No): \x1B[0m"
-    #             read -rp "" ans
+    #             printf "${BOLD_TEXT}Do you want to deploy multiple deployments of CP4BA in the same cluster? (Yes/No, default: No): ${RESET_TEXT}"
+    #             read -erp "" ans
     #         else
-    #             printf "\x1B[1mDo you want to deploy multiple deployments of CP4BA in the same cluster? (Yes/No, default: No): $CP4BA_AUTO_MULTIPLE_DEPLOYMENT\x1B[0m\n"
+    #             printf "${BOLD_TEXT}Do you want to deploy multiple deployments of CP4BA in the same cluster? (Yes/No, default: No): $CP4BA_AUTO_MULTIPLE_DEPLOYMENT${RESET_TEXT}\n"
     #             ans=$CP4BA_AUTO_MULTIPLE_DEPLOYMENT
     #         fi
     #         case "$ans" in
@@ -567,7 +571,7 @@ function select_separate_operator(){
     #             ;;
     #         *)
     #             MULTIPLE_DEPLOYMENT=""
-    #             echo -e "Answer must be \"Yes\" or \"No\"\n"
+    #             printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
     #             ;;
     #         esac
     #     done
@@ -581,25 +585,25 @@ function select_project(){
     do
         if [ -z "$CP4BA_AUTO_NAMESPACE" ]; then
             echo
-            echo -e "\x1B[1mWhere do you want to deploy $CP4BA_FULL_NAME?\x1B[0m"
-            read -p "Enter the name of a new project or an existing project (namespace): " project_name
+            printf '%b\n' "${BOLD_TEXT}Where do you want to deploy $CP4BA_FULL_NAME?${RESET_TEXT}"
+            read -erp "Enter the name of a new project or an existing project (namespace): " project_name
         else
             if [[ "$CP4BA_AUTO_NAMESPACE" == openshift* ]]; then
-                echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'openshift' or start with 'openshift'. \x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name should not be 'openshift' or start with 'openshift'. ${RESET_TEXT}"
                 exit 1
             elif [[ "$CP4BA_AUTO_NAMESPACE" == kube* ]]; then
-                echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'kube' or start with 'kube'. \x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name should not be 'kube' or start with 'kube'. ${RESET_TEXT}"
                 exit 1
             fi
             project_name=$CP4BA_AUTO_NAMESPACE
         fi
         if [ -z "$project_name" ]; then
-            echo -e "\x1B[1;31mEnter a valid project name. The project name cannot be blank.\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name cannot be blank.${RESET_TEXT}"
         elif [[ "$project_name" == openshift* ]]; then
-            echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'openshift' or start with 'openshift'. \x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name should not be 'openshift' or start with 'openshift'. ${RESET_TEXT}"
             project_name=""
         elif [[ "$project_name" == kube* ]]; then
-            echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'kube' or start with 'kube'. \x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name should not be 'kube' or start with 'kube'. ${RESET_TEXT}"
             project_name=""
         else
             verify_existing_csv $project_name
@@ -665,25 +669,25 @@ function set_separate_operator_project(){
     do
         if [ -z "$CP4BA_AUTO_OPERATOR_NAMESPACE" ]; then
             echo
-            echo -e "\x1B[1mWhere would you like to deploy the $CP4BA_FULL_NAME operators? \x1B[0m"
-            read -p "Enter the name for a new project or an existing project (namespace): " project_name_operator
+            printf '%b\n' "${BOLD_TEXT}Where would you like to deploy the $CP4BA_FULL_NAME operators? ${RESET_TEXT}"
+            read -erp "Enter the name for a new project or an existing project (namespace): " project_name_operator
         else
             if [[ "$CP4BA_AUTO_OPERATOR_NAMESPACE" == openshift* ]]; then
-                echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'openshift' or start with 'openshift'. \x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name should not be 'openshift' or start with 'openshift'. ${RESET_TEXT}"
                 exit 1
             elif [[ "$CP4BA_AUTO_OPERATOR_NAMESPACE" == kube* ]]; then
-                echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'kube' or start with 'kube'. \x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name should not be 'kube' or start with 'kube'. ${RESET_TEXT}"
                 exit 1
             fi
             project_name_operator=$CP4BA_AUTO_OPERATOR_NAMESPACE
         fi
         if [ -z "$project_name_operator" ]; then
-            echo -e "\x1B[1;31mEnter a valid project name. The project name cannot be blank.\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name cannot be blank.${RESET_TEXT}"
         elif [[ "$project_name_operator" == openshift* ]]; then
-            echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'openshift' or start with 'openshift'. \x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name should not be 'openshift' or start with 'openshift'. ${RESET_TEXT}"
             project_name_operator=""
         elif [[ "$project_name_operator" == kube* ]]; then
-            echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'kube' or start with 'kube'. \x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name should not be 'kube' or start with 'kube'. ${RESET_TEXT}"
             project_name_operator=""
         else
             verify_existing_csv $project_name_operator
@@ -747,17 +751,17 @@ function set_separate_cpfs_service_project(){
     do
         if [ -z "$CP4BA_AUTO_CS_SERVICE_NAMESPACE" ]; then
             echo
-            echo -e "\x1B[1mWhere (namespace) do you want to deploy CP4BA operands (i.e., runtime pods)? \x1B[0m"
-            read -p "Enter the name for a new project or an existing project (namespace): " project_name_cs_service
+            printf '%b\n' "${BOLD_TEXT}Where (namespace) do you want to deploy CP4BA operands (i.e., runtime pods)? ${RESET_TEXT}"
+            read -erp "Enter the name for a new project or an existing project (namespace): " project_name_cs_service
         else
             if [[ "$CP4BA_AUTO_CS_SERVICE_NAMESPACE" == openshift* ]]; then
-                echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'openshift' or start with 'openshift'. \x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name should not be 'openshift' or start with 'openshift'. ${RESET_TEXT}"
                 exit 1
             elif [[ "$CP4BA_AUTO_CS_SERVICE_NAMESPACE" == kube* ]]; then
-                echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'kube' or start with 'kube'. \x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name should not be 'kube' or start with 'kube'. ${RESET_TEXT}"
                 exit 1
             elif [[ "$project_name_cs_service" == "$project_name_operator" ]]; then
-                fail "\x1B[1;31mThe project name for CPfs services (IM Services) should NOT be same as the project name \"$project_name_operator\" for CP4BA operators. \x1B[0m"
+                fail "${BOLD_TEXT}${RED_TEXT}The project name for CPfs services (IM Services) should NOT be same as the project name \"$project_name_operator\" for CP4BA operators. ${RESET_TEXT}"
                 exit 1
             fi
             project_name_cs_service=$CP4BA_AUTO_CS_SERVICE_NAMESPACE
@@ -765,15 +769,15 @@ function set_separate_cpfs_service_project(){
 
 
         if [ -z "$project_name_cs_service" ]; then
-            echo -e "\x1B[1;31mEnter a valid project name. The project name cannot be blank.\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name cannot be blank.${RESET_TEXT}"
         elif [[ "$project_name_cs_service" == openshift* ]]; then
-            echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'openshift' or start with 'openshift'. \x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name should not be 'openshift' or start with 'openshift'. ${RESET_TEXT}"
             project_name_cs_service=""
         elif [[ "$project_name_cs_service" == kube* ]]; then
-            echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'kube' or start with 'kube'. \x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name should not be 'kube' or start with 'kube'. ${RESET_TEXT}"
             project_name_cs_service=""
         elif [[ "$project_name_cs_service" == "$project_name_operator" ]]; then
-            fail "\x1B[1;31mThe project name for CPfs services (IM Services) should NOT be the same as the project name \"$project_name_operator\" for CP4BA operators. Provide a different project name. \x1B[0m"
+            fail "${BOLD_TEXT}${RED_TEXT}The project name for CPfs services (IM Services) should NOT be the same as the project name \"$project_name_operator\" for CP4BA operators. Provide a different project name. ${RESET_TEXT}"
             project_name_cs_service=""
         else
             # verify_existing_csv $project_name_operator
@@ -790,9 +794,9 @@ function set_separate_cp4ba_service_project(){
     do
         if [ -z "$CP4BA_AUTO_SERVICE_NAMESPACE" ]; then
             printf "\n"
-            echo -e "${YELLOW_TEXT}[NOTES] If you want to have multiple deployments of CP4BA in the same cluster sharing one namespace for operators, you can input the namespace names as a comma-separated list (for example: cp4ba-ns1,cp4ba-ns2,cp4ba-ns3).${RESET_TEXT}"
-            printf "\x1B[1mwould you like to deploy the $CP4BA_FULL_NAME components/services? Specify the namespace. \x1B[0m\n"
-            read -rp "The project name(s): " project_name_cp4ba_service
+            printf '%b\n' "${YELLOW_TEXT}[NOTES] If you want to have multiple deployments of CP4BA in the same cluster sharing one namespace for operators, you can input the namespace names as a comma-separated list (for example: cp4ba-ns1,cp4ba-ns2,cp4ba-ns3).${RESET_TEXT}"
+            printf "${BOLD_TEXT}would you like to deploy the $CP4BA_FULL_NAME components/services? Specify the namespace. ${RESET_TEXT}\n"
+            read -erp "The project name(s): " project_name_cp4ba_service
         else
             OIFS=$IFS
             IFS=',' read -ra project_cp4ba_service_array <<< "$CP4BA_AUTO_SERVICE_NAMESPACE"
@@ -801,16 +805,16 @@ function set_separate_cp4ba_service_project(){
             for item in "${project_cp4ba_service_array[@]}"; do
                 item=$(sed -e 's/^"//' -e 's/"$//' <<<"$item")
                 if [[ "$item" == openshift* ]]; then
-                    echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'openshift' or start with 'openshift'. \x1B[0m"
+                    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name should not be 'openshift' or start with 'openshift'. ${RESET_TEXT}"
                     exit 1
                 elif [[ "$item" == kube* ]]; then
-                    echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'kube' or start with 'kube'. \x1B[0m"
+                    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name should not be 'kube' or start with 'kube'. ${RESET_TEXT}"
                     exit 1
                 elif [[ "$item" == "$project_name_operator" ]]; then
-                    fail "\x1B[1;31mThe project name for CP4BA capabilities deployment should not be same as the project name \"$project_name_operator\" for CP4BA operator. \x1B[0m"
+                    fail "${BOLD_TEXT}${RED_TEXT}The project name for CP4BA capabilities deployment should not be same as the project name \"$project_name_operator\" for CP4BA operator. ${RESET_TEXT}"
                     exit 1
                 elif [[ "$item" == "$project_name_cs_service" ]]; then
-                    fail "\x1B[1;31mThe project name for CP4BA capabilities deployment should not be same as the project name \"$project_name_cs_service\" for CPfs services (IM Services). \x1B[0m"
+                    fail "${BOLD_TEXT}${RED_TEXT}The project name for CP4BA capabilities deployment should not be same as the project name \"$project_name_cs_service\" for CPfs services (IM Services). ${RESET_TEXT}"
                     exit 1
                 fi
                 project_name_cp4ba_service=$CP4BA_AUTO_SERVICE_NAMESPACE
@@ -824,18 +828,18 @@ function set_separate_cp4ba_service_project(){
         for item in "${project_cp4ba_service_array[@]}"; do
             item=$(sed -e 's/^"//' -e 's/"$//' <<<"$item")
             if [ -z "$item" ]; then
-                echo -e "\x1B[1;31mEnter a valid project name. The project name can not be blank.\x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name can not be blank.${RESET_TEXT}"
             elif [[ "$item" == openshift* ]]; then
-                echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'openshift' or start with 'openshift'. \x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name should not be 'openshift' or start with 'openshift'. ${RESET_TEXT}"
                 project_name_cp4ba_service=""
             elif [[ "$item" == kube* ]]; then
-                echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'kube' or start with 'kube'. \x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name. The project name should not be 'kube' or start with 'kube'. ${RESET_TEXT}"
                 project_name_cp4ba_service=""
             elif [[ "$item" == "$project_name_operator" ]]; then
-                fail "\x1B[1;31mThe project name for CP4BA capabilities deployment should not be same as the project name \"$project_name_operator\" for CP4BA operator. \x1B[0m"
+                fail "${BOLD_TEXT}${RED_TEXT}The project name for CP4BA capabilities deployment should not be same as the project name \"$project_name_operator\" for CP4BA operator. ${RESET_TEXT}"
                 project_name_cp4ba_service=""
             elif [[ "$item" == "$project_name_cs_service" ]]; then
-                fail "\x1B[1;31mThe project name for CP4BA capabilities deployment should not be same as the project name \"$project_name_cs_service\" for CPfs services (IM Services). \x1B[0m"
+                fail "${BOLD_TEXT}${RED_TEXT}The project name for CP4BA capabilities deployment should not be same as the project name \"$project_name_cs_service\" for CPfs services (IM Services). ${RESET_TEXT}"
                 project_name_cp4ba_service=""
             else
                 create_project $item
@@ -866,14 +870,16 @@ apiVersion: v1
 metadata:
   name: ibm-cp4ba-common-config
   namespace: "$project_name_cs_service"
+  labels:
+    cp4ba.ibm.com/backup-type: mandatory
 data:
   operators_namespace: "$project_name_operator"
   services_namespace: "$project_name_cs_service"
   network_type: "$network_type_value"
   network_cidr: "$network_cidr_value"
 EOF
-    ${CLI_CMD} delete -f ${TEMP_FOLDER}/ibm-cp4ba-common-config-configmap.yaml >/dev/null 2>&1
-    ${CLI_CMD} apply -f ${TEMP_FOLDER}/ibm-cp4ba-common-config-configmap.yaml >/dev/null 2>&1
+    ${CLI_CMD} delete -f ${TEMP_FOLDER}/ibm-cp4ba-common-config-configmap.yaml >&3 2>&3
+    ${CLI_CMD} apply -f ${TEMP_FOLDER}/ibm-cp4ba-common-config-configmap.yaml >&3 2>&3
     if [ $? -eq 0 ]; then
         success "Created ibm-cp4ba-common-config configMap for this CP4BA deployment in the project \"$project_name_cs_service\"."
         sleep 3
@@ -887,9 +893,9 @@ function select_all_namespace(){
     printf "\n"
     while true; do
         if [ -z "$CP4BA_AUTO_ALL_NAMESPACES" ]; then
-            printf "\x1B[1mDo you want the $CP4BA_NAME Operator support 'All Namespaces'? (Yes/No, default: No) \x1B[0m"
+            printf "${BOLD_TEXT}Do you want the $CP4BA_NAME Operator support 'All Namespaces'? (Yes/No, default: No) ${RESET_TEXT}"
 
-            read -rp "" ans
+            read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 ALL_NAMESPACE="Yes"
@@ -901,11 +907,11 @@ function select_all_namespace(){
                 ;;
             *)
                 ALL_NAMESPACE=""
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         else
-            printf "\x1B[1mDo you want the $CP4BA_NAME Operator support 'All Namespaces'? (Yes/No, default: No)  \x1B[0m$CP4BA_AUTO_ALL_NAMESPACES\n"
+            printf "${BOLD_TEXT}Do you want the $CP4BA_NAME Operator support 'All Namespaces'? (Yes/No, default: No)  ${RESET_TEXT}$CP4BA_AUTO_ALL_NAMESPACES\n"
             case "$CP4BA_AUTO_ALL_NAMESPACES" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 ALL_NAMESPACE="Yes"
@@ -917,7 +923,7 @@ function select_all_namespace(){
                 ;;
             *)
                 ALL_NAMESPACE=""
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 exit 1
                 ;;
             esac
@@ -932,13 +938,13 @@ function select_all_namespace(){
             ${CLI_CMD} create namespace ${PROJ_NAME_ALL_NAMESPACE} >> ${LOG_FILE}
             returnValue=$?
             if [ "$returnValue" == 1 ]; then
-                echo -e "\x1B[1;31mFailed to create namespace name \"$PROJ_NAME_ALL_NAMESPACE\", Check the details...\x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Failed to create namespace name \"$PROJ_NAME_ALL_NAMESPACE\", Check the details...${RESET_TEXT}"
                 exit 1
             else
-                echo -e "\x1B[1mUsing namespace ${PROJ_NAME_ALL_NAMESPACE}...\x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}Using namespace ${PROJ_NAME_ALL_NAMESPACE}...${RESET_TEXT}"
             fi
         else
-            echo -e "\x1B[1mName space \"${PROJ_NAME_ALL_NAMESPACE}\" already exists! Continue...\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}Name space \"${PROJ_NAME_ALL_NAMESPACE}\" already exists! Continue...${RESET_TEXT}"
         fi
     fi
 
@@ -950,25 +956,25 @@ function collect_input() {
     #     do
     #         if [ -z "$CP4BA_AUTO_NAMESPACE" ]; then
     #             echo
-    #             echo -e "\x1B[1mWhere do you want to deploy $CP4BA_FULL_NAME?\x1B[0m"
+    #             printf '%b\n' "${BOLD_TEXT}Where do you want to deploy $CP4BA_FULL_NAME?${RESET_TEXT}"
     #             read -p "Enter the name for a new project or an existing project (namespace): " project_name
     #         else
     #             if [[ "$CP4BA_AUTO_NAMESPACE" == openshift* ]]; then
-    #                 echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
+    #                 printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name, project name should not be 'openshift' or start with 'openshift' ${RESET_TEXT}"
     #                 exit 1
     #             elif [[ "$CP4BA_AUTO_NAMESPACE" == kube* ]]; then
-    #                 echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+    #                 printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name, project name should not be 'kube' or start with 'kube' ${RESET_TEXT}"
     #                 exit 1
     #             fi
     #             project_name=$CP4BA_AUTO_NAMESPACE
     #         fi
     #         if [ -z "$project_name" ]; then
-    #             echo -e "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
+    #             printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name, project name can not be blank${RESET_TEXT}"
     #         elif [[ "$project_name" == openshift* ]]; then
-    #             echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
+    #             printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name, project name should not be 'openshift' or start with 'openshift' ${RESET_TEXT}"
     #             project_name=""
     #         elif [[ "$project_name" == kube* ]]; then
-    #             echo -e "\x1B[1;31mEnter a valid project name, project name should not be 'kube' or start with 'kube' \x1B[0m"
+    #             printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid project name, project name should not be 'kube' or start with 'kube' ${RESET_TEXT}"
     #             project_name=""
     #         else
     #             verify_existing_csv
@@ -982,158 +988,6 @@ function collect_input() {
     fi
 }
 
-function check_common_services_cm() {
-
-   cs_dedicated=$(${CLI_CMD} get cm -n ${COMMON_SERVICES_CM_NAMESPACE}  | grep ${COMMON_SERVICES_CM_DEDICATED_NAME} | awk '{print $1}')
-
-   cs_shared=$(${CLI_CMD} get cm -n ${COMMON_SERVICES_CM_NAMESPACE}  | grep ${COMMON_SERVICES_CM_SHARED_NAME} | awk '{print $1}')
-
-   if [[ "$cs_shared" != ""  ]] ; then
-     #Code snippet to check if the common-services config map is still present and if so will be deleted
-     isEmpty="$(${CLI_CMD} get cm -n ${COMMON_SERVICES_CM_NAMESPACE} ${COMMON_SERVICES_CM_SHARED_NAME} -o jsonpath='{ .data }' )"
-     if [[ "$isEmpty" == "" ]]; then
-        ${CLI_CMD} delete cm -n ${COMMON_SERVICES_CM_NAMESPACE} ${COMMON_SERVICES_CM_SHARED_NAME}
-        cs_shared=""
-     fi
-   fi
-
-   if [[ "$cs_dedicated" != "" && "$cs_shared" != ""  ]] ; then
-     control_namespace=$( ${CLI_CMD} get cm -n ${COMMON_SERVICES_CM_NAMESPACE}  ${COMMON_SERVICES_CM_DEDICATED_NAME} -o jsonpath='{ .data.common-service-maps\.yaml }' | grep  'controlNamespace' )
-   fi
-
-  # Going to disable prompting the end user
-  # for shared and dedicated Cloud Pak foundational services
-  if false ;
-  then
-   if [[ "$cs_dedicated" == "" && "$cs_shared" == ""  ]] ;
-   then
-
-     echo -e "\x1B[1mUnable to detect a ${COMMON_SERVICES_NAME}.\x1B[0m"
-     while true; do
-       printf "\n"
-        echo -e "\x1B[1mWould you like to continue with a dedicated ${COMMON_SERVICES_NAME} instance? (Yes/No, default: Yes)\x1B[0m"
-        read -rp "" ans
-        case "$ans" in
-        "y"|"Y"|"yes"|"Yes"|"YES"|"YeS"|"yES"|"YEs"|"")
-           echo -e "The control namespace is a shared namespace for deploying cluster-scope resources."
-           echo -e "This namespace must be different from any IBM Cloud Pak or foundational services instance namespace."
-           echo -e "You cannot change this namespace after installing foundational services."
-           while true; do
-           echo -e "Enter the control namespace for deploying cluster-scope resources."
-           read -rp "" ctrl_nm
-           case "$ctrl_nm" in
-           "")
-             echo -e "\x1B[1;31mEnter a valid namespace name. The namespace name can not be blank.\x1B[0m"
-             ;;
-           "openshift"*)
-              echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'openshift' or start with 'openshift'. \x1B[0m"
-             ;;
-           "kube"*)
-              echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'kube' or start with 'kube'. \x1B[0m"
-              ;;
-           *)
-             CTRL_NAMESPACE=$ctrl_nm
-             DEDICATED_PROJECT=$project_name
-              echo -e "The cluster-scope resources will be installed in $CTRL_NAMESPACE"
-              while true; do
-                echo -e "Do you wish to change the default dedicated project ${DEDICATED_PROJECT} where ${COMMON_SERVICES_NAME} will be installed?(Yes/No default: No)"
-                read -rp "" change_dedicated
-                case "$change_dedicated" in
-                "y"|"Y"|"yes"|"Yes"|"YES"|"YeS"|"yES"|"YEs")
-                  while true; do
-                    echo -e "Enter the project where you wish ${COMMON_SERVICES_NAME} to be installed."
-                    read -rp "" new_dedicated
-                    case "$new_dedicated" in
-                    "")
-                      echo -e "\x1B[1;31mEnter a valid namespace name. The namespace name can not be blank.\x1B[0m"
-                      ;;
-                    "openshift"*)
-                      echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'openshift' or start with 'openshift'. \x1B[0m"
-                      ;;
-                    "kube"*)
-                      echo -e "\x1B[1;31mEnter a valid project name. The project name should not be 'kube' or start with 'kube'. \x1B[0m"
-                      ;;
-                     *)
-                      DEDICATED_PROJECT=$new_dedicated
-                      break
-                      ;;
-                    esac
-                  done
-                  ;;
-                "n"|"N"|"no"|"No"|"NO"|"nO"|"")
-                  echo -e "${COMMON_SERVICES_NAME} is going to be installed in the dedicated project ${DEDICATED_PROJECT}"
-                  sed -e "s/CONTROL_NAMESPACE/${CTRL_NAMESPACE}/g;s/REQUESTED_NAMESPACE/${project_name}/g;s/MAP_TO_COMMON_SERVICES_NAMESPACE/${DEDICATED_PROJECT}/g" ${COMMON_SERVICES_CM_DEDICATE_FILE} > ${TEMP_FOLDER}/${COMMON_SERVICES_CM_DEDICATE_FILE_NAME}
-                  ${CLI_CMD} apply -f ${TEMP_FOLDER}/${COMMON_SERVICES_CM_DEDICATE_FILE_NAME} >> ${LOG_FILE}
-                  break
-                  ;;
-                *)
-                  echo -e "Answer must be 'Yes' or 'No'\n"
-                esac
-              done
-             break
-             ;;
-           esac
-           done
-           break
-           ;;
-        "n"|"N"|"no"|"No"|"NO")
-           echo -e "Continue...\n"
-           break
-           ;;
-        *)
-           echo -e "Answer must be 'Yes' or 'No'\n"
-        esac
-     done
-   fi
-  fi
-
-   DEDICATED_PROJECT=$project_name
-
-   if [[ "$cs_dedicated" == "" && "$cs_shared" == ""  ]] ;
-   then
-     sed -e "s/REQUESTED_NAMESPACE/${project_name}/g;s/MAP_TO_COMMON_SERVICES_NAMESPACE/${DEDICATED_PROJECT}/g" ${COMMON_SERVICES_CM_DEDICATE_FILE} > ${TEMP_FOLDER}/${COMMON_SERVICES_CM_DEDICATE_FILE_NAME}
-     ${CLI_CMD} apply -f ${TEMP_FOLDER}/${COMMON_SERVICES_CM_DEDICATE_FILE_NAME} >> ${LOG_FILE}
-     rm -fr ${TEMP_FOLDER}/${COMMON_SERVICES_CM_DEDICATE_FILE_NAME} >> ${LOG_FILE}
-   elif [[ "$cs_dedicated" != "" && "$cs_shared" == "" ]] || [[ "$cs_dedicated" != "" && "$cs_shared" != "" && "$control_namespace" != "" ]];
-   then
-     ${CLI_CMD} get cm ${COMMON_SERVICES_CM_DEDICATED_NAME} -n ${COMMON_SERVICES_CM_NAMESPACE} -o yaml > ${TEMP_FOLDER}/${COMMON_SERVICES_CM_DEDICATE_FILE_NAME_UPDATE}
-     isMetaSection=false
-     requestExists=false
-     rm -fr ${TEMP_FOLDER}/common-service-patch.yaml >> ${LOG_FILE}
-     ${CLI_CMD} get cm ${COMMON_SERVICES_CM_DEDICATED_NAME} -n ${COMMON_SERVICES_CM_NAMESPACE} -o jsonpath='{ .data.common-service-maps\.yaml}' > ${TEMP_FOLDER}/output-data.yaml
-     while IFS='' read -r line
-     do
-       if [ "$line" == "  - ${project_name}" ]; then
-           requestExists=true
-       fi
-     done < ${TEMP_FOLDER}/output-data.yaml
-
-     rm -fr ${TEMP_FOLDER}/output-data.yaml >> ${LOG_FILE}
-
-     if ! $requestExists ; then
-       while IFS='' read -r line
-       do
-         if [[ "$line" == *"metadata:"* ]] ;
-         then
-           isMetaSection=true
-        #    echo "$isMetaSection"
-         fi
-         if [[ "$line" == *"namespaceMapping:"*  ]] && ! $isMetaSection ;
-
-         then
-           echo "$line" >> ${TEMP_FOLDER}/common-service-patch.yaml
-           printf "%-3s - requested-from-namespace:\n" >> ${TEMP_FOLDER}/common-service-patch.yaml
-           printf "%-5s - ${project_name}\n" >> ${TEMP_FOLDER}/common-service-patch.yaml
-           printf "%-5s map-to-common-service-namespace: ${project_name}\n" >> ${TEMP_FOLDER}/common-service-patch.yaml
-         else
-           echo "$line"  >> ${TEMP_FOLDER}/common-service-patch.yaml
-         fi
-       done < "${TEMP_FOLDER}/${COMMON_SERVICES_CM_DEDICATE_FILE_NAME_UPDATE}"
-       ${CLI_CMD} apply -f ${TEMP_FOLDER}/common-service-patch.yaml >>  ${LOG_FILE}
-       rm -fr ${TEMP_FOLDER}/common-service-patch.yaml >> ${LOG_FILE}
-     fi
-   fi
-}
 
 function validate_cncf_olm(){
     if ${CLI_CMD} get deployment packageserver -n $CNCF_OLM_NAMESPACE > /dev/null 2>&1; then
@@ -1142,38 +996,38 @@ function validate_cncf_olm(){
 
     printf "\n"
     printf "\n"
-    echo -e "\x1B[1;31mOperator Lifecycle Manager (OLM) not found in the namespace \"$CNCF_OLM_NAMESPACE\", which is a requirement for deployment. If the Kubernetes cluster is connected to the internet, the script can assist in installing the community version v0.20.0.\x1B[0m"
+    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Operator Lifecycle Manager (OLM) not found in the namespace \"$CNCF_OLM_NAMESPACE\", which is a requirement for deployment. If the Kubernetes cluster is connected to the internet, the script can assist in installing the community version v0.20.0.${RESET_TEXT}"
     printf "\n"
 
     while true; do
-        printf "\x1B[1mDo you want to deploy Operator Lifecycle Manager (OLM) in namespace \"${CNCF_OLM_NAMESPACE}\"? (Yes/No, default: No) \x1B[0m"
+        printf "${BOLD_TEXT}Do you want to deploy Operator Lifecycle Manager (OLM) in namespace \"${CNCF_OLM_NAMESPACE}\"? (Yes/No, default: No) ${RESET_TEXT}"
         if [ -z "$AUTO_INSTALL_OLM" ]; then
-            read -rp "" ans
+            read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
-                echo -e "Continue....\n"
+                printf '%b\n' "Continue....\n"
                 break
                 ;;
             "n"|"N"|"no"|"No"|"NO"|"")
-                echo -e "\x1B[1;31mYou choose not to install Operator Lifecycle Manager (OLM) automatically, Install OLM under namespace \"$CNCF_OLM_NAMESPACE\" manually...\x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}You choose not to install Operator Lifecycle Manager (OLM) automatically, Install OLM under namespace \"$CNCF_OLM_NAMESPACE\" manually...${RESET_TEXT}"
                 exit 1
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         else
             case "$AUTO_INSTALL_OLM" in
             "y"|"Y"|"yes"|"Yes"|"YES")
-                echo -e "Continue....\n"
+                printf '%b\n' "Continue....\n"
                 break
                 ;;
             "n"|"N"|"no"|"No"|"NO"|"")
-                echo -e "\x1B[1;31mYou choose not to install Operator Lifecycle Manager (OLM) automatically, Install OLM under namespace \"$CNCF_OLM_NAMESPACE\" manually...\x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}You choose not to install Operator Lifecycle Manager (OLM) automatically, Install OLM under namespace \"$CNCF_OLM_NAMESPACE\" manually...${RESET_TEXT}"
                 exit 1
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 exit 1
                 ;;
             esac
@@ -1214,20 +1068,20 @@ function create_project() {
             returnValue=$?
             if [ "$returnValue" == 1 ]; then
                 if [ -z "$CP4BA_AUTO_NAMESPACE" ]; then
-                    echo -e "\x1B[1;31mInvalid project name, Enter a valid name...\x1B[0m"
+                    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Invalid project name, Enter a valid name...${RESET_TEXT}"
                     project_name=""
                     return 1
                 else
-                    echo -e "\x1B[1;31mInvalid project name \"$CP4BA_AUTO_NAMESPACE\", Enter a valid name...\x1B[0m"
+                    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Invalid project name \"$CP4BA_AUTO_NAMESPACE\", Enter a valid name...${RESET_TEXT}"
                     project_name=""
                     exit 1
                 fi
             else
-                echo -e "\x1B[1mUsing project ${project_name}...\x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}Using project ${project_name}...${RESET_TEXT}"
                 return 0
             fi
         else
-            echo -e "\x1B[1mProject \"${project_name}\" already exists! Continue...\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}Project \"${project_name}\" already exists! Continue...${RESET_TEXT}"
             return 0
         fi
     elif [[ "$PLATFORM_SELECTED" == "other" ]]
@@ -1239,20 +1093,20 @@ function create_project() {
             returnValue=$?
             if [ "$returnValue" == 1 ]; then
                 if [ -z "$CP4BA_AUTO_NAMESPACE" ]; then
-                    echo -e "\x1B[1;31mInvalid namespace name, Enter a valid name...\x1B[0m"
+                    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Invalid namespace name, Enter a valid name...${RESET_TEXT}"
                     project_name=""
                     return 1
                 else
-                    echo -e "\x1B[1;31mInvalid namespace name \"$CP4BA_AUTO_NAMESPACE\", Enter a valid name...\x1B[0m"
+                    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Invalid namespace name \"$CP4BA_AUTO_NAMESPACE\", Enter a valid name...${RESET_TEXT}"
                     project_name=""
                     exit 1
                 fi
             else
-                echo -e "\x1B[1mUsing namespace ${project_name}...\x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}Using namespace ${project_name}...${RESET_TEXT}"
                 return 0
             fi
         else
-            echo -e "\x1B[1mName space \"${project_name}\" already exists! Continue...\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}Name space \"${project_name}\" already exists! Continue...${RESET_TEXT}"
             return 0
         fi
     fi
@@ -1265,24 +1119,24 @@ function verify_existing_csv(){
 
     if [[ "$RUNTIME_MODE" == "baw" || $RUNTIME_MODE == "baw-dev" ]]
     then
-      ${CLI_CMD} get csv --all-namespaces|grep ibm-cs-bawoperator.v >/dev/null 2>&1
+      ${CLI_CMD} get csv --all-namespaces|grep ibm-cs-bawoperator.v >&3 2>&3
       exist_csv_project_array=($(${CLI_CMD} get csv --all-namespaces|grep ibm-cs-bawoperator.v|awk '{print $1}'))
       returnValue=$?
     elif [[ "$RUNTIME_MODE" == "process-flow" || $RUNTIME_MODE == "process-flow-dev" ]]
     then
-      ${CLI_CMD} get csv --all-namespaces|grep ibm-process-flow-server-operator.v >/dev/null 2>&1
+      ${CLI_CMD} get csv --all-namespaces|grep ibm-process-flow-server-operator.v >&3 2>&3
       exist_csv_project_array=($(${CLI_CMD} get csv --all-namespaces|grep ibm-process-flow-server-operator.v|awk '{print $1}'))
       returnValue=$?
 
     else
-      ${CLI_CMD} get csv --all-namespaces|grep ibm-cp4a-operator.v >/dev/null 2>&1
+      ${CLI_CMD} get csv --all-namespaces|grep ibm-cp4a-operator.v >&3 2>&3
       exist_csv_project_array=($(${CLI_CMD} get csv --all-namespaces|grep ibm-cp4a-operator.v|awk '{print $1}'))
       returnValue=$?
     fi
 
     if [ "${#exist_csv_project_array[@]}" -eq "0" ]; then
         printf "\n"
-        echo -e "\x1B[1mThe $CP4BA_FULL_NAME Operator (Pod, CSV, Subscription) not found in cluster\x1B[0m\nContinue....\n"
+        printf '%b\n' "${BOLD_TEXT}The $CP4BA_FULL_NAME Operator (Pod, CSV, Subscription) not found in cluster${RESET_TEXT}\nContinue....\n"
 
     else
         if [[ !(" ${exist_csv_project_array[@]} " =~ "${project_name}") && !(" ${exist_csv_project_array[@]} " =~ "${PROJ_NAME_ALL_NAMESPACE}") && "${ALL_NAMESPACE}" == "No" ]] ; then
@@ -1291,33 +1145,33 @@ function verify_existing_csv(){
 
             if [ -z "$CP4BA_AUTO_NAMESPACE" ]; then
                 while true; do
-                    printf "\x1B[1mDo you want to deploy another $CP4BA_NAME Operator in new project \"${project_name}\"? (Yes/No, default: No) \x1B[0m"
-                    read -rp "" ans
+                    printf "${BOLD_TEXT}Do you want to deploy another $CP4BA_NAME Operator in new project \"${project_name}\"? (Yes/No, default: No) ${RESET_TEXT}"
+                    read -erp "" ans
                     case "$ans" in
                     "y"|"Y"|"yes"|"Yes"|"YES")
-                        echo -e "Continue....\n"
+                        printf '%b\n' "Continue....\n"
                         break
                         ;;
                     "n"|"N"|"no"|"No"|"NO"|"")
-                        echo -e "Exit....\n"
+                        printf '%b\n' "Exit....\n"
                         exit 1
                         ;;
                     *)
-                        echo -e "Answer must be \"Yes\" or \"No\"\n"
+                        printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                         ;;
                     esac
                 done
             else
-                printf "\x1B[1mDo you want to deploy another $CP4BA_NAME Operator in new project \"${project_name}\"? (Yes/No, default: No) Yes\n\x1B[0m"
+                printf "${BOLD_TEXT}Do you want to deploy another $CP4BA_NAME Operator in new project \"${project_name}\"? (Yes/No, default: No) Yes\n${RESET_TEXT}"
             fi
         elif [[ (" ${exist_csv_project_array[@]} " =~ "${PROJ_NAME_ALL_NAMESPACE}") && "${ALL_NAMESPACE}" == "No" ]] ; then
             printf "\n"
-            echo -e "\x1B[1;31mFound the existing $CP4BA_FULL_NAME Operator in \"${PROJ_NAME_ALL_NAMESPACE}\", it already supports All Namespaces! \x1B[0m\nExit..."
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Found the existing $CP4BA_FULL_NAME Operator in \"${PROJ_NAME_ALL_NAMESPACE}\", it already supports All Namespaces! ${RESET_TEXT}\nExit..."
             exit 1
         elif [[ !(" ${exist_csv_project_array[@]} " =~ "${PROJ_NAME_ALL_NAMESPACE}") && "${ALL_NAMESPACE}" == "Yes" ]] ; then
             info "Found the existing $CP4BA_FULL_NAME Operator (Pod, CSV, Subscription) in different project \"${exist_csv_project_array[*]}\"!"
             printf "\n"
-            echo -e "\x1B[1;31mSwitching to All Namespaces is not supported! \x1B[0m\n"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Switching to All Namespaces is not supported! ${RESET_TEXT}\n"
             exit 1
         fi
     fi
@@ -1337,16 +1191,16 @@ function check_user_exist() {
     ${CLI_CMD} get user | grep "${user_name}" >/dev/null 2>&1
     returnValue=$?
     if [ "$returnValue" == 1 ] ; then
-        echo -e "\x1B[1mUser \"${user_name}\" NOT exists! Enter an existing username in your cluster...\x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}User \"${user_name}\" NOT exists! Enter an existing username in your cluster...${RESET_TEXT}"
         user_name=""
     else
-        echo -e "\x1B[1mUser \"${user_name}\" exists! Continue...\x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}User \"${user_name}\" exists! Continue...${RESET_TEXT}"
     fi
 }
 
 function bind_scc() {
     echo
-    echo -ne Binding the 'privileged' role to the 'default' service account...
+    printf '%b' "Binding the 'privileged' role to the 'default' service account..."
     dba_scc=$(${CLI_CMD} get scc privileged | awk '{print $1}' )
     if [ -n "$dba_scc" ]; then
         ${CLI_CMD} adm policy add-scc-to-user privileged -z default  >>  ${LOG_FILE}
@@ -1357,45 +1211,14 @@ function bind_scc() {
     echo "Done"
 }
 
-## <https://jsw.ibm.com/browse/DBACLD-164032> - Create service account for starter deployment to replace manual steps.
-function prepare_starter_sa() {
-    info "Creating service account ibm-cp4ba-anyuid for starter deployment..."
-cat << EOF > ${TEMP_FOLDER}/service-account-for-starter.yaml
-# YAML template for ibm-cp4ba-anyuid
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-    name: ibm-cp4ba-anyuid
-imagePullSecrets:
-- name: "ibm-entitlement-key"
-EOF
-    ${CLI_CMD} delete -f ${TEMP_FOLDER}/service-account-for-starter.yaml -n ${project_name} >/dev/null 2>&1
-    ${CLI_CMD} apply -f ${TEMP_FOLDER}/service-account-for-starter.yaml -n ${project_name} >/dev/null 2>&1
-    if [ $? -eq 0 ]; then
-        success "Created service account ibm-cp4ba-anyuid in the project \"$project_name\"."
-    else
-        warning "Failed to create service account ibm-cp4ba-anyuid in the project \"$project_name\"!"
-        exit 1
-    fi
-    info "Binding anyuid security context constraints (SCC) to service account (SA) ibm-cp4ba-anyuid..."
-    ${CLI_CMD} adm policy add-scc-to-user anyuid -z ibm-cp4ba-anyuid -n ${project_name} >/dev/null 2>&1
-    if [ $? -eq 0 ]; then
-        success "Binded anyuid SCC to ibm-cp4ba-anyuid SA in the project \"$project_name\"."
-    else
-        warning "Failed to bind anyuid SCC to ibm-cp4ba-anyuid SA in the project \"$project_name\"!"
-        exit 1
-    fi
-}
-
 function prepare_install() {
     if [[ "$PLATFORM_SELECTED" == "OCP" || "$PLATFORM_SELECTED" == "ROKS" ]]; then
         ${CLI_CMD} project ${project_name} >> ${LOG_FILE}
     fi
     # sed -e "s/<NAMESPACE>/${project_name}/g" ${CLUSTER_ROLE_BINDING_FILE} > ${CLUSTER_ROLE_BINDING_FILE_TEMP}
     echo
-    echo -ne "Creating the custom resource definition (CRD) and a service account that has the permissions to manage the resources..."
-    ${CLI_CMD} apply -f ${CRD_FILE} -n ${project_name} --validate=false >/dev/null 2>&1
+    printf '%b' "Creating the custom resource definition (CRD) and a service account that has the permissions to manage the resources..."
+    ${CLI_CMD} apply -f ${CRD_FILE} -n ${project_name} --validate=false >&3 2>&3
     echo " Done!"
     # if [[ "$DEPLOYMENT_TYPE" == "starter" ]];then
     #     ${CLI_CMD} apply -f ${CLUSTER_ROLE_FILE} --validate=false >> ${LOG_FILE}
@@ -1404,28 +1227,28 @@ function prepare_install() {
     ${CLI_CMD} apply -f ${SA_FILE} -n ${project_name} --validate=false >> ${LOG_FILE}
     ${CLI_CMD} apply -f ${ROLE_FILE} -n ${project_name} --validate=false >> ${LOG_FILE}
 
-    echo -n "Creating ibm-cp4a-operator role ..."
+    printf '%s' "Creating ibm-cp4a-operator role ..."
     while true ; do
         result=$(${CLI_CMD} get role -n $project_name| grep ibm-cp4a-operator)
         if [[ "$result" == "" ]] ; then
             sleep 5
-            echo -n "..."
+            printf '%s' "..."
         else
             echo " Done!"
             break
         fi
     done
-    echo -n "Creating ibm-cp4a-operator role binding ..."
+    printf '%s' "Creating ibm-cp4a-operator role binding ..."
     ${CLI_CMD} apply -f ${ROLE_BINDING_FILE} -n ${project_name} --validate=false >> ${LOG_FILE}
         echo "Done!"
         if [[ $NON_ADMIN == "false" && $user_name != "Cluster Admin" ]]; then
             if [[ "$PLATFORM_SELECTED" == "OCP" || "$PLATFORM_SELECTED" == "ROKS" ]]; then
             echo
-            echo -ne Adding the user ${user_name} to the ibm-cp4a-operator role...
+            printf '%b' "Adding the user ${user_name} to the ibm-cp4a-operator role..."
             ${CLI_CMD} project ${project_name} >> ${LOG_FILE}
             ${CLI_CMD} adm policy add-role-to-user edit ${user_name} >> ${LOG_FILE}
             ${CLI_CMD} adm policy add-role-to-user registry-editor ${user_name} >> ${LOG_FILE}
-            ${CLI_CMD} adm policy add-role-to-user ibm-cp4a-operator ${user_name} >/dev/null 2>&1
+            ${CLI_CMD} adm policy add-role-to-user ibm-cp4a-operator ${user_name} >&3 2>&3
             ${CLI_CMD} adm policy add-role-to-user ibm-cp4a-operator ${user_name} >> ${LOG_FILE}
             if [[ "$DEPLOYMENT_TYPE" == "starter" ]];then
                 ${CLI_CMD} adm policy add-cluster-role-to-user ibm-cp4a-operator ${user_name} >> ${LOG_FILE}
@@ -1434,7 +1257,7 @@ function prepare_install() {
         fi
     fi
     echo
-    echo -ne Label the default namespace to allow network policies to open traffic to the ingress controller using a namespaceSelector...
+    printf '%b' "Label the default namespace to allow network policies to open traffic to the ingress controller using a namespaceSelector..."
     ${CLI_CMD} label --overwrite namespace default 'network.openshift.io/policy-group=ingress'
     echo "Done!"
 }
@@ -1445,7 +1268,7 @@ function apply_cp4a_operator(){
 
     printf "\n"
     if [[ ("$SCRIPT_MODE" != "review") && ("$SCRIPT_MODE" != "OLM") ]]; then
-        echo -e "\x1B[1mInstalling the $CP4BA_FULL_NAME operator...\x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}Installing the $CP4BA_FULL_NAME operator...${RESET_TEXT}"
     fi
     # set db2_license
     ${SED_COMMAND} '/baw_license/{n;s/value:.*/value: accept/;}' ${OPERATOR_FILE_TMP}
@@ -1465,21 +1288,21 @@ function apply_cp4a_operator(){
     # fi
 
     # if [[ $INSTALLATION_TYPE == "new" ]]; then
-    #     ${CLI_CMD} delete -f ${OPERATOR_FILE_TMP} >/dev/null 2>&1
+    #     ${CLI_CMD} delete -f ${OPERATOR_FILE_TMP} 
     #     sleep 5
     # fi
     INSTALL_OPERATOR_CMD="${CLI_CMD} apply -f ${OPERATOR_FILE_TMP} -n $project_name"
     sleep 5
     if $INSTALL_OPERATOR_CMD ; then
-        echo -e "\x1B[1mDone\x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}Done${RESET_TEXT}"
     else
-        echo -e "\x1B[1;31mFailed\x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Failed${RESET_TEXT}"
     fi
 
     # ${COPY_CMD} -rf ${OPERATOR_FILE_TMP} ${OPERATOR_FILE_BAK}
     printf "\n"
     # Check deployment rollout status every 5 seconds (max 10 minutes) until complete.
-    echo -e "\x1B[1mWaiting for the $CP4BA_FULL_NAME operator to be ready. This may take a few minutes... \x1B[0m"
+    printf '%b\n' "${BOLD_TEXT}Waiting for the $CP4BA_FULL_NAME operator to be ready. This may take a few minutes... ${RESET_TEXT}"
     ATTEMPTS=0
     ROLLOUT_STATUS_CMD="${CLI_CMD} rollout status deployment/ibm-cp4a-operator -n $project_name"
     until $ROLLOUT_STATUS_CMD || [ $ATTEMPTS -eq 120 ]; do
@@ -1488,16 +1311,16 @@ function apply_cp4a_operator(){
         sleep 5
     done
     if $ROLLOUT_STATUS_CMD ; then
-        echo -e "\x1B[1mDone\x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}Done${RESET_TEXT}"
     else
-        echo -e "\x1B[1;31mFailed\x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Failed${RESET_TEXT}"
     fi
     printf "\n"
 }
 
 function prepare_olm_install() {
     printf "\n"
-    echo -e "\x1B[1mWaiting for the $CP4BA_FULL_NAME operator to be ready. This may take a few minutes... \x1B[0m"
+    printf '%b\n' "${BOLD_TEXT}Waiting for the $CP4BA_FULL_NAME operator to be ready. This may take a few minutes... ${RESET_TEXT}"
     printf "\n"
 
     local maxRetry=20
@@ -1522,9 +1345,9 @@ function prepare_olm_install() {
     if [[ ( "$RUNTIME_MODE" == "process-flow" || $RUNTIME_MODE == "process-flow-dev" ) && "$PLATFORM_SELECTED" == "other" ]]; then
       CATALOG_NAMESPACE=$WFPS_CNCF_CATALOG_NAMESPACE
       # create docker pull secret under catalog source namespaces
-      isNsExists=`${CLI_CMD} get secret "catalog-pull-secret" -n "$CATALOG_NAMESPACE" | wc -l`  >/dev/null 2>&1
+      isNsExists=`${CLI_CMD} get secret "catalog-pull-secret" -n "$CATALOG_NAMESPACE" | wc -l`  >&3 2>&3
       if [[ isNsExists -eq 2 ]]; then
-        ${CLI_CMD} delete secret "catalog-pull-secret" -n "$CATALOG_NAMESPACE" >/dev/null 2>&1
+        ${CLI_CMD} delete secret "catalog-pull-secret" -n "$CATALOG_NAMESPACE" >&3 2>&3
       fi
       ${CLI_CMD} create secret docker-registry "catalog-pull-secret" --docker-server=$DOCKER_REG_SERVER --docker-username=$DOCKER_REG_USER --docker-password=$DOCKER_REG_KEY --docker-email=ecmtest@ibm.com -n $CATALOG_NAMESPACE
     fi
@@ -1561,12 +1384,12 @@ function prepare_olm_install() {
       if [[ $podCount -eq 0 ]]; then
         if [[ $retry -eq ${maxRetry} ]]; then
           echo "Timeout waiting for $CP4BA_NAME Operator Catalog pod to start"
-          echo -e "\x1B[1mCheck the status of Pod by issue cmd: \x1B[0m"
+          printf '%b\n' "${BOLD_TEXT}Check the status of Pod by issue cmd: ${RESET_TEXT}"
           echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $CATALOG_NAMESPACE|grep $online_source|awk '{print $1}') -n $CATALOG_NAMESPACE"
           exit 1
         else
           sleep 30
-          echo -n "..."
+          printf '%s' "..."
           continue
         fi
       else
@@ -1633,7 +1456,7 @@ function prepare_olm_install() {
         # patch CSV container and initcontainer image from icr.io to cp.stg.icr.io if necessary because development image only exists at cp.stg.icr.io
         echo "operator image patch from: $operator_image_location"
         if echo $operator_image_location |grep 'icr.io/cpopen' > /dev/null 2>&1; then
-          export operator_image_location=$(echo $operator_image_location|sed 's|.*cpopen|cp.stg.icr.io/cp|')
+          export operator_image_location=$(echo "$operator_image_location"|sed 's|.*cpopen|cp.stg.icr.io/cp|')
           echo "patch to: $operator_image_location"
           if [ -z $operator_image_location ]; then
             echo "should not update to an empty image location, skip update."
@@ -1650,7 +1473,7 @@ function prepare_olm_install() {
 
         echo "operator init image patch from: $operator_init_image_location"
         if echo $operator_init_image_location |grep 'icr.io/cpopen' > /dev/null 2>&1; then
-          export operator_init_image_location=$(echo $operator_init_image_location|sed 's|.*cpopen|cp.stg.icr.io/cp|')
+          export operator_init_image_location=$(echo "$operator_init_image_location"|sed 's|.*cpopen|cp.stg.icr.io/cp|')
           echo "patch to: $operator_init_image_location"
           if [ -z $operator_init_image_location ]; then
             echo "should not update to an empty image location, skip update"
@@ -1786,27 +1609,27 @@ function prepare_olm_install() {
       if echo "${podList[@]}" | grep -qw 0; then
         if [[ $retry -eq ${maxRetry} ]]; then
           echo "Timeout waiting for $CP4BA_NAME operator to start"
-          echo -e "\x1B[1mCheck the status of Pod by issue cmd:\x1B[0m"
+          printf '%b\n' "${BOLD_TEXT}Check the status of Pod by issue cmd:${RESET_TEXT}"
           if [[ ($RUNTIME_MODE == "process-flow-dev") || ($RUNTIME_MODE == "process-flow") ]]; then
             echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $temp_project_name|grep ibm-wfps-operator-controller-manager|awk '{print $1}') -n $temp_project_name"
             printf "\n"
-            echo -e "\x1B[1mCheck the status of ReplicaSet by issue cmd:\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}Check the status of ReplicaSet by issue cmd:${RESET_TEXT}"
             echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $temp_project_name|grep ibm-wfps-operator-controller-manager|awk '{print $1}') -n $temp_project_name"
           else
             echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $temp_project_name|grep ibm-cp4a-operator|awk '{print $1}') -n $temp_project_name"
             printf "\n"
-            echo -e "\x1B[1mCheck the status of ReplicaSet by issue cmd:\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}Check the status of ReplicaSet by issue cmd:${RESET_TEXT}"
             echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $temp_project_name|grep ibm-cp4a-operator|awk '{print $1}') -n $temp_project_name"
           fi
           
         #   printf "\n"
-        #   echo -e "\x1B[1mPlease check the status of PVC by issue cmd:\x1B[0m"
+        #   printf '%b\n' "${BOLD_TEXT}Please check the status of PVC by issue cmd:${RESET_TEXT}"
         #   echo "oc describe pvc $(oc get pvc -n $temp_project_name|grep operator-shared-pvc|awk '{print $1}') -n $temp_project_name"
         #   echo "oc describe pvc $(oc get pvc -n $temp_project_name|grep cp4a-shared-log-pvc|awk '{print $1}') -n $temp_project_name"
           exit 1
         else
           sleep 30
-          echo -n "..."
+          printf '%s' "..."
           continue
         fi
       else
@@ -1832,19 +1655,19 @@ function prepare_olm_install() {
          if [[ $podCount -eq 0 ]]; then
            if [[ $retry -eq ${maxRetry} ]]; then
              echo "Timeout waiting for $CP4BA_NAME Content operator to start"
-             echo -e "\x1B[1mCheck the status of Pod by issue cmd:\x1B[0m"
+             printf '%b\n' "${BOLD_TEXT}Check the status of Pod by issue cmd:${RESET_TEXT}"
              echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $temp_project_name|grep ibm-content-operator|awk '{print $1}') -n $temp_project_name"
              printf "\n"
-             echo -e "\x1B[1mCheck the status of ReplicaSet by issue cmd:\x1B[0m"
+             printf '%b\n' "${BOLD_TEXT}Check the status of ReplicaSet by issue cmd:${RESET_TEXT}"
              echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $temp_project_name|grep ibm-content-operator|awk '{print $1}') -n $temp_project_name"
            #   printf "\n"
-           #   echo -e "\x1B[1mPlease check the status of PVC by issue cmd:\x1B[0m"
+           #   printf '%b\n' "${BOLD_TEXT}Please check the status of PVC by issue cmd:${RESET_TEXT}"
            #   echo "oc describe pvc $(oc get pvc -n $temp_project_name|grep operator-shared-pvc|awk '{print $1}') -n $temp_project_name"
            #   echo "oc describe pvc $(oc get pvc -n $temp_project_name|grep cp4a-shared-log-pvc|awk '{print $1}') -n $temp_project_name"
              exit 1
            else
              sleep 30
-             echo -n "..."
+             printf '%s' "..."
              continue
            fi
          else
@@ -1861,7 +1684,7 @@ function prepare_olm_install() {
 
     echo
     if [[ $NON_ADMIN == "false" && $user_name != "Cluster Admin" ]]; then
-        echo -ne Adding the user ${user_name} to the ibm-cp4a-operator role...
+        printf '%b' "Adding the user ${user_name} to the ibm-cp4a-operator role..."
         if [[ $RUNTIME_MODE == "baw" || $RUNTIME_MODE == "baw-dev" ]]; then
             role_name_olm=$(${CLI_CMD} get role -n "$temp_project_name" --no-headers|grep ibm-baw-operator.v|awk '{print $1}')
         elif [[ $RUNTIME_MODE == "process-flow" || $RUNTIME_MODE == "process-flow-dev" ]]; then
@@ -1876,7 +1699,7 @@ function prepare_olm_install() {
             ${CLI_CMD} project ${temp_project_name} >> ${LOG_FILE}
             ${CLI_CMD} adm policy add-role-to-user edit ${user_name} >> ${LOG_FILE}
             ${CLI_CMD} adm policy add-role-to-user registry-editor ${user_name} >> ${LOG_FILE}
-            ${CLI_CMD} adm policy add-role-to-user $role_name_olm ${user_name} >/dev/null 2>&1
+            ${CLI_CMD} adm policy add-role-to-user $role_name_olm ${user_name} >&3 2>&3
             ${CLI_CMD} adm policy add-role-to-user $role_name_olm ${user_name} >> ${LOG_FILE}
             if [[ "$DEPLOYMENT_TYPE" == "starter" ]];then
                 cluster_role_name_olm=$(${CLI_CMD} get clusterrole|grep ibm-cp4a-operator.v|sort -t"t" -k1r|awk 'NR==1{print $1}')
@@ -1891,7 +1714,7 @@ function prepare_olm_install() {
         fi
     fi
     echo
-    echo -ne Label the default namespace to allow network policies to open traffic to the ingress controller using a namespaceSelector...
+    printf '%b' "Label the default namespace to allow network policies to open traffic to the ingress controller using a namespaceSelector..."
     ${CLI_CMD} label --overwrite namespace default 'network.openshift.io/policy-group=ingress'
     echo "Done"
 }
@@ -1948,8 +1771,8 @@ function check_existing_sc(){
     if [[ $sc_result == *"$sc_substring"* ]];
     then
         clear
-        echo -e "\x1B[1;31mAt least one dynamic storage class must be available in order to proceed.\n\x1B[0m"
-        echo -e "\x1B[1;31mRefer to the README for the requirements and instructions.  The script will now exit!.\n\x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}${RED_TEXT}At least one dynamic storage class must be available in order to proceed.\n${RESET_TEXT}"
+        printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Refer to the README for the requirements and instructions.  The script will now exit!.\n${RESET_TEXT}"
         exit 1
     fi
 }
@@ -1964,7 +1787,7 @@ function validate_docker_podman_cli(){
             [[ $? -ne 0 ]] && \
                 DOCKER_FOUND="No"
             if [[ $DOCKER_FOUND == "No" && $PODMAN_FOUND == "No" ]]; then
-                echo -e "\x1B[1;31mUnable to locate docker and podman, Install either of them first.\x1B[0m" && \
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Unable to locate docker and podman, Install either of them first.${RESET_TEXT}" && \
                 exit 1
             fi
         fi
@@ -1972,29 +1795,29 @@ function validate_docker_podman_cli(){
     then
         which podman &>/dev/null
         [[ $? -ne 0 ]] && \
-            echo -e "\x1B[1;31mUnable to locate podman, Install it first.\x1B[0m" && \
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Unable to locate podman, Install it first.${RESET_TEXT}" && \
             exit 1
     else
         which docker &>/dev/null
         [[ $? -ne 0 ]] && \
-            echo -e "\x1B[1;31mUnable to locate docker, Install it first.\x1B[0m" && \
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Unable to locate docker, Install it first.${RESET_TEXT}" && \
             exit 1
     fi
 }
 
 # Function to display the airgap mode prerequisites and also give the user an option to continue or rerun the script
 function display_airgap_prerequisites(){
-    printf "\x1B[1;31mMake sure that you have completed the following checklist items before proceeding with the offline/airgap cluster setup mode\n\x1B[0m"
-    printf "\x1B[1;31m1) Mirroring of Images to the Private Registry \n\x1B[0m"
-    printf "\x1B[1;31m2) Update Global Pull Secret to include login credentials to the Private Registry images have been mirrored into \n\x1B[0m"
-    printf "\x1B[1;31m3) Creation of appropriate Image Content Source Policy that reflects the Private Registry \n\x1B[0m"
+    printf "${BOLD_TEXT}${RED_TEXT}Make sure that you have completed the following checklist items before proceeding with the offline/airgap cluster setup mode\n${RESET_TEXT}"
+    printf "${BOLD_TEXT}${RED_TEXT}1) Mirroring of Images to the Private Registry \n${RESET_TEXT}"
+    printf "${BOLD_TEXT}${RED_TEXT}2) Update Global Pull Secret to include login credentials to the Private Registry images have been mirrored into \n${RESET_TEXT}"
+    printf "${BOLD_TEXT}${RED_TEXT}3) Creation of appropriate Image Content Source Policy that reflects the Private Registry \n${RESET_TEXT}"
     printf "\n"
-    printf "\x1B[1;31mFollow the instructions to complete the above steps if required \n\x1B[0m"
+    printf "${BOLD_TEXT}${RED_TEXT}Follow the instructions to complete the above steps if required \n${RESET_TEXT}"
     printf "\n"
-    printf "\x1B[1;31mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=icmppd-option-2-preparing-your-cluster-air-gapped-offline-deployment \n\x1B[0m"
+    printf "%s%s%s\n" "${BOLD_TEXT}${RED_TEXT}" "From https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE navigate to Installing --> Installing Production Deployment --> Installing a CP4BA multi-pattern production deployment --> Option 2: Preparing your cluster for an air-gapped (offline) deployment" "${RESET_TEXT}"
     printf "\n"
-    printf "\x1B[1mDo you want to proceed with the offline/airgap cluster setup (Yes/No, default: No): \x1B[0m"
-    read -rp "" ans
+    printf "${BOLD_TEXT}Do you want to proceed with the offline/airgap cluster setup (Yes/No, default: No): ${RESET_TEXT}"
+    read -erp "" ans
     printf "\n"
     case "$ans" in
     "y"|"Y"|"yes"|"Yes"|"YES")
@@ -2006,7 +1829,7 @@ function display_airgap_prerequisites(){
         exit 1
         ;;
     *)
-        echo -e "Answer must be \"Yes\" or \"No\"\n"
+        printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
         ;;
     esac
     
@@ -2035,35 +1858,35 @@ function get_entitlement_registry(){
     entitlement_key=""
     printf "\n"
     printf "\n"
-    printf "\x1B[1;31mFollow the instructions on how to get your Entitlement Key: \n\x1B[0m"
-    printf "\x1B[1;31mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-getting-access-images-from-public-entitled-registry\n\x1B[0m"
+    printf "${BOLD_TEXT}${RED_TEXT}Follow the instructions on how to get your Entitlement Key: \n${RESET_TEXT}"
+    printf "%s%s%s\n" "${BOLD_TEXT}${RED_TEXT}" "From https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE navigate to Installing --> Installing Production Deployment --> Installing CP4BA multi-pattern production deployment --> Getting access to images from the public IBM Entitled Registry" "${RESET_TEXT}"
     printf "\n"
     while true; do
         if [[ ! -z "$CP4BA_AUTO_ENTITLEMENT_KEY" && ! -z "$CP4BA_AUTO_LOCAL_REGISTRY" ]]; then
-            echo -e "\x1B[1;31mSet one of the following environment variables [CP4BA_AUTO_ENTITLEMENT_KEY] or [CP4BA_AUTO_LOCAL_REGISTRY]\x1B[0m"
-            echo -e "Exiting..."
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Set one of the following environment variables [CP4BA_AUTO_ENTITLEMENT_KEY] or [CP4BA_AUTO_LOCAL_REGISTRY]${RESET_TEXT}"
+            printf '%b\n' "Exiting..."
             exit 1
         fi
 
         if [[ -z "$CP4BA_AUTO_ENTITLEMENT_KEY" && ! -z "$CP4BA_AUTO_LOCAL_REGISTRY" ]]; then
-            printf "\x1B[1mDo you have a $CP4BA_FULL_NAME Entitlement Registry key? (Yes/No, default: Yes):\x1B[0m No"
+            printf "${BOLD_TEXT}Do you have a $CP4BA_FULL_NAME Entitlement Registry key? (Yes/No, default: Yes):${RESET_TEXT} No"
             ans="No"
         fi
         if [[ -z "$CP4BA_AUTO_LOCAL_REGISTRY" && ! -z "$CP4BA_AUTO_ENTITLEMENT_KEY" ]]; then
-            printf "\x1B[1mDo you have a $CP4BA_FULL_NAME Entitlement Registry key? (Yes/No, default: Yes):\x1B[0m Yes"
+            printf "${BOLD_TEXT}Do you have a $CP4BA_FULL_NAME Entitlement Registry key? (Yes/No, default: Yes):${RESET_TEXT} Yes"
             ans="Yes"
         fi
 
         if [[ -z "$CP4BA_AUTO_ENTITLEMENT_KEY" && -z "$CP4BA_AUTO_LOCAL_REGISTRY" ]]; then
-            printf "\x1B[1mDo you have a $CP4BA_FULL_NAME Entitlement Registry key? (Yes/No, default: Yes): \x1B[0m"
-            read -rp "" ans
+            printf "${BOLD_TEXT}Do you have a $CP4BA_FULL_NAME Entitlement Registry key? (Yes/No, default: Yes): ${RESET_TEXT}"
+            read -erp "" ans
         fi
 
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES"|"")
             use_entitlement="yes"
             printf "\n"
-            printf "\x1B[1mEnter your Entitlement Registry key: \x1B[0m"
+            printf "${BOLD_TEXT}Enter your Entitlement Registry key: ${RESET_TEXT}"
             # During dev, OLM uses stage image repo
             if [[ "$RUNTIME_MODE" == "dev" || $RUNTIME_MODE == "baw-dev" || $RUNTIME_MODE == "process-flow-dev" ]]
             then
@@ -2084,7 +1907,7 @@ function get_entitlement_registry(){
                 fi
                 if [ -z "$entitlement_key" ]; then
                     printf "\n"
-                    echo -e "\x1B[1;31mEnter a valid Entitlement Registry key\x1B[0m"
+                    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid Entitlement Registry key${RESET_TEXT}"
                 else
                     if  [[ $entitlement_key == iamapikey:* ]] ;
                     then
@@ -2099,7 +1922,7 @@ function get_entitlement_registry(){
                     while [[ $entitlement_verify_passed == '' ]]
                     do
                         printf "\n"
-                        printf "\x1B[1mVerifying the Entitlement Registry key...\n\x1B[0m"
+                        printf "${BOLD_TEXT}Verifying the Entitlement Registry key...\n${RESET_TEXT}"
 
                         if [[ ("$machine" == "Mac" && $PODMAN_FOUND == "No") ||  "$PLATFORM_SELECTED" == "other" ]]; then
                         cli_command="docker"
@@ -2111,10 +1934,10 @@ function get_entitlement_registry(){
                             printf 'Entitlement Registry key is valid.\n'
                             entitlement_verify_passed="passed"
                         else
-                            printf '\x1B[1;31mThe Entitlement Registry key failed. Try again...\n\x1B[0m'
+                            printf '${BOLD_TEXT}${RED_TEXT}The Entitlement Registry key failed. Try again...\n${RESET_TEXT}'
                             ATTEMPTS=$((ATTEMPTS + 1))
                             if [[ $ATTEMPTS -eq 10 ]]; then
-                                printf '\x1B[1mEnter a valid Entitlement Registry key. Exiting ...\n\x1B[0m'
+                                printf '${BOLD_TEXT}Enter a valid Entitlement Registry key. Exiting ...\n${RESET_TEXT}'
                                 exit 1
                             fi
                             entitlement_key=''
@@ -2131,7 +1954,7 @@ function get_entitlement_registry(){
             if [[ $PRIVATE_CATALOG == "No" ]]; then
                 if [[ "$PLATFORM_SELECTED" == "ROKS" || "$PLATFORM_SELECTED" == "OCP" ]]; then
                     printf "\n"
-                    printf "\x1B[1;31mIBM $CP4BA_FULL_NAME only supports the Entitlement Registry on \"${PLATFORM_SELECTED}\", exiting...\n\x1B[0m"
+                    printf "${BOLD_TEXT}${RED_TEXT}IBM $CP4BA_FULL_NAME only supports the Entitlement Registry on \"${PLATFORM_SELECTED}\", exiting...\n${RESET_TEXT}"
                     exit 1
                 else
                     break
@@ -2141,7 +1964,7 @@ function get_entitlement_registry(){
             fi
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -2155,8 +1978,8 @@ function get_domain_name(){
     if [ $validateIngress ] ; then
       printf "\n"
       printf "\n"
-      printf "\x1B[1;31mYou need to setup ingress controller on Kubernetes cluster, you can follow below instruction with ingress NGINX controller.  \n\x1B[0m"
-      printf "\x1B[1;31mhttps://github.com/kubernetes/ingress-nginx\n\x1B[0m"
+      printf "${BOLD_TEXT}${RED_TEXT}You need to setup ingress controller on Kubernetes cluster, you can follow below instruction with ingress NGINX controller.  \n${RESET_TEXT}"
+      printf "${BOLD_TEXT}${RED_TEXT}https://github.com/kubernetes/ingress-nginx\n${RESET_TEXT}"
     fi
 
     printf "\n"
@@ -2170,20 +1993,20 @@ function get_domain_name(){
         fi
         if [ -z "$domain_name" ]; then
             printf "\n"
-            echo -e "\x1B[1;31mEnter a valid domain name: \x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid domain name: ${RESET_TEXT}"
         else
           CNCF_DOMAIN_NAME=$domain_name
 
           if [ $validateIngress ] ; then
-            echo -e "\x1B[1mPreparing the ingress testing environment...\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}Preparing the ingress testing environment...${RESET_TEXT}"
             hostname=$(echo "$domain_name" | sed 's|:.*||')
             # validate domain name works
             # prepare test ingress controller
-            isNsExists=`${CLI_CMD} get namespace "ingress-free-test" --ignore-not-found | wc -l`  >/dev/null 2>&1
+            isNsExists=`${CLI_CMD} get namespace "ingress-free-test" --ignore-not-found | wc -l`  >&3 2>&3
             if [ $isNsExists -eq 2 ] ; then
-              ${CLI_CMD} delete namespace "ingress-free-test" >/dev/null 2>&1
+              ${CLI_CMD} delete namespace "ingress-free-test" >&3 2>&3
             fi
-            ${CLI_CMD} create namespace "ingress-free-test" >/dev/null 2>&1
+            ${CLI_CMD} create namespace "ingress-free-test" >&3 2>&3
             if ${CLI_CMD} get ingress demo -n ingress-free-test > /dev/null 2>&1; then
               echo "ingress test prepare ready, skip prepare"
             else
@@ -2204,7 +2027,7 @@ function get_domain_name(){
               sleep 5
               if [ $count -eq 0 ]
               then
-                printf "\x1B[1;31mThe Ingress controller is not deployed properly, Check the details.  \n\x1B[0m"
+                printf "${BOLD_TEXT}${RED_TEXT}The Ingress controller is not deployed properly, Check the details.  \n${RESET_TEXT}"
                 exit 1
               fi
               curl https://demo.$domain_name --insecure |grep 'It works!'
@@ -2213,7 +2036,7 @@ function get_domain_name(){
             echo "Ingress test passed, continue..."
             CNCF_DOMAIN_NAME=$domain_name
             # delete ingress test namespace
-            ${CLI_CMD} delete namespace "ingress-free-test" >/dev/null 2>&1
+            ${CLI_CMD} delete namespace "ingress-free-test" >&3 2>&3
             set -e
           fi
         fi
@@ -2223,60 +2046,60 @@ function get_domain_name(){
 function create_secret_entitlement_registry(){
     # Create docker-registry secret for Entitlement Registry Key in target project
     if [[ $SEPARATE_OPERATOR == "No" || -z $SEPARATE_OPERATOR ]]; then
-        printf "\x1B[1mCreating docker-registry secret for Entitlement Registry key in the project $project_name...\n\x1B[0m"
-        ${CLI_CMD} delete secret "$DOCKER_RES_SECRET_NAME" -n "${project_name}" >/dev/null 2>&1
+        printf "${BOLD_TEXT}Creating docker-registry secret for Entitlement Registry key in the project $project_name...\n${RESET_TEXT}"
+        ${CLI_CMD} delete secret "$DOCKER_RES_SECRET_NAME" -n "${project_name}" >&3 2>&3
 
         CREATE_SECRET_CMD="${CLI_CMD} create secret docker-registry $DOCKER_RES_SECRET_NAME --docker-server=$DOCKER_REG_SERVER --docker-username=$DOCKER_REG_USER --docker-password=$DOCKER_REG_KEY --docker-email=ecmtest@ibm.com -n $project_name"
         if $CREATE_SECRET_CMD ; then
-            echo -e "\x1B[1mDone\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}Done${RESET_TEXT}"
         else
-            echo -e "\x1B[1mFailed\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}Failed${RESET_TEXT}"
         fi
     else
-        printf "\x1B[1mCreating docker-registry secret for Entitlement Registry key in the project $project_name_operator...\n\x1B[0m"
-        ${CLI_CMD} delete secret "$DOCKER_RES_SECRET_NAME" -n "${project_name_operator}" >/dev/null 2>&1
+        printf "${BOLD_TEXT}Creating docker-registry secret for Entitlement Registry key in the project $project_name_operator...\n${RESET_TEXT}"
+        ${CLI_CMD} delete secret "$DOCKER_RES_SECRET_NAME" -n "${project_name_operator}" >&3 2>&3
 
         CREATE_SECRET_CMD="${CLI_CMD} create secret docker-registry $DOCKER_RES_SECRET_NAME --docker-server=$DOCKER_REG_SERVER --docker-username=$DOCKER_REG_USER --docker-password=$DOCKER_REG_KEY --docker-email=ecmtest@ibm.com -n $project_name_operator"
         if $CREATE_SECRET_CMD ; then
-            echo -e "\x1B[1mDone\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}Done${RESET_TEXT}"
         else
-            echo -e "\x1B[1mFailed\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}Failed${RESET_TEXT}"
         fi
 
-        printf "\x1B[1mCreating docker-registry secret for Entitlement Registry key in the project $project_name_cs_service...\n\x1B[0m"
-        ${CLI_CMD} delete secret "$DOCKER_RES_SECRET_NAME" -n "${project_name_cs_service}" >/dev/null 2>&1
+        printf "${BOLD_TEXT}Creating docker-registry secret for Entitlement Registry key in the project $project_name_cs_service...\n${RESET_TEXT}"
+        ${CLI_CMD} delete secret "$DOCKER_RES_SECRET_NAME" -n "${project_name_cs_service}" >&3 2>&3
 
         CREATE_SECRET_CMD="${CLI_CMD} create secret docker-registry $DOCKER_RES_SECRET_NAME --docker-server=$DOCKER_REG_SERVER --docker-username=$DOCKER_REG_USER --docker-password=$DOCKER_REG_KEY --docker-email=ecmtest@ibm.com -n $project_name_cs_service"
         if $CREATE_SECRET_CMD ; then
-            echo -e "\x1B[1mDone\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}Done${RESET_TEXT}"
         else
-            echo -e "\x1B[1mFailed\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}Failed${RESET_TEXT}"
         fi
     fi
 
     if [[ $MULTIPLE_DEPLOYMENT = "Yes" ]]; then
         for item in "${project_cp4ba_service_array[@]}"; do
-            printf "\x1B[1mCreating docker-registry secret for Entitlement Registry key in the project $item...\n\x1B[0m"
-            ${CLI_CMD} delete secret "$DOCKER_RES_SECRET_NAME" -n "${item}" >/dev/null 2>&1
+            printf "${BOLD_TEXT}Creating docker-registry secret for Entitlement Registry key in the project $item...\n${RESET_TEXT}"
+            ${CLI_CMD} delete secret "$DOCKER_RES_SECRET_NAME" -n "${item}" >&3 2>&3
 
             CREATE_SECRET_CMD="${CLI_CMD} create secret docker-registry $DOCKER_RES_SECRET_NAME --docker-server=$DOCKER_REG_SERVER --docker-username=$DOCKER_REG_USER --docker-password=$DOCKER_REG_KEY --docker-email=ecmtest@ibm.com -n $item"
             if $CREATE_SECRET_CMD ; then
-                echo -e "\x1B[1mDone\x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}Done${RESET_TEXT}"
             else
-                echo -e "\x1B[1mFailed\x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}Failed${RESET_TEXT}"
             fi
         done
     fi
 
     if [[ "${ALL_NAMESPACE}" == "Yes" ]]; then
         # Create docker-registry secret for Entitlement Registry Key in openshift-operators
-        printf "\x1B[1mCreating docker-registry secret for Entitlement Registry key in the project $PROJ_NAME_ALL_NAMESPACE...\n\x1B[0m"
-        ${CLI_CMD} delete secret "$DOCKER_RES_SECRET_NAME" -n "${PROJ_NAME_ALL_NAMESPACE}" >/dev/null 2>&1
+        printf "${BOLD_TEXT}Creating docker-registry secret for Entitlement Registry key in the project $PROJ_NAME_ALL_NAMESPACE...\n${RESET_TEXT}"
+        ${CLI_CMD} delete secret "$DOCKER_RES_SECRET_NAME" -n "${PROJ_NAME_ALL_NAMESPACE}" >&3 2>&3
         CREATE_SECRET_CMD="${CLI_CMD} create secret docker-registry $DOCKER_RES_SECRET_NAME --docker-server=$DOCKER_REG_SERVER --docker-username=$DOCKER_REG_USER --docker-password=$DOCKER_REG_KEY --docker-email=ecmtest@ibm.com -n $PROJ_NAME_ALL_NAMESPACE"
         if $CREATE_SECRET_CMD ; then
-            echo -e "\x1B[1mDone\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}Done${RESET_TEXT}"
         else
-            echo -e "\x1B[1mFailed\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}Failed${RESET_TEXT}"
         fi
     fi
 }
@@ -2294,28 +2117,28 @@ function get_storage_class_name(){
     # printf "\n"
     # if [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "other" ]] ;
     # then
-    #     printf "\x1B[1mTo provision the persistent volumes and volume claims\n\x1B[0m"
+    #     printf "${BOLD_TEXT}To provision the persistent volumes and volume claims\n${RESET_TEXT}"
 
     #     while [[ $storage_class_name == "" ]]
     #     do
     #         if [ -z "$CP4BA_AUTO_STORAGE_CLASS_OCP" ]; then
-    #             printf "\x1B[1mplease enter the dynamic storage classname: \x1B[0m"
-    #             read -rp "" storage_class_name
+    #             printf "${BOLD_TEXT}please enter the dynamic storage classname: ${RESET_TEXT}"
+    #             read -erp "" storage_class_name
     #         else
-    #             printf "\x1B[1mplease enter the dynamic storage classname: \x1B[0m$CP4BA_AUTO_STORAGE_CLASS_OCP\n"
+    #             printf "${BOLD_TEXT}please enter the dynamic storage classname: ${RESET_TEXT}$CP4BA_AUTO_STORAGE_CLASS_OCP\n"
     #             storage_class_name=$CP4BA_AUTO_STORAGE_CLASS_OCP
     #         fi
     #         if [ -z "$storage_class_name" ]; then
-    #            echo -e "\x1B[1;31mEnter a valid dynamic storage classname\x1B[0m"
+    #            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid dynamic storage classname${RESET_TEXT}"
     #         else
     #             verify_sc "$storage_class_name"
     #             retVal=$?
     #             if [ $retVal -ne 0 ]; then
-    #                 echo -e "\"${CP4BA_AUTO_STORAGE_CLASS_OCP}\"\x1B[1;31m is NOT a valid dynamic storage classname\x1B[0m"
+    #                 printf '%b\n' "\"${CP4BA_AUTO_STORAGE_CLASS_OCP}\"${BOLD_TEXT}${RED_TEXT} is NOT a valid dynamic storage classname${RESET_TEXT}"
     #                 if [ -z "$CP4BA_AUTO_STORAGE_CLASS_OCP" ]; then
     #                     storage_class_name=""
     #                 else
-    #                     echo -e "Exiting..."
+    #                     printf '%b\n' "Exiting..."
     #                     exit 1
     #                 fi
     #             fi
@@ -2323,28 +2146,28 @@ function get_storage_class_name(){
     #     done
     # elif [[ $PLATFORM_SELECTED == "ROKS" ]]
     # then
-    #     printf "\x1B[1mTo provision the persistent volumes and volume claims\n\x1B[0m"
+    #     printf "${BOLD_TEXT}To provision the persistent volumes and volume claims\n${RESET_TEXT}"
 
     #     while [[ $sc_fast_file_storage_classname == "" ]] # While get fast storage clase name
     #     do
     #         if [ -z "$CP4BA_AUTO_STORAGE_CLASS_FAST_ROKS" ]; then
-    #             printf "\x1B[1mplease enter the dynamic storage classname for fast storage: \x1B[0m"
-    #             read -rp "" sc_fast_file_storage_classname
+    #             printf "${BOLD_TEXT}please enter the dynamic storage classname for fast storage: ${RESET_TEXT}"
+    #             read -erp "" sc_fast_file_storage_classname
     #         else
-    #             printf "\x1B[1mplease enter the dynamic storage classname for fast storage: \x1B[0m$CP4BA_AUTO_STORAGE_CLASS_FAST_ROKS\n"
+    #             printf "${BOLD_TEXT}please enter the dynamic storage classname for fast storage: ${RESET_TEXT}$CP4BA_AUTO_STORAGE_CLASS_FAST_ROKS\n"
     #             sc_fast_file_storage_classname=$CP4BA_AUTO_STORAGE_CLASS_FAST_ROKS
     #         fi
     #         if [ -z "$sc_fast_file_storage_classname" ]; then
-    #            echo -e "\x1B[1;31mEnter a valid dynamic storage classname\x1B[0m"
+    #            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid dynamic storage classname${RESET_TEXT}"
     #         else
     #             verify_sc "$sc_fast_file_storage_classname"
     #             retVal=$?
     #             if [ $retVal -ne 0 ]; then
-    #                 echo -e "\"${CP4BA_AUTO_STORAGE_CLASS_FAST_ROKS}\"\x1B[1;31m is NOT a valid dynamic storage classname\x1B[0m"
+    #                 printf '%b\n' "\"${CP4BA_AUTO_STORAGE_CLASS_FAST_ROKS}\"${BOLD_TEXT}${RED_TEXT} is NOT a valid dynamic storage classname${RESET_TEXT}"
     #                 if [ -z "$CP4BA_AUTO_STORAGE_CLASS_FAST_ROKS" ]; then
     #                     sc_fast_file_storage_classname=""
     #                 else
-    #                     echo -e "Exiting..."
+    #                     printf '%b\n' "Exiting..."
     #                     exit 1
     #                 fi
     #             fi
@@ -2367,16 +2190,16 @@ function get_storage_class_name(){
 #         temp_project_name=$project_name
 #     fi
 #     # Get pod name
-#     echo -e "\x1B[1mCopying the JDBC driver for the operator...\x1B[0m"
+#     printf '%b\n' "${BOLD_TEXT}Copying the JDBC driver for the operator...${RESET_TEXT}"
 #     operator_podname=$(${CLI_CMD} get pod -n $temp_project_name|grep ibm-cp4a-operator|grep Running|awk '{print $1}')
 
 #     # ${CLI_CMD} exec -it ${operator_podname} -- rm -rf /opt/ansible/share/jdbc
 #     COPY_JDBC_CMD="${CLI_CMD} cp ${JDBC_DRIVER_DIR} ${operator_podname}:/opt/ansible/share/ -n $temp_project_name"
 
 #     if $COPY_JDBC_CMD ; then
-#         echo -e "\x1B[1mDone\x1B[0m"
+#         printf '%b\n' "${BOLD_TEXT}Done${RESET_TEXT}"
 #     else
-#         echo -e "\x1B[1;31mFailed\x1B[0m"
+#         printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Failed${RESET_TEXT}"
 #     fi
 # }
 
@@ -2384,13 +2207,13 @@ function get_storage_class_name(){
 #     # For dynamic storage classname
 #     printf "\n"
 #     if [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "other" ]]; then
-#         echo -e "\x1B[1mApplying the persistent volumes for the Cloud Pak operator by using the storage classname: ${STORAGE_CLASS_NAME}...\x1B[0m"
+#         printf '%b\n' "${BOLD_TEXT}Applying the persistent volumes for the Cloud Pak operator by using the storage classname: ${STORAGE_CLASS_NAME}...${RESET_TEXT}"
 #         ${COPY_CMD} -rf "${OPERATOR_PVC_FILE}" "${OPERATOR_PVC_FILE_BAK}"
 #         printf "\n"
 #         sed "s/<StorageClassName>/$STORAGE_CLASS_NAME/g" ${OPERATOR_PVC_FILE_BAK} > ${OPERATOR_PVC_FILE_TMP1}
 #         sed "s/<Fast_StorageClassName>/$STORAGE_CLASS_NAME/g" ${OPERATOR_PVC_FILE_TMP1}  > ${OPERATOR_PVC_FILE_TMP} # &> /dev/null
 #     else
-#         echo -e "\x1B[1mApplying the persistent volumes for the Cloud Pak operator by using the storage classname: ${FAST_STORAGE_CLASS_NAME}...\x1B[0m"
+#         printf '%b\n' "${BOLD_TEXT}Applying the persistent volumes for the Cloud Pak operator by using the storage classname: ${FAST_STORAGE_CLASS_NAME}...${RESET_TEXT}"
 #         ${COPY_CMD} -rf "${OPERATOR_PVC_FILE}" "${OPERATOR_PVC_FILE_BAK}"
 #         printf "\n"
 #         sed "s/<StorageClassName>/$FAST_STORAGE_CLASS_NAME/g" ${OPERATOR_PVC_FILE_BAK} > ${OPERATOR_PVC_FILE_TMP1}
@@ -2408,27 +2231,27 @@ function get_storage_class_name(){
 
 #     # CREATE_PVC_CMD="${CLI_CMD} apply -f ${OPERATOR_PVC_FILE_TMP} -n $temp_project_name"
 #     # if $CREATE_PVC_CMD ; then
-#     #     echo -e "\x1B[1mDone\x1B[0m"
+#     #     printf '%b\n' "${BOLD_TEXT}Done${RESET_TEXT}"
 #     # else
-#     #     echo -e "\x1B[1;31mFailed\x1B[0m"
+#     #     printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Failed${RESET_TEXT}"
 #     # fi
 #    # Check Operator Persistent Volume status every 5 seconds (max 10 minutes) until allocate.
 #     ATTEMPTS=0
 #     TIMEOUT=60
 #     printf "\n"
-#     echo -e "\x1B[1mWaiting for the persistent volumes to be ready...\x1B[0m"
+#     printf '%b\n' "${BOLD_TEXT}Waiting for the persistent volumes to be ready...${RESET_TEXT}"
 #     until ${CLI_CMD} get pvc -n $temp_project_name| grep cp4a-shared-log-pvc| grep -q -m 1 "Bound" || [ $ATTEMPTS -eq $TIMEOUT ]; do
 #         ATTEMPTS=$((ATTEMPTS + 1))
-#         echo -e "......"
+#         printf '%b\n' "......"
 #         sleep 10
 #         if [ $ATTEMPTS -eq $TIMEOUT ] ; then
-#             echo -e "\x1B[1;31mFailed to allocate the persistent volumes!\x1B[0m"
-#             echo -e "\x1B[1;31mRun the following command to check the claim '${CLI_CMD} describe pvc operator-shared-pvc'\x1B[0m"
+#             printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Failed to allocate the persistent volumes!${RESET_TEXT}"
+#             printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Run the following command to check the claim '${CLI_CMD} describe pvc operator-shared-pvc'${RESET_TEXT}"
 #             exit 1
 #         fi
 #     done
 #     if [ $ATTEMPTS -lt $TIMEOUT ] ; then
-#             echo -e "\x1B[1mDone\x1B[0m"
+#             printf '%b\n' "${BOLD_TEXT}Done${RESET_TEXT}"
 #     fi
 # }
 
@@ -2440,7 +2263,7 @@ function display_storage_classes() {
 
 function display_storage_classes_existing() {
     echo
-    echo -e "\x1B[1mThe existing storage classes in the cluster: \x1B[0m"
+    printf '%b\n' "${BOLD_TEXT}The existing storage classes in the cluster: ${RESET_TEXT}"
 	${CLI_CMD} get storageclass
 }
 
@@ -2488,7 +2311,7 @@ function check_airgap_mode(){
     # clear
     if [ -z "$CP4BA_AUTO_AIRGAP_MODE" ]; then
         COLUMNS=12
-        echo -e "\x1B[1mDo you wish to setup the cluster for an online based CP4BA deployment or for an airgap/offline based CP4BA deployment : \x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}Do you wish to setup the cluster for an online based CP4BA deployment or for an airgap/offline based CP4BA deployment : ${RESET_TEXT}"
 
         
         options=("Online" "Offline/Airgap")
@@ -2518,7 +2341,7 @@ function check_airgap_mode(){
         done
     else
         AIRGAP_INSTALL=$CP4BA_AUTO_AIRGAP_MODE
-        echo -e "\x1B[1mDo you wish to setup the cluster for an airgap/offline based CP4BA deployment :\x1B[0m $CP4BA_AUTO_AIRGAP_MODE"
+        printf '%b\n' "${BOLD_TEXT}Do you wish to setup the cluster for an airgap/offline based CP4BA deployment :${RESET_TEXT} $CP4BA_AUTO_AIRGAP_MODE"
     fi
 }
 
@@ -2527,7 +2350,7 @@ function select_platform(){
     # clear
     if [ -z "$CP4BA_AUTO_PLATFORM" ]; then
         COLUMNS=12
-        echo -e "\x1B[1mSelect the cloud platform to deploy: \x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}Select the cloud platform to deploy: ${RESET_TEXT}"
 
         # otherOption="Other ( Certified Kubernetes Cloud Platform / CNCF)"
         if [[ $RUNTIME_MODE == "process-flow-dev" || $RUNTIME_MODE == "process-flow" ]]; then
@@ -2567,7 +2390,7 @@ function select_platform(){
         done
     else
         PLATFORM_SELECTED=$CP4BA_AUTO_PLATFORM
-        echo -e "\x1B[1mWhat type of cloud platform is selected?\x1B[0m $CP4BA_AUTO_PLATFORM"
+        printf '%b\n' "${BOLD_TEXT}What type of cloud platform is selected?${RESET_TEXT} $CP4BA_AUTO_PLATFORM"
     fi
     if [[ "$PLATFORM_SELECTED" == "OCP" || "$PLATFORM_SELECTED" == "ROKS" ]]; then
         SCRIPT_MODE="OLM"
@@ -2593,13 +2416,13 @@ function select_deployment_type(){
                 echo "${YELLOW_TEXT}ATTENTION: ${RESET_TEXT}${RED_TEXT}The Airgap / Offline Mode only supports \"Production\" deployment type. Selecting \"Production\" as the deployment type.${RESET_TEXT}"
                 DEPLOYMENT_TYPE="production"
             else
-                echo -e "\x1B[1mWhat type of deployment is being performed?\x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}What type of deployment is being performed?${RESET_TEXT}"
                 if [[ "$RUNTIME_MODE" == "baw" || $RUNTIME_MODE == "baw-dev" || $RUNTIME_MODE == "process-flow-dev" || $PRIVATE_CATALOG == "Yes" ]]; then
                     options=("Production")
                     PS3='Enter a valid option [1]: '
-                #DBACLD-194974: Remove Starter option for CP4BA 25.0.1 GA by checking the version $CP4BA_PATCH_VERSION and $CP4BA_RELEASE_BASE_MAJOR_VERSION
+                #DBACLD-194974: Remove Starter option for CP4BA 25.0.1 IF001 by checking the version $CP4BA_PATCH_VERSION and $CP4BA_RELEASE_BASE_MAJOR_VERSION
                 elif skip_edb_for_2501; then
-                    info "Note: Please be aware that for this 25.0.1 GA Limited Support Release, Starter deployment is not supported. Starter deployment support will be available in the upcoming iFix and next release."
+                    info "Note: Please be aware that for this ${VERSION_TO_SKIP_EDB} Limited Support Release, Starter deployment is not supported. Starter deployment support will be available in the upcoming iFix and next release."
                     options=("Production")
                     PS3='Enter a valid option [1]: '
                 else
@@ -2626,11 +2449,11 @@ function select_deployment_type(){
     else
         if [[ "$AIRGAP_INSTALL" == "Yes" && "$CP4BA_AUTO_DEPLOYMENT_TYPE" == "starter" ]]; then
             echo "${YELLOW_TEXT}ATTENTION: ${RESET_TEXT}${RED_TEXT}The Airgap / Offline Mode only supports \"Production\" deployment type.${RESET_TEXT}."
-            echo -e "\x1B[1;31mThe script will now exit...!\n\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}The script will now exit...!\n${RESET_TEXT}"
             exit 1
         fi
         DEPLOYMENT_TYPE=$CP4BA_AUTO_DEPLOYMENT_TYPE
-        echo -e "\x1B[1mWhat type of deployment is performed?\x1B[0m $CP4BA_AUTO_DEPLOYMENT_TYPE"
+        printf '%b\n' "${BOLD_TEXT}What type of deployment is performed?${RESET_TEXT} $CP4BA_AUTO_DEPLOYMENT_TYPE"
     fi
 }
 
@@ -2642,16 +2465,16 @@ function select_user(){
     if [[ $user_result == *"$user_substring"* ]];
     then
         clear
-        echo -e "\x1B[1m[INFO] No user found in cluster.\n\x1B[0m"
-        echo -e "\x1B[33;5mATTENTION: \x1B[0m\x1B[1mWhen you run cp4a-deployment.sh script, Use cluster admin user.\n\x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}[INFO] No user found in cluster.\n${RESET_TEXT}"
+        printf '%b\n' "${YELLOW_TEXT}ATTENTION: ${RESET_TEXT}${BOLD_TEXT}When you run cp4a-deployment.sh script, Use cluster admin user.\n${RESET_TEXT}"
         NON_ADMIN="true"
         sleep 5
     fi
     if [[ $user_result == *"$user_forbidden"* ]];
     then
         clear
-        echo -e "\x1B[1;31mLog in to the target cluster as the <cluster-admin> user.\n\x1B[0m"
-        echo -e "\x1B[1;31mThe script will now exit...!\n\x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Log in to the target cluster as the <cluster-admin> user.\n${RESET_TEXT}"
+        printf '%b\n' "${BOLD_TEXT}${RED_TEXT}The script will now exit...!\n${RESET_TEXT}"
         exit 1
     fi
     echo
@@ -2659,7 +2482,7 @@ function select_user(){
         if [ -z "$CP4BA_AUTO_CLUSTER_USER" ]; then
             userlist=$(${CLI_CMD} get user|awk '{if(NR>1){if(NR==2){ arr=$1; }else{ arr=arr" "$1; }} } END{ print arr }')
             COLUMNS=12
-            echo -e "\x1B[1mHere are the existing users on this cluster: \x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}Here are the existing users on this cluster: ${RESET_TEXT}"
             options=($userlist)
             options=( "Cluster Admin" "${options[@]}" )
             usernum=${#options[*]}
@@ -2674,19 +2497,19 @@ function select_user(){
                 fi
             done
             if [ "$user_name" == "Cluster Admin" ]; then
-                echo -e "\x1B[33;5mATTENTION: \x1B[0m\x1B[1mWhen you run cp4a-deployment.sh script, Use cluster admin user.\x1B[0m"
+                printf '%b\n' "${YELLOW_TEXT}ATTENTION: ${RESET_TEXT}${BOLD_TEXT}When you run cp4a-deployment.sh script, Use cluster admin user.${RESET_TEXT}"
                 sleep 5
             fi
         else
-            ${CLI_CMD} get user ${CP4BA_AUTO_CLUSTER_USER} >/dev/null 2>&1
+            ${CLI_CMD} get user ${CP4BA_AUTO_CLUSTER_USER} >&3 2>&3
             returnValue=$?
             if [ "$returnValue" == 1 ]; then
-                echo -e "\x1B[1;31mNo found user \"${CP4BA_AUTO_CLUSTER_USER}\"!\n\x1B[0m"
-                echo -e "\x1B[33;5mATTENTION: \x1B[0m\x1B[1mWhen you run cp4a-deployment.sh script, Use cluster admin user.\n\x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}No found user \"${CP4BA_AUTO_CLUSTER_USER}\"!\n${RESET_TEXT}"
+                printf '%b\n' "${YELLOW_TEXT}ATTENTION: ${RESET_TEXT}${BOLD_TEXT}When you run cp4a-deployment.sh script, Use cluster admin user.\n${RESET_TEXT}"
                 sleep 5
             else
                 user_name=$CP4BA_AUTO_CLUSTER_USER
-                echo -e "\x1B[1mSelected the existing users: \x1B[0m${CP4BA_AUTO_CLUSTER_USER}"
+                printf '%b\n' "${BOLD_TEXT}Selected the existing users: ${RESET_TEXT}${CP4BA_AUTO_CLUSTER_USER}"
             fi
         fi
     fi
@@ -2697,7 +2520,7 @@ function display_installationprompt(){
     echo "IBM Cloud Pak foundational services with Metering & Licensing Components will be installed"
 
     NAMESPACE_ODLM="common-service"
-    ${CLI_CMD} project $NAMESPACE_ODLM >/dev/null 2>&1 || ${CLI_CMD} new-project $NAMESPACE_ODLM >/dev/null 2>&1
+    ${CLI_CMD} project $NAMESPACE_ODLM  || ${CLI_CMD} new-project $NAMESPACE_ODLM >&3 2>&3
 }
 
 
@@ -2708,18 +2531,18 @@ function check_storage_class() {
         # echo "Applying no_root_squash for demo DB2 deployment on ROKS using CLI"
         # oc get no -l node-role.kubernetes.io/worker --no-headers -o name | xargs -I {} --  oc debug {} -- chroot /host sh -c 'grep "^Domain = slnfsv4.coms" /etc/idmapd.conf || ( sed -i "s/.*Domain =.*/Domain = slnfsv4.com/g" /etc/idmapd.conf; nfsidmap -c; rpc.idmapd )' >> ${LOG_FILE}
        printf "\n"
-       echo -e "\x1B[1mUse the available storage classes.\x1B[0m"
+       printf '%b\n' "${BOLD_TEXT}Use the available storage classes.${RESET_TEXT}"
     fi
     display_storage_classes_existing
 }
 
 function create_storage_classes_roks() {
     echo
-    echo -ne "\x1B[1mCreate storage classes for deployment: \x1B[0m"
-    ${CLI_CMD} apply -f ${BRONZE_STORAGE_CLASS} --validate=false >/dev/null 2>&1
-    ${CLI_CMD} apply -f ${SILVER_STORAGE_CLASS} --validate=false >/dev/null 2>&1
-    ${CLI_CMD} apply -f ${GOLD_STORAGE_CLASS} --validate=false >/dev/null 2>&1
-    echo -e "\x1B[1mDone \x1B[0m"
+    printf '%b' "${BOLD_TEXT}Create storage classes for deployment: ${RESET_TEXT}"
+    ${CLI_CMD} apply -f ${BRONZE_STORAGE_CLASS} --validate=false >&3 2>&3
+    ${CLI_CMD} apply -f ${SILVER_STORAGE_CLASS} --validate=false >&3 2>&3
+    ${CLI_CMD} apply -f ${GOLD_STORAGE_CLASS} --validate=false >&3 2>&3
+    printf '%b\n' "${BOLD_TEXT}Done ${RESET_TEXT}"
 
 }
 
@@ -2727,9 +2550,9 @@ function display_storage_classes_roks() {
     sc_bronze_name=cp4a-file-retain-bronze-gid
     sc_silver_name=cp4a-file-retain-silver-gid
     sc_gold_name=cp4a-file-retain-gold-gid
-    echo -e "\x1B[1;31m    $sc_bronze_name \x1B[0m"
-    echo -e "\x1B[1;31m    $sc_silver_name \x1B[0m"
-    echo -e "\x1B[1;31m    $sc_gold_name \x1B[0m"
+    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}    $sc_bronze_name ${RESET_TEXT}"
+    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}    $sc_silver_name ${RESET_TEXT}"
+    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}    $sc_gold_name ${RESET_TEXT}"
 }
 
 function check_platform_version(){
@@ -2742,7 +2565,7 @@ function check_platform_version(){
     else
         # PLATFORM_VERSION="3.11"
         PLATFORM_VERSION="4.4OrLater"
-        #echo -e "\x1B[1;31mIMPORTANT: Only support OCP4.4 or Later, exit...\n\x1B[0m"
+        #printf '%b\n' "${BOLD_TEXT}${RED_TEXT}IMPORTANT: Only support OCP4.4 or Later, exit...\n${RESET_TEXT}"
         #exit 1
     fi
     # OpenShift 4.0-4.2, install Cloud Pak foundational services 3.3
@@ -2758,43 +2581,43 @@ function check_platform_version(){
 function prepare_common_service(){
 
     echo
-    echo -e "\x1B[1mThe script is preparing the custom resources (CR) files for OCP Cloud Pak foundational services.  You are required to update (fill out) the necessary values in the CRs and deploy Cloud Pak foundational services prior to the deployment. \x1B[0m"
-    echo -e "The prepared CRs for IBM Cloud Pak foundational services are located here: "${COMMON_SERVICES_CRD_DIRECTORY}
-    echo -e "After making changes to the CRs, execute the 'deploy_CS.sh' script to install Cloud Pak foundational services."
-    echo -e "Done"
+    printf '%b\n' "${BOLD_TEXT}The script is preparing the custom resources (CR) files for OCP Cloud Pak foundational services.  You are required to update (fill out) the necessary values in the CRs and deploy Cloud Pak foundational services prior to the deployment. ${RESET_TEXT}"
+    printf '%b\n' "The prepared CRs for IBM Cloud Pak foundational services are located here: "${COMMON_SERVICES_CRD_DIRECTORY}
+    printf '%b\n' "After making changes to the CRs, execute the 'deploy_CS.sh' script to install Cloud Pak foundational services."
+    printf '%b\n' "Done"
 }
 
 function install_common_service_34(){
 
     if [ "$INSTALL_BAI" == "Yes" ] ; then
-    echo -e "Preparing full Cloud Pak foundational services Release 3.4 CR for BAI Deployment.."
+    printf '%b\n' "Preparing full Cloud Pak foundational services Release 3.4 CR for BAI Deployment.."
         func_operand_request_cr_bai_34
 
     else
-    echo -e "Preparing minimal Cloud Pak foundational services Release 3.4 CR for non-BAI Deployment.."
+    printf '%b\n' "Preparing minimal Cloud Pak foundational services Release 3.4 CR for non-BAI Deployment.."
         func_operand_request_cr_nonbai_34
     fi
 
      ## TODO: start to install common service
-    echo -e "\x1B[1mThe installation of Cloud Pak foundational services has started.\x1B[0m"
+    printf '%b\n' "${BOLD_TEXT}The installation of Cloud Pak foundational services has started.${RESET_TEXT}"
     #sh ./deploy_CS3.4.sh
     nohup ${PARENT_DIR}/scripts/deploy_CS3.4.sh  &
-    echo -e "Done"
+    printf '%b\n' "Done"
 }
 
 function install_common_service_33(){
 
         func_operand_request_cr_nonbai_33
-    echo -e "\x1B[1mThe installation of Cloud Pak foundational services Release 3.3 for OCP 4.2+ has started.\x1B[0m"
+    printf '%b\n' "${BOLD_TEXT}The installation of Cloud Pak foundational services Release 3.3 for OCP 4.2+ has started.${RESET_TEXT}"
     sh ${PARENT_DIR}/scripts/deploy_CS3.3.sh
 
-    echo -e "Done"
+    printf '%b\n' "Done"
 }
 
 function func_operand_request_cr_bai_34()
 {
 
-   echo "Creating Cloud Pak foundational services V3.4 Operand Request for BAI deployments on OCP 4.3+ ..\x1B[0m" >> ${LOG_FILE}
+   echo "Creating Cloud Pak foundational services V3.4 Operand Request for BAI deployments on OCP 4.3+ ..${RESET_TEXT}" >> ${LOG_FILE}
    operator_source_path=${PARENT_DIR}/descriptors/common-services/crds/operator_operandrequest_cr.yaml
  cat << ENDF > ${operator_source_path}
 apiVersion: operator.ibm.com/v1alpha1
@@ -2822,7 +2645,7 @@ ENDF
 function func_operand_request_cr_nonbai_34()
 {
 
-   echo "Creating Common-Services V3.4 Operand Request for non-BAI deployments on OCP 4.3 ..\x1B[0m" >> ${LOG_FILE}
+   echo "Creating Common-Services V3.4 Operand Request for non-BAI deployments on OCP 4.3 ..${RESET_TEXT}" >> ${LOG_FILE}
    operator_source_path=${PARENT_DIR}/descriptors/common-services/crds/operator_operandrequest_cr.yaml
  cat << ENDF > ${operator_source_path}
 apiVersion: operator.ibm.com/v1alpha1
@@ -2850,7 +2673,7 @@ ENDF
 function func_operand_request_cr_bai_33()
 {
 
-   echo "Creating Cloud Pak foundational services V3.3 Operand Request for BAI deployments on OCP 4.2+ ..\x1B[0m" >> ${LOG_FILE}
+   echo "Creating Cloud Pak foundational services V3.3 Operand Request for BAI deployments on OCP 4.2+ ..${RESET_TEXT}" >> ${LOG_FILE}
    operator_source_path=${PARENT_DIR}/descriptors/common-services/crds/operator_operandrequest_cr.yaml
  cat << ENDF > ${operator_source_path}
 apiVersion: operator.ibm.com/v1alpha1
@@ -2878,7 +2701,7 @@ ENDF
 function func_operand_request_cr_nonbai_33()
 {
 
-   echo "Creating Cloud Pak foundational services V3.3 Request Operand for non-BAI deployments on OCP 4.2+ ..\x1B[0m" >> ${LOG_FILE}
+   echo "Creating Cloud Pak foundational services V3.3 Request Operand for non-BAI deployments on OCP 4.2+ ..${RESET_TEXT}" >> ${LOG_FILE}
    operator_source_path=${PARENT_DIR}/descriptors/common-services/crds/operator_operandrequest_cr.yaml
  cat << ENDF > ${operator_source_path}
 apiVersion: operator.ibm.com/v1alpha1
@@ -2903,22 +2726,22 @@ ENDF
 function show_summary(){
 
     printf "\n"
-    echo -e "\x1B[1m*******************************************************\x1B[0m"
-    echo -e "\x1B[1m                    Summary of input                   \x1B[0m"
-    echo -e "\x1B[1m*******************************************************\x1B[0m"
+    printf '%b\n' "${BOLD_TEXT}*******************************************************${RESET_TEXT}"
+    printf '%b\n' "${BOLD_TEXT}                    Summary of input                   ${RESET_TEXT}"
+    printf '%b\n' "${BOLD_TEXT}*******************************************************${RESET_TEXT}"
     if [[ ${PLATFORM_VERSION} == "4.4OrLater" ]]; then
-        echo -e "\x1B[1;31m1. Cloud platform to deploy: ${PLATFORM_SELECTED} 4.X\x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}${RED_TEXT}1. Cloud platform to deploy: ${PLATFORM_SELECTED} 4.X${RESET_TEXT}"
     else
-        echo -e "\x1B[1;31m1. Cloud platform to deploy: ${PLATFORM_SELECTED} ${PLATFORM_VERSION}\x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}${RED_TEXT}1. Cloud platform to deploy: ${PLATFORM_SELECTED} ${PLATFORM_VERSION}${RESET_TEXT}"
     fi
-    echo -e "\x1B[1;31m2. Project to deploy: ${project_name}\x1B[0m"
-    echo -e "\x1B[1;31m3. User selected: ${user_name}\x1B[0m"
+    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}2. Project to deploy: ${project_name}${RESET_TEXT}"
+    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}3. User selected: ${user_name}${RESET_TEXT}"
     if  [[ $PLATFORM_SELECTED == "ROKS" ]];
     then
-        echo -e "\x1B[1;31m5. Storage Class created: \x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}${RED_TEXT}5. Storage Class created: ${RESET_TEXT}"
         display_storage_classes_roks
     fi
-    echo -e "\x1B[1m*******************************************************\x1B[0m"
+    printf '%b\n' "${BOLD_TEXT}*******************************************************${RESET_TEXT}"
 }
 
 function check_csoperator_exists()
@@ -2926,7 +2749,7 @@ function check_csoperator_exists()
 
 project="common-service"
 
-check_project=`${CLI_CMD} get namespace $project --ignore-not-found | wc -l`  >/dev/null 2>&1
+check_project=`${CLI_CMD} get namespace $project --ignore-not-found | wc -l`  >&3 2>&3
 check_operator=$(${CLI_CMD} get csv --all-namespaces |grep "ibm-common-service-operator")
 if [ -n "$check_operator" ]; then
     echo ""
@@ -2942,9 +2765,9 @@ fi
 function select_ocp_olm(){
     printf "\n"
     while true; do
-        printf "\x1B[1mAre you using the OCP Catalog (OLM) to perform this install? (Yes/No, default: No) \x1B[0m"
+        printf "${BOLD_TEXT}Are you using the OCP Catalog (OLM) to perform this install? (Yes/No, default: No) ${RESET_TEXT}"
 
-        read -rp "" ans
+        read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
             SCRIPT_MODE="OLM"
@@ -2954,7 +2777,7 @@ function select_ocp_olm(){
             break
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -2967,25 +2790,25 @@ function get_local_registry_server(){
     printf "\n"
     if [[ "${REGISTRY_TYPE}" == "internal" && ("${OCP_VERSION}" == "4.4OrLater") ]];then
         #This is required for docker/podman login validation.
-        printf "\x1B[1mEnter the public image registry or route (e.g., default-route-openshift-image-registry.apps.<hostname>). \n\x1B[0m"
-        printf "\x1B[1mThis is required for docker/podman login validation: \x1B[0m"
+        printf "${BOLD_TEXT}Enter the public image registry or route (e.g., default-route-openshift-image-registry.apps.<hostname>). \n${RESET_TEXT}"
+        printf "${BOLD_TEXT}This is required for docker/podman login validation: ${RESET_TEXT}"
         local_public_registry_server=""
         while [[ $local_public_registry_server == "" ]]
         do
-            read -rp "" local_public_registry_server
+            read -erp "" local_public_registry_server
             if [ -z "$local_public_registry_server" ]; then
-            echo -e "\x1B[1;31mEnter a valid service name or the URL for the docker registry.\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid service name or the URL for the docker registry.${RESET_TEXT}"
             fi
         done
     fi
 
     if [[ "${OCP_VERSION}" == "3.11" && "${REGISTRY_TYPE}" == "internal" ]];then
-        printf "\x1B[1mEnter the OCP docker registry service name, for example: docker-registry.default.svc:5000/<project-name>: \x1B[0m"
+        printf "${BOLD_TEXT}Enter the OCP docker registry service name, for example: docker-registry.default.svc:5000/<project-name>: ${RESET_TEXT}"
     elif [[ "${REGISTRY_TYPE}" == "internal" && "${OCP_VERSION}" == "4.4OrLater" ]]
     then
         printf "\n"
-        printf "\x1B[1mEnter the local image registry (e.g., image-registry.openshift-image-registry.svc:5000/<project>)\n\x1B[0m"
-        printf "\x1B[1mThis is required to pull container images and Kubernetes secret creation: \x1B[0m"
+        printf "${BOLD_TEXT}Enter the local image registry (e.g., image-registry.openshift-image-registry.svc:5000/<project>)\n${RESET_TEXT}"
+        printf "${BOLD_TEXT}This is required to pull container images and Kubernetes secret creation: ${RESET_TEXT}"
         builtin_dockercfg_secrect_name=($(${CLI_CMD} get secret -n $project_name --no-headers --ignore-not-found | grep default-dockercfg | awk '{print $1}'))
 
         if [ -z "$builtin_dockercfg_secrect_name" ]; then
@@ -2996,20 +2819,20 @@ function get_local_registry_server(){
     elif [[ "${REGISTRY_TYPE}" == "external" || $PLATFORM_SELECTED == "other" ]]
     then
         if [ -z $CP4BA_AUTO_LOCAL_REGISTRY ]; then
-            printf "\x1B[1mEnter the URL to the docker registry, for example: abc.xyz.com: \x1B[0m"
+            printf "${BOLD_TEXT}Enter the URL to the docker registry, for example: abc.xyz.com: ${RESET_TEXT}"
         fi
     fi
     if [ -z $CP4BA_AUTO_LOCAL_REGISTRY ]; then
         local_registry_server=""
         while [[ $local_registry_server == "" ]]
         do
-            read -rp "" local_registry_server
+            read -erp "" local_registry_server
             if [ -z "$local_registry_server" ]; then
-                echo -e "\x1B[1;31mEnter a valid service name or the URL for the docker registry.\x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid service name or the URL for the docker registry.${RESET_TEXT}"
             fi
         done
     else
-        echo -e "\x1B[1mEnter the URL to the docker registry, for example: abc.xyz.com: \x1B[0m$CP4BA_AUTO_LOCAL_REGISTRY"
+        printf '%b\n' "${BOLD_TEXT}Enter the URL to the docker registry, for example: abc.xyz.com: ${RESET_TEXT}$CP4BA_AUTO_LOCAL_REGISTRY"
         local_registry_server=$CP4BA_AUTO_LOCAL_REGISTRY
     fi
     LOCAL_REGISTRY_SERVER=${local_registry_server}
@@ -3031,17 +2854,17 @@ function get_local_registry_user(){
     # For Local Registry User
     printf "\n"
     if [ -z "$CP4BA_AUTO_LOCAL_REGISTRY_USER" ]; then
-        printf "\x1B[1mEnter the user name for your docker registry: \x1B[0m"
+        printf "${BOLD_TEXT}Enter the user name for your docker registry: ${RESET_TEXT}"
         local_registry_user=""
         while [[ $local_registry_user == "" ]]
         do
-            read -rp "" local_registry_user
+            read -erp "" local_registry_user
             if [ -z "$local_registry_user" ]; then
-            echo -e "\x1B[1;31mEnter a valid user name.\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid user name.${RESET_TEXT}"
             fi
         done
     else
-        echo -e "\x1B[1mEnter the user name for your docker registry: \x1B[0m$CP4BA_AUTO_LOCAL_REGISTRY_USER"
+        printf '%b\n' "${BOLD_TEXT}Enter the user name for your docker registry: ${RESET_TEXT}$CP4BA_AUTO_LOCAL_REGISTRY_USER"
         local_registry_user=$CP4BA_AUTO_LOCAL_REGISTRY_USER
     fi
     LOCAL_REGISTRY_USER=${local_registry_user}
@@ -3050,17 +2873,17 @@ function get_local_registry_user(){
 function get_local_registry_password(){
     printf "\n"
     if [ -z "$CP4BA_AUTO_LOCAL_REGISTRY_PASSWORD" ]; then
-        printf "\x1B[1mEnter the password for your docker registry: \x1B[0m"
+        printf "${BOLD_TEXT}Enter the password for your docker registry: ${RESET_TEXT}"
         local_registry_password=""
         while [[ $local_registry_password == "" ]];
         do
         read -rsp "" local_registry_password
         if [ -z "$local_registry_password" ]; then
-        echo -e "\x1B[1;31mEnter a valid password\x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid password${RESET_TEXT}"
         fi
         done
     else
-        printf "\x1B[1mEnter the password for your docker registry: \x1B[0m\n"
+        printf "${BOLD_TEXT}Enter the password for your docker registry: ${RESET_TEXT}\n"
         local_registry_password=$CP4BA_AUTO_LOCAL_REGISTRY_PASSWORD
     fi
     LOCAL_REGISTRY_PWD=${local_registry_password}
@@ -3072,22 +2895,22 @@ function verify_local_registry_password(){
     printf "\n"
     while true; do
         if [ -z "$CP4BA_AUTO_PUSH_IMAGE_LOCAL_REGISTRY" ]; then
-            printf "\x1B[1mHave you pushed the images to the local registry using 'loadimages.sh' ($CP4BA_NAME images) (Yes/No)? \x1B[0m"
-            read -rp "" ans
+            printf "${BOLD_TEXT}Have you pushed the images to the local registry using 'loadimages.sh' ($CP4BA_NAME images) (Yes/No)? ${RESET_TEXT}"
+            read -erp "" ans
         else
             case "$CP4BA_AUTO_PUSH_IMAGE_LOCAL_REGISTRY" in
             "y"|"Y"|"yes"|"Yes"|"YES"|"True"|"TRUE"|"true")
-                echo -e "\x1B[1mHave you pushed the images to the local registry using 'loadimages.sh' ($CP4BA_NAME images) (Yes/No)? \x1B[0m$CP4BA_AUTO_PUSH_IMAGE_LOCAL_REGISTRY"
+                printf '%b\n' "${BOLD_TEXT}Have you pushed the images to the local registry using 'loadimages.sh' ($CP4BA_NAME images) (Yes/No)? ${RESET_TEXT}$CP4BA_AUTO_PUSH_IMAGE_LOCAL_REGISTRY"
                 ans="Yes"
                 ;;
             "n"|"N"|"no"|"No"|"NO"|"false"|"False"|"FALSE")
-                echo -e "\x1B[1mHave you pushed the images to the local registry using 'loadimages.sh' ($CP4BA_NAME images) (Yes/No)? \x1B[0m$CP4BA_AUTO_PUSH_IMAGE_LOCAL_REGISTRY"
-                echo -e "\x1B[1;31mPull the images to the local images to proceed.\n\x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}Have you pushed the images to the local registry using 'loadimages.sh' ($CP4BA_NAME images) (Yes/No)? ${RESET_TEXT}$CP4BA_AUTO_PUSH_IMAGE_LOCAL_REGISTRY"
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Pull the images to the local images to proceed.\n${RESET_TEXT}"
                 ans="No"
                 exit 1
                 ;;
             *)
-                echo -e "Answer must be \"Yes\" or \"No\"\n"
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
                 ;;
             esac
         fi
@@ -3097,11 +2920,11 @@ function verify_local_registry_password(){
             break
             ;;
         "n"|"N"|"no"|"No"|"NO")
-            echo -e "\x1B[1;31mPull the images to the local images to proceed.\n\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Pull the images to the local images to proceed.\n${RESET_TEXT}"
             exit 1
             ;;
         *)
-            echo -e "Answer must be \"Yes\" or \"No\"\n"
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
             ;;
         esac
     done
@@ -3109,7 +2932,7 @@ function verify_local_registry_password(){
     # Select which type of image registry to use.
     if [[ "${PLATFORM_SELECTED}" == "OCP" || "${PLATFORM_SELECTED}" == "ROKS" ]]; then
         printf "\n"
-        echo -e "\x1B[1mSelect the type of image registry to use: \x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}Select the type of image registry to use: ${RESET_TEXT}"
         COLUMNS=12
         options=("Openshift Container Platform (OCP) - Internal image registry" "Other ( External image registry: abc.xyz.com )")
 
@@ -3145,11 +2968,11 @@ function verify_local_registry_password(){
                     printf 'Verifying Local Registry passed...\n'
                     verify_passed="passed"
                 else
-                    printf '\x1B[1;31mLogin failed...\n\x1B[0m'
+                    printf '${BOLD_TEXT}${RED_TEXT}Login failed...\n${RESET_TEXT}'
                     verify_passed=""
                     local_registry_user=""
                     local_registry_server=""
-                    echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
+                    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Check the local docker registry information and try again.${RESET_TEXT}"
                 fi
             elif [[ "$machine" == "Mac" ]]
             then
@@ -3157,12 +2980,12 @@ function verify_local_registry_password(){
                     printf 'Verifying Local Registry passed...\n'
                     verify_passed="passed"
                 else
-                    printf '\x1B[1;31mLogin failed...\n\x1B[0m'
+                    printf '${BOLD_TEXT}${RED_TEXT}Login failed...\n${RESET_TEXT}'
                     verify_passed=""
                     local_registry_user=""
                     local_registry_server=""
                     local_public_registry_server=""
-                    echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
+                    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Check the local docker registry information and try again.${RESET_TEXT}"
                 fi
             elif [[ $OCP_VERSION == "4.4OrLater" ]]
             then
@@ -3172,24 +2995,24 @@ function verify_local_registry_password(){
                         printf 'Verifying Local Registry passed...\n'
                         verify_passed="passed"
                     else
-                        printf '\x1B[1;31mLogin failed...\n\x1B[0m'
+                        printf '${BOLD_TEXT}${RED_TEXT}Login failed...\n${RESET_TEXT}'
                         verify_passed=""
                         local_registry_user=""
                         local_registry_server=""
                         local_public_registry_server=""
-                        echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
+                        printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Check the local docker registry information and try again.${RESET_TEXT}"
                     fi
                 else
                      if docker login "$local_public_registry_server" -u "$LOCAL_REGISTRY_USER" -p $(${CLI_CMD} whoami -t); then
                         printf 'Verifying Local Registry passed...\n'
                         verify_passed="passed"
                     else
-                        printf '\x1B[1;31mLogin failed...\n\x1B[0m'
+                        printf '${BOLD_TEXT}${RED_TEXT}Login failed...\n${RESET_TEXT}'
                         verify_passed=""
                         local_registry_user=""
                         local_registry_server=""
                         local_public_registry_server=""
-                        echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
+                        printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Check the local docker registry information and try again.${RESET_TEXT}"
                     fi
                 fi
             fi
@@ -3200,8 +3023,8 @@ function verify_local_registry_password(){
                     printf 'Verifying the information for the local docker registry...\n'
                     verify_passed="passed"
                 else
-                    printf '\x1B[1;31mLogin failed...\n\x1B[0m'
-                    echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
+                    printf '${BOLD_TEXT}${RED_TEXT}Login failed...\n${RESET_TEXT}'
+                    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Check the local docker registry information and try again.${RESET_TEXT}"
                     if [ -z "$CP4BA_AUTO_LOCAL_REGISTRY" ]; then
                         verify_passed=""
                         local_registry_user=""
@@ -3215,8 +3038,8 @@ function verify_local_registry_password(){
                     printf 'Verifying the information for the local docker registry...\n'
                     verify_passed="passed"
                 else
-                    printf '\x1B[1;31mLogin failed...\n\x1B[0m'
-                    echo -e "\x1B[1;31mCheck the local docker registry information and try again.\x1B[0m"
+                    printf '${BOLD_TEXT}${RED_TEXT}Login failed...\n${RESET_TEXT}'
+                    printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Check the local docker registry information and try again.${RESET_TEXT}"
                     if [ -z "$CP4BA_AUTO_LOCAL_REGISTRY" ]; then
                         verify_passed=""
                         local_registry_user=""
@@ -3232,9 +3055,9 @@ function verify_local_registry_password(){
 }
 
 function create_secret_local_registry(){
-    echo -e "\x1B[1mCreating the secret based on the local docker registry information...\x1B[0m"
+    printf '%b\n' "${BOLD_TEXT}Creating the secret based on the local docker registry information...${RESET_TEXT}"
     # Create docker-registry secret for local Registry Key
-    # echo -e "Create docker-registry secret for Local Registry...\n"
+    # printf '%b\n' "Create docker-registry secret for Local Registry...\n"
     if [[ $LOCAL_REGISTRY_SERVER == docker-registry* || $LOCAL_REGISTRY_SERVER == image-registry.openshift-image-registry* ]] ;
     then
         builtin_dockercfg_secrect_name=($(${CLI_CMD} get secret -n $project_name --no-headers --ignore-not-found | grep default-dockercfg | awk '{print $1}'))
@@ -3242,12 +3065,12 @@ function create_secret_local_registry(){
         # CREATE_SECRET_CMD="${CLI_CMD} create secret docker-registry $DOCKER_RES_SECRET_NAME --docker-server=$LOCAL_REGISTRY_SERVER --docker-username=$LOCAL_REGISTRY_USER --docker-password=$(${CLI_CMD} whoami -t) --docker-email=ecmtest@ibm.com"
     else
         for item in "${DOCKER_RES_SECRET_NAME[@]}"; do
-            ${CLI_CMD} delete secret "$item" -n $project_name >/dev/null 2>&1
+            ${CLI_CMD} delete secret "$item" -n $project_name >&3 2>&3
             CREATE_SECRET_CMD="${CLI_CMD} create secret docker-registry $item --docker-server=$LOCAL_REGISTRY_SERVER --docker-username=$LOCAL_REGISTRY_USER --docker-password=$LOCAL_REGISTRY_PWD --docker-email=ecmtest@ibm.com -n $project_name"
             if $CREATE_SECRET_CMD ; then
-                echo -e "\x1B[1mDone\x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}Done${RESET_TEXT}"
             else
-                echo -e "\x1B[1;31mFailed\x1B[0m"
+                printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Failed${RESET_TEXT}"
             fi
         done
     fi
@@ -3258,28 +3081,28 @@ function verify_silence_install(){
         local platform_array=("OCP" "ROKS" "other")
         local deployment_type_array=("starter" "production")
         echo           "==========================================================================="
-        echo -e "\x1B[1mStarting silent installation for $CP4BA_FULL_NAME Operator\x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}Starting silent installation for $CP4BA_FULL_NAME Operator${RESET_TEXT}"
         echo           "==========================================================================="
         if [[ ! " ${platform_array[@]} " =~ " ${CP4BA_AUTO_PLATFORM} " ]]; then
-            echo -e "\x1B[1;31mOnly \"OCP\" or \"ROKS\" or \"other\" is valid value for environment variable [CP4BA_AUTO_PLATFORM].\n\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Only \"OCP\" or \"ROKS\" or \"other\" is valid value for environment variable [CP4BA_AUTO_PLATFORM].\n${RESET_TEXT}"
             exit 1
         fi
 
         if [[ ! " ${deployment_type_array[@]} " =~ " ${CP4BA_AUTO_DEPLOYMENT_TYPE} " ]]; then
-            echo -e "\x1B[1;31mOnly \"starter\" or \"production\" is valid value for environment variable [CP4BA_AUTO_DEPLOYMENT_TYPE].\n\x1B[0m"
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Only \"starter\" or \"production\" is valid value for environment variable [CP4BA_AUTO_DEPLOYMENT_TYPE].\n${RESET_TEXT}"
             exit 1
         fi
     fi
 
     if [[ "$CP4BA_AUTO_PLATFORM " == "other" && "$CP4BA_AUTO_DEPLOYMENT_TYPE" == "starter" ]]; then
-        echo -e "\x1B[1;31mOnly \"production\" is valid value for environment variable [CP4BA_AUTO_DEPLOYMENT_TYPE] when [CP4BA_AUTO_PLATFORM] set as \"other\" .\n\x1B[0m"
+        printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Only \"production\" is valid value for environment variable [CP4BA_AUTO_DEPLOYMENT_TYPE] when [CP4BA_AUTO_PLATFORM] set as \"other\" .\n${RESET_TEXT}"
         exit 1
     fi
 
 #     if [[ ! -z "$CP4BA_AUTO_LOCAL_REGISTRY" && ! -z "$CP4BA_AUTO_LOCAL_REGISTRY_USER" && ! -z "$CP4BA_AUTO_LOCAL_REGISTRY_PASSWORD" ]]; then
 #         echo ""
 #     else
-#         echo -e "\x1B[1;31mPlease set all environment variable [CP4BA_AUTO_LOCAL_REGISTRY] [CP4BA_AUTO_LOCAL_REGISTRY_USER] [CP4BA_AUTO_LOCAL_REGISTRY_PASSWORD].\n\x1B[0m"
+#         printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Please set all environment variable [CP4BA_AUTO_LOCAL_REGISTRY] [CP4BA_AUTO_LOCAL_REGISTRY_USER] [CP4BA_AUTO_LOCAL_REGISTRY_PASSWORD].\n${RESET_TEXT}"
 #         exit 1
 #     fi
 }
@@ -3431,6 +3254,9 @@ fi
 
 
 info "Setting up the cluster for IBM Cloud Pak for Business Automation"
+
+check_cluster_login
+
 check_airgap_mode
 select_platform
 
@@ -3447,7 +3273,7 @@ fi
 select_deployment_type
 
 # Check cluster login
-check_cluster_login
+#check_cluster_login
 
  # BAW STD couldn't enable fips since it don't use the common service.
 if [[ ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS") && $DEPLOYMENT_TYPE == "production" && $RUNTIME_MODE != "baw" && $RUNTIME_MODE != "baw-dev" ]]; then
@@ -3501,13 +3327,8 @@ else
     create_configmap_fips $project_name_cs_service
 fi
 
-# Create SA for Starter deployment
-if [[ $DEPLOYMENT_TYPE == "starter" ]];then
-    prepare_starter_sa
-fi
-
 if [[ $SCRIPT_MODE == "OLM" ]];then
-    ${CLI_CMD} project $project_name >/dev/null 2>&1
+    ${CLI_CMD} project $project_name >&3 2>&3
 
     if [[ $AIRGAP_INSTALL == "Yes" ]]; then
         display_airgap_prerequisites
@@ -3525,49 +3346,51 @@ if [[ $SCRIPT_MODE == "OLM" ]];then
             create_secret_local_registry
         fi
         # allocate_operator_pvc_olm_or_cncf
-        if [[ $PLATFORM_SELECTED == "other" && ( "$RUNTIME_MODE" == "process-flow" || $RUNTIME_MODE == "process-flow-dev" ) ]]; then
-        validate_cncf_olm
+        # DBACLD-215558: Are "process-flow" and process-flow-dev" internal ???  Leave it alone for now.
+        ## We don't support "other" platform for now.
+#         if [[ $PLATFORM_SELECTED == "other" && ( "$RUNTIME_MODE" == "process-flow" || $RUNTIME_MODE == "process-flow-dev" ) ]]; then
+#         validate_cncf_olm
 
-            get_domain_name
+#             get_domain_name
 
-            # for cncf platform, need to create configmap $DEDICATED_COMMON_PROJECT/ibm-cpp-config for common service
-            # $DEDICATED_COMMON_PROJECT is the common service namespace corresponding to $DEDICATED_PROJECT.
-            if [[ $CNCF_DOMAIN_NAME != "" ]]; then
+#             # for cncf platform, need to create configmap $DEDICATED_COMMON_PROJECT/ibm-cpp-config for common service
+#             # $DEDICATED_COMMON_PROJECT is the common service namespace corresponding to $DEDICATED_PROJECT.
+#             if [[ $CNCF_DOMAIN_NAME != "" ]]; then
 
-            ${CLI_CMD} get cm ${COMMON_SERVICES_CM_DEDICATED_NAME} -n ${COMMON_SERVICES_CM_NAMESPACE} -o jsonpath='{ .data.common-service-maps\.yaml}' > ${TEMP_FOLDER}/cm-data.yaml
-            dedicate_tmp=$(${YQ_CMD} '.namespaceMapping[]."requested-from-namespace"
-                | select(.==strenv(DEDICATED_PROJECT))
-                | path
-                | ( .[] | select((. | tag) == "!!int") |= (["[", tostring, "]"] | join("")) )
-                | join(".")
-                | sub("\\.\\[","[")' "${TEMP_FOLDER}/cm-data.yaml")
-            if [[ $dedicate_tmp == "" ]]; then
-                echo -e "\x1B[1;31mCan not find namespace $DEDICATED_PROJECT in the configmap ${COMMON_SERVICES_CM_DEDICATED_NAME} in the namespace ${COMMON_SERVICES_CM_NAMESPACE}  .\n\x1B[0m"
-                exit 1
-            fi
-            DEDICATED_COMMON_PROJECT=$(${YQ_CMD} ".${dedicate_tmp:0:20}.map-to-common-service-namespace" ${TEMP_FOLDER}/cm-data.yaml)
+#             ${CLI_CMD} get cm ${COMMON_SERVICES_CM_DEDICATED_NAME} -n ${COMMON_SERVICES_CM_NAMESPACE} -o jsonpath='{ .data.common-service-maps\.yaml}' > ${TEMP_FOLDER}/cm-data.yaml
+#             dedicate_tmp=$(${YQ_CMD} '.namespaceMapping[]."requested-from-namespace"
+#                 | select(.==strenv(DEDICATED_PROJECT))
+#                 | path
+#                 | ( .[] | select((. | tag) == "!!int") |= (["[", tostring, "]"] | join("")) )
+#                 | join(".")
+#                 | sub("\\.\\[","[")' "${TEMP_FOLDER}/cm-data.yaml")
+#             if [[ $dedicate_tmp == "" ]]; then
+#                 printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Can not find namespace $DEDICATED_PROJECT in the configmap ${COMMON_SERVICES_CM_DEDICATED_NAME} in the namespace ${COMMON_SERVICES_CM_NAMESPACE}  .\n${RESET_TEXT}"
+#                 exit 1
+#             fi
+#             DEDICATED_COMMON_PROJECT=$(${YQ_CMD} ".${dedicate_tmp:0:20}.map-to-common-service-namespace" ${TEMP_FOLDER}/cm-data.yaml)
 
-            rm -fr ${TEMP_FOLDER}/cm-data.yaml >> ${LOG_FILE}
+#             rm -fr ${TEMP_FOLDER}/cm-data.yaml >> ${LOG_FILE}
 
-            echo -e "\x1B[1mCreating the configmap required by common service...\x1B[0m"
-            isNsExists=`${CLI_CMD} get namespace $DEDICATED_COMMON_PROJECT --ignore-not-found | wc -l`  >/dev/null 2>&1
-            if [ $isNsExists -ne 2 ] ; then
-                ${CLI_CMD} create namespace $DEDICATED_COMMON_PROJECT >/dev/null 2>&1
-            fi
-            cat <<EOF | ${CLI_CMD} apply -f -
-            apiVersion: v1
-            kind: ConfigMap
-            metadata:
-                name: ibm-cpp-config
-                namespace: $DEDICATED_COMMON_PROJECT
-            data:
-                kubernetes_cluster_type: cncf
-                # modify it according for your worker node ip address
-                # if you expose nginx ingress controller with NodePort service
-                domain_name: $CNCF_DOMAIN_NAME
-EOF
-            fi
-        fi
+#             printf '%b\n' "${BOLD_TEXT}Creating the configmap required by common service...${RESET_TEXT}"
+#             isNsExists=`${CLI_CMD} get namespace $DEDICATED_COMMON_PROJECT --ignore-not-found | wc -l`  >/dev/null 2>&1
+#             if [ $isNsExists -ne 2 ] ; then
+#                 ${CLI_CMD} create namespace $DEDICATED_COMMON_PROJECT >/dev/null 2>&1
+#             fi
+#             cat <<EOF | ${CLI_CMD} apply -f -
+#             apiVersion: v1
+#             kind: ConfigMap
+#             metadata:
+#                 name: ibm-cpp-config
+#                 namespace: $DEDICATED_COMMON_PROJECT
+#             data:
+#                 kubernetes_cluster_type: cncf
+#                 # modify it according for your worker node ip address
+#                 # if you expose nginx ingress controller with NodePort service
+#                 domain_name: $CNCF_DOMAIN_NAME
+# EOF
+#             fi
+#         fi
     fi
     # Checking the IBM Cert Manager Operator to be ready or not
     if [[ ! ("$RUNTIME_MODE" == "baw" || $RUNTIME_MODE == "baw-dev" || "$RUNTIME_MODE" == "process-flow" || $RUNTIME_MODE == "process-flow-dev") ]]; then

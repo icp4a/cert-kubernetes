@@ -228,12 +228,12 @@ done
 if [ -z "${runtimeUseZen}" ] || [ "${runtimeUseZen}" != true ]
  then
 	CMD="./helper_getUMSToken.sh --acceptLanguage ${acceptLanguage} --url ${runtimeUmsUrl} --id ${runtimeUmsClientId} --secret ${runtimeUmsClientSecret} --usr ${runtimeUser} --pwd ${runtimePwd}"
-	echo Getting RunTime UMSToken ... 
+	echo "Getting RunTime UMSToken ... "
 	#${CMD}
 	RUN_BEARER=$(${CMD})
  else
 	CMD="./helper_getZENToken.sh --acceptLanguage ${acceptLanguage} --iamurl ${runtimeZenIamUrl} --zenurl ${runtimeZenUrl} --usr ${runtimeUser} --pwd ${runtimePwd}"
-	echo Getting RunTime ZENToken ...
+	echo "Getting RunTime ZENToken ..."
 	#${CMD}
 	RUN_BEARER=$(${CMD})
 fi
@@ -242,12 +242,12 @@ fi
 if [ -z "${devUseZen}" ] || [ "${devUseZen}" != true ]
  then
 	CMD="./helper_getUMSToken.sh --acceptLanguage ${acceptLanguage} --url ${devUmsUrl} --id ${devUmsClientId} --secret ${devUmsClientSecret} --usr ${devUser} --pwd ${devPwd}"
-	echo Getting Dev UMSToken ... 
+	echo "Getting Dev UMSToken ... "
 	#${CMD}
 	DEV_BEARER=$(${CMD})
  else
 	CMD="./helper_getZENToken.sh --acceptLanguage ${acceptLanguage} --iamurl ${devZenIamUrl} --zenurl ${devZenUrl} --usr ${devUser} --pwd ${devPwd}"
-	echo Getting Dev ZENToken ...
+	echo "Getting Dev ZENToken ..."
 	#${CMD}
 	DEV_BEARER=$(${CMD})
 fi

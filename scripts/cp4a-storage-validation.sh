@@ -11,27 +11,42 @@
 #
 ###############################################################################
 function show_help() {
-    echo -e "\nUsage: ./cp4a-storage-validation.sh -m <mode> -n <CP4BA_NAMESPACE>\n"
-    echo "Modes:"
-    echo "  storage_validation                    : Run only Storage Validation"
-    echo "  performance_validation                : Run only Storage Performance Validation"
-    echo "  storage_and_performance_validation    : Run Storage Validation and Storage Performance Validation"
+    printf '%b\n' "\nUsage: ./cp4a-storage-validation.sh -m <mode> -n <CP4BA_NAMESPACE>\n"
+    echo "Options:"
+    echo "  --run-storage-validation                    : Run only Storage Validation"
+    echo "  --run-storage-performance-validation        : Run only Storage Performance Validation"
+    echo "  Both flags together                         : Run Storage Validation and Storage Performance Validation"
     echo
     echo "Examples:"
-    echo "  ./cp4a-storage-validation.sh -m storage_validation -n <CP4BA_NAMESPACE>"
-    echo "  ./cp4a-storage-validation.sh -m performance_validation -n <CP4BA_NAMESPACE>"
-    echo "  ./cp4a-storage-validation.sh -m storage_and_performance_validation -n <CP4BA_NAMESPACE>"
+    echo "  ./cp4a-prerequisites.sh -m validate -n <CP4BA_NAMESPACE> --run-storage-validation"
+    echo "  ./cp4a-prerequisites.sh -m validate -n <CP4BA_NAMESPACE> --run-storage-performance-validation"
+    echo "  ./cp4a-prerequisites.sh -m validate -n <CP4BA_NAMESPACE> --run-storage-validation --run-storage-performance-validation"
     echo
 }
 
 
 function check_prerequisites() {
   CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+  
+  # Save user's locale before sourcing common.sh (which sets LC_ALL=C)
+  USER_LC_ALL="${LC_ALL:-}"
+  USER_LANG="${LANG:-}"
+  
   source "${CUR_DIR}/helper/common.sh"
+  
+  # Restore UTF-8 locale for Ansible compatibility
+  if [[ "$USER_LC_ALL" =~ UTF-8|utf8 ]]; then
+    export LC_ALL="$USER_LC_ALL"
+    export LC_CTYPE="$USER_LC_ALL"
+  elif [[ "$USER_LANG" =~ UTF-8|utf8 ]]; then
+    export LC_ALL="$USER_LANG"
+    export LC_CTYPE="$USER_LANG"
+  fi
+  
   echo
   echo "Next, checking prerequisites for Storage Validation/Storage Performance Validation. For details, refer to the topic 'Storage Validation and Storage Performance Validation': https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/${CP4BA_RELEASE_BASE}?topic=pycc-recommended-preparing-databases-secrets-your-chosen-capabilities-by-running-script"
   
-  echo -e "${WHITE}${BOLD}Checking prerequisites...${RESET}"
+  printf '%b\n' "${WHITE}${BOLD}Checking prerequisites...${RESET}"
   echo
     all_ok=true
     if command -v python &>/dev/null; then
@@ -46,11 +61,11 @@ function check_prerequisites() {
     py_minor=${py_version##*.}
 
     if [[ "$py_major" -lt 3 || ( "$py_major" -eq 3 && "$py_minor" -lt 6 ) ]]; then
-        echo -e "${RED}Python 3.6 or later is not installed.${RESET}"
-        echo -e "${WHITE}${BOLD}Please install Python 3.6 or later.${RESET}"
+        printf '%b\n' "${RED}Python 3.6 or later is not installed.${RESET}"
+        printf '%b\n' "${WHITE}${BOLD}Please install Python 3.6 or later.${RESET}"
         all_ok=false
     else
-        echo -e "${WHITE}${BOLD}Python version: $py_version ------ OK${RESET} "
+        printf '%b\n' "${WHITE}${BOLD}Python version: $py_version ------ OK${RESET} "
     fi
     echo
 
@@ -67,56 +82,81 @@ function check_prerequisites() {
     pip_minor=$(echo "$pip_version" | cut -d. -f2)
 
     if [[ "$pip_major" -lt 21 || ( "$pip_major" -eq 21 && "$pip_minor" -lt 1 ) ]]; then
-        echo -e "${RED}pip 21.1.3 or later is not installed.${RESET}"
-        echo -e "${WHITE}${BOLD}Please install pip 21.1.3 or later.${RESET}"
+        printf '%b\n' "${RED}pip 21.1.3 or later is not installed.${RESET}"
+        printf '%b\n' "${WHITE}${BOLD}Please install pip 21.1.3 or later.${RESET}"
         all_ok=false
     else
-        echo -e "${WHITE}${BOLD}pip version: $pip_version ------ OK${RESET}"
+        printf '%b\n' "${WHITE}${BOLD}pip version: $pip_version ------ OK${RESET}"
     fi
     echo
 
-    # Check Ansible version
+    # Check Ansible version and locale compatibility
     if command -v ansible &>/dev/null; then
-        ansible_version_line=$(ansible --version | head -n1)
-        ansible_version=$(echo "$ansible_version_line" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-        ansible_major=$(echo "$ansible_version" | cut -d. -f1)
-        ansible_minor=$(echo "$ansible_version" | cut -d. -f2)
-
-        # Compare ansible version
-        if (( ansible_major < 2 || ( ansible_major == 2 && ansible_minor < 10 ) )); then
-            echo -e "${RED}Ansible 2.10.5 or later is required (found $ansible_version).${RESET}"
-            echo -e "${WHITE}${BOLD}Please install Ansible 2.10.5 or later.${RESET}"
+        # Try to run ansible --version and capture any locale errors
+        ansible_test_output=$(ansible --version 2>&1)
+        ansible_exit_code=$?
+        
+        # Check if ansible failed due to locale
+        if echo "$ansible_test_output" | grep -q "locale encoding to be UTF-8"; then
+            printf '%b\n' "${RED}ERROR: Ansible requires the locale encoding to be UTF-8; Detected $(locale charmap 2>/dev/null || echo "UNKNOWN").${RESET}"
+            printf '%b\n' "${WHITE}${BOLD}Please set your locale before running this script:${RESET}"
+            printf '%b\n' "${WHITE}${BOLD}  export LC_ALL=en_US.UTF-8${RESET}"
+            printf '%b\n' "${WHITE}${BOLD}  export LANG=en_US.UTF-8${RESET}"
+            printf '%b\n' "${WHITE}${BOLD}  ./cp4a-prerequisites.sh -m validate -n <namespace> --run-storage-validation --run-storage-performance-validation${RESET}"
             all_ok=false
+            echo
         else
-            echo -e "${WHITE}${BOLD}Ansible version: $ansible_version ------ OK${RESET}"
+            # Ansible ran successfully, extract version
+            ansible_version_line=$(echo "$ansible_test_output" | head -n1)
+            ansible_version=$(echo "$ansible_version_line" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+            
+            # Validate that version was successfully extracted
+            if [[ -z "$ansible_version" ]]; then
+                printf '%b\n' "${RED}Ansible 2.10.5 or later is required (found ).${RESET}"
+                printf '%b\n' "${WHITE}${BOLD}Please install Ansible 2.10.5 or later.${RESET}"
+                echo
+                all_ok=false
+            else
+                ansible_major=$(echo "$ansible_version" | cut -d. -f1)
+                ansible_minor=$(echo "$ansible_version" | cut -d. -f2)
+
+                # Compare ansible version
+                if (( ansible_major < 2 || ( ansible_major == 2 && ansible_minor < 10 ) )); then
+                    printf '%b\n' "${RED}Ansible 2.10.5 or later is required (found $ansible_version).${RESET}"
+                    printf '%b\n' "${WHITE}${BOLD}Please install Ansible 2.10.5 or later.${RESET}"
+                    all_ok=false
+                else
+                    printf '%b\n' "${WHITE}${BOLD}Ansible version: $ansible_version ------ OK${RESET}"
+                fi
+            fi
         fi
     else
-          echo -e "${RED}Ansible is not installed.${RESET}"
-          echo -e "${WHITE}${BOLD}Please install Ansible 2.10.5 or later.${RESET}"
-          all_ok=false
+        printf '%b\n' "${RED}Ansible is not installed.${RESET}"
+        printf '%b\n' "${WHITE}${BOLD}Please install Ansible 2.10.5 or later.${RESET}"
+        all_ok=false
     fi
     echo
 
     # Check openshift Python package
     if ! python -c "import openshift" &>/dev/null 2>&1; then
-        echo -e "${RED}Python package 'openshift' is not installed.${RESET}"
-        echo -e "${WHITE}${BOLD}Install it using:${RESET}"
-        echo -e "${WHITE}${BOLD}pip install openshift${RESET}"
+        printf '%b\n' "${RED}Python package 'openshift' is not installed.${RESET}"
+        printf '%b\n' "${WHITE}${BOLD}Install it using:${RESET}"
+        printf '%b\n' "${WHITE}${BOLD}pip install openshift${RESET}"
         all_ok=false
     else
-        echo -e "${WHITE}${BOLD}Python package 'openshift' is installed ------ OK${RESET}"
+        printf '%b\n' "${WHITE}${BOLD}Python package 'openshift' is installed ------ OK${RESET}"
     fi
     echo
 
     # Check Ansible collections
     for coll in operator_sdk.util kubernetes.core; do
         if ! ansible-galaxy collection list "$coll" &>/dev/null; then
-            echo -e "${RED}Ansible collection '$coll' is not installed.${RESET}"
-            echo -e "${WHITE}${BOLD}Install it using:${RESET}"
-            echo -e "${WHITE}${BOLD}ansible-galaxy collection install $coll${RESET}"
+            printf '%b\n' "${RED}Ansible collection '$coll' is not installed.${RESET}"
+            printf '%b\n' "${WHITE}${BOLD}Install it using:${RESET}"
+            printf '%b\n' "${WHITE}${BOLD}ansible-galaxy collection install $coll${RESET}"
             all_ok=false
         else
-            echo -e "${WHITE}${BOLD}Ansible collection '$coll' is installed ------ OK${RESET}"
+            printf '%b\n' "${WHITE}${BOLD}Ansible collection '$coll' is installed ------ OK${RESET}"
         fi
         echo
     done
@@ -128,26 +168,26 @@ function check_prerequisites() {
         minor=$(echo "$oc_version" | cut -d. -f2)
 
         if (( major < 4 )) || { (( major == 4 )) && (( minor < 6 )); }; then
-            echo -e "OpenShift Client version $oc_version is not supported for storage and performance tests."
-            echo -e "Please install OpenShift Client 4.6 or later."
+            printf '%b\n' "OpenShift Client version $oc_version is not supported for storage and performance tests."
+            printf '%b\n' "Please install OpenShift Client 4.6 or later."
             all_ok=false
         else
-            echo -e "${WHITE}${BOLD}OpenShift Client version $oc_version ------ OK${RESET}"
+            printf '%b\n' "${WHITE}${BOLD}OpenShift Client version $oc_version ------ OK${RESET}"
         fi
     else
-        echo -e "OpenShift Client is not installed."
-        echo -e "Please install OpenShift Client 4.6 or later."
+        printf '%b\n' "OpenShift Client is not installed."
+        printf '%b\n' "Please install OpenShift Client 4.6 or later."
         all_ok=false
     fi
     echo
     # ----------------- Final summary -----------------
     if [ "$all_ok" != true ]; then
         echo
-        echo -e "${WHITE}${BOLD}Please install all required prerequisites and then run the following command:${RESET}"
-        echo -e "./cp4a-storage-validation.sh -m storage_and_performance_validation -n ${TARGET_PROJECT_NAME}\n"
+        printf '%b\n' "${WHITE}${BOLD}Please install all required prerequisites and then run the following command:${RESET}"
+        printf '%b\n' "./cp4a-prerequisites.sh -m validate -n ${TARGET_PROJECT_NAME} --run-storage-validation --run-storage-performance-validation\n"
         exit 1
     else
-        echo -e "${WHITE}${BOLD}All prerequisites are satisfied.${RESET}"
+        printf '%b\n' "${WHITE}${BOLD}All prerequisites are satisfied.${RESET}"
     fi
   }
 
@@ -166,16 +206,27 @@ function prompt_user_for_validation() {
     echo " - Storage Validation               (might take up to 25 minutes)"
     echo " - Storage Performance Validation   (might take up to 1 hour)"
     echo
-    echo -e "${WHITE}${BOLD}Note: These tests only verify the basic readiness of your storage and are intended as an initial pre-check before deploying any actual Cloud Pak workloads in the environment.${RESET}"
+    printf '%b\n' "${WHITE}${BOLD}Note: 
+    - Running this validation is optional. As long as the storage meets the CP4BA storage requirements, it will be supported. Please refer to the CP4BA Knowledge Center for more detail.
+    - These tests only verify the basic readiness of your storage and are intended as an initial pre-check before deploying any actual Cloud Pak workloads in the environment.
+    - Running the Storage Validation and Storage Performance Validation on an airgap environment is not supported.${RESET}"
     echo
+    
+    # Check if storage validation flag was provided
+    if [[ -n "${RUN_STORAGE_VALIDATION:-}" && "${RUN_STORAGE_VALIDATION}" == "yes" ]]; then
+        run_storage="yes"
+        echo "Storage Validation: yes (from command line flag)"
+    else
+        run_storage="no"
+    fi
 
-    read -p "Run Storage Validation? (yes/no) [default: no]: " run_storage
-    run_storage=${run_storage:-no}
-    run_storage=$(echo "$run_storage" | tr '[:upper:]' '[:lower:]')
-
-    read -p "Run Storage Performance Validation? (yes/no) [default: no]: " run_perf
-    run_perf=${run_perf:-no}
-    run_perf=$(echo "$run_perf" | tr '[:upper:]' '[:lower:]')
+    # Check if storage performance validation flag was provided
+    if [[ -n "${RUN_STORAGE_PERFORMANCE_VALIDATION:-}" && "${RUN_STORAGE_PERFORMANCE_VALIDATION}" == "yes" ]]; then
+        run_perf="yes"
+        echo "Storage Performance Validation: yes (from command line flag)"
+    else
+        run_perf="no"
+    fi
 }
 
 
@@ -184,12 +235,12 @@ function cleanup_storage_resources() {
     source "${CUR_DIR}/helper/common.sh"
     local ns="$1"
 
-    echo -e "\n${YELLOW}${BOLD}Next step: Cleaning up resources created for storage validation${RESET}"
-    echo -e "${YELLOW}Note: This will remove specific resources created for Storage Validation in the namespace '$ns'.${RESET}"
+    printf '%b\n' "\n${YELLOW}${BOLD}Next step: Cleaning up resources created for storage validation${RESET}"
+    printf '%b\n' "${YELLOW}Note: This will remove specific resources created for Storage Validation in the namespace '$ns'.${RESET}"
     read -p "Type 'yes' or 'y' to proceed, anything else to cancel: " confirm
 
     if [[ "$confirm" =~ ^([yY]|[yY][eE][sS])$ ]]; then
-        echo -e "\n${WHITE}${BOLD}Cleaning up Storage Validation resources in namespace: $ns${RESET}"
+        printf '%b\n' "\n${WHITE}${BOLD}Cleaning up Storage Validation resources in namespace: $ns${RESET}"
 
         ${CLI_CMD} get jobs -n "$ns" --no-headers | awk '/^readiness-|^sysbench-/{print $1}' | \
             xargs -r ${CLI_CMD} delete job -n "$ns" --ignore-not-found
@@ -205,7 +256,7 @@ function cleanup_storage_resources() {
 
         success "Cleanup completed successfully"
     else
-        echo -e "Cleanup skipped."
+        printf '%b\n' "Cleanup skipped."
     fi
 }
 
@@ -213,7 +264,22 @@ function cleanup_storage_resources() {
 # Update params.yml only if storage selected
 function run_storage_validation() {
           CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+          
+          # Save user's locale before sourcing common.sh (which sets LC_ALL=C)
+          USER_LC_ALL="${LC_ALL:-}"
+          USER_LANG="${LANG:-}"
+          
           source "${CUR_DIR}/helper/common.sh"
+          
+          # Restore UTF-8 locale for Ansible compatibility
+          if [[ "$USER_LC_ALL" =~ UTF-8|utf8 ]]; then
+            export LC_ALL="$USER_LC_ALL"
+            export LC_CTYPE="$USER_LC_ALL"
+          elif [[ "$USER_LANG" =~ UTF-8|utf8 ]]; then
+            export LC_ALL="$USER_LANG"
+            export LC_CTYPE="$USER_LANG"
+          fi
+          
           local STORAGE_NS="$1"
           PARAMS_FILE="$STORAGE_DIR/k8s-storage-tests/params.yml"
           OCP_URL=$(${CLI_CMD} whoami --show-server)
@@ -239,32 +305,32 @@ function run_storage_validation() {
                 
               cd "$STORAGE_REPO_DIR" || exit 1
 
-              echo -e "\n${WHITE}${BOLD}Running Storage Validation Playbook...${RESET}"
+              printf '%b\n' "\n${WHITE}${BOLD}Running Storage Validation Playbook...${RESET}"
               export K8S_AUTH_VERIFY_SSL=no
 
-              echo -e "\n${WHITE}${BOLD}Storage Validation Results:${RESET}"
+              printf '%b\n' "\n${WHITE}${BOLD}Storage Validation Results:${RESET}"
               ansible-playbook main.yml --extra-vars "@params.yml" 2>&1 | tee "$LOG_FILE" | \
               while IFS= read -r line; do
                   if [[ $line =~ \"msg\":\ \"######################## ]]; then
                       clean_line=$(echo "$line" | sed -E 's/.*"msg": ?"//; s/"$//')
-                      echo -ne "\r\033[K"
+                      printf '%b' "\r\033[K"
                       if [[ $clean_line =~ PASSED ]]; then
-                          echo -e "\033[32m$clean_line\033[0m"  # green
+                          printf '%b\n' "\033[32m$clean_line\033[0m"  # green
                       elif [[ $clean_line =~ FAILED ]]; then
-                          echo -e "\033[31m$clean_line\033[0m"  # red
+                          printf '%b\n' "\033[31m$clean_line\033[0m"  # red
                       else
                           echo "$clean_line"
                       fi
                   elif [[ $line =~ ^PLAY\ RECAP ]]; then
-                      echo -ne "\r\033[K"
+                      printf '%b' "\r\033[K"
                       echo
-                      echo -e "\033[32m$line\033[0m"
+                      printf '%b\n' "\033[32m$line\033[0m"
                       if read -r nextline; then
-                          echo -e "\033[32m$nextline\033[0m"
+                          printf '%b\n' "\033[32m$nextline\033[0m"
                       fi
                       break
                   else
-                      echo -ne "\rValidating Storage\033[5;37m...\033[0m   "
+                      printf '%b' "\rValidating Storage\033[5;37m...\033[0m   "
                       sleep 0.3
                   fi
               done
@@ -305,8 +371,8 @@ function run_perf_validation() {
     IMAGE_TO_CHECK="quay.io/ibm-cp4d-public/xsysbench:1.1"
     TEMP_NS="image-check-$(date +%s)"
     
-    echo -e "\n\033[1;37mRunning Storage Performance Validation:\033[0m"
-    echo -e "Validating access to $IMAGE_TO_CHECK ..."
+    printf '%b\n' "\n\033[1;37mRunning Storage Performance Validation:\033[0m"
+    printf '%b\n' "Validating access to $IMAGE_TO_CHECK ..."
     ${CLI_CMD} create namespace "$TEMP_NS" >/dev/null 2>&1
 
     cat <<EOF | ${CLI_CMD} apply -n "$TEMP_NS" -f - >/dev/null 2>&1
@@ -321,25 +387,46 @@ spec:
     command: ["sleep", "60"]
   restartPolicy: Never
 EOF
-    sleep 10
-    STATUS=$(${CLI_CMD} get pod image-pull-test -n "$TEMP_NS" -o jsonpath='{.status.phase}')
+
+    # Wait up to 60 seconds for pod to start or fail
+    MAX_WAIT=60
+    ELAPSED=0
+    while [ $ELAPSED -lt $MAX_WAIT ]; do
+        STATUS=$(${CLI_CMD} get pod image-pull-test -n "$TEMP_NS" -o jsonpath='{.status.phase}' 2>/dev/null)
+        CONTAINER_STATUS=$(${CLI_CMD} get pod image-pull-test -n "$TEMP_NS" -o jsonpath='{.status.containerStatuses[0].state.waiting.reason}' 2>/dev/null)
+        
+        # Check if pod is running or succeeded
+        if [[ "$STATUS" == "Running" || "$STATUS" == "Succeeded" ]]; then
+            break
+        fi
+        
+        # Check for image pull errors
+        if [[ "$CONTAINER_STATUS" == "ImagePullBackOff" || "$CONTAINER_STATUS" == "ErrImagePull" ]]; then
+            break
+        fi
+        
+        sleep 5
+        ELAPSED=$((ELAPSED + 5))
+    done
+
     ${CLI_CMD} delete namespace "$TEMP_NS" &>/dev/null
 
-    if [[ "$STATUS" != "Running" && "$STATUS" != "Succeeded" ]]; then
-        echo -e "\n\033[1;31mThe cluster does NOT have access to the required container image: $IMAGE_TO_CHECK\033[0m"
-        echo -e "\n\033[1;37m[NOTE:] This storage performance test suite relies on a container image: $IMAGE_TO_CHECK\033[0m"
-        echo -e "\033[1;37mThis image may not be directly accessible on an airgap cluster.\033[0m"
-        echo -e "\033[1;37mTo resolve this, follow the steps below to download the image onto an intermediary host and then copy it to the airgap cluster's private registry:\033[0m"
+    # Only show airgap message if image pull actually failed
+    if [[ "$CONTAINER_STATUS" == "ImagePullBackOff" || "$CONTAINER_STATUS" == "ErrImagePull" ]]; then
+        printf '%b\n' "\n\033[1;31mThe cluster does NOT have access to the required container image: $IMAGE_TO_CHECK\033[0m"
+        printf '%b\n' "\n\033[1;37m[NOTE:] This storage performance test suite relies on a container image: $IMAGE_TO_CHECK\033[0m"
+        printf '%b\n' "\033[1;37mThis image may not be directly accessible on an airgap cluster.\033[0m"
+        printf '%b\n' "\033[1;37mTo resolve this, follow the steps below to download the image onto an intermediary host and then copy it to the airgap cluster's private registry:\033[0m"
         echo
         echo "Please refer to the topic 'Storage Validation and Storage Performance Validation': https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/${CP4BA_RELEASE_BASE}?topic=pycc-recommended-preparing-databases-secrets-your-chosen-capabilities-by-running-script"
        
-        echo -e "\n\033[1;37m# On an intermediary host that can access the image\033[0m"
+        printf '%b\n' "\n\033[1;37m# On an intermediary host that can access the image\033[0m"
         echo "podman pull $IMAGE_TO_CHECK"
         echo "podman save -o xsysbench-1.1.tar $IMAGE_TO_CHECK"
 
-        echo -e "\n\033[1;37m# Copy the tar file to your airgap cluster\033[0m"
+        printf '%b\n' "\n\033[1;37m# Copy the tar file to your airgap cluster\033[0m"
 
-        echo -e "\n\033[1;37m# On the airgap cluster\033[0m"
+        printf '%b\n' "\n\033[1;37m# On the airgap cluster\033[0m"
         echo "podman load -i xsysbench-1.1.tar"
         echo "podman tag \"$IMAGE_TO_CHECK\" <private-registry>/ibm-cp4d-public/xsysbench:1.1"
         echo "podman tag \"$IMAGE_TO_CHECK\" <private-registry>/ibm-cp4d-public/xsysbench:1.1-amd64"
@@ -347,34 +434,49 @@ EOF
         echo "podman push <private-registry>/ibm-cp4d-public/xsysbench:1.1"
         echo "podman push <private-registry>/ibm-cp4d-public/xsysbench:1.1-amd64"
 
-        echo -e "\n\033[1;37mModify imageurl: in $PERF_REPO_DIR/params-all-metrics.yml file to\033[0m"
+        printf '%b\n' "\n\033[1;37mModify imageurl: in $PERF_REPO_DIR/params-all-metrics.yml file to\033[0m"
         echo "imageurl: <private-registry>/ibm-cp4d-public/xsysbench:1.1"
 
-        echo -e "\n\033[1;37mAfter completing the above Loading and Pushing image steps, run the storage performance validation using:\033[0m"
+        printf '%b\n' "\n\033[1;37mAfter completing the above Loading and Pushing image steps, run the storage performance validation using:\033[0m"
 
         # Prompt user to run the script
-        echo -e "./cp4a-storage-validation.sh -m run_storage_performance -n $STORAGE_NS\n"
+        printf '%b\n' "./cp4a-prerequisites.sh -m validate -n $STORAGE_NS --run-storage-performance-validation\n"
         return
      fi
         # -----------------------------------------------------------------
-        echo -e "\n\033[1;37mImage is accessible from the cluster. Running the storage performance validation:\033[0m"
+        printf '%b\n' "\n\033[1;37mImage is accessible from the cluster. Running the storage performance validation:\033[0m"
         run_storage_performance $STORAGE_NS
 
 }
 
 function run_storage_performance() {
     CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    
+    # Save user's locale before sourcing common.sh (which sets LC_ALL=C)
+    USER_LC_ALL="${LC_ALL:-}"
+    USER_LANG="${LANG:-}"
+    
     source "${CUR_DIR}/helper/common.sh"
+    
+    # Restore UTF-8 locale for Ansible compatibility
+    if [[ "$USER_LC_ALL" =~ UTF-8|utf8 ]]; then
+        export LC_ALL="$USER_LC_ALL"
+        export LC_CTYPE="$USER_LC_ALL"
+    elif [[ "$USER_LANG" =~ UTF-8|utf8 ]]; then
+        export LC_ALL="$USER_LANG"
+        export LC_CTYPE="$USER_LANG"
+    fi
+    
     local STORAGE_NS="$1"
     export K8S_AUTH_VERIFY_SSL=no
 
     cleanup_storage_performance_resources() {
-        echo -e "\n\033[1mNext step: Cleaning up resources created for storage performance validation\033[0m"
-        echo -e "Note: This will remove all resources created for storage performance validation in the namespace '$STORAGE_NS'.\033[0m"
+        printf '%b\n' "\n\033[1mNext step: Cleaning up resources created for storage performance validation\033[0m"
+        printf '%b\n' "Note: This will remove all resources created for storage performance validation in the namespace '$STORAGE_NS'.\033[0m"
         read -p "Type 'yes' or 'y' to proceed, anything else to cancel: " confirm
 
         if [[ "$confirm" =~ ^([yY]|[yY][eE][sS])$ ]]; then
-            echo -e "\n\033[1;37mCleaning up storage performance validation resources in namespace: $STORAGE_NS\033[0m"
+            printf '%b\n' "\n\033[1;37mCleaning up storage performance validation resources in namespace: $STORAGE_NS\033[0m"
 
             ${CLI_CMD} get jobs -n "$STORAGE_NS" --no-headers | awk '/^readiness-|^sysbench-/{print $1}' | \
             xargs -r ${CLI_CMD} delete job -n "$STORAGE_NS" --ignore-not-found
@@ -390,7 +492,7 @@ function run_storage_performance() {
 
             success "Cleanup completed successfully"
         else
-            echo -e "Cleanup skipped."
+            printf '%b\n' "Cleanup skipped."
         fi
     }
    
@@ -407,20 +509,20 @@ function run_storage_performance() {
     ansible-playbook main.yml --extra-vars "@params-all-metrics.yml" 2>&1 | tee "$PERF_LOG_FILE" | \
     while IFS= read -r line; do
         if [[ $line =~ TASK\ \[storage-perf-test\ : ]]; then
-            echo -ne "\r\033[K"
+            printf '%b' "\r\033[K"
             echo "$line"
 
         elif [[ $line =~ ^PLAY\ RECAP ]]; then
             # Clear line and print PLAY RECAP in bold white
-            echo -ne "\r\033[K"
+            printf '%b' "\r\033[K"
             echo
-            echo -e "\033[1;37;1m$line\033[0m"
+            printf '%b\n' "\033[1;37;1m$line\033[0m"
             if read -r nextline; then
-                echo -e "\033[1;37;1m$nextline\033[0m"
+                printf '%b\n' "\033[1;37;1m$nextline\033[0m"
             fi
 
         else
-            echo -ne "\rValidating Storage Performance\033[5;37m...\033[0m   "
+            printf '%b' "\rValidating Storage Performance\033[5;37m...\033[0m   "
             sleep 0.3
         fi
     done
@@ -432,17 +534,35 @@ function run_storage_performance() {
     CSV_FILE="result.csv"
     EXCEL_FILE="storage_performance_results.xls"
 
+    # Check in current directory and parent directory
     if [[ -f "$TAR_FILE" ]]; then
-        echo -e "\nExtracting $TAR_FILE..."
+        printf '%b\n' "\nExtracting $TAR_FILE..."
         tar -xf "$TAR_FILE"
         echo "Extraction completed."
+    elif [[ -f "../$TAR_FILE" ]]; then
+        printf '%b\n' "\nExtracting ../$TAR_FILE..."
+        tar -xf "../$TAR_FILE"
+        echo "Extraction completed."
     else
-        echo "Error: $TAR_FILE not found."
-        return 1
+        printf '%b\n' "\n\033[1;33mWarning: $TAR_FILE not found in expected locations.\033[0m"
+        printf '%b\n' "The performance validation may have completed, but results file was not generated."
+        printf '%b\n' "Check the log file for details: ${PERF_LOG_FILE}"
+        
+        # Try to find CSV directly
+        if [[ -f "$CSV_FILE" ]]; then
+            printf '%b\n' "Found $CSV_FILE directly, proceeding with Excel conversion..."
+        else
+            printf '%b\n' "No results files found. Please check the Ansible playbook logs."
+            return 1
+        fi
     fi
 
     # ----------------- Convert CSV to Excel XML -----------------
     if [[ -f "$CSV_FILE" ]]; then
+        # First, clean the CSV file of carriage returns
+        tr -d '\r' < "$CSV_FILE" > "${CSV_FILE}.clean"
+        mv "${CSV_FILE}.clean" "$CSV_FILE"
+        
         {
         echo '<?xml version="1.0"?>'
         echo '<?mso-application progid="Excel.Sheet"?>'
@@ -453,9 +573,13 @@ function run_storage_performance() {
         echo ' <Worksheet ss:Name="StoragePerf">'
         echo '  <Table>'
         while IFS= read -r line; do
+            # Skip empty lines
+            [[ -z "$line" ]] && continue
             echo '   <Row>'
             IFS=',' read -ra cols <<< "$line"
             for col in "${cols[@]}"; do
+                # Escape XML special characters and trim whitespace
+                col=$(echo "$col" | sed 's/&/\&/g; s/</\</g; s/>/\>/g; s/"/\"/g' | xargs)
                 echo "    <Cell><Data ss:Type=\"String\">$col</Data></Cell>"
             done
             echo '   </Row>'
@@ -465,8 +589,8 @@ function run_storage_performance() {
         echo '</Workbook>'
         } > "$EXCEL_FILE"
         
-        echo -e "You can view the storage performance test results in CSV file: $CSV_FILE"
-        echo -e "\nYou can also view the same storage performance test results in Excel file: $EXCEL_FILE"
+        printf '%b\n' "You can view the storage performance test results in CSV file: $CSV_FILE"
+        printf '%b\n' "\nYou can also view the same storage performance test results in Excel file: $EXCEL_FILE"
     else
         echo "Error: $CSV_FILE not found. Cannot convert to Excel."
     fi
@@ -492,13 +616,13 @@ function storage_and_performance_validation() {
         NAMESPACE=$(${CLI_CMD} project --short 2>/dev/null || echo "default")
     fi
     if ! ${CLI_CMD} get namespace "$NAMESPACE" &>/dev/null; then
-        echo -e "\nError: Namespace '$NAMESPACE' does not exist in the cluster"
+        printf '%b\n' "\nError: Namespace '$NAMESPACE' does not exist in the cluster"
         return 1
     fi
 
     prompt_user_for_validation
     if [[ "$run_storage" != "yes" && "$run_storage" != "y" && "$run_perf" != "yes" && "$run_perf" != "y" ]]; then
-    echo -e "\n${WHITE}${BOLD}You did not select any Storage Validation or storage performance validation to run.${RESET}"
+    printf '%b\n' "\n${WHITE}${BOLD}You did not select any Storage Validation or storage performance validation to run.${RESET}"
     return
     fi
     check_prerequisites   
@@ -528,11 +652,11 @@ function performance_validation(){
 
     # Validate namespace exists in the cluster
     if ! ${CLI_CMD} get namespace "$NAMESPACE" &>/dev/null; then
-        echo -e "\nError: Namespace '$NAMESPACE' does not exist in the cluster"
+        printf '%b\n' "\nError: Namespace '$NAMESPACE' does not exist in the cluster"
         return 1
     fi
     
-  echo -e "\n${WHITE}${BOLD}Now Storage Performance Validation will be performed...${RESET}"
+  printf '%b\n' "\n${WHITE}${BOLD}Now Storage Performance Validation will be performed...${RESET}"
   check_prerequisites 
   run_perf_validation $NAMESPACE
 }
@@ -541,7 +665,7 @@ function storage_validation(){
   local NAMESPACE="$1"
   CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
   source "${CUR_DIR}/helper/common.sh"
-  echo -e "\n${WHITE}${BOLD}Now Storage Validation will be performed...${RESET}"
+  printf '%b\n' "\n${WHITE}${BOLD}Now Storage Validation will be performed...${RESET}"
   
   STORAGE_DIR="storage-validation"
   STORAGE_REPO_DIR="${STORAGE_DIR}/k8s-storage-tests"
@@ -574,18 +698,18 @@ function storage_and_performance_validation_tests() {
     WHITE='\033[1;37m'
     BOLD='\033[1m'
     RESET='\033[0m'
-    echo -e "\n${WHITE}${BOLD}No validation option was selected.${RESET}"
-    echo -e "${WHITE}${BOLD}If you want to run Storage Validation and Storage Performance Validation later, you can do so by executing below command:${RESET}"
+    printf '%b\n' "\n${WHITE}${BOLD}No validation option was selected.${RESET}"
+    printf '%b\n' "${WHITE}${BOLD}If you want to run Storage Validation and Storage Performance Validation later, you can do so by executing below command:${RESET}"
     echo
-    echo -e "./cp4a-storage-validation.sh -m storage_and_performance_validation -n ${TARGET_PROJECT_NAME}\n"
+    printf '%b\n' "./cp4a-prerequisites.sh -m validate -n ${TARGET_PROJECT_NAME} --run-storage-validation --run-storage-performance-validation\n"
     return
   fi
     
        # ------------------ Case 2: Only storage ------------------
   if [[ ( "$run_storage" = "yes" || "$run_storage" = "y" ) && "$run_perf" != "yes" && "$run_perf" != "y" ]]; then
-    echo -e "\n${WHITE}${BOLD}Now Storage validation will be performed...${RESET}"
-    echo -e "${WHITE}${BOLD}If you want to run storage performance validation later, execute:${RESET}"
-    echo -e "./cp4a-storage-validation.sh -m performance_validation -n ${TARGET_PROJECT_NAME}\n"
+    printf '%b\n' "\n${WHITE}${BOLD}Now Storage validation will be performed...${RESET}"
+    printf '%b\n' "${WHITE}${BOLD}If you want to run storage performance validation later, execute:${RESET}"
+    printf '%b\n' "./cp4a-prerequisites.sh -m validate -n ${TARGET_PROJECT_NAME} --run-storage-performance-validation\n"
     check_prerequisites
     run_storage_validation $NAMESPACE
     return
@@ -593,15 +717,15 @@ function storage_and_performance_validation_tests() {
 
   # ------------------ Case 3: Only performance ------------------
 if [[ ( "$run_perf" = "yes" || "$run_perf" = "y" ) && "$run_storage" != "yes" && "$run_storage" != "y" ]]; then
-    echo -e "\n${WHITE}${BOLD}Now Storage Performance Validation will be performed...${RESET}"
-    echo -e "${WHITE}${BOLD}If you want to run Storage Validation later, execute:${RESET}"
-    echo -e "./cp4a-storage-validation.sh -m storage_validation -n ${TARGET_PROJECT_NAME} \n"
+    printf '%b\n' "\n${WHITE}${BOLD}Now Storage Performance Validation will be performed...${RESET}"
+    printf '%b\n' "${WHITE}${BOLD}If you want to run Storage Validation later, execute:${RESET}"
+    printf '%b\n' "./cp4a-prerequisites.sh -m validate -n ${TARGET_PROJECT_NAME} --run-storage-validation\n"
     check_prerequisites
     run_perf_validation $NAMESPACE
     return
   fi
   # ------------------ Case 4: Both selected ------------------
-   echo -e "\n${WHITE}${BOLD}Now Storage Validation and Storage Performance Validation will be performed...${RESET}"
+   printf '%b\n' "\n${WHITE}${BOLD}Now Storage Validation and Storage Performance Validation will be performed...${RESET}"
     check_prerequisites
     run_storage_validation $NAMESPACE
     run_perf_validation $NAMESPACE
@@ -631,7 +755,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
                 shift 2
                 ;;
             *)
-                echo -e "\nError: Unknown option '$1'"
+                printf '%b\n' "\nError: Unknown option '$1'"
                 show_help
                 exit 1
                 ;;
@@ -640,21 +764,21 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 
     # Validate mode
     if ! declare -f "$MODE" >/dev/null; then
-        echo -e "\nError: Unknown mode '$MODE'"
+        printf '%b\n' "\nError: Unknown mode '$MODE'"
         show_help
         exit 1
     fi
 
     # Namespace required
     if [[ -z "$NAMESPACE" ]]; then
-        echo -e "\nError: Missing required '-n <CP4BA_NAMESPACE>' argument."
+        printf '%b\n' "\nError: Missing required '-n <CP4BA_NAMESPACE>' argument."
         show_help
         exit 1
     fi
     
     # Validate namespace existence in cluster
     if ! ${CLI_CMD} get ns "$NAMESPACE" >/dev/null 2>&1; then
-        echo -e "\nError: Namespace '$NAMESPACE' does not exist in the cluster."
+        printf '%b\n' "\nError: Namespace '$NAMESPACE' does not exist in the cluster."
         show_help
         exit 1
     fi

@@ -261,12 +261,12 @@ done
 if [ -z "${runtimeUseZen}" ] || [ "${runtimeUseZen}" != true ]
  then
 	CMD="./helper_getUMSToken.sh --acceptLanguage ${acceptLanguage} --url ${runtimeUmsUrl} --id ${runtimeUmsClientId} --secret ${runtimeUmsClientSecret} --usr ${runtimeUser} --pwd ${runtimePwd}"
-	echo Getting RunTime UMSToken ... 
+	echo "Getting RunTime UMSToken ... "
 	#${CMD}
 	RUN_BEARER=$(${CMD})
  else
 	CMD="./helper_getZENToken.sh --acceptLanguage ${acceptLanguage} --iamurl ${runtimeZenIamUrl} --zenurl ${runtimeZenUrl} --usr ${runtimeUser} --pwd ${runtimePwd}"
-	echo Getting RunTime ZENToken ...
+	echo "Getting RunTime ZENToken ..."
 	#${CMD}
 	RUN_BEARER=$(${CMD})
 fi
@@ -276,12 +276,12 @@ fi
 if [ -z "${devUseZen}" ] || [ "${devUseZen}" != true ]
  then
 	CMD="./helper_getUMSToken.sh --acceptLanguage ${acceptLanguage} --url ${devUmsUrl} --id ${devUmsClientId} --secret ${devUmsClientSecret} --usr ${devUser} --pwd ${devPwd}"
-	echo Getting Dev UMSToken ... 
+	echo "Getting Dev UMSToken ... "
 	#${CMD}
 	DEV_BEARER=$(${CMD})
  else
 	CMD="./helper_getZENToken.sh --acceptLanguage ${acceptLanguage} --iamurl ${devZenIamUrl} --zenurl ${devZenUrl} --usr ${devUser} --pwd ${devPwd}"
-	echo Getting Dev ZENToken ...
+	echo "Getting Dev ZENToken ..."
 	#${CMD}
 	DEV_BEARER=$(${CMD})
 fi
@@ -289,8 +289,8 @@ fi
 
 # Call CPDS deploy REST pass in both bearer tokens with different header
 #set -x
-echo Deploying project ...
-echo If deployment takes a long time, 
+echo "Deploying project ..."
+echo "If deployment takes a long time, "
 echo 1. You can run cpds_getDeployedProjSnapshot.sh to return the overview information about the deployed project version.
 echo 2. You can run cpds_getDeploymentRec.sh, pass in a deploymentRecordId from in the previous step retrieved lastDeploymentRecordId value, to retrieve detailed progress.
 curl -X POST --header "Accept-Language:${acceptLanguage}" --header 'Content-Type:application/json' --header "X-DBA-DEVToken: ${DEV_BEARER}" --header 'Accept:application/json' --header "Authorization:Bearer ${RUN_BEARER}" -w '\nReturn Code=%{http_code}\n\n' "${runtimeCpdsUrl}/ibm-dba-content-deployment/v1/deployment/projects/${projectName}/branches/master/snapshots/${snapshotVersion}?repositoryIdentifier=${runtimeObjectStore}" -k

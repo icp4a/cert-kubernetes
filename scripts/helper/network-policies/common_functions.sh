@@ -65,7 +65,7 @@ function get_pod_name_by_label_name () {
     
     local pod_name=$(${CLI_CMD} get pod -l=${pod_label} -n ${pod_namespace} --no-headers | awk '{print $1}')
     
-    echo ${pod_name}
+    echo "${pod_name}"
 
 }
 

@@ -147,8 +147,8 @@ function prereq() {
                 error "Missing value for one or more of OPERATOR_NAMESPACE, SERVICES_NS, BACKUP_STORAGE_LOCATION_NAME, STORAGE_BUCKET_NAME, S3_URL, STORAGE_SECRET_ACCESS_KEY, STORAGE_SECRET_ACCESS_KEY_ID, CERT_MANAGER_NAMESPACE, LICENSING_NAMESPACE, LSR_NAMESPACE, CPFS_VERSION, ZENSERVICE_NAME. Please update env.properties file with correct parameters and rerun."
             fi
         elif [[ $RESTORE_SETUP == "true" ]]; then
-            if [[ -z $HUB_OC_TOKEN ]] || [[ -z $HUB_SERVER ]] || [[ -z $SPOKE_OC_TOKEN ]] || [[ -z $SPOKE_SERVER ]]; then
-                error "Missing value for one or more of HUB_OC_TOKEN, HUB_SERVER, SPOKE_OC_TOKEN, SPOKE_SERVER. Please update env.properties file with correct parameters and rerun."
+            if [[ -z $HUB_USERNAME ]] || [[ -z $HUB_PASSWORD ]] || [[ -z $HUB_SERVER ]] || [[ -z $SPOKE_USERNAME ]] || [[ -z $SPOKE_PASSWORD ]] || [[ -z $SPOKE_SERVER ]]; then
+                error "Missing value for one or more of HUB_USERNAME, HUB_PASSWORD, HUB_SERVER, SPOKE_USERNAME, SPOKE_PASSWORD, SPOKE_SERVER. Please update env.properties file with correct parameters and rerun."
             fi
         fi
     fi
@@ -221,16 +221,16 @@ function install_sf_br(){
         error="false"
         info "Connecting to spoke cluster $SPOKE_SERVER"
         #oc login to spoke cluster
-        ${OC} login --token=$SPOKE_OC_TOKEN --server=$SPOKE_SERVER --insecure-skip-tls-verify=true
+        ${OC} login -u $SPOKE_USERNAME -p $SPOKE_PASSWORD --server=$SPOKE_SERVER --insecure-skip-tls-verify=true
         validate_sc
         ./cmd-line-install/install/install-isf-br.sh -s $catalog_image -n $SF_NAMESPACE || error="true"
         if [[ $error == "true" ]]; then
-            ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true
+            ${OC} login -u $HUB_USERNAME -p $HUB_PASSWORD --server=$HUB_SERVER --insecure-skip-tls-verify=true
             error "SF install script failed to install on spoke cluster. Logging back into hub cluster $HUB_SERVER."
         fi
         info "Connecting to hub cluster $HUB_SERVER"
         #oc login to the hub cluster
-        ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true
+        ${OC} login -u $HUB_USERNAME -p $HUB_PASSWORD --server=$HUB_SERVER --insecure-skip-tls-verify=true
         apiurl=$(oc whoami --show-server)
         cluster=$(echo $apiurl | cut -d":" -f2 | tr -d /)
         file=spokes_$cluster.yaml
@@ -240,12 +240,12 @@ function install_sf_br(){
         
         info "Re-connecting to spoke cluster $SPOKE_SERVER"
         #oc login to spoke cluster
-        ${OC} login --token=$SPOKE_OC_TOKEN --server=$SPOKE_SERVER --insecure-skip-tls-verify=true
+        ${OC} login -u $SPOKE_USERNAME -p $SPOKE_PASSWORD --server=$SPOKE_SERVER --insecure-skip-tls-verify=true
         info "Applying spoke yaml..."
         #apply generated yaml file
         ${OC} apply -f $work_dir/$file || error="true"
         if [[ $error == "true" ]]; then
-            ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true
+            ${OC} login -u $HUB_USERNAME -p $HUB_PASSWORD --server=$HUB_SERVER --insecure-skip-tls-verify=true
             error "Failed to apply spoke yaml on spoke cluster $SPOKE_SERVER. Logging back into hub cluster $HUB_SERVER."
         fi
         info "Waiting for BR Agent service to install on spoke cluster $SPOKE_SERVER..."
@@ -265,13 +265,13 @@ function install_sf_br(){
             fi
         done
         if [[ $(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]] && [[ $retries == 0 ]]; then
-            ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true
+            ${OC} login -u $HUB_USERNAME -p $HUB_PASSWORD --server=$HUB_SERVER --insecure-skip-tls-verify=true
             error "Timed out waiting for agent service install to come ready on spoke cluster $SPOKE_SERVER. Reconnecting to hub cluster $HUB_SERVER."
         fi
         
         info "Re-connecting to hub cluster $HUB_SERVER"
         #oc login to the hub cluster
-        ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true
+        ${OC} login -u $HUB_USERNAME -p $HUB_PASSWORD --server=$HUB_SERVER --insecure-skip-tls-verify=true
         success "Spectrum Fusion and Backup and Restore Spoke Service installed."
     fi
 
