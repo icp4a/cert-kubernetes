@@ -154,7 +154,6 @@ elif [ -z "${isInstalled}"  ]; then
 fi
 
 printHeaderMessage "CP4BA Upgrade Status - ADS"
-echo "ADS Build Service Upgrade Status            :  ${CP4BA_ADS_BUILD_SERVICE_DEPLOYMENT_STATUS}"
 echo "ADS Credentials Service Upgrade Status      :  ${CP4BA_ADS_CREDENTIALS_SERVICE_DEPLOYMENT_STATUS}"
 echo "ADS GitService Upgrade Status               :  ${CP4BA_ADS_GIT_SERVICE_DEPLOYMENT_STATUS}"
 echo "ADS Ltpa Creation Upgrade Status            :  ${CP4BA_ADS_LTPA_CREATION_DEPLOYMENT_STATUS}"

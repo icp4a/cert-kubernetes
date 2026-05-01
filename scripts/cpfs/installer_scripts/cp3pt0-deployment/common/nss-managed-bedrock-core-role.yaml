@@ -714,6 +714,8 @@ rules:
       - kafkabridges/finalizers
       - kafkamirrormaker2s/finalizers
       - kafkarebalances/finalizers
+      - kafkatopics/finalizers
+      - kafkausers/finalizers
   - verbs:
       - get
       - list

@@ -10,6 +10,10 @@
 # DISCLOSURE RESTRICTED BY GSA ADP SCHEDULE CONTRACT WITH IBM CORP.
 #
 ###############################################################################
+
+# Open file descriptor 3 for suppressing output
+exec 3>/dev/null
+
 function verify_storage_class_valid(){
   local STORAGE_CLASS_SAMPLE=$TEMP_FOLDER/.storage_sample.yaml
   local sc_name=$1
@@ -41,7 +45,7 @@ EOF
     #     printf '%b\n' "\x1B[1;31mFailed\x1B[0m"
     # fi
    # Check Operator Persistent Volume status every 5 seconds (max 1 minutes) until allocate.
-    ${CLI_CMD} apply -f ${STORAGE_CLASS_SAMPLE} >/dev/null 2>&1
+    ${CLI_CMD} apply -f ${STORAGE_CLASS_SAMPLE} >&3 2>&3
     ATTEMPTS=0
     TIMEOUT=12
     printf "\n"
@@ -62,8 +66,8 @@ EOF
             printf "\n"
     fi
     #DBACLD-197700: Clean up sample PVC regardless of pass or fail
-    ${CLI_CMD} delete -f ${STORAGE_CLASS_SAMPLE} >/dev/null 2>&1
-    rm -rf ${STORAGE_CLASS_SAMPLE} >/dev/null 2>&1
+    ${CLI_CMD} delete -f ${STORAGE_CLASS_SAMPLE} >&3 2>&3
+    rm -rf ${STORAGE_CLASS_SAMPLE} >&3 2>&3
 }
 
 # https://jsw.ibm.com/browse/DBACLD-176287

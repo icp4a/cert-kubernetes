@@ -14,6 +14,9 @@ export LC_CTYPE=C
 #
 ###############################################################################
 
+# Open file descriptor 3 for suppressing output
+exec 3>/dev/null
+
 # This script contains shared utility functions and environment variables.
 # CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
@@ -162,31 +165,31 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 # Release/Patch version for CP4BA
 # CP4BA_RELEASE_BASE is for fetch content/foundation operator pod, only need to change for major release.
 CP4BA_RELEASE_BASE="24.0.0"
-CP4BA_PATCH_VERSION="IF008"
+CP4BA_PATCH_VERSION="IF009"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v24.0.8"
+CP4BA_CSV_VERSION="v24.0.9"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
 CP4BA_CHANNEL_VERSION="v24.0"
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.6.20"
+CS_OPERATOR_VERSION="v4.6.21"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
 CS_CHANNEL_VERSION="v4.6"
 # CERT_LICENSE_OPERATOR_VERSION is for checking IBM cert-manager/licensing operator upgrade status, need to update for each IFIX
-CERT_LICENSE_OPERATOR_VERSION="v4.2.19"
+CERT_LICENSE_OPERATOR_VERSION="v4.2.21"
 # CERT_LICENSE_CHANNEL_VERSION is for for IBM cert-manager/licensing script -c option, need to update for each IFIX
 CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
-CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-6-20"
+CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-6-21"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v5.1.19"
+ZEN_OPERATOR_VERSION="v5.1.20"
 # BTS_CHANNEL_VERSION is for for BTS, need to update for each IFIX
 BTS_CHANNEL_VERSION="v3.35"
-# BTS_CATALOG_VERSION is for BTS 3.35.7.
+# BTS_CATALOG_VERSION is for BTS 3.35.9.
 BTS_CATALOG_VERSION="bts-operator-v3-35"
 # REQUIREDVER_BTS is for checking bts operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_BTS="3.35.7"
+REQUIREDVER_BTS="3.35.9"
 # REQUIREDVER_POSTGRESQL is for checking postgresql operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_POSTGRESQL="1.25.1"
+REQUIREDVER_POSTGRESQL="1.25.5"
 # EVENTS_OPERATOR_VERSION is for checking IBM Events operator upgrade status, need to update for each IFIX
 EVENTS_OPERATOR_VERSION="v5.2.1"
 # List of CP4BA versions that are supported for upgrade to $CP4BA_CSV_VERSION
@@ -326,7 +329,7 @@ function validate_cli(){
             echo_bold "\"timeout\" Command Not Found\n"
             echo_bold "The \"timeout\" will be installed automatically\n"
             echo_bold "Do you accept (Yes/No, default: No):"
-            read -rp "" ans
+            read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 install_timeout_cli
@@ -498,6 +501,7 @@ GREEN_TEXT=`tput setaf 2`
 YELLOW_TEXT=`tput setaf 3`
 BLUE_TEXT=`tput setaf 6`
 WHITE_TEXT=`tput setaf 7`
+BOLD_TEXT=`tput bold`
 RESET_TEXT=`tput sgr0`
 
 printHeaderMessage()
@@ -716,18 +720,11 @@ function save_log(){
         mkdir -p "$LOG_DIR"
     fi
 
-    # Create a named pipe
-    PIPE=$(mktemp -u)
-    mkfifo "$PIPE"
+    # Redirect output to log-file
+    exec > >(tee -a "$LOG_FILE") 2>&1
 
-    # Tee the output to both the log file and the terminal
-    tee "$LOG_FILE" < "$PIPE" &
-
-    # Redirect stdout and stderr to the named pipe
-    exec > "$PIPE" 2>&1
-
-    # Remove the named pipe
-    rm "$PIPE"
+    # Open fd 3 directly to log file
+    exec 3>> "$LOG_FILE"
 
 }
 
@@ -1606,6 +1603,7 @@ function patch_strimzi_podset(){
             echo "- Removed: strimzi.io/kafka-version"
             echo "- Added: ibmevents.ibm.com/kafka-version: $kafka_annotation_value"
             strimzi_patched=true
+            DISPLAY_MANUAL_PATCH_STEPS=false
         # The code would only go into this block for an upgrade from 22.0.2 as there is no strimzipodset resource on those versions of events operator
         # https://jsw.ibm.com/browse/DBACLD-210631
         else
@@ -1622,6 +1620,7 @@ function patch_strimzi_podset(){
 
                 if [[ -z "$kafka_annotation_value" || "$kafka_annotation_value" == "null" ]]; then
                     strimzi_patched=true
+                    DISPLAY_MANUAL_PATCH_STEPS=false
                     return
                 fi
 
@@ -1635,6 +1634,7 @@ function patch_strimzi_podset(){
                 echo "- Removed: strimzi.io/kafka-version (metadata and template.metadata)"
                 echo "- Added: ibmevents.ibm.com/kafka-version: $kafka_annotation_value (metadata and template.metadata)"
                 strimzi_patched=true
+                DISPLAY_MANUAL_PATCH_STEPS=false
             else
                 echo "Neither StrimziPodSet nor StatefulSet 'iaf-system-kafka' found"
                 return
@@ -1830,4 +1830,42 @@ function validate_zen_upgrade_status(){
         echo "****************************************************************************"
         exit 1
     fi
+}
+
+
+# Function to check if all components are ready
+# This function parses the components status variable array defined in upgradeDeploymentStatus and checks for "Done" status
+# This is used as a part of upgrade
+# Check if all CP4BA components have completed upgrade
+# Returns: 0 if all installed components show "Done", 1 otherwise
+function check_if_all_components_are_ready() {
+    # Check all component status values in the array
+    for status_value in "${CP4BA_COMPONENT_STATUS_VALUES[@]}"; do
+
+        # Skip if empty or whitespace only
+        if [[ -z "$status_value" ]] || [[ "$status_value" =~ ^[[:space:]]*$ ]]; then
+            continue
+        fi
+
+        # Skip if "Not Installed"
+        if [[ "$status_value" =~ "Not Installed" ]]; then
+            continue
+        fi
+
+        # Check for non-ready states
+        if [[ "$status_value" =~ "In Progress" ]] || \
+           [[ "$status_value" =~ "Not Ready" ]] || \
+           [[ "$status_value" =~ "Failed" ]] || \
+           [[ "$status_value" =~ "Pending" ]] || \
+           [[ "$status_value" =~ "Upgrading" ]]; then
+            return 1  # Not ready
+        fi
+
+        # Must contain "Done" or "Ready"
+        if [[ ! "$status_value" =~ "Done" ]] && [[ ! "$status_value" =~ "Ready" ]]; then
+            return 1  # Not ready
+        fi
+    done
+
+    return 0  # All components ready
 }

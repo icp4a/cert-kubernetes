@@ -267,7 +267,7 @@ function select_project(){
         if [ -z "$CP4BA_AUTO_ALL_NAMESPACES" ]; then
             printf "\x1B[1mIs your $CP4BA_FULL_NAME Operator in a 'All Namespaces' scope? (Yes/No, default: No): \x1B[0m"
 
-            read -rp "" ans
+            read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 ALL_NAMESPACE="Yes"

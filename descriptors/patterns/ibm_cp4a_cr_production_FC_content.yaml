@@ -107,7 +107,7 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/common/dba-keytool-initcontainer
-        tag: "24.0.0-IF008"
+        tag: "24.0.0-IF009"
 
     ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
     ## based on input from the user.
@@ -236,9 +236,9 @@ spec:
     sc_service_ip_families:
 
     ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
-    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## By default, the sc_is_multiple_az parameter is set to true. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
-    sc_is_multiple_az: false
+    sc_is_multiple_az: true
 
     ## The global flag to enable or disable Pod Disruption Budget (PDB) creation across all components.  This flag can be overridden at specific configuration sections (eg: ecm_configuration.cpe.enable_pdb).  Default is true
     ## A PDB will be created with a `minAvailable: 1` only if the replica count of a particular deployment is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
@@ -600,6 +600,7 @@ spec:
       ## If you want PostgresDB to be created for a GCD database, set this parameter to true
       dc_use_postgres: false
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
       ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
@@ -657,6 +658,7 @@ spec:
     ## GCD configuration above.
     - dc_database_type: "<Required>"
       ## Provide the label for the CPE data source. The default value is "os" or not defined.
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
       ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
@@ -877,7 +879,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.0-IF008"
+        tag: "24.0.0-IF009"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1042,7 +1044,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "24.0.0-IF008"
+        tag: "24.0.0-IF009"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1149,7 +1151,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.0-IF008"
+        tag: "24.0.0-IF009"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1315,7 +1317,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.0-IF008"
+        tag: "24.0.0-IF009"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1439,7 +1441,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "24.0.0-IF008"
+        tag: "24.0.0-IF009"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1551,7 +1553,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "24.0.0-IF008"
+        tag: "24.0.0-IF009"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1703,7 +1705,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "24.0.0-IF008"
+      tag: "24.0.0-IF009"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -1938,6 +1940,12 @@ spec:
       ic_ldap_admins_groups_name:
       - "<Required>" # group name for P8 domain admin, for example, "P8Administrators".  This parameter accepts a list of values.
       ic_ldap_name: "ldap_name"
+      # Type of LDAP connection that is created.
+      # Set to "ADAM" only when initializing Microsoft Active Directory Lightweight Directory Services (called AD LDS or ADAM).
+      # Operator can set other values according to lc_selected_ldap_type.
+      ic_ldap_type: ""
+      # Enable users to sign in with their email address or user principle name (UPN).
+      ic_allow_email_or_upn_short_names: false
     ic_obj_store_creation:
       object_stores:
       - oc_cpe_obj_store_display_name: "OS01" # Required display name of the object store, for example, "OS01"
@@ -2104,7 +2112,7 @@ spec:
 
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: "24.0.0-IF008"
+        tag: "24.0.0-IF009"
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -2224,7 +2232,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: "24.0.0-IF008"
+      tag: "24.0.0-IF009"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent

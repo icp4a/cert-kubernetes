@@ -57,9 +57,9 @@ spec:
     sc_content_initialization: false
 
     ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
-    ## By default, the sc_is_multiple_az parameter is set to false. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
+    ## By default, the sc_is_multiple_az parameter is set to true. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
-    sc_is_multiple_az: false
+    sc_is_multiple_az: true
 
     sc_egress_configuration:
       ## Required. Enable or disable egress access to external systems.
@@ -138,6 +138,7 @@ spec:
   #     ## If you want PostgresDB to be created for an OS database, set this parameter to true
   #     dc_use_postgres: false
   #     ## Provide the object store label for the object store.  The default value is "os" or not defined.
+  #     ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
   #     ## This label must match the OS secret you define in ibm-fncm-secret.
   #     ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
   #     ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"

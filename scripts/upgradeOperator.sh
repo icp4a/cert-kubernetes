@@ -13,6 +13,10 @@
 # CUR_DIR set to full path to scripts folder
 CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
+
+# Open file descriptor 3 for suppressing output
+exec 3>/dev/null
+
 OLM_SUBSCRIPTION=${PARENT_DIR}/descriptors/op-olm/subscription.yaml
 OLM_SUBSCRIPTION_TMP=${TEMP_FOLDER}/.subscription.yaml
 
@@ -52,7 +56,7 @@ function show_help {
     echo "  -h  Display help"
     echo "  -n  The namespace to deploy Operator"
     echo "  -a  Accept IBM license"
-    echo "  -i  Optional: Operator image name, by default it is cp.icr.io/cp/cp4a/icp4a-operator:22.0.1"
+    echo "  -i  Optional: Operator image name, by default it is icr.io/cpopen/icp4a-operator:22.0.1"
     printf '%b\n' "  -p  Optional: Pull secret to use to connect to the registry, by default it is ibm-entitlement-key\n"
 
 }
@@ -113,7 +117,7 @@ function readLicense() {
 function userInput() {
   while true; do
       printf '%b\n' "\033[32mDo you accept the International Program License?(Yes/No): \033[0m"
-      read -rp "" ans
+      read -erp "" ans
       case "$ans" in
       "y"|"Y"|"yes"|"Yes"|"YES")
           LICENSE_ACCEPTED="accept"
@@ -141,7 +145,7 @@ function prepare_olm_install() {
           echo "Found ibm CP4BA operator catalog source (in $CATALOG_NS), updating it ..."
           cp $OLM_CATALOG ${OLM_CATALOG_TMP}
           sed "s|namespace: .*|namespace: \"$CATALOG_NS\"|g" ${OLM_CATALOG} > ${OLM_CATALOG_TMP}
-           oc apply -f $OLM_CATALOG_TMP >/dev/null 2>&1
+           oc apply -f $OLM_CATALOG_TMP >&3 2>&3
           if [ $? -eq 0 ]; then
             echo "IBM CP4BA Operator Catalog source Updated!"
           else
@@ -156,7 +160,7 @@ function prepare_olm_install() {
           if [[ $RUNTIME_MODE == "baw" ]];then
             echo "Found ibm operator catalog source, add pinned ibm baw operator catalog and subscription..."
             sed "s|namespace: .*|namespace: \"$CATALOG_NS\"|g" ${OLM_CATALOG} > ${OLM_CATALOG_TMP}
-            oc apply -f $OLM_CATALOG_TMP >/dev/null 2>&1
+            oc apply -f $OLM_CATALOG_TMP >&3 2>&3
             if [ $? -eq 0 ]; then
               echo "IBM BAW Operator Catalog source created!"
             else
@@ -199,7 +203,7 @@ function prepare_olm_install() {
           fi
         fi
     else
-        oc apply -f $OLM_CATALOG >/dev/null 2>&1
+        oc apply -f $OLM_CATALOG >&3 2>&3
         if [ $? -eq 0 ]; then
           echo "IBM CP4BA Operator Catalog source created!"
         else
