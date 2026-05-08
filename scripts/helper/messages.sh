@@ -105,15 +105,29 @@ function displayManualStrimziPodsetPatchingMessage(){
   echo "     ${CLI_CMD} get pods -n ${operator_namespace} | grep ibm-events-operator"
   echo
   echo "2. Check the StrimziPodSet exists:"
-  echo "     ${CLI_CMD} get strimzipodset iaf-system-kafka -n ${services_namespace}"
+  echo "     ${CLI_CMD} get strimzipodsets.core.ibmevents.ibm.com iaf-system-kafka -n ${services_namespace}"
   echo
   echo "3. Get the current kafka version annotation:"
-  echo "     KAFKA_VERSION=\$(${CLI_CMD} get strimzipodset iaf-system-kafka -n ${services_namespace} -o jsonpath='{.metadata.annotations.strimzi\.io/kafka-version}')"
+  echo "     KAFKA_VERSION=\$(${CLI_CMD} get strimzipodsets.core.ibmevents.ibm.com iaf-system-kafka -n ${services_namespace} -o jsonpath='{.metadata.annotations.strimzi\.io/kafka-version}')"
   echo
   echo "4. Apply the patch manually:"
-  echo "     ${CLI_CMD} patch strimzipodset iaf-system-kafka -n ${services_namespace} --type=merge -p \"{\\\"metadata\\\":{\\\"annotations\\\":{\\\"strimzi.io/kafka-version\\\":null,\\\"ibmevents.ibm.com/kafka-version\\\":\\\"\$KAFKA_VERSION\\\"}}}\""
+  echo "     ${CLI_CMD} patch strimzipodsets.core.ibmevents.ibm.com iaf-system-kafka -n ${services_namespace} --type=merge -p \"{\\\"metadata\\\":{\\\"annotations\\\":{\\\"strimzi.io/kafka-version\\\":null,\\\"ibmevents.ibm.com/kafka-version\\\":\\\"\$KAFKA_VERSION\\\"}}}\""
   echo
-  echo "5. If there are issues with patching the iaf-system-kafka strimzipodset, you must reach out to the IBM CloudPak Foundation Services Team for further assistance."
+  echo "If you are upgrading from CP4BA 22.0.2, iaf-system-kafka might be not be a strimzipodset resource but instead could be a statefulset resource and in that case these are the steps to be performed."
+  echo
+  echo "1. Verify the Events Operator is running:"
+  echo "     ${CLI_CMD} get pods -n ${operator_namespace} | grep ibm-events-operator"
+  echo
+  echo "2. Check the StrimziPodSet exists:"
+  echo "     ${CLI_CMD} get statefulset iaf-system-kafka -n ${services_namespace}"
+  echo
+  echo "3. Get the current kafka version annotation:"
+  echo "     KAFKA_VERSION=\$(${CLI_CMD} get statefulset iaf-system-kafka -n ${services_namespace} -o jsonpath='{.metadata.annotations.strimzi\.io/kafka-version}')"
+  echo
+  echo "4. Apply the patch manually:"
+  echo "     ${CLI_CMD} patch statefulset iaf-system-kafka -n ${services_namespace} --type=merge -p \"{\\\"metadata\\\":{\\\"annotations\\\":{\\\"strimzi.io/kafka-version\\\":null,\\\"ibmevents.ibm.com/kafka-version\\\":\\\"\$KAFKA_VERSION\\\"}}}\""
+  echo
+  echo "[IMPORTANT] If there are issues with patching the iaf-system-kafka strimzipodset, you must reach out to the IBM CloudPak Foundation Services Team for further assistance."
   echo
   echo "================================================================================"
 }
