@@ -9707,6 +9707,87 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     fi
     ################## End of setting spec.enableSuperuserAccess to true for our postgres-cp4ba edb instance
 
+    ################## Start of workaround for https://jsw.ibm.com/browse/DBACLD-207733
+    # WORKAROUND: Persist Custom Common Services Hostname/Certificate Configuration
+    #
+    # Purpose: Extract and save custom hostname and certificate secret from the
+    #          cs-onprem-tenant-config ConfigMap before Common Services upgrade.
+    #          These values will be restored to the CommonService CR after upgrade.
+    #
+    # What it does:
+    #   1. Checks for cs-onprem-tenant-config ConfigMap in the appropriate namespace
+    #   2. Extracts custom_hostname and custom_host_certificate_secret values
+    #   3. Persists them to cs_custom_config.property file for later restoration
+    #
+    # File created: ${UPGRADE_DEPLOYMENT_FOLDER}/cs_custom_config.property
+    # Properties saved: CUSTOM_HOSTNAME, CUSTOM_CERT_SECRET
+
+    CS_CUSTOM_CONFIG_FILE=${UPGRADE_DEPLOYMENT_FOLDER}/cs_custom_config.property
+
+    # Determine correct namespace based on upgrade mode
+    # For SAVE operation: read from the CURRENT (pre-upgrade) namespace
+    cs_operators_ns="${TEMP_OPERATOR_PROJECT_NAME}"
+    cs_data_ns=""
+
+    if [[ "$UPGRADE_MODE" == "shared2shared" ]]; then
+        cs_data_ns="ibm-common-services"
+    elif [[ "$UPGRADE_MODE" == "shared2dedicated" ]]; then
+        # For shared2dedicated: read from OLD shared namespace before migration
+        cs_data_ns="ibm-common-services"
+    elif [[ "$UPGRADE_MODE" == "dedicated2dedicated" ]]; then
+        cs_data_ns="${TARGET_PROJECT_NAME}"
+    else
+        cs_data_ns="${TARGET_PROJECT_NAME}"
+    fi
+
+    info "Checking for custom hostname/certificate configuration in namespace: ${cs_data_ns}"
+
+    # Check if cs-onprem-tenant-config ConfigMap exists
+    cm_exists=$(${CLI_CMD} get configmap cs-onprem-tenant-config -n ${cs_data_ns} --ignore-not-found -o name)
+
+    if [[ -n "$cm_exists" ]]; then
+        info "Found cs-onprem-tenant-config ConfigMap, extracting custom configuration..."
+
+        # Extract custom_hostname
+        custom_hostname=$(${CLI_CMD} get configmap cs-onprem-tenant-config -n ${cs_data_ns} -o jsonpath='{.data.custom_hostname}' 2>>"$LOG_FILE")
+
+        # Extract custom_host_certificate_secret
+        custom_cert_secret=$(${CLI_CMD} get configmap cs-onprem-tenant-config -n ${cs_data_ns} -o jsonpath='{.data.custom_host_certificate_secret}' 2>>"$LOG_FILE")
+
+        # Persist to dedicated property file if values exist
+        if [[ -n "$custom_hostname" || -n "$custom_cert_secret" ]]; then
+            # Create the property file with header
+            cat > ${CS_CUSTOM_CONFIG_FILE} << EOF
+###############################################################################
+# Custom Common Services Configuration
+# Persisted during upgrade from cs-onprem-tenant-config ConfigMap
+# Timestamp: $(date)
+# Operator Namespace: ${cs_operators_ns}
+# Services Namespace: ${cs_data_ns}
+###############################################################################
+
+EOF
+
+            if [[ -n "$custom_hostname" ]]; then
+                echo "CUSTOM_HOSTNAME=${custom_hostname}" >> ${CS_CUSTOM_CONFIG_FILE}
+                success "Persisted custom_hostname: ${custom_hostname}"
+            fi
+
+            if [[ -n "$custom_cert_secret" ]]; then
+                echo "CUSTOM_CERT_SECRET=${custom_cert_secret}" >> ${CS_CUSTOM_CONFIG_FILE}
+                success "Persisted custom_host_certificate_secret: ${custom_cert_secret}"
+            fi
+
+            info "Custom configuration saved to: ${CS_CUSTOM_CONFIG_FILE}"
+        else
+            info "No custom hostname or certificate secret found in ConfigMap"
+        fi
+    else
+        info "cs-onprem-tenant-config ConfigMap not found, skipping custom configuration persistence"
+    fi
+
+    ################## End of workaround for https://jsw.ibm.com/browse/DBACLD-207733
+
 
     ############## Start - Prepare definition for ibm-cp4ba-shared-info/ibm-cp4ba-content-shared-info/ibm-cp4ba-common-config configMap ##############
     if [[ $SEPARATE_OPERAND_FLAG == "Yes" ]]; then
@@ -12004,6 +12085,130 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             fi
         done
         echo "****************************************************************************"
+
+        ################## Start of workaround for https://jsw.ibm.com/browse/DBACLD-207733
+        # WORKAROUND: Restore Custom Common Services Configuration
+        # Purpose: Apply the previously saved custom hostname and certificate secret
+        #          to the CommonService CR after Common Services upgrade completes.
+        #
+        # What it does:
+        #   1. Reads custom configuration from cs_custom_config.property file
+        #   2. Waits for CommonService CR to be ready
+        #   3. Patches the CommonService CR with the saved custom hostname/certificate
+        #   4. Verifies the configuration was applied successfully
+        CS_CUSTOM_CONFIG_FILE=${UPGRADE_DEPLOYMENT_FOLDER}/cs_custom_config.property
+        if [[ -f "${CS_CUSTOM_CONFIG_FILE}" ]]; then
+            info "Restoring custom Common Services configuration after CPFS upgrade..."
+
+            # Determine correct namespace based on upgrade mode
+            # TEMP_OPERATOR_PROJECT_NAME is already set correctly based on ALL_NAMESPACE_FLAG
+            cs_operators_ns="${TEMP_OPERATOR_PROJECT_NAME}"
+            cs_data_ns=""
+
+            if [[ "$UPGRADE_MODE" == "shared2shared" ]]; then
+                cs_data_ns="ibm-common-services"
+            elif [[ "$UPGRADE_MODE" == "shared2dedicated" || "$UPGRADE_MODE" == "dedicated2dedicated" ]]; then
+                cs_data_ns="${TARGET_PROJECT_NAME}"
+            else
+                # Default to dedicated mode
+                cs_data_ns="${TARGET_PROJECT_NAME}"
+            fi
+
+            # Read persisted values from property file
+            CUSTOM_HOSTNAME=$(grep "^CUSTOM_HOSTNAME=" "${CS_CUSTOM_CONFIG_FILE}" 2>>"$LOG_FILE" | cut -d'=' -f2-)
+            CUSTOM_CERT_SECRET=$(grep "^CUSTOM_CERT_SECRET=" "${CS_CUSTOM_CONFIG_FILE}" 2>>"$LOG_FILE" | cut -d'=' -f2-)
+
+            if [[ -n "${CUSTOM_HOSTNAME}" || -n "${CUSTOM_CERT_SECRET}" ]]; then
+                info "Found custom configuration to restore:"
+                [[ -n "${CUSTOM_HOSTNAME}" ]] && info "  - custom_hostname: ${CUSTOM_HOSTNAME}"
+                [[ -n "${CUSTOM_CERT_SECRET}" ]] && info "  - custom_host_certificate_secret: ${CUSTOM_CERT_SECRET}"
+
+                # Wait for CommonService CR to be ready
+                maxRetry=20
+                for ((retry=0;retry<=${maxRetry};retry++)); do
+                    cs_exists=$(${CLI_CMD} get commonservice common-service -n ${cs_operators_ns} --ignore-not-found 2>>"$LOG_FILE" | wc -l)
+                    if [[ ${cs_exists} -gt 0 ]]; then
+                        success "CommonService CR 'common-service' found in namespace ${cs_operators_ns}"
+                        break
+                    else
+                        if [[ $retry -eq ${maxRetry} ]]; then
+                            warning "CommonService CR 'common-service' not found after waiting. Skipping custom config restoration."
+                            break
+                        else
+                            sleep 10
+                            echo -n "."
+                        fi
+                    fi
+                done
+
+                # Apply custom hostname and/or certificate secret via ibm-im-operator service
+                if [[ (-n "${CUSTOM_HOSTNAME}" || -n "${CUSTOM_CERT_SECRET}") && ${cs_exists} -gt 0 ]]; then
+                    info "Applying custom configuration to CommonService CR via ibm-im-operator service..."
+
+                    # Check if ibm-im-operator service already exists in the CR
+                    ibm_im_operator_exists=$(${CLI_CMD} get commonservice common-service -n ${cs_operators_ns} -o jsonpath='{.spec.services[?(@.name=="ibm-im-operator")].name}' 2>>"$LOG_FILE")
+
+                    # Build the ingress config based on what values exist
+                    ingress_config=""
+                    if [[ -n "${CUSTOM_HOSTNAME}" && -n "${CUSTOM_CERT_SECRET}" ]]; then
+                        ingress_config="\"hostname\": \"${CUSTOM_HOSTNAME}\", \"secret\": \"${CUSTOM_CERT_SECRET}\""
+                    elif [[ -n "${CUSTOM_HOSTNAME}" ]]; then
+                        ingress_config="\"hostname\": \"${CUSTOM_HOSTNAME}\""
+                    else
+                        ingress_config="\"secret\": \"${CUSTOM_CERT_SECRET}\""
+                    fi
+
+                    if [[ -n "${ibm_im_operator_exists}" ]]; then
+                        # Service exists, update it using merge patch
+                        info "ibm-im-operator service found, updating configuration..."
+                        patch_json="{\"spec\":{\"services\":[{\"name\":\"ibm-im-operator\",\"spec\":{\"authentication\":{\"config\":{\"ingress\":{${ingress_config}}}}}}]}}"
+                        ${CLI_CMD} patch commonservice common-service -n ${cs_operators_ns} --type=merge -p "${patch_json}" 2>>"$LOG_FILE"
+                        patch_result=$?
+                    else
+                        # Service doesn't exist, create it using JSON patch add operation
+                        info "ibm-im-operator service not found, creating it with configuration..."
+
+                        # First check if spec.services array exists
+                        services_exists=$(${CLI_CMD} get commonservice common-service -n ${cs_operators_ns} -o jsonpath='{.spec.services}' 2>>"$LOG_FILE")
+
+                        if [[ -z "${services_exists}" || "${services_exists}" == "null" ]]; then
+                            # No services array exists, create it with our service
+                            patch_json="[{\"op\":\"add\",\"path\":\"/spec/services\",\"value\":[{\"name\":\"ibm-im-operator\",\"spec\":{\"authentication\":{\"config\":{\"ingress\":{${ingress_config}}}}}}]}]"
+                        else
+                            # Services array exists, append our service
+                            patch_json="[{\"op\":\"add\",\"path\":\"/spec/services/-\",\"value\":{\"name\":\"ibm-im-operator\",\"spec\":{\"authentication\":{\"config\":{\"ingress\":{${ingress_config}}}}}}}]"
+                        fi
+
+                        ${CLI_CMD} patch commonservice common-service -n ${cs_operators_ns} --type=json -p "${patch_json}" 2>>"$LOG_FILE"
+                        patch_result=$?
+                    fi
+
+                    if [ $patch_result -eq 0 ]; then
+                        success "Successfully applied custom configuration to ibm-im-operator service:"
+                        [[ -n "${CUSTOM_HOSTNAME}" ]] && success "  - hostname: ${CUSTOM_HOSTNAME}"
+                        [[ -n "${CUSTOM_CERT_SECRET}" ]] && success "  - secret: ${CUSTOM_CERT_SECRET}"
+                    else
+                        warning "Failed to apply custom configuration. You may need to manually edit the CommonService CR:"
+                        warning "  ${CLI_CMD} edit commonservice common-service -n ${cs_operators_ns}"
+                        warning "  Add or update under spec.services:"
+                        warning "    - name: ibm-im-operator"
+                        warning "      spec:"
+                        warning "        authentication:"
+                        warning "          config:"
+                        warning "            ingress:"
+                        [[ -n "${CUSTOM_HOSTNAME}" ]] && warning "              hostname: \"${CUSTOM_HOSTNAME}\""
+                        [[ -n "${CUSTOM_CERT_SECRET}" ]] && warning "              secret: \"${CUSTOM_CERT_SECRET}\""
+                    fi
+                fi
+
+                info "Custom Common Services configuration restoration complete."
+            else
+                info "No custom hostname or certificate configuration found to restore."
+            fi
+        else
+            info "No custom Common Services configuration file found. Skipping restoration."
+        fi
+        ################## End of workaround for https://jsw.ibm.com/browse/DBACLD-207733
 
         # Checking CP4BA operator CSV
         # change this value for $CP4BA_RELEASE_BASE-IFIX
