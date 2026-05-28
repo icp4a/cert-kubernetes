@@ -28,9 +28,9 @@ OUTPUT_FILE="${BASE_DIR}/env-fusion.properties"
 
 function main() {
     parse_arguments "$@"
-    prereq
     info "Base Directory: $BASE_DIR"
     source $OUTPUT_FILE
+    prereq
     if [[ $HUB_SETUP == "true" ]]; then
         save_log "logs" "hub_setup_log"
         trap cleanup_log EXIT
@@ -113,6 +113,32 @@ function parse_arguments() {
         shift
     done
     echo ""
+}
+
+# Detect PostgreSQL operator type for zen-metastore cluster
+function detect_zen_operator() {
+  local namespace=$1
+  
+  # Check for IBM CloudNativePG cluster (zen-metastore without -edb suffix)
+  IBM_PG_CLUSTER=$(${OC} get cluster.pg.ibm.com zen-metastore -n $namespace --ignore-not-found 2>/dev/null)
+  if [[ -n $IBM_PG_CLUSTER ]]; then
+    info "Detected IBM CNPG cluster for zen-metastore in namespace $namespace"
+    echo "ibm-pg"
+    return 0
+  fi
+  
+  # Check for EDB cluster (zen-metastore-edb with -edb suffix)
+  EDB_CLUSTER=$(${OC} get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -n $namespace --ignore-not-found 2>/dev/null)
+  if [[ -n $EDB_CLUSTER ]]; then
+    info "Detected EDB cluster for zen-metastore-edb in namespace $namespace"
+    echo "edb"
+    return 0
+  fi
+  
+  # Default to EDB if no cluster found (backward compatibility)
+  warning "No PostgreSQL cluster found for zen-metastore in namespace $namespace, defaulting to EDB"
+  echo "edb"
+  return 0
 }
 
 function prereq() {
@@ -393,7 +419,19 @@ function create_sf_resources(){
         #core recipes
         if [[ $NO_OLM == "true" ]]; then
             cp ../velero/spectrum-fusion/recipes/no-olm/core/child-csdb-recipe-2.10.0.yaml ./templates/child-csdb-recipe.yaml
-            cp ../velero/spectrum-fusion/recipes/no-olm/core/child-zen-recipe-2.10.0.yaml ./templates/child-zen-recipe.yaml
+            
+            # Detect PostgreSQL operator type for zen-metastore and copy appropriate recipe
+            if [[ $ZEN_ENABLED == "true" ]]; then
+                ZEN_OPERATOR=$(detect_zen_operator $SERVICES_NS)
+                if [[ $ZEN_OPERATOR == "ibm-pg" ]]; then
+                    info "Using IBM CNPG zen recipe for namespace $SERVICES_NS"
+                    cp ../velero/spectrum-fusion/recipes/no-olm/core/child-zen-recipe-ibm-pg.yaml ./templates/child-zen-recipe.yaml
+                else
+                    info "Using EDB zen recipe for namespace $SERVICES_NS"
+                    cp ../velero/spectrum-fusion/recipes/no-olm/core/child-zen-recipe-2.10.0.yaml ./templates/child-zen-recipe.yaml
+                fi
+            fi
+            
             cp ../velero/spectrum-fusion/recipes/no-olm/core/parent-cpfs-recipe.yaml ./templates/parent-cpfs-recipe.yaml
             cp ../velero/spectrum-fusion/recipes/no-olm/core/child-cs-odlm-chart-recipe.yaml ./templates/child-cs-odlm-chart-recipe.yaml
             cp ../velero/spectrum-fusion/recipes/no-olm/core/child-edb-chart-recipe.yaml ./templates/child-edb-chart-recipe.yaml
@@ -403,7 +441,19 @@ function create_sf_resources(){
             cp ../velero/spectrum-fusion/recipes/no-olm/core/peripheral-resources.yaml ./templates/peripheral-resources.yaml
         else
             cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-csdb-recipe-2.10.0.yaml ./templates/child-csdb-recipe.yaml
-            cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-zen-recipe-2.10.0.yaml ./templates/child-zen-recipe.yaml
+            
+            # Detect PostgreSQL operator type for zen-metastore and copy appropriate recipe
+            if [[ $ZEN_ENABLED == "true" ]]; then
+                ZEN_OPERATOR=$(detect_zen_operator $SERVICES_NS)
+                if [[ $ZEN_OPERATOR == "ibm-pg" ]]; then
+                    info "Using IBM CNPG zen recipe for namespace $SERVICES_NS"
+                    cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-zen-recipe-ibm-pg.yaml ./templates/child-zen-recipe.yaml
+                else
+                    info "Using EDB zen recipe for namespace $SERVICES_NS"
+                    cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-zen-recipe-2.10.0.yaml ./templates/child-zen-recipe.yaml
+                fi
+            fi
+            
             cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-nss-recipe.yaml ./templates/child-nss-recipe.yaml
             cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/parent-cpfs-recipe.yaml ./templates/parent-cpfs-recipe.yaml
             cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/peripheral-resources.yaml ./templates/peripheral-resources.yaml

@@ -193,7 +193,7 @@ spec:
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/cpe
-  #       tag: "25.0.0-IF004"
+  #       tag: "25.0.0-IF005"
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
@@ -340,7 +340,7 @@ spec:
   #         pull_policy: IfNotPresent
   #         ## The default repository is the IBM Entitled Registry.
   #         repository: cp.icr.io/cp/cp4a/fncm/lscollector
-  #         tag: "25.0.0-IF004"
+  #         tag: "25.0.0-IF005"
   #       ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
   #       ## If more resources are needed, make the changes here to meet your requirement.
   #       resources:
@@ -376,7 +376,7 @@ spec:
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/graphql
-  #       tag: "25.0.0-IF004"
+  #       tag: "25.0.0-IF005"
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
@@ -492,7 +492,7 @@ spec:
   #  #    pull_policy: IfNotPresent
   #  #    ## The default repository is the IBM Entitled Registry.
   #  #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-  #  #    tag: "25.0.0-IF004"
+  #  #    tag: "25.0.0-IF005"
   #  # #  #  ## Below are the default LSReporter Production settings.
   #  #  ## Make the necessary changes as you see fit.
   #  #  product_settings:
@@ -597,6 +597,7 @@ spec:
   #     ## If you want PostgresDB to be created for a GCD database, set this parameter to true
   #     dc_use_postgres: false
   #     ## Provide the object store label for the object store.  The default value is "os" or not defined.
+  #     ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
   #     ## This label must match the OS secret you define in ibm-fncm-secret.
   #     ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
   #     ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"

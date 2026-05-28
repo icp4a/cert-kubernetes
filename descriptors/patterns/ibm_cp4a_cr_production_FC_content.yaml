@@ -109,7 +109,7 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/common/dba-keytool-initcontainer
-        tag: "25.0.0-IF004"
+        tag: "25.0.0-IF005"
 
     ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
     ## based on input from the user.
@@ -637,6 +637,7 @@ spec:
       ## If you want PostgresDB to be created for a GCD database, set this parameter to true
       dc_use_postgres: false
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
       ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
@@ -694,6 +695,7 @@ spec:
     ## GCD configuration above.
     - dc_database_type: "<Required>"
       ## Provide the label for the CPE data source. The default value is "os" or not defined.
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
       ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
@@ -927,7 +929,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "25.0.0-IF004"
+        tag: "25.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1094,7 +1096,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/fncm/cpe-audit-log
-          tag: "25.0.0-IF004"
+          tag: "25.0.0-IF005"
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
         initresources:
@@ -1176,7 +1178,7 @@ spec:
       #     pull_policy: IfNotPresent
       #     ## The default repository is the IBM Entitled Registry.
       #     repository: cp.icr.io/cp/cp4a/fncm/lscollector
-      #     tag: "25.0.0-IF004"
+      #     tag: "25.0.0-IF005"
       #   ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
       #   ## If more resources are needed, make the changes here to meet your requirement.
       #   resources:
@@ -1217,7 +1219,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "25.0.0-IF004"
+        tag: "25.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1324,7 +1326,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "25.0.0-IF004"
+        tag: "25.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1502,7 +1504,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "25.0.0-IF004"
+        tag: "25.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1626,7 +1628,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "25.0.0-IF004"
+        tag: "25.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1738,7 +1740,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "25.0.0-IF004"
+        tag: "25.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1868,7 +1870,7 @@ spec:
     #    pull_policy: IfNotPresent
     #    ## The default repository is the IBM Entitled Registry.
     #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-    #    tag: "25.0.0-IF004"
+    #    tag: "25.0.0-IF005"
     #   #  ## Below are the default LSReporter Production settings.
     #  ## Make the necessary changes as you see fit.
     #  product_settings:
@@ -1969,7 +1971,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "25.0.0-IF004"
+      tag: "25.0.0-IF005"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2204,6 +2206,12 @@ spec:
       ic_ldap_admins_groups_name:
       - "<Required>" # group name for P8 domain admin, for example, "P8Administrators".  This parameter accepts a list of values.
       ic_ldap_name: "ldap_name"
+      # Type of LDAP connection that is created.
+      # Set to "ADAM" only when initializing Microsoft Active Directory Lightweight Directory Services (called AD LDS or ADAM).
+      # Operator can set other values according to lc_selected_ldap_type.
+      ic_ldap_type: ""
+      # Enable users to sign in with their email address or user principle name (UPN).
+      ic_allow_email_or_upn_short_names: false
     ic_obj_store_creation:
       object_stores:
       - oc_cpe_obj_store_display_name: "OS01" # Required display name of the object store, for example, "OS01"
@@ -2372,7 +2380,7 @@ spec:
 
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: "25.0.0-IF004"
+        tag: "25.0.0-IF005"
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -2472,11 +2480,10 @@ spec:
           timeout_seconds: 5
           failure_threshold: 6
 
- ########################################################################
- ########             IBM Content Collector for SAP              ########
- ########################################################################
+  ########################################################################
+  ########             IBM Content Collector for SAP              ########
+  ########################################################################
   iccsap_configuration:
-
     ## ICCSAP secret that contains the password to be used for the generation of Keystore and Truststore files
     iccsap_secret_name: "ibm-iccsap-secret"
 
@@ -2492,7 +2499,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: "25.0.0-IF004"
+      tag: 25.0.0-IF005
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2505,26 +2512,64 @@ spec:
     ## make the changes here to meet your requirement.
     resources:
       requests:
-        cpu: 1
-        memory: 1024Mi
+        cpu: "1"
+        memory: "1024Mi"
+        ephemeral_storage: "2Gi"
       limits:
-        cpu: 1
-        memory: 1024Mi
+        cpu: "1"
+        memory: "1024Mi"
+        ephemeral_storage: "2Gi"
 
-    ## By default "Autoscaling" is enabled with the following settings with a minimum of 1 replca and a maximum of 3 replicas.  Change
-    ## this settings to meet your requirement.
+    ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
+    ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
     auto_scaling:
-      enabled: true
-      max_replicas: 3
-      min_replicas: 1
+      enabled: false
+      max_replicas: "<Required>"
+      min_replicas: "<Required>"
       ## This is the default cpu percentage before autoscaling occurs.
-      target_cpu_utilization_percentage: 80
+      target_cpu_utilization_percentage: "<Required>"
 
+    node_affinity:
+      #-------------------------------------
+      # custom_node_selector_match_expression will be added in node selector match expressions.
+      # It accepts array list inputs. You can assign multiple selector match expressions except (kubernetes.io/arch)
+      # Example value:
+      # - key: kubernetes.io/hostname
+      #   operator: In
+      #   values:
+      #     - worker0
+      #     - worker1
+      #     - worker3
+      #-------------------------------------
+      custom_node_selector_match_expression: [ ]
+    ## Values in this field will be used as annotations in all generated pods, and it must be valid annotation key value pairs.
+    # Example:
+    # customAnnotationKey: customAnnotationValue
+    ## To include '{{ }}' in annotation like '{{example}}', add a backward slash before curly brace like '\{\{example\}\}'.
+    custom_annotations: { }
+    ## Values in this field will be used as labels in all generated pods, and it must be valid label key value pairs
+    # Example:
+    # customLabelKey: customLabelValue
+    custom_labels: { }
 
     ## Below are the default ICCSAP Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
     iccsap_production_setting:
+      time_zone: Etc/UTC
+
       # The license must be set to "accept" in order for the component to install.  This is the default value.
       license: accept
+
+      ## This section is optional, and it takes a list of configmaps.
+      ## A configmap can hold files or environment data, but it cannot a mix of both.
+      ## The volume_path is optional for a configmap that holds files as its data and if it's not specified,
+      ## then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
+      ## then is_env is required and set it to true.
+
+      #custom_configmap:
+      # - name: <name of configmap>
+      #   volume_path:  # optional
+      # - name: <name of configmap>
+      #   is_env: # required if the configmap holds environment variables
 
     ## Default settings for monitoring
     monitor_enabled: false
@@ -2534,20 +2579,28 @@ spec:
     ## Persistent Volume Claims for ICCSAP.  If the storage_configuration in the shared_configuration is configured,
     ## the Operator will create the PVC using the names below.
     datavolume:
-      existing_pvc_for_iccsap_instance: "iccsap-instance"
-      existing_pvc_for_iccsap_logs: "iccsap-logstore"
-    storage:
-        storage_class: "<Required>"
-        size_for_logstore: 1Gi
-    ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
+      existing_pvc_for_iccsap_instance:
+        name: "iccsap-instance"
+        size: 1Gi
+      existing_pvc_for_iccsap_logs:
+        name: "iccsap-logstore"
+        size: 1Gi
+      existing_pvc_for_tsm_setup:
+        name: "tsm-setup"
+        size: 1Gi
+
+    ## Default values for both startup, readiness and liveness probes.  Modify these values to meet your requirements.
     probe:
+      startup:
+        initial_delay_seconds: 240
+        period_seconds: 30
+        timeout_seconds: 10
+        failure_threshold: 16
       readiness:
-        initial_delay_seconds: 120
         period_seconds: 5
         timeout_seconds: 10
         failure_threshold: 6
       liveness:
-        initial_delay_seconds: 600
         period_seconds: 5
         timeout_seconds: 5
         failure_threshold: 6
@@ -2555,3 +2608,137 @@ spec:
     ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
     image_pull_secrets:
       name: "ibm-entitlement-key"
+
+  #############################################################################
+  ########  IBM Content Collector for SAP Multi-Instance Configuration  ########
+  #############################################################################
+  ## Use this section to deploy additional ICCSAP instances.  The iccsap_configuration section above
+  ## will be used for the first instance, and each additional instance can be defined here.
+  ## Be sure to provide a unique instance_id and PVC names for each additional instance.
+  ## The instance_id will be used to created artifacts such as routes, PVC's, service names, and pod names.
+  iccsap_configuration_multi:
+    - instance_id: "iccsap2"
+      ## ICCSAP secret that contains the password to be used for the generation of Keystore and Truststore files
+      iccsap_secret_name: "ibm-iccsap-secret"
+
+      ## The architecture of the cluster.  This is the default for Linux and should not be changed.
+      arch:
+        amd64: "3 - Most preferred"
+
+      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+      ## it is recommended to have 2 or more.
+      replica_count: 2
+
+      ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+      image:
+        ## The default repository is the IBM Entitled Registry
+        repository: cp.icr.io/cp/cp4a/iccsap/iccsap
+        tag: ga-iccsap-4004-if020-2500_if003
+
+        ## This will override the image pull policy in the shared_configuration.
+        pull_policy: IfNotPresent
+
+      ## Logging for workloads.  This is the default setting.
+      log:
+        format: json
+
+      ## The initial resources (CPU, memory) requests and limits.  If more resources are needed,
+      ## make the changes here to meet your requirement.
+      resources:
+        requests:
+          cpu: "1"
+          memory: "1024Mi"
+          ephemeral_storage: "2Gi"
+        limits:
+          cpu: "1"
+          memory: "1024Mi"
+          ephemeral_storage: "2Gi"
+
+      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
+      ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
+      auto_scaling:
+        enabled: false
+        max_replicas: "<Required>"
+        min_replicas: "<Required>"
+        ## This is the default cpu percentage before autoscaling occurs.
+        target_cpu_utilization_percentage: "<Required>"
+
+      node_affinity:
+        #-------------------------------------
+        # custom_node_selector_match_expression will be added in node selector match expressions.
+        # It accepts array list inputs. You can assign multiple selector match expressions except (kubernetes.io/arch)
+        # Example value:
+        # - key: kubernetes.io/hostname
+        #   operator: In
+        #   values:
+        #     - worker0
+        #     - worker1
+        #     - worker3
+        #-------------------------------------
+        custom_node_selector_match_expression: [ ]
+      ## Values in this field will be used as annotations in all generated pods, and it must be valid annotation key value pairs.
+      # Example:
+      # customAnnotationKey: customAnnotationValue
+      ## To include '{{ }}' in annotation like '{{example}}', add a backward slash before curly brace like '\{\{example\}\}'.
+      custom_annotations: { }
+      ## Values in this field will be used as labels in all generated pods, and it must be valid label key value pairs
+      # Example:
+      # customLabelKey: customLabelValue
+      custom_labels: { }
+
+      ## Below are the default ICCSAP Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
+      iccsap_production_setting:
+        time_zone: Etc/UTC
+
+        # The license must be set to "accept" in order for the component to install.  This is the default value.
+        license: accept
+
+        ## This section is optional, and it takes a list of configmaps.
+        ## A configmap can hold files or environment data, but it cannot a mix of both.
+        ## The volume_path is optional for a configmap that holds files as its data and if it's not specified,
+        ## then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
+        ## then is_env is required and set it to true.
+
+        #custom_configmap:
+        # - name: <name of configmap>
+        #   volume_path:  # optional
+        # - name: <name of configmap>
+        #   is_env: # required if the configmap holds environment variables
+
+      ## Default settings for monitoring
+      monitor_enabled: false
+      ## Default settings for logging
+      logging_enabled: false
+
+      ## Persistent Volume Claims for ICCSAP.  If the storage_configuration in the shared_configuration is configured,
+      ## the Operator will create the PVC using the names below.
+      datavolume:
+        existing_pvc_for_iccsap_instance:
+          name: "iccsap-instance-iccsap2"
+          size: 1Gi
+        existing_pvc_for_iccsap_logs:
+          name: "iccsap-logstore-iccsap2"
+          size: 1Gi
+        existing_pvc_for_tsm_setup:
+          name: "tsm-setup-iccsap2"
+          size: 1Gi
+
+      ## Default values for both startup, readiness and liveness probes.  Modify these values to meet your requirements.
+      probe:
+        startup:
+          initial_delay_seconds: 240
+          period_seconds: 30
+          timeout_seconds: 10
+          failure_threshold: 16
+        readiness:
+          period_seconds: 5
+          timeout_seconds: 10
+          failure_threshold: 6
+        liveness:
+          period_seconds: 5
+          timeout_seconds: 5
+          failure_threshold: 6
+
+      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
+      image_pull_secrets:
+        name: "ibm-entitlement-key"

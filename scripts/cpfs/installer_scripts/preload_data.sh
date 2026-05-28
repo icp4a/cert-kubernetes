@@ -522,7 +522,7 @@ data:
 
     [alt_names]
 
-    DNS.1 = \$(echo -n "\$my_hostname" | sed s/-[0-9]*\$//)
+    DNS.1 = \$(printf '%s' "\$my_hostname" | sed s/-[0-9]*\$//)
 
     DNS.2 = \$my_hostname
 
@@ -1536,7 +1536,7 @@ data:
 
     [alt_names]
 
-    DNS.1 = \$(echo -n "\$my_hostname" | sed s/-[0-9]*\$//)
+    DNS.1 = \$(printf '%s' "\$my_hostname" | sed s/-[0-9]*\$//)
 
     DNS.2 = \$my_hostname
 

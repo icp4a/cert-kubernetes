@@ -155,6 +155,58 @@ function print_usage() {
   echo ""
 }
 
+# Detect PostgreSQL operator type for common-service-db cluster
+function detect_csdb_operator() {
+  local namespace=$1
+  
+  # Check for IBM CloudNativePG cluster
+  IBM_PG_CLUSTER=$(oc get cluster.pg.ibm.com common-service-db -n $namespace --ignore-not-found 2>/dev/null)
+  if [[ -n $IBM_PG_CLUSTER ]]; then
+    info "Detected IBM CNPG cluster for common-service-db in namespace $namespace" >&2
+    echo "ibm-pg"
+    return 0
+  fi
+  
+  # Check for EDB cluster
+  EDB_CLUSTER=$(oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -n $namespace --ignore-not-found 2>/dev/null)
+  if [[ -n $EDB_CLUSTER ]]; then
+    info "Detected EDB cluster for common-service-db in namespace $namespace" >&2
+    echo "edb"
+    return 0
+  fi
+  
+  # Default to EDB if no cluster found (backward compatibility)
+  warning "No PostgreSQL cluster found for common-service-db in namespace $namespace, defaulting to EDB" >&2
+  echo "edb"
+  return 0
+}
+
+# Detect PostgreSQL operator type for zen-metastore cluster
+function detect_zen_operator() {
+  local namespace=$1
+  
+  # Check for IBM CloudNativePG cluster (zen-metastore without -edb suffix)
+  IBM_PG_CLUSTER=$(oc get cluster.pg.ibm.com zen-metastore -n $namespace --ignore-not-found 2>/dev/null)
+  if [[ -n $IBM_PG_CLUSTER ]]; then
+    info "Detected IBM CNPG cluster for zen-metastore in namespace $namespace" >&2
+    echo "ibm-pg"
+    return 0
+  fi
+  
+  # Check for EDB cluster (zen-metastore-edb with -edb suffix)
+  EDB_CLUSTER=$(oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -n $namespace --ignore-not-found 2>/dev/null)
+  if [[ -n $EDB_CLUSTER ]]; then
+    info "Detected EDB cluster for zen-metastore-edb in namespace $namespace" >&2
+    echo "edb"
+    return 0
+  fi
+  
+  # Default to EDB if no cluster found (backward compatibility)
+  warning "No PostgreSQL cluster found for zen-metastore in namespace $namespace, defaulting to EDB" >&2
+  echo "edb"
+  return 0
+}
+
 function deploy_resources(){
   if [[ $STORAGE_CLASS == "default" ]]; then
     STORAGE_CLASS=$(oc get sc | grep default | awk '{print $1}')
@@ -163,18 +215,34 @@ function deploy_resources(){
     info "Using specified storage class $STORAGE_CLASS."
   fi
 
-  #deploy IM EDB resources
+  #deploy IM resources (EDB or IBM CNPG)
   if [[ $IM == "true" ]]; then
     info "Creating IM Backup/Restore resources in namespace $TARGET_NAMESPACE."
     
+    # Detect operator type for common-service-db cluster specifically
+    CSDB_OPERATOR=$(detect_csdb_operator $TARGET_NAMESPACE)
+    
     rm -rf tmp/common-service-db/
     mkdir tmp/common-service-db
-    cp ${BASE_DIR}/common-service-db/cs-db-backup-deployment.yaml tmp/common-service-db/cs-db-backup-deployment.yaml
-    cp ${BASE_DIR}/common-service-db/cs-db-backup-pvc.yaml tmp/common-service-db/cs-db-backup-pvc.yaml
-    cp ${BASE_DIR}/common-service-db/cs-db-role.yaml tmp/common-service-db/cs-db-role.yaml
-    cp ${BASE_DIR}/common-service-db/cs-db-rolebinding.yaml tmp/common-service-db/cs-db-rolebinding.yaml
-    cp ${BASE_DIR}/common-service-db/cs-db-sa.yaml tmp/common-service-db/cs-db-sa.yaml
-    cp ${BASE_DIR}/common-service-db/cs-db-br-script-cm-4.6.10.4.11.yaml tmp/common-service-db/cs-db-br-script-cm.yaml
+    
+    # Select appropriate resources based on cluster's operator type
+    if [[ $CSDB_OPERATOR == "ibm-pg" ]]; then
+      info "Deploying IBM CNPG resources for common-service-db"
+      cp ${BASE_DIR}/ibm-pg/common-service-db/cs-db-backup-deployment.yaml tmp/common-service-db/cs-db-backup-deployment.yaml
+      cp ${BASE_DIR}/ibm-pg/common-service-db/cs-db-backup-pvc.yaml tmp/common-service-db/cs-db-backup-pvc.yaml
+      cp ${BASE_DIR}/ibm-pg/common-service-db/cs-db-role.yaml tmp/common-service-db/cs-db-role.yaml
+      cp ${BASE_DIR}/ibm-pg/common-service-db/cs-db-rolebinding.yaml tmp/common-service-db/cs-db-rolebinding.yaml
+      cp ${BASE_DIR}/ibm-pg/common-service-db/cs-db-sa.yaml tmp/common-service-db/cs-db-sa.yaml
+      cp ${BASE_DIR}/ibm-pg/common-service-db/cs-db-br-script-cm.yaml tmp/common-service-db/cs-db-br-script-cm.yaml
+    else
+      info "Deploying EDB resources for common-service-db"
+      cp ${BASE_DIR}/common-service-db/cs-db-backup-deployment.yaml tmp/common-service-db/cs-db-backup-deployment.yaml
+      cp ${BASE_DIR}/common-service-db/cs-db-backup-pvc.yaml tmp/common-service-db/cs-db-backup-pvc.yaml
+      cp ${BASE_DIR}/common-service-db/cs-db-role.yaml tmp/common-service-db/cs-db-role.yaml
+      cp ${BASE_DIR}/common-service-db/cs-db-rolebinding.yaml tmp/common-service-db/cs-db-rolebinding.yaml
+      cp ${BASE_DIR}/common-service-db/cs-db-sa.yaml tmp/common-service-db/cs-db-sa.yaml
+      cp ${BASE_DIR}/common-service-db/cs-db-br-script-cm-4.6.10.4.11.yaml tmp/common-service-db/cs-db-br-script-cm.yaml
+    fi
 
     sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" tmp/common-service-db/cs-db-backup-deployment.yaml
     sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" tmp/common-service-db/cs-db-backup-pvc.yaml
@@ -184,7 +252,7 @@ function deploy_resources(){
     sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" tmp/common-service-db/cs-db-sa.yaml
     sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" tmp/common-service-db/cs-db-br-script-cm.yaml
     oc apply -f tmp/common-service-db -n $TARGET_NAMESPACE || error "Unable to deploy resources for IM."
-    success "Resources to backup IM deployed in namespace $TARGET_NAMESPACE."
+    success "Resources to backup IM deployed in namespace $TARGET_NAMESPACE with $CSDB_OPERATOR operator support."
   fi
 
   #Deploy IM Mongo resources
@@ -227,7 +295,7 @@ function deploy_resources(){
     success "Resources to backup Keycloak deployed in namespace $TARGET_NAMESPACE."
   fi
 
-  #Deploy zen 5 resources
+  #Deploy zen 5 resources (EDB or IBM CNPG)
   if [[ $ZEN == "true" ]]; then
     if [[ $ZENSERVICE == "" ]]; then
       ZENSERVICE=$(oc get zenservice -n $ZEN_NAMESPACE --no-headers | awk '{print $1}')
@@ -239,14 +307,30 @@ function deploy_resources(){
       else
         info "Creating Zen Backup/Restore resources in namespace $ZEN_NAMESPACE."
         
+        # Detect operator type for zen-metastore cluster specifically
+        ZEN_OPERATOR=$(detect_zen_operator $ZEN_NAMESPACE)
+        
         rm -rf tmp/zen/
         mkdir tmp/zen
-        cp ${BASE_DIR}/zen5-backup-deployment.yaml tmp/zen/zen5-backup-deployment.yaml
-        cp ${BASE_DIR}/zen5-backup-pvc.yaml tmp/zen/zen5-backup-pvc.yaml
-        cp ${BASE_DIR}/zen5-role.yaml tmp/zen/zen5-role.yaml
-        cp ${BASE_DIR}/zen5-rolebinding.yaml tmp/zen/zen5-rolebinding.yaml
-        cp ${BASE_DIR}/zen5-sa.yaml tmp/zen/zen5-sa.yaml
-        cp ${BASE_DIR}/zen5-br-scripts-cm.yaml tmp/zen/zen5-br-scripts-cm.yaml
+        
+        # Select appropriate resources based on cluster's operator type
+        if [[ $ZEN_OPERATOR == "ibm-pg" ]]; then
+          info "Deploying IBM CNPG resources for zen-metastore"
+          cp ${BASE_DIR}/ibm-pg/zen-metastore/zen5-backup-deployment.yaml tmp/zen/zen5-backup-deployment.yaml
+          cp ${BASE_DIR}/ibm-pg/zen-metastore/zen5-backup-pvc.yaml tmp/zen/zen5-backup-pvc.yaml
+          cp ${BASE_DIR}/ibm-pg/zen-metastore/zen5-role.yaml tmp/zen/zen5-role.yaml
+          cp ${BASE_DIR}/ibm-pg/zen-metastore/zen5-rolebinding.yaml tmp/zen/zen5-rolebinding.yaml
+          cp ${BASE_DIR}/ibm-pg/zen-metastore/zen5-sa.yaml tmp/zen/zen5-sa.yaml
+          cp ${BASE_DIR}/ibm-pg/zen-metastore/zen5-br-scripts-cm.yaml tmp/zen/zen5-br-scripts-cm.yaml
+        else
+          info "Deploying EDB resources for zen-metastore"
+          cp ${BASE_DIR}/zen5-backup-deployment.yaml tmp/zen/zen5-backup-deployment.yaml
+          cp ${BASE_DIR}/zen5-backup-pvc.yaml tmp/zen/zen5-backup-pvc.yaml
+          cp ${BASE_DIR}/zen5-role.yaml tmp/zen/zen5-role.yaml
+          cp ${BASE_DIR}/zen5-rolebinding.yaml tmp/zen/zen5-rolebinding.yaml
+          cp ${BASE_DIR}/zen5-sa.yaml tmp/zen/zen5-sa.yaml
+          cp ${BASE_DIR}/zen5-br-scripts-cm.yaml tmp/zen/zen5-br-scripts-cm.yaml
+        fi
 
         sed -i -E "s/<zenservice namespace>/$ZEN_NAMESPACE/" tmp/zen/zen5-backup-deployment.yaml
         sed -i -E "s/<zenservice name>/$ZENSERVICE/" tmp/zen/zen5-backup-deployment.yaml
@@ -257,7 +341,7 @@ function deploy_resources(){
         sed -i -E "s/<zenservice namespace>/$ZEN_NAMESPACE/" tmp/zen/zen5-sa.yaml
         sed -i -E "s/<zenservice namespace>/$ZEN_NAMESPACE/" tmp/zen/zen5-br-scripts-cm.yaml
         oc apply -f tmp/zen -n $ZEN_NAMESPACE || error "Unable to deploy resources for Zen 5."   
-        success "Resources to backup Zen deployed in namespace $ZEN_NAMESPACE."
+        success "Resources to backup Zen deployed in namespace $ZEN_NAMESPACE with $ZEN_OPERATOR operator support."
       fi
     else
       warning "No zenservice found in namespace $ZEN_NAMESPACE. Skipping."

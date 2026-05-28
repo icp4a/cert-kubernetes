@@ -643,6 +643,7 @@ spec:
       ##   --from-literal=adposDBUsername="<your os db username>" --from-literal=adposDBPassword="<your os db password>"
       ## If you have multiple object stores, then you need to define multiple datasource sections starting at "dc_database_type" element after this section.
       ## Each dc_os_label shoudl be different (e.g., dc_os_label: "os1", dc_os_label: "os2", dc_os_label: "os3", etc).
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "os1", then your OS secret must be defined as:
       ## --from-literal=os1DBUsername="<your os db username>" --from-literal=os1DBPassword="<your os db password>"
@@ -701,6 +702,7 @@ spec:
       ##   --from-literal=adposDBUsername="<your os db username>" --from-literal=adposDBPassword="<your os db password>"
       ## If you have multiple object stores, then you need to define multiple datasource sections starting at "dc_database_type" element after this section.
       ## Each dc_os_label shoudl be different (e.g., dc_os_label: "os1", dc_os_label: "os2", dc_os_label: "os3", etc).
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "os1", then your OS secret must be defined as:
       ## --from-literal=os1DBUsername="<your os db username>" --from-literal=os1DBPassword="<your os db password>"
@@ -971,7 +973,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "25.0.0-IF004"
+        tag: "25.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1139,7 +1141,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/fncm/cpe-audit-log
-          tag: "25.0.0-IF004"
+          tag: "25.0.0-IF005"
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
         initresources:
@@ -1221,7 +1223,7 @@ spec:
       #     pull_policy: IfNotPresent
       #     ## The default repository is the IBM Entitled Registry.
       #     repository: cp.icr.io/cp/cp4a/fncm/lscollector
-      #     tag: "25.0.0-IF004"
+      #     tag: "25.0.0-IF005"
       #   ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
       #   ## If more resources are needed, make the changes here to meet your requirement.
       #   resources:
@@ -1257,7 +1259,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "25.0.0-IF004"
+        tag: "25.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1364,7 +1366,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "25.0.0-IF004"
+        tag: "25.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1538,7 +1540,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "25.0.0-IF004"
+        tag: "25.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1667,7 +1669,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "25.0.0-IF004"
+        tag: "25.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1778,7 +1780,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "25.0.0-IF004"
+        tag: "25.0.0-IF005"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1918,7 +1920,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/gitgateway
-          tag: "25.0.0-IF004"
+          tag: "25.0.0-IF005"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -1941,6 +1943,11 @@ spec:
           min_replicas: "<Required>"
           ## This is the default cpu percentage before autoscaling occurs.
           target_cpu_utilization_percentage: "<Required>"
+
+        ## This flag enable or disable Pod Disruption Budget (PDB) creation for gitgateway component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+        ## A PDB for gitgateway will be created with a `minAvailable: 1` only if the gitgateway replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+        enable_pdb: true
+
         # Below are the default Git Gateway settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
         production_setting:
           git_gateway_timeout: 60000
@@ -1981,7 +1988,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cds
-          tag: "25.0.0-IF004"
+          tag: "25.0.0-IF005"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2054,7 +2061,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cdra
-          tag: "25.0.0-IF004"
+          tag: "25.0.0-IF005"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2079,6 +2086,10 @@ spec:
           min_replicas: "<Required>"
           ## This is the default cpu percentage before autoscaling occurs.
           target_cpu_utilization_percentage: "<Required>"
+
+        ## This flag enable or disable Pod Disruption Budget (PDB) creation for cdra component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+        ## A PDB for cdra will be created with a `minAvailable: 1` only if the cdra replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+        enable_pdb: true
 
         # Below are the default CDS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
         production_setting:
@@ -2146,7 +2157,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cpds
-          tag: "25.0.0-IF004"
+          tag: "25.0.0-IF005"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2243,7 +2254,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/viewone
-          tag: "25.0.0-IF004"
+          tag: "25.0.0-IF005"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2268,6 +2279,10 @@ spec:
           min_replicas: "<Required>"
           ## This is the default cpu percentage before autoscaling occurs.
           target_cpu_utilization_percentage: "<Required>"
+
+        ## This flag enable or disable Pod Disruption Budget (PDB) creation for viewone component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+        ## A PDB for viewone will be created with a `minAvailable: 1` only if the viewone replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+        enable_pdb: true
 
         ## Below are the default ViewOne Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
         production_setting:
@@ -2339,7 +2354,7 @@ spec:
     #    pull_policy: IfNotPresent
     #    ## The default repository is the IBM Entitled Registry.
     #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-    #    tag: "25.0.0-IF004"
+    #    tag: "25.0.0-IF005"
     #  ## Below are the default LSReporter Production settings.
     #  ## Make the necessary changes as you see fit.
     #  product_settings:
@@ -2442,7 +2457,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "25.0.0-IF004"
+      tag: "25.0.0-IF005"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2734,7 +2749,7 @@ spec:
         max_replicas: "<Required>"  # Required if enable set to "true"
       image:
         repository: "cp.icr.io/cp/cp4a/iadp"
-        tag: "25.0.0-IF004"
+        tag: "25.0.0-IF005"
         pull_policy: "IfNotPresent"
 ## Overwrite the default SHA digest for Document Processing engine containers by providing the SHA for each containers below.  To use SHA digest, you must comment out the `tag` parameter or leave it blank and you must use entilement registry as the repository.
         doc_processing_digest:

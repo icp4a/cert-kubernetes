@@ -14,6 +14,9 @@ export LC_CTYPE=C
 #
 ###############################################################################
 
+# Open file descriptor 3 for suppressing output
+exec 3>/dev/null
+
 # This script contains shared utility functions and environment variables.
 # CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
@@ -171,33 +174,33 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 CP4BA_RELEASE_BASE="25.0.0"
 # CP4BA_RELEASE_BASE_MAJOR_VERSION is used in certain checks where we used to hardcode to see if a upgrade is not ifix to ifix,change this only for major release
 CP4BA_RELEASE_BASE_MAJOR_VERSION="25.0"
-CP4BA_PATCH_VERSION="IF004"
+CP4BA_PATCH_VERSION="IF005"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v25.0.4"
+CP4BA_CSV_VERSION="v25.0.5"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
 CP4BA_CHANNEL_VERSION="v25.0"
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.17.0"
+CS_OPERATOR_VERSION="v4.18.1"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
-CS_CHANNEL_VERSION="v4.17"
+CS_CHANNEL_VERSION="v4.18"
 # CS CHANNEL VERSION that is used in the KC
 CS_CHANNEL_KC="4.x_cd"
 # CERT_LICENSE_OPERATOR_VERSION is for checking IBM cert-manager/licensing operator upgrade status, need to update for each IFIX
-CERT_LICENSE_OPERATOR_VERSION="v4.2.20"
+CERT_LICENSE_OPERATOR_VERSION="v4.2.21"
 # CERT_LICENSE_CHANNEL_VERSION is for for IBM cert-manager/licensing script -c option, need to update for each IFIX
 CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
-CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-17-0"
+CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-18-0"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v6.4.0"
+ZEN_OPERATOR_VERSION="v6.4.5"
 # BTS_CHANNEL_VERSION is for for BTS, need to update for each IFIX
 BTS_CHANNEL_VERSION="v3.35"
-# BTS_CATALOG_VERSION is for BTS 3.35.8.
+# BTS_CATALOG_VERSION is for BTS 3.35.10.
 BTS_CATALOG_VERSION="ibm-bts-operator-catalog-v3-35"
 # REQUIREDVER_BTS is for checking bts operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_BTS="3.35.8"
+REQUIREDVER_BTS="3.35.10"
 # REQUIREDVER_POSTGRESQL is for checking postgresql operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_POSTGRESQL="1.25.5"
+REQUIREDVER_POSTGRESQL="1.25.6"
 # EVENTS_OPERATOR_VERSION is for checking IBM Events operator upgrade status, need to update for each IFIX
 EVENTS_OPERATOR_VERSION="v5.2.1"
 #This is the list where we further restricted the versions that are supported for upgrade to $CP4BA_CSV_VERSION.  
@@ -218,9 +221,9 @@ UPGRADE_IBM_LICENSE_FILE=${UPGRADE_PREREQUISITE_FOLDER}/license_operator.yaml
 UPGRADE_OPERATOR_GROUP=${UPGRADE_PREREQUISITE_FOLDER}/operator_group.yaml
 
 # Check CS is dedicated or shared
-COMMON_SERVICES_CM_NAMESPACE="kube-public"
-COMMON_SERVICES_CM_DEDICATED_NAME="common-service-maps"
-COMMON_SERVICES_CM_SHARED_NAME="ibm-common-services-status"
+# COMMON_SERVICES_CM_NAMESPACE="kube-public"
+# COMMON_SERVICES_CM_DEDICATED_NAME="common-service-maps"
+# COMMON_SERVICES_CM_SHARED_NAME="ibm-common-services-status"
 COMMON_SERVICES_NAME="IBM Cloud Pak foundational services"
 COMMON_SERVICES_CM_DEDICATE_FILE_NAME_UPDATE="common-service-maps-update.yaml"
 COMMON_SERVICES_CM_DEDICATE_FILE_NAME="common-service-maps.yaml"
@@ -344,7 +347,7 @@ function validate_cli(){
             echo_bold "\"timeout\" Command Not Found\n"
             echo_bold "The \"timeout\" will be installed automatically\n"
             echo_bold "Do you accept (Yes/No, default: No):"
-            read -rp "" ans
+            read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
                 install_timeout_cli
@@ -415,6 +418,7 @@ GREEN_TEXT=`tput setaf 2`
 YELLOW_TEXT=`tput setaf 3`
 BLUE_TEXT=`tput setaf 6`
 WHITE_TEXT=`tput setaf 7`
+BOLD_TEXT=`tput bold`
 RESET_TEXT=`tput sgr0`
 
 printHeaderMessage()
@@ -959,7 +963,7 @@ function generate_truststore_password() {
 function prompt_to_continue() {
     while true; do
         printf "\x1B[1mPlease confirm that you are ready to continue.  Enter Yes to continue or No to exit (Yes/No, default: No): \x1B[0m"
-        read -rp "" ans
+        read -erp "" ans
         ans=$(echo "$ans" | tr '[:upper:]' '[:lower:]')
         if [ -z "$ans" ]; then
             ans="no"
@@ -2168,4 +2172,42 @@ function validate_zen_upgrade_status(){
         exit 1
     fi
 
+}
+
+
+# Function to check if all components are ready
+# This function parses the components status variable array defined in upgradeDeploymentStatus and checks for "Done" status
+# This is used as a part of upgrade
+# Check if all CP4BA components have completed upgrade
+# Returns: 0 if all installed components show "Done", 1 otherwise
+function check_if_all_components_are_ready() {
+    # Check all component status values in the array
+    for status_value in "${CP4BA_COMPONENT_STATUS_VALUES[@]}"; do
+        
+        # Skip if empty or whitespace only
+        if [[ -z "$status_value" ]] || [[ "$status_value" =~ ^[[:space:]]*$ ]]; then
+            continue
+        fi
+
+        # Skip if "Not Installed"
+        if [[ "$status_value" =~ "Not Installed" ]]; then
+            continue
+        fi
+        
+        # Check for non-ready states
+        if [[ "$status_value" =~ "In Progress" ]] || \
+           [[ "$status_value" =~ "Not Ready" ]] || \
+           [[ "$status_value" =~ "Failed" ]] || \
+           [[ "$status_value" =~ "Pending" ]] || \
+           [[ "$status_value" =~ "Upgrading" ]]; then
+            return 1  # Not ready
+        fi
+        
+        # Must contain "Done" or "Ready"
+        if [[ ! "$status_value" =~ "Done" ]] && [[ ! "$status_value" =~ "Ready" ]]; then
+            return 1  # Not ready
+        fi
+    done
+    
+    return 0  # All components ready
 }

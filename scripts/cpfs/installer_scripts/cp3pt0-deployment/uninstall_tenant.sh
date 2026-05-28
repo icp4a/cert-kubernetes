@@ -518,7 +518,7 @@ function cleanup_extra_resources() {
         ${OC} delete issuer cs-ss-issuer cs-ca-issuer -n $ns --ignore-not-found
         ${OC} delete certificate cs-ca-certificate -n $ns --ignore-not-found
         ${OC} delete configmap cloud-native-postgresql-image-list ibm-cpp-config -n $ns --ignore-not-found
-        ${OC} delete secret common-service-db-im-tls-secret postgresql-operator-controller-manager-config cs-ca-certificate-secret common-service-db-tls-secret common-service-db-replica-tls-secret common-service-db-zen-tls-secret common-web-ui-cert -n $ns --ignore-not-found
+        ${OC} delete secret common-service-db-im-tls-secret postgresql-operator-controller-manager-config cs-ca-certificate-secret common-service-db-tls-secret common-service-db-replica-tls-secret common-service-db-zen-tls-secret common-web-ui-cert identity-provider-secret platform-auth-secret platform-identity-management saml-auth-secret -n $ns --ignore-not-found
         ${OC} delete commonservice common-service im-common-service -n $ns --ignore-not-found
         ${OC} delete operandconfig common-service -n $ns --ignore-not-found
         ${OC} delete operandregistry common-service -n $ns --ignore-not-found

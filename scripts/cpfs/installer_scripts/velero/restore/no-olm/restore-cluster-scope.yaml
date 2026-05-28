@@ -27,5 +27,6 @@ spec:
       - ui-cluster
       - zen-cluster
       - edb-cluster
+      - ibm-pg-cluster
       - iam-cluster
       - nss-cluster

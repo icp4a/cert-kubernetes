@@ -352,26 +352,6 @@ function cleanup_log() {
     fi
 }
 
-function save_log1() {    
-    local LOG_DIR="$CUR_DIR/$1"
-    LOG_FILE="$LOG_DIR/$2_$(date +'%Y%m%d%H%M%S').log"
-
-    if [[ ! -d $LOG_DIR ]]; then
-        mkdir -p "$LOG_DIR"
-    fi
-
-    # Commenting this out as it is throwing syntax errors in some machines
-    # Redirect stdout and stderr directly to the log file
-    #exec > >(tee -a "$LOG_FILE") 2>&1
-
-#   # Redirect stdout and stderr directly to the log file
-#    exec 3>&1 4>&2
-#    exec > >(tee -a $LOG_FILE >&3) 2> >(tee -a $LOG_FILE >&4)
-#    exec >>(tee -a "$LOG_FILE") 2>&1
-#    #exec &> >(tee -a "$LOG_FILE")
-#    #"$@" 2>&1 | tee "$LOG_FILE"
-}
-
 
 # Function that detects the operator and operand namespace so that the different modes can retrieve network policies accordingly
 # Uses ibm-cp4ba-common-config to retrieve these values

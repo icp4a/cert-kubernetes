@@ -285,6 +285,7 @@ spec:
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
       dc_use_postgres: false
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
@@ -422,7 +423,7 @@ spec:
       - doc_cpe_obj_store_name: "OS01"
         doc_cpe_folder_name: "/TESTFOLDER"
         doc_cpe_doc_title: "test_title"
-        DOC_CPE_class_name: "Document"
+        doc_cpe_class_name: "Document"
         doc_cpe_doc_content: "This is a simple document test"
         doc_cpe_doc_content_name: "doc_content_name"
       vc_cpe_cbr:
