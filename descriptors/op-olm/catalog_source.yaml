@@ -22,7 +22,7 @@ spec:
   grpcPodConfig:
     securityContextConfig: restricted
 ---
-# IBM CS Flink Operator Catalog 1.20.2 (2.0.19)
+# IBM CS Flink Operator Catalog 1.20.2 (2.0.18)
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
@@ -33,7 +33,7 @@ spec:
   publisher: IBM
   sourceType: grpc
   image: >-
-    icr.io/cpopen/ibm-opencontent-flink-operator-catalog@sha256:9f673bd4ab11a5734cdf79bf18c7c5bcb52ded1c7faf9e24e3355f3f6e4edb97
+    icr.io/cpopen/ibm-opencontent-flink-operator-catalog@sha256:d68536ac84dafca1a2041bb5511f487aaf52e239b1be340e79801e5c419e9f44
   priority: 100
   grpcPodConfig:
     securityContextConfig: restricted
