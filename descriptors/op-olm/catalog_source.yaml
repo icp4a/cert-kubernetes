@@ -33,7 +33,7 @@ spec:
   publisher: IBM
   sourceType: grpc
   image: >-
-    icr.io/cpopen/ibm-opencontent-flink-operator-catalog@sha256:9f673bd4ab11a5734cdf79bf18c7c5bcb52ded1c7faf9e24e3355f3f6e4edb97
+    icr.io/cpopen/ibm-opencontent-flink-operator-catalog@sha256:d3970f055e5bfbe77cd4fbfa9da86bb39597b9474c19fd0a3190cb568c7534af
   priority: 100
   grpcPodConfig:
     securityContextConfig: restricted
