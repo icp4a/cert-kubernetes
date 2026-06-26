@@ -4816,7 +4816,6 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
     echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
     if [[ $EXTERNAL_POSTGRESDB_FOR_IM == "true" ]]; then
-        #rm -rf $IM_DB_SSL_CERT_FOLDER >/dev/null 2>&1
         mkdir -p $IM_DB_SSL_CERT_FOLDER >/dev/null 2>&1
         #Calling generateImZenBTSMessage function to show message related to IM external DB
         generateImZenBTSMessage "IM" $IM_DB_SSL_CERT_FOLDER
@@ -4825,7 +4824,6 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
 
 
     if [[ $EXTERNAL_POSTGRESDB_FOR_ZEN == "true" ]]; then
-        #rm -rf $ZEN_DB_SSL_CERT_FOLDER >/dev/null 2>&1
         mkdir -p $ZEN_DB_SSL_CERT_FOLDER >/dev/null 2>&1
         #Calling generateImZenBTSMessage function to show message related to ZEN external DB
         generateImZenBTSMessage "ZEN" $ZEN_DB_SSL_CERT_FOLDER
@@ -4833,14 +4831,12 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
     fi
 
     if [[ $EXTERNAL_POSTGRESDB_FOR_BTS == "true" ]]; then
-        #rm -rf $BTS_DB_SSL_CERT_FOLDER >/dev/null 2>&1
         mkdir -p $BTS_DB_SSL_CERT_FOLDER >/dev/null 2>&1
         #Calling generateImZenBTSMessage function to show message related to BTS external DB
         generateImZenBTSMessage "BTS" $BTS_DB_SSL_CERT_FOLDER
     fi
 
     if [[ $EXTERNAL_CERT_OPENSEARCH_KAFKA == "true" ]]; then
-        #rm -rf $CP4BA_TLS_ISSUER_CERT_FOLDER >/dev/null 2>&1
         mkdir -p $CP4BA_TLS_ISSUER_CERT_FOLDER >/dev/null 2>&1
         echo "## Configuration for external certificate used by Opensearch/Kafka." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}

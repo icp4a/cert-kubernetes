@@ -69,9 +69,43 @@ spec:
       - owned:
           apiVersion: apps/v1
           kind: Deployment
-          selector: navigator
-          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-navigator-deploy")].resources
-        ownerPath: .spec.navigator_configuration.navigator.resources
+          selector: es
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-es-deploy")].resources
+        ownerPath: .spec.ecm_configuration.es.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: ccxmo
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-ccxmo-deploy")].resources
+        ownerPath: .spec.ccxmo_configuration.resources
+      # IER - single instance deployment
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: ier
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-ier-deploy")].resources
+        ownerPath: .spec.ier_configuration.resources
+      # ICCSAP base instance
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: iccsap-base
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-iccsap-deploy")].resources
+        ownerPath: .spec.iccsap_configuration.resources
+      # ICCSAP multi-instance 0 - replace <INSTANCE_ID_1> with your instance_id from iccsap_configuration_multi
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: iccsap-multi-0
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-iccsap-<INSTANCE_ID_1>-deploy")].resources
+        ownerPath: .spec.iccsap_configuration_multi[0].resources
+      # ICCSAP multi-instance 1 - replace <INSTANCE_ID_2> with your instance_id from iccsap_configuration_multi
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: iccsap-multi-1
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-iccsap-<INSTANCE_ID_2>-deploy")].resources
+        ownerPath: .spec.iccsap_configuration_multi[1].resources
     selectors:
       cpe:
         matchLabels:
@@ -103,9 +137,24 @@ spec:
       tm:
         matchLabels:
           app.kubernetes.io/name: {{ meta.name }}-tm-deploy
-      navigator:
+      es:
         matchLabels:
-          app.kubernetes.io/name: {{ meta.name }}-navigator-deploy
+          app.kubernetes.io/name: {{ meta.name }}-es-deploy
+      ccxmo:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-ccxmo-deploy
+      ier:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-ier-deploy
+      iccsap-base:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-iccsap-deploy
+      iccsap-multi-0:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-iccsap-<INSTANCE_ID_1>-deploy
+      iccsap-multi-1:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-iccsap-<INSTANCE_ID_2>-deploy
   owner:
     apiVersion: icp4a.ibm.com/v1
     kind: ICP4ACluster
