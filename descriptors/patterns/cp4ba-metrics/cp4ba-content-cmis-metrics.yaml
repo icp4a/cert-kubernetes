@@ -1,0 +1,32 @@
+apiVersion: operator.ibm.com/v1
+kind: IBMServiceMeterDefinition
+metadata:
+  name: cp4ba-cmis-metrics
+  namespace: REPLACE_NAMESPACE
+spec:
+  mappingId: cmisdeployment000000000001
+  processing: LAST
+  repeat: true
+  breakdownDefs:
+    - breakdownBy:
+        name: INSTANCE_COUNT
+      groupBy:
+        - componentId
+        - componentName
+        - version
+        - environment
+        - architecture
+        - platform
+        - cmis_inbound
+        - cmis_document_upload
+        - cmis_document_read
+      source: metricQuantity
+      processing: LAST
+  data:
+    componentId: 3191c7cdc4c8413dafaaad1f180e4ce8
+    componentName: IBM ECM CMIS
+    productId: e270b00ce6d7486db1e31fc5fd09fffc
+    productName: IBM Content Cortex Essentials Containers
+    metricName: INSTANCE_COUNT
+    metricDescription: count of CMIS instances
+    metricType: ADOPTION

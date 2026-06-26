@@ -36,9 +36,15 @@ function create_baa_app_engine_db_postgresql_sql_file(){
 
     mkdir -p $AE_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
     rm -rf $AE_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/create_app_engine_db.sql
+    # Determine CREATE ROLE statement based on client authentication setting
+    if is_pg_client_auth; then
+        CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN;"
+    else
+        CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN ENCRYPTED PASSWORD '${dbuserpwd}';"
+    fi
 cat << EOF > $AE_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/create_app_engine_db.sql
 -- create a new user
-CREATE USER ${dbuser} WITH PASSWORD '${dbuserpwd}';
+${CREATE_ROLE_STMT}
 -- create database ${dbname}
 CREATE DATABASE ${dbname} OWNER ${dbuser};
 -- The following grant is used for databases

@@ -29,7 +29,7 @@ spec:
 {% endif %}
       containers:
       - name: producer-job
-        image: "{{ docker_registry }}/centos/{{ arch }}"
+        image: {{ storage_val_image }}
         imagePullPolicy: "IfNotPresent"
         env:
           - name: DIR_NAME

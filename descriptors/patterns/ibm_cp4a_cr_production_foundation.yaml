@@ -17,11 +17,11 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
   ## CP4A application version
-  appVersion: 25.0.1
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -67,7 +67,7 @@ spec:
   ##     - Automation Document Processing (ADP)
   ##     - Automation Digital Worker (digitalworker)
   ##     - the Applications Designer (app_designer) feature with  Business Automation Application (application)
-  ##     - the Decision Designer feature (ads_designer) with Automation Decision Services (decisions_ads)
+  ##     - the Decision Designer feature (ads_designer) with Decision Intelligence Client Managed Software (decisions_ads)
   ##
   ##  Note: In case non of these is to be installed, the bastudio_configuration should be commented out or deleted
   ##  from the final CR that will be applied.
@@ -80,8 +80,8 @@ spec:
   ##
   ######################################################################################################################
   shared_configuration:
-    ## FileNet Content Manager (FNCM) license and possible values are: user, concurrent-user, authorized-user, non-production, and production.
-    ## This value could be different from the other licenses in the CR.
+    ## This is the Content Cortex license  parameter and the possible values are: user, concurrent-user, authorized-user, non-production, and production.
+    ## This value could be different from the rest of the licenses.
     sc_deployment_fncm_license: "<Required>"
 
     ## Business Automation Workflow (BAW) license and possible values are: user, non-production, and production.
@@ -110,9 +110,9 @@ spec:
     ## All CP4A components must use/share the root_ca_secret in order for integration
     root_ca_secret: icp4a-root-ca
 
-    ## CP4A patterns or capabilities to be deployed.  This CR represents the "application" pattern (aka Business Automation Manager), which includes the following
-    ## mandatory components: ban(Business Automation Navigator), ums (User Management Service), app_engine( Application Engine) and optional components: app_designerollowing
-    ## mandatory components: icn (BAN/Navigator), rr (Resource Registry) and optional components: ums, bas, and bai
+    ## CP4A patterns or capabilities to be deployed. This CR represents the "application" pattern (aka Business Automation Manager), which includes the following:
+    ## - Mandatory components: ban (Business Automation Navigator / Content Navigator), ums (User Management Service), app_engine (Application Engine), and rr (Resource Registry)
+    ## - Optional components: app_designer, bas, and bai
     sc_deployment_patterns: foundation
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.  User can
@@ -130,7 +130,7 @@ spec:
     sc_deployment_profile_size: "small"
 
     ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <route-name>-{{meta.namespace}}.<router-canonical-hostname> when not defined.
-    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.1?topic=scp-shared-configuration
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/26.0.0?topic=scp-shared-configuration
     ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
     #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
 
@@ -317,8 +317,7 @@ spec:
       # type: oracle
       # ## Oracle - If you are using Oracle input the oracle database connection URL here
       # jdbc_url: <Required>
-      # ## Input your Oracle JDBC jar files here. Like: ojdbc8.jar
-      # jdbc_driver_files: <Required>
+      # ## Note: Custom JDBC drivers provided via sc_drivers_url in shared_configuration will automatically be used.
       #-----------------------------------------------------------------------
       # Configuration required for configure PostgreSQL for BA Studio server
       # If you are going to use PostgreSQL. Please uncomment this section
@@ -333,8 +332,7 @@ spec:
       # port: "<Required>"
       # Provide the database connection URL if you don't provide database host, port and name.
       # jdbc_url:
-      # ## Input your PostgreSQL JDBC jar files here. Like: postgresql-42.2.16.jar
-      # jdbc_driver_files: <Required>
+      # ## Note: Custom JDBC drivers provided via sc_drivers_url in shared_configuration will automatically be used.
       # ## If you want to enable PostgreSQL Connection Fail-over, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
       # alternative_host:
       # alternative_port:
@@ -352,8 +350,7 @@ spec:
       # port: "<Required>"
       # Provide the database connection URL if you don't provide database host, port and name.
       # jdbc_url:
-      # ## Input your SQLServer JDBC jar files here. Like: mssql-jdbc-8.2.0.jre8.jar
-      # jdbc_driver_files: <Required>
+      # ## Note: Custom JDBC drivers provided via sc_drivers_url in shared_configuration will automatically be used.
       # ## If you want to enable SQLServer Connection Fail-over, you must configure alternative_host and alternative_port. Otherwise, leave them blank.
       # alternative_host:
       # alternative_port:

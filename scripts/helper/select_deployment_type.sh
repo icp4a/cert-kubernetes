@@ -44,8 +44,8 @@ function select_deployment_type(){
         COLUMNS=12
         options=("Starter" "Production")
         if [ -z "$existing_deployment_type" ]; then
-            if skip_edb_for_2501; then
-                info "Note: Please be aware that for this ${VERSION_TO_SKIP_EDB} Limited Support Release, Starter deployment is not supported. Starter deployment support will be available in the upcoming iFix and next release."
+            if skip_edb; then
+                info "Note: Please be aware that for this ${VERSION_TO_SKIP_EDB} version, Starter deployment is not supported. Starter deployment support will be available in the upcoming iFix and next release."
                 options=("Production")
                 PS3='Enter a valid option [1]: '
             else

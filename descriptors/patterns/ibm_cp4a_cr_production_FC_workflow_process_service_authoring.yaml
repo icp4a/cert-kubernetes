@@ -16,10 +16,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
-  appVersion: 25.0.1
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -30,8 +30,8 @@ spec:
   shared_configuration:
     ## This is an optional parameter, If the user installing cp4ba in a CNCF cluster and they selected the parameter sc_deployment_platform as "OCP" then the possible values for this parameter is: ARO or ROSA.
     sc_deployment_ocp_platform:
-    ## FileNet Content Manager (FNCM) license and possible values are: user, concurrent-user, authorized-user, non-production, and production.
-    ## This value could be different from the other licenses in the CR.
+    ## This is the Content Cortex license  parameter and the possible values are: user, concurrent-user, authorized-user, non-production, and production.
+    ## This value could be different from the rest of the licenses.
     sc_deployment_fncm_license: "<Required>"
 
 
@@ -89,16 +89,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -115,9 +115,10 @@ spec:
     sc_deployment_patterns: workflow-process-service
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
-    ## The optional components are: bai,pfs,kafka. Please do not delete wfps_authoring, because it determines that this is an Authoring environment.
+    ## The optional components are: bai,pfs,kafka,application_connectors,workflow_runtime_mcp_server. Please do not delete wfps_authoring, because it determines that this is an Authoring environment.
     ## pfs will bring advanced full text search function to workplace. And the external workplace can be enabled only when pfs is enabled
     ## kafka will install a kafka cluster and enable kafka service for workflow process service authoring
+    ## If PFS and Workflow Runtime MCP Server are enabled, opensearch need to be enabled.
     sc_optional_components: wfps_authoring
 
     ## The deployment type as selected by the user.  Possible values are: Starter and Production.
@@ -158,25 +159,31 @@ spec:
     ## the external service to the component's truststore.
     trusted_certificate_list: []
 
-    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers,
-    ## all the files must be compressed in a single file.
-    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or
-    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed
-    ## file should have the following structure and content:
+    ## Provide a URL to a compressed file containing custom JDBC drivers and/or ICCSAP drivers.
+    ## IMPORTANT: Custom drivers provided via this URL will automatically take precedence over out-of-the-box drivers.
+    ## Only one driver per database type will be present in the persistent volume, with customer-supplied drivers taking priority.
+    ##
+    ## Package your drivers in the format: "saplibs/drivers_files" and/or "jdbc/db2|oracle|postgresql|sqlserver/driver_files"
+    ## Example structure for DB2 and Oracle JDBC drivers with ICCSAP drivers:
     ##   /jdbc/db2/db2jcc4.jar
     ##   /jdbc/db2/db2jcc_license_cu.jar
     ##   /jdbc/oracle/ojdbc8.jar
     ##   /saplibs/libicudata.so.50
     ##   /saplibs/...
-    ## Then you need to put the compressed package on an anonymously accessible web server and provide the link here.
-    ## The CR can handle .zip files using unzip as well as .tar, .tar.gz, .tar.bz2, .tar.xz. Does not handle .gz files, .bz2 files, .xz, or .zst files that do not contain a .tar archive.
+    ##
+    ## Place the compressed package on an anonymously accessible web server and provide the URL here.
+    ## Supported formats: .zip, .tar, .tar.gz, .tar.bz2, .tar.xz (does not handle standalone .gz, .bz2, .xz, or .zst files)
     sc_drivers_url:
 
     ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
     ## This secret is also used by Workflow and BAStudio to store AES encryption key.
     encryption_key_secret: ibm-iaws-shared-key-secret
-
-    ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
+    
+    ## The global flag to enable or disable Pod Disruption Budget (PDB) creation across all components.  This flag can be overridden at specific configuration sections (eg: ecm_configuration.cpe.enable_pdb).  Default is true
+    ## A PDB will be created with a `minAvailable: 1` only if the replica count of a particular deployment is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+    sc_enable_pdb: true
+    
+    ## Enable/disable ECM (Content Cortex) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
     ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true", then the initialization will occur.
     ## However, if sc_content_initialization is set to "false" (or the parameter doesn't exist), then the initialization will not occur (even with the "initialize_configuration" section defined)
@@ -184,7 +191,7 @@ spec:
     ## If you already initialized content or want to upgrade, please set sc_content_initialization to "false" before you apply the CR.
     sc_content_initialization: true
 
-    ## Enable/disable the ECM (FNCM) / BAN verification (e.g., creation of test folder, creation of test document,
+    ## Enable/disable the ECM (Content Cortex) / BAN verification (e.g., creation of test folder, creation of test document,
     ## execution of CBR search, and creation of Navigator demo repository and desktop).  If the "verify_configuration"
     ## section is defined in the CR and sc_content_verification is set to true, then the verification will occur.  Note that if you are upgrading or
     ## migrating, set this parameter to "false" since the env has been previously verified.
@@ -208,6 +215,10 @@ spec:
     ## By default, the sc_is_multiple_az parameter is set to true. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
     sc_is_multiple_az: true
+
+    ## By default we will always set the sc_enable_usage_metering flag to true and this will enable the operators to deploy the cron jobs to send usage metrics to software central.
+    ## Only set this flag to "false" if you want to opt-out sending usage metrics.
+    sc_enable_usage_metering: true
 
   ## The beginning section of LDAP configuration for CP4A
   ldap_configuration:
@@ -494,7 +505,7 @@ spec:
       ## Workflow Authoring IBM Workplace deployment job image repository URL
       repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
       ## Workflow Authoring IBM Workplace deployment job image repository tag.
-      tag: "25.0.1-IF001"
+      tag: "26.0.0"
       ## Pull policy for Workflow Authoring IBM Workplace deployment job image. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pull_policy: IfNotPresent
 
@@ -619,7 +630,7 @@ spec:
       pull_policy: IfNotPresent
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
     #Adjust this one if you created the secret with name other than the default
     admin_secret_name: "{{ meta.name }}-bas-admin-secret"
     #-----------------------------------------------------------------------
@@ -662,10 +673,7 @@ spec:
       cm_min_pool_size: '2'
       # Enabled the SSL for database is true by default. Please save the TLS certificate used by database in a secret and put the name here
       certificate_secret_name: <Required>
-      # Default is false. If you are using custom JDBC. Then you must set shared_configuration.sc_drivers_url and change this value to true.
-      use_custom_jdbc_drivers: false
-      # The custom JDBC file set. If you are using Custom JDBC. Input your PostgreSQL JDBC jar files here. Like: postgresql-42.2.16.jar
-      jdbc_driver_files: ""
+      # Note: Custom JDBC drivers provided via sc_drivers_url in shared_configuration will automatically take precedence over out-of-the-box drivers.
     autoscaling:
       enabled: false
       minReplicas: 1

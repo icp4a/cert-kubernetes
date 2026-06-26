@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component-id: {{ .Chart.Name }}
+    icpdsupport/addOnId: model_gateway
+  name: ibm-cpd-model-gateway-operator
+  namespace: {{ .Values.global.operatorNamespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: ibm-cpd-model-gateway-operator
+  template:
+    metadata:
+      annotations:
+        cloudpakId: 3a6d4448ec8342279494bc22e36bc318
+        cloudpakName: IBM Cloud Pak for Data
+        productID: 3a6d4448ec8342279494bc22e36bc318
+        productMetric: FREE
+        productName: IBM Model Gateway
+        productVersion: 13.0.0
+      labels:
+        app.kubernetes.io/instance: ibm-cpd-model-gateway-operator
+        app.kubernetes.io/managed-by: ibm-cpd-model-gateway-operator
+        app.kubernetes.io/name: ibm-cpd-model-gateway-operator
+        control-plane: ibm-cpd-model-gateway-operator
+        icpdsupport/addOnId: model_gateway
+        icpdsupport/app: operator
+        icpdsupport/module: ibm-cpd-model-gateway-operator
+        intent: projected
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+                - ppc64le
+                - s390x
+      containers:
+      - args:
+        - --zap-log-level
+        - error
+        - --max-concurrent-reconciles
+        - '1'
+        - --reconcile-period
+        - 0s
+        env:
+        - name: ANSIBLE_CALLBACK_WHITELIST
+          value: profile_roles, profile_tasks
+        - name: ANSIBLE_STDOUT_CALLBACK
+          value: ansible.builtin.default
+        - name: ANSIBLE_STDOUT_CALLBACK_RESULT_FORMAT
+          value: yaml
+        {{- $watchNamespaces := .Values.global.tetheredNamespaces | default list -}}
+        {{- if .Values.global.instanceNamespace -}}
+        {{- $watchNamespaces = append $watchNamespaces .Values.global.instanceNamespace -}}
+        {{- end -}}
+        {{- $watchNamespaces = prepend $watchNamespaces .Values.global.operatorNamespace }}
+        - name: WATCH_NAMESPACE
+          value: {{ uniq $watchNamespaces | join "," | quote }}
+        - name: OPERATOR_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        {{- if and (eq .Values.global.arch "amd64") (not (empty .Values.modelGateway.operatorImageDigest.amd64)) }}
+        image: '{{ .Values.global.imagePullPrefix }}/{{ .Values.modelGateway.devOperatorImageName | default .Values.modelGateway.operatorImageName }}@{{ .Values.modelGateway.operatorImageDigest.amd64 }}'
+        {{- else if and (eq .Values.global.arch "ppc64le") (not (empty .Values.modelGateway.operatorImageDigest.ppc64le)) }}
+        image: '{{ .Values.global.imagePullPrefix }}/{{ .Values.modelGateway.devOperatorImageName | default .Values.modelGateway.operatorImageName }}@{{ .Values.modelGateway.operatorImageDigest.ppc64le }}'
+        {{- else if and (eq .Values.global.arch "s390x") (not (empty .Values.modelGateway.operatorImageDigest.s390x)) }}
+        image: '{{ .Values.global.imagePullPrefix }}/{{ .Values.modelGateway.devOperatorImageName | default .Values.modelGateway.operatorImageName }}@{{ .Values.modelGateway.operatorImageDigest.s390x }}'
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 6789
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: manager
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 6789
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            ephemeral-storage: 250Mi
+            memory: 1024Mi
+          requests:
+            cpu: 100m
+            ephemeral-storage: 250Mi
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+      imagePullSecrets:
+      - name: {{ .Values.global.imagePullSecret }}
+      serviceAccount: ibm-cpd-model-gateway-operator-serviceaccount
+      serviceAccountName: ibm-cpd-model-gateway-operator-serviceaccount
+      terminationGracePeriodSeconds: 10

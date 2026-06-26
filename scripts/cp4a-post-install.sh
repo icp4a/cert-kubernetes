@@ -23,7 +23,7 @@ source $DIR/helper/post-install/services/functions.sh
 #Source all capabilities specific functions
 ############################################################
 source $DIR/helper/post-install/services/filenet.sh
-source $DIR/helper/post-install/services/ads.sh
+source $DIR/helper/post-install/services/dicms.sh
 source $DIR/helper/post-install/services/baa.sh
 source $DIR/helper/post-install/services/odm.sh
 source $DIR/helper/post-install/services/bai.sh

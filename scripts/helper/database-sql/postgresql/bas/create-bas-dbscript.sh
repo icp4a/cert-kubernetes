@@ -36,9 +36,17 @@ function create_bas_studio_db_postgresql_sql_file(){
 
     mkdir -p $BAS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
     rm -rf $BAS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/create_bas_studio_db.sql
+
+    # DBACLD-203586:Determine CREATE ROLE statement based on client authentication setting
+    if is_pg_client_auth; then
+        CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN;"
+    else
+        CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN ENCRYPTED PASSWORD '${dbuserpwd}';"
+    fi
+
 cat << EOF > $BAS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/create_bas_studio_db.sql
 -- create the user
-CREATE ROLE ${dbuser} WITH INHERIT LOGIN ENCRYPTED PASSWORD '${dbuserpwd}';
+${CREATE_ROLE_STMT}
 
 -- create the database:
 CREATE DATABASE ${dbname} WITH OWNER ${dbuser} ENCODING 'UTF8';

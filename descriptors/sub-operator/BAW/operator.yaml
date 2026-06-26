@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba-workflow
     app.kubernetes.io/managed-by: ibm-dba-workflow
     app.kubernetes.io/name: ibm-dba-workflow
-    release: 25.0.1
+    release: 26.0.0
 spec:
   selector:
     matchLabels:
@@ -29,19 +29,19 @@ spec:
       annotations:
         cloudpakId: "94a9c8c358bb43ba8fbdea62e7e166a5"
         cloudpakName: "IBM Cloud Pak for Business Automation"
-        cloudpakVersion: "25.0.1"
+        cloudpakVersion: "26.0.0"
         productChargedContainers: ""
         productCloudpakRatio: '1:1'
         productID: 94a9c8c358bb43ba8fbdea62e7e166a5
         productMetric: "VIRTUAL_PROCESSOR_CORE"
         productName: "Business Workflow Runtime Server - CP4BA"
-        productVersion: "25.0.1"
+        productVersion: "26.0.0"
       labels:
         app.kubernetes.io/instance: ibm-dba-workflow
         app.kubernetes.io/managed-by: ibm-dba-workflow
         app.kubernetes.io/name: ibm-dba-workflow
         name: ibm-workflow-operator
-        release: 25.0.1
+        release: 26.0.0
     spec:
       securityContext:
         runAsNonRoot: true
@@ -50,7 +50,7 @@ spec:
         - /baw-operator
         args:
         - --leader-elect
-        image: icr.io/cpopen/icp4a-workflow-operator@sha256:d0e13e82abfd061f6d644a3c3d11290a1a130a8c97afc563f68f7105382f6736
+        image: icr.io/cpopen/icp4a-workflow-operator@sha256:c3594d9266a74466bad3868e0fd399f50c69c8a31443e87f096cb31db496cc7d
         imagePullPolicy: IfNotPresent
         name: operator
         securityContext:

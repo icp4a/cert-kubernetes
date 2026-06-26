@@ -1,0 +1,1198 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    component-id: {{ .Chart.Name }}
+    icpdsupport/addOnId: model_gateway
+  name: ibm-cpd-model-gateway-operator-serviceaccount
+  namespace: {{ .Values.global.operatorNamespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    component-id: {{ .Chart.Name }}
+    icpdsupport/addOnId: model_gateway
+  name: modelgateway-role
+  namespace: {{ .Values.global.operatorNamespace }}
+rules:
+- apiGroups:
+  - zen.cpd.ibm.com
+  resources:
+  - zenextensions
+  - zenextensions/spec
+  - zenextensions/status
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - create
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - pods/log
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/exec
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumeclaims
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - batch
+  resources:
+  - jobs/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - cronjobs
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - deployments/scale
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets/scale
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - roles
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - rolebindings
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+- apiGroups:
+  - autoscaling
+  resources:
+  - horizontalpodautoscalers
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - project.openshift.io
+  resources:
+  - projects
+  verbs:
+  - get
+- apiGroups:
+  - modelgateway.cpd.ibm.com
+  resources:
+  - modelgateway
+  - modelgateway/spec
+  - modelgateway/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - zen.cpd.ibm.com
+  resources:
+  - zenservices
+  - zenservices/spec
+  - zenservices/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cert-manager.io
+  resources:
+  - certificates
+  - certificaterequests
+  - issuers
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - patch
+  - update
+- apiGroups:
+  - cert-manager.io
+  resources:
+  - certificates
+  - certificaterequests
+  - issuers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - postgresql.k8s.enterprisedb.io
+  - pg.ibm.com
+  resources:
+  - clusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - redis.databases.cloud.ibm.com
+  resources:
+  - redissentinels
+  verbs:
+  - delete
+  - get
+  - watch
+  - list
+- apiGroups:
+  - redis.ibm.com
+  resources:
+  - rediscps
+  - rediscps/finalizers
+  - rediscps/spec
+  - rediscps/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.ibm.com
+  resources:
+  - ibmlicensingdefinitions
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    component-id: {{ .Chart.Name }}
+    icpdsupport/addOnId: model_gateway
+  name: modelgateway-rolebinding
+  namespace: {{ .Values.global.operatorNamespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: modelgateway-role
+subjects:
+- kind: ServiceAccount
+  name: ibm-cpd-model-gateway-operator-serviceaccount
+  namespace: {{ .Values.global.operatorNamespace }}
+{{- if and .Values.global.instanceNamespace (ne .Values.global.instanceNamespace .Values.global.operatorNamespace) }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    component-id: {{ .Chart.Name }}
+    icpdsupport/addOnId: model_gateway
+  name: modelgateway-role
+  namespace: {{ .Values.global.instanceNamespace }}
+rules:
+- apiGroups:
+  - zen.cpd.ibm.com
+  resources:
+  - zenextensions
+  - zenextensions/spec
+  - zenextensions/status
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - pods/log
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/exec
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumeclaims
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - batch
+  resources:
+  - jobs/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - cronjobs
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - deployments/scale
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets/scale
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - roles
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - rolebindings
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+- apiGroups:
+  - autoscaling
+  resources:
+  - horizontalpodautoscalers
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - project.openshift.io
+  resources:
+  - projects
+  verbs:
+  - get
+- apiGroups:
+  - modelgateway.cpd.ibm.com
+  resources:
+  - modelgateway
+  - modelgateway/spec
+  - modelgateway/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - zen.cpd.ibm.com
+  resources:
+  - zenservices
+  - zenservices/spec
+  - zenservices/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cert-manager.io
+  resources:
+  - certificates
+  - certificaterequests
+  - issuers
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - patch
+  - update
+- apiGroups:
+  - cert-manager.io
+  resources:
+  - certificates
+  - certificaterequests
+  - issuers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - postgresql.k8s.enterprisedb.io
+  - pg.ibm.com
+  resources:
+  - clusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - redis.databases.cloud.ibm.com
+  resources:
+  - redissentinels
+  verbs:
+  - delete
+  - get
+  - watch
+  - list
+- apiGroups:
+  - redis.ibm.com
+  resources:
+  - rediscps
+  - rediscps/finalizers
+  - rediscps/spec
+  - rediscps/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.ibm.com
+  resources:
+  - ibmlicensingdefinitions
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    component-id: {{ .Chart.Name }}
+    icpdsupport/addOnId: model_gateway
+  name: modelgateway-rolebinding
+  namespace: {{ .Values.global.instanceNamespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: modelgateway-role
+subjects:
+- kind: ServiceAccount
+  name: ibm-cpd-model-gateway-operator-serviceaccount
+  namespace: {{ .Values.global.operatorNamespace }}
+{{- end }}
+{{- range $i := .Values.global.tetheredNamespaces }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    component-id: {{ $.Chart.Name }}
+    icpdsupport/addOnId: model_gateway
+  name: modelgateway-role
+  namespace: {{ $i }}
+rules:
+- apiGroups:
+  - zen.cpd.ibm.com
+  resources:
+  - zenextensions
+  - zenextensions/spec
+  - zenextensions/status
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - pods/log
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/exec
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumeclaims
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - batch
+  resources:
+  - jobs/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - cronjobs
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - deployments/scale
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets/scale
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - roles
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - rolebindings
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+- apiGroups:
+  - autoscaling
+  resources:
+  - horizontalpodautoscalers
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - project.openshift.io
+  resources:
+  - projects
+  verbs:
+  - get
+- apiGroups:
+  - modelgateway.cpd.ibm.com
+  resources:
+  - modelgateway
+  - modelgateway/spec
+  - modelgateway/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - zen.cpd.ibm.com
+  resources:
+  - zenservices
+  - zenservices/spec
+  - zenservices/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cert-manager.io
+  resources:
+  - certificates
+  - certificaterequests
+  - issuers
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - patch
+  - update
+- apiGroups:
+  - cert-manager.io
+  resources:
+  - certificates
+  - certificaterequests
+  - issuers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - postgresql.k8s.enterprisedb.io
+  - pg.ibm.com
+  resources:
+  - clusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - redis.databases.cloud.ibm.com
+  resources:
+  - redissentinels
+  verbs:
+  - delete
+  - get
+  - watch
+  - list
+- apiGroups:
+  - redis.ibm.com
+  resources:
+  - rediscps
+  - rediscps/finalizers
+  - rediscps/spec
+  - rediscps/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.ibm.com
+  resources:
+  - ibmlicensingdefinitions
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    component-id: {{ $.Chart.Name }}
+    icpdsupport/addOnId: model_gateway
+  name: modelgateway-rolebinding
+  namespace: {{ $i }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: modelgateway-role
+subjects:
+- kind: ServiceAccount
+  name: ibm-cpd-model-gateway-operator-serviceaccount
+  namespace: '{{ $.Values.global.operatorNamespace }}'
+{{- end }}

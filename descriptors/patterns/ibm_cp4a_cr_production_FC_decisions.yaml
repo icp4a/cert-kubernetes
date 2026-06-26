@@ -16,9 +16,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -80,14 +81,14 @@ spec:
 
     ## This optional parameter is used to enable/disable Openshift Authentication method.  By default, the Openshift authentication is disabled.  Set this parameter to "true" if you want to enable the Openshift authentication method.
     sc_osauth_enabled: false
-    
+
     ## You can provide your own driver to use your own external database by setting the sc_drivers_url parameter.
     ## The sc_driver_url parameter accepts compressed files (in .zip, .tar, .tar.gz, .tar.bz2, or .tar.xz formats) with the following structure: jdbc/db2|oracle|postgresql|sqlserver/driver_files.
     sc_drivers_url:
 
-    ## Enables integration with Instana to collect application and infrastructure metrics for enhanced observability. 
+    ## Enables integration with Instana to collect application and infrastructure metrics for enhanced observability.
     ## This optional parameter controls the instana instrumentation. If the parameter is not defined, then the default value is "false".
-    ## Set this flag to "true" if you plan to enable instana monitoring for CP4BA application. 
+    ## Set this flag to "true" if you plan to enable instana monitoring for CP4BA application.
     sc_enable_instana_metric_collection: false
 
     ## Optional setting for secure computing mode (seccomp) profile for CP4A containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower.
@@ -115,6 +116,9 @@ spec:
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
     sc_is_multiple_az: true
 
+    ## The global flag to enable or disable Pod Disruption Budget (PDB) creation across all components.  This flag can be overridden at specific configuration sections (eg: odm_configuration.decisionCenter.enable_pdb).  Default is true
+    sc_enable_pdb: true
+
     ## Audit logging configuration for CP4BA components. The default value is "false".  If set to "true", then the audit logging will be enabled for all the CP4BA components.
     ## These settings can be overridden at the component level by setting the "audit_logging" parameter in the component configuration such as ecm_configuration, ads_configuration, etc...
     ## NOTE: Not all components support audit logging in 24.0.1 release.  Please refer to KC for more information.
@@ -129,6 +133,10 @@ spec:
       rolling_max_files: 5
       # The maximum size of each audit log file.  The default value is "20Mi".  The value should be in the format of "<number><unit>".  The valid units are "Ki", "Mi", "Gi", "Ti", "Pi", "Ei". You may want to increase the audit_log_dir_size if you increase this value.
       rolling_max_size: '20Mi'
+
+    ## By default we will always set the sc_enable_usage_metering flag to true and this will enable the operators to deploy the cron jobs to send usage metrics to software central.
+    ## Only set this flag to "false" if you want to opt-out sending usage metrics.
+    sc_enable_usage_metering: true
 
   ## The beginning section of database configuration for CP4A
   datasource_configuration:
@@ -220,7 +228,7 @@ spec:
     # Allow to specify which version of ODM you want to deploy.
     # Supported version > 19.0.2
     # If omitted the latest version will be used.
-    version: 25.0.1
+    version: 26.0.0
 
     audit_logging:
       # Enable or disable audit logging for the ODM component
@@ -233,7 +241,7 @@ spec:
 
     image:
       # Specify to override the tag docker images in case of an interim fix.
-      tag: "25.0.1-IF001"
+      tag: "26.0.0"
       # Specify the pull policy for the Docker images. See Kuberntes documentation for more inforations.
       # Possible values : IfNotPresent, Always, Never
       pullPolicy: IfNotPresent
@@ -241,6 +249,11 @@ spec:
       # If not specified use the shared_configuration.sc_image_repository.
       repository: cp.icr.io/cp/cp4a/odm
 
+    ## Dedicated Cloud Pak parameter
+    dba:
+      # Specify the secret name that contains the keystorePassword key protecting both the keystore and truststore.
+      passwordSecretRef: ibm-odm-keystore-secret
+      
     ## Decision Server Runtime parameters
     decisionServerRuntime:
       # Specify whether to enable Decision Server Runtime.
@@ -274,6 +287,12 @@ spec:
           memory: 2Gi
           ephemeral-storage: 500Mi
       # Specify the node selector term match expression list to manage node affinity.
+      # nodeAffinity allow you to constrain which nodes your Pod can be scheduled on based on node labels. For example:
+      # nodeAffinity:
+      # - key: topology.kubernetes.io/zone
+      #   operator: In
+      #   values:
+      #     - eu-west-3b
       nodeAffinity:
       # Specify whether to enable autoscaling for Decision Server Runtime.
       autoscaling:
@@ -310,6 +329,12 @@ spec:
       rolling_update:
         max_unavailable: '25%'
         max_surge: 1
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes. For example:
+      # tolerations:
+      # - key: "odm"
+      #   operator: "Exists"
+      #   effect: "NoSchedule"
+      tolerations: []
 
     ## Decision Server Console parameters
     decisionServerConsole:
@@ -344,6 +369,12 @@ spec:
           memory: 1Gi
           ephemeral-storage: 500Mi
       # Specify the node selector term match expression list to manage node affinity.
+      # nodeAffinity allow you to constrain which nodes your Pod can be scheduled on based on node labels. For example:
+      # nodeAffinity:
+      # - key: topology.kubernetes.io/zone
+      #   operator: In
+      #   values:
+      #     - eu-west-3b
       nodeAffinity:
       # Specify the labels to add to Decision Server Runtime deployment.
       labels: {}
@@ -360,6 +391,12 @@ spec:
       rolling_update:
         max_unavailable: '25%'
         max_surge: 1
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes. For example:
+      # tolerations:
+      # - key: "odm"
+      #   operator: "Exists"
+      #   effect: "NoSchedule"
+      tolerations: []
 
     ## Decision Center parameters
     decisionCenter:
@@ -403,6 +440,12 @@ spec:
           memory: 4Gi
           ephemeral-storage: 500Mi
       # Specify the node selector term match expression list to manage node affinity.
+      # nodeAffinity allow you to constrain which nodes your Pod can be scheduled on based on node labels. For example:
+      # nodeAffinity:
+      # - key: topology.kubernetes.io/zone
+      #   operator: In
+      #   values:
+      #     - eu-west-3b
       nodeAffinity:
       # Specify whether to enable autoscaling for Decision Center.
       autoscaling:
@@ -432,6 +475,12 @@ spec:
       rolling_update:
         max_unavailable: '25%'
         max_surge: 1
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes. For example:
+      # tolerations:
+      # - key: "odm"
+      #   operator: "Exists"
+      #   effect: "NoSchedule"
+      tolerations: []
 
     ## Decision Runner parameters
     decisionRunner:
@@ -462,6 +511,12 @@ spec:
           memory: 4Gi
           ephemeral-storage: 500Mi
       # Specify the node selector term match expression list to manage node affinity.
+      # nodeAffinity allow you to constrain which nodes your Pod can be scheduled on based on node labels. For example:
+      # nodeAffinity:
+      # - key: topology.kubernetes.io/zone
+      #   operator: In
+      #   values:
+      #     - eu-west-3b
       nodeAffinity:
       # Specify whether to enable autoscaling for Decision Runner.
       autoscaling:
@@ -491,6 +546,12 @@ spec:
       rolling_update:
         max_unavailable: '25%'
         max_surge: 1
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes. For example:
+      # tolerations:
+      # - key: "odm"
+      #   operator: "Exists"
+      #   effect: "NoSchedule"
+      tolerations: []
 
     externalDatabase:
       ## Specify the database driver url. Optionally specify a list of driversUrl using
@@ -540,9 +601,21 @@ spec:
       # Specify the name of the topic that is used to send ODM events to the Kafka provider.
       bai_kafka_topic:
       # Specify the node selector term match expression list to manage node affinity.
+      # nodeAffinity allow you to constrain which nodes your Pod can be scheduled on based on node labels. For example:
+      # nodeAffinity:
+      # - key: topology.kubernetes.io/zone
+      #   operator: In
+      #   values:
+      #     - eu-west-3b
       nodeAffinity:
       # Specify the labels to add to all kubernetes resources.
       labels: {}
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes. For example:
+      # tolerations:
+      # - key: "odm"
+      #   operator: "Exists"
+      #   effect: "NoSchedule"
+      tolerations: []
 
     networkPolicy:
       # Enable creation of NetworkPolicy resources.

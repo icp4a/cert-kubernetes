@@ -1,0 +1,23 @@
+# This contains WfPS-Runtime ORM
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: wfps-orm
+  namespace: {{ placeholder_namespace }}
+spec:
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: StatefulSet
+          path: '.spec.template.spec.containers[?(@.name=="wfps-svr")].resources'
+          selector: wfps
+        ownerPath: .spec.node.resources
+    selectors:
+      wfps:
+        matchLabels:
+          app.kubernetes.io/component: wfps
+  owner:
+    apiVersion: icp4a.ibm.com/v1
+    kind: WfPSRuntime
+    name: {{ meta.wfps_runtime_name }}

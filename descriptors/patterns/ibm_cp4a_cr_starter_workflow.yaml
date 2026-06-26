@@ -16,10 +16,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
-  appVersion: 25.0.1
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -39,9 +39,9 @@ spec:
     ## This value could be different from the other licenses in the CR.
     sc_deployment_baw_license: non-production
 
-    ## FileNet Content Manager (FNCM) license and possible values are: user, concurrent-user, authorized-user, non-production, and production.
-    ## This value could be different from the other licenses in the CR.
-    sc_deployment_fncm_license: non-production
+    ## This is the Content Cortex license  parameter and the possible values are: user, concurrent-user, authorized-user, non-production, and production.
+    ## This value could be different from the rest of the licenses.
+    sc_deployment_fncm_license: ESS.CO
 
     sc_deployment_patterns: workflow
     sc_optional_components:

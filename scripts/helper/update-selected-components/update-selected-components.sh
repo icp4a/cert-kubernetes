@@ -16,10 +16,21 @@
 #### Start of Variables used by different functions defined in this script #####
 ################################################################################
 
-deployment_pattern_names=("FileNet Content Manager" "Operational Decision Manager" "Automation Decision Services" "Business Automation Application" "Business Automation Workflow" "(a) Workflow Authoring" "(b) Workflow Runtime" "Automation Workstream Services" "IBM Automation Document Processing" "(a) Development Environment" "(b) Runtime Environment" "Workflow Process Service Authoring")
+# Deployment pattern display name and CR name mapping arrays
+deployment_pattern_names=("Content Cortex Standard Edition" "Operational Decision Manager" "Decision Intelligence Client Managed Software" "Business Automation Application" "Business Automation Workflow" "(a) Workflow Authoring" "(b) Workflow Runtime" "Automation Workstream Services" "IBM Automation Document Processing" "(a) Development Environment" "(b) Runtime Environment" "Workflow Process Service Authoring")
 deployment_pattern_cr_names=("content" "decisions" "decisions_ads" "application" "workflow" "workflow-authoring" "workflow-runtime" "workstreams" "document_processing" "document_processing_designer" "document_processing_runtime" "workflow-process-service")
-optional_components_names=("Content Search Services" "Content Management Interoperability Services" "IBM Enterprise Records" "IBM Content Collector for SAP" "Business Automation Insights" "Task Manager" "Decision Center" "Rule Execution Server" "Decision Runner" "Decision Designer and Decision Runtime" "Decision Runtime" "Data Collector and Data Indexer" "Exposed Kafka Services" "Exposed OpenSearch" "Workplace Assistant" "(Preview) Authoring Assistant" "Application Designer" )
-optional_components_cr_names=("css" "cmis" "ier" "iccsap" "bai" "tm" "decisionCenter" "decisionServerRuntime" "decisionRunner" "ads_designer" "ads_runtime" "pfs" "kafka"  "opensearch" "workplace_assistant" "workflow_assistant" "app_designer" "document_processing_runtime" "wfps_authoring" "ae_data_persistence" "document_processing_designer" "baw_authoring")
+
+# These two arrays show the mapping between an optional components display name and the CR name
+# For any new optional component that is introduced you must first check if we are displaying that optional component and if so add both entries to these arrays
+optional_components_names=("Content Search Services" "Content Management Interoperability Services" "IBM Enterprise Records" "IBM Content Collector for SAP" "Business Automation Insights" "Task Manager" "Content Cortex for Microsoft Office" "Decision Center" "Rule Execution Server" "Decision Runner" "Decision Designer and Decision Runtime" "Decision Runtime" "Data Collector and Data Indexer" "Exposed Kafka Services" "Exposed OpenSearch" "Workplace Assistant" "(Preview) Authoring Assistant" "Application Designer" "Workflow Runtime MCP Server" "Application Connectors")
+optional_components_cr_names=("css" "cmis" "ier" "iccsap" "bai" "tm" "ccxmo" "decisionCenter" "decisionServerRuntime" "decisionRunner" "ads_designer" "ads_runtime" "pfs" "kafka"  "opensearch" "workplace_assistant" "workflow_assistant" "app_designer" "workflow_runtime_mcp_server" "application_connectors")
+
+# This is the array that includes the set of optional components that are never displayed during the optional component selection
+# Based on certain combinations of deployment patterns and questions asked by the script these get added to the CR
+additional_optional_components_cr_names=("document_processing_runtime" "wfps_authoring" "ae_data_persistence" "document_processing_designer" "baw_authoring")
+
+# Append additional components to the end
+optional_components_cr_names+=("${additional_optional_components_cr_names[@]}")
 
 ldap_type_cr_options=("Microsoft Active Directory" "IBM Security Directory Server" "PingDirectory Server" "Custom")
 ldap_type_cr_options_mapping=("AD" "TDS" "PDS" "custom")
@@ -127,6 +138,15 @@ function copy_original_property_files(){
     set_property_file_paths "$PROPERTY_FILE_FOLDER/original_property_files"
 }
 
+# Function to restore property files from original_property_files folder back to main property file folder
+function copy_original_property_files_to_default_dir(){
+    if [[ -d "$PROPERTY_FILE_FOLDER/original_property_files" ]]; then
+        cp $PROPERTY_FILE_FOLDER/original_property_files/* $PROPERTY_FILE_FOLDER
+    else
+        echo "Warning: original_property_files folder does not exist at $PROPERTY_FILE_FOLDER/original_property_files"
+    fi
+}
+
 # Function to copy original CR to a subfolder where the new CR gets generated
 function copy_original_cr(){
     local cr_type=$1
@@ -155,7 +175,10 @@ function copy_original_cr(){
 function update_single_property_file(){
     local updated_property_file=$1
     local original_property_file=$2
-    local skip_keys=$3
+    # For https://jsw.ibm.com/browse/DBACLD-229664 to ignore Password fields with client side SSL is enabled with Postgres
+    local is_db_user_property_file=$3
+    # THIS SKIP KEYS ARRAY MUST ALWAYS BE THE LAST parameter passed in.
+    local skip_keys=$4
     local prefix="${db_server_array[0]}"
     
     # Check if this is a property file that might contain Case History Emitter properties
@@ -233,9 +256,21 @@ function update_single_property_file(){
             # Get value from original property file
             val=$(grep "^[[:space:]]*$key=" "$original_property_file" | cut -d'=' -f2- | sed -e 's/^[[:space:]]*"//' -e 's/"[[:space:]]*$//')
             
+            
             # Skip if value is empty
             if [[ -z "$val" ]]; then
-                continue
+                # Convert postgres SSL value to lowercase for comparison
+                local postgres_ssl_lower=$(echo "${current_postgres_client_ssl_enabled_value}" | tr '[:upper:]' '[:lower:]')
+                
+                # Skip UNLESS all three conditions are met:
+                # 1. Postgres CLient sideSSL is enabled (true)
+                # 2. Key ends with DB_USER_PASSWORD
+                # 3. This is a db user property file
+                # In this case the user would have left those password fields emppty or wouldnt be present. Because the prerequisites script does not
+                # ask for the client side SSL enabled value from the user we always populate the property file with a password field
+                if [[ ! ("$postgres_ssl_lower" == "true" && "$key" == *"DB_USER_PASSWORD" && "$is_db_user_property_file" == "true") ]]; then
+                    continue
+                fi
             fi
             
             # Properly escape special characters for sed
@@ -269,7 +304,7 @@ function check_required_files() {
 }
 
 # Function that checks if the SSL cert folder exists when the user is executing the script in update-components mopde
-# IF it does we only recreate the empty directories, any 
+# IF it does we only recreate the empty directories, any
 # Currently not needed as simply using mkdir -p would work to keep existing ones as is and recreating if that folder is not present
 #function recreate_empty_ssl_directories() {
 #    local folder_path="$1"
@@ -501,6 +536,8 @@ function retrieve_deployment_type(){
         cr_key="spec.content_deployment_type"
     fi
     current_deployment_type=$(echo "$cr_output" | ${YQ_CMD} ".$cr_key" -)
+    # Convert to lowercase for comparison
+    current_deployment_type=$(echo "$current_deployment_type" | tr '[:upper:]' '[:lower:]')
     
     # THESE VARIABLES that are getting assigned must not change.
     # These variables are referenced by the functions in cp4a-prerequisites.sh to generate property files and in different code areas.
@@ -525,6 +562,8 @@ function retrieve_db_type(){
     current_db_server_number=${#current_db_servers_array[@]}
     
     current_db_server_type="$(prop_original_db_server_property_file ${current_db_servers_array[0]}.DATABASE_TYPE)"
+    # For https://jsw.ibm.com/browse/DBACLD-229664
+    current_postgres_client_ssl_enabled_value="$(prop_original_db_server_property_file ${current_db_servers_array[0]}.POSTGRESQL_SSL_CLIENT_SERVER)"
     
     # THESE VARIABLES that are getting assigned must not change.
     # These variables are referenced by the functions in cp4a-prerequisites.sh to generate property files and in different code areas.
@@ -703,6 +742,7 @@ function retrieve_current_external_zen_configurations(){
 }
 
 # Function to detect if the new CR is going to be a ICP4ACluster type CR
+# if there is any other pattern other than foundation or content then the top level CR to be generated is 100% a ICP4ACluster CR
 function required_icp4acluster_cr() {
     for pattern in "${PATTERNS_CR_SELECTED[@]}"; do
         if [[ "$pattern" != "foundation" && "$pattern" != "content" ]]; then
@@ -787,7 +827,6 @@ function retrieve_current_specifications(){
         
         # Function that copies the live CR to a local folder
         copy_original_cr "$cr_type" "$cr_name" "$cr_namespace"
-        
         # If the current CR type is Content and the script is going to generate a ICP4ACluster CR, certain foundation resources must be scaled down/deleted.
         if [[ "$cr_type" == "content" ]]; then
             if required_icp4acluster_cr; then
@@ -820,7 +859,12 @@ function retrieve_existing_property_files() {
     local default_path=$PROPERTY_FILE_FOLDER
     
     # Attempt to use the default path
-    info "The \"cp4a-prerequisites.sh\" script is being executed in update mode to modify the selected deployment patterns and optional components for the current deployment. For more details on modifying the selected deployment patterns and optional components for the current deployment refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE."
+    if [[ "$ENABLE_VAULT_ON_EXIST" != "true" ]]; then
+       info "The \"cp4a-prerequisites.sh\" script is being executed in update mode to modify the selected deployment patterns and optional components for the current deployment. For more details on modifying the selected deployment patterns and optional components for the current deployment refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE."
+    else
+       info "The \"cp4a-prerequisites.sh\" script is being executed in 'enable-external-secret-management' mode to enable Vault for an existing CP4BA deployment."
+    fi
+
     echo 
     info "Checking if the default property file directory -> \"$default_path\" contains all required property files..."
 
@@ -850,14 +894,53 @@ function retrieve_existing_property_files() {
             esac
         done
     else
-        warning "The required property files were not found in the default path: $default_path"
+        warning "The required property files for 'cp4a-prerequisites.sh' were not found in the default path: $default_path"
         folder_path=""
+    fi
+
+    if [[ ! -z "$folder_path" && "$ENABLE_VAULT_ON_EXIST" == "true" ]]; then
+       ENABLE_VAULT_ON_EXIST_PROP_TYPE="default"
     fi
 
     # If not using default, prompt user for a directory
     if [[ -z "$folder_path" ]]; then
+
+        # Special handling for enabling vault.  Ask if user can provide the original props, if they cannot, then skip prompting for dir
+        if [[ "$ENABLE_VAULT_ON_EXIST" == "true" ]]; then
+            while true; do
+                info "To enable external secret management integration on an existing deployment, the property files for 'cp4a-prerequisites.sh' for your deployment are needed [Example: <CERT_KUBE_PATH>/scripts/cp4ba-prerequisites/project/<NAMESPACE>/propertyfile]"
+                warning "If you do not have the property files for your existing deployment, then answer no to the next question.  You will then be prompted with questions for your deployment choices. You must answer all the deployment questions and select the options that matches your existing deployment. If you do not select the same options as your existing deployment, enabling external secret management may cause your deployment to fail."
+                echo
+                read -rp $'\033[1mCan you provide the path to the property files for your existing deployment ? If you answer Yes, you will be prompted for the path next. (Yes/No)[Default: Yes]: \033[0m' provide_prop_path
+                provide_prop_path=$(echo "$provide_prop_path" | tr '[:upper:]' '[:lower:]')
+
+                if [[ -z "$provide_prop_path" ]]; then
+                    provide_prop_path="yes"
+                fi
+
+                case "$provide_prop_path" in
+                    "y"|"yes")
+                        # Proceed to next step (asking for the path)
+                        break
+                        ;;
+                    "n"|"no")
+                        # User is unable to provide path to propert files
+                        ENABLE_VAULT_ON_EXIST_PROP_TYPE="none"
+                        # Return to calling function (and ask the usual deployment questions)
+                        echo 
+                        warning "In the following prompts, please select the same options that matches your current deployment.  If you do not select the same options, your deployment may fail."
+                        echo
+                        return
+                        ;;
+                    *)
+                        printf '%b\n' "\033[1;33mPlease enter 'yes' or 'no'.\033[0m"
+                        ;;
+                esac
+            done
+        fi
+
         echo
-        echo "\033[1mEnter the directory path that contains all required property files:\033[0m"
+        printf "\033[1mEnter the directory path that contains all required property files for 'cp4a-prerequisites.sh' [Example: <CERT_KUBE_PATH>/scripts/cp4ba-prerequisites/project/<NAMESPACE>/propertyfile]: \033[0m"
         read -r folder_path
 
         # Validate directory
@@ -873,16 +956,29 @@ function retrieve_existing_property_files() {
             error "Please copy all required property files used to generate the custom resource file to a specific folder prior to running the \"cp4a-prerequisites.sh -m property\" with the --update-components flag."
             exit 1
         fi
+
+        # User provided a valid folder path for property files
+        ENABLE_VAULT_ON_EXIST_PROP_TYPE="user"
     fi
 
     success "All required property files are present in the directory: $folder_path"
 
+    EXISTING_PROP_FILES_PROVIDED="true"
+    
     set_property_file_paths "$folder_path"
     
     # Copy original property files
     copy_original_property_files
-}
+ 
+    # For now, only copy the certs folders for the "enable-external-secret-management" mode when user provided a different dir
+    if [[ "$ENABLE_VAULT_ON_EXIST_PROP_TYPE" == "user" ]]; then
+      if [[ -d "${folder_path}/cert" ]]; then
+        info "Copying the original 'cert' folder from ${folder_path}/cert to current folder ${PROPERTY_FILE_FOLDER}/cert"
+        cp -r "${folder_path}/cert" "$PROPERTY_FILE_FOLDER"
+      fi
+    fi
 
+}
 
 
 # Based the script_request -> prerequisites_script / deployment_script the details retrieved will be different
@@ -933,7 +1029,7 @@ function update_property_files(){
     info "Updating $LDAP_PROPERTY_FILE using the properties from the original property file"
     echo
     skip_ldap_properties_list=("LDAP_SSL_CERT_FILE_FOLDER")
-    update_single_property_file "$LDAP_PROPERTY_FILE" "$ORIGINAL_LDAP_PROPERTY_FILE" "${skip_ldap_properties_list[@]}"
+    update_single_property_file "$LDAP_PROPERTY_FILE" "$ORIGINAL_LDAP_PROPERTY_FILE" "false" "${skip_ldap_properties_list[@]}"
     success "Successfully updated the [cp4ba_LDAP.property] property file"
 
     
@@ -943,23 +1039,75 @@ function update_property_files(){
         skip_dbserver_properties_list+=("$server.DATABASE_SSL_CERT_FILE_FOLDER")
     done
     info "Updating $DB_SERVER_INFO_PROPERTY_FILE using the properties from the original property file"
-    update_single_property_file "$DB_SERVER_INFO_PROPERTY_FILE" "$ORIGINAL_DB_SERVER_PROPERTY_FILE" "${skip_dbserver_properties_list[@]}"
+    update_single_property_file "$DB_SERVER_INFO_PROPERTY_FILE" "$ORIGINAL_DB_SERVER_PROPERTY_FILE" "false" "${skip_dbserver_properties_list[@]}"
     success "Successfully updated the [cp4ba_db_server.property] property file"
 
     # Update DB name user property file
     skip_dbnameuser_properties_list=()
     info "Updating $DB_NAME_USER_PROPERTY_FILE using the properties from the original property file"
-    update_single_property_file "$DB_NAME_USER_PROPERTY_FILE" "$ORIGINAL_DB_USER_PROPERTY_FILE" "${skip_dbnameuser_properties_list[@]}"
+    # Make sure if edits are made to this function call that the array passed is the last parameter as there are issues with array expansion if its empty, even with quotes
+    update_single_property_file "$DB_NAME_USER_PROPERTY_FILE" "$ORIGINAL_DB_USER_PROPERTY_FILE" "true" "${skip_dbnameuser_properties_list[@]}"
     success "Successfully updated the [cp4ba_db_name_user.property] property file"
 
     # Update user profile property file
     skip_userprofile_properties_list=()
     info "Updating $USER_PROFILE_PROPERTY_FILE using the properties from the original property file"
-    update_single_property_file "$USER_PROFILE_PROPERTY_FILE" "$ORIGINAL_USER_PROFILE_PROPERTY_FILE" "${skip_userprofile_properties_list[@]}"
+    update_single_property_file "$USER_PROFILE_PROPERTY_FILE" "$ORIGINAL_USER_PROFILE_PROPERTY_FILE" "false" "${skip_userprofile_properties_list[@]}"
     success "Successfully updated the [cp4ba_user_profile.property] property file"
 
-    
 }
+
+
+# Function to build arrays from existing deployment CR without user interaction
+# This is useful for enable-external-secret-management mode where we don't need to prompt user for new selections
+function build_arrays_from_existing_deployment(){
+   
+    # Set DEPLOYMENT_TYPE to production (same as update_components_mode does)
+    PLATFORM_SELECTED="OCP"
+    DEPLOYMENT_TYPE="production"
+    
+    # Do NOT filter out patterns - keep all patterns from EXISTING_PATTERN_ARR
+    # These patterns (document_processing_designer, workflow-authoring, etc.) are valid deployment patterns
+    local filtered_patterns=("${EXISTING_PATTERN_ARR[@]}")
+    
+
+    # Build pattern_cr_arr from filtered patterns (actual deployment patterns only)
+    pattern_cr_arr=("${filtered_patterns[@]}")
+    
+    # Build pattern_arr (display names) using centralized mapping from common.sh
+    pattern_arr=()
+    for pattern in "${filtered_patterns[@]}"; do
+        display_name=$(get_pattern_display_name "$pattern")
+        if [[ -n "$display_name" ]]; then
+            pattern_arr+=("$display_name")
+        fi
+    done
+    
+    # Build optional_component_cr_arr from EXISTING_OPT_COMPONENT_ARR
+    optional_component_cr_arr=("${EXISTING_OPT_COMPONENT_ARR[@]}")
+    
+    # Build optional component display names from current_cr_optional_components_name_array
+    OPT_COMPONENTS_SELECTED=("${current_cr_optional_components_name_array[@]}")
+    
+    # Set PATTERNS_CR_SELECTED (used by create_temp_property_file) - use filtered patterns
+    PATTERNS_CR_SELECTED=("${filtered_patterns[@]}")
+    
+    # Set OPT_COMPONENTS_CR_SELECTED (used by create_temp_property_file)
+    OPT_COMPONENTS_CR_SELECTED=("${EXISTING_OPT_COMPONENT_ARR[@]}")
+    
+    # Build foundation_component_arr based on existing patterns using centralized mapping from common.sh
+    foundation_component_arr=()
+    for pattern in "${EXISTING_PATTERN_ARR[@]}"; do
+        components=$(get_pattern_foundation_components "$pattern")
+        if [[ -n "$components" ]]; then
+            foundation_component_arr+=($components)
+        fi
+    done
+    
+    # Remove duplicates from foundation_component_arr
+    foundation_component_arr=($(echo "${foundation_component_arr[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+}
+
 
 
 ################################################################################################

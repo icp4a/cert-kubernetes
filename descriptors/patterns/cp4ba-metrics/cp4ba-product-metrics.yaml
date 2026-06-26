@@ -1,0 +1,42 @@
+apiVersion: operator.ibm.com/v1
+kind: IBMServiceMeterDefinition
+metadata:
+  name: cp4ba-metrics
+  namespace: REPLACE_NAMESPACE
+spec:
+  processing: LAST
+  data:
+    productId: 94a9c8c358bb43ba8fbdea62e7e166a5
+    productName: IBM Cloud Pak for Business Automation
+    metricName: INSTANCE_COUNT
+    metricDescription: count of instances
+  sources:
+    - productId: e270b00ce6d7486db1e31fc5fd09fffc
+      productName: IBM Content Cortex Essentials Containers
+    - productId: e3b363dd621c4895a6e00cf3ac852a16
+      productName: Business Automation Workflow Containers
+    - productId: 548b34304806411693fe77097b688702
+      productName: Business Automation Studio
+    - productId: 20b0c693f93b42c6917cd7ae46d97462
+      productName: Business Automation Application
+    - productId: 3f1d7caa69374823813c79d48dce6a1f
+      productName: Decision Intelligence Client Managed Software
+    - productId: bcf180b9bc864d458800e72951849bfe
+      productName: Workflow Process Service
+    - productId: cfdbd71c64094971a70b6985df6b1e93
+      productName: Operational Decision Manager Containers
+    - productId: cf2f2b926ff14ce38aa3014637581037
+      productName: Business Automation Insights
+    - productId: d3231b33169149f0a5af5d8b782399da
+      productName: Workflow Process Service
+    - productId: 902d248ea6234a2a81d3c774a755f2ea
+      productName: Automation Workstream Services
+    - productId: 7501ee9fb6c14fcfae671cd7350bf231
+      productName: Automation Workstream Services
+    - productId: 91fbd935ea3344b68d7667e8b0b60df3
+      productName: Content Collector for SAP Applications Containers
+    - productId: 7b0caa58999c4a4384619aac20ed8875
+      productName: Enterprise Records Containers
+    - productId: 3e9cca2be0014be0921bd638e9fc5fd1
+      productName: Automation Document Processing Containers
+      

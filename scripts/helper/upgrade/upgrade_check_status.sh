@@ -45,7 +45,7 @@ function determine_type_of_upgrade() {
         info "This is an upgrade from $current_version to $desired_version which is an Ifix to Ifix upgrade"
     else
         export is_ifix_to_ifix_upgrade="false"
-        info "This is an upgrade from $current_version to $desired_version which is an n-1 to n upgrade"
+        info "This is an upgrade from $current_version to $desired_version which is a major release upgrade"
     fi
 
 }
@@ -172,6 +172,35 @@ function check_cp4ba_operator_version(){
         fi
         
 
+        # Check ConfigMaps for original CSV version before validation
+        # Priority: ibm-cp4ba-shared-info, then ibm-cp4ba-content-shared-info
+        #info "Checking for original CP4BA version in ConfigMaps..."
+        local cm_original_version=""
+        local cm_name=""
+        
+        # Try ibm-cp4ba-shared-info first
+        if ${CLI_CMD} get configmap ibm-cp4ba-shared-info -n ${CP4BA_SERVICES_NS} --ignore-not-found &>/dev/null; then
+            cm_name="ibm-cp4ba-shared-info"
+            cm_original_version=$(${CLI_CMD} get configmap ibm-cp4ba-shared-info -n ${CP4BA_SERVICES_NS} -o jsonpath='{.data.cp4ba_original_csv_ver_for_upgrade_script}' 2>/dev/null || echo "")
+        # If not found, try ibm-cp4ba-content-shared-info
+        elif ${CLI_CMD} get configmap ibm-cp4ba-content-shared-info -n ${CP4BA_SERVICES_NS} --ignore-not-found &>/dev/null; then
+            cm_name="ibm-cp4ba-content-shared-info"
+            cm_original_version=$(${CLI_CMD} get configmap ibm-cp4ba-content-shared-info -n ${CP4BA_SERVICES_NS} -o jsonpath='{.data.cp4ba_original_csv_ver_for_upgrade_script}' 2>/dev/null || echo "")
+        fi
+        
+        # If ConfigMap has original version and it's less than current CSV version, use it
+        if [[ ! -z "$cm_original_version" ]]; then
+            #info "Found cp4ba_original_csv_ver_for_upgrade_script: $cm_original_version in ConfigMap $cm_name"
+            # Compare versions using sort -V (version sort)
+            # If cm_original_version is the smaller one (comes first), use it
+            if [[ "$(printf '%s\n' "$cm_original_version" "$cp4a_operator_csv_version" | sort -V | head -n1)" = "$cm_original_version" ]]; then
+                info "Using original version $cm_original_version from ConfigMap (current CSV version: $cp4a_operator_csv_version) since the upgrade to $CP4BA_RELEASE_BASE did not completely finish."
+                cp4a_operator_csv_version="$cm_original_version"
+            else
+                info "ConfigMap version $cm_original_version is not less than current CSV version $cp4a_operator_csv_version, using current CSV version"
+            fi
+        fi
+
         if [[ ! -z $CP4BA_ORIGINAL_CSV_VERSION ]]; then
             CP4BA_ORIGINAL_CSV_VERSION=$(sed -e 's/^"//' -e 's/"$//' <<<"$CP4BA_ORIGINAL_CSV_VERSION")
             cp4a_operator_csv_version=$CP4BA_ORIGINAL_CSV_VERSION
@@ -202,34 +231,17 @@ function check_cp4ba_operator_version(){
 function check_content_operator_version(){
     local project_name=$1
     local maxRetry=5
-    info "Checking the version of IBM CP4BA FileNet Content Manager Operator"
+    info "Checking the version of IBM CP4BA Content Cortex Operator"
     for ((retry=0;retry<=${maxRetry};retry++)); do
-        cp4a_content_operator_csv_name=$(${CLI_CMD} get csv -n $project_name --no-headers --ignore-not-found | grep "IBM CP4BA FileNet Content Manager" | awk '{print $1}')
+        cp4a_content_operator_csv_name=$(${CLI_CMD} get csv -n $project_name --no-headers --ignore-not-found | grep "IBM CP4BA Content Cortex" | awk '{print $1}')
         cp4a_content_operator_csv_version=$(${CLI_CMD} get csv $cp4a_content_operator_csv_name -n $project_name --no-headers --ignore-not-found -o 'jsonpath={.spec.version}')
 
         if [[ "$cp4a_content_operator_csv_version" == "${CP4BA_CSV_VERSION//v/}" ]]; then
-            success "The current IBM CP4BA FileNet Content Manager Operator is already ${CP4BA_CSV_VERSION//v/}"
+            success "The current IBM CP4BA Content Cortex Operator is already ${CP4BA_CSV_VERSION//v/}"
             break
-        elif [[ "$cp4a_content_operator_csv_version" == "22.2."* ]]; then
-            cp4a_content_operator_csv=$(${CLI_CMD} get csv $cp4a_content_operator_csv_name -n $project_name --no-headers --ignore-not-found -o 'jsonpath={.spec.version}')
-            # cp4a_operator_csv="22.2.2"
-            requiredver="22.2.2"
-            if [ ! "$(printf '%s\n' "$requiredver" "$cp4a_content_operator_csv" | sort -V | head -n1)" = "$requiredver" ]; then
-                fail "Upgrade to CP4BA 22.0.2-IF002 or later iFix first before upgrading to CP4BA $CP4BA_CSV_VERSION"
-                exit 1
-            else
-                info "Found IBM CP4BA FileNet Content Manager Operator is \"$cp4a_content_operator_csv_version\" version."
-                break
-            fi
-        elif [[ "$cp4a_content_operator_csv_version" == "23.1."* ]]; then
-            fail "Upgrade to CP4BA 23.0.2 or later iFix first before upgrading to CP4BA $CP4BA_CSV_VERSION"
-            exit 1
-        elif [[ "$cp4a_content_operator_csv_version" == "22.1."* ]]; then
-            fail "Upgrade to CP4BA 22.0.2 or later iFix first before upgrading to CP4BA $CP4BA_CSV_VERSION"
-            exit 1
         elif [[ "$cp4a_content_operator_csv_version" != "${CP4BA_CSV_VERSION//v/}" ]]; then
             if [[ $retry -eq ${maxRetry} ]]; then
-                info "Timeout Checking for the version of IBM CP4BA FileNet Content Manager Operator in the project \"$project_name\""
+                info "Timeout Checking for the version of IBM CP4BA Content Cortex Operator in the project \"$project_name\""
                 exit 1
             else
                 sleep 2
@@ -238,9 +250,122 @@ function check_content_operator_version(){
             fi
         fi
     done
-    # success "Found the IBM CP4BA FileNet Content Manager Operator $cp4a_content_operator_csv_version \n"
+    # success "Found the IBM CP4BA Content Cortex Operator $cp4a_content_operator_csv_version \n"
 }
 
+# Utility function to check whether an operator CSV has succeeded and whether its pod is running.
+# Arguments:
+#   $1 - namespace where the operator resources are installed
+#   $2 - csv prefix/name prefix, for example: ibm-cp4a-operator
+#   $3 - expected CSV version, for example: 25.0.0
+#   $4 - pod label value used in label selector name=<value>
+#   $5 - display name used in log/success/error messages
+#   $6 - check mode for channel-only validation or full pod validation
+#   $7 - release label value, if required by the pod selector; pass "" if not needed
+#   $8 - max retry count
+function check_operator_pod_initialization() {
+    local namespace="$1"
+    local csv_prefix="$2"
+    local csv_version="$3"
+    local pod_label="$4"
+    local display_name="$5"
+    local check_channel="$6"
+    local release_label="$7"
+    local max_retry="${8:-30}"
+
+    local retry
+    local isReady=""
+    local pod_name=""
+    local csv_version_found=""
+
+    echo "****************************************************************************"
+    info "Checking for ${display_name} pod initialization"
+
+    for ((retry=0; retry<=max_retry; retry++)); do
+        isReady=$(${CLI_CMD} get csv "${csv_prefix}.${csv_version}" \
+            --no-headers --ignore-not-found -n "$namespace" \
+            -o jsonpath='{.status.phase}')
+
+        if [[ -z "$isReady" ]]; then
+            csv_version_found=$(${CLI_CMD} get csv --no-headers --ignore-not-found -n "$namespace" | \
+                grep "${csv_prefix}.v" | awk '{print $1}' | head -1)
+
+            if [[ -n "$csv_version_found" ]]; then
+                csv_version_found=$(${CLI_CMD} get csv "$csv_version_found" \
+                    --no-headers --ignore-not-found -n "$namespace" \
+                    -o jsonpath='{.spec.version}')
+            fi
+
+            if [[ "v$csv_version_found" != "$csv_version" ]]; then
+                if [[ $retry -eq $max_retry ]]; then
+                    fail "Failed to upgrade the ${display_name} to ${csv_prefix}.${csv_version} in the project \"$namespace\""
+                    msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
+                    exit 1
+                else
+                    sleep 30
+                    printf '%s' "..."
+                    continue
+                fi
+            fi
+
+        elif [[ "$isReady" != "Succeeded" ]]; then
+            if [[ $retry -eq $max_retry ]]; then
+                printf "\n"
+                warning "Timeout waiting for ${display_name} to start"
+                printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
+                echo "${CLI_CMD} describe pod \$(${CLI_CMD} get pod -n $namespace | grep ${pod_label} | awk '{print \$1}') -n $namespace"
+                printf "\n"
+                printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
+                echo "${CLI_CMD} describe rs \$(${CLI_CMD} get rs -n $namespace | grep ${pod_label} | awk '{print \$1}') -n $namespace"
+                printf "\n"
+                exit 1
+            else
+                sleep 30
+                printf '%s' "..."
+                continue
+            fi
+
+        elif [[ "$isReady" == "Succeeded" ]]; then
+            if [[ "$check_channel" != "channel" ]]; then
+                if [[ -n "$release_label" ]]; then
+                    pod_name=$(${CLI_CMD} get pod -l"name=${pod_label},release=${release_label}" \
+                        -n "$namespace" \
+                        -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' \
+                        --no-headers --ignore-not-found | \
+                        grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
+                else
+                    pod_name=$(${CLI_CMD} get pod -l"name=${pod_label}" \
+                        -n "$namespace" \
+                        -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' \
+                        --no-headers --ignore-not-found | \
+                        grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
+                fi
+
+                if [[ -z "$pod_name" ]]; then
+                    error "${display_name} pod is NOT running"
+                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "FAIL" )
+                    break
+                else
+                    success "${display_name} is running"
+                    info "Pod: $pod_name"
+                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
+                    break
+                fi
+            else
+                success "${display_name} is in the phase of \"$isReady\"!"
+                CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
+                break
+            fi
+        fi
+    done
+
+    echo "****************************************************************************"
+    echo
+}
+
+
+# Function to check the current operator status after upgrade
+# Used in upgradeOperatorStatus mode
 function check_operator_status(){
     local maxRetry=60
     local project_name=$1
@@ -248,849 +373,201 @@ function check_operator_status(){
     local check_channel=$3
     CHECK_CP4BA_OPERATOR_RESULT=()
 
-    # Check Common Service Operator 4.0
+    
     if [[ "$check_mode" == "full" ]]; then
-        local maxRetry=30
-        echo "****************************************************************************"
-        info "Checking for IBM Cloud Pak foundational operator pod initialization"
-        for ((retry=0;retry<=${maxRetry};retry++)); do
-            isReady=$(${CLI_CMD} get csv ibm-common-service-operator.$CS_OPERATOR_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
-            # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
-            if [[ $isReady != "Succeeded" ]]; then
-                if [[ $retry -eq ${maxRetry} ]]; then
-                printf "\n"
-                warning "Timeout waiting for IBM Cloud Pak foundational operator to start"
-                printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
-                echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-common-service-operator|awk '{print $1}') -n $project_name"
-                printf "\n"
-                printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
-                echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-common-service-operator|awk '{print $1}') -n $project_name"
-                printf "\n"
-                exit 1
-                else
-                sleep 30
-                printf '%s' "..."
-                continue
-                fi
-            elif [[ $isReady == "Succeeded" ]]; then
-                pod_name=$(${CLI_CMD} get pod -l=name=ibm-common-service-operator -n $project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
-                if [ -z $pod_name ]; then
-                    error "IBM Cloud Pak foundational Operator pod is NOT running"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "FAIL" )
-                    break
-                else
-                    success "IBM Cloud Pak foundational Operator is running"
-                    info "Pod: $pod_name"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                    break
-                fi
-            fi
-        done
-        echo "****************************************************************************"
-    fi
+        
+        # Check Common Service Operator upgrade status
+        check_operator_pod_initialization "$project_name" "ibm-common-service-operator" "$CS_OPERATOR_VERSION" "ibm-common-service-operator" "IBM Cloud Pak foundational Operator" "$check_channel" "" 30
 
-    # if [[ "$check_mode" == "full" ]]; then
-    #     if [[ (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "bai") || $bai_flag == "true" ]]; then
-    #         # Check IBM Events Operator $EVENTS_OPERATOR_VERSION
-    #         local maxRetry=10
-    #         echo "****************************************************************************"
-    #         info "Checking for IBM Events operator pod initialization"
-    #         for ((retry=0;retry<=${maxRetry};retry++)); do
-    #             isReady=$(${CLI_CMD} get csv ibm-events-operator.$EVENTS_OPERATOR_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
-    #             # isReady=$(${CLI_CMD} exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine $CP4BA_RELEASE_BASE")
-    #             if [[ $isReady != "Succeeded" ]]; then
-    #                 if [[ $retry -eq ${maxRetry} ]]; then
-    #                 printf "\n"
-    #                 warning "Timeout waiting for IBM Events operator to start"
-    #                 printf '%b\n' "\x1B[1mPlease check the status of Pod by issue cmd:\x1B[0m"
-    #                 echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-events-operator|awk '{print $1}') -n $project_name"
-    #                 printf "\n"
-    #                 printf '%b\n' "\x1B[1mPlease check the status of ReplicaSet by issue cmd:\x1B[0m"
-    #                 echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-events-operator|awk '{print $1}') -n $project_name"
-    #                 printf "\n"
-    #                 exit 1
-    #                 else
-    #                 sleep 30
-    #                 printf '%s' "..."
-    #                 continue
-    #                 fi
-    #             elif [[ $isReady == "Succeeded" ]]; then
-    #                 pod_name=$(${CLI_CMD} get pod -l=name=ibm-events-operator -n $project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
-    #                 if [ -z $pod_name ]; then
-    #                     error "IBM Events Operator pod is NOT running"
-    #                     CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "FAIL" )
-    #                     break
-    #                 else
-    #                     success "IBM Events Operator is running"
-    #                     info "Pod: $pod_name"
-    #                     CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-    #                     break
-    #                 fi
-    #             fi
-    #         done
-    #         echo "****************************************************************************"
-    #     fi
-    # fi
-
-    # Check CP4BA operator upgrade status
-    if [[ "$check_mode" == "full" ]]; then
-        local maxRetry=30
-        echo "****************************************************************************"
-        info "Checking for IBM Cloud Pak for Business Automation (CP4BA) multi-pattern operator pod initialization"
-        for ((retry=0;retry<=${maxRetry};retry++)); do
-            isReady=$(${CLI_CMD} get csv ibm-cp4a-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
-            # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
-            if [[ -z $isReady ]]; then
-                fail "Failed to upgrade the IBM Cloud Pak for Business Automation (CP4BA) multi-pattern operator to ibm-cp4a-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
-                msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
-                exit 1
-            elif [[ $isReady != "Succeeded" ]]; then
-                if [[ $retry -eq ${maxRetry} ]]; then
-                printf "\n"
-                warning "Timeout waiting for IBM Cloud Pak for Business Automation (CP4BA) multi-pattern operator to start"
-                printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
-                echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-cp4a-operator|awk '{print $1}') -n $project_name"
-                printf "\n"
-                printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
-                echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-cp4a-operator|awk '{print $1}') -n $project_name"
-                printf "\n"
-                exit 1
-                else
-                sleep 30
-                printf '%s' "..."
-                continue
-                fi
-            elif [[ $isReady == "Succeeded" ]]; then
-                if [[ "$check_channel" != "channel" ]]; then
-                    pod_name=$(${CLI_CMD} get pod -l=name=ibm-cp4a-operator,release=23.0.1 -n $project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
-                    if [ -z $pod_name ]; then
-                        error "IBM Cloud Pak for Business Automation (CP4BA) multi-pattern Operator pod is NOT running"
-                        CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "FAIL" )
-                        break
-                    else
-                        success "IBM Cloud Pak for Business Automation (CP4BA) multi-pattern Operator is running"
-                        info "Pod: $pod_name"
-                        CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                        break
-                    fi
-                elif [[ "$check_channel" == "channel" ]]; then
-                    success "IBM Cloud Pak for Business Automation (CP4BA) multi-pattern Operator is in the phase of \"$isReady\"!"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                    break
-                fi
-            fi
-        done
-        echo "****************************************************************************"
-    fi
-
-    # Check IBM CP4BA FileNet Content Manager operator upgrade status
-    echo "****************************************************************************"
-    info "Checking for IBM CP4BA FileNet Content Manager operator pod initialization"
-    for ((retry=0;retry<=${maxRetry};retry++)); do
-        isReady=$(${CLI_CMD} get csv ibm-content-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
-        # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
-        if [[ -z $isReady ]]; then
-            csv_version=""
-            csv_version=$(${CLI_CMD} get csv $(${CLI_CMD} get csv --no-headers --ignore-not-found -n $project_name | grep ibm-content-operator.v |awk '{print $1}') --no-headers --ignore-not-found -n $project_name -o jsonpath='{.spec.version}')
-            if [[ "v$csv_version" != $CP4BA_CSV_VERSION ]]; then
-                if [[ $retry -eq ${maxRetry} ]]; then
-                    fail "Failed to upgrade the IBM CP4BA FileNet Content Manager operator to ibm-content-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
-                    msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
-                    exit 1
-                else
-                    sleep 30
-                    printf '%s' "..."
-                    continue
-                fi
-            fi
-        elif [[ $isReady != "Succeeded" ]]; then
-            if [[ $retry -eq ${maxRetry} ]]; then
-                printf "\n"
-                warning "Timeout waiting for IBM CP4BA FileNet Content Manager operator to start"
-                printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
-                echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-content-operator|awk '{print $1}') -n $project_name"
-                printf "\n"
-                printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
-                echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-content-operator|awk '{print $1}') -n $project_name"
-                printf "\n"
-                exit 1
-            else
-                sleep 30
-                printf '%s' "..."
-                continue
-            fi
-        elif [[ $isReady == "Succeeded" ]]; then
-            if [[ "$check_channel" != "channel" ]]; then
-                pod_name=$(${CLI_CMD} get pod -l=name=ibm-content-operator,release=$CP4BA_RELEASE_BASE --no-headers --ignore-not-found -n $project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
-                if [ -z $pod_name ]; then
-                    error "IBM CP4BA FileNet Content Manager operator pod is NOT running"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "FAIL" )
-                    break
-                else
-                    success "IBM CP4BA FileNet Content Manager operator is running"
-                    info "Pod: $pod_name"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                    break
-                fi
-            elif [[ "$check_channel" == "channel" ]]; then
-                success "IBM CP4BA FileNet Content Manager operator is in the phase of \"$isReady\"!"
-                CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                break
-            fi
+        # Check Usage metering service Operator upgrade status
+        check_operator_pod_initialization "$project_name" "ibm-usage-metering-operator" "$UMS_CSV_VERSION" "ibm-usage-metering-operator" "IBM Usage Metering Operator" "$check_channel" "" 30
+        
+        # Check CP4BA operator upgrade status
+        check_operator_pod_initialization "$project_name" "ibm-cp4a-operator" "$CP4BA_CSV_VERSION" "ibm-cp4a-operator" "IBM Cloud Pak for Business Automation (CP4BA) multi-pattern Operator" "$check_channel" "$CP4BA_RELEASE_BASE" 30
+        
+        # Check IBM Operational Decision Manager operator upgrade status
+        check_operator_pod_initialization "$project_name" "ibm-odm-operator" "$CP4BA_CSV_VERSION" "ibm-odm-operator" "IBM Operational Decision Manager operator" "$check_channel" "" 30
+        
+        # Check IBM Document Processing Engine operator upgrade status
+        arch_type=$(${CLI_CMD} get cm cluster-config-v1 -n kube-system --no-headers --ignore-not-found -o yaml | grep -i architecture | tail -1 | awk '{print $2}')
+        if [[ "$arch_type" == "amd64" ]]; then
+            check_operator_pod_initialization "$project_name" "ibm-dpe-operator" "$CP4BA_CSV_VERSION" "ibm-dpe-operator" "IBM Document Processing Engine operator" "$check_channel" "" 30
         fi
-    done
-    echo "****************************************************************************"
+        
+        # Check IBM CP4BA Insights Engine operator upgrade status
+        check_operator_pod_initialization "$project_name" "ibm-insights-engine-operator" "$CP4BA_CSV_VERSION" "ibm-insights-engine-operator" "IBM CP4BA Insights Engine operator" "$check_channel" "" 30
+        
+        # Check IBM CCX AI Services operator upgrade status
+        check_operator_pod_initialization "$project_name" "ibm-ccx-ai-services-operator" "$CP4BA_CSV_VERSION" "ibm-ccx-ai-services-operator" "IBM Content Cortex AI Services operator" "$check_channel" "" 30
+    fi
+
+
+    # Check IBM CP4BA Content Cortex operator upgrade status
+    check_operator_pod_initialization "$project_name" "ibm-content-operator" "$CP4BA_CSV_VERSION" "ibm-content-operator" "IBM CP4BA Content Cortex operator" "$check_channel" "$CP4BA_RELEASE_BASE" 30
 
     # Check CP4BA Foundation operator upgrade status
-    echo "****************************************************************************"
-    info "Checking for CP4BA Foundation operator pod initialization"
-    for ((retry=0;retry<=${maxRetry};retry++)); do
-        isReady=$(${CLI_CMD} get csv icp4a-foundation-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
-        # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
-        if [[ -z $isReady ]]; then
-            csv_version=""
-            csv_version=$(${CLI_CMD} get csv $(${CLI_CMD} get csv --no-headers --ignore-not-found -n $project_name | grep icp4a-foundation-operator.v |awk '{print $1}') --no-headers --ignore-not-found -n $project_name -o jsonpath='{.spec.version}')
-            if [[ "v$csv_version" != $CP4BA_CSV_VERSION ]]; then
-                if [[ $retry -eq ${maxRetry} ]]; then
-                    fail "Failed to upgrade the IBM CP4BA Foundation operator to icp4a-foundation-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
-                    msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
-                    exit 1
-                else
-                    sleep 30
-                    printf '%s' "..."
-                    continue
-                fi
-            fi
-        elif [[ $isReady != "Succeeded" ]]; then
-            if [[ $retry -eq ${maxRetry} ]]; then
-            printf "\n"
-            warning "Timeout waiting for CP4BA Foundation operator to start"
-            printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
-            echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep icp4a-foundation-operator|awk '{print $1}') -n $project_name"
-            printf "\n"
-            printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
-            echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep icp4a-foundation-operator|awk '{print $1}') -n $project_name"
-            printf "\n"
-            exit 1
-            else
-            sleep 30
-            printf '%s' "..."
-            continue
-            fi
-        elif [[ $isReady == "Succeeded" ]]; then
-            if [[ "$check_channel" != "channel" ]]; then
-                pod_name=$(${CLI_CMD} get pod -l=name=icp4a-foundation-operator,release=$CP4BA_RELEASE_BASE --no-headers --ignore-not-found -n $project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
-                if [ -z $pod_name ]; then
-                    error "IBM CP4BA Foundation operator pod is NOT running"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "FAIL" )
-                    break
-                else
-                    success "IBM CP4BA Foundation operator is running"
-                    info "Pod: $pod_name"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                    break
-                fi
-            elif [[ "$check_channel" == "channel" ]]; then
-                success "IBM CP4BA Foundation operator is in the phase of \"$isReady\"!"
-                CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                break
-            fi
-        fi
-    done
-    echo "****************************************************************************"
+    check_operator_pod_initialization "$project_name" "icp4a-foundation-operator" "$CP4BA_CSV_VERSION" "icp4a-foundation-operator" "IBM CP4BA Foundation operator" "$check_channel" "$CP4BA_RELEASE_BASE" 30
 
     # Check IBM CP4BA Automation Decision Service operator upgrade status
-    echo "****************************************************************************"
-    info "Checking for IBM CP4BA Automation Decision Service operator pod initialization"
-    for ((retry=0;retry<=${maxRetry};retry++)); do
-        isReady=$(${CLI_CMD} get csv ibm-ads-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
-        # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
-        if [[ -z $isReady ]]; then
-            csv_version=""
-            csv_version=$(${CLI_CMD} get csv $(${CLI_CMD} get csv --no-headers --ignore-not-found -n $project_name | grep ibm-ads-operator.v |awk '{print $1}') --no-headers --ignore-not-found -n $project_name -o jsonpath='{.spec.version}')
-            if [[ "v$csv_version" != $CP4BA_CSV_VERSION ]]; then
-                if [[ $retry -eq ${maxRetry} ]]; then
-                    fail "Failed to upgrade the IBM CP4BA Automation Decision Service operator to ibm-ads-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
-                    msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
-                    exit 1
-                else
-                    sleep 30
-                    printf '%s' "..."
-                    continue
-                fi
-            fi
-        elif [[ $isReady != "Succeeded" ]]; then
-            if [[ $retry -eq ${maxRetry} ]]; then
-            printf "\n"
-            warning "Timeout waiting for IBM CP4BA Automation Decision Service operator to start"
-            printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
-            echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-ads-operator|awk '{print $1}') -n $project_name"
-            printf "\n"
-            printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
-            echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-ads-operator|awk '{print $1}') -n $project_name"
-            printf "\n"
-            exit 1
-            else
-            sleep 30
-            printf '%s' "..."
-            continue
-            fi
-        elif [[ $isReady == "Succeeded" ]]; then
-            if [[ "$check_channel" != "channel" ]]; then
-                pod_name=$(${CLI_CMD} get pod -l=name=ibm-ads-operator -n $project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
-                if [ -z $pod_name ]; then
-                    error "IBM CP4BA Automation Decision Service operator pod is NOT running"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "FAIL" )
-                    break
-                else
-                    success "IBM CP4BA Automation Decision Service operator is running"
-                    info "Pod: $pod_name"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                    break
-                fi
-            elif [[ "$check_channel" == "channel" ]]; then
-                success "IBM CP4BA Automation Decision Service operator is in the phase of \"$isReady\"!"
-                CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                break
-            fi
-        fi
-    done
-    echo "****************************************************************************"
+    check_operator_pod_initialization "$project_name" "ibm-ads-operator" "$CP4BA_CSV_VERSION" "ibm-ads-operator" "IBM CP4BA Automation Decision Service operator" "$check_channel" "" 30
 
-
-    # Check IBM Operational Decision Manager operator upgrade status
-    if [[ "$check_mode" == "full" ]]; then
-        echo "****************************************************************************"
-        info "Checking for IBM Operational Decision Manager operator pod initialization"
-        for ((retry=0;retry<=${maxRetry};retry++)); do
-            isReady=$(${CLI_CMD} get csv ibm-odm-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
-            # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
-            if [[ -z $isReady ]]; then
-                csv_version=""
-                csv_version=$(${CLI_CMD} get csv $(${CLI_CMD} get csv --no-headers --ignore-not-found -n $project_name | grep ibm-odm-operator.v |awk '{print $1}') --no-headers --ignore-not-found -n $project_name -o jsonpath='{.spec.version}')
-                if [[ "v$csv_version" != $CP4BA_CSV_VERSION ]]; then
-                    if [[ $retry -eq ${maxRetry} ]]; then
-                        fail "Failed to upgrade the IBM Operational Decision Manager operator to ibm-odm-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
-                        msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
-                        exit 1
-                    else
-                        sleep 30
-                        printf '%s' "..."
-                        continue
-                    fi
-                fi
-            elif [[ $isReady != "Succeeded" ]]; then
-                if [[ $retry -eq ${maxRetry} ]]; then
-                printf "\n"
-                warning "Timeout waiting for IBM Operational Decision Manager operator to start"
-                printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
-                echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-odm-operator|awk '{print $1}') -n $project_name"
-                printf "\n"
-                printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
-                echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-odm-operator|awk '{print $1}') -n $project_name"
-                printf "\n"
-                exit 1
-                else
-                sleep 30
-                printf '%s' "..."
-                continue
-                fi
-            elif [[ $isReady == "Succeeded" ]]; then
-                if [[ "$check_channel" != "channel" ]]; then
-                    pod_name=$(${CLI_CMD} get pod -l=name=ibm-odm-operator -n $project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
-                    if [ -z $pod_name ]; then
-                        error "IBM Operational Decision Manager pod is NOT running"
-                        CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "FAIL" )
-                        break
-                    else
-                        success "IBM Operational Decision Manager operator is running"
-                        info "Pod: $pod_name"
-                        CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                        break
-                    fi
-                elif [[ "$check_channel" == "channel" ]]; then
-                    success "IBM Operational Decision Manager operator is in the phase of \"$isReady\"!"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                    break
-                fi
-            fi
-        done
-        echo "****************************************************************************"
-    fi
-
-    # Check IBM Document Processing Engine operator upgrade status
-    if [[ "$check_mode" == "full" ]]; then
-        # Check the target cluster arch type
-
-        arch_type=$(${CLI_CMD} get cm cluster-config-v1 -n kube-system --no-headers --ignore-not-found -o yaml | grep -i architecture|tail -1| awk '{print $2}')
-        if [[ "$arch_type" == "amd64" ]]; then
-            echo "****************************************************************************"
-            info "Checking for IBM Document Processing Engine operator pod initialization"
-            for ((retry=0;retry<=${maxRetry};retry++)); do
-                isReady=$(${CLI_CMD} get csv ibm-dpe-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
-                # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
-                if [[ -z $isReady ]]; then
-                    csv_version=""
-                    csv_version=$(${CLI_CMD} get csv $(${CLI_CMD} get csv --no-headers --ignore-not-found -n $project_name | grep ibm-dpe-operator.v |awk '{print $1}') --no-headers --ignore-not-found -n $project_name -o jsonpath='{.spec.version}')
-                    if [[ "v$csv_version" != $CP4BA_CSV_VERSION ]]; then
-                        if [[ $retry -eq ${maxRetry} ]]; then
-                            fail "Failed to upgrade the IBM Document Processing Engine operator to ibm-dpe-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
-                            msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
-                            exit 1
-                        else
-                            sleep 30
-                            printf '%s' "..."
-                            continue
-                        fi
-                    fi
-                elif [[ $isReady != "Succeeded" ]]; then
-                    if [[ $retry -eq ${maxRetry} ]]; then
-                    printf "\n"
-                    warning "Timeout waiting for IBM Document Processing Engine operator to start"
-                    printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
-                    echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-dpe-operator|awk '{print $1}') -n $project_name"
-                    printf "\n"
-                    printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
-                    echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-dpe-operator|awk '{print $1}') -n $project_name"
-                    printf "\n"
-                    exit 1
-                    else
-                    sleep 30
-                    printf '%s' "..."
-                    continue
-                    fi
-                elif [[ $isReady == "Succeeded" ]]; then
-                    if [[ "$check_channel" != "channel" ]]; then
-                        pod_name=$(${CLI_CMD} get pod -l=name=ibm-dpe-operator -n $project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
-                        if [ -z $pod_name ]; then
-                            error "IBM Document Processing Engine pod is NOT running"
-                            CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "FAIL" )
-                            break
-                        else
-                            success "IBM Document Processing Engine operator is running"
-                            info "Pod: $pod_name"
-                            CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                            break
-                        fi
-                    elif [[ "$check_channel" == "channel" ]]; then
-                        success "IBM Document Processing Engine operator is in the phase of \"$isReady\"!"
-                        CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                        break
-                    fi
-                fi
-            done
-            echo "****************************************************************************"
-        fi
-    fi
 
     # Check IBM CP4BA Workflow Process Service operator upgrade status
-    echo "****************************************************************************"
-    info "Checking for IBM CP4BA Workflow Process Service operator pod initialization"
-    for ((retry=0;retry<=${maxRetry};retry++)); do
-        isReady=$(${CLI_CMD} get csv ibm-cp4a-wfps-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
-        if [[ -z $isReady ]]; then
-            csv_version=""
-            csv_version=$(${CLI_CMD} get csv $(${CLI_CMD} get csv --no-headers --ignore-not-found -n $project_name | grep ibm-cp4a-wfps-operator.v |awk '{print $1}') --no-headers --ignore-not-found -n $project_name -o jsonpath='{.spec.version}')
-            if [[ "v$csv_version" != $CP4BA_CSV_VERSION ]]; then
-                if [[ $retry -eq ${maxRetry} ]]; then
-                    fail "Failed to upgrade the IBM CP4BA Workflow Process Service operator to ibm-cp4a-wfps-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
-                    msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
-                    exit 1
-                else
-                    sleep 30
-                    printf '%s' "..."
-                    continue
-                fi
-            fi
-        # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
-        elif [[ $isReady != "Succeeded" ]]; then
-            if [[ $retry -eq ${maxRetry} ]]; then
-            printf "\n"
-            warning "Timeout waiting for IBM CP4BA Workflow Process Service operator to start"
-            printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
-            echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $project_name"
-            printf "\n"
-            printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
-            echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $project_name"
-            printf "\n"
-            exit 1
-            else
-            sleep 30
-            printf '%s' "..."
-            continue
-            fi
-        elif [[ $isReady == "Succeeded" ]]; then
-            if [[ "$check_channel" != "channel" ]]; then
-                pod_name=$(${CLI_CMD} get pod -l=name=ibm-cp4a-wfps-operator -n $project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
-                if [ -z $pod_name ]; then
-                    error "IBM CP4BA Workflow Process Service operator pod is NOT running"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "FAIL" )
-                    break
-                else
-                    success "IBM CP4BA Workflow Process Service operator is running"
-                    info "Pod: $pod_name"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                    break
-                fi
-            elif [[ "$check_channel" == "channel" ]]; then
-                success "IBM CP4BA Workflow Process Service operator is in the phase of \"$isReady\"!"
-                CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                break
-            fi
-        fi
-    done
-    echo "****************************************************************************"
+    check_operator_pod_initialization "$project_name" "ibm-cp4a-wfps-operator" "$CP4BA_CSV_VERSION" "ibm-cp4a-wfps-operator" "IBM CP4BA Workflow Process Service operator" "$check_channel" "" 30
 
-    # Check IBM CP4BA Insights Engine operator upgrade status
-    if [[ "$check_mode" == "full" ]]; then
-        echo "****************************************************************************"
-        info "Checking for IBM CP4BA Insights Engine operator pod initialization"
-        for ((retry=0;retry<=${maxRetry};retry++)); do
-            isReady=$(${CLI_CMD} get csv ibm-insights-engine-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
-            # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
-            if [[ -z $isReady ]]; then
-                csv_version=""
-                csv_version=$(${CLI_CMD} get csv $(${CLI_CMD} get csv --no-headers --ignore-not-found -n $project_name | grep ibm-insights-engine-operator.v |awk '{print $1}') --no-headers --ignore-not-found -n $project_name -o jsonpath='{.spec.version}')
-                if [[ "v$csv_version" != $CP4BA_CSV_VERSION ]]; then
-                    if [[ $retry -eq ${maxRetry} ]]; then
-                        fail "Failed to upgrade the IBM CP4BA Insights Engine operator to ibm-insights-engine-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
-                        msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
-                        exit 1
-                    else
-                        sleep 30
-                        printf '%s' "..."
-                        continue
-                    fi
-                fi
-            elif [[ $isReady != "Succeeded" ]]; then
-                if [[ $retry -eq ${maxRetry} ]]; then
-                printf "\n"
-                warning "Timeout waiting for IBM CP4BA Insights Engine operator to start"
-                printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
-                echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-insights-engine-operator|awk '{print $1}') -n $project_name"
-                printf "\n"
-                printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
-                echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-insights-engine-operator|awk '{print $1}') -n $project_name"
-                printf "\n"
-                exit 1
-                else
-                sleep 30
-                printf '%s' "..."
-                continue
-                fi
-            elif [[ $isReady == "Succeeded" ]]; then
-                if [[ "$check_channel" != "channel" ]]; then
-                    pod_name=$(${CLI_CMD} get pod -l=name=ibm-insights-engine-operator -n $project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
-                    if [ -z $pod_name ]; then
-                        error "IBM CP4BA Insights Engine operator pod is NOT running"
-                        CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "FAIL" )
-                        break
-                    else
-                        success "IBM CP4BA Insights Engine operator is running"
-                        info "Pod: $pod_name"
-                        CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                        break
-                    fi
-                elif [[ "$check_channel" == "channel" ]]; then
-                    success "IBM CP4BA Insights Engine operator is in the phase of \"$isReady\"!"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                    break
-                fi
-            fi
-        done
-        echo "****************************************************************************"
-    fi
+    # Check IBM CP4BA Process Federation Server operator upgrade status
+    check_operator_pod_initialization "$project_name" "ibm-pfs-operator" "$CP4BA_CSV_VERSION" "ibm-pfs-operator" "IBM CP4BA Process Federation Server operator" "$check_channel" "" 30
 
-    # Check CP4BA IBM CP4BA Process Federation Server operator upgrade status
-    echo "****************************************************************************"
-    info "Checking for IBM CP4BA Process Federation Server operator pod initialization"
-    for ((retry=0;retry<=${maxRetry};retry++)); do
-        isReady=$(${CLI_CMD} get csv ibm-pfs-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
-        # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
-        if [[ -z $isReady ]]; then
-            csv_version=""
-            csv_version=$(${CLI_CMD} get csv $(${CLI_CMD} get csv --no-headers --ignore-not-found -n $project_name | grep ibm-pfs-operator.v |awk '{print $1}') --no-headers --ignore-not-found -n $project_name -o jsonpath='{.spec.version}')
-            if [[ "v$csv_version" != $CP4BA_CSV_VERSION ]]; then
-                if [[ $retry -eq ${maxRetry} ]]; then
-                    fail "Failed to upgrade the IBM CP4BA Process Federation Server operator to ibm-pfs-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
-                    msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
-                    exit 1
-                else
-                    sleep 30
-                    printf '%s' "..."
-                    continue
-                fi
-            fi
-        elif [[ $isReady != "Succeeded" ]]; then
-            if [[ $retry -eq ${maxRetry} ]]; then
-            printf "\n"
-            warning "Timeout waiting for IBM CP4BA Process Federation Server operator to start"
-            printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
-            echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-pfs-operator|awk '{print $1}') -n $project_name"
-            printf "\n"
-            printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
-            echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-pfs-operator|awk '{print $1}') -n $project_name"
-            printf "\n"
-            exit 1
-            else
-            sleep 30
-            printf '%s' "..."
-            continue
-            fi
-        elif [[ $isReady == "Succeeded" ]]; then
-            if [[ "$check_channel" != "channel" ]]; then
-                pod_name=$(${CLI_CMD} get pod -l=name=ibm-pfs-operator -n $project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
-                if [ -z $pod_name ]; then
-                    error "IBM CP4BA Process Federation Server operator pod is NOT running"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "FAIL" )
-                    break
-                else
-                    success "IBM CP4BA Process Federation Server operator is running"
-                    info "Pod: $pod_name"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                    break
-                fi
-            elif [[ "$check_channel" == "channel" ]]; then
-                success "IBM CP4BA Process Federation Server operator is in the phase of \"$isReady\"!"
-                CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                break
-            fi
-        fi
-    done
-    echo "****************************************************************************"
+    # Check IBM CP4BA Workflow operator upgrade status
+    check_operator_pod_initialization "$project_name" "ibm-workflow-operator" "$CP4BA_CSV_VERSION" "ibm-workflow-operator" "IBM CP4BA Workflow operator" "$check_channel" "" 30
 
-
-    # Check CP4BA IBM CP4BA Workflow operator upgrade status
-    echo "****************************************************************************"
-    info "Checking for IBM CP4BA Workflow operator pod initialization"
-    for ((retry=0;retry<=${maxRetry};retry++)); do
-        isReady=$(${CLI_CMD} get csv ibm-workflow-operator.$CP4BA_CSV_VERSION --no-headers --ignore-not-found -n $project_name -o jsonpath='{.status.phase}')
-        # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine 23.0.1")
-        if [[ -z $isReady ]]; then
-            csv_version=""
-            csv_version=$(${CLI_CMD} get csv $(${CLI_CMD} get csv --no-headers --ignore-not-found -n $project_name | grep ibm-workflow-operator.v |awk '{print $1}') --no-headers --ignore-not-found -n $project_name -o jsonpath='{.spec.version}')
-            if [[ "v$csv_version" != $CP4BA_CSV_VERSION ]]; then
-                if [[ $retry -eq ${maxRetry} ]]; then
-                    fail "Failed to upgrade the IBM CP4BA Workflow operator to ibm-workflow-operator.$CP4BA_CSV_VERSION in the project \"$project_name\"" 
-                    msg "Check the Subscription and ClusterServiceVersions and then fix issue first."
-                    exit 1
-                else
-                    sleep 30
-                    printf '%s' "..."
-                    continue
-                fi
-            fi
-        elif [[ $isReady != "Succeeded" ]]; then
-            if [[ $retry -eq ${maxRetry} ]]; then
-            printf "\n"
-            warning "Timeout waiting for IBM CP4BA Workflow operator to start"
-            printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
-            echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $project_name|grep ibm-workflow-operator|awk '{print $1}') -n $project_name"
-            printf "\n"
-            printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
-            echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $project_name|grep ibm-workflow-operator|awk '{print $1}') -n $project_name"
-            printf "\n"
-            exit 1
-            else
-            sleep 30
-            printf '%s' "..."
-            continue
-            fi
-        elif [[ $isReady == "Succeeded" ]]; then
-            if [[ "$check_channel" != "channel" ]]; then
-                pod_name=$(${CLI_CMD} get pod -l=name=ibm-workflow-operator -n $project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
-                if [ -z $pod_name ]; then
-                    error "IBM CP4BA Workflow operator pod is NOT running"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "FAIL" )
-                    break
-                else
-                    success "IBM CP4BA Workflow operator is running"
-                    info "Pod: $pod_name"
-                    CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                    break
-                fi
-            elif [[ "$check_channel" == "channel" ]]; then
-                success "IBM CP4BA Workflow operator is in the phase of \"$isReady\"!"
-                CHECK_CP4BA_OPERATOR_RESULT=( "${CHECK_CP4BA_OPERATOR_RESULT[@]}" "PASS" )
-                break
-            fi
-        fi
-    done
-    echo "****************************************************************************"
 }
 
+
+# This function goes over the different patterns and builds a table that is displayed with the current status
 function check_cp4ba_deployment_status(){
     local project_name=$1
+    local current_cr_kind=$2
+    local current_cr_name=$3
+    local current_cr_details_location=$4
     # local meta_name=$2
-
-    UPGRADE_STATUS_CONTENT_FOLDER=${TEMP_FOLDER}/${project_name}
-    UPGRADE_STATUS_CP4BA_FOLDER=${TEMP_FOLDER}/${project_name}
-    mkdir -p ${UPGRADE_STATUS_CONTENT_FOLDER}
-    mkdir -p ${UPGRADE_STATUS_CP4BA_FOLDER}
-
-    UPGRADE_STATUS_CONTENT_FILE=${UPGRADE_STATUS_CONTENT_FOLDER}/.content_status.yaml
-    UPGRADE_STATUS_CP4BA_FILE=${UPGRADE_STATUS_CP4BA_FOLDER}/.icp4acluster_status.yaml
-
     UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_BAK=${CUR_DIR}/cp4ba-upgrade/project/$project_name/custom_resource/backup/icp4acluster_cr_backup.yaml
     UPGRADE_DEPLOYMENT_CONTENT_CR_BAK=${CUR_DIR}/cp4ba-upgrade/project/$project_name/custom_resource/backup/content_cr_backup.yaml
 
-    cp4ba_cr_name=$(${CLI_CMD} get icp4acluster -n $project_name --no-headers --ignore-not-found | awk '{print $1}')
-    if [ ! -z "$cp4ba_cr_name" ]; then
-        cp4ba_cr_metaname=$(${CLI_CMD} get icp4acluster $cp4ba_cr_name -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} '.metadata.name' -)
-        ${CLI_CMD} get icp4acluster $cp4ba_cr_name -n ${project_name} --no-headers --ignore-not-found -o yaml > ${UPGRADE_STATUS_CP4BA_FILE}
-    fi
-
-    content_cr_name=$(${CLI_CMD} get content -n $project_name --no-headers --ignore-not-found | awk '{print $1}')
-    if [ ! -z "$content_cr_name" ]; then
-        content_cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} '.metadata.name' -)
-        ${CLI_CMD} get content $content_cr_name -n ${project_name} --no-headers --ignore-not-found -o yaml > ${UPGRADE_STATUS_CONTENT_FILE}
-    fi
-
-    if [[ -z "${cp4ba_cr_name}" && -z "${content_cr_name}" ]]; then
-        fail "No content and icp4acluster custom resource files found in the project \"$project_name\", exiting ..."
-        exit 1
-    fi
-
-    if [ -z "${cp4ba_cr_name}" ]; then
-        UPGRADE_STATUS_FILE=${UPGRADE_STATUS_CONTENT_FILE}
-    elif [ ! -z "${cp4ba_cr_name}" ]; then
-        UPGRADE_STATUS_FILE=${UPGRADE_STATUS_CP4BA_FILE}
-    fi
+    # Get the current status of the top level CR before we process what the status of each deployed component is
+    ${CLI_CMD} get $current_cr_kind $current_cr_name -n $project_name -o yaml > ${current_cr_details_location}
     
-    if [[ ( ! -z "${content_cr_name}" ) || ( ! -z "${cp4ba_cr_name}" ) ]]; then
-        if [[ ! -z "${content_cr_name}" ]]; then
-            owner_ref=$(${CLI_CMD} get content $content_cr_name -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} '.metadata.ownerReferences.[0].kind // ""' -)
-            #################### FNCM #######################
-            if [[ -z "${owner_ref}" ]]; then
-                #this variable is being used to check what the version of CP4BA was used before upgrade and is used later in a check if some alert message is to be printed
-                # initial_app_version=`cat $UPGRADE_DEPLOYMENT_CONTENT_CR_BAK | ${YQ_CMD} r - spec.appVersion`
-                CONTENT_CR_EXIST="Yes"
-                source ${CUR_DIR}/helper/upgrade/deployment_check/fncm_status.sh
-                # Add FNCM component status variables to overall status array
-                CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_CPE_DEPLOYMENT_STATUS" "$CP4BA_GRAPHQL_DEPLOYMENT_STATUS" "$CP4BA_CSS_DEPLOYMENT_STATUS" "$CP4BA_CMIS_DEPLOYMENT_STATUS" "$CP4BA_IER_DEPLOYMENT_STATUS" "$CP4BA_ICC_DEPLOYMENT_STATUS" "$CP4BA_TM_DEPLOYMENT_STATUS" "$CP4BA_BAN_DEPLOYMENT_STATUS" "$CP4BA_ES_DEPLOYMENT_STATUS")
-                bai_flag=`${YQ_CMD} ".spec.content_optional_components.bai // \"\"" "$UPGRADE_STATUS_FILE"`
-                if [[ ! -z "$bai_flag" ]]; then
-                    bai_flag=$(echo "$bai_flag" | tr '[:upper:]' '[:lower:]')
-                    if [[ "${bai_flag}" == "true" ]]; then
-                        source ${CUR_DIR}/helper/upgrade/deployment_check/bai_status.sh
-                        CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BAI_DEPLOYMENT_STATUS")
-                    fi
-                fi
-                css_flag=`${YQ_CMD} ".spec.content_optional_components.css" "$UPGRADE_STATUS_FILE"`
-                css_flag=$(echo "$css_flag" | tr '[:upper:]' '[:lower:]')
-            else
-                CONTENT_CR_EXIST="No"
-            fi
-        fi
-        if [[ ! -z "${cp4ba_cr_name}" ]]; then
-            convert_olm_cr "${UPGRADE_STATUS_FILE}"
-            if [[ $olm_cr_flag == "No" ]]; then
-                #this variable is being used to check what the version of CP4BA was used before upgrade and is used later in a check if some alert message is to be printed
-                # initial_app_version=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_BAK | ${YQ_CMD} r - spec.appVersion`
-                existing_pattern_list=""
-                existing_opt_component_list=""
-                EXISTING_PATTERN_ARR=()
-                EXISTING_OPT_COMPONENT_ARR=()
-                existing_pattern_list=`${YQ_CMD} ".spec.shared_configuration.sc_deployment_patterns" "$UPGRADE_STATUS_FILE"`
-                existing_opt_component_list=`${YQ_CMD} ".spec.shared_configuration.sc_optional_components" "$UPGRADE_STATUS_FILE"`
-
-                OIFS=$IFS
-                IFS=',' read -r -a EXISTING_PATTERN_ARR <<< "$existing_pattern_list"
-                IFS=',' read -r -a EXISTING_OPT_COMPONENT_ARR <<< "$existing_opt_component_list"
-                IFS=$OIFS
-            fi
-            #################### FNCM #######################
-            if [[ $CONTENT_CR_EXIST == "Yes" || " ${EXISTING_PATTERN_ARR[@]}" =~ "workflow-runtime" || " ${EXISTING_PATTERN_ARR[@]}" =~ "workflow-authoring" || " ${EXISTING_PATTERN_ARR[@]}" =~ "content" || " ${EXISTING_PATTERN_ARR[@]}" =~ "document_processing" || "${EXISTING_OPT_COMPONENT_ARR[@]}" =~ "ae_data_persistence" ]]; then
-                source ${CUR_DIR}/helper/upgrade/deployment_check/fncm_status.sh
-                # Add FNCM component status variables to array
-                CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_CPE_DEPLOYMENT_STATUS" "$CP4BA_GRAPHQL_DEPLOYMENT_STATUS" "$CP4BA_CSS_DEPLOYMENT_STATUS" "$CP4BA_CMIS_DEPLOYMENT_STATUS" "$CP4BA_IER_DEPLOYMENT_STATUS" "$CP4BA_ICC_DEPLOYMENT_STATUS" "$CP4BA_TM_DEPLOYMENT_STATUS" "$CP4BA_BAN_DEPLOYMENT_STATUS" "$CP4BA_ES_DEPLOYMENT_STATUS")
-            fi
-
-            #################### ADP #######################
-            if [[ " ${EXISTING_PATTERN_ARR[@]}" =~ "document_processing" ]]; then
-                source ${CUR_DIR}/helper/upgrade/deployment_check/adp_status.sh
-                CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_ADP_ACA_DEPLOYMENT_STATUS" "$CP4BA_ADP_VIEWONE_DEPLOYMENT_STATUS" "$CP4BA_ADP_CDRA_DEPLOYMENT_STATUS" "$CP4BA_ADP_CDS_DEPLOYMENT_STATUS" "$CP4BA_ADP_CPDS_DEPLOYMENT_STATUS" "$CP4BA_ADP_GITSVC_DEPLOYMENT_STATUS")
-            fi
-
-            #################### ADS #######################
-            if [[ " ${EXISTING_PATTERN_ARR[@]}" =~ "decisions_ads" ]]; then
-                source ${CUR_DIR}/helper/upgrade/deployment_check/ads_status.sh
-                CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_ADS_CREDENTIALS_SERVICE_DEPLOYMENT_STATUS" "$CP4BA_ADS_GIT_SERVICE_DEPLOYMENT_STATUS" "$CP4BA_ADS_LTPA_CREATION_DEPLOYMENT_STATUS" "$CP4BA_ADS_PARSING_SERVICE_DEPLOYMENT_STATUS" "$CP4BA_ADS_RESTAPI_DEPLOYMENT_STATUS" "$CP4BA_ADS_RRREGISTRATION_DEPLOYMENT_STATUS" "$CP4BA_ADS_RUN_SERVICE_DEPLOYMENT_STATUS" "$CP4BA_ADS_RUNTIME_SERVICE_DEPLOYMENT_STATUS")
-            fi
-
-            #################### ODM #######################
-            containsElement "decisions" "${EXISTING_PATTERN_ARR[@]}"
-            odm_Val=$?
-            if [[ $odm_Val -eq 0 ]]; then
-                source ${CUR_DIR}/helper/upgrade/deployment_check/odm_status.sh
-                CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_ODM_DECISION_CENTER_DEPLOYMENT_STATUS" "$CP4BA_ODM_DECISION_RUNNER_DEPLOYMENT_STATUS" "$CP4BA_ODM_DECISIONSERVER_CONSOLE_DEPLOYMENT_STATUS" "$CP4BA_ODM_DECISIONSERVER_RUNTIME_DEPLOYMENT_STATUS")
-            fi
-
-            #################### RR #######################
-            source ${CUR_DIR}/helper/upgrade/deployment_check/rr_status.sh
-            CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_RR_DEPLOYMENT_STATUS")
-
-            #################### BAA AE Multiple instance #######################
-            AE_ENGINE_DEPLOYMENT=`${YQ_CMD} ".spec.application_engine_configuration // \"\"" "$UPGRADE_STATUS_FILE"`
-            cr_metaname=`${YQ_CMD} ".metadata.name" "$UPGRADE_STATUS_FILE"`
-            if [[ ! -z "$AE_ENGINE_DEPLOYMENT" ]]; then
-                item=0
-                while true; do
-                    ae_config_name=`${YQ_CMD} ".spec.application_engine_configuration.[${item}].name // \"\"" "$UPGRADE_STATUS_FILE"`
-                    if [[ -z "$ae_config_name" ]]; then
-                        break
-                    else
-                        source ${CUR_DIR}/helper/upgrade/deployment_check/baa_status.sh
-                        CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BAA_WORKSPACE_AAE_DEPLOYMENT_STATUS")
-                        ((item++))
-                    fi
-                done
-            fi
-            #################### BAStudio #######################
-            BASTUDIO_DEPLOYMENT=`${YQ_CMD} ".spec.bastudio_configuration.admin_user // \"\"" "$UPGRADE_STATUS_FILE"`
-            if [[ ! -z "$BASTUDIO_DEPLOYMENT" ]]; then
-                source ${CUR_DIR}/helper/upgrade/deployment_check/bastudio_status.sh
-                CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BASTUDIO_DEPLOYMENT_STATUS")
-            fi
-            #################### BAI #######################
-            if [[ " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "bai" ]]; then
+    # Instead of checking if a crd type content is present and then checking if it is a top level CR and then taking the CR details,
+    # we can just use the variables loaded by the retrieve_custom_resource_details function which does all this at the start of each mode
+    if [[ "$current_cr_kind" == "content" ]]; then
+        source ${CUR_DIR}/helper/upgrade/deployment_check/fncm_status.sh
+        # Add FNCM component status variables to overall status array
+        CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_CPE_DEPLOYMENT_STATUS" "$CP4BA_GRAPHQL_DEPLOYMENT_STATUS" "$CP4BA_CSS_DEPLOYMENT_STATUS" "$CP4BA_CMIS_DEPLOYMENT_STATUS" "$CP4BA_IER_DEPLOYMENT_STATUS" "$CP4BA_ICC_DEPLOYMENT_STATUS" "$CP4BA_TM_DEPLOYMENT_STATUS" "$CP4BA_BAN_DEPLOYMENT_STATUS" "$CP4BA_ES_DEPLOYMENT_STATUS")
+        bai_flag=`${YQ_CMD} ".spec.content_optional_components.bai" "$current_cr_details_location"`
+        if [[ ! -z "$bai_flag" ]]; then
+            bai_flag=$(echo "$bai_flag" | tr '[:upper:]' '[:lower:]')
+            if [[ "${bai_flag}" == "true" ]]; then
                 source ${CUR_DIR}/helper/upgrade/deployment_check/bai_status.sh
                 CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BAI_DEPLOYMENT_STATUS")
             fi
-
-            #################### BAML #######################
-            BAML_DEPLOYMENT=`${YQ_CMD} ".spec.baml_configuration // \"\"" "$UPGRADE_STATUS_FILE"`
-            if [[ ! -z "$BAML_DEPLOYMENT" ]]; then
-                source ${CUR_DIR}/helper/upgrade/deployment_check/baml_status.sh
-                CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BAML_DEPLOYMENT_STATUS")
-            fi
-
-            #################### BAW runtime Multiple instance #######################
-            BAW_DEPLOYMENT=`${YQ_CMD} ".spec.baw_configuration // \"\"" "$UPGRADE_STATUS_FILE"`
-            cr_metaname=`${YQ_CMD} ".metadata.name" "$UPGRADE_STATUS_FILE"`
-            if [[ ! -z "$BAW_DEPLOYMENT" ]]; then
-                item=0
-                while true; do
-                    baw_instance_name=`${YQ_CMD} ".spec.baw_configuration.[${item}].name // \"\"" "$UPGRADE_STATUS_FILE"`
-                    if [[ -z "$baw_instance_name" ]]; then
-                        break
-                    else
-                        source ${CUR_DIR}/helper/upgrade/deployment_check/baw_runtime_status.sh
-                        CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BAW_DEPLOYMENT_STATUS")
-                        ((item++))
-                    fi
-                done
-            fi
         fi
+        css_flag=`${YQ_CMD} ".spec.content_optional_components.css" "$current_cr_details_location"`
+        css_flag=$(echo "$css_flag" | tr '[:upper:]' '[:lower:]')
+    elif [[ "$current_cr_kind" == "icp4acluster" ]]; then
+        
+        convert_olm_cr "${current_cr_details_location}"
+        if [[ $olm_cr_flag == "No" ]]; then
+            #this variable is being used to check what the version of CP4BA was used before upgrade and is used later in a check if some alert message is to be printed
+            # initial_app_version=`cat $UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_BAK | ${YQ_CMD} r - spec.appVersion`
+            existing_pattern_list=""
+            existing_opt_component_list=""
+            EXISTING_PATTERN_ARR=()
+            EXISTING_OPT_COMPONENT_ARR=()
+            existing_pattern_list=`${YQ_CMD} ".spec.shared_configuration.sc_deployment_patterns" "$current_cr_details_location"`
+            existing_opt_component_list=`${YQ_CMD} ".spec.shared_configuration.sc_optional_components" "$current_cr_details_location"`
+
+            OIFS=$IFS
+            IFS=',' read -r -a EXISTING_PATTERN_ARR <<< "$existing_pattern_list"
+            IFS=',' read -r -a EXISTING_OPT_COMPONENT_ARR <<< "$existing_opt_component_list"
+            IFS=$OIFS
+        fi
+        #################### FNCM #######################
+        if [[ " ${EXISTING_PATTERN_ARR[@]}" =~ "workflow-runtime" || " ${EXISTING_PATTERN_ARR[@]}" =~ "workflow-authoring" || " ${EXISTING_PATTERN_ARR[@]}" =~ "content" || " ${EXISTING_PATTERN_ARR[@]}" =~ "document_processing" || "${EXISTING_OPT_COMPONENT_ARR[@]}" =~ "ae_data_persistence" ]]; then
+            source ${CUR_DIR}/helper/upgrade/deployment_check/fncm_status.sh
+            # Add FNCM component status variables to array
+            CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_CPE_DEPLOYMENT_STATUS" "$CP4BA_GRAPHQL_DEPLOYMENT_STATUS" "$CP4BA_CSS_DEPLOYMENT_STATUS" "$CP4BA_CMIS_DEPLOYMENT_STATUS" "$CP4BA_IER_DEPLOYMENT_STATUS" "$CP4BA_ICC_DEPLOYMENT_STATUS" "$CP4BA_TM_DEPLOYMENT_STATUS" "$CP4BA_BAN_DEPLOYMENT_STATUS" "$CP4BA_ES_DEPLOYMENT_STATUS")
+        fi
+
+        #################### ADP #######################
+        if [[ " ${EXISTING_PATTERN_ARR[@]}" =~ "document_processing" ]]; then
+            source ${CUR_DIR}/helper/upgrade/deployment_check/adp_status.sh
+            CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_ADP_ACA_DEPLOYMENT_STATUS" "$CP4BA_ADP_VIEWONE_DEPLOYMENT_STATUS" "$CP4BA_ADP_CDRA_DEPLOYMENT_STATUS" "$CP4BA_ADP_CDS_DEPLOYMENT_STATUS" "$CP4BA_ADP_CPDS_DEPLOYMENT_STATUS" "$CP4BA_ADP_GITSVC_DEPLOYMENT_STATUS")
+        fi
+
+        #################### DICMS #######################
+        if [[ " ${EXISTING_PATTERN_ARR[@]}" =~ "decisions_ads" ]]; then
+            source ${CUR_DIR}/helper/upgrade/deployment_check/dicms_status.sh
+            CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_ADS_CREDENTIALS_SERVICE_DEPLOYMENT_STATUS" "$CP4BA_ADS_GIT_SERVICE_DEPLOYMENT_STATUS" "$CP4BA_ADS_LTPA_CREATION_DEPLOYMENT_STATUS" "$CP4BA_ADS_PARSING_SERVICE_DEPLOYMENT_STATUS" "$CP4BA_ADS_RESTAPI_DEPLOYMENT_STATUS" "$CP4BA_ADS_RRREGISTRATION_DEPLOYMENT_STATUS" "$CP4BA_ADS_RUN_SERVICE_DEPLOYMENT_STATUS" "$CP4BA_ADS_RUNTIME_SERVICE_DEPLOYMENT_STATUS")
+        fi
+
+        #################### ODM #######################
+        containsElement "decisions" "${EXISTING_PATTERN_ARR[@]}"
+        odm_Val=$?
+        if [[ $odm_Val -eq 0 ]]; then
+            source ${CUR_DIR}/helper/upgrade/deployment_check/odm_status.sh
+            CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_ODM_DECISION_CENTER_DEPLOYMENT_STATUS" "$CP4BA_ODM_DECISION_RUNNER_DEPLOYMENT_STATUS" "$CP4BA_ODM_DECISIONSERVER_CONSOLE_DEPLOYMENT_STATUS" "$CP4BA_ODM_DECISIONSERVER_RUNTIME_DEPLOYMENT_STATUS")
+        fi
+
+        #################### RR #######################
+        source ${CUR_DIR}/helper/upgrade/deployment_check/rr_status.sh
+        CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_RR_DEPLOYMENT_STATUS")
+
+
+        #################### BAA AE Multiple instance #######################
+        AE_ENGINE_DEPLOYMENT=`${YQ_CMD} ".spec.application_engine_configuration // \"\"" "$current_cr_details_location"`
+        if [[ ! -z "$AE_ENGINE_DEPLOYMENT" ]]; then
+            item=0
+            while true; do
+                ae_config_name=`${YQ_CMD} ".spec.application_engine_configuration.[${item}].name // \"\"" "$current_cr_details_location"`
+                if [[ -z "$ae_config_name" ]]; then
+                    break
+                else
+                    source ${CUR_DIR}/helper/upgrade/deployment_check/baa_status.sh
+                    CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BAA_WORKSPACE_AAE_DEPLOYMENT_STATUS")
+                    ((item++))
+                fi
+            done
+        fi
+        #################### BAStudio #######################
+        BASTUDIO_DEPLOYMENT=`${YQ_CMD} ".spec.bastudio_configuration.admin_user // \"\"" "$current_cr_details_location"`
+        if [[ ! -z "$BASTUDIO_DEPLOYMENT" ]]; then
+            source ${CUR_DIR}/helper/upgrade/deployment_check/bastudio_status.sh
+            CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BASTUDIO_DEPLOYMENT_STATUS")
+
+        fi
+        #################### BAI #######################
+        if [[ " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "bai" ]]; then
+            source ${CUR_DIR}/helper/upgrade/deployment_check/bai_status.sh
+            CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BAI_DEPLOYMENT_STATUS")
+
+        fi
+
+        #################### BAML #######################
+        BAML_DEPLOYMENT=`${YQ_CMD} ".spec.baml_configuration // \"\"" "$current_cr_details_location"`
+        if [[ ! -z "$BAML_DEPLOYMENT" ]]; then
+            source ${CUR_DIR}/helper/upgrade/deployment_check/baml_status.sh
+            CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BAML_DEPLOYMENT_STATUS")
+
+        fi
+
+        #################### BAW runtime Multiple instance #######################
+        BAW_DEPLOYMENT=`${YQ_CMD} ".spec.baw_configuration // \"\"" "$current_cr_details_location"`
+        if [[ ! -z "$BAW_DEPLOYMENT" ]]; then
+            item=0
+            while true; do
+                baw_instance_name=`${YQ_CMD} ".spec.baw_configuration.[${item}].name // \"\"" "$current_cr_details_location"`
+                if [[ -z "$baw_instance_name" ]]; then
+                    break
+                else
+                    source ${CUR_DIR}/helper/upgrade/deployment_check/baw_runtime_status.sh
+                    CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BAW_DEPLOYMENT_STATUS")
+                    ((item++))
+                fi
+            done
+        fi
+    else
+        fail "No top level CP4BA custom resource found on this cluster in the project \"$project_name\"."
+        exit 1
     fi
 
+    
     exist_wfps_cr_array=($(${CLI_CMD} get WfPSRuntime -n $project_name --no-headers --ignore-not-found | awk '{print $1}'))
     if [ ! -z $exist_wfps_cr_array ]; then
         for item in "${exist_wfps_cr_array[@]}"
         do
             cr_type="WfPSRuntime"
-            cr_metaname=$(${CLI_CMD} get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} '.metadata.name' -)
-            ${CLI_CMD} get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml > ${UPGRADE_STATUS_FILE}
+            wfps_cr_metaname=$(${CLI_CMD} get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} '.metadata.name' -)
+            ${CLI_CMD} get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml > ${UPGRADE_DEPLOYMENT_WFPSRUNTIME_CR_TMP}
             #################### WfPS #######################
             source ${CUR_DIR}/helper/upgrade/deployment_check/wfps_status.sh
             CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_WFPS_DEPLOYMENT_STATUS")
@@ -1103,8 +580,8 @@ function check_cp4ba_deployment_status(){
         for item in "${exist_pfs_cr_array[@]}"
         do
             cr_type="ProcessFederationServer"
-            cr_metaname=$(${CLI_CMD} get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} '.metadata.name' -)
-            ${CLI_CMD} get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml > ${UPGRADE_STATUS_FILE}
+            pfs_cr_metaname=$(${CLI_CMD} get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} '.metadata.name' -)
+            ${CLI_CMD} get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml > ${UPGRADE_DEPLOYMENT_PFS_CR_TMP}
             #################### WfPS #######################
             source ${CUR_DIR}/helper/upgrade/deployment_check/pfs_status.sh
             CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_PFS_DEPLOYMENT_STATUS")
@@ -1115,17 +592,19 @@ function check_cp4ba_deployment_status(){
 }
 
 # This function picks up the table built from the check_cp4ba_deployment_status and in addition shows some more messages based on the components displayed
-# This function is called in loop until failure or all components are upgraded
+# This function is called in loop untill failure or all components are upgraded
 function show_cp4ba_upgrade_status() {
     printf '%s %s\n' "$(date)"
-    check_cp4ba_deployment_status "${CP4BA_SERVICES_NS}"
+
+    check_cp4ba_deployment_status "${CP4BA_SERVICES_NS}" "$top_level_cr_kind" "$top_level_cr_name" "$top_level_cr_details_location"
+    
     _original_cr_version=${original_cr_version:-"PREVIOUS"}
     ## <https://jsw.ibm.com/browse/DBACLD-177133> - Change the upgrade version to CP4BA_RELEASE_BASE_MAJOR_VERSION, so we don't need to update the version here when we move to a later version.
     if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "$CP4BA_RELEASE_BASE_MAJOR_VERSION"*) ]]; then
         printf "\n"
         step_num=1
         echo "${YELLOW_TEXT}[NEXT ACTION]${RESET_TEXT}:"
-        echo "${YELLOW_TEXT}  * The status above will be refreshing every 30 seconds.  You can continue to monitor and when all the status for the CP4BA components is ${RESET_TEXT}${GREEN_TEXT}\"Done\"${RESET_TEXT}${YELLOW_TEXT}, you can press CTRL+C to exit anytime and then follow the steps below.${RESET_TEXT}:"
+        echo "${YELLOW_TEXT}  * The status above will be refreshing every 30 seconds.  You can continue to monitor and when all the status for the CP4BA components is ${RESET_TEXT}${GREEN_TEXT}\"Done\"${RESET_TEXT}${YELLOW_TEXT},the script will gracefully exit.${RESET_TEXT}:"
 
         if [[ $css_flag == "true" || " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "css" ]]; then
             echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You have Content Search Services (CSS) installed. Make sure you start the IBM Content Search Services index dispatcher. Refer to the FileNet P8 Platform Documentation for more details."
@@ -1143,35 +622,16 @@ function show_cp4ba_upgrade_status() {
 
         if [[  " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "bai" || "${bai_flag}" == "true" ]]; then
             printf "\n"
-            echo "${YELLOW_TEXT}[ATTENTION] ${RESET_TEXT}${RED_TEXT}(REQUIRED)${RESET_TEXT}:"
-            printf '%b\n' "  ${YELLOW_TEXT}-  AFTER UPGRADING IBM CLOUD PAK FOR BUSINESS AUTOMATION (CP4BA) DEPLOYMENT SUCCESSFULLY, YOU NEED TO REMOVE${RESET_TEXT} ${RED_TEXT}\"recovery_path\"${RESET_TEXT} ${YELLOW_TEXT}FROM CUSTOM RESOURCE UNDER${RESET_TEXT} ${RED_TEXT}\"bai_configuration\"${RESET_TEXT} ${YELLOW_TEXT}MANUALLY IF EXISTING.${RESET_TEXT}"
+            echo "${RED_TEXT}(REQUIRED)${RESET_TEXT}:"
+            printf '%b\n' "  ${YELLOW_TEXT}* AFTER UPGRADING IBM CLOUD PAK FOR BUSINESS AUTOMATION (CP4BA) DEPLOYMENT SUCCESSFULLY, YOU NEED TO REMOVE${RESET_TEXT} ${RED_TEXT}\"recovery_path\"${RESET_TEXT} ${YELLOW_TEXT}FROM CUSTOM RESOURCE UNDER${RESET_TEXT} ${RED_TEXT}\"bai_configuration\"${RESET_TEXT} ${YELLOW_TEXT}MANUALLY IF EXISTING.${RESET_TEXT}"
         fi
 
         printf "\n"
-        
-    ## <https://jsw.ibm.com/browse/DBACLD-159411>
-    ###### This "else" section is for 24.0.1 ifix to ifix scenario, the instructions are not needed for this scenario, so it is being commented out. ######
-    # else
-    #     printf "\n"
-    #     step_num=1
-    #     echo "${YELLOW_TEXT}[NEXT ACTION]${RESET_TEXT}:"
-    #     echo "${YELLOW_TEXT}  * After the status of upgrade for CP4BA components showing as ${RESET_TEXT}${GREEN_TEXT}\"Done\"${RESET_TEXT}${YELLOW_TEXT}, you need to execute the following steps${RESET_TEXT}:"
-    #     if [[ $css_flag == "true" || " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "css" ]]; then
-    #         echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You have Content Search Services (CSS) installed. Make sure you start the IBM Content Search Services index dispatcher. Refer to the FileNet P8 Platform Documentation for more details."
-    #         echo "    ${YELLOW_TEXT}* Starting the IBM Content Search Services index dispatcher.${RESET_TEXT}"
-    #         echo "      1. Log in to the Administration Console for Content Platform Engine."
-    #         echo "      2. In the navigation pane, select the domain icon."
-    #         echo "      3. In the edit pane, click the Text Search Subsystem tab and select the Enable indexing check box."
-    #         echo "      4. Click Save to save your changes."
-    #         printf "\n"
-    #         step_num=$((step_num + 1))
-    #     fi
-    ######
     else
         printf "\n"
         step_num=1
         echo "${YELLOW_TEXT}[NEXT ACTION]${RESET_TEXT}:"
-        echo "${YELLOW_TEXT}  * The status above will be refreshing every 30 seconds.  You can continue to monitor and when all the status for the CP4BA components is ${RESET_TEXT}${GREEN_TEXT}\"Done\"${RESET_TEXT}${YELLOW_TEXT}, you can press CTRL+C to exit anytime.${RESET_TEXT}"
+        echo "${YELLOW_TEXT}  * The status above will be refreshing every 30 seconds.  You can continue to monitor and when all the status for the CP4BA components is ${RESET_TEXT}${GREEN_TEXT}\"Done\"${RESET_TEXT}${YELLOW_TEXT}, the script will gracefully exit.${RESET_TEXT}"
         printf "\n"
     fi
 }
@@ -1256,7 +716,7 @@ function check_cp4ba_separate_operand(){
         #  - ($cp4ba_operators_namespace != "openshift-operators") -> confirms that scenario is NOT all-ns
         #  - ($cp4ba_operators_namespace != "ibm-common-services") -> confirms that scenario is NOT shared/cluster-scoped CPfs scenario
         if [[ ($cp4ba_services_namespace != $cp4ba_operators_namespace) && ($cp4ba_operators_namespace != "openshift-operators" && $cp4ba_operators_namespace != "ibm-common-services") ]]; then
-            info "This CP4BA deployment is separation of operators and operands"
+            info "This CP4BA deployment has been deployed with operators and operands in separate namespaces."
             SEPARATE_OPERAND_FLAG="Yes"
             CP4BA_SERVICES_NS=$cp4ba_services_namespace
             CP4BA_OPERATOR_NS=$cp4ba_operators_namespace #DBACLD-185209: Update logic to return Operator ns for separation of duty deployment.

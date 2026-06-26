@@ -38,20 +38,20 @@ function select_pattern(){
     if [[ "${PLATFORM_SELECTED}" == "other" ]]; then
         if [[ "${DEPLOYMENT_TYPE}" == "starter" ]];
         then
-            options=("FileNet Content Manager" "Operational Decision Manager" "Automation Decision Services" "Business Automation Application" "Business Automation Workflow Authoring and Automation Workstream Services" "IBM Automation Document Processing")
+            options=("FileNet Content Manager" "Operational Decision Manager" "Decision Intelligence Client Managed Software" "Business Automation Application" "Business Automation Workflow Authoring and Automation Workstream Services" "IBM Automation Document Processing")
             options_cr_val=("content" "decisions" "decisions_ads" "application" "workflow-workstreams" "document_processing")
             foundation_0=("BAN" "RR")                 # Foundation for FileNet Content Manager
             foundation_1=("BAN" "RR")                # Foundation for Operational Decision Manager
-            foundation_2=("BAN" "RR" "UMS")     # Foundation for Automation Decision Services
+            foundation_2=("BAN" "RR" "UMS")     # Foundation for Decision Intelligence Client Managed Software
             foundation_3=("RR" "UMS" "BAS")     # Foundation for Business Automation Applications (full)
             foundation_4=("RR" "UMS" "AE" "BAS")           # Foundation for Business Automation Workflow and workstreams(Demo)
             foundation_5=("BAN" "RR" "AE" "BAS" "UMS")  # Foundation for IBM Automation Document Processing
         else
-            options=("FileNet Content Manager" "Operational Decision Manager" "Automation Decision Services" "Business Automation Application" "Business Automation Workflow" "(a) Workflow Authoring" "(b) Workflow Runtime" "Automation Workstream Services" "IBM Automation Document Processing" "(a) Development Environment" "(b) Runtime Environment")
+            options=("FileNet Content Manager" "Operational Decision Manager" "Decision Intelligence Client Managed Software" "Business Automation Application" "Business Automation Workflow" "(a) Workflow Authoring" "(b) Workflow Runtime" "Automation Workstream Services" "IBM Automation Document Processing" "(a) Development Environment" "(b) Runtime Environment")
             options_cr_val=("content" "decisions" "decisions_ads" "application" "workflow" "workflow-authoring" "workflow-runtime" "workstreams" "document_processing" "document_processing_designer" "document_processing_runtime")
             foundation_0=("BAN" "RR")                 # Foundation for FileNet Content Manager
             foundation_1=("BAN" "RR")                 # Foundation for Operational Decision Manager
-            foundation_2=("BAN" "RR" "UMS")     # Foundation for Automation Decision Services
+            foundation_2=("BAN" "RR" "UMS")     # Foundation for Decision Intelligence Client Managed Software
             foundation_3=("BAN" "RR" "UMS" "AE")     # Foundation for Business Automation Applications (full)
             foundation_4=("BAN" "RR")           # Foundation for dummy
             foundation_5=("BAN" "RR" "UMS" "BAS" "AE")           # Foundation for Business Automation Workflow - Workflow Authoring (5a)
@@ -65,20 +65,20 @@ function select_pattern(){
     else
         if [[ "${DEPLOYMENT_TYPE}" == "starter" ]];
         then
-            options=("FileNet Content Manager" "Operational Decision Manager" "Automation Decision Services" "Business Automation Application" "Business Automation Workflow Authoring and Automation Workstream Services" "IBM Automation Document Processing")
+            options=("FileNet Content Manager" "Operational Decision Manager" "Decision Intelligence Client Managed Software" "Business Automation Application" "Business Automation Workflow Authoring and Automation Workstream Services" "IBM Automation Document Processing")
             options_cr_val=("content" "decisions" "decisions_ads" "application" "workflow-workstreams" "document_processing")
             foundation_0=("BAN" "RR")                 # Foundation for FileNet Content Manager
             foundation_1=("BAN" "RR")                # Foundation for Operational Decision Manager
-            foundation_2=("BAN" "RR")     # Foundation for Automation Decision Services
+            foundation_2=("BAN" "RR")     # Foundation for Decision Intelligence Client Managed Software
             foundation_3=("RR" "BAS")     # Foundation for Business Automation Applications (full)
             foundation_4=("RR" "AE" "BAS")           # Foundation for Business Automation Workflow and workstreams(Demo)
             foundation_5=("BAN" "RR" "AE" "BAS")  # Foundation for IBM Automation Document Processing
         else
-            options=("FileNet Content Manager" "Operational Decision Manager" "Automation Decision Services" "Business Automation Application" "Business Automation Workflow" "(a) Workflow Authoring" "(b) Workflow Runtime" "Automation Workstream Services" "IBM Automation Document Processing" "(a) Development Environment" "(b) Runtime Environment")
+            options=("FileNet Content Manager" "Operational Decision Manager" "Decision Intelligence Client Managed Software" "Business Automation Application" "Business Automation Workflow" "(a) Workflow Authoring" "(b) Workflow Runtime" "Automation Workstream Services" "IBM Automation Document Processing" "(a) Development Environment" "(b) Runtime Environment")
             options_cr_val=("content" "decisions" "decisions_ads" "application" "workflow" "workflow-authoring" "workflow-runtime" "workstreams" "document_processing" "document_processing_designer" "document_processing_runtime")
             foundation_0=("BAN" "RR")                 # Foundation for FileNet Content Manager
             foundation_1=("BAN" "RR")                 # Foundation for Operational Decision Manager
-            foundation_2=("BAN" "RR")     # Foundation for Automation Decision Services
+            foundation_2=("BAN" "RR")     # Foundation for Decision Intelligence Client Managed Software
             foundation_3=("BAN" "RR" "AE")     # Foundation for Business Automation Applications (full)
             foundation_4=("BAN" "RR")           # Foundation for dummy
             foundation_5=("BAN" "RR" "BAS" "AE")           # Foundation for Business Automation Workflow - Workflow Authoring (5a)

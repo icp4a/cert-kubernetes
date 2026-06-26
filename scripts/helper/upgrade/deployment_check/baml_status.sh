@@ -9,14 +9,16 @@
 #
 ######################## BAML #######################
 # Check bamlDeployStatus upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.baml.bamlDeployStatus // ""' -`
+isInstalled=`cat ${current_cr_details_location} | ${YQ_CMD} '.status.components.baml.bamlDeployStatus // ""' -`
 if [ -z "${isInstalled}"  ]; then
-    isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.baml.bamlCustomResource // ""' -`
+    isInstalled=`cat ${current_cr_details_location} | ${YQ_CMD} '.status.components.baml.bamlCustomResource // ""' -`
 fi
 
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_BAML_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
+    CP4BA_BAML_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
+elif [[ "$isInstalled" == "Ready" && "$RECONCILE_SEEN_FLAG" == "false" ]]; then
     CP4BA_BAML_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
 elif [[ "$isInstalled" == "Ready" ]]; then
     CP4BA_BAML_DEPLOYMENT_STATUS="${GREEN_TEXT}Done${RESET_TEXT}"

@@ -17,7 +17,7 @@ metadata:
     app.kubernetes.io/name: ibm-dba-workflow
     app.kubernetes.io/instance: ibm-dba-workflow
     app.kubernetes.io/managed-by: ibm-dba-workflow
-    release: 25.0.1
+    release: 26.0.0
 spec:
   group: icp4a.ibm.com
   names:
@@ -328,13 +328,6 @@ spec:
                       Workflow Server database schema name. This parameter is optional. If not set, the schema name is the same as database user name.
                       This parameter is only supported by DB2 and PostgreSQL. For DB2, the schema name is case-sensitive, and must be specified in uppercase characters.
                     type: string
-                  custom_jdbc_pvc:
-                    default: ""
-                    description: If use_custom_jdbc_drivers is set to true, input
-                      the name of the persistent volume claim (PVC) that binds to
-                      the persistent volume (PV) where the custom JDBC driver files
-                      are stored.
-                    type: string
                   database_name:
                     description: Workflow Server database name. This parameter is
                       required.
@@ -401,10 +394,6 @@ spec:
                         format: int32
                         type: integer
                     type: object
-                  jdbc_driver_files:
-                    default: '* db2jcc4.jar db2jcc_license_cisuz.jar db2jcc_license_cu.jar'
-                    description: The set of custom JDBC files.
-                    type: string
                   jdbc_url:
                     description: |-
                       Oracle and PostgreSQL database connection string.
@@ -437,12 +426,6 @@ spec:
                     - postgresql
                     - sqlserver
                     type: string
-                  use_custom_jdbc_drivers:
-                    default: false
-                    description: Whether to use custom JDBC drivers. set it as true
-                      if you don't want use embedded jdbc drivers and don't specify
-                      jdbc_drivers_url.
-                    type: boolean
                 required:
                 - type
                 type: object

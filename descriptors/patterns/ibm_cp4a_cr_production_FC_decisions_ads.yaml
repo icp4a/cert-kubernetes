@@ -16,10 +16,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
-  appVersion: 25.0.1
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -48,14 +48,14 @@ spec:
   shared_configuration:
     ## This is an optional parameter, If the user installing cp4ba in a CNCF cluster and they selected the parameter sc_deployment_platform as "OCP" then the possible values for this parameter is: ARO or ROSA.
     sc_deployment_ocp_platform:
-    ## CP4A patterns or capabilities to be deployed. This CR represents the "decisions_ads" pattern that brings ADS Designer and ADS Runtime.
+    ## CP4A patterns or capabilities to be deployed. This CR represents the "decisions_ads" pattern that brings DICMS Designer and DICMS Runtime.
 
     sc_deployment_patterns: decisions_ads
 
     ## The optional components to be installed if listed here.
     ## This is normally populated by the User script based on input from the user.
     ## User can also manually specify the optional components to be deployed here.
-    ## ADS has two 'ads_designer' and 'ads_runtime' optional components. If 'ads_runtime' is here, it is possible to also add 'bai'.
+    ## DICMS has two 'ads_designer' and 'ads_runtime' optional components. If 'ads_runtime' is here, it is possible to also add 'bai'.
     ## If ads_designer is set, you also have to set the 'ads_configuration.decision_designer.enabled' flag to true to install it.
     ## If ads_runtime is set, you also have to set the 'ads_configuration.decision_runtime.enabled' flag to true to install it.
     sc_optional_components:
@@ -96,6 +96,14 @@ spec:
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
     sc_is_multiple_az: true
 
+    ## The global flag to enable or disable Pod Disruption Budget (PDB) creation across all components. This flag can be overridden at specific configuration sections.  Default is true
+    ## A PDB will be created with a 'minAvailable: 1' only if the replica count of a particular deployment is greater than 1. Otherwise, the PDB will have 'minAvailable: 0' if the replica is 1.
+    sc_enable_pdb: true
+
+    ## By default we will always set the sc_enable_usage_metering flag to true and this will enable the operators to deploy the cron jobs to send usage metrics to software central.
+    ## Only set this flag to "false" if you want to opt-out sending usage metrics.
+    sc_enable_usage_metering: true
+
   ########################################################################
   ########   Database configuration for CP4A                      ########
   ########################################################################
@@ -103,11 +111,11 @@ spec:
   datasource_configuration:
 
     dc_ads_designer_datasource:
-      ## If set to true, then the ICP4A operator installs a PostgreSQL server and ADS Designer is configured
+      ## If set to true, then the ICP4A operator installs a PostgreSQL server and DICMS Designer is configured
       ## to use this server.
       dc_use_postgres: false
 
-      ## postgresql is the only type of database supported by ADS Designer.
+      ## postgresql is the only type of database supported by DICMS Designer.
       database_type: postgresql
 
       ## Hostname of the PostgreSQL server
@@ -118,7 +126,7 @@ spec:
       ## When dc_use_postgres is set to true, must be "5432".
       database_port: "5432"
 
-      ## Name of the database for ADS Designer in the PostgreSQL server
+      ## Name of the database for DICMS Designer in the PostgreSQL server
       database_name: adsdesignerdb
 
       ## The name of the schema in the database for Decision Designer.
@@ -143,10 +151,10 @@ spec:
       ssl_mode: verify-full
 
       ## The name of the secret providing the CA certification for validation of the server certification
-      ## and optionnally a client certificate and key for authentication of ADS Designer
+      ## and optionnally a client certificate and key for authentication of DICMS Designer
       ## Expected keys:
       ## - 'ca.crt': certificate of a CA that permits validation of the server certificate.
-      ## - 'tls.crt' (optional): certificate of ADS Designer for client TLS authentication.
+      ## - 'tls.crt' (optional): certificate of DICMS Designer for client TLS authentication.
       ## - 'tls.key' (required if tls.crt is provided): private encryption key corresponding to the client certificate
       ## When dc_use_postgres is set to true, must be "{{ meta.name }}-pg-client-cert-secret".  The secret will be created automatically by the operator.
       ssl_secret_name:
@@ -202,17 +210,17 @@ spec:
 
 
   ########################################################################
-  ########   IBM Business Automation Decision Services            ########
+  ########   IBM Decision Intelligence Client Managed Software    ########
   ########################################################################
 
   ads_configuration:
 
-    # Optional: You can specify a pvc where ADS logs will be stored. This PVC has to exist and be bound before ADS deployment.
-    # It can be shared with other cp4ba components as it will capture pod logs in ADS dedicated folders.
+    # Optional: You can specify a pvc where DICMS logs will be stored. This PVC has to exist and be bound before DICMS deployment.
+    # It can be shared with other cp4ba components as it will capture pod logs in DICMS dedicated folders.
     # To actually produce logs in this pvc set decision_designer.mount_pvc_for_logstore to true and/or decision_runtime.mount_pvc_for_logstore to true.
     #existing_pvc_for_logstore:
 
-    # Optional: You can specify a profile size for ADS if different from CloudPak - valid values are small,medium,large - default is small.
+    # Optional: You can specify a profile size for DICMS if different from CloudPak - valid values are small,medium,large - default is small.
     # Resources in this file are reflecting small profile ones.
     #deployment_profile_size: "small"
 
@@ -224,16 +232,32 @@ spec:
     #  type: # RuntimeDefault, Localhost, Unconfined
     #  localhost_profile: # Local path of custom seccomp profile when type `Localhost` is used. The custom profile must be accessible by the pod and must exist locally on all worker nodes.  For example: `/profiles/fine-grained.json`
 
+    # Affinity rules for pod scheduling. Must conform to Kubernetes core/v1.Affinity specification.
+    # See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+    #affinity:
+
+    # Tolerations for pod scheduling. Must conform to Kubernetes core/v1.Toleration specification.
+    # See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+    #tolerations: []
+
     decision_designer:
       enabled: false
       admin_secret_name: ibm-dba-ads-designer-secret
 
-      # Optional: You can specify a profile size for ADS Designer if different from CloudPak or from ADS - valid values are small,medium,large - default is small.
+      # Optional: You can specify a profile size for DICMS Designer if different from CloudPak or from DICMS - valid values are small,medium,large - default is small.
       # Resources in this file are reflecting small profile ones.
       #deployment_profile_size: "small"
 
       # Optional: You can set this property to true to activate pvc logging for designer.
       #mount_pvc_for_logstore: false
+
+      # Affinity rules for pod scheduling. Must conform to Kubernetes core/v1.Affinity specification. Default is ads_configuration.affinity value.
+      # See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+      #affinity:
+      
+      # Tolerations for pod scheduling. Must conform to Kubernetes core/v1.Toleration specification.. Default is ads_configuration.tolerations value.
+      # See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+      #tolerations: []
 
       # Config maps containing certificates to trust.
       git_servers_certs:
@@ -246,12 +270,20 @@ spec:
       # Authentication mode can be "zen", basic" or "none". Default mode is "zen" if not specified.
       authentication_mode: "zen"
 
-      # Optional: You can specify a profile size for ADS Runtime if different from CloudPak or from ADS - valid values are small,medium,large,extra-large - default is small.
+      # Optional: You can specify a profile size for DICMS Runtime if different from CloudPak or from DICMS - valid values are small,medium,large,extra-large - default is small.
       # Resources in this file are reflecting small profile ones.
       #deployment_profile_size: "small"
 
       # Optional: You can set this property to true to activate pvc logging for runtime.
       #mount_pvc_for_logstore: false
+
+      # Affinity rules for pod scheduling. Must conform to Kubernetes core/v1.Affinity specification. Default is ads_configuration.affinity value.
+      # See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+      #affinity:
+      
+      # Tolerations for pod scheduling. Must conform to Kubernetes core/v1.Toleration specification. Default is ads_configuration.tolerations value.
+      # See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+      #tolerations: []
 
       # Optional, default "fs". Can be "fs" or "s3".
       archive_storage_type: "fs"
@@ -282,7 +314,7 @@ spec:
     rr_integration:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
 
       resources:
         requests:
@@ -292,36 +324,24 @@ spec:
           cpu: '500m'
           memory: '512Mi'
 
-      persistence:
-        use_dynamic_provisioning: true
-#       # Optional: defaulted to shared_configuration.storage_configuration.sc_dynamic_storage_classname
-#       # or shared_configuration.storage_configuration.sc_fast_file_storage_classname if use_dynamic_provisioning is false or shared_configuration.storage_configuration.sc_dynamic_storage_classname is not defined
-#        storage_class_name:
-        resources:
-          requests:
-            storage: 3Gi
-
-      resources:
-        requests:
-          cpu: '500m'
-          memory: '256Mi'
-        limits:
-          cpu: '1000m'
-          memory: '1Gi'
-
     rest_api:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-restapi
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
       replica_count: 1
+
+      # Optional: Enable or disable Pod Disruption Budget (PDB) for this service. Default is shared_configuration.sc_enable_pdb value (which defaults to true if not set in shared configuration)
+      #enable_pdb: true
 
       resources:
         requests:
           cpu: '500m'
           memory: '800Mi'
+          ephemeral_storage: '100Mi'
         limits:
           cpu: '1000m'
           memory: '1.5Gi'
+          ephemeral_storage: '1200Mi'
 #     Optional: Internal HTTP Client Timeout in milliseconds. Default value is 60000.
 #      http_client_timeout: 60000
 
@@ -330,99 +350,189 @@ spec:
         max_unavailable: 0
         max_surge: 1
 
+      # Affinity rules for pod scheduling. Must conform to Kubernetes core/v1.Affinity specification. Default is ads_configuration.decision_designer.affinity value.
+      # See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+      #affinity:
+      
+      # Tolerations for pod scheduling. Must conform to Kubernetes core/v1.Toleration specification. Default is ads_configuration.decision_designer.tolerations value.
+      # See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+      #tolerations: []
+
     credentials_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-credentials
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
       replica_count: 1
+
+      # Optional: Enable or disable Pod Disruption Budget (PDB) for this service. Default is shared_configuration.sc_enable_pdb value (which defaults to true if not set in shared configuration)
+      #enable_pdb: true
 
       resources:
         requests:
           cpu: '250m'
           memory: '800Mi'
+          ephemeral_storage: '100Mi'
         limits:
           cpu: '1000m'
           memory: '1.5Gi'
+          ephemeral_storage: '400Mi'
 
       # Specify Rolling update policy. The values can be defined as either a percentage or an absolute number.
       rolling_update:
         max_unavailable: 0
         max_surge: 1
+
+      # Affinity rules for pod scheduling. Must conform to Kubernetes core/v1.Affinity specification. Default is ads_configuration.decision_designer.affinity value.
+      # See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+      #affinity:
+      
+      # Tolerations for pod scheduling. Must conform to Kubernetes core/v1.Toleration specification. Default is ads_configuration.decision_designer.tolerations value.
+      # See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+      #tolerations: []
 
     git_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
       replica_count: 1
+
+      # Optional: Enable or disable Pod Disruption Budget (PDB) for this service. Default is shared_configuration.sc_enable_pdb value (which defaults to true if not set in shared configuration)
+      #enable_pdb: true
 
       resources:
         requests:
           cpu: '500m'
           memory: '800Mi'
+          ephemeral_storage: '100Mi'
         limits:
           cpu: '1000m'
           memory: '1.5Gi'
+          ephemeral_storage: '400Mi'
 
       # Specify Rolling update policy. The values can be defined as either a percentage or an absolute number.
       rolling_update:
         max_unavailable: 0
         max_surge: 1
 
+      # Affinity rules for pod scheduling. Must conform to Kubernetes core/v1.Affinity specification. Default is ads_configuration.decision_designer.affinity value.
+      # See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+      #affinity:
+      
+      # Tolerations for pod scheduling. Must conform to Kubernetes core/v1.Toleration specification. Default is ads_configuration.decision_designer.tolerations value.
+      # See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+      #tolerations: []
+
     parsing_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-parsing
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
       replica_count: 1
+
+      # Optional: Enable or disable Pod Disruption Budget (PDB) for this service. Default is shared_configuration.sc_enable_pdb value (which defaults to true if not set in shared configuration)
+      #enable_pdb: true
 
       resources:
         requests:
           cpu: '250m'
           memory: '800Mi'
+          ephemeral_storage: '100Mi'
         limits:
           cpu: '1000m'
           memory: '1.5Gi'
+          ephemeral_storage: '700Mi'
 
       autoscaling:
         enabled: false # Default value is true if designer profile is set to "extra-large".
         min_replicas: 2
         max_replicas: 5
-        target_cpu_average_utilization: 160
+        target_cpu_utilization_percentage: 320 # Default value is calculated as 80% of the cpu limit expressed in cpu request percentage, here for a small profile where request is 250m and limit 1000m
+        # target_memory_utilization_percentage: <int_value> # No default value
+        scaleup:  # policy is Pod
+          # the maximum number of pods that the HPA is allowed to add during each periodSeconds interval.
+          policies_pods_value: 2
+          # defines how often the HPA can apply a scaling action 
+          policies_pods_period_seconds: 60
+          # cooldown window before applying scaleUp action
+          stabilization_window_seconds: 0
+        scaledown: # policy is Pod
+          policies_pods_value: 1
+          policies_pods_period_seconds: 60
+          # cooldown window before applying scaleDown action
+          stabilization_window_seconds: 300
 
       # Specify Rolling update policy. The values can be defined as either a percentage or an absolute number.
       rolling_update:
         max_unavailable: 0
         max_surge: 1
 
+      # Affinity rules for pod scheduling. Must conform to Kubernetes core/v1.Affinity specification. Default is ads_configuration.decision_designer.affinity value.
+      # See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+      #affinity:
+      
+      # Tolerations for pod scheduling. Must conform to Kubernetes core/v1.Toleration specification. Default is ads_configuration.decision_designer.tolerations value.
+      # See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+      #tolerations: []
+
     run_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-run
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
       replica_count: 1
+
+      # Optional: Enable or disable Pod Disruption Budget (PDB) for this service. Default is shared_configuration.sc_enable_pdb value (which defaults to true if not set in shared configuration)
+      #enable_pdb: true
 
       resources:
         requests:
           cpu: '500m'
           memory: '800Mi'
+          ephemeral_storage: '100Mi'
         limits:
           cpu: '1000m'
           memory: '1.5Gi'
+          ephemeral_storage: '700Mi'
 
       autoscaling:
         enabled: false # Default value is true if designer profile is set to "extra-large".
         min_replicas: 2
         max_replicas: 5
-        target_cpu_average_utilization: 160
+        target_cpu_utilization_percentage: 160 # Default value is calculated as 80% of the cpu limit expressed in cpu request percentage, here for a small profile where request is 500m and limit 1000m
+        # target_memory_utilization_percentage: <int_value> # No default value
+        scaleup:  # policy is Pod
+          # the maximum number of pods that the HPA is allowed to add during each periodSeconds interval.
+          policies_pods_value: 1
+          # defines how often the HPA can apply a scaling action 
+          policies_pods_period_seconds: 60
+          # cooldown window before applying scaleUp action
+          stabilization_window_seconds: 0
+        scaledown: # policy is Pod
+          policies_pods_value: 1
+          # defines how often the HPA can apply a scaling action 
+          policies_pods_period_seconds: 60
+          # cooldown window before applying scaleDown action
+          stabilization_window_seconds: 300
 
       # Specify Rolling update policy. The values can be defined as either a percentage or an absolute number.
       rolling_update:
         max_unavailable: 0
         max_surge: 1
 
+      # Affinity rules for pod scheduling. Must conform to Kubernetes core/v1.Affinity specification. Default is ads_configuration.decision_designer.affinity value.
+      # See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+      #affinity:
+      
+      # Tolerations for pod scheduling. Must conform to Kubernetes core/v1.Toleration specification. Default is ads_configuration.decision_designer.tolerations value.
+      # See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+      #tolerations: []
+
     decision_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
       replica_count: 1
+
+      # Optional: Enable or disable Pod Disruption Budget (PDB) for this service. Default is shared_configuration.sc_enable_pdb value (which defaults to true if not set in shared configuration)
+      #enable_pdb: true
 
       # Whether the decision runtime should include an exception stack trace when an incident occurs.
       # This should only be used for debugging purposes, as a stack trace may expose sensitive internal data.
@@ -467,9 +577,11 @@ spec:
         requests:
           cpu: '500m'
           memory: '2Gi'
+          ephemeral_storage: '100Mi'
         limits:
           cpu: '1000m'
           memory: '3Gi'
+          ephemeral_storage: '1100Mi'
 
       # Persistence is only used if decision_runtime.archive_storage_type is unset or set to "fs"
       persistence:
@@ -481,14 +593,37 @@ spec:
           requests:
             storage: 1Gi
 
-
       autoscaling:
         enabled: false # Default value is true if decision runtime profile is set to "extra-large".
         min_replicas: 2
         max_replicas: 5
-        target_cpu_average_utilization: 160
+        target_cpu_utilization_percentage: 160 # Default value is calculated as 80% of the cpu limit expressed in cpu request percentage, here for a small profile where request is 500m and limit 1000m
+        # target_memory_utilization_percentage: <int_value> # No default value
+        scaleup:  # policy is Pod
+          # the maximum number of pods that the HPA is allowed to add during each periodSeconds interval.
+          policies_pods_value: 2
+          # defines how often the HPA can apply a scaling action 
+          policies_pods_period_seconds: 60
+          # cooldown window before applying scaleUp action
+          stabilization_window_seconds: 0
+        scaledown: # policy is Pod
+          policies_pods_value: 1
+          # defines how often the HPA can apply a scaling action 
+          policies_pods_period_seconds: 120
+          # cooldown window before applying scaleDown action
+          stabilization_window_seconds: 300
+
+
 
       # Specify Rolling update policy. The values can be defined as either a percentage or an absolute number.
       rolling_update:
         max_unavailable: 0
         max_surge: 1
+      
+      # Affinity rules for pod scheduling. Must conform to Kubernetes core/v1.Affinity specification. Default is ads_configuration.decision_runtime.affinity value.
+      # See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+      #affinity:
+      
+      # Tolerations for pod scheduling. Must conform to Kubernetes core/v1.Toleration specification. Default is ads_configuration.decision_runtime.tolerations value.
+      # See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+      #tolerations: []

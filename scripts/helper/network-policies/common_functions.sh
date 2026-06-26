@@ -29,6 +29,7 @@ OPER_LIST=(
     "name:ibm-pfs-operator"
     "name:ibm-workflow-operator"
     "app.kubernetes.io/name:ibm-bts-operator"
+    "name:ibm-ccx-ai-services-operator"
     )
 
 # Below two lists will be used to track the different type of CR Kind types that need to be checked for while retrieving existing network policies
@@ -351,27 +352,6 @@ function cleanup_log() {
         sed -E 's/\x1B\[[0-9;]+[A-Za-z]//g' "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
     fi
 }
-
-function save_log1() {    
-    local LOG_DIR="$CUR_DIR/$1"
-    LOG_FILE="$LOG_DIR/$2_$(date +'%Y%m%d%H%M%S').log"
-
-    if [[ ! -d $LOG_DIR ]]; then
-        mkdir -p "$LOG_DIR"
-    fi
-
-    # Commenting this out as it is throwing syntax errors in some machines
-    # Redirect stdout and stderr directly to the log file
-    #exec > >(tee -a "$LOG_FILE") 2>&1
-
-#   # Redirect stdout and stderr directly to the log file
-#    exec 3>&1 4>&2
-#    exec > >(tee -a $LOG_FILE >&3) 2> >(tee -a $LOG_FILE >&4)
-#    exec >>(tee -a "$LOG_FILE") 2>&1
-#    #exec &> >(tee -a "$LOG_FILE")
-#    #"$@" 2>&1 | tee "$LOG_FILE"
-}
-
 
 # Function that detects the operator and operand namespace so that the different modes can retrieve network policies accordingly
 # Uses ibm-cp4ba-common-config to retrieve these values

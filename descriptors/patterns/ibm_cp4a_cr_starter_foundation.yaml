@@ -17,19 +17,19 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
   ## CP4A application version
-  appVersion: 25.0.1
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
 
   shared_configuration:
-    ## FileNet Content Manager (FNCM) license and possible values are: user, concurrent-user, authorized-user, non-production, and production.
-    ## This value could be different from the other licenses in the CR.
-    sc_deployment_fncm_license: non-production
+    ## This is the Content Cortex license  parameter and the possible values are: user, concurrent-user, authorized-user, non-production, and production.
+    ## This value could be different from the rest of the licenses.
+    sc_deployment_fncm_license: ESS.CO
 
     ## Use this parameter to specify the license for the CP4A deployment and
     ## the possible values are: non-production and production and if not set, the license will
@@ -50,7 +50,7 @@ spec:
     sc_deployment_platform:
 
     ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <route-name>-{{meta.namespace}}.<router-canonical-hostname> when not defined.
-    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.1?topic=scp-shared-configuration
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/26.0.0?topic=scp-shared-configuration
     ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
     #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
     

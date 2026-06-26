@@ -1,0 +1,3 @@
+# Default values for ibm-model-gateway-cluster-scoped.
+global:
+  operatorNamespace: ""

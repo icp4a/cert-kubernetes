@@ -1,0 +1,27 @@
+apiVersion: operator.ibm.com/v1
+kind: IBMServiceMeterDefinition
+metadata:
+  name: cp4ba-adp-metrics
+  namespace: REPLACE_NAMESPACE
+spec:
+  mappingId: adpdeployment000000000000001
+  processing: LAST
+  repeat: true
+  breakdownDefs:
+    - breakdownBy:
+        name: INSTANCE_COUNT
+      groupBy:
+        - version
+        - environment
+        - architecture
+        - platform
+        - NUM_OF_DOCUMENTS_PROCESSED
+        - NUM_OF_PAGES_PROCESSED
+      source: metricQuantity
+      processing: LAST
+  data:
+    productId: 3e9cca2be0014be0921bd638e9fc5fd1
+    productName: Automation Document Processing Containers
+    metricName: INSTANCE_COUNT
+    metricDescription: count of ADP instances
+    metricType: ADOPTION

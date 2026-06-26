@@ -29,42 +29,26 @@ function displayUpgradeOperatorMessage() {
   echo "           # ./cp4a-deployment.sh -m upgradeOperator -n $tmp_target_project_name --cpfs-upgrade-mode dedicated2dedicated --original-cp4ba-csv-ver $tmp_original_cp4ba_csv_ver"
 }
 
-#DBACLD-185209: function to ask if customer want to enable Vault. This is a tech-preview feature  for 25.0.1 and only support "FileNet Content Manager" capability
-# Default is No
-function ask_enable_vault() {
-echo "${YELLOW_TEXT}[NOTE]: Vault integration is a technology preview feature for CP4BA "$CP4BA_RELEASE_BASE".  Only \"FileNet Content Manager\" capability with Production deployment is supported in this release. Refer to Knowledge Center for more information.${RESET_TEXT}"
-     while true; do
-          info "Do you want to enable external Vault integration for FileNet Content Manager (Yes/No, default: No)?"
-          read -r enable_vault
-
-          case $(tr '[:upper:]' '[:lower:]' <<< "$enable_vault") in
-              y|yes)
-                  info "Enabling Vault..."
-                  VAULT_ENABLED=true
-                  break
-                  ;;
-              n|no|"")
-                  info "Vault will not be enabled."
-                  VAULT_ENABLED=false
-                  break
-                  ;;
-              *)
-                  echo "[ERROR] Invalid input. Please enter Yes/No (Y/N)."
-                  ;;
-          esac
-      done
+function displayClusterAdminMessage() {
+  local tmp_message=$1
+  local cp4ba_csv_version=$2
+  error "$tmp_message"
+  echo "${YELLOW_TEXT}[ATTENTION]:${RESET_TEXT} You can run follow command to try to install the CP4BA $cp4ba_csv_version Operators again after fixing the issues described in the error messages."
+  echo "           ${GREEN_TEXT}# ./cp4a-clusteradmin-setup.sh ${RESET_TEXT}"
 }
+
 function generateImZenBTSMessage() {
   local component=$1
   local ssl_folder=$2
   #Set component specific variables such as default dbname, username, etc...
-  if [[ "$component" == "IM" ]]; then
+  #DBACLD-223078: Change the logic to ignore the case when checking component name to avoid issue caused by user input such as "im" or "Im"
+  if [[ "$(echo "$component" | tr '[:lower:]' '[:upper:]')" == "IM" ]]; then
     default_dbname="imcnpdb"
     default_username="imcnp_user"
-  elif [[ "$component" == "ZEN" ]]; then
+  elif [[ "$(echo "$component" | tr '[:lower:]' '[:upper:]')" == "ZEN" ]]; then
     default_dbname="zencnpdb"
     default_username="zencnp_user"
-  elif [[ "$component" == "BTS" ]]; then
+  elif [[ "$(echo "$component" | tr '[:lower:]' '[:upper:]')" == "BTS" ]]; then
     default_dbname="btscnpdb"
     default_username="btscnp_user"
   else
@@ -130,26 +114,33 @@ function generateImZenBTSMessage() {
   fi
 }
 
+
+function displayPGClientAuthMessage(){
+echo "## Note: When both DATABASE_SSL_ENABLE and POSTGRESQL_SSL_CLIENT_SERVER properties are set to \"true\" in the $DB_SERVER_INFO_PROPERTY_FILE this means client certificate authentication is enabled. You should not specify any PostgreSQL DB passwords and leave the DB password's value as \"\" " >> ${DB_NAME_USER_PROPERTY_FILE}
+
+}
+
+
 # Function to display the manual steps for StrimziPodset Update
 function displayManualStrimziPodsetPatchingMessage(){
   local operator_namespace=$1
   local services_namespace=$2
 
-  echo "=============================================================================================="
-  echo " ${YELLOW_TEXT}[IMPORTANT] Manual Steps to Patch Kafka StrimziPodSet Resource:${RESET_TEXT}"
-  echo "=============================================================================================="
+  echo "===================================================================================="
+  echo " ${YELLOW_TEXT}[IMPORTANT] Manual Steps to Patch Strimzi PodSet:${RESET_TEXT}"
+  echo "===================================================================================="
   echo
   echo "1. Verify the Events Operator is running:"
   echo "     ${CLI_CMD} get pods -n ${operator_namespace} | grep ibm-events-operator"
   echo
   echo "2. Check the StrimziPodSet exists:"
-  echo "     ${CLI_CMD} get strimzipodset iaf-system-kafka -n ${services_namespace}"
+  echo "     ${CLI_CMD} get strimzipodsets.core.ibmevents.ibm.com iaf-system-kafka -n ${services_namespace}"
   echo
   echo "3. Get the current kafka version annotation:"
-  echo "     KAFKA_VERSION=\$(${CLI_CMD} get strimzipodset iaf-system-kafka -n ${services_namespace} -o jsonpath='{.metadata.annotations.strimzi\.io/kafka-version}')"
+  echo "     KAFKA_VERSION=\$(${CLI_CMD} get strimzipodsets.core.ibmevents.ibm.com iaf-system-kafka -n ${services_namespace} -o jsonpath='{.metadata.annotations.strimzi\.io/kafka-version}')"
   echo
   echo "4. Apply the patch manually:"
-  echo "     ${CLI_CMD} patch strimzipodset iaf-system-kafka -n ${services_namespace} --type=merge -p \"{\\\"metadata\\\":{\\\"annotations\\\":{\\\"strimzi.io/kafka-version\\\":null,\\\"ibmevents.ibm.com/kafka-version\\\":\\\"\$KAFKA_VERSION\\\"}}}\""
+  echo "     ${CLI_CMD} patch strimzipodsets.core.ibmevents.ibm.com iaf-system-kafka -n ${services_namespace} --type=merge -p \"{\\\"metadata\\\":{\\\"annotations\\\":{\\\"strimzi.io/kafka-version\\\":null,\\\"ibmevents.ibm.com/kafka-version\\\":\\\"\$KAFKA_VERSION\\\"}}}\""
   echo
   echo "5. If there are issues with patching the iaf-system-kafka strimzipodset, you must reach out to the IBM CloudPak Foundation Services Team for further assistance."
   echo

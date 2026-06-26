@@ -1,0 +1,574 @@
+pipeline {
+   agent {label 'health && x86_64'}
+   options { skipDefaultCheckout() } 
+
+   environment{
+      GHE_URL="git@github.ibm.com:${JOB_ORGANIZATION}/${GHE_REPO}.git"
+      GHE_HTTP_URL="https://github.ibm.com/${JOB_ORGANIZATION}/${GHE_REPO}"
+      BUNDLE_GHE_URL="git@github.ibm.com:PrivateCloud-analytics/ibm-cp4d-cpd-cli-bundle.git"
+
+      //DOCKER REPOS
+      IMAGE_NAME="k8s-storage-test"
+      DEV_REGISTRY="cp.stg.icr.io/cp/cpd"
+      DOCKER_REGISTRY="cpd-quay.svl.ibm.com/cpd-cli"
+      PROD_REGISTRY="icr.io/cpopen/cpd"
+      
+      /////Mend OSS Scan variables/////
+      MEND_PRODUCTNAME = 'PSIRT_PRD0004031'
+      MEND_PROJECTNAME = "${IMAGE_NAME}_${CP4D_VERSION}"
+            
+      //VERSION TAGS TO BE USED BY THE BUILD - PASSED IN FROM JENKINS
+      CPD_VER="${CP4D_VERSION}"
+      
+      // SLACK CHANNEL
+      SLACK_CHANNEL="#${SLACK_CHANNEL}"
+   }
+   stages {
+      stage("Setup Stage"){
+         steps{
+            script {
+               env.TIME_STAMP = sh(script: 'echo `date +"%Y%m%d.%H%M%S"`', returnStdout:true).trim()
+               env.TAG_ID="${CPD_VER}.${TIME_STAMP}.${BUILD_NUMBER}"
+               env.DOCKER_IMAGE="${DOCKER_REGISTRY}/${IMAGE_NAME}"
+               env.DOCKER_EXE="podman"
+               currentBuild.displayName="BRANCH:${BRANCH}-BUILD_ID:${env.TAG_ID}"
+            }
+         }
+      }
+      stage('Run parallel builds'){
+          parallel {
+             stage('Full x86 build process') {
+                stages {
+                   stage("Clone repo"){
+                      steps {
+                         // Get the node name so we can make sure all steps run on same node
+                         echo "NODE_NAME = ${env.NODE_NAME}"
+                  
+                         dir ("${IMAGE_NAME}"){
+                            deleteDir()
+                            git  branch: "${BRANCH}", credentialsId: "${GIT_CREDENTIALS_ID}", url: "${GHE_URL}" , poll: false
+                         }
+                      }
+                   }
+                   stage("Build"){
+                      steps{
+                         script {
+                            // Get the node name so we can make sure all steps run on same node
+                            echo "NODE_NAME = ${env.NODE_NAME}"
+
+                            withEnv(['ARC_TYPE=amd64']){
+
+                               withCredentials([usernamePassword(credentialsId: 'Docker-James', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS'),
+                                                string(credentialsId: 'JAMES_ICR_STAGING', variable: 'ICR_KEY')]) {
+                                  dir ("${IMAGE_NAME}"){
+                                     sh '''
+                                        ${DOCKER_EXE} login -u ${DOCKER_USER} -p ${DOCKER_PASS} docker.io
+                                        ${DOCKER_EXE} login cp.stg.icr.io -u iamapikey -p ${ICR_KEY}
+                                 
+                                        # Docker Images Before Build
+                                        ${DOCKER_EXE} images
+                                        ${DOCKER_EXE} ps -a
+
+                                        # Setup Clean Build Environment
+                                        ${DOCKER_EXE} system prune -f --all
+
+                                        # Inject the docker_image into the build
+                                        sed -i "s|CP4D_VERSION|${CP4D_VERSION}|" ./dockerfile
+                                        ./build/build.sh
+                 
+                                        # Docker Images After Build
+                                        ${DOCKER_EXE} images
+                                        ${DOCKER_EXE} ps -a
+                                     '''
+                                  }
+                               }
+                            }
+                         }
+                      }
+                   }
+                   stage('Deploy Image x86_64 to QUAY') {
+                      steps{
+                         script{
+                            echo "NODE_NAME = ${env.NODE_NAME}"
+
+                            withEnv(['ARC_TYPE=amd64']){
+                              withCredentials([usernamePassword(credentialsId: 'CPD_QUAY', usernameVariable: 'QUAY_USER', passwordVariable: 'QUAY_KEY')]) {
+                                 sh '''
+                                    # PUSH IMAGE TO QUAY
+                                    ${DOCKER_EXE} login ${DOCKER_REGISTRY} -u ${QUAY_USER} -p ${QUAY_KEY}
+                                    ${DOCKER_EXE} tag ${DOCKER_IMAGE}:${TAG_ID}.${ARC_TYPE} ${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE}
+                                    ${DOCKER_EXE} push --format=v2s2 ${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE}
+                                                 
+                                    skopeo copy --preserve-digests --format=v2s2 docker://${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE} \
+                                                docker://${DOCKER_REGISTRY}/${IMAGE_NAME}:${CPD_VER}.${ARC_TYPE} \
+                                                --src-creds ${QUAY_USER}:${QUAY_KEY} \
+                                                --dest-creds ${QUAY_USER}:${QUAY_KEY} \
+                                                --all
+                                 '''
+                              }
+                            }
+                         }
+                      }
+                   }
+                   stage('DEPLOY X86_64 IMAGE TO ICR STAGING') {
+                      when {
+                         expression { return params.STAGING == true }
+                      }
+                      steps{
+                         script{
+                            // Get the node name so we can make sure all steps run on same node
+                            echo "NODE_NAME = ${env.NODE_NAME}"
+                  
+                            withEnv(['ARC_TYPE=amd64']){
+                              withCredentials([string(credentialsId: 'JAMES_ICR_STAGING', variable: 'ICR_KEY'),
+                                               usernamePassword(credentialsId: 'CPD_QUAY', usernameVariable: 'QUAY_USER', passwordVariable: 'QUAY_KEY')]) {
+                                 sh '''
+                                    # PUSH IMAGE TO ICR STAGING
+                                    skopeo copy --preserve-digests --format=v2s2 docker://${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE} \
+                                                docker://${DEV_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE} \
+                                                --src-creds ${QUAY_USER}:${QUAY_KEY} \
+                                                --dest-creds iamapikey:${ICR_KEY} \
+                                                --all
+                                                
+                                    skopeo copy --preserve-digests --format=v2s2 docker://${DEV_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE} \
+                                                docker://${DEV_REGISTRY}/${IMAGE_NAME}:${CPD_VER}.${ARC_TYPE} \
+                                                --src-creds iamapikey:${ICR_KEY} \
+                                                --dest-creds iamapikey:${ICR_KEY} \
+                                                --all
+                                 '''
+                              }
+                            }
+                         }
+                      }
+                   }
+                }
+             }
+             stage('Full ppc64le build process') {
+                when {
+                   expression { return params.PPC64LE == true }
+                }
+                agent {label 'health && ppc64le && power9'}
+                stages {
+                   stage("Clone repo"){
+                      steps {
+                         
+                         // Get the node name so we can make sure all steps run on same node
+                         echo "NODE_NAME = ${env.NODE_NAME}"
+                  
+                         dir ("${IMAGE_NAME}"){
+                            deleteDir()
+                            sleep(time: 1, unit: 'MINUTES')
+                            git  branch: "${BRANCH}", credentialsId: "${GIT_CREDENTIALS_ID}", url: "${GHE_URL}" , poll: false
+                         }
+                      }
+                   }
+                   stage("Build"){
+                      steps{
+                         script {
+                            // Get the node name so we can make sure all steps run on same node
+                            echo "NODE_NAME = ${env.NODE_NAME}"
+
+                            withEnv(['ARC_TYPE=ppc64le']){
+
+                               withCredentials([usernamePassword(credentialsId: 'Docker-James', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS'),
+                                                string(credentialsId: 'JAMES_ICR_STAGING', variable: 'ICR_KEY')]) {
+                                  dir ("${IMAGE_NAME}"){
+                                     sh '''
+                                        ${DOCKER_EXE} login -u ${DOCKER_USER} -p ${DOCKER_PASS} docker.io
+                                        ${DOCKER_EXE} login cp.stg.icr.io -u iamapikey -p ${ICR_KEY}
+                                     
+                                        # Docker Images Before Build
+                                        ${DOCKER_EXE} images
+                                        ${DOCKER_EXE} ps -a
+
+                                        # Setup Clean Build Environment
+                                        ${DOCKER_EXE} system prune -f --all
+
+                                        # Inject the docker_image into the build
+                                        sed -i "s|CP4D_VERSION|${CP4D_VERSION}|" ./dockerfile
+                                        ./build/build.sh
+                     
+                                        # Docker Images After Build
+                                        ${DOCKER_EXE} images
+                                        ${DOCKER_EXE} ps -a
+                                     '''
+                                  }
+                               }
+                            }
+                         }
+                      }
+                   }
+                   stage('Deploy Image ppc64le to QUAY') {
+                      steps{
+                         script{
+                            echo "NODE_NAME = ${env.NODE_NAME}"
+
+                            withEnv(['ARC_TYPE=ppc64le']){
+                              withCredentials([usernamePassword(credentialsId: 'CPD_QUAY', usernameVariable: 'QUAY_USER', passwordVariable: 'QUAY_KEY')]) {
+                                 sh '''
+                                    # PUSH IMAGE TO QUAY
+                                    ${DOCKER_EXE} login ${DOCKER_REGISTRY} -u ${QUAY_USER} -p ${QUAY_KEY}
+                                    ${DOCKER_EXE} tag ${DOCKER_IMAGE}:${TAG_ID}.${ARC_TYPE} ${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE}
+                                    ${DOCKER_EXE} push --format=v2s2 ${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE}
+                                                 
+                                    skopeo copy --preserve-digests --format=v2s2 docker://${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE} \
+                                                docker://${DOCKER_REGISTRY}/${IMAGE_NAME}:${CPD_VER}.${ARC_TYPE} \
+                                                --src-creds ${QUAY_USER}:${QUAY_KEY} \
+                                                --dest-creds ${QUAY_USER}:${QUAY_KEY} \
+                                                --all
+                                 '''
+                              }
+                            }
+                         }
+                      }
+                   }
+                   stage('DEPLOY POWER IMAGE TO ICR STAGING') {
+                      when {
+                         expression { return params.STAGING == true }
+                      }
+                      steps{
+                         script{
+                            // Get the node name so we can make sure all steps run on same node
+                            echo "NODE_NAME = ${env.NODE_NAME}"
+                  
+                            withEnv(['ARC_TYPE=ppc64le']){
+                              withCredentials([string(credentialsId: 'JAMES_ICR_STAGING', variable: 'ICR_KEY'),
+                                               usernamePassword(credentialsId: 'CPD_QUAY', usernameVariable: 'QUAY_USER', passwordVariable: 'QUAY_KEY')]) {
+                                 sh '''
+                                    # PUSH IMAGE TO ICR STAGING
+                                    skopeo copy --preserve-digests --format=v2s2 docker://${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE} \
+                                                docker://${DEV_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE} \
+                                                --src-creds ${QUAY_USER}:${QUAY_KEY} \
+                                                --dest-creds iamapikey:${ICR_KEY} \
+                                                --all
+                                                
+                                    skopeo copy --preserve-digests --format=v2s2 docker://${DEV_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE} \
+                                                docker://${DEV_REGISTRY}/${IMAGE_NAME}:${CPD_VER}.${ARC_TYPE} \
+                                                --src-creds iamapikey:${ICR_KEY} \
+                                                --dest-creds iamapikey:${ICR_KEY} \
+                                                --all
+                                 '''
+                              }
+                            }
+                         }
+                      }
+                   }
+                }
+             }
+             stage('Full s390x build process') {
+                when {
+                   expression { return params.PPC64LE == true }
+                }
+                agent {label 'health && s390x'}
+                stages {
+                   stage("Clone repo"){
+                      steps {
+                         // Get the node name so we can make sure all steps run on same node
+                         echo "NODE_NAME = ${env.NODE_NAME}"
+                  
+                         dir ("${IMAGE_NAME}"){
+                            deleteDir()
+                            sleep(time: 2, unit: 'MINUTES')
+                            git  branch: "${BRANCH}", credentialsId: "${GIT_CREDENTIALS_ID}", url: "${GHE_URL}" , poll: false
+                         }
+                      }
+                   }
+                   stage("Build"){
+                      steps{
+                         script {
+                            // Get the node name so we can make sure all steps run on same node
+                            echo "NODE_NAME = ${env.NODE_NAME}"
+
+                            withEnv(['ARC_TYPE=s390x']){
+                               withCredentials([usernamePassword(credentialsId: 'Docker-James', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS'),
+                                                string(credentialsId: 'JAMES_ICR_STAGING', variable: 'ICR_KEY')]) {                               
+                                  dir ("${IMAGE_NAME}"){
+                                     sh '''
+                                        ${DOCKER_EXE} login -u ${DOCKER_USER} -p ${DOCKER_PASS} docker.io
+                                        ${DOCKER_EXE} login cp.stg.icr.io -u iamapikey -p ${ICR_KEY}
+                                     
+                                        # Docker Images Before Build
+                                        ${DOCKER_EXE} images
+                                        ${DOCKER_EXE} ps -a
+
+                                        # Setup Clean Build Environment
+                                        ${DOCKER_EXE} system prune -f --all
+
+                                        # Inject the docker_image into the build
+                                        sed -i "s|CP4D_VERSION|${CP4D_VERSION}|" ./dockerfile
+                                        ./build/build.sh
+                     
+                                        # Docker Images After Build
+                                        ${DOCKER_EXE} images
+                                        ${DOCKER_EXE} ps -a
+                                     '''
+                                  }
+                               }
+                            }
+                         }
+                      }
+                   }
+                   stage('Deploy Image S390X to artifactory') {
+                      steps{
+                         script{
+                            echo "NODE_NAME = ${env.NODE_NAME}"
+
+                            withEnv(['ARC_TYPE=s390x']){
+                              withCredentials([usernamePassword(credentialsId: 'CPD_QUAY', usernameVariable: 'QUAY_USER', passwordVariable: 'QUAY_KEY')]) {
+                                 sh '''
+                                    # PUSH IMAGE TO QUAY
+                                    ${DOCKER_EXE} login ${DOCKER_REGISTRY} -u ${QUAY_USER} -p ${QUAY_KEY}
+                                    ${DOCKER_EXE} tag ${DOCKER_IMAGE}:${TAG_ID}.${ARC_TYPE} ${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE}
+                                    ${DOCKER_EXE} push --format=v2s2 ${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE}
+                                                 
+                                    skopeo copy --preserve-digests --format=v2s2 docker://${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE} \
+                                                docker://${DOCKER_REGISTRY}/${IMAGE_NAME}:${CPD_VER}.${ARC_TYPE} \
+                                                --src-creds ${QUAY_USER}:${QUAY_KEY} \
+                                                --dest-creds ${QUAY_USER}:${QUAY_KEY} \
+                                                --all
+                                 '''
+                              }
+                            }
+                         }
+                      }
+                   }
+                   stage('DEPLOY Z IMAGE TO ICR STAGING') {
+                      when {
+                         expression { return params.STAGING == true }
+                      }
+                      steps{
+                         script{
+                            // Get the node name so we can make sure all steps run on same node
+                            echo "NODE_NAME = ${env.NODE_NAME}"
+                  
+                            withEnv(['ARC_TYPE=s390x']){
+                              withCredentials([string(credentialsId: 'JAMES_ICR_STAGING', variable: 'ICR_KEY'),
+                                               usernamePassword(credentialsId: 'CPD_QUAY', usernameVariable: 'QUAY_USER', passwordVariable: 'QUAY_KEY')]) {
+                                 sh '''
+                                    # PUSH IMAGE TO ICR STAGING
+                                    skopeo copy --preserve-digests --format=v2s2 docker://${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE} \
+                                                docker://${DEV_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE} \
+                                                --src-creds ${QUAY_USER}:${QUAY_KEY} \
+                                                --dest-creds iamapikey:${ICR_KEY} \
+                                                --all
+                                                
+                                    skopeo copy --preserve-digests --format=v2s2 docker://${DEV_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${ARC_TYPE} \
+                                                docker://${DEV_REGISTRY}/${IMAGE_NAME}:${CPD_VER}.${ARC_TYPE} \
+                                                --src-creds iamapikey:${ICR_KEY} \
+                                                --dest-creds iamapikey:${ICR_KEY} \
+                                                --all
+                                 '''
+                              }
+                            }
+                         }
+                      }
+                   }
+                }
+             }
+          }
+      }
+      stage('BVT') {
+            when {
+               expression { return params.BVT == true }
+            }
+            steps {
+               script{
+                  def handle=null
+                  def jobUrl=null
+                  
+                  //Set BVT_SUCCESS TO TRUE (it wasn't setting if you put this after the handle command)
+                  echo "TODO: Intergrate some sort of build verification testing"
+                  env.BVT_STATUS="SUCCESS"
+
+               }
+          	}
+      }
+      stage("PROMOTE TO ICR STAGING"){
+            when {
+                expression { return params.BVT == true }
+                expression { return params.STAGING == true }
+            }
+            steps{
+                script {
+                   withCredentials([string(credentialsId: 'JAMES_ICR_STAGING', variable: 'ICR_KEY')]) {
+                      if ( env.BVT_STATUS == "SUCCESS" ) {
+                         echo "BVT SUCCESSFUL, PROMOTING TO ICR"
+                         sh '''
+                            # PROMOTE TO ICR STAGING
+                            if [[ "$LATEST" == "true" ]]; then
+                               skopeo copy --preserve-digests --format=v2s2 docker://${DEV_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.amd64 \
+                                           docker://${DEV_REGISTRY}/${IMAGE_NAME}:latest-validated \
+                                           --src-creds iamapikey:${ICR_KEY} \
+                                           --dest-creds iamapikey:${ICR_KEY} \
+                                           --all
+                            fi
+
+                            # TAG IMAGES WITH CPD_VER
+                            skopeo copy --preserve-digests --format=v2s2 docker://${DEV_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.amd64 \
+                                        docker://${DEV_REGISTRY}/${IMAGE_NAME}:${CPD_VER}.amd64 \
+                                        --src-creds iamapikey:${ICR_KEY} \
+                                        --dest-creds iamapikey:${ICR_KEY} \
+                                        --all
+                            skopeo copy --preserve-digests --format=v2s2 docker://${DEV_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.ppc64le \
+                                        docker://${DEV_REGISTRY}/${IMAGE_NAME}:${CPD_VER}.ppc64le \
+                                        --src-creds iamapikey:${ICR_KEY} \
+                                        --dest-creds iamapikey:${ICR_KEY} \
+                                        --all
+                            skopeo copy --preserve-digests --format=v2s2 docker://${DEV_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.s390x \
+                                        docker://${DEV_REGISTRY}/${IMAGE_NAME}:${CPD_VER}.s390x \
+                                        --src-creds iamapikey:${ICR_KEY} \
+                                        --dest-creds iamapikey:${ICR_KEY} \
+                                        --all
+                            
+                            # CREATE FAT MANIFEST
+                            ${DOCKER_EXE} login ${DEV_REGISTRY} -u iamapikey -p ${ICR_KEY}
+                            ${DOCKER_EXE} manifest create ${DEV_REGISTRY}/${IMAGE_NAME}:${CPD_VER} \
+                               ${DEV_REGISTRY}/${IMAGE_NAME}:${CPD_VER}.amd64 \
+                               ${DEV_REGISTRY}/${IMAGE_NAME}:${CPD_VER}.ppc64le \
+                               ${DEV_REGISTRY}/${IMAGE_NAME}:${CPD_VER}.s390x
+                            ${DOCKER_EXE} manifest inspect ${DEV_REGISTRY}/${IMAGE_NAME}:${CPD_VER}
+                            ${DOCKER_EXE} manifest push --format=v2s2 ${DEV_REGISTRY}/${IMAGE_NAME}:${CPD_VER} docker://${DEV_REGISTRY}/${IMAGE_NAME}:${CPD_VER}
+
+                            skopeo copy --preserve-digests --format=v2s2 docker://${DEV_REGISTRY}/${IMAGE_NAME}:${CPD_VER} \
+                                        docker://${DEV_REGISTRY}/${IMAGE_NAME}:${TAG_ID} \
+                                        --src-creds iamapikey:${ICR_KEY} \
+                                        --dest-creds iamapikey:${ICR_KEY} \
+                                        --all
+                                        
+                            # VIEW IMAGE DETAILS
+                            ${DOCKER_EXE} images --digests
+                            ${DOCKER_EXE} ps -a
+                         '''
+                      }
+                      else {
+                         echo "BVT FAILED, NOT PROMOTING TO ICR"
+                      }
+                   }
+                }
+            }
+      }
+      stage("PROMOTE TO ICR PROD"){
+         when {
+            expression { return params.BVT == true }
+            expression { return params.PROD == true }
+         }
+         steps{
+            script {
+               withCredentials([string(credentialsId: 'JAMES_ICR_STAGING', variable: 'ICR_KEY'),
+                                string(credentialsId: 'ICR_CPOPEN', variable: 'CPOPEN_KEY')]) {
+                  if ( env.BVT_STATUS == "SUCCESS" ) {
+                     dir ("${IMAGE_NAME}"){
+                        echo "BVT SUCCESSFUL, PROMOTING TO ICR"
+                        sh '''
+                           # PROMOTE TO ICR STAGING
+                           skopeo copy --preserve-digests --format=v2s2 docker://${DEV_REGISTRY}/${IMAGE_NAME}:${CPD_VER} \
+                                       docker://${PROD_REGISTRY}/${IMAGE_NAME}:${CPD_VER} \
+                                       --src-creds iamapikey:${ICR_KEY} \
+                                       --dest-creds iamapikey:${CPOPEN_KEY} \
+                                       --all
+
+                           for p in $PLATFORMS
+                           do 
+                              # TAG IMAGES WITH CPD_VER
+                              skopeo copy --preserve-digests --format=v2s2 docker://${DEV_REGISTRY}/${IMAGE_NAME}:${TAG_ID}.${p} \
+                                          docker://${PROD_REGISTRY}/${IMAGE_NAME}:${CPD_VER}.${p} \
+                                          --src-creds iamapikey:${ICR_KEY} \
+                                          --dest-creds iamapikey:${CPOPEN_KEY} \
+                                          --all
+                           done
+                           
+                           # VERIFY FAT MANIFEST
+                           ${DOCKER_EXE} login ${PROD_REGISTRY} -u iamapikey -p ${CPOPEN_KEY}
+                           ${DOCKER_EXE} manifest inspect ${PROD_REGISTRY}/${IMAGE_NAME}:${CPD_VER}
+                         
+                           git status
+                           git branch
+                           tag_name="${IMAGE_NAME}-${TAG_ID}"
+                           tag_message="${IMAGE_NAME} BUILD: ${TAG_ID}"
+                           git tag -a ${tag_name} -m "${tag_message}" -f
+                           git push origin ${tag_name} -f
+                        '''
+                     }
+                  }
+                  else {
+                      echo "BVT FAILED, NOT PROMOTING TO ICR"
+                  }
+               }
+            }
+         }
+      }
+      stage('RUN POST BUILD STEPS'){
+         when {
+            expression { return params.BVT == true }
+         }
+         parallel {
+            stage('Run Vulnerability Scans') {
+               when {
+                  expression { return params.SCAN == true }
+               }
+               steps {
+                  script {
+                     withCredentials([ string(credentialsId: 'mend_userkey', variable: 'MEND_USER_KEY'),
+                                 string(credentialsId: "ws_apikey", variable: 'WS_APIKEY'),
+                                 string(credentialsId: "sonar_swcore-pe1", variable: 'SONAR_KEY'),
+                                 string(credentialsId: "sonar_cert_pw", variable: 'SONAR_CERT_PW'),
+                                 string(credentialsId: "sonar_storage-tests", variable: 'PROJECT_KEY') ]){
+                        dir ("${IMAGE_NAME}"){
+                           sh './build/sonar.sh'
+                           sh '''
+                              mkdir -p ${WORKSPACE}/build
+                              scp jenkins@icpfs1.svl.ibm.com:/pool1/data1/zen/scan_reports/Mend/mend.sh ${WORKSPACE}/build/mend.sh
+                              ${WORKSPACE}/build/mend.sh
+                           '''
+                        }
+                     }
+                  }
+               }
+            }
+            stage("UPDATE CPD-CLI BUNDLE") {
+               steps {
+                  script{
+                     // Get the node name so we can make sure all steps run on same node
+                     echo "NODE_NAME = ${env.NODE_NAME}"
+                  
+                     dir ('cpd-cli-bundle'){
+                        deleteDir()
+                        git  branch: "${CPD_VER}", credentialsId: "${GIT_CREDENTIALS_ID}", url: "${BUNDLE_GHE_URL}" , poll: false
+                     
+                        sh '''
+                           cd ./stable/case/ibm-cp4d-cpd-cli/inventory/health
+                           OLD_TAG=`cat resources.yaml |grep -m 1 FAT_MANIFEST_DIGEST+${IMAGE_NAME} | cut -d '+' -f 3`
+                           sed -i "s|${OLD_TAG}|${TAG_ID}|" resources.yaml
+                        
+                           git add .
+                           
+                           # EXIT IF THERE ARE NO CHANGES TO MERGE
+                           # OTHERWISE MERGE AND UPDATE BRANCH
+                           clean_string="nothing to commit"
+                           status=`git status | grep "${clean_string}" | cut -d ',' -f 1`
+                           if [ "${status}" == "${clean_string}" ] 
+                           then
+                              echo ${clean_string}
+                           else
+                              git commit -m "${IMAGE_NAME} BUILD ${TAG_ID}"
+                              git push origin ${CPD_VER}
+                           fi
+                        '''
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
+   post {
+      success{
+         echo "SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+         slackSend (color: '#00FF00', channel: "${SLACK_CHANNEL}", message: "SUCCESSFUL: Job '${env.JOB_NAME} [${env.TAG_ID}]' (${env.BUILD_URL})")
+      }
+      failure{
+         echo "FAILED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+         slackSend (color: '#FF0000', channel: "${SLACK_CHANNEL}", message: "FAILED: Job '${env.JOB_NAME} [${env.TAG_ID}]' (${env.BUILD_URL})")
+      }
+   }
+}

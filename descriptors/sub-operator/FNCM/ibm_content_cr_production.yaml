@@ -17,13 +17,13 @@ metadata:
     app.kubernetes.io/instance: ibm-dba-content
     app.kubernetes.io/managed-by: ibm-dba-content
     app.kubernetes.io/name: ibm-dba-content
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 25.0.1
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "true".
   license:
@@ -34,7 +34,7 @@ spec:
 
   ## The optional components to be installed if listed here.
   ## The optional components are: Content Manager Image Services (cmis), css (Content Search Services), es (External Share), tm (Task Manager),
-  ## IBM Enterprise Records (ier) , IBM Content Collector for SAP (iccsap).
+  ## IBM Enterprise Records (ier), IBM Content Collector for SAP (iccsap), Content Cortex for Microsoft Office (ccxmo).
   ## NOTE: ier, and iccsap does NOT support integration with ums.
   ## NOTE: es does not work when using Zen and IAM for authentication.
   content_optional_components:
@@ -44,9 +44,10 @@ spec:
     iccsap: false
     ier: false
     tm: false
+    ccxmo: false
   shared_configuration:
 
-    ## FileNet Content Manager (FNCM) license and possible values are: user, concurrent-user, authorized-user, non-production, and production.
+    ## This is the Content Cortex license  parameter and the possible values are: user, concurrent-user, authorized-user, non-production, and production.
     ## This value could be different from the rest of the licenses.
     sc_deployment_fncm_license: "<Required>"
 
@@ -69,14 +70,14 @@ spec:
     ## based on input from the user.
     sc_deployment_platform:
 
-    ## Staring with CP4BA 25.0.1, the operators are no longer creating network policies automatically due to a change in the security requirements where the permissions to create network policies have been removed.
+    ## Staring with CP4BA 26.0.0, the operators are no longer creating network policies automatically due to a change in the security requirements where the permissions to create network policies have been removed.
     ## The optional parameter to enable/disable the creation of sample network policy templates for CP4BA components.  If the parameter is not defined, then the default value is "false".
     ## Set this flag to "true" if you plan to have restricted network policies in CP4BA namespaces so that the operators can create sample network policy templates for CP4BA components.
     ## Please refer to the CP4BA documentation for more information about how to retrieve and apply the sample network policy templates.
     sc_generate_sample_network_policies: false
 
     ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <route-name>-{{meta.namespace}}.<router-canonical-hostname> when not defined.
-    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.1?topic=scp-shared-configuration
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/26.0.0?topic=scp-shared-configuration
     ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
     #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
 
@@ -100,14 +101,14 @@ spec:
     ## The CR can handle .zip files using unzip as well as .tar, .tar.gz, .tar.bz2, .tar.xz. Does not handle .gz files, .bz2 files, .xz, or .zst files that do not contain a .tar archive.
     sc_drivers_url:
 
-    ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
+    ## Enable/disable ECM (Content Cortex) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
     ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true", then the initialization will occur.
     ## However, if sc_content_initialization is set to "false" (or the parameter doesn't exist), then the initialization will not occur (even with the "initialize_configuration" section defined)
     sc_content_initialization: false
 
     ## OR
-    ## If you want to enable the initialize for a specific product for ECM (FNCM) / BAN, you will need to use
+    ## If you want to enable the initialize for a specific product for ECM (Content Cortex) / BAN, you will need to use
     ## these fields instead.  Otherwise, use the default sc_content_initialization: false
     # sc_content_initialization:
     #  cpe: false
@@ -115,13 +116,13 @@ spec:
     #  ban: false
 
 
-    ## Enable/disable the ECM (FNCM) / BAN verification (e.g., creation of test folder, creation of test document,
+    ## Enable/disable the ECM (Content Cortex) / BAN verification (e.g., creation of test folder, creation of test document,
     ## execution of CBR search, and creation of Navigator demo repository and desktop). If the "verify_configuration"
     ## section is defined in the CR and sc_content_verification is set to true, then the verification will occur.  Note that if you are upgrading or
     ## migrating, set this parameter to "false" since the env has been previously verified.
     sc_content_verification: false
     ## OR
-    ## If you want to enable the verification for a specific product for ECM (FNCM) / BAN, you will need to use
+    ## If you want to enable the verification for a specific product for ECM (Content Cortex) / BAN, you will need to use
     ## these fields instead. Otherwise, use the default sc_content_verification: false
     # sc_content_verification:
     #  cpe: false
@@ -355,7 +356,7 @@ spec:
       dc_hadr_max_retries_for_client_reroute: 3
       ## Connection manager for a data source.
   ########################################################################
-  ######## IBM FileNet Content Manager Initialization configuration ######
+  ######## IBM Content Cortex Initialization configuration ######
   ########################################################################
   ## This section is required when initializing the P8 domain and object store
   ## Please fill out the "<Required>" parameters
@@ -404,7 +405,7 @@ spec:
 
 
   ########################################################################
-  ######## IBM FileNet Content Manager Verification configuration ######
+  ######## IBM Content Cortex Verification configuration ######
   ########################################################################
   ## After the initialization process (see section above), the verification process will take place.
   ## The verification process ensures that the FNCM and BAN components are functioning correctly.  The verification

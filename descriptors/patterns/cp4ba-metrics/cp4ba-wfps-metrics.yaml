@@ -1,0 +1,23 @@
+apiVersion: operator.ibm.com/v1
+kind: IBMServiceMeterDefinition
+metadata:
+  name: cp4ba-wfps-metrics
+  namespace: REPLACE_NAMESPACE
+spec:
+  mappingId: wfpsdeployment000000000000001
+  processing: LAST
+  repeat: true
+  breakdownDefs:
+    - breakdownBy:
+        name: INSTANCE_COUNT
+      groupBy:
+        - version
+        - environment
+        - architecture
+        - platform
+      source: metricQuantity
+      processing: LAST
+  data:
+    productId: bcf180b9bc864d458800e72951849bfe
+    productName: Workflow Process Service
+    metricType: ADOPTION

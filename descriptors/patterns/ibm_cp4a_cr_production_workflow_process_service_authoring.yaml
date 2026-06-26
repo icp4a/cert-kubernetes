@@ -16,11 +16,11 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
   ## CP4A application version
-  appVersion: 25.0.1
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -66,14 +66,19 @@ spec:
     sc_deployment_patterns: workflow-process-service
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
-    ## The optional components are: bai,pfs. Please do not delete wfps_authoring, because it determines that this is an Authoring environment.
+    ## The optional components are: bai,pfs,application_connectors,workflow_runtime_mcp_server. Please do not delete wfps_authoring, because it determines that this is an Authoring environment.
     ## pfs will bring advanced full text search function to workplace. And the external workplace can be enabled only when pfs is enabled.
+    ## If PFS and Workflow Runtime MCP Server are enabled, opensearch need to be enabled.
     sc_optional_components: wfps_authoring
 
     ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
     ## This secret is also used by Workflow and BAStudio to store AES encryption key.
     encryption_key_secret: ibm-iaws-shared-key-secret
-
+    
+    ## The global flag to enable or disable Pod Disruption Budget (PDB) creation across all components.  This flag can be overridden at specific configuration sections (eg: ecm_configuration.cpe.enable_pdb).  Default is true
+    ## A PDB will be created with a `minAvailable: 1` only if the replica count of a particular deployment is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+    sc_enable_pdb: true
+    
     ## Staring with CP4BA 25.0.0, the operators are no longer creating network policies automatically due to a change in the security requirements where the permissions to create network policies have been removed.
     ## The optional parameter to enable/disable the creation of sample network policy templates for CP4BA components.  If the parameter is not defined, then the default value is "false".
     ## Set this flag to "true" if you plan to have restricted network policies in CP4BA namespaces so that the operators can create sample network policy templates for CP4BA components.

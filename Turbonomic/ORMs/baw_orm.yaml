@@ -1,0 +1,117 @@
+# This contains ORMs for both CP4BA-BAW-Authoring and CP4BA-BAW-Runtime, also this takes care of WfPS-Authoring
+# If you have multiple instances, please modify the ORM to include them
+
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: baw-orm
+  namespace: {{ placeholder_namespace }}
+spec:
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: StatefulSet
+          path: '.spec.template.spec.containers[?(@.name=="bastudio-container")].resources'
+          selector: bastudio
+        ownerPath: .spec.bastudio_configuration.resources.bastudio
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          path: '.spec.template.spec.containers[?(@.name=="app-engine-work-pod")].resources'
+          selector: pbk-ae
+        ownerPath: .spec.bastudio_configuration.playback_server.resource_ae
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          path: '.spec.template.spec.containers[?(@.name=="app-engine-work-pod")].resources'
+          selector: workspace-aae-ae
+        ownerPath: .spec.application_engine_configuration[?(@.name=="workspace")].resource_ae
+      - owned:
+          apiVersion: apps/v1
+          kind: StatefulSet
+          path: '.spec.template.spec.containers[?(@.name=="workflow-server")].resources'
+          selector: baw-server-bawins1
+        ownerPath: .spec.baw_configuration[0].resources
+      - owned:
+          apiVersion: apps/v1
+          kind: StatefulSet
+          path: '.spec.template.spec.containers[?(@.name=="workflow-server")].resources'
+          selector: baw-server-bawins2
+        ownerPath: .spec.baw_configuration[1].resources
+      - owned:
+          apiVersion: apps/v1
+          kind: StatefulSet
+          path: '.spec.template.spec.containers[?(@.name=="workflow-server")].resources'
+          selector: baw-server-bawins3
+        ownerPath: .spec.baw_configuration[2].resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          path: '.spec.template.spec.containers[?(@.name=="intelligent-task-prioritization")].resources'
+          selector: mls-itp
+        ownerPath: .spec.baml_configuration.intelligent_task_prioritization.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          path: '.spec.template.spec.containers[?(@.name=="workforce-insights")].resources'
+          selector: mls-wfi
+        ownerPath: .spec.baml_configuration.workforce_insights.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          path: '.spec.template.spec.containers[?(@.name=="workflow-server-agent")].resources'
+          selector: workflow-assistant
+        ownerPath: .spec.workflow_assistant_configuration.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          path: '.spec.template.spec.containers[?(@.name=="workflow-runtime-mcp-server-cont")].resources'
+          selector: mcp-server
+        ownerPath: .spec.workflow_runtime_mcp_server_configuration.resources
+    selectors:
+      bastudio:
+        matchLabels:
+          app.kubernetes.io/name: bastudio
+          app.kubernetes.io/instance: {{ meta.name }}
+      pbk-ae:
+        matchLabels:
+          app.kubernetes.io/name: app-engine
+          app.kubernetes.io/instance: {{ meta.name }}-pbk
+      workspace-aae-ae:
+        matchLabels:
+          app.kubernetes.io/name: app-engine
+          app.kubernetes.io/instance: {{ meta.name }}-workspace-aae
+      baw-server-bawins1:
+        matchLabels:
+          app.kubernetes.io/name: workflow-server
+          app.kubernetes.io/instance: {{ meta.name }}-bawins1
+      baw-server-bawins2:
+        matchLabels:
+          app.kubernetes.io/name: workflow-server
+          app.kubernetes.io/instance: {{ meta.name }}-bawins2
+      baw-server-bawins3:
+        matchLabels:
+          app.kubernetes.io/name: workflow-server
+          app.kubernetes.io/instance: {{ meta.name }}-bawins3
+      mls-itp:
+        matchLabels:
+          app.kubernetes.io/name: machine-learning-server
+          app.kubernetes.io/mls-capability: itp
+          app.kubernetes.io/instance: {{ meta.name }}
+      mls-wfi:
+        matchLabels:
+          app.kubernetes.io/name: machine-learning-server
+          app.kubernetes.io/mls-capability: wfi
+          app.kubernetes.io/instance: {{ meta.name }}
+      workflow-assistant:
+        matchLabels:
+          app.kubernetes.io/name: workflow-server-agent
+          app.kubernetes.io/instance: {{ meta.name }}
+      mcp-server:
+        matchLabels:
+          app: workflow-runtime-mcp-server-ins1
+  owner:
+    apiVersion: icp4a.ibm.com/v1
+    kind: ICP4ACluster
+    name: {{ meta.name }}

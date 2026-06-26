@@ -9,7 +9,6 @@
 # US GOVERNMENT USERS RESTRICTED RIGHTS - USE, DUPLICATION OR
 # DISCLOSURE RESTRICTED BY GSA ADP SCHEDULE CONTRACT WITH IBM CORP.
 #
-###############################################################################
 
 # VARIABLES FOR LDAP PROPERTY FILE.
 LDAP_COMMON_PROPERTY=("LDAP_TYPE"
@@ -442,3 +441,87 @@ SCIM_CR_MAPPING=("spec.scim_configuration_iam.user_unique_id_attribute"
                         "spec.scim_configuration_iam.group_members_attribute")
 
 
+
+###############################################################################
+# VARIABLES FOR CONTENT CORTEX AI SERVICES PROPERTY FILE
+###############################################################################
+
+# Common properties (Redis, storage classes)
+AI_SERVICES_COMMON_PROPERTIES=("ENABLE_REDIS"
+                                "CP4BA_SLOW_FILE_STORAGE_CLASSNAME"
+                                "CP4BA_BLOCK_STORAGE_CLASS_NAME")
+
+COMMENTS_AI_SERVICES_COMMON_PROPERTIES=("## Enable Redis for token caching and improved performance.\n## Set to \"true\" to enable Redis, or \"false\" to disable. Default: \"false\""
+                                        "## Provide the storage class name for slow file storage (PVCs).\n## This storage class will be used for persistent volume claims. For example: \"nfs-client\""
+                                        "## Provide the block storage class name (ONLY required when Redis is enabled).\n## This storage class will be used for Redis persistent volumes. For example: \"ibmc-block-gold\"\n## Leave as \"<Required>\" if Redis is not enabled.")
+
+DEFAULTS_AI_SERVICES_COMMON_PROPERTIES=("false"
+                                        "<Required>"
+                                        "<Required>")
+
+# Provider configuration properties
+AI_SERVICES_PROVIDER_PROPERTIES=("PROVIDER_ID"
+                                  "ENABLED"
+                                  "PROVIDER_NAME"
+                                  "PROVIDER_URL"
+                                  "USERNAME"
+                                  "API_KEY"
+                                  "PASSWORD"
+                                  "SPACE_ID"
+                                  "PROJECT_ID"
+                                  "SSL_ENABLED"
+                                  "TLS_CERT_LOCATION")
+
+COMMENTS_AI_SERVICES_PROVIDER_PROPERTIES=("## Unique identifier for this provider. This ID is used to reference the provider in the deployment."
+                                          "## Enable or disable this provider. Set to false to exclude this provider from deployment.\n## At least one provider must be enabled."
+                                          "## Provider name determines which AI service is being used.\n## Valid values: \"watsonx_saas\", \"watsonx_lightweightengine\", \"azure\""
+                                          "## Service endpoint URL for the AI provider.\n## - WatsonX SaaS: Regional endpoint (e.g., \"https://us-south.ml.cloud.ibm.com\")\n## - WatsonX LWE: CPD cluster URL (e.g., \"https://cpd-cluster.company.com\")\n## - Azure: Azure OpenAI endpoint (e.g., \"https://your-resource.openai.azure.com\")"
+                                          "## Username for WatsonX.ai Lightweight Engine (Zen username). Required for LWE only."
+                                          "## API key for authentication.\n## - WatsonX SaaS: IBM Cloud API key (Required)\n## - WatsonX LWE: Zen API key (Required if PASSWORD not provided)\n## - Azure: Azure OpenAI API key (Required)"
+                                          "## Password for WatsonX.ai Lightweight Engine (Zen password). Required for LWE if API_KEY not provided."
+                                          "## WatsonX.ai deployment space ID where models are deployed. Required for SaaS (at least one of SPACE_ID or PROJECT_ID)."
+                                          "## WatsonX.ai project ID. Required for SaaS (at least one of SPACE_ID or PROJECT_ID)."
+                                          "## Enable SSL/TLS certificate validation for WatsonX LWE. Set to true to enable. Required for LWE only."
+                                          "## Path to SSL certificate folder for WatsonX LWE. Certificate file must be named 'lwe.crt'. Required for LWE if SSL_ENABLED=true.")
+
+# Default provider values (will be overridden based on provider type during generation)
+DEFAULTS_AI_SERVICES_PROVIDER_PROPERTIES=("<Required>"
+                                          "true"
+                                          "<Required>"
+                                          "<Required>"
+                                          ""
+                                          "<Required>"
+                                          ""
+                                          ""
+                                          ""
+                                          "false"
+                                          "")
+
+# Model configuration properties
+AI_SERVICES_MODEL_PROPERTIES=("MODEL_ID"
+                               "DEFAULT"
+                               "TEMPERATURE"
+                               "MAX_TOKENS"
+                               "TOP_P"
+                               "TOP_K"
+                               "CONTEXT_WINDOW_TOKEN_LIMIT")
+
+COMMENTS_AI_SERVICES_MODEL_PROPERTIES=("## Unique identifier for the model as defined by the AI provider."
+                                       "## Set to true to make this the default/active model. Only ONE model across ALL providers can be set to true."
+                                       "## Temperature parameter for model inference (0.0 to 1.0)."
+                                       "## Maximum number of tokens to generate."
+                                       "## Top-p (nucleus sampling) parameter."
+                                       "## Top-k sampling parameter."
+                                       "## Maximum context window size in tokens. Default: 131072 for WatsonX (SaaS/LWE), 272000 for Azure.")
+
+# Default model values (will be overridden based on provider type)
+DEFAULTS_AI_SERVICES_MODEL_PROPERTIES=("openai/gpt-oss-120b"
+                                       "false"
+                                       "0.7"
+                                       "2048"
+                                       "1.0"
+                                       "50"
+                                       "131072")
+
+###############################################################################
+###############################################################################

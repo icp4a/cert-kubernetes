@@ -1,0 +1,6 @@
+apiVersion: v2
+appVersion: 13.0.0
+description: CPD Model Gateway helm chart for operator
+name: model-gateway-cluster-scoped
+type: application
+version: 13.0.0+20260527.003345.105

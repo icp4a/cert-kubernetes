@@ -38,9 +38,17 @@ function create_fncm_gcddb_postgresql_sql_file(){
 
     mkdir -p $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
     rm -rf $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createGCDDB.sql
+
+    # Determine CREATE ROLE statement based on client authentication setting
+    if is_pg_client_auth; then
+        CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN;"
+    else
+        CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN ENCRYPTED PASSWORD '${dbuserpwd}';"
+    fi
+
 cat << EOF > $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createGCDDB.sql
 -- create user ${dbuser}
-CREATE ROLE ${dbuser} WITH INHERIT LOGIN ENCRYPTED PASSWORD '${dbuserpwd}';
+${CREATE_ROLE_STMT}
 
 -- please modify location follow your requirement
 create tablespace ${tablespace} owner ${dbuser} location '/pgsqldata/${dbname}';
@@ -93,7 +101,7 @@ function create_fncm_osdb_postgresql_sql_file(){
     # use dbuser as schema when schema is empty
     if [[ $dbschema == "" ]]; then
        dbschema=$dbuser
-    fi
+    fi 
 
     mkdir -p $FNCM_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
     if [ -z $5 ]; then
@@ -132,10 +140,17 @@ function create_fncm_osdb_postgresql_sql_file(){
         tablespace_lob_grant="grant create on tablespace ${tablespace_lob} to ${dbuser};"
     fi
 
+    # Determine CREATE ROLE statement based on client authentication setting
+    if is_pg_client_auth; then
+        CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN;"
+    else
+        CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN ENCRYPTED PASSWORD '${dbuserpwd}';"
+    fi
+
     rm -rf $FNCM_OSDB_SCRIPT_FILE
 cat << EOF > $FNCM_OSDB_SCRIPT_FILE
 -- create user ${dbuser}
-CREATE ROLE ${dbuser} WITH INHERIT LOGIN ENCRYPTED PASSWORD '${dbuserpwd}';
+${CREATE_ROLE_STMT}
 
 -- please modify location follow your requirement
 create tablespace ${tablespace} owner ${dbuser} location '/pgsqldata/${dbname}';

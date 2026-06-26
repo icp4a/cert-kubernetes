@@ -1,0 +1,25 @@
+apiVersion: operator.ibm.com/v1
+kind: IBMServiceMeterDefinition
+metadata:
+  name: cp4ba-baa-metrics
+  namespace: REPLACE_NAMESPACE
+spec:
+  mappingId: baadeployment000000000000001
+  processing: LAST
+  repeat: true
+  breakdownDefs:
+    - breakdownBy:
+        name: INSTANCE_COUNT
+      groupBy:
+        - version
+        - environment
+        - architecture
+        - platform
+      source: metricQuantity
+      processing: LAST
+  data:
+    productId: 20b0c693f93b42c6917cd7ae46d97462
+    productName: Business Automation Application
+    metricName: INSTANCE_COUNT
+    metricDescription: count of BAA instances
+    metricType: ADOPTION

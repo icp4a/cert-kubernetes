@@ -1,0 +1,84 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: dpe-orm
+  namespace: {{ placeholder_namespace }}
+spec:
+  owner:
+    apiVersion: icp4a.ibm.com/v1
+    kind: ICP4ADocumentProcessingEngine
+    name: dpedeploy
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          name: {{ meta.name }}-processing-extraction
+          path: '.spec.template.spec.containers[?(@.name=="{{ meta.name }}-processing-extraction")].resources'
+        ownerPath: .spec.ca_configuration.processingextraction.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          name: {{ meta.name }}-ocr-extraction
+          path: '.spec.template.spec.containers[?(@.name=="{{ meta.name }}-ocr-extraction")].resources'
+        ownerPath: .spec.ca_configuration.ocrextraction.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          name: {{ meta.name }}-webhook
+          path: '.spec.template.spec.containers[?(@.name=="{{ meta.name }}-webhook")].resources'
+        ownerPath: .spec.ca_configuration.webhook.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          name: {{ meta.name }}-spbackend
+          path: '.spec.template.spec.containers[?(@.name=="{{ meta.name }}-spbackend")].resources'
+        ownerPath: .spec.ca_configuration.spbackend.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          name: {{ meta.name }}-postprocessing
+          path: '.spec.template.spec.containers[?(@.name=="{{ meta.name }}-postprocessing")].resources'
+        ownerPath: .spec.ca_configuration.postprocessing.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          name: {{ meta.name }}-setup
+          path: '.spec.template.spec.containers[?(@.name=="{{ meta.name }}-setup")].resources'
+        ownerPath: .spec.ca_configuration.setup.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          name: {{ meta.name }}-classifyprocess-classify
+          path: '.spec.template.spec.containers[?(@.name=="{{ meta.name }}-classifyprocess-classify")].resources'
+        ownerPath: .spec.ca_configuration.classifyprocess.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          name: {{ meta.name }}-natural-language-extractor
+          path: '.spec.template.spec.containers[?(@.name=="{{ meta.name }}-natural-language-extractor")].resources'
+        ownerPath: .spec.ca_configuration.naturallanguageextractor.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          name: {{ meta.name }}-deep-learning
+          path: '.spec.template.spec.containers[?(@.name=="{{ meta.name }}-deep-learning")].resources'
+        ownerPath: .spec.ca_configuration.deeplearning.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          name: {{ meta.name }}-wdu-runtime
+          path: '.spec.template.spec.containers[?(@.name=="{{ meta.name }}-wdu-runtime")].resources'
+        ownerPath: .spec.ca_configuration.wduruntime.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          name: {{ meta.name }}-wdu-extraction
+          path: '.spec.template.spec.containers[?(@.name=="{{ meta.name }}-wdu-extraction")].resources'
+        ownerPath: .spec.ca_configuration.wduextraction.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: StatefulSet
+          name: {{ meta.name }}-rabbitmq-ha
+          path: '.spec.template.spec.containers[?(@.name=="rabbitmq-ha")].resources'
+        ownerPath: .spec.ca_configuration.rabbitmq.resources

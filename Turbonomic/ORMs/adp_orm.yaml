@@ -1,0 +1,58 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: adp-orm
+  namespace: {{ placeholder_namespace }}
+spec:
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: cds
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-cds-deploy")].resources
+        ownerPath: .spec.ecm_configuration.document_processing.cds.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: cdra
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-cdra-deploy")].resources
+        ownerPath: .spec.ecm_configuration.document_processing.cdra.resources     
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: cpds
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-cpds-deploy")].resources
+        ownerPath: .spec.ecm_configuration.document_processing.cpds.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: gitgateway
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-gitgateway-deploy")].resources
+        ownerPath: .spec.ecm_configuration.document_processing.gitgateway.resources  
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: viewone
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-viewone-deploy")].resources
+        ownerPath: .spec.ecm_configuration.document_processing.viewone.resources
+    selectors:
+      cds:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-cds-deploy
+      cdra:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-cdra-deploy
+      cpds:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-cpds-deploy
+      gitgateway:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-gitgateway-deploy
+      viewone:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-viewone-deploy
+  owner:
+    apiVersion: icp4a.ibm.com/v1
+    kind: ICP4ACluster
+    name: {{ meta.name }}

@@ -17,19 +17,19 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 25.0.1
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
 
   shared_configuration:
-    ## FileNet Content Manager (FNCM) license and possible values are: user, concurrent-user, authorized-user, non-production, and production.
+    ## This is the Content Cortex license  parameter and the possible values are: user, concurrent-user, authorized-user, non-production, and production.
     ## This value could be different from the rest of the licenses.
     sc_deployment_fncm_license: "<Required>"
 
@@ -45,7 +45,7 @@ spec:
     ## All CP4A components must use/share the root_ca_secret in order for integration.
     root_ca_secret: icp4a-root-ca
 
-    ## CP4A patterns or capabilities to be deployed.  This CR represents the "content" pattern (aka FileNet Content Manager), which includes the following
+    ## CP4A patterns or capabilities to be deployed.  This CR represents the "content" pattern (aka Content Cortex), which includes the following
     ## mandatory components: cpe, icn (BAN/Navigator), graphql
     sc_deployment_patterns: content
 
@@ -74,7 +74,7 @@ spec:
     sc_generate_sample_network_policies: false
 
     ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <route-name>-{{meta.namespace}}.<router-canonical-hostname> when not defined.
-    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.1?topic=scp-shared-configuration
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/26.0.0?topic=scp-shared-configuration
     ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
     #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
 
@@ -84,28 +84,30 @@ spec:
     trusted_certificate_list: []
 
 
-    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers,
-    ## all the files must be compressed in a single file.
-    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or
-    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed
-    ## file should have the following structure and content:
+    ## Provide a URL to a compressed file containing custom JDBC drivers and/or ICCSAP drivers.
+    ## IMPORTANT: Custom drivers provided via this URL will automatically take precedence over out-of-the-box drivers.
+    ## Only one driver per database type will be present in the persistent volume, with customer-supplied drivers taking priority.
+    ##
+    ## Package your drivers in the format: "saplibs/drivers_files" and/or "jdbc/db2|oracle|postgresql|sqlserver/driver_files"
+    ## Example structure for DB2 and Oracle JDBC drivers with ICCSAP drivers:
     ##   /jdbc/db2/db2jcc4.jar
     ##   /jdbc/db2/db2jcc_license_cu.jar
     ##   /jdbc/oracle/ojdbc8.jar
     ##   /saplibs/libicudata.so.50
     ##   /saplibs/...
-    ## Then you need to put the compressed package on an anonymously accessible web server and provide the link here.
-    ## The CR can handle .zip files using unzip as well as .tar, .tar.gz, .tar.bz2, .tar.xz. Does not handle .gz files, .bz2 files, .xz, or .zst files that do not contain a .tar archive.
+    ##
+    ## Place the compressed package on an anonymously accessible web server and provide the URL here.
+    ## Supported formats: .zip, .tar, .tar.gz, .tar.bz2, .tar.xz (does not handle standalone .gz, .bz2, .xz, or .zst files)
     sc_drivers_url:
 
-    ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
+    ## Enable/disable ECM (Content Cortex) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
     ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true", then the initialization will occur.
     ## However, if sc_content_initialization is set to "false" (or the parameter doesn't exist), then the initialization will not occur (even with the "initialize_configuration" section defined)
     sc_content_initialization: false
 
     ## OR
-    ## If you want to enable the initialize for a specific product for ECM (FNCM) / BAN, you will need to use
+    ## If you want to enable the initialize for a specific product for ECM (Content Cortex) / BAN, you will need to use
     ## these fields instead.  Otherwise, use the default sc_content_initialization: false
     # sc_content_initialization:
     #  cpe: false
@@ -117,13 +119,13 @@ spec:
     ## Set this flag to "true" if you plan to enable instana monitoring for CP4BA application. 
     sc_enable_instana_metric_collection: false
 
-    ## Enable/disable the ECM (FNCM) / BAN verification (e.g., creation of test folder, creation of test document,
+    ## Enable/disable the ECM (Content Cortex) / BAN verification (e.g., creation of test folder, creation of test document,
     ## execution of CBR search, and creation of Navigator demo repository and desktop).  If the "verify_configuration"
     ## section is defined in the CR and sc_content_verification is set to true, then the verification will occur.  Note that if you are upgrading or
     ## migrating, set this parameter to "false" since the env has been previously verified.
     sc_content_verification: false
     ## OR
-    ## If you want to enable the verification for a specific product for ECM (FNCM) / BAN, you will need to use
+    ## If you want to enable the verification for a specific product for ECM (Content Cortex) / BAN, you will need to use
     ## these fields instead.  Otherwise, use the default sc_content_verification: false
     # sc_content_verification:
     #  cpe: false
@@ -289,6 +291,7 @@ spec:
       ## Operator will now have a capability to automatically provision an EDBPostgres instance upon request for Production/Enterprise deployment
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
       dc_use_postgres: false
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
@@ -362,7 +365,7 @@ spec:
       dc_hadr_max_retries_for_client_reroute: 3
       ## Connection manager for a data source.
   ########################################################################
-  ######## IBM FileNet Content Manager Initialization configuration ######
+  ######## IBM Content Cortex Initialization configuration ######
   ########################################################################
   ## This section is required when initializing the P8 domain and object store
   ## Please fill out the "<Required>" parameters
@@ -411,7 +414,7 @@ spec:
 
 
   ########################################################################
-  ######## IBM FileNet Content Manager Verification configuration ######
+  ######## IBM Content Cortex Verification configuration ######
   ########################################################################
   ## After the initialization process (see section above), the verification process will take place.
   ## The verification process ensures that the FNCM and BAN components are functioning correctly.  The verification

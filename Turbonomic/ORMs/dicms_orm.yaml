@@ -1,0 +1,75 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: dicms-orm
+  namespace: {{ placeholder_namespace }}
+spec:
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: ads-rest-api
+          path: .spec.template.spec.containers[?(@.name=="rest-api")].resources
+        ownerPath: .spec.ads_configuration.rest_api.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: ads-credentials-service
+          path: .spec.template.spec.containers[?(@.name=="credentials-service")].resources
+        ownerPath: .spec.ads_configuration.credentials_service.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: ads-git-service
+          path: .spec.template.spec.containers[?(@.name=="git-service")].resources
+        ownerPath: .spec.ads_configuration.git_service.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: ads-parsing-service
+          path: .spec.template.spec.containers[?(@.name=="parsing-service")].resources
+        ownerPath: .spec.ads_configuration.parsing_service.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: ads-run-service
+          path: .spec.template.spec.containers[?(@.name=="run-service")].resources
+        ownerPath: .spec.ads_configuration.run_service.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: ads-runtime-service
+          path: .spec.template.spec.containers[?(@.name=="runtime-service")].resources
+        ownerPath: .spec.ads_configuration.decision_runtime_service.resources
+    selectors:
+      ads-rest-api:
+        matchLabels:
+          app.kubernetes.io/instance: "{{ meta.name }}"
+          app.kubernetes.io/name: "ads-rest-api"
+      ads-credentials-service:
+        matchLabels:
+          app.kubernetes.io/instance: "{{ meta.name }}"
+          app.kubernetes.io/name: "ads-credentials-service"
+      ads-git-service:
+        matchLabels:
+          app.kubernetes.io/instance: "{{ meta.name }}"
+          app.kubernetes.io/name: "ads-git-service"
+      ads-parsing-service:
+        matchLabels:
+          app.kubernetes.io/instance: "{{ meta.name }}"
+          app.kubernetes.io/name: "ads-parsing-service"
+      ads-run-service:
+        matchLabels:
+          app.kubernetes.io/instance: "{{ meta.name }}"
+          app.kubernetes.io/name: "ads-run-service"
+      ads-runtime-service:
+        matchLabels:
+          app.kubernetes.io/instance: "{{ meta.name }}"
+          app.kubernetes.io/name: "ads-runtime-service"
+  owner:
+    apiVersion: icp4a.ibm.com/v1
+    kind: ICP4ACluster
+    name: {{ meta.name }}
+
+# Made with Bob

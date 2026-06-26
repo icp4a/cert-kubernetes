@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-cp4a-pfs-operator
     app.kubernetes.io/managed-by: ibm-cp4a-pfs-operator
     app.kubernetes.io/name: ibm-cp4a-pfs-operator
-    release: 25.0.1
+    release: 26.0.0
 spec:
   replicas: 1
   selector:
@@ -29,18 +29,31 @@ spec:
         app.kubernetes.io/instance: ibm-cp4a-pfs-operator
         app.kubernetes.io/managed-by: ibm-cp4a-pfs-operator
         app.kubernetes.io/name: ibm-cp4a-pfs-operator
-        release: 25.0.1
+        release: 26.0.0
       annotations:
         cloudpakId: "94a9c8c358bb43ba8fbdea62e7e166a5"
         cloudpakName: "IBM Cloud Pak for Business Automation"
-        cloudpakVersion: "25.0.1"
+        cloudpakVersion: "26.0.0"
         productChargedContainers: ""
         productCloudpakRatio: '1:1'
         productID: 94a9c8c358bb43ba8fbdea62e7e166a5
         productMetric: "VIRTUAL_PROCESSOR_CORE"
         productName: "Process Federation Server - CP4BA"
-        productVersion: "25.0.1"
+        productVersion: "26.0.0"
     spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              name: ibm-cp4a-pfs-operator
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              name: ibm-cp4a-pfs-operator
       hostNetwork: false
       hostPID: false
       hostIPC: false
@@ -70,7 +83,10 @@ spec:
                 - ppc64le
       containers:
         - name: operator
-          image: icr.io/cpopen/icp4a-pfs-operator@sha256:78afc0d14594773e968c3cd2a7f09251201c5ff5ef02995fc93b09e11acd288f
+          args:
+            - --leader-elect
+            - --leader-election-id=ibm-pfs-operator
+          image: icr.io/cpopen/icp4a-pfs-operator@sha256:439be56ec107da794fba34e160a3c3db2b9f2d359efe920a3e6f8ae5c52d1f2b
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

@@ -15,7 +15,7 @@
 
 # Release/Patch version for CP4BA
 # CP4BA_RELEASE_BASE is for fetch content/foundation operator pod, only need to change for major release.
-CP4BA_RELEASE_BASE="25.0.1"
+CP4BA_RELEASE_BASE="26.0.0"
 #set of filters that can be used while mirroring images
 AUTOMATION_DECISION_SERVICES="ibmcp4baProd,ibmcp4baADSImages,ibmcp4baBANImages,ibmcp4baBASImages,ibmcp4baAAEImages,ibmEdbStandard"
 AUTOMATION_DOCUMENT_PROCESSING="ibmcp4baProd,ibmcp4baADPImages,ibmcp4baFNCMImages,ibmcp4baBANImages,ibmcp4baBASImages,ibmcp4baAAEImages,ibmEdbStandard"
@@ -385,22 +385,23 @@ function edit_image_set_config_file(){
 }
 
 
+
 # Function to display menu with different patterns that can be deployed and collect user input
 # Multi select menu
 function select_filter_options() {
     while true; do
         info "Select the CP4BA capabilities for which you would like to mirror images for. Press 'Enter' to finalize selections.\n"
-        printf "[NOTE] If Business Automation Insights (BAI) is needed for FileNet Content Manager, Operational Decision Manager, Automation Decision Services, Business Automation Workflow, or Workflow Process Service, you must select option 10"
+        printf "[NOTE] If Business Automation Insights (BAI) is needed for Content Cortex, Operational Decision Manager, Decision Intelligence Client Managed Software, Business Automation Workflow, or Workflow Process Service, you must select option 10"
         printf "/n"
 
         # Display menu with ticks for selected options
-        echo "1) Automation Decision Services $(if [[ ${SELECTED_FILTER_OPTIONS[0]} -eq 1 ]]; then echo '✔'; fi)"
+        echo "1) Decision Intelligence Client Managed Software $(if [[ ${SELECTED_FILTER_OPTIONS[0]} -eq 1 ]]; then echo '✔'; fi)"
         echo "2) Automation Document Processing $(if [[ ${SELECTED_FILTER_OPTIONS[1]} -eq 1 ]]; then echo '✔'; fi)"
         echo "3) Automation Workstream Services  $(if [[ ${SELECTED_FILTER_OPTIONS[2]} -eq 1 ]]; then echo '✔'; fi)"
         echo "4) Business Automation Application  $(if [[ ${SELECTED_FILTER_OPTIONS[3]} -eq 1 ]]; then echo '✔'; fi)"
         echo "5) Business Automation Workflow  $(if [[ ${SELECTED_FILTER_OPTIONS[4]} -eq 1 ]]; then echo '✔'; fi)"
         echo "6) Process Federation Server  $(if [[ ${SELECTED_FILTER_OPTIONS[5]} -eq 1 ]]; then echo '✔'; fi)"
-        echo "7) IBM FileNet® Content Manager  $(if [[ ${SELECTED_FILTER_OPTIONS[6]} -eq 1 ]]; then echo '✔'; fi)"
+        echo "7) IBM Content Cortex Standard Edition  $(if [[ ${SELECTED_FILTER_OPTIONS[6]} -eq 1 ]]; then echo '✔'; fi)"
         echo "8) Operational Decision Manager  $(if [[ ${SELECTED_FILTER_OPTIONS[7]} -eq 1 ]]; then echo '✔'; fi)"
         echo "9) Workflow Process Service  $(if [[ ${SELECTED_FILTER_OPTIONS[8]} -eq 1 ]]; then echo '✔'; fi)"
         echo "10) Business Automation Insights standalone  $(if [[ ${SELECTED_FILTER_OPTIONS[9]} -eq 1 ]]; then echo '✔'; fi)"
@@ -560,7 +561,7 @@ function modify_metadata_files(){
 }
 
 
-# Syntax updates made For https://jsw.ibm.com/browse/DBACLD-207571 to be YQ 4 compatible
+# Edits made For https://jsw.ibm.com/browse/DBACLD-207571 so that the syntax is YQ 4 compatible
 # Function to update Image set configfile for staging based dev mode
 # IF images are still in staging the image set config file needs to be updated to use staging based catalog sources 
 # also we need to do a skopeo copy the staging image to "oci:///root/<catalog-source-name>" and use that image in the image-set-config yaml file

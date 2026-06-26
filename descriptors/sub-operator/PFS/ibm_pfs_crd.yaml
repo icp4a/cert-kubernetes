@@ -18,7 +18,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
   name: processfederationservers.icp4a.ibm.com
 spec:
   group: icp4a.ibm.com
@@ -562,10 +562,6 @@ spec:
                           generic pfs-custom-env MYENV1=VALUE1 MYENV2=VALUE2
                         type: string
                     type: object
-                  custom_jdbc_pvc:
-                    description: Name of the custom libraries containing the JDBC
-                      drivers that will be mounted in the /shared/resources folder
-                    type: string
                   custom_labels:
                     additionalProperties:
                       type: string
@@ -1538,7 +1534,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
   name: federatedsystems.icp4a.ibm.com
 spec:
   group: icp4a.ibm.com

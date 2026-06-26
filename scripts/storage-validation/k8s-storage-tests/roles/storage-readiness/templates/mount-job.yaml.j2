@@ -9,7 +9,7 @@ spec:
     spec:
       containers:
       - name: mount-job
-        image: "{{ docker_registry }}/centos/{{ arch }}"
+        image: {{ storage_val_image }}
         imagePullPolicy: "IfNotPresent"
         command: ["sh"]
         args:

@@ -17,6 +17,7 @@ exec 3>/dev/null
 
 # Import common utilities and environment variables
 source ${CUR_DIR}/helper/common.sh
+source ${CUR_DIR}/helper/messages.sh
 RUNTIME_MODE=$1
 TEMP_FOLDER=${CUR_DIR}/.tmp
 INSTALL_BAI=""
@@ -78,6 +79,54 @@ mkdir -p $TEMP_FOLDER >/dev/null 2>&1
       fi
   }
 
+function prompt_license(){
+    clear
+    echo
+    echo
+    printf '%b\n' "\x1B[1;31mIMPORTANT: Review the IBM Cloud Pak for Business Automation license information here: \n\x1B[0m"
+    printf '%b\n' "\x1B[1;31mhttps://www.ibm.com/support/customer/csol/terms/?id=L-VFRQ-EPLMC3\n\x1B[0m"
+
+    printf "\n"
+    while true; do
+        
+        if [[ -z "$CP4BA_AUTO_ACCEPT_LICENSE" ]]; then
+            printf "\x1B[1mDo you accept the IBM Cloud Pak for Business Automation license (Yes/No, default: No): \x1B[0m"
+
+            read -erp "" ans
+        else
+            ans="$CP4BA_AUTO_ACCEPT_LICENSE"
+        fi
+        case "$ans" in
+        "y"|"Y"|"yes"|"Yes"|"YES")
+            clear
+            printf "\n"
+            # New license message from 26.0.0 GA for https://jsw.ibm.com/browse/DBACLD-218047
+            printf '%b\n' "${BOLD_TEXT}${RED_TEXT}IMPORTANT: By accepting the license, you agree and understand that by default the program collects certain data and metrics regarding deployment and usage.\nFor more information, please consult the License Information for Cloud Pak for Business Automation.${RESET_TEXT}"
+            echo
+            if [[ -z "$CP4BA_AUTO_ACCEPT_LICENSE" ]]; then
+                prompt_press_any_key_to_continue
+            fi
+            echo
+            IBM_LICENSE="Accept"
+            validate_cli
+            break
+            ;;
+        "n"|"N"|"no"|"No"|"NO"|"")
+            echo
+            printf '%b\n' "Since the IBM license has not been accepted the script will now Exit...\n"
+            exit 0
+            ;;
+        *) 
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
+            if [[ ! -z "$CP4BA_AUTO_ACCEPT_LICENSE" ]]; then
+                printf '%b\n' "Please update CP4BA_AUTO_ACCEPT_LICENSE variable to have a supported value \"Yes\" or \"No\"\n"
+                exit 1
+            fi
+            ;;
+        esac
+    done
+}
+
 function prompt_wfps_license(){
     clear
     printf '%b\n' "${BOLD_TEXT}${RED_TEXT}IMPORTANT: Review the IBM Process Flow license information here: \n${RESET_TEXT}"
@@ -123,7 +172,6 @@ function prompt_wfps_license(){
     done
 }
 
-echo "creating temp folder"
 # During the development cycle we will need to apply cp4a_catalogsource_dev.yaml
 # catalog_source.yaml is the final deliver yaml.
 if [[ $RUNTIME_MODE == "dev" ]];then
@@ -198,19 +246,18 @@ elif [[ $RUNTIME_MODE == "process-flow-dev" || $RUNTIME_MODE == "process-flow" ]
 else
     online_source="ibm-cp4a-operator-catalog"
 fi
-
 OLM_CATALOG_TMP=${TEMP_FOLDER}/.catalog_source.yaml
 OLM_CATALOG_TMP_BAK=${TEMP_FOLDER}/.catalog_source_bak.yaml
 OLM_OPT_GROUP_TMP=${TEMP_FOLDER}/.operator_group.yaml
 OLM_SUBSCRIPTION_TMP=${TEMP_FOLDER}/.subscription.yaml
+REDIS_SUBSCRIPTION=${PARENT_DIR}/descriptors/op-olm/redis-subscription.yaml
+REDIS_SUBSCRIPTION_TMP=${TEMP_FOLDER}/.redis-subscription.yaml
+
 
 
 echo '' > $LOG_FILE
 
 function validate_cli(){
-    if [ -z $CP4BA_AUTO_PLATFORM ]; then
-    clear
-    fi
 
     if [[ "${SCRIPT_MODE}" == "OLM" ]];then
         printf '%b\n' "${BOLD_TEXT}This script prepares the OLM for deploying certain $CP4BA_FULL_NAME capabilities ${RESET_TEXT}"
@@ -555,7 +602,7 @@ function select_separate_operator(){
     #     while true; do
     #         if [[ -z "$CP4BA_AUTO_MULTIPLE_DEPLOYMENT" ]]; then
     #             printf "${BOLD_TEXT}Do you want to deploy multiple deployments of CP4BA in the same cluster? (Yes/No, default: No): ${RESET_TEXT}"
-    #             read -erp "" ans
+    #             read -rp "" ans
     #         else
     #             printf "${BOLD_TEXT}Do you want to deploy multiple deployments of CP4BA in the same cluster? (Yes/No, default: No): $CP4BA_AUTO_MULTIPLE_DEPLOYMENT${RESET_TEXT}\n"
     #             ans=$CP4BA_AUTO_MULTIPLE_DEPLOYMENT
@@ -1119,17 +1166,17 @@ function verify_existing_csv(){
 
     if [[ "$RUNTIME_MODE" == "baw" || $RUNTIME_MODE == "baw-dev" ]]
     then
-      ${CLI_CMD} get csv --all-namespaces|grep ibm-cs-bawoperator.v >&3 2>&3
+      ${CLI_CMD} get csv --all-namespaces|grep ibm-cs-bawoperator.v >/dev/null 2>&1
       exist_csv_project_array=($(${CLI_CMD} get csv --all-namespaces|grep ibm-cs-bawoperator.v|awk '{print $1}'))
       returnValue=$?
     elif [[ "$RUNTIME_MODE" == "process-flow" || $RUNTIME_MODE == "process-flow-dev" ]]
     then
-      ${CLI_CMD} get csv --all-namespaces|grep ibm-process-flow-server-operator.v >&3 2>&3
+      ${CLI_CMD} get csv --all-namespaces|grep ibm-process-flow-server-operator.v >/dev/null 2>&1
       exist_csv_project_array=($(${CLI_CMD} get csv --all-namespaces|grep ibm-process-flow-server-operator.v|awk '{print $1}'))
       returnValue=$?
 
     else
-      ${CLI_CMD} get csv --all-namespaces|grep ibm-cp4a-operator.v >&3 2>&3
+      ${CLI_CMD} get csv --all-namespaces|grep ibm-cp4a-operator.v >/dev/null 2>&1
       exist_csv_project_array=($(${CLI_CMD} get csv --all-namespaces|grep ibm-cp4a-operator.v|awk '{print $1}'))
       returnValue=$?
     fi
@@ -1435,6 +1482,60 @@ function prepare_olm_install() {
         exit 1
     fi
 
+    # Deploy IBM Redis Operator subscription for MCP Server OAuth storage
+    info "Deploying IBM Redis Operator subscription..."
+    
+    # Check if Redis subscription already exists
+    if ${CLI_CMD} get subscription ibm-redis-cp-operator-catalog-subscription -n $temp_project_name >/dev/null 2>&1; then
+        success "IBM Redis Operator subscription already exists in project \"$temp_project_name\""
+    else
+        # Prepare Redis subscription file
+        cp -rf ${REDIS_SUBSCRIPTION} ${REDIS_SUBSCRIPTION_TMP}
+        
+        # Replace namespace placeholder
+        ${SED_COMMAND} "s/REPLACE_NAMESPACE/$temp_project_name/g" ${REDIS_SUBSCRIPTION_TMP}
+        
+        # Set correct sourceNamespace for private catalog (global catalog uses template default)
+        if [[ "$PRIVATE_CATALOG" == "Yes" ]]; then
+            ${SED_COMMAND} "s/sourceNamespace: .*/sourceNamespace: $temp_project_name/g" ${REDIS_SUBSCRIPTION_TMP}
+        fi
+        
+        # Apply Redis subscription
+        ${CLI_CMD} apply -f ${REDIS_SUBSCRIPTION_TMP}
+        if [ $? -eq 0 ]; then
+            success "IBM Redis Operator subscription created successfully!"
+            
+            # Wait for Redis operator to be ready
+            info "Waiting for IBM Redis Operator to be ready..."
+            local max_retry=60
+            local retry=0
+            local wait_time=5
+            while [ $retry -lt $max_retry ]; do
+                if ${CLI_CMD} get csv -n $temp_project_name 2>/dev/null | grep ibm-redis-cp | grep Succeeded >/dev/null 2>&1; then
+                    success "IBM Redis Operator is ready!"
+                    break
+                fi
+                retry=$((retry+1))
+                if [ $retry -lt $max_retry ]; then
+                    # Check more frequently at first (5s), then slow down after 10 retries (10s)
+                    if [ $retry -gt 10 ]; then
+                        wait_time=10
+                    fi
+                    printf '%s' "."
+                    sleep $wait_time
+                fi
+            done
+            echo ""  
+            
+            if [ $retry -eq $max_retry ]; then
+                warning "IBM Redis Operator CSV not ready after timeout"
+                warning "Please check the operator status manually with: ${CLI_CMD} get csv -n $temp_project_name | grep redis"
+            fi
+        else
+            warning "IBM Redis Operator subscription creation failed (non-critical, continuing...)"
+        fi
+    fi
+
     # patch csv to use cp.stg.icr.io/cp instead of icr.io/cpopen with development mode
     # and patch the service account to use image pull secret ibm-entitlement-key
     if [[ ($RUNTIME_MODE == "process-flow-dev") &&  ("$PLATFORM_SELECTED" == "other") ]]; then
@@ -1699,16 +1800,11 @@ function prepare_olm_install() {
             ${CLI_CMD} project ${temp_project_name} >> ${LOG_FILE}
             ${CLI_CMD} adm policy add-role-to-user edit ${user_name} >> ${LOG_FILE}
             ${CLI_CMD} adm policy add-role-to-user registry-editor ${user_name} >> ${LOG_FILE}
-            ${CLI_CMD} adm policy add-role-to-user $role_name_olm ${user_name} >&3 2>&3
+            ${CLI_CMD} adm policy add-role-to-user $role_name_olm ${user_name}  >&3 2>&3
             ${CLI_CMD} adm policy add-role-to-user $role_name_olm ${user_name} >> ${LOG_FILE}
             if [[ "$DEPLOYMENT_TYPE" == "starter" ]];then
-                cluster_role_name_olm=$(${CLI_CMD} get clusterrole|grep ibm-cp4a-operator.v|sort -t"t" -k1r|awk 'NR==1{print $1}')
-                if [[ -z $cluster_role_name_olm ]]; then
-                    echo "No cluster role found for $CP4BA_NAME operator"
-                    exit 1
-                else
-                    ${CLI_CMD} adm policy add-cluster-role-to-user $cluster_role_name_olm ${user_name} >> ${LOG_FILE}
-                fi
+                cluster_role_name_olm=$(${CLI_CMD} get clusterrole|grep icp4a-foundation-operator|sort -t"t" -k1r|awk 'NR==1{print $1}')
+
             fi
             echo "Done!"
         fi
@@ -1807,6 +1903,8 @@ function validate_docker_podman_cli(){
 
 # Function to display the airgap mode prerequisites and also give the user an option to continue or rerun the script
 function display_airgap_prerequisites(){
+    echo
+    echo
     printf "${BOLD_TEXT}${RED_TEXT}Make sure that you have completed the following checklist items before proceeding with the offline/airgap cluster setup mode\n${RESET_TEXT}"
     printf "${BOLD_TEXT}${RED_TEXT}1) Mirroring of Images to the Private Registry \n${RESET_TEXT}"
     printf "${BOLD_TEXT}${RED_TEXT}2) Update Global Pull Secret to include login credentials to the Private Registry images have been mirrored into \n${RESET_TEXT}"
@@ -1817,7 +1915,7 @@ function display_airgap_prerequisites(){
     printf "%s%s%s\n" "${BOLD_TEXT}${RED_TEXT}" "From https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE navigate to Installing --> Installing Production Deployment --> Installing a CP4BA multi-pattern production deployment --> Option 2: Preparing your cluster for an air-gapped (offline) deployment" "${RESET_TEXT}"
     printf "\n"
     printf "${BOLD_TEXT}Do you want to proceed with the offline/airgap cluster setup (Yes/No, default: No): ${RESET_TEXT}"
-    read -erp "" ans
+    read -rp "" ans
     printf "\n"
     case "$ans" in
     "y"|"Y"|"yes"|"Yes"|"YES")
@@ -1858,8 +1956,15 @@ function get_entitlement_registry(){
     entitlement_key=""
     printf "\n"
     printf "\n"
+
+    #if [[ "$AIRGAP_INSTALL" == "Yes" ]]; then
+    #    printf "\n"
+    #    printf "${BOLD_TEXT}${YELLOW_TEXT}[IMPORTANT]${RESET_TEXT} In order to set up the Usage Metering connection to Software Central which is a mandate from CP4BA $CP4BA_RELEASE_BASE, the script requires IBM Entitlement Key to be provided. \n${RESET_TEXT}"
+    #    printf "\n"
+    #fi
     printf "${BOLD_TEXT}${RED_TEXT}Follow the instructions on how to get your Entitlement Key: \n${RESET_TEXT}"
     printf "%s%s%s\n" "${BOLD_TEXT}${RED_TEXT}" "From https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE navigate to Installing --> Installing Production Deployment --> Installing CP4BA multi-pattern production deployment --> Getting access to images from the public IBM Entitled Registry" "${RESET_TEXT}"
+
     printf "\n"
     while true; do
         if [[ ! -z "$CP4BA_AUTO_ENTITLEMENT_KEY" && ! -z "$CP4BA_AUTO_LOCAL_REGISTRY" ]]; then
@@ -1934,10 +2039,10 @@ function get_entitlement_registry(){
                             printf 'Entitlement Registry key is valid.\n'
                             entitlement_verify_passed="passed"
                         else
-                            printf '${BOLD_TEXT}${RED_TEXT}The Entitlement Registry key failed. Try again...\n${RESET_TEXT}'
+                            printf "${BOLD_TEXT}${RED_TEXT}The Entitlement Registry key failed. Try again...\n${RESET_TEXT}"
                             ATTEMPTS=$((ATTEMPTS + 1))
                             if [[ $ATTEMPTS -eq 10 ]]; then
-                                printf '${BOLD_TEXT}Enter a valid Entitlement Registry key. Exiting ...\n${RESET_TEXT}'
+                                printf "${BOLD_TEXT}Enter a valid Entitlement Registry key. Exiting ...\n${RESET_TEXT}"
                                 exit 1
                             fi
                             entitlement_key=''
@@ -2123,7 +2228,7 @@ function get_storage_class_name(){
     #     do
     #         if [ -z "$CP4BA_AUTO_STORAGE_CLASS_OCP" ]; then
     #             printf "${BOLD_TEXT}please enter the dynamic storage classname: ${RESET_TEXT}"
-    #             read -erp "" storage_class_name
+    #             read -rp "" storage_class_name
     #         else
     #             printf "${BOLD_TEXT}please enter the dynamic storage classname: ${RESET_TEXT}$CP4BA_AUTO_STORAGE_CLASS_OCP\n"
     #             storage_class_name=$CP4BA_AUTO_STORAGE_CLASS_OCP
@@ -2152,7 +2257,7 @@ function get_storage_class_name(){
     #     do
     #         if [ -z "$CP4BA_AUTO_STORAGE_CLASS_FAST_ROKS" ]; then
     #             printf "${BOLD_TEXT}please enter the dynamic storage classname for fast storage: ${RESET_TEXT}"
-    #             read -erp "" sc_fast_file_storage_classname
+    #             read -rp "" sc_fast_file_storage_classname
     #         else
     #             printf "${BOLD_TEXT}please enter the dynamic storage classname for fast storage: ${RESET_TEXT}$CP4BA_AUTO_STORAGE_CLASS_FAST_ROKS\n"
     #             sc_fast_file_storage_classname=$CP4BA_AUTO_STORAGE_CLASS_FAST_ROKS
@@ -2329,18 +2434,18 @@ function check_airgap_mode(){
         do
             case $opt in
                 "Offline/Airgap")
-                    AIRGAP_INSTALL="Yes"
+                    AIRGAP_INSTALL="yes"
                     break
                     ;;
                 "Online")
-                    AIRGAP_INSTALL="No"
+                    AIRGAP_INSTALL="no"
                     break
                     ;;
                 *) echo "invalid option $REPLY";;
             esac
         done
     else
-        AIRGAP_INSTALL=$CP4BA_AUTO_AIRGAP_MODE
+        AIRGAP_INSTALL=$(echo "$CP4BA_AUTO_AIRGAP_MODE" | tr '[:upper:]' '[:lower:]')
         printf '%b\n' "${BOLD_TEXT}Do you wish to setup the cluster for an airgap/offline based CP4BA deployment :${RESET_TEXT} $CP4BA_AUTO_AIRGAP_MODE"
     fi
 }
@@ -2362,7 +2467,7 @@ function select_platform(){
           PS3='Enter a valid option [1 to 2]: '
         fi
         # For airgap deployment only ROKS and OCP is supported
-        if [[ $AIRGAP_INSTALL == "Yes" ]]; then
+        if [[ $AIRGAP_INSTALL == "yes" ]]; then
             options=("RedHat OpenShift Kubernetes Service (ROKS) - Public Cloud" "Openshift Container Platform (OCP) - Private Cloud")
             PS3='Enter a valid option [1 to 2]: '
         fi
@@ -2412,7 +2517,7 @@ function select_deployment_type(){
             DEPLOYMENT_TYPE="production"
         else
             # For airgap mode only deployment type supported is production
-            if [[ "$AIRGAP_INSTALL" == "Yes" ]]; then
+            if [[ "$AIRGAP_INSTALL" == "yes" ]]; then
                 echo "${YELLOW_TEXT}ATTENTION: ${RESET_TEXT}${RED_TEXT}The Airgap / Offline Mode only supports \"Production\" deployment type. Selecting \"Production\" as the deployment type.${RESET_TEXT}"
                 DEPLOYMENT_TYPE="production"
             else
@@ -2420,9 +2525,9 @@ function select_deployment_type(){
                 if [[ "$RUNTIME_MODE" == "baw" || $RUNTIME_MODE == "baw-dev" || $RUNTIME_MODE == "process-flow-dev" || $PRIVATE_CATALOG == "Yes" ]]; then
                     options=("Production")
                     PS3='Enter a valid option [1]: '
-                #DBACLD-194974: Remove Starter option for CP4BA 25.0.1 IF001 by checking the version $CP4BA_PATCH_VERSION and $CP4BA_RELEASE_BASE_MAJOR_VERSION
-                elif skip_edb_for_2501; then
-                    info "Note: Please be aware that for this ${VERSION_TO_SKIP_EDB} Limited Support Release, Starter deployment is not supported. Starter deployment support will be available in the upcoming iFix and next release."
+                #DBACLD-222678: Remove Starter option for CP4BA 26.0.0 GA by checking the version $CP4BA_PATCH_VERSION and $CP4BA_RELEASE_BASE_MAJOR_VERSION
+                elif skip_edb; then
+                    info "Note: Please be aware that for this ${VERSION_TO_SKIP_EDB} version, Starter deployment is not supported. Starter deployment support will be available in the upcoming iFix and next release."
                     options=("Production")
                     PS3='Enter a valid option [1]: '
                 else
@@ -2447,7 +2552,7 @@ function select_deployment_type(){
             fi
         fi
     else
-        if [[ "$AIRGAP_INSTALL" == "Yes" && "$CP4BA_AUTO_DEPLOYMENT_TYPE" == "starter" ]]; then
+        if [[ "$AIRGAP_INSTALL" == "yes" && "$CP4BA_AUTO_DEPLOYMENT_TYPE" == "starter" ]]; then
             echo "${YELLOW_TEXT}ATTENTION: ${RESET_TEXT}${RED_TEXT}The Airgap / Offline Mode only supports \"Production\" deployment type.${RESET_TEXT}."
             printf '%b\n' "${BOLD_TEXT}${RED_TEXT}The script will now exit...!\n${RESET_TEXT}"
             exit 1
@@ -2826,7 +2931,7 @@ function get_local_registry_server(){
         local_registry_server=""
         while [[ $local_registry_server == "" ]]
         do
-            read -erp "" local_registry_server
+            read -rp "" local_registry_server
             if [ -z "$local_registry_server" ]; then
                 printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid service name or the URL for the docker registry.${RESET_TEXT}"
             fi
@@ -3181,13 +3286,80 @@ function recreate_cp4ba_common_configmap() {
 
 }
 
+
+
+#######################################################
+# Grant ibm-licensing secret access for content operator
+# 
+# Parameters:
+#   $1 - operator_namespace: Namespace where the operator service account exists
+#   $2 - licensing_namespace: Namespace containing the secrets to access
+#   $3 - service_account_name: Name of the service account (default: ibm-cp4a-content-operator)
+#######################################################
+# This function is required for lsreporter deployment where the content operator has to have access to ibm-licensing secrets
+# # https://jsw.ibm.com/browse/DBACLD-236572 https://jsw.ibm.com/browse/DBACLD-236556
+function grant_ibm_licensing_namespace_secret_access() {
+    local operator_namespace="${1}"
+    local licensing_namespace="${2}"
+    local service_account_name="${3:-ibm-cp4a-content-operator}"
+    
+    
+    info "Creating RBAC resources to grant ${service_account_name} in ${operator_namespace} access to secrets in ${licensing_namespace}..."
+    
+    # Create Role in target namespace
+    cat <<EOF | ${CLI_CMD} apply -f -
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ${licensing_namespace}-secret-reader
+  namespace: ${licensing_namespace}
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list"]
+EOF
+    
+    if [[ $? -ne 0 ]]; then
+        warning "ERROR: Failed to create Role in ${licensing_namespace}"
+        return 1
+    fi
+    
+    # Create RoleBinding in target namespace
+    cat <<EOF | ${CLI_CMD} apply -f -
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ${service_account_name}-${licensing_namespace}-access
+  namespace: ${licensing_namespace}
+subjects:
+- kind: ServiceAccount
+  name: ${service_account_name}
+  namespace: ${operator_namespace}
+roleRef:
+  kind: Role
+  name: ${licensing_namespace}-secret-reader
+  apiGroup: rbac.authorization.k8s.io
+EOF
+    
+    if [[ $? -ne 0 ]]; then
+        warning "ERROR: Failed to create RoleBinding in ${licensing_namespace}"
+        return 1
+    fi
+    
+    success "Successfully created RBAC resources."
+    
+}
+
+
 ################################################
 #### Begin - Main step for install operator ####
 ################################################
 save_log "cp4a-script-logs" "cp4a-clusteradmin-setup-log"
 trap cleanup_log EXIT
 replace_name_for_process_flow
-clear
+#clear
 
 # Function to display script usage
 show_help() {
@@ -3235,6 +3407,8 @@ else
     CS_INSTALL="NO"
 fi
 
+prompt_license
+
 # DBACLD-187443: Check cert-manager installation status once and store in variable
 info "Checking cert-manager installation status..."
 if is_cert_manager_installed; then
@@ -3258,6 +3432,7 @@ info "Setting up the cluster for IBM Cloud Pak for Business Automation"
 check_cluster_login
 
 check_airgap_mode
+clear
 select_platform
 
 if [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" || "$RUNTIME_MODE" == "process-flow" || $RUNTIME_MODE == "process-flow-dev" ]]; then
@@ -3278,13 +3453,16 @@ select_deployment_type
  # BAW STD couldn't enable fips since it don't use the common service.
 if [[ ($PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS") && $DEPLOYMENT_TYPE == "production" && $RUNTIME_MODE != "baw" && $RUNTIME_MODE != "baw-dev" ]]; then
     check_fips_enable
+    echo
 fi
 
 select_private_catalog
+echo
 
 if [[ $DEPLOYMENT_TYPE == "production" ]]; then
     if [[ ! ("$RUNTIME_MODE" == "baw" || $RUNTIME_MODE == "baw-dev" || "$RUNTIME_MODE" == "process-flow" || $RUNTIME_MODE == "process-flow-dev") ]]; then
         select_separate_operator
+        echo
     fi
 fi
 
@@ -3326,12 +3504,12 @@ if [[ $SEPARATE_OPERATOR == "No" || -z $SEPARATE_OPERATOR || $DEPLOYMENT_TYPE ==
 else
     create_configmap_fips $project_name_cs_service
 fi
-
 if [[ $SCRIPT_MODE == "OLM" ]];then
     ${CLI_CMD} project $project_name >&3 2>&3
 
-    if [[ $AIRGAP_INSTALL == "Yes" ]]; then
+    if [[ $AIRGAP_INSTALL == "yes" ]]; then
         display_airgap_prerequisites
+        #get_entitlement_registry
     else
         get_entitlement_registry
         # get_storage_class_name
@@ -3339,58 +3517,13 @@ if [[ $SCRIPT_MODE == "OLM" ]];then
             verify_local_registry_password
         fi
         get_storage_class_name
+        echo
         if [[ "$use_entitlement" == "yes" ]]; then
             create_secret_entitlement_registry
         fi
         if [[ "$use_entitlement" == "no" ]]; then
             create_secret_local_registry
         fi
-        # allocate_operator_pvc_olm_or_cncf
-        # DBACLD-215558: Are "process-flow" and process-flow-dev" internal ???  Leave it alone for now.
-        ## We don't support "other" platform for now.
-#         if [[ $PLATFORM_SELECTED == "other" && ( "$RUNTIME_MODE" == "process-flow" || $RUNTIME_MODE == "process-flow-dev" ) ]]; then
-#         validate_cncf_olm
-
-#             get_domain_name
-
-#             # for cncf platform, need to create configmap $DEDICATED_COMMON_PROJECT/ibm-cpp-config for common service
-#             # $DEDICATED_COMMON_PROJECT is the common service namespace corresponding to $DEDICATED_PROJECT.
-#             if [[ $CNCF_DOMAIN_NAME != "" ]]; then
-
-#             ${CLI_CMD} get cm ${COMMON_SERVICES_CM_DEDICATED_NAME} -n ${COMMON_SERVICES_CM_NAMESPACE} -o jsonpath='{ .data.common-service-maps\.yaml}' > ${TEMP_FOLDER}/cm-data.yaml
-#             dedicate_tmp=$(${YQ_CMD} '.namespaceMapping[]."requested-from-namespace"
-#                 | select(.==strenv(DEDICATED_PROJECT))
-#                 | path
-#                 | ( .[] | select((. | tag) == "!!int") |= (["[", tostring, "]"] | join("")) )
-#                 | join(".")
-#                 | sub("\\.\\[","[")' "${TEMP_FOLDER}/cm-data.yaml")
-#             if [[ $dedicate_tmp == "" ]]; then
-#                 printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Can not find namespace $DEDICATED_PROJECT in the configmap ${COMMON_SERVICES_CM_DEDICATED_NAME} in the namespace ${COMMON_SERVICES_CM_NAMESPACE}  .\n${RESET_TEXT}"
-#                 exit 1
-#             fi
-#             DEDICATED_COMMON_PROJECT=$(${YQ_CMD} ".${dedicate_tmp:0:20}.map-to-common-service-namespace" ${TEMP_FOLDER}/cm-data.yaml)
-
-#             rm -fr ${TEMP_FOLDER}/cm-data.yaml >> ${LOG_FILE}
-
-#             printf '%b\n' "${BOLD_TEXT}Creating the configmap required by common service...${RESET_TEXT}"
-#             isNsExists=`${CLI_CMD} get namespace $DEDICATED_COMMON_PROJECT --ignore-not-found | wc -l`  >/dev/null 2>&1
-#             if [ $isNsExists -ne 2 ] ; then
-#                 ${CLI_CMD} create namespace $DEDICATED_COMMON_PROJECT >/dev/null 2>&1
-#             fi
-#             cat <<EOF | ${CLI_CMD} apply -f -
-#             apiVersion: v1
-#             kind: ConfigMap
-#             metadata:
-#                 name: ibm-cpp-config
-#                 namespace: $DEDICATED_COMMON_PROJECT
-#             data:
-#                 kubernetes_cluster_type: cncf
-#                 # modify it according for your worker node ip address
-#                 # if you expose nginx ingress controller with NodePort service
-#                 domain_name: $CNCF_DOMAIN_NAME
-# EOF
-#             fi
-#         fi
     fi
     # Checking the IBM Cert Manager Operator to be ready or not
     if [[ ! ("$RUNTIME_MODE" == "baw" || $RUNTIME_MODE == "baw-dev" || "$RUNTIME_MODE" == "process-flow" || $RUNTIME_MODE == "process-flow-dev") ]]; then
@@ -3426,8 +3559,54 @@ else
     apply_cp4a_operator
 fi
 
-# create_scc
+# Install the Usage Metering Operator
+if [[ $SEPARATE_OPERATOR == "No" || -z $SEPARATE_OPERATOR || $DEPLOYMENT_TYPE == "starter" ]]; then
+    operator_ns="$project_name"
+    services_ns="$project_name"
+else
+    operator_ns="$project_name_operator"
+    services_ns="$project_name_cs_service"
+fi
+echo
+
+# Function to create RBAC resources to allow the content operator to access secrets in the ibm-licensing Namespace
+# https://jsw.ibm.com/browse/DBACLD-236572 https://jsw.ibm.com/browse/DBACLD-236556
+grant_ibm_licensing_namespace_secret_access "$operator_ns" "ibm-licensing" "ibm-cp4a-content-operator"
+# Function that handles all the usage metering operator related tasks
+# At this point the UMS Set up would happen only for production
+# https://jsw.ibm.com/browse/DBACLD-216413
+# $1 Operator namespace
+# $2 Services namespace
+# $3 scenario i.e fresh_install or upgrade
+# $4 entitlement_key which is the key used to generate the connection point secret
+# $5 runtime mode that tells the script if it is being used in dev mode and if so the sandbox setting is enabled
+# $6 catalog namespace ( helps differentiate in case global catalog was used)
+# $7 AIRGAP MODE
+if [[ $DEPLOYMENT_TYPE == "production" ]]; then
+    install_ibm_usage_metering "$operator_ns" "$services_ns" "fresh_install" "$DOCKER_REG_KEY" "$RUNTIME_MODE" "$CATALOG_NAMESPACE" "$AIRGAP_INSTALL"
+fi
+
+
+# Configure Software Central integration for an existing IBMLicensing resource.
+#
+# Arguments:
+#   $1 - namespace where the ILS connection point secret should exist i.e ibm-licensing
+#   $2 - services namespace where ibm-entitlement-key may exist
+#   $3 - entitlement key value; will be empty during upgrade
+#   $4 - scenario value such as "upgrade" or "fresh_install"
+#   $5 - runtime mode such as "dev" or "prod" which is determined by the runtime mode
+# https://jsw.ibm.com/browse/DBACLD-223163
+if [[ $DEPLOYMENT_TYPE == "production" && "$AIRGAP_INSTALL" == "no" ]]; then
+    setup_ils_configuration_for_vpc_metrics "ibm-licensing" "$services_ns" "$DOCKER_REG_KEY" "fresh_install" "$RUNTIME_MODE"
+fi 
+
+
 display_storage_classes
+
+# DBACLD-240347: Copy ibm-workflow-operator-sa service account from operator namespace to services namespace for 26.0.0-GA
+if [[ "${CP4BA_RELEASE_BASE}-${CP4BA_PATCH_VERSION}" == "26.0.0-GA" ]]; then
+    copy_workflow_operator_sa "$operator_ns" "$services_ns"
+fi
 
 # if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]];
 # then

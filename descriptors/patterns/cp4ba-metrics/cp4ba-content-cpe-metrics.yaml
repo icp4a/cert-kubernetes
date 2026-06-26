@@ -1,0 +1,44 @@
+apiVersion: operator.ibm.com/v1
+kind: IBMServiceMeterDefinition
+metadata:
+  name: cp4ba-cpe-metrics
+  namespace: REPLACE_NAMESPACE
+spec:
+  mappingId: cpedeployment000000000001
+  processing: LAST
+  repeat: true
+  breakdownDefs:
+    - breakdownBy:
+        name: INSTANCE_COUNT
+      groupBy:
+        - componentId
+        - componentName
+        - version
+        - environment
+        - architecture
+        - platform
+        - java_rpc_calls
+        - dot_net_rpc_calls
+        - css_objects_indexed
+        - es_os_objects_created
+        - db2_db_count
+        - oracle_db_count
+        - mssql_db_count
+        - postgresql_db_count
+        - asa_write_bytes
+        - fcd_fcps_in_use
+        - document_creates
+        - propertytemplate_creates
+        - choicelist_creates
+        - folder_creates
+        - sweep_creates
+      source: metricQuantity
+      processing: LAST
+  data:
+    componentId: 7ab1213e53cf4260a247c75f16c2569d
+    componentName: IBM Content Platform Engine
+    productId: e270b00ce6d7486db1e31fc5fd09fffc
+    productName: IBM Content Cortex Essentials Containers
+    metricName: INSTANCE_COUNT
+    metricDescription: count of CPE instances
+    metricType: ADOPTION

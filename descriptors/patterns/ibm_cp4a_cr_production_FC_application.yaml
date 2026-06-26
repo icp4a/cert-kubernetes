@@ -17,10 +17,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
-  appVersion: 25.0.1
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -44,7 +44,7 @@ spec:
     ## know the reason to change this value, please leave the default value.
     sc_deployment_context: "CP4A"
 
-    ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
+    ## Enable/disable ECM (Content Cortex) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
     ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true", then the initialization will occur.
     ## However, if sc_content_initialization is set to "false" (or the parameter doesn't exist), then the initialization will not occur (even with the "initialize_configuration" section defined)
@@ -107,12 +107,16 @@ spec:
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
     sc_is_multiple_az: true
 
+    ## By default we will always set the sc_enable_usage_metering flag to true and this will enable the operators to deploy the cron jobs to send usage metrics to software central.
+    ## Only set this flag to "false" if you want to opt-out sending usage metrics.
+    sc_enable_usage_metering: true
+
   #--------------------------------------------------------------------------------------------------------------------------------
   # This section contains CPE and GraphQL for Business Automation Application Data Persistence(ae_data_persistence)
   # It is required when you want to enable ae_data_persistence optional feature. Please uncomment it when enabling ae_data_persistence
   #--------------------------------------------------------------------------------------------------------------------------------
   # ########################################################################
-  # ########      IBM FileNet Content Manager configuration         ########
+  # ########      IBM Content Cortex configuration         ########
   # ########################################################################
   # ecm_configuration:
   #   ## FNCM secret that contains GCD DB user name and password, Object Store DB user name and password,
@@ -199,7 +203,7 @@ spec:
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/cpe
-  #       tag: "25.0.1-IF001"
+  #       tag: "26.0.0"
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
@@ -346,7 +350,7 @@ spec:
   #         pull_policy: IfNotPresent
   #         ## The default repository is the IBM Entitled Registry.
   #         repository: cp.icr.io/cp/cp4a/fncm/lscollector
-  #         tag: "25.0.1-IF001"
+  #         tag: "26.0.0"
   #       ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
   #       ## If more resources are needed, make the changes here to meet your requirement.
   #       resources:
@@ -382,7 +386,7 @@ spec:
   #     image:
   #       ## The default repository is the IBM Entitled Registry.
   #       repository: cp.icr.io/cp/cp4a/fncm/graphql
-  #       tag: "25.0.1-IF001"
+  #       tag: "26.0.0"
 
   #       ## This will override the image pull policy in the shared_configuration.
   #       pull_policy: IfNotPresent
@@ -505,7 +509,7 @@ spec:
   #  #    pull_policy: IfNotPresent
   #  #    ## The default repository is the IBM Entitled Registry.
   #  #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-  #  #    tag: "25.0.1-IF001"
+  #  #    tag: "26.0.0"
   #  # #  #  ## Below are the default LSReporter Production settings.
   #  #  ## Make the necessary changes as you see fit.
   #  #  product_settings:
@@ -610,6 +614,7 @@ spec:
   #     ## If you want PostgresDB to be created for a GCD database, set this parameter to true
   #     dc_use_postgres: false
   #     ## Provide the object store label for the object store.  The default value is "os" or not defined.
+  #     ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
   #     ## This label must match the OS secret you define in ibm-fncm-secret.
   #     ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
   #     ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
@@ -654,7 +659,7 @@ spec:
   # It is required when you want to enable ae_data_persistence optional feature. Please uncomment it when enabling ae_data_persistence
   #--------------------------------------------------------------------------------------------------------------------------------
   # ########################################################################
-  # ########  IBM FileNet Content Manager initialize configuration  ########
+  # ########  IBM Content Cortex initialize configuration  ########
   # ########################################################################
   # initialize_configuration:
   #   ic_domain_creation:

@@ -30,7 +30,7 @@ spec:
 {% endif %}
       containers:
       - name: consumer-job
-        image: "{{ docker_registry }}/ibm-cp4d-public/storage-util:1.0-{{ arch }}"
+        image: {{ storage_val_image }}
         imagePullPolicy: "IfNotPresent"
         env:
           - name: FILE_NAME

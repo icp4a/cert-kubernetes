@@ -272,7 +272,7 @@ cp4baProductionServiceConsole()
       local ADS_OLM_DEPLOYED=`cat $LOG_DIR/production-status.log | grep "olm_production_decisions_ads" |  awk 'NR==1' | awk '{print $2}'`
       #echo "******************** ADS_OLM_DEPLOYED: $ADS_OLM_DEPLOYED"
       if [ ! -z $ADS_OLM_DEPLOYED ] && [ ${ADS_OLM_DEPLOYED} == "true" ]; then
-        #echo "******************** Calling ADS"
+        #echo "******************** Calling DICMS"
         cp4baADSConsole "Production"
       fi
   fi
@@ -401,7 +401,7 @@ cp4baProductionServiceStatus()
       local ADS_OLM_DEPLOYED=`cat $LOG_DIR/production-status.log | grep "olm_production_decisions_ads" |  awk 'NR==1' | awk '{print $2}'`
       #echo "******************** ADS_OLM_DEPLOYED: $ADS_OLM_DEPLOYED"
       if [ ! -z $ADS_OLM_DEPLOYED ] && [ ${ADS_OLM_DEPLOYED} == "true" ]; then
-        #echo "******************** Calling ADS"
+        #echo "******************** Calling DICMS"
         cp4baADSStatus
       fi
   fi

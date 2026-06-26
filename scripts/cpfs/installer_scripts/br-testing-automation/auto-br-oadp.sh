@@ -259,16 +259,58 @@ function check_cluster_credentials() {
         error "TARGET_CLUSTER_TYPE value not set. Make sure it is either set in the parameters file or as an env variable."
     else
         if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
-            if [[ $BACKUP_CLU_SERVER == "" ]] || [[ $BACKUP_CLU_USERNAME == "" ]] || [[ $BACKUP_CLU_PASSWORD == "" ]] ||  [[ $RESTORE_CLU_SERVER == "" ]] || [[ $BACKUP_CLU_USERNAME == "" ]] || [[ $RESTORE_CLU_PASSWORD == "" ]]; then
-                error "If interacting with a different cluster (either restore or setup), all of BACKUP_CLU_SERVER BACKUP_CLU_USERNAME BACKUP_CLU_PASSWORD RESTORE_CLU_SERVER RESTORE_CLU_USERNAME and RESTORE_CLU_PASSWORD must be defined either in the parameters file or as an env variable." 
-            else
-                info "Different cluster selected. Validating login credentials work..."
+            local need_backup_creds="false"
+            local need_restore_creds="false"
+            
+            # Determine which credentials are needed based on the operation mode
+            if [[ $BACKUP == "true" ]] || [[ $SETUP_BACKUP == "true" ]]; then
+                need_backup_creds="true"
+            fi
+            if [[ $RESTORE == "true" ]] || [[ $SETUP_RESTORE == "true" ]]; then
+                need_restore_creds="true"
+            fi
+            
+            # Validate backup cluster credentials if needed
+            if [[ $need_backup_creds == "true" ]]; then
+                if [[ $BACKUP_CLU_SERVER == "" ]] || [[ $BACKUP_CLU_USERNAME == "" ]] || [[ $BACKUP_CLU_PASSWORD == "" ]]; then
+                    error "Backup operation requires BACKUP_CLU_SERVER, BACKUP_CLU_USERNAME, and BACKUP_CLU_PASSWORD to be defined either in the parameters file or as an env variable."
+                fi
+            fi
+            
+            # Validate restore cluster credentials if needed
+            if [[ $need_restore_creds == "true" ]]; then
+                if [[ $RESTORE_CLU_SERVER == "" ]] || [[ $RESTORE_CLU_USERNAME == "" ]] || [[ $RESTORE_CLU_PASSWORD == "" ]]; then
+                    error "Restore operation requires RESTORE_CLU_SERVER, RESTORE_CLU_USERNAME, and RESTORE_CLU_PASSWORD to be defined either in the parameters file or as an env variable."
+                fi
+            fi
+            
+            # Test login credentials based on what's needed
+            if [[ $need_backup_creds == "true" ]] && [[ $need_restore_creds == "true" ]]; then
+                info "Different cluster selected. Validating login credentials for both clusters..."
                 ${OC} login -u $RESTORE_CLU_USERNAME -p $RESTORE_CLU_PASSWORD --server=$RESTORE_CLU_SERVER --insecure-skip-tls-verify=true
-                info "Logging back into home cluster..."
+                if [[ $? -ne 0 ]]; then
+                    error "Failed to login to restore cluster. Please verify RESTORE_CLU_SERVER, RESTORE_CLU_USERNAME, and RESTORE_CLU_PASSWORD."
+                fi
+                info "Logging back into backup cluster..."
                 ${OC} login -u $BACKUP_CLU_USERNAME -p $BACKUP_CLU_PASSWORD --server=$BACKUP_CLU_SERVER --insecure-skip-tls-verify=true
+                if [[ $? -ne 0 ]]; then
+                    error "Failed to login to backup cluster. Please verify BACKUP_CLU_SERVER, BACKUP_CLU_USERNAME, and BACKUP_CLU_PASSWORD."
+                fi
+            elif [[ $need_restore_creds == "true" ]]; then
+                info "Restore-only mode. Validating restore cluster login credentials..."
+                ${OC} login -u $RESTORE_CLU_USERNAME -p $RESTORE_CLU_PASSWORD --server=$RESTORE_CLU_SERVER --insecure-skip-tls-verify=true
+                if [[ $? -ne 0 ]]; then
+                    error "Failed to login to restore cluster. Please verify RESTORE_CLU_SERVER, RESTORE_CLU_USERNAME, and RESTORE_CLU_PASSWORD."
+                fi
+            elif [[ $need_backup_creds == "true" ]]; then
+                info "Backup-only mode. Validating backup cluster login credentials..."
+                ${OC} login -u $BACKUP_CLU_USERNAME -p $BACKUP_CLU_PASSWORD --server=$BACKUP_CLU_SERVER --insecure-skip-tls-verify=true
+                if [[ $? -ne 0 ]]; then
+                    error "Failed to login to backup cluster. Please verify BACKUP_CLU_SERVER, BACKUP_CLU_USERNAME, and BACKUP_CLU_PASSWORD."
+                fi
             fi
         fi
-        success "Backup and Restore cluster login credentials verified."
+        success "Cluster login credentials verified."
     fi
 }
 

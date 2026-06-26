@@ -12,7 +12,7 @@
 ###############################################################################
 
 #################debug##########################
-# PATTERNS_SELECTED=("FileNet Content Manager,Operational Decision Manager,Automation Decision Services,Business Automation Application,Business Automation Workflow, Workflow Runtime,Automation Workstream Services,IBM Automation Document Processing, Runtime Environment")
+# PATTERNS_SELECTED=("FileNet Content Manager,Operational Decision Manager,Decision Intelligence Client Managed Software,Business Automation Application,Business Automation Workflow, Workflow Runtime,Automation Workstream Services,IBM Automation Document Processing, Runtime Environment")
 #################debug###d######################
 function map_pattern_and_CR(){
   i=0
@@ -24,7 +24,7 @@ function map_pattern_and_CR(){
       cr_file_name[${#cr_file_name[*]}]="content"
     elif [[ "${item}" =~ "Operational Decision Manager" ]]; then
       cr_file_name[${#cr_file_name[*]}]="decisions"
-    elif [[ "${item}" =~ "Automation Decision Services" ]]; then
+    elif [[ "${item}" =~ "Decision Intelligence Client Managed Software" ]]; then
       cr_file_name[${#cr_file_name[*]}]="decisions_ads"
     elif [[ "${item}" =~ "Business Automation Application" ]]; then
       cr_file_name[${#cr_file_name[*]}]="application"

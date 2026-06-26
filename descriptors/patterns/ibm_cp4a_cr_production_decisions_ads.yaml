@@ -16,10 +16,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
-  appVersion: 25.0.1
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -43,13 +43,13 @@ spec:
 
   shared_configuration:
 
-    ## CP4A patterns or capabilities to be deployed. This CR represents the "decisions_ads" pattern that brings ADS Designer and ADS Runtime.
+    ## CP4A patterns or capabilities to be deployed. This CR represents the "decisions_ads" pattern that brings DICMS Designer and DICMS Runtime.
     sc_deployment_patterns: decisions_ads
 
     ## The optional components to be installed if listed here.
     ## This is normally populated by the User script based on input from the user.
     ## User can also manually specify the optional components to be deployed here.
-    ## ADS has two 'ads_designer' and 'ads_runtime' optional component. If 'ads_runtime' is here, it is possible to also add 'bai'.
+    ## DICMS has two 'ads_designer' and 'ads_runtime' optional component. If 'ads_runtime' is here, it is possible to also add 'bai'.
     ## If ads_designer is set, you also have to set the 'ads_configuration.decision_designer.enabled' flag to true to install it.
     ## If ads_runtime is set, you also have to set the 'ads_configuration.decision_runtime.enabled' flag to true to install it.
     sc_optional_components:
@@ -74,7 +74,7 @@ spec:
     sc_is_multiple_az: true
 
   ########################################################################
-  ########   IBM Business Automation Decision Services            ########
+  ########   IBM Decision Intelligence Client Managed Software    ########
   ########################################################################
   # You can further customize the ads_configuration section as explained in the knowledge center.
   # See ibm_cp4a_cr_enterprise_FC_decisions_ads.yaml file in descriptors/patterns for all parameters and their default values.

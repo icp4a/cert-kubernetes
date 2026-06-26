@@ -1,13 +1,3 @@
-###############################################################################
-#
-# Licensed Materials - Property of IBM
-#
-# (C) Copyright IBM Corp. 2025. All Rights Reserved.
-#
-# US Government Users Restricted Rights - Use, duplication or
-# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
-#
-###############################################################################
 ---
 ########################################################################################
 
@@ -58,7 +48,7 @@
   loop:
      - name: file-owner-uid-test.yaml.j2
      - name: file-create-uid.yaml.j2
-     - name: file-edit-uid.yaml.j2
+     # - name: file-edit-uid.yaml.j2 # removing this test for consolidated image in 5.0.3, needs dedicated 'sudo' image outside of ibm-cp-datacore and param for 5.1.0.
   vars:
     type: uid
 

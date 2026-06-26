@@ -20,7 +20,7 @@ spec:
             topologyKey: "kubernetes.io/hostname"
       containers:
       - name: file-lock-job
-        image: "{{ docker_registry }}/centos/{{ arch }}"
+        image: {{ storage_val_image }}
         imagePullPolicy: "IfNotPresent"
         env:
           - name: FILE_NAME

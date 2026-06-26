@@ -17,19 +17,19 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 25.0.1
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
 
   shared_configuration:
-    ## FileNet Content Manager (FNCM) license and possible values are: user, concurrent-user, authorized-user, non-production, and production.
+    ### This is the Content Cortex license  parameter and the possible values are: user, concurrent-user, authorized-user, non-production, and production.
     ## This value could be different from the rest of the licenses.
     sc_deployment_fncm_license: "<Required>"
 
@@ -97,7 +97,7 @@ spec:
     sc_generate_sample_network_policies: false
 
     ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <route-name>-{{meta.namespace}}.<router-canonical-hostname> when not defined.
-    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.1?topic=scp-shared-configuration
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/26.0.0?topic=scp-shared-configuration
     ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
     #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
 
@@ -113,14 +113,14 @@ spec:
     ## This secret is also used by Workflow and BAStudio to store AES encryption key.
     encryption_key_secret: ibm-iaws-shared-key-secret
 
-    ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
+    ## Enable/disable ECM (Content Cortex) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
     ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true", then the initialization will occur.
     ## However, if sc_content_initialization is set to "false" (or the parameter doesn't exist), then the initialization will not occur (even with the "initialize_configuration" section defined)
     sc_content_initialization: false
 
     ## OR
-    ## If you want to enable the initialize for a specific product for ECM (FNCM) / BAN, you will need to use
+    ## If you want to enable the initialize for a specific product for ECM (Content Cortex) / BAN, you will need to use
     ## these fields instead.  Otherwise, use the default sc_content_initialization: false
     # sc_content_initialization:
     #  cpe: false
@@ -133,13 +133,13 @@ spec:
     sc_enable_instana_metric_collection: false
 
 
-    ## Enable/disable the ECM (FNCM) / BAN verification (e.g., creation of test folder, creation of test document,
+    ## Enable/disable the ECM (Content Cortex) / BAN verification (e.g., creation of test folder, creation of test document,
     ## execution of CBR search, and creation of Navigator demo repository and desktop).  If the "verify_configuration"
     ## section is defined in the CR and sc_content_verification is set to true, then the verification will occur.  Note that if you are upgrading or
     ## migrating, set this parameter to "false" since the env has been previously verified.
     sc_content_verification: false
     ## OR
-    ## If you want to enable the verification for a specific product for ECM (FNCM) / BAN, you will need to use
+    ## If you want to enable the verification for a specific product for ECM (Content Cortex) / BAN, you will need to use
     ## these fields instead.  Otherwise, use the default sc_content_verification: false
     # sc_content_verification:
     #  cpe: false
@@ -316,6 +316,7 @@ spec:
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
       dc_use_postgres: false
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
       ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
@@ -365,6 +366,7 @@ spec:
       ##   --from-literal=devos1DBUsername="<your os db username>" --from-literal=devos1DBPassword="<your os db password>"
       ## If you have multiple object stores, then you need to define multiple datasource sections starting at "dc_database_type" element after this section.
       ## Each dc_os_label shoudl be different (e.g., dc_os_label: "os1", dc_os_label: "os2", dc_os_label: "os3", etc).
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "os1", then your OS secret must be defined as:
       ## --from-literal=os1DBUsername="<your os db username>" --from-literal=os1DBPassword="<your os db password>"
@@ -411,6 +413,7 @@ spec:
       ##   --from-literal=aeosDBUsername="<your os db username>" --from-literal=aeosDBPassword="<your os db password>"
       ## If you have multiple object stores, then you need to define multiple datasource sections starting at "dc_database_type" element after this section.
       ## Each dc_os_label shoudl be different (e.g., dc_os_label: "os1", dc_os_label: "os2", dc_os_label: "os3", etc).
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "os1", then your OS secret must be defined as:
       ## --from-literal=os1DBUsername="<your os db username>" --from-literal=os1DBPassword="<your os db password>"
@@ -533,7 +536,7 @@ spec:
   ## this section and update the repo_service_url parameter with
   ## your development cdra URL.
   ########################################################################
-  ########      IBM FileNet Content Manager configuration         ########
+  ########      IBM Content Cortex configuration         ########
   ########################################################################
   #ecm_configuration:
   #############################################
@@ -576,7 +579,7 @@ spec:
 #        design_tls_secret: "cdra-tls-secret" # Default is `cdra-tls-secret`.  The secret name that contains the TLS certificate and key for the design API.  This is required if runtime_feedback.enabled is true and runtime_type is `distributed`.
 
   ########################################################################
-  ######## IBM FileNet Content Manager Initialization configuration ######
+  ######## IBM Content Cortex Initialization configuration ######
   ########################################################################
   ## NOTE: Automation Document Processing (ADP) capability is depended on CPE component (part of FNCM).
   ## Please do NOT change the hard-coded values below such as oc_cpe_obj_store_display_name, oc_cpe_obj_store_symb_name, dc_os_datasource_name,
@@ -621,7 +624,7 @@ spec:
         - "<Required>" # user name and group name for object store admin, for example, "CEAdmin".  This parameter accepts a list of values.
     ic_icn_init_info:
       icn_repos:
-      - add_repo_id: "devos1_repo1"
+      - add_repo_id: "demo_repo1"
         add_repo_ce_wsi_url: "https://{{ meta.name }}-cpe-stateless-svc.{{ meta.namespace }}.svc:9443/wsi/FNCEWS40MTOM/"
         add_repo_os_sym_name: "DEVOS1"
         add_repo_os_dis_name: "DEVOS1"
@@ -633,6 +636,5 @@ spec:
         add_desktop_name: "icn_desktop"
         add_desktop_description: "This is ICN desktop"
         add_desktop_is_default: false
-        add_desktop_repo_id: "devos1_repo1"
+        add_desktop_repo_id: "demo_repo1"
         add_desktop_repo_workflow_enable: false
-        

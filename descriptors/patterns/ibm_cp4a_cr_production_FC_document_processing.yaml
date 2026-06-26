@@ -17,13 +17,13 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
   ##########################################################################
   ## This section contains the shared configuration for all CP4A components #
   ##########################################################################
-  appVersion: 25.0.1
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -31,8 +31,8 @@ spec:
   shared_configuration:
     ## This is an optional parameter, If the user installing cp4ba in a CNCF cluster and they selected the parameter sc_deployment_platform as "OCP" then the possible values for this parameter is: ARO or ROSA.
     sc_deployment_ocp_platform:
-    ## FileNet Content Manager (FNCM) license and possible values are: user, concurrent-user, authorized-user, non-production, and production.
-    ## This value could be different from the other licenses in the CR.
+    ## This is the Content Cortex license  parameter and the possible values are: user, concurrent-user, authorized-user, non-production, and production.
+    ## This value could be different from the rest of the licenses.
     sc_deployment_fncm_license: "<Required>"
 
     ## Use this parameter to specify the license for the CP4A deployment and
@@ -152,31 +152,33 @@ spec:
     ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
     ## the external service to the component's truststore.
     trusted_certificate_list: []
-    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers,
-    ## all the files must be compressed in a single file.
-    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or
-    ## "jdbc/db2|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 JDBC driver and ICCSAP drivers, then the compressed
-    ## file should have the following structure and content:
+    ## Provide a URL to a compressed file containing custom JDBC drivers and/or ICCSAP drivers.
+    ## IMPORTANT: Custom drivers provided via this URL will automatically take precedence over out-of-the-box drivers.
+    ## Only one driver per database type will be present in the persistent volume, with customer-supplied drivers taking priority.
+    ##
+    ## Package your drivers in the format: "saplibs/drivers_files" and/or "jdbc/db2|postgresql|sqlserver/driver_files"
+    ## Example structure for DB2 JDBC driver and ICCSAP drivers:
     ##   /jdbc/db2/db2jcc4.jar
     ##   /jdbc/db2/db2jcc_license_cu.jar
     ##   /saplibs/libicudata.so.50
     ##   /saplibs/...
-    ## Then you need to put the compressed package on an anonymously accessible web server and provide the link here.
-    ## The CR can handle .zip files using unzip as well as .tar, .tar.gz, .tar.bz2, .tar.xz. Does not handle .gz files, .bz2 files, .xz, or .zst files that do not contain a .tar archive.
+    ##
+    ## Place the compressed package on an anonymously accessible web server and provide the URL here.
+    ## Supported formats: .zip, .tar, .tar.gz, .tar.bz2, .tar.xz (does not handle standalone .gz, .bz2, .xz, or .zst files)
     sc_drivers_url:
 
     ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
     ## This secret is also used by Workflow and BAStudio to store AES encryption key.
     encryption_key_secret: ibm-iaws-shared-key-secret
 
-    ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
+    ## Enable/disable ECM (Content Cortex) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
     ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true", then the initialization will occur.
     ## However, if sc_content_initialization is set to "false" (or the parameter doesn't exist), then the initialization will not occur (even with the "initialize_configuration" section defined)
     sc_content_initialization: false
 
     ## OR
-    ## If you want to enable the initialize for a specific product for ECM (FNCM) / BAN, you will need to use
+    ## If you want to enable the initialize for a specific product for ECM (Content Cortex) / BAN, you will need to use
     ## these fields instead.  Otherwise, use the default sc_content_initialization: false
     # sc_content_initialization:
     #  cpe: false
@@ -184,13 +186,13 @@ spec:
     #  ban: false
 
 
-    ## Enable/disable the ECM (FNCM) / BAN verification (e.g., creation of test folder, creation of test document,
+    ## Enable/disable the ECM (Content Cortex) / BAN verification (e.g., creation of test folder, creation of test document,
     ## execution of CBR search, and creation of Navigator demo repository and desktop).  If the "verify_configuration"
     ## section is defined in the CR and sc_content_verification is set to true, then the verification will occur.  Note that if you are upgrading or
     ## migrating, set this parameter to "false" since the env has been previously verified.
     sc_content_verification: false
     ## OR
-    ## If you want to enable the verification for a specific product for ECM (FNCM) / BAN, you will need to use
+    ## If you want to enable the verification for a specific product for ECM (Content Cortex) / BAN, you will need to use
     ## these fields instead.  Otherwise, use the default sc_content_verification: false
     # sc_content_verification:
     #  cpe: false
@@ -210,9 +212,9 @@ spec:
     ## The CPE container and other components that use HTTP Basic Authentication are configured to use the OAuth JaaS loginModule
     ## to remove all remaining LDAP dependencies by allowing username/password credentials to be converted into an OAuth token for
     ## authentication. When you are upgrading from a release prior to CP4BA 22.0.2 to 22.0.2 or later, or when
-    ## you are migrating FileNet Content Manager on-prem or standalone deployment to IBM Cloud Pak for Business Automation (CP4BA),
+    ## you are migrating Content Cortex on-prem or standalone deployment to IBM Cloud Pak for Business Automation (CP4BA),
     ## you must set "sc_skip_ldap_config: false".  If you are performing fresh install using 23.0.2-IF004 or later, you can also set
-    ## "sc_skip_ldap_config: false" in order to have the FileNet Content Manager P8 domain to be configured with direct LDAP bind
+    ## "sc_skip_ldap_config: false" in order to have the Content Cortex P8 domain to be configured with direct LDAP bind
     ## as opposed to the default SCIM configuration.
     ## NOTE: Setting 'sc_skip_ldap_config' to false is not supported when 'PingDirectory' is selected as the LDAP type.
     ## Ensure this parameter remains set to 'true' when using PingDirectory.
@@ -248,6 +250,10 @@ spec:
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
     sc_is_multiple_az: true
 
+    ## The global flag to enable or disable Pod Disruption Budget (PDB) creation across all components.  This flag can be overridden at specific configuration sections (eg: ecm_configuration.cpe.enable_pdb).  Default is true
+    ## A PDB will be created with a 'minAvailable: 1' only if the replica count of a particular deployment is greater than 1.  Otherwise, the PDB will have 'minAvailable: 0' if the replica is 1.
+    sc_enable_pdb: true
+
     ## Audit logging configuration for CP4BA components. The default value is "false".  If set to "true", then the audit logging will be enabled for all the CP4BA components.
     ## These settings can be overridden at the component level by setting the "audit_logging" parameter in the component configuration such as ecm_configuration, ads_configuration, etc...
     ## NOTE: Not all components support audit logging in 24.0.1 release.  Please refer to KC for more information.
@@ -263,6 +269,37 @@ spec:
       # The maximum size of each audit log file.  The default value is "20Mi".  The value should be in the format of "<number><unit>".  The valid units are "Ki", "Mi", "Gi", "Ti", "Pi", "Ei". You may want to increase the audit_log_dir_size if you increase this value.
       rolling_max_size: '20Mi'
 
+    ## By default we will always set the sc_enable_usage_metering flag to true and this will enable the operators to deploy the cron jobs to send usage metrics to software central.
+    ## Only set this flag to "false" if you want to opt-out sending usage metrics.
+    sc_enable_usage_metering: true
+
+    ## Tolerations for the operator pod that copies shared files to PVC during initialization.
+    ## This is useful when all nodes in the cluster are tainted and the temporary pod needs tolerations to be scheduled.
+    ## If not specified, the temporary pod will not have any tolerations and may remain in Pending state on tainted nodes.
+    ## Example configuration for common taint scenarios:
+    # sc_tolerations:
+    #   # Tolerate nodes with NoSchedule taint for dedicated workloads
+    #   - key: "dedicated"
+    #     operator: "Equal"
+    #     value: "cp4ba"
+    #     effect: "NoSchedule"
+    #   # Tolerate nodes with NoExecute taint (will evict pods without this toleration)
+    #   - key: "node-role.kubernetes.io/infra"
+    #     operator: "Exists"
+    #     effect: "NoExecute"
+    #   # Tolerate nodes with PreferNoSchedule taint (soft constraint)
+    #   - key: "workload"
+    #     operator: "Equal"
+    #     value: "batch"
+    #     effect: "PreferNoSchedule"
+    sc_tolerations: []
+
+    ## Optional: This parameter is used to optionally enable integration with HashiCorp Vault. If the parameter is not defined, then the default value is "false". If the parameter is not defined, then the default value is "false".
+    ## IMPORTANT: Only set this flag to "true" if want to integrate with Vault and have already completed the mandatory prerequisites for Vault integration. See the IBM CP4BA KC topic "External secret management".
+    ## WARNING: If you set the flag to "true" without completing the mandatory prerequisites for Vault integration for CP4BA, the CP4BA deployment will fail.
+    sc_vault_configuration:
+      enable_external_secret_store: false
+      
   ## The beginning section of LDAP configuration for CP4A
   ldap_configuration:
     ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory" or "PingDirectory Server" or "Custom"
@@ -647,6 +684,7 @@ spec:
       ##   --from-literal=adposDBUsername="<your os db username>" --from-literal=adposDBPassword="<your os db password>"
       ## If you have multiple object stores, then you need to define multiple datasource sections starting at "dc_database_type" element after this section.
       ## Each dc_os_label shoudl be different (e.g., dc_os_label: "os1", dc_os_label: "os2", dc_os_label: "os3", etc).
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "os1", then your OS secret must be defined as:
       ## --from-literal=os1DBUsername="<your os db username>" --from-literal=os1DBPassword="<your os db password>"
@@ -705,6 +743,7 @@ spec:
       ##   --from-literal=adposDBUsername="<your os db username>" --from-literal=adposDBPassword="<your os db password>"
       ## If you have multiple object stores, then you need to define multiple datasource sections starting at "dc_database_type" element after this section.
       ## Each dc_os_label shoudl be different (e.g., dc_os_label: "os1", dc_os_label: "os2", dc_os_label: "os3", etc).
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "os1", then your OS secret must be defined as:
       ## --from-literal=os1DBUsername="<your os db username>" --from-literal=os1DBPassword="<your os db password>"
@@ -881,7 +920,7 @@ spec:
   #   mon_log_path: /path_to_extra_log
 
   ########################################################################
-  ########      IBM FileNet Content Manager configuration         ########
+  ########      IBM Content Cortex configuration         ########
   ########################################################################
   ecm_configuration:
     ## FNCM secret that contains GCD DB user name and password, Object Store DB user name and password,
@@ -975,7 +1014,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1036,6 +1075,10 @@ spec:
           policies_pods_period_seconds: "<Optional>"
           # cooldown window before applying scaleDown action, default value is 300 (seconds)
           stabilization_window_seconds: "<Optional>"
+      
+      ## This flag enable or disable Pod Disruption Budget (PDB) creation for CPE component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+      ## A PDB for CPE will be created with a 'minAvailable: 1' only if the CPE replica count is greater than 1.  Otherwise, the PDB will have 'minAvailable: 0' if the replica is 1.
+      enable_pdb: true
 
       ## Below are the default CPE Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       cpe_production_setting:
@@ -1157,7 +1200,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/fncm/cpe-audit-log
-          tag: "25.0.1-IF001"
+          tag: "26.0.0"
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
         initresources:
@@ -1257,7 +1300,7 @@ spec:
       #     pull_policy: IfNotPresent
       #     ## The default repository is the IBM Entitled Registry.
       #     repository: cp.icr.io/cp/cp4a/fncm/lscollector
-      #     tag: "25.0.1-IF001"
+      #     tag: "26.0.0"
       #   ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
       #   ## If more resources are needed, make the changes here to meet your requirement.
       #   resources:
@@ -1293,7 +1336,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1400,7 +1443,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1454,6 +1497,10 @@ spec:
           policies_pods_period_seconds: "<Optional>"
           # cooldown window before applying scaleDown action, default value is 300 (seconds)
           stabilization_window_seconds: "<Optional>"
+
+      ## This flag enable or disable Pod Disruption Budget (PDB) creation for cmis component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+      ## A PDB for cmis will be created with a 'minAvailable: 1' only if the cmis replica count is greater than 1.  Otherwise, the PDB will have 'minAvailable: 0' if the replica is 1.
+      enable_pdb: true
 
       ## Below are the default CMIS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       cmis_production_setting:
@@ -1595,7 +1642,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1649,6 +1696,10 @@ spec:
           policies_pods_period_seconds: "<Optional>"
           # cooldown window before applying scaleDown action, default value is 300 (seconds)
           stabilization_window_seconds: "<Optional>"
+
+      ## This flag enable or disable Pod Disruption Budget (PDB) creation for GraphQL component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+      ## A PDB for graphql will be created with a 'minAvailable: 1' only if the GraphQL replica count is greater than 1.  Otherwise, the PDB will have 'minAvailable: 0' if the replica is 1.
+      enable_pdb: true
 
       ## Below are the default CMIS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       graphql_production_setting:
@@ -1745,7 +1796,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1789,6 +1840,9 @@ spec:
           # cooldown window before applying scaleDown action, default value is 300 (seconds)
           stabilization_window_seconds: "<Optional>"
 
+      ## This flag enable or disable Pod Disruption Budget (PDB) creation for ExtShare component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+      ## A PDB for ExtShare will be created with a 'minAvailable: 1' only if the ExtShare replica count is greater than 1.  Otherwise, the PDB will have 'minAvailable: 0' if the replica is 1.
+      enable_pdb: true
 
       ## Below are the default External Share Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       es_production_setting:
@@ -1871,7 +1925,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1922,6 +1976,10 @@ spec:
           # cooldown window before applying scaleDown action, default value is 300 (seconds)
           stabilization_window_seconds: "<Optional>"
 
+      ## This flag enable or disable Pod Disruption Budget (PDB) creation for Task Manager component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+      ## A PDB for TM will be created with a 'minAvailable: 1' only if the TM replica count is greater than 1.  Otherwise, the PDB will have 'minAvailable: 0' if the replica is 1.
+      enable_pdb: true
+      
       ## Below are the default TM Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       tm_production_setting:
         time_zone: Etc/UTC
@@ -2028,11 +2086,22 @@ spec:
         ## The number of replicas or pods to be deployed.  The default is 2 replica and for high availability in a production env,
         ## it is recommened to have 2 or more.
         replica_count: 2
+
+        # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes. 
+        # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+        # tolerations:
+        #   - key: "component"
+        #     operator: "Equal"
+        #     value: "gitgateway"
+        #     effect: "NoSchedule"
+        # Default is empty list [], which uses Kubernetes defaults.
+        tolerations: []
+
         ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/gitgateway
-          tag: "25.0.1-IF001"
+          tag: "26.0.0"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2081,6 +2150,11 @@ spec:
             policies_pods_period_seconds: "<Optional>"
             # cooldown window before applying scaleDown action, default value is 300 (seconds)
             stabilization_window_seconds: "<Optional>"
+
+        ## This flag enable or disable Pod Disruption Budget (PDB) creation for gitgateway component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+        ## A PDB for gitgateway will be created with a `minAvailable: 1` only if the gitgateway replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+        enable_pdb: true
+
         # Below are the default Git Gateway settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
         production_setting:
           git_gateway_timeout: 60000
@@ -2117,11 +2191,22 @@ spec:
         ## The number of replicas or pods to be deployed.  The default is 2 replica and for high availability in a production env,
         ## it is recommened to have 2 or more.
         replica_count: 2
+
+        # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes. 
+        # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+        # tolerations:
+        #   - key: "component"
+        #     operator: "Equal"
+        #     value: "cds"
+        #     effect: "NoSchedule"
+        # Default is empty list [], which uses Kubernetes defaults.
+        tolerations: []
+
         ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cds
-          tag: "25.0.1-IF001"
+          tag: "26.0.0"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2171,6 +2256,10 @@ spec:
             # cooldown window before applying scaleDown action, default value is 300 (seconds)
             stabilization_window_seconds: "<Optional>"
 
+        ## This flag enable or disable Pod Disruption Budget (PDB) creation for cds component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+        ## A PDB for cds will be created with a `minAvailable: 1` only if the cds replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+        enable_pdb: true
+        
         # Below are the default CDS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
         production_setting:
           jvm_customize_options:
@@ -2215,11 +2304,22 @@ spec:
         ## The number of replicas or pods to be deployed.  The default is 2 replica and for high availability in a production env,
         ## it is recommened to have 2 or more.
         replica_count: 2
+
+        # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes. 
+        # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+        # tolerations:
+        #   - key: "component"
+        #     operator: "Equal"
+        #     value: "cdra"
+        #     effect: "NoSchedule"
+        # Default is empty list [], which uses Kubernetes defaults.
+        tolerations: []
+
         ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cdra
-          tag: "25.0.1-IF001"
+          tag: "26.0.0"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2269,6 +2369,10 @@ spec:
             policies_pods_period_seconds: "<Optional>"
             # cooldown window before applying scaleDown action, default value is 300 (seconds)
             stabilization_window_seconds: "<Optional>"
+
+        ## This flag enable or disable Pod Disruption Budget (PDB) creation for cdra component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+        ## A PDB for cdra will be created with a `minAvailable: 1` only if the cdra replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+        enable_pdb: true
 
         # Below are the default CDS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
         production_setting:
@@ -2332,11 +2436,21 @@ spec:
         ## it is recommened to have 2 or more.
         replica_count: 2
 
+        # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes. 
+        # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+        # tolerations:
+        #   - key: "component"
+        #     operator: "Equal"
+        #     value: "cpds"
+        #     effect: "NoSchedule"
+        # Default is empty list [], which uses Kubernetes defaults.
+        tolerations: []
+
         ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cpds
-          tag: "25.0.1-IF001"
+          tag: "26.0.0"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2387,6 +2501,10 @@ spec:
             # cooldown window before applying scaleDown action, default value is 300 (seconds)
             stabilization_window_seconds: "<Optional>"
 
+       ## This flag enable or disable Pod Disruption Budget (PDB) creation for cpds component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+       ## A PDB for cpds will be created with a `minAvailable: 1` only if the cpds replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+        enable_pdb: true
+        
        ## Below are the default CDS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
         production_setting:
 
@@ -2454,11 +2572,21 @@ spec:
         ## it is recommened to have 2 or more.
         replica_count: 2
 
+        # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes. 
+        # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+        # tolerations:
+        #   - key: "component"
+        #     operator: "Equal"
+        #     value: "viewone"
+        #     effect: "NoSchedule"
+        # Default is empty list [], which uses Kubernetes defaults.
+        tolerations: []
+
         ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/viewone
-          tag: "25.0.1-IF001"
+          tag: "26.0.0"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2508,6 +2636,10 @@ spec:
             policies_pods_period_seconds: "<Optional>"
             # cooldown window before applying scaleDown action, default value is 300 (seconds)
             stabilization_window_seconds: "<Optional>"
+        
+        ## This flag enable or disable Pod Disruption Budget (PDB) creation for viewone component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+        ## A PDB for viewone will be created with a `minAvailable: 1` only if the viewone replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+        enable_pdb: true
 
         ## Below are the default ViewOne Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
         production_setting:
@@ -2579,7 +2711,7 @@ spec:
     #    pull_policy: IfNotPresent
     #    ## The default repository is the IBM Entitled Registry.
     #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-    #    tag: "25.0.1-IF001"
+    #    tag: "26.0.0"
     #  ## Below are the default LSReporter Production settings.
     #  ## Make the necessary changes as you see fit.
     #  product_settings:
@@ -2632,6 +2764,16 @@ spec:
   ########   IBM Business Automation Navigator configuration      ########
   ########################################################################
   navigator_configuration:
+    # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes. 
+    # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+    # tolerations:
+    #   - key: "component"
+    #     operator: "Equal"
+    #     value: "navigator"
+    #     effect: "NoSchedule"
+    # Default is empty list [], which uses Kubernetes defaults.
+    tolerations: []
+    
     ## Navigator secret that contains user credentials for LDAP and database
     ban_secret_name: ibm-ban-secret
 
@@ -2682,7 +2824,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "25.0.1-IF001"
+      tag: "26.0.0"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2884,7 +3026,7 @@ spec:
     ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
     image_pull_secrets:
       name: "ibm-entitlement-key"
-
+  
   ############################################################
   ####   Document Processing Engine (DPE) configuration   ####
   ####      (formerly known as Content Analyzer)          ####
@@ -2920,6 +3062,23 @@ spec:
       #       operator: In
       #       values:
       #       - rhcos
+
+      # Global tolerations for all DPE components. These tolerations will be applied to all DPE pods unless overridden by component-specific tolerations.
+      # Tolerations allow pods to be scheduled on nodes with matching taints, useful for dedicating nodes to DPE workloads or isolating components.
+      # Component-specific tolerations (e.g., rabbitmq.tolerations, spbackend.tolerations) take precedence over global tolerations.
+      # Refer to https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ for more details.
+      # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+      # tolerations:
+      #   - key: "dedicated"
+      #     operator: "Equal"
+      #     value: "dpe"
+      #     effect: "NoSchedule"
+      #   - key: "workload"
+      #     operator: "Equal"
+      #     value: "document-processing"
+      #     effect: "PreferNoSchedule"
+      # Default is empty list [], which uses Kubernetes defaults.
+      tolerations: []
 
       ## Optional setting for the deployment profile size for Document Processing engine.
       # Allowed values: "entry", "small", "medium", "large".  NOTE: The "entry" profile is ONLY applicabile for "document_processing" pattern which means it should only be explicitly set under "ca_configuration" section.  It should not be used in "shared_configuration.sc_deployment_profile_size"
@@ -2990,7 +3149,7 @@ spec:
         max_replicas: "<Required>"  # Required if enable set to "true"
       image:
         repository: "cp.icr.io/cp/cp4a/iadp"
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
         pull_policy: "IfNotPresent"
   ## Overwrite the default SHA digest for Document Processing engine containers by providing the SHA for each containers below.  To use SHA digest, you must comment out the `tag` parameter or leave it blank and you must use entilement registry as the repository.
         doc_processing_digest:
@@ -3043,9 +3202,32 @@ spec:
         runtime_doc_retention: "1d"
         # Allow to change the daily cronjob schedule if desired.  It must be in Unix cron format. Default will be "30 1 * * *"
         schedule: "30 1 * * *"
+      ums_daily:
+        # Optional: Configure the UMS (Usage Metering Service) daily job that collects and reports usage metrics
+        # Allow to change the daily UMS job schedule if desired. It must be in Unix cron format. Default will be "30 2 * * *" (runs 1 hour after daily cleanup job)
+        schedule: "30 2 * * *"
+        # Optional: Configure resource limits and requests for the UMS daily job
+        resources:
+          requests:
+            memory: "256Mi"  # Default memory request
+            cpu: "100m"      # Default CPU request
+          limits:
+            memory: "512Mi"           # Default memory limit
+            cpu: "500m"               # Default CPU limit
+            ephemeral_storage: "1Gi"  # Default ephemeral storage limit
 
     # RabbitMQ configuration.
     rabbitmq:
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes.
+      # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+      # tolerations:
+      #   - key: "messaging"
+      #     operator: "Equal"
+      #     value: "rabbitmq"
+      #     effect: "NoSchedule"
+      # Default is empty list [], which uses Kubernetes defaults.
+      tolerations: []
+
       resources:
         limits:
           memory: "1024Mi"
@@ -3059,6 +3241,17 @@ spec:
         max_unavailable: 1
     # Backend configuration
     spbackend:
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes.
+      # Backend tolerations also apply to cleanup and feedback cronjobs.
+      # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+      # tolerations:
+      #   - key: "workload"
+      #     operator: "Equal"
+      #     value: "backend"
+      #     effect: "NoSchedule"
+      # Default is empty list [], which uses Kubernetes defaults.
+      tolerations: []
+
       # Allow to specify a specific port (nodePort) for backend.  The port number must be between 30000-32767.  A random port will be generated if blank.
       port:
       # Set 'replica_count' below to override the default number of pods (the default is based on the 'deployment_profile_size' parameter)
@@ -3083,6 +3276,16 @@ spec:
         max_surge: '25%'
     # Postprocessing configuration
     postprocessing:
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes.
+      # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+      # tolerations:
+      #   - key: "component"
+      #     operator: "Equal"
+      #     value: "postprocessing"
+      #     effect: "NoSchedule"
+      # Default is empty list [], which uses Kubernetes defaults.
+      tolerations: []
+
       process_timeout: 1500
       # Set 'replica_count' below to override the default number of pods (the default is based on the 'deployment_profile_size' parameter)
       #replica_count: 2
@@ -3106,6 +3309,16 @@ spec:
         max_surge: '25%'
     # setup configuration
     setup:
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes.
+      # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+      # tolerations:
+      #   - key: "component"
+      #     operator: "Equal"
+      #     value: "setup"
+      #     effect: "NoSchedule"
+      # Default is empty list [], which uses Kubernetes defaults.
+      tolerations: []
+
       process_timeout: 600
       # Set 'replica_count' below to override the default number of pods (the default is based on the 'deployment_profile_size' parameter)
       #replica_count: 2
@@ -3129,6 +3342,16 @@ spec:
         max_surge: '25%'
     # ocrextraction configuration
     ocrextraction:
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes.
+      # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+      # tolerations:
+      #   - key: "component"
+      #     operator: "Equal"
+      #     value: "ocrextraction"
+      #     effect: "NoSchedule"
+      # Default is empty list [], which uses Kubernetes defaults.
+      tolerations: []
+
       # When "deep_learning_object_detection" is set to true, deep learning pods will be deployed and will be used for enhance object detection.
       # The default value will be true for Production deployment.
       deep_learning_object_detection:
@@ -3158,6 +3381,16 @@ spec:
         max_surge: '25%'
     # classifyprocess configuration
     classifyprocess:
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes.
+      # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+      # tolerations:
+      #   - key: "component"
+      #     operator: "Equal"
+      #     value: "classifyprocess"
+      #     effect: "NoSchedule"
+      # Default is empty list [], which uses Kubernetes defaults.
+      tolerations: []
+
       process_timeout: 300
       # Set the replica_count below to override the default number of pods
       #replica_count: 2
@@ -3181,6 +3414,16 @@ spec:
         max_surge: '25%'
     # processing extraction configuration
     processingextraction:
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes.
+      # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+      # tolerations:
+      #   - key: "component"
+      #     operator: "Equal"
+      #     value: "processingextraction"
+      #     effect: "NoSchedule"
+      # Default is empty list [], which uses Kubernetes defaults.
+      tolerations: []
+
       process_timeout: 600
       # Set the replica_count below to override the default number of pods
       #replica_count: 2
@@ -3204,6 +3447,16 @@ spec:
         max_surge: '25%'
     #Natural language extraction
     naturallanguageextractor:
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes.
+      # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+      # tolerations:
+      #   - key: "component"
+      #     operator: "Equal"
+      #     value: "naturallanguageextractor"
+      #     effect: "NoSchedule"
+      # Default is empty list [], which uses Kubernetes defaults.
+      tolerations: []
+
       # This parameter indicates how many NLE models will be loaded into cache. By loading models into cache, the NLE document processing task will be improved. Default is `20`.
       # NOTE: Increasing this number may cause the NLE's pod to run out of memory. You need to monitor the NLE's pod and increase the RAM limit appropriately.
       model_cache_size: 20
@@ -3230,6 +3483,20 @@ spec:
         max_surge: '25%'
     # Deep Learning configuration
     deeplearning:
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes.
+      # For GPU-enabled deployments, you typically need tolerations for GPU taints.
+      # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+      # tolerations:
+      #   - key: "nvidia.com/gpu"
+      #     operator: "Exists"
+      #     effect: "NoSchedule"
+      #   - key: "gpu-workload"
+      #     operator: "Equal"
+      #     value: "deep-learning"
+      #     effect: "NoSchedule"
+      # Default is empty list [], which uses Kubernetes defaults.
+      tolerations: []
+
       process_timeout: 604800
       gpu_enabled:  # true or false.  Set it to true if you have a GPU enabled worker nodes
       nodelabel_key: # The unique node label key/value on the GPU node. For example: ibm-cloud.kubernetes.io/gpu-enabled:true.  Set this value when `gpu_enabled` is set to true.  This must be a string value
@@ -3259,6 +3526,16 @@ spec:
 
     # WDU Runtime configuration
     wduruntime:
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes.
+      # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+      # tolerations:
+      #   - key: "component"
+      #     operator: "Equal"
+      #     value: "wduruntime"
+      #     effect: "NoSchedule"
+      # Default is empty list [], which uses Kubernetes defaults.
+      tolerations: []
+
       # Set the replica_count below to override the default number of pods
       #replica_count: 2
       # HPA auto scaling configuration for wduruntime.
@@ -3282,6 +3559,16 @@ spec:
 
     # WDU Extraction configuration
     wduextraction:
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes.
+      # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+      # tolerations:
+      #   - key: "component"
+      #     operator: "Equal"
+      #     value: "wduextraction"
+      #     effect: "NoSchedule"
+      # Default is empty list [], which uses Kubernetes defaults.
+      tolerations: []
+
       # Set the replica_count below to override the default number of pods
       #replica_count: 2
       # HPA auto scaling configuration for wduextraction.
@@ -3305,6 +3592,16 @@ spec:
 
     # Webhook configuration
     webhook:
+      # Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes.
+      # Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+      # tolerations:
+      #   - key: "component"
+      #     operator: "Equal"
+      #     value: "webhook"
+      #     effect: "NoSchedule"
+      # Default is empty list [], which uses Kubernetes defaults.
+      tolerations: []
+
       process_timeout: 604800
       # Set the replica_count below to override the default number of pods
       #replica_count: 2
@@ -3328,7 +3625,7 @@ spec:
         max_surge: '25%'
 
   ########################################################################
-  ######## IBM FileNet Content Manager Initialization configuration ######
+  ######## IBM Content Cortex Initialization configuration ######
   ########################################################################
   ## NOTE: Automation Document Processing (ADP) capability is depended on CPE component (part of FNCM)
   ## The deployment of FNCM will be initialized with the default values assigned to the parameters below.
@@ -3545,7 +3842,7 @@ spec:
         indexing_languages: "en"
     ic_icn_init_info:
       icn_repos:
-      - add_repo_id: "devos1_repo1"
+      - add_repo_id: "demo_repo1"
         add_repo_ce_wsi_url: "https://{{ meta.name }}-cpe-stateless-svc.{{ meta.namespace }}.svc:9443/wsi/FNCEWS40MTOM/"
         add_repo_os_sym_name: "DEVOS1"
         add_repo_os_dis_name: "DEVOS1"
@@ -3565,12 +3862,12 @@ spec:
         add_desktop_name: "icn_desktop"
         add_desktop_description: "This is ICN desktop"
         add_desktop_is_default: false
-        add_desktop_repo_id: "devos1_repo1"
+        add_desktop_repo_id: "demo_repo1"
         add_desktop_repo_workflow_enable: false
         
 
   ########################################################################
-  ######## IBM FileNet Content Manager Verification configuration ######
+  ######## IBM Content Cortex Verification configuration ######
   ########################################################################
   ## After the initialization process (see section above), the verification process will take place.
   ## The verification process ensures that the FNCM and BAN components are functioning correctly.  The verification
@@ -3596,5 +3893,5 @@ spec:
       - workflow_cpe_enabled: false
         workflow_cpe_connection_point: "pe_conn_devos1"
     vc_icn_verification:
-      - vc_icn_repository: "devos1_repo1"
+      - vc_icn_repository: "demo_repo1"
         vc_icn_desktop_id: "demo"

@@ -1,0 +1,79 @@
+name: ibm-cp-automation
+version: 26.0.0
+description: Generated from CASE ibm-cp-automation version 26.0.0 on 2026-15-02 06:24:59
+  PDT
+cases:
+- name: ibm-cp-automation
+  version: 26.0.0
+  launch: true
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true
+- name: ibm-bts-bundle
+  version: 1.0.37
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true
+- name: ibm-cs-install
+  version: 4.18.1
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true
+- name: ibm-cs-iam
+  version: 4.17.1
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true 
+- name: ibm-events-operator
+  version: 5.2.1
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true
+- name: ibm-opensearch-operator
+  version: 1.4.3
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true
+- name: ibm-cs-flink
+  version: 2.0.19
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true
+- name: ibm-cert-manager
+  version: 4.2.22
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true
+- name: ibm-zen
+  version: 6.4.7+20260608.081833.10
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true
+- name: ibm-licensing
+  version: 4.2.23
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true
+- name: ibm-usage-metering
+  version: 1.0.6
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true
+- name: ibm-redis-cp
+  version: 1.4.0+20260609.131456.726
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true
+- name: ibm-model-gateway
+  version: 13.0.0+20260527.003345.105
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true
+- name: ibm-content-cortex
+  version: 26.0.0
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true

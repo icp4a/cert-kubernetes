@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba-content
     app.kubernetes.io/managed-by: ibm-dba-content
     app.kubernetes.io/name: ibm-dba-content
-    release: 25.0.1
+    release: 26.0.0
 spec:
   group: icp4a.ibm.com
   names:
@@ -63,20 +63,22 @@ spec:
                 type: string
               content_optional_components:
                 type: object
-                properties:               
-                  bai: 
+                properties:
+                  bai:
                     type: boolean
-                  css: 
-                    type: boolean 
-                  cmis: 
-                    type: boolean 
-                  es: 
-                    type: boolean 
-                  tm: 
-                    type: boolean 
-                  ier: 
-                    type: boolean 
-                  iccsap: 
+                  css:
+                    type: boolean
+                  cmis:
+                    type: boolean
+                  es:
+                    type: boolean
+                  tm:
+                    type: boolean
+                  ier:
+                    type: boolean
+                  iccsap:
+                    type: boolean
+                  ccxmo:
                     type: boolean
               shared_configuration:
                 description: Shared Configuration for CP4A

@@ -163,7 +163,8 @@ fi
 # in the scenario where separation of duties is not being used then there is only 1 namespace and related variables used 
 namespaces_used=("$cp4ba_services_namespace" "$cp4ba_operators_namespace")
 netpol_oper_path_list=("/tmp/${cp4ba_services_namespace}/network-policies" "/tmp/${cp4ba_operators_namespace}/network-policies")
-netpol_targ_path_list=("${CUR_DIR}/network-policies/${cp4ba_services_namespace}" "${CUR_DIR}/network-policies/${cp4ba_operators_namespace}")
+# We can look at network policies in different folders in the operator but when they are saved they can be under the services folder
+netpol_targ_path_list=("${CUR_DIR}/network-policies/${cp4ba_services_namespace}")
 netpol_targ_log_path=network-policies/${cp4ba_services_namespace}/logs  # save_log function wants relative path
 
 netpol_targ_template_path_list=()
@@ -178,14 +179,14 @@ done
 
 if [[ "$separation_of_duties_flag" == false ]]; then
     netpol_oper_path_list=("${netpol_oper_path_list[0]}")
-    netpol_targ_template_path_list=("${netpol_targ_template_path_list[0]}")
+    #netpol_targ_template_path_list=("${netpol_targ_template_path_list[0]}")
     netpol_targ_existing_path_list=("${netpol_targ_existing_path_list[0]}")
     namespaces_used=("${namespaces_used[0]}")
 fi
 
 ### END - SETTING THE VARIABLES USED ###
 
-save_log1 "${netpol_targ_log_path}" "network-policy-log"
+save_log "${netpol_targ_log_path}" "network-policy-log"
 trap cleanup_log EXIT
 
 #=======================================================================================================================
@@ -210,7 +211,7 @@ fi
 
 # Installing network policy from templates directory
 if [[ "$RUNTIME_MODE" == "install" ]]; then
-    echo "${RED_TEXT}IMPORTANT: ${YELLOW_TEXT}Before installing the network policy templates, please confirm that network policies have been reviewed and updated to match your environment if necessary.${RESET_TEXT}"
+    echo "${RED_TEXT}IMPORTANT: ${YELLOW_TEXT}Before installing the network policy templates, please confirm that the network policies found at the folder(s) $netpol_targ_template_path_list have been reviewed and updated to match your environment if necessary.${RESET_TEXT}"
         
     prompt_to_continue
     printf "\n"
@@ -234,7 +235,7 @@ fi
 
 # Deleting network policy from templates directory
 if [[ "$RUNTIME_MODE" == "delete" ]]; then
-    echo "${RED_TEXT}IMPORTANT: ${YELLOW_TEXT}Please confirm that you want to delete the network policies from your cluster based on the network policy templates in the dir $netpol_targ_template_path${RESET_TEXT}"
+    echo "${RED_TEXT}IMPORTANT: ${YELLOW_TEXT}Please confirm that you want to delete the network policies from your cluster based on the network policy templates in the directory/directories $netpol_targ_template_path_list ${RESET_TEXT}"
     prompt_to_continue
     printf "\n"
     len="${#netpol_targ_template_path_list[@]}"

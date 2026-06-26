@@ -30,7 +30,7 @@ spec:
 {% endif %}
       containers:
       - name: consumer-job
-        image: "{{ docker_registry }}/centos/{{ arch }}"
+        image: {{ storage_val_image }}
         imagePullPolicy: "IfNotPresent"
         env:
           - name: FILE_NAME

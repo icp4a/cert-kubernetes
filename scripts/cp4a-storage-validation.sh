@@ -11,16 +11,12 @@
 #
 ###############################################################################
 function show_help() {
-    printf '%b\n' "\nUsage: ./cp4a-storage-validation.sh -m <mode> -n <CP4BA_NAMESPACE>\n"
+    printf '%b\n' "\nUsage: ./cp4a-prerequisites.sh -m validate -n <CP4BA_NAMESPACE> [--run-storage-validation]\n"
     echo "Options:"
     echo "  --run-storage-validation                    : Run only Storage Validation"
-    echo "  --run-storage-performance-validation        : Run only Storage Performance Validation"
-    echo "  Both flags together                         : Run Storage Validation and Storage Performance Validation"
     echo
-    echo "Examples:"
+    echo "Example:"
     echo "  ./cp4a-prerequisites.sh -m validate -n <CP4BA_NAMESPACE> --run-storage-validation"
-    echo "  ./cp4a-prerequisites.sh -m validate -n <CP4BA_NAMESPACE> --run-storage-performance-validation"
-    echo "  ./cp4a-prerequisites.sh -m validate -n <CP4BA_NAMESPACE> --run-storage-validation --run-storage-performance-validation"
     echo
 }
 
@@ -44,15 +40,21 @@ function check_prerequisites() {
   fi
   
   echo
-  echo "Next, checking prerequisites for Storage Validation/Storage Performance Validation. For details, refer to the topic 'Storage Validation and Storage Performance Validation': https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/${CP4BA_RELEASE_BASE}?topic=pycc-recommended-preparing-databases-secrets-your-chosen-capabilities-by-running-script"
+  echo "Next, checking prerequisites for Storage Validation. For details, refer to the topic 'Storage Validation': https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/${CP4BA_RELEASE_BASE}?topic=rpdsyccbrs-optional-running-cp4a-prerequisitessh-script-in-validate-mode"
   
   printf '%b\n' "${WHITE}${BOLD}Checking prerequisites...${RESET}"
   echo
     all_ok=true
-    if command -v python &>/dev/null; then
-        py_version=$(python -c 'import sys; print("{}.{}".format(sys.version_info[0], sys.version_info[1]))')
-    elif command -v python3 &>/dev/null; then
-        py_version=$(python3 -c 'import sys; print("{}.{}".format(sys.version_info[0], sys.version_info[1]))')
+    # Resolve the full path of the Python interpreter (same resolution Ansible uses)
+    _py_cmd=""
+    if _py_path=$(which python3 2>/dev/null) && "$_py_path" -c '' &>/dev/null 2>&1; then
+        _py_cmd="$_py_path"
+    elif _py_path=$(which python 2>/dev/null) && "$_py_path" -c '' &>/dev/null 2>&1; then
+        _py_cmd="$_py_path"
+    fi
+
+    if [[ -n "$_py_cmd" ]]; then
+        py_version=$("$_py_cmd" -c 'import sys; print("{}.{}".format(sys.version_info[0], sys.version_info[1]))')
     else
         py_version="0.0"
     fi
@@ -69,13 +71,11 @@ function check_prerequisites() {
     fi
     echo
 
-    # Check pip version
-    if command -v pip &>/dev/null; then
-        pip_version=$(pip --version | awk '{print $2}')
-    elif command -v pip3 &>/dev/null; then
-        pip_version=$(pip3 --version | awk '{print $2}')
-    else
-        pip_version="0.0"
+    # Check pip version using the same Python found above
+    pip_version="0.0"
+    if [[ -n "$_py_cmd" ]]; then
+        pip_version=$("$_py_cmd" -m pip --version 2>/dev/null | awk '{print $2}')
+        pip_version="${pip_version:-0.0}"
     fi
 
     pip_major=$(echo "$pip_version" | cut -d. -f1)
@@ -87,6 +87,18 @@ function check_prerequisites() {
         all_ok=false
     else
         printf '%b\n' "${WHITE}${BOLD}pip version: $pip_version ------ OK${RESET}"
+    fi
+    echo
+
+    # Check kubernetes Python library (required by the kubernetes.core Ansible collection at runtime)
+    if [[ -n "$_py_cmd" ]] && "$_py_cmd" -c 'import kubernetes' &>/dev/null 2>&1; then
+        k8s_lib_version=$("$_py_cmd" -c 'import kubernetes; print(kubernetes.__version__)' 2>/dev/null)
+        printf '%b\n' "${WHITE}${BOLD}Python 'kubernetes' library version: ${k8s_lib_version:-unknown} (${_py_cmd}) ------ OK${RESET}"
+    else
+        printf '%b\n' "${RED}Python 'kubernetes' library is not installed for ${_py_cmd:-python}.${RESET}"
+        printf '%b\n' "${WHITE}${BOLD}Install it using:${RESET}"
+        printf '%b\n' "${WHITE}${BOLD}  ${_py_cmd:-python} -m pip install kubernetes${RESET}"
+        all_ok=false
     fi
     echo
 
@@ -102,7 +114,7 @@ function check_prerequisites() {
             printf '%b\n' "${WHITE}${BOLD}Please set your locale before running this script:${RESET}"
             printf '%b\n' "${WHITE}${BOLD}  export LC_ALL=en_US.UTF-8${RESET}"
             printf '%b\n' "${WHITE}${BOLD}  export LANG=en_US.UTF-8${RESET}"
-            printf '%b\n' "${WHITE}${BOLD}  ./cp4a-prerequisites.sh -m validate -n <namespace> --run-storage-validation --run-storage-performance-validation${RESET}"
+            printf '%b\n' "${WHITE}${BOLD}  ./cp4a-prerequisites.sh -m validate -n <namespace> --run-storage-validation ${RESET}"
             all_ok=false
             echo
         else
@@ -112,18 +124,21 @@ function check_prerequisites() {
             
             # Validate that version was successfully extracted
             if [[ -z "$ansible_version" ]]; then
-                printf '%b\n' "${RED}Ansible 2.10.5 or later is required (found ).${RESET}"
-                printf '%b\n' "${WHITE}${BOLD}Please install Ansible 2.10.5 or later.${RESET}"
+                printf '%b\n' "${RED}Ansible ${STORAGE_MINIMUM_ANSIBLE_VERSION} or later is required (found ).${RESET}"
+                printf '%b\n' "${WHITE}${BOLD}Please install Ansible ${STORAGE_MINIMUM_ANSIBLE_VERSION} or later.${RESET}"
                 echo
                 all_ok=false
             else
                 ansible_major=$(echo "$ansible_version" | cut -d. -f1)
                 ansible_minor=$(echo "$ansible_version" | cut -d. -f2)
 
-                # Compare ansible version
-                if (( ansible_major < 2 || ( ansible_major == 2 && ansible_minor < 10 ) )); then
-                    printf '%b\n' "${RED}Ansible 2.10.5 or later is required (found $ansible_version).${RESET}"
-                    printf '%b\n' "${WHITE}${BOLD}Please install Ansible 2.10.5 or later.${RESET}"
+                # Compare ansible version - requires 2.15+ for kubernetes.core 6.x
+                ansible_req_major=$(echo "$STORAGE_MINIMUM_ANSIBLE_VERSION" | cut -d. -f1)
+                ansible_req_minor=$(echo "$STORAGE_MINIMUM_ANSIBLE_VERSION" | cut -d. -f2)
+                if (( ansible_major < ansible_req_major || ( ansible_major == ansible_req_major && ansible_minor < ansible_req_minor ) )); then
+                    printf '%b\n' "${RED}Ansible ${STORAGE_MINIMUM_ANSIBLE_VERSION} or later is required (found $ansible_version).${RESET}"
+                    printf '%b\n' "${WHITE}${BOLD}Please upgrade Ansible:${RESET}"
+                    printf '%b\n' "${WHITE}${BOLD}  pip install --upgrade 'ansible-core>=${STORAGE_MINIMUM_ANSIBLE_VERSION}'${RESET}"
                     all_ok=false
                 else
                     printf '%b\n' "${WHITE}${BOLD}Ansible version: $ansible_version ------ OK${RESET}"
@@ -132,33 +147,40 @@ function check_prerequisites() {
         fi
     else
         printf '%b\n' "${RED}Ansible is not installed.${RESET}"
-        printf '%b\n' "${WHITE}${BOLD}Please install Ansible 2.10.5 or later.${RESET}"
+        printf '%b\n' "${WHITE}${BOLD}Please install Ansible ${STORAGE_MINIMUM_ANSIBLE_VERSION} or later:${RESET}"
+        printf '%b\n' "${WHITE}${BOLD}  pip install 'ansible-core>=${STORAGE_MINIMUM_ANSIBLE_VERSION}'${RESET}"
         all_ok=false
     fi
     echo
 
-    # Check openshift Python package
-    if ! python -c "import openshift" &>/dev/null 2>&1; then
-        printf '%b\n' "${RED}Python package 'openshift' is not installed.${RESET}"
-        printf '%b\n' "${WHITE}${BOLD}Install it using:${RESET}"
-        printf '%b\n' "${WHITE}${BOLD}pip install openshift${RESET}"
-        all_ok=false
-    else
-        printf '%b\n' "${WHITE}${BOLD}Python package 'openshift' is installed ------ OK${RESET}"
-    fi
-    echo
-
-    # Check Ansible collections
+    # Check Ansible collections - required: kubernetes.core >= 6.x, operator_sdk.util (any)
     for coll in operator_sdk.util kubernetes.core; do
         if ! ansible-galaxy collection list "$coll" &>/dev/null; then
             printf '%b\n' "${RED}Ansible collection '$coll' is not installed.${RESET}"
-            printf '%b\n' "${WHITE}${BOLD}Install it using:${RESET}"
-            printf '%b\n' "${WHITE}${BOLD}ansible-galaxy collection install $coll${RESET}"
+            if [[ "$coll" == "kubernetes.core" ]]; then
+                printf '%b\n' "${WHITE}${BOLD}Install it using:${RESET}"
+                printf '%b\n' "${WHITE}${BOLD}  ansible-galaxy collection install kubernetes.core:==${STORAGE_K8S_CORE_VERSION}${RESET}"
+            else
+                printf '%b\n' "${WHITE}${BOLD}Install it using:${RESET}"
+                printf '%b\n' "${WHITE}${BOLD}  ansible-galaxy collection install $coll${RESET}"
+            fi
             all_ok=false
         else
-            printf '%b\n' "${WHITE}${BOLD}Ansible collection '$coll' is installed ------ OK${RESET}"
+            coll_version=$(ansible-galaxy collection list "$coll" 2>/dev/null | awk -v c="$coll" '$1==c {print $2; exit}')
+            coll_major=$(echo "$coll_version" | cut -d. -f1)
+
+            k8s_req_major=$(echo "$STORAGE_K8S_CORE_VERSION" | cut -d. -f1)
+            if [[ "$coll" == "kubernetes.core" && "$coll_major" -lt "$k8s_req_major" ]]; then
+                printf '%b\n' "${RED}Ansible collection 'kubernetes.core' $coll_version is not supported. Version ${k8s_req_major}.x or later is required.${RESET}"
+                printf '%b\n' "${WHITE}${BOLD}Upgrade it using:${RESET}"
+                printf '%b\n' "${WHITE}${BOLD}  ansible-galaxy collection install kubernetes.core:==${STORAGE_K8S_CORE_VERSION} --force${RESET}"
+                all_ok=false
+            else
+                printf '%b\n' "${WHITE}${BOLD}Ansible collection '$coll' version ${coll_version:-unknown} ------ OK${RESET}"
+            fi
         fi
         echo
+
     done
 
     # Check OpenShift Client
@@ -184,7 +206,7 @@ function check_prerequisites() {
     if [ "$all_ok" != true ]; then
         echo
         printf '%b\n' "${WHITE}${BOLD}Please install all required prerequisites and then run the following command:${RESET}"
-        printf '%b\n' "./cp4a-prerequisites.sh -m validate -n ${TARGET_PROJECT_NAME} --run-storage-validation --run-storage-performance-validation\n"
+        printf '%b\n' "./cp4a-prerequisites.sh -m validate -n ${TARGET_PROJECT_NAME} --run-storage-validation \n"
         exit 1
     else
         printf '%b\n' "${WHITE}${BOLD}All prerequisites are satisfied.${RESET}"
@@ -197,21 +219,20 @@ function prompt_user_for_validation() {
     RED='\033[0;31m'
     RESET='\033[0m'
     echo
-    INFO "STORAGE VALIDATION AND STORAGE PERFORMANCE VALIDATION"
+    INFO "STORAGE VALIDATION"
     # Prompt user about running validation
-    info "Next step is to perform Storage Validation and Storage Performance Validation. This step will validate fast file storage (RWX) and block storage (RWO)."
+    info "Next step is to perform Storage Validation. This step will validate fast file storage (RWX) and block storage (RWO)."
     echo
 
     echo "Validation might take:"
     echo " - Storage Validation               (might take up to 25 minutes)"
-    echo " - Storage Performance Validation   (might take up to 1 hour)"
     echo
     printf '%b\n' "${WHITE}${BOLD}Note: 
     - Running this validation is optional. As long as the storage meets the CP4BA storage requirements, it will be supported. Please refer to the CP4BA Knowledge Center for more detail.
     - These tests only verify the basic readiness of your storage and are intended as an initial pre-check before deploying any actual Cloud Pak workloads in the environment.
-    - Running the Storage Validation and Storage Performance Validation on an airgap environment is not supported.${RESET}"
+    - Running the Storage Validation on an airgap environment is not supported.
+    - NOTE: There are known issues when running storage validation test with ROKS storage classes. This does not mean the storage classes are not supported with CP4BA. Please refer to the storage support statement in the KC for more detail ${RESET}"
     echo
-    
     # Check if storage validation flag was provided
     if [[ -n "${RUN_STORAGE_VALIDATION:-}" && "${RUN_STORAGE_VALIDATION}" == "yes" ]]; then
         run_storage="yes"
@@ -221,12 +242,13 @@ function prompt_user_for_validation() {
     fi
 
     # Check if storage performance validation flag was provided
-    if [[ -n "${RUN_STORAGE_PERFORMANCE_VALIDATION:-}" && "${RUN_STORAGE_PERFORMANCE_VALIDATION}" == "yes" ]]; then
-        run_perf="yes"
-        echo "Storage Performance Validation: yes (from command line flag)"
-    else
-        run_perf="no"
-    fi
+    # if [[ -n "${RUN_STORAGE_PERFORMANCE_VALIDATION:-}" && "${RUN_STORAGE_PERFORMANCE_VALIDATION}" == "yes" ]]; then
+    #     run_perf="yes"
+    #     echo "Storage Performance Validation: yes (from command line flag)"
+    # else
+    #     run_perf="no"
+    # fi
+    
 }
 
 
@@ -340,10 +362,10 @@ function run_storage_validation() {
           )
           
           # Only clean up here if storage-perf is NOT selected
-          if [[ "$run_perf" != "yes" && "$run_perf" != "y" && "$run_perf" != "YES" && "$run_perf" != "Y" ]]; then
-              cleanup_storage_resources "$STORAGE_NS"
-              exit 0 
-          fi
+        #   if [[ "$run_perf" != "yes" && "$run_perf" != "y" && "$run_perf" != "YES" && "$run_perf" != "Y" ]]; then
+        #       cleanup_storage_resources "$STORAGE_NS"
+        #       exit 0 
+        #   fi
 }
 
 function run_perf_validation() {
@@ -368,7 +390,7 @@ function run_perf_validation() {
     $SED_COMMAND "s|^storage_perf_namespace:.*|storage_perf_namespace: $STORAGE_NS|" "$PARAMS_FILE"
 
     # ------------------ Image accessibility check ------------------
-    IMAGE_TO_CHECK="quay.io/ibm-cp4d-public/xsysbench:1.1"
+    IMAGE_TO_CHECK=$(grep -E '^imageurl:' "$PARAMS_FILE" | awk '{print $2}')
     TEMP_NS="image-check-$(date +%s)"
     
     printf '%b\n' "\n\033[1;37mRunning Storage Performance Validation:\033[0m"
@@ -621,7 +643,7 @@ function storage_and_performance_validation() {
     fi
 
     prompt_user_for_validation
-    if [[ "$run_storage" != "yes" && "$run_storage" != "y" && "$run_perf" != "yes" && "$run_perf" != "y" ]]; then
+    if [[ "$run_storage" != "yes" && "$run_storage" != "y" ]]; then
     printf '%b\n' "\n${WHITE}${BOLD}You did not select any Storage Validation or storage performance validation to run.${RESET}"
     return
     fi
@@ -631,9 +653,9 @@ function storage_and_performance_validation() {
      fi
 
     # Run performance validation only if selected
-    if [[ "$run_perf" == "yes" || "$run_perf" == "y" ]]; then
-        run_perf_validation "$NAMESPACE"
-    fi
+    # if [[ "$run_perf" == "yes" || "$run_perf" == "y" ]]; then
+    #     run_perf_validation "$NAMESPACE"
+    # fi
 }
 
 
@@ -694,41 +716,39 @@ function storage_and_performance_validation_tests() {
  
   prompt_user_for_validation
    # ------------------ Case 1: Neither selected ------------------
-   if [[ "$run_storage" != "yes" && "$run_storage" != "y" && "$run_perf" != "yes" && "$run_perf" != "y" ]]; then
+   if [[ "$run_storage" != "yes" && "$run_storage" != "y" ]]; then
     WHITE='\033[1;37m'
     BOLD='\033[1m'
     RESET='\033[0m'
     printf '%b\n' "\n${WHITE}${BOLD}No validation option was selected.${RESET}"
-    printf '%b\n' "${WHITE}${BOLD}If you want to run Storage Validation and Storage Performance Validation later, you can do so by executing below command:${RESET}"
+    printf '%b\n' "${WHITE}${BOLD}If you want to run Storage Validation, you can do so by executing below command:${RESET}"
     echo
-    printf '%b\n' "./cp4a-prerequisites.sh -m validate -n ${TARGET_PROJECT_NAME} --run-storage-validation --run-storage-performance-validation\n"
+    printf '%b\n' "./cp4a-prerequisites.sh -m validate -n ${TARGET_PROJECT_NAME} --run-storage-validation\n"
     return
   fi
     
        # ------------------ Case 2: Only storage ------------------
-  if [[ ( "$run_storage" = "yes" || "$run_storage" = "y" ) && "$run_perf" != "yes" && "$run_perf" != "y" ]]; then
+  if [[ ( "$run_storage" = "yes" || "$run_storage" = "y" ) ]]; then
     printf '%b\n' "\n${WHITE}${BOLD}Now Storage validation will be performed...${RESET}"
-    printf '%b\n' "${WHITE}${BOLD}If you want to run storage performance validation later, execute:${RESET}"
-    printf '%b\n' "./cp4a-prerequisites.sh -m validate -n ${TARGET_PROJECT_NAME} --run-storage-performance-validation\n"
     check_prerequisites
     run_storage_validation $NAMESPACE
     return
   fi
 
   # ------------------ Case 3: Only performance ------------------
-if [[ ( "$run_perf" = "yes" || "$run_perf" = "y" ) && "$run_storage" != "yes" && "$run_storage" != "y" ]]; then
-    printf '%b\n' "\n${WHITE}${BOLD}Now Storage Performance Validation will be performed...${RESET}"
-    printf '%b\n' "${WHITE}${BOLD}If you want to run Storage Validation later, execute:${RESET}"
-    printf '%b\n' "./cp4a-prerequisites.sh -m validate -n ${TARGET_PROJECT_NAME} --run-storage-validation\n"
-    check_prerequisites
-    run_perf_validation $NAMESPACE
-    return
-  fi
-  # ------------------ Case 4: Both selected ------------------
-   printf '%b\n' "\n${WHITE}${BOLD}Now Storage Validation and Storage Performance Validation will be performed...${RESET}"
-    check_prerequisites
-    run_storage_validation $NAMESPACE
-    run_perf_validation $NAMESPACE
+# if [[ ( "$run_perf" = "yes" || "$run_perf" = "y" ) && "$run_storage" != "yes" && "$run_storage" != "y" ]]; then
+#     printf '%b\n' "\n${WHITE}${BOLD}Now Storage Performance Validation will be performed...${RESET}"
+#     printf '%b\n' "${WHITE}${BOLD}If you want to run Storage Validation later, execute:${RESET}"
+#     printf '%b\n' "./cp4a-prerequisites.sh -m validate -n ${TARGET_PROJECT_NAME} --run-storage-validation\n"
+#     check_prerequisites
+#     run_perf_validation $NAMESPACE
+#     return
+#     fi
+#   # ------------------ Case 4: Both selected ------------------
+#    printf '%b\n' "\n${WHITE}${BOLD}Now Storage Validation and Storage Performance Validation will be performed...${RESET}"
+#     check_prerequisites
+#     run_storage_validation $NAMESPACE
+#     run_perf_validation $NAMESPACE
 }
    
 

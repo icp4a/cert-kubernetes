@@ -1,0 +1,11 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ibm-usage-metering-operator
+  namespace: REPLACE_NAMESPACE
+spec:
+  channel: REPLACE_CHANNEL
+  name: ibm-usage-metering-operator
+  installPlanApproval: Automatic
+  source: ibm-usage-metering-catalog
+  sourceNamespace: openshift-marketplace

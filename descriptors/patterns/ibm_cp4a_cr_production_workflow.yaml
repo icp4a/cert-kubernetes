@@ -17,10 +17,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
-  appVersion: 25.0.1
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -48,15 +48,16 @@ spec:
     sc_deployment_patterns: workflow
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
-    ## The optional components are: bai,elasticsearch,kafka
+    ## The optional components are: bai,elasticsearch,kafka,workflow_runtime_mcp_server,application_connectors
     ## To enable Kafka services in your workflow automations, add kafka to sc_optional_components.
+    ## If PFS and Workflow Runtime MCP Server are enabled, opensearch need to be enabled.
     sc_optional_components:
 
     ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
     ## This secret is also used by Workflow and BAStudio to store AES encryption key.
     encryption_key_secret: ibm-iaws-shared-key-secret
 
-    ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
+    ## Enable/disable ECM (Content Cortex) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
     ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true", then the initialization will occur.
     ## However, if sc_content_initialization is set to "false" (or the parameter doesn't exist), then the initialization will not occur (even with the "initialize_configuration" section defined)
@@ -132,6 +133,7 @@ spec:
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
       dc_use_postgres: false
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
       ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
@@ -176,6 +178,7 @@ spec:
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
       dc_use_postgres: false
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
       ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
@@ -220,6 +223,7 @@ spec:
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
       dc_use_postgres: false
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
       ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
@@ -308,15 +312,7 @@ spec:
       ## If the database type is PostgreSQL, this parameter is optional, you can choose inputs server_name, database_name, and port with or without this parameter here. If you do not need this parameter when PostgreSQL, remove or comment this parameter.
       ## In any other cases, remove or comment this parameter.
       jdbc_url: "<Required>"
-      ## Oracle and PostgreSQL database connection string.
-      ## If the database type is Oracle, provide the Oracle database connection string. For example, jdbc:oracle:thin:@//<oracle_server>:1521/orcl.
-      ## If the database type is PostgreSQL, this parameter is optional, you can choose inputs server_name, database_name, and port with or without this parameter here. If you do not need this parameter when PostgreSQL, remove or comment this parameter.
-      ## In any other cases, remove or comment this parameter.
-      ## Whether to use custom JDBC drivers. set it as true if you don't want use embedded jdbc drivers and don't specify sc_drivers_url.
-      use_custom_jdbc_drivers: false
-      ## If use_custom_jdbc_drivers is set to true, input the name of the persistent volume claim (PVC) that binds to the persistent volume (PV) where the custom JDBC driver files are stored.
-      ## If use_custom_jdbc_drivers is set to false, remove or comments this parameter.
-      custom_jdbc_pvc: ""
+      ## Note: Custom JDBC drivers provided via sc_drivers_url in shared_configuration will automatically take precedence over out-of-the-box drivers.
       hadr:
         ## Database standby host for high availability disaster recovery (HADR)
         ## To enable database HADR, configure both standby host and port.
@@ -344,6 +340,8 @@ spec:
       ## The tos_list is a list. You can deploy multiple Target Object Stores.
       ## For each Target Object Store, the object_store_name value must be the same as the oc_cpe_obj_store_symb_name value of one of the object stores defined in initialize_configuration.ic_obj_store_creation.object_stores.
       - object_store_name: "BAWINS1TOS"
+    ## Full text search configuration for workflow runtime
+    ## When workflow_runtime_mcp_server is enabled as an optional component, set enable to true.
      ## Set securityContext for BAW deployment to skip SELinux relabeling.
     security_context:
       ## This can take an array of key value pairs to assign SELinux labels to a Container, for example
@@ -380,7 +378,7 @@ spec:
           initial_delay_seconds: 40
 
   ########################################################################
-  ########  IBM FileNet Content Manager initialize configuration  ########
+  ########  IBM Content Cortex initialize configuration  ########
   ########################################################################
   initialize_configuration:
     ic_ldap_creation:

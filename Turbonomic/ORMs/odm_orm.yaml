@@ -1,0 +1,50 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: odm-orm
+  namespace: {{ placeholder_namespace }}
+spec:
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: decisioncenter
+          path: .spec.template.spec.containers[?(@.name=="odm-decisioncenter")].resources
+        ownerPath: .spec.odm_configuration.decisionCenter.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: decisionrunner
+          path: .spec.template.spec.containers[?(@.name=="odm-decisionrunner")].resources
+        ownerPath: .spec.odm_configuration.decisionRunner.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: decisionserverconsole
+          path: .spec.template.spec.containers[?(@.name=="odm-decisionserverconsole")].resources
+        ownerPath: .spec.odm_configuration.decisionServerConsole.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: decisionserverruntime
+          path: .spec.template.spec.containers[?(@.name=="odm-decisionserverruntime")].resources
+        ownerPath: .spec.odm_configuration.decisionServerRuntime.resources
+    selectors:
+      decisioncenter:
+        matchLabels:
+          run: {{ meta.name }}-odm-decisioncenter
+      decisionrunner:
+        matchLabels:
+          run: {{ meta.name }}-odm-decisionrunner
+      decisionserverconsole:
+        matchLabels:
+          run: {{ meta.name }}-odm-decisionserverconsole
+      decisionserverruntime:
+        matchLabels:
+          run: {{ meta.name }}-odm-decisionserverruntime
+  owner:
+    apiVersion: icp4a.ibm.com/v1
+    kind: ICP4ACluster
+    name: {{ meta.name }}
+

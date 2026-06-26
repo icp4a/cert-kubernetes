@@ -16,10 +16,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba-content
     app.kubernetes.io/managed-by: ibm-dba-content
     app.kubernetes.io/name: ibm-dba-content
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
-  appVersion: 25.0.1
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "true". 
   license:
@@ -29,7 +29,7 @@ spec:
 
   ## The optional components to be installed if listed here.
   ## The optional components are: Content Manager Image Services (cmis), css (Content Search Services), es (External Share), tm (Task Manager),
-  ## IBM Enterprise Records (ier) and IBM Content Collector for SAP (iccsap)
+  ## IBM Enterprise Records (ier), IBM Content Collector for SAP (iccsap), Content Cortex for Microsoft Office (ccxmo).
   ## NOTE: ier, and iccsap does NOT support integration with ums.
   ## NOTE: es does not work when using Zen and IAM for authentication.
   content_optional_components:
@@ -39,15 +39,16 @@ spec:
     iccsap: false
     ier: false
     tm: false
+    ccxmo: false
   ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
   ## For example, serviceAccount in the spec becomes service_account in ansible.
   ## It is recommended that you perform some type validation in Ansible on the variables to ensure that
   ## your application is receiving expected input.
   ## shared configuration among all tribe
   shared_configuration:
-    ## FileNet Content Manager (FNCM) license and possible values are: user, concurrent-user, authorized-user, non-production, and production.
+    ## This is the Content Cortex license  parameter and the possible values are: user, concurrent-user, authorized-user, non-production, and production.
     ## This value could be different from the rest of the licenses.
-    sc_deployment_fncm_license: non-production
+    sc_deployment_fncm_license: ESS.CO
 
     ## Specify the RunAsUser for the security context of the pod. This is usually a numeric value that corresponds to a user ID
     sc_run_as_user: 
@@ -62,7 +63,7 @@ spec:
     sc_generate_sample_network_policies: false
 
     ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <route-name>-{{meta.namespace}}.<router-canonical-hostname> when not defined.
-    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.1?topic=scp-shared-configuration
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/26.0.0?topic=scp-shared-configuration
     ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
     #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
     

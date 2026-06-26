@@ -1,0 +1,25 @@
+apiVersion: operator.ibm.com/v1
+kind: IBMServiceMeterDefinition
+metadata:
+  name: cp4ba-workflow-metrics
+  namespace: REPLACE_NAMESPACE
+spec:
+  mappingId: awsdeployment0000000001
+  processing: LAST
+  repeat: true
+  breakdownDefs:
+    - breakdownBy:
+        name: INSTANCE_COUNT
+      groupBy:
+        - version
+        - environment
+        - architecture
+        - platform
+      source: metricQuantity
+      processing: LAST
+  data:
+    productId: 902d248ea6234a2a81d3c774a755f2ea
+    productName: Automation Workstream Services
+    metricName: INSTANCE_COUNT
+    metricDescription: count of Automation Workflow instances
+    metricType: ADOPTION

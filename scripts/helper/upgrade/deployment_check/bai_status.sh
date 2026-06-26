@@ -9,10 +9,12 @@
 #
 ######################## BAA #######################
 # Check ae-icp4adeploy-workspace-aae upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.bai.insightsEngine // ""' -`
+isInstalled=`cat ${current_cr_details_location} | ${YQ_CMD} '.status.components.bai.insightsEngine // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_BAI_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
+    CP4BA_BAI_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
+elif [[ "$isInstalled" == "Ready" && "$RECONCILE_SEEN_FLAG" == "false" ]]; then
     CP4BA_BAI_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
 elif [[ "$isInstalled" == "Ready" ]]; then
     CP4BA_BAI_DEPLOYMENT_STATUS="${GREEN_TEXT}Done${RESET_TEXT}"

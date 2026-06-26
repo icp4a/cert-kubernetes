@@ -17,7 +17,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba-workflow
     app.kubernetes.io/managed-by: ibm-dba-workflow
     app.kubernetes.io/name: ibm-dba-workflow
-    release: 25.0.1
+    release: 26.0.0
 rules:
 - apiGroups:
   - apps

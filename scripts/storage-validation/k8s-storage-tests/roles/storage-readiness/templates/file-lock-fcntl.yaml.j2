@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
       - name: file-lock-job
-        image: "{{ docker_registry }}/ibm-cp4d-public/storage-gcc:1.0-{{ arch }}"
+        image: {{ storage_val_image }}
         imagePullPolicy: "IfNotPresent"
         env:
           - name: FILE_NAME

@@ -241,9 +241,15 @@ function create_adpggdb_postgresql_sql_file(){
 
     mkdir -p $ADP_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
     rm -rf $ADP_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createADPGGDB.sql
+    # Determine CREATE ROLE statement based on client authentication setting
+    if is_pg_client_auth; then
+        CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN;"
+    else
+        CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN ENCRYPTED PASSWORD '${dbuserpwd}';"
+    fi
 cat << EOF > $ADP_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createADPGGDB.sql
 -- create user ${dbuser}
-CREATE ROLE ${dbuser} WITH INHERIT LOGIN ENCRYPTED PASSWORD '${dbuserpwd}';
+${CREATE_ROLE_STMT}
 
 -- please modify location follow your requirement
 create tablespace ${tablespace} owner ${dbuser} location '/pgsqldata/${dbname}';

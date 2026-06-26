@@ -10,10 +10,12 @@
 ###############################################################################
 #################### ODM #######################
 # Check wfpsDeployment upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.wfps.wfpsDeployment // ""' -`
+isInstalled=`cat ${UPGRADE_DEPLOYMENT_WFPSRUNTIME_CR_TMP} | ${YQ_CMD} '.status.components.wfps.wfpsDeployment // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_WFPS_DEPLOYMENT_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
+    CP4BA_WFPS_DEPLOYMENT_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
+elif [[ "$isInstalled" == "Ready" && "$RECONCILE_SEEN_FLAG" == "false" ]]; then
     CP4BA_WFPS_DEPLOYMENT_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
 elif [[ "$isInstalled" == "Ready" ]]; then
     CP4BA_WFPS_DEPLOYMENT_DEPLOYMENT_STATUS="${GREEN_TEXT}Done${RESET_TEXT}"
@@ -26,10 +28,12 @@ elif [ -z "${isInstalled}"  ]; then
 fi
 
 # Check wfpsService upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.wfps.wfpsService // ""' -`
+isInstalled=`cat ${UPGRADE_DEPLOYMENT_WFPSRUNTIME_CR_TMP} | ${YQ_CMD} '.status.components.wfps.wfpsService // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_WFPS_SERVICE_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
+    CP4BA_WFPS_SERVICE_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
+elif [[ "$isInstalled" == "Ready" && "$RECONCILE_SEEN_FLAG" == "false" ]]; then
     CP4BA_WFPS_SERVICE_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
 elif [[ "$isInstalled" == "Ready" ]]; then
     CP4BA_WFPS_SERVICE_DEPLOYMENT_STATUS="${GREEN_TEXT}Done${RESET_TEXT}"
@@ -42,6 +46,6 @@ elif [ -z "${isInstalled}"  ]; then
 fi
 
 
-printHeaderMessage "CP4BA Upgrade Status - WfPS(instance: $cr_metaname)"
+printHeaderMessage "CP4BA Upgrade Status - WfPS(instance: $wfps_cr_metaname)"
 echo "WfPS Deployment Upgrade Status       :  ${CP4BA_WFPS_DEPLOYMENT_DEPLOYMENT_STATUS}"
 echo "WfPS Service Upgrade Status          :  ${CP4BA_WFPS_SERVICE_DEPLOYMENT_STATUS}"

@@ -210,7 +210,7 @@ function patch_sub() {
         source=$(oc get subscription.operators.coreos.com "$1" --no-headers | awk '{print $3}')
         if [ "${source}" == "$2" ]; then return 0; fi
         while :; do
-            oc patch subscription.operators.coreos.com  "$1" --type=json -p '[{"op": "replace", "path": "/spec/source", "value": "'"$2"'"}]'
+            oc patch subscription.operators.coreos.com "$1" --type=json -p '[{"op": "replace", "path": "/spec/source", "value": "'"$2"'"}]'
             sleep 1
             source=$(oc get subscription.operators.coreos.com "$1" --no-headers | awk '{print $3}') 
             if [ "${source}" == "$2" ]; then

@@ -37,116 +37,7 @@ EOF
 
   success "Created ldap-bind-secret secret YAML template\n"
 }
-#DBACLD-185209: Vault implementation
-function create_ldap_secret_vault_template(){
-  wait_msg "Creating ldap-bind-secret secret JSON template for Vault"
-  mkdir -p $VAULT_SECRET_FILE_FOLDER >/dev/null 2>&1
-  local _ldap_bind_dn=${1}
-  local _ldap_password=${2}
-  local _vault_address=${3}
-  local _vault_role=${4}
-  local _vault_path=${5}
 
-cat << EOF > "${VAULT_LDAP_SECRET_FILE}"
-{
-  "_comment": "Create a ldap-bind-secret for Vault (eg: vault kv put <path>/ldap-bind-secret @${VAULT_LDAP_SECRET_FILE}).  The name should be ldap-bind-secret and it must match with the name of the ldap-bind-secret-provider-class.yaml. Optionally, this property, _comment, can be removed before creating the secret.",
-  "ldapUsername": "${_ldap_bind_dn}",
-  "ldapPassword": "${_ldap_password}"
-}
-EOF
-
-cat << EOF > "${VAULT_LDAP_SECRET_PROVIDER_CLASS_FILE}.yaml"
-# YAML template for ldap-bind-secret SecretProviderClass
-# metadata.name must match with the name of the secret created in Vault (eg: ldap-bind-secret)
-# The keys in this template should match with the keys in the ldap-bind-secret JSON template
----
-apiVersion: secrets-store.csi.x-k8s.io/v1
-kind: SecretProviderClass
-metadata:
-  name: ldap-bind-secret             
-  namespace: "$CP4BA_SERVICES_NS"
-  labels:
-    cp4ba.ibm.com/backup-type: mandatory
-    name: ldap-bind-secret
-spec:
-  provider: vault                           
-  parameters:                               
-    roleName: "$_vault_role"
-    vaultAddress: "$_vault_address"
-    objects:  |
-      - secretPath: "$_vault_path/ldap-bind-secret"
-        objectName: "ldapUsername"
-        secretKey: "ldapUsername"
-      - secretPath: "$_vault_path/ldap-bind-secret"
-        objectName: "ldapPassword"
-        secretKey: "ldapPassword"
-EOF
-
-#Create SecretProviderClass for ldap-bind-secret for separation of duties deployment
-if [[ $SEPARATE_OPERAND_FLAG == "Yes" &&  $CP4BA_OPERATOR_NS != '' ]]; then
-  info "Creating SecretProviderClass for ldap-bind-secret in namespace $CP4BA_OPERATOR_NS"
-  cp "${VAULT_LDAP_SECRET_PROVIDER_CLASS_FILE}.yaml" "${VAULT_LDAP_SECRET_PROVIDER_CLASS_FILE}-${CP4BA_OPERATOR_NS}.yaml"
-  #replace the namespace in the copied file
-  ${SED_COMMAND} "s/namespace: \"$CP4BA_SERVICES_NS\"/namespace: \"$CP4BA_OPERATOR_NS\"/g" "${VAULT_LDAP_SECRET_PROVIDER_CLASS_FILE}-${CP4BA_OPERATOR_NS}.yaml"
-fi
-
-  success "Created ldap-bind-secret secret JSON template and SecretProviderClass template for Vault\n"
-}
-
-#This function read the content of propertyfile/ldap/ldap-cert.crt and generate the Json and the SecretProviderClass
-function create_ldap_tls_secret_vault_template(){
-  wait_msg "Creating ldap-bind-secret-tls secret JSON template for Vault"
-  mkdir -p $VAULT_LDAP_SECRET_TLS_FOLDER >/dev/null 2>&1  
-  local _vault_address=$1
-  local _vault_role=$2
-  local _vault_path=$3
-  local _ldap_secret_name=$4
-  local _ldap_secret_folder=$5
-   
-  _ldap_tls_content=$(<${_ldap_secret_folder}/ldap-cert.crt)
-  # Remove carriage returns and convert multi-line certificate to single line with \n escape sequences
-  _ldap_tls_content=$(echo "$_ldap_tls_content" | tr -d '\r' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
-  
-cat << EOF > "${VAULT_LDAP_SECRET_TLS_FILE}"
-{
-  "_comment": "Create a $_ldap_secret_name for Vault (eg: vault kv put <path>/$_ldap_secret_name @${VAULT_LDAP_SECRET_TLS_FILE}).  The name should match with the LDAP_SSL_SECRET_NAME property in cp4ba_LDAP.property file. Optionally, this property, _comment, can be removed before creating the secret.",
-  "tls.crt": "${_ldap_tls_content}"
-}
-EOF
-
-cat << EOF > "${VAULT_LDAP_SECRET_TLS_PROVIDER_CLASS_FILE}.yaml"
-# YAML template for ldap-bind-tls-secret SecretProviderClass
-# metadata.name must match with the name of the secret created in Vault (eg: $_ldap_secret_name)
-# The keys in this template should match with the keys in the $_ldap_secret_name JSON template
----
-apiVersion: secrets-store.csi.x-k8s.io/v1
-kind: SecretProviderClass
-metadata:
-  name: "$_ldap_secret_name"
-  namespace: "$CP4BA_SERVICES_NS"
-  labels:
-    cp4ba.ibm.com/backup-type: mandatory
-spec:
-  provider: vault
-  parameters:
-    roleName: "$_vault_role"
-    vaultAddress: "$_vault_address"
-    objects:  |
-      - secretPath: "$_vault_path/$_ldap_secret_name"
-        objectName: "tls.crt"
-        secretKey: "tls.crt"
-EOF
-
-#Create SecretProviderClass for LDAP TLS certificate for separation of duty
-if [[ $SEPARATE_OPERAND_FLAG == "Yes" &&  $CP4BA_OPERATOR_NS != '' ]]; then
-  info "Creating SecretProviderClass for LDAP TLS certificate in namespace $CP4BA_OPERATOR_NS"
-  cp "${VAULT_LDAP_SECRET_TLS_PROVIDER_CLASS_FILE}.yaml" "${VAULT_LDAP_SECRET_TLS_PROVIDER_CLASS_FILE}-${CP4BA_OPERATOR_NS}.yaml"
-  #replace the namespace in the copied file
-  ${SED_COMMAND} "s/namespace: \"$CP4BA_SERVICES_NS\"/namespace: \"$CP4BA_OPERATOR_NS\"/g" "${VAULT_LDAP_SECRET_TLS_PROVIDER_CLASS_FILE}-${CP4BA_OPERATOR_NS}.yaml"
-fi
-
-  success "Created $_ldap_secret_name secret JSON template and SecretProviderClass template for Vault\n"
-}
 
 # function for creating the template for external ldap bind secret
 
@@ -284,6 +175,8 @@ metadata:
     gcd-db-server: $gcddbserver
     db-name: ibm-fncm-secret
     cp4ba.ibm.com/backup-type: mandatory
+    icp4asupport/capability: fncm
+    icp4asupport/deployment: ibm-fncm-secret
 stringData:
   appLoginUsername: "<APPLOGIN_USER>"
   appLoginPassword: "<APPLOGIN_PASSWORD>"
@@ -294,137 +187,6 @@ stringData:
   ltpaPassword: "<LTPA_PASSWORD>"
   keystorePassword: "<KEYSTORE_PASSWORD>"
 EOF
-}
-
-#DBACLD-185209: Vault's implementation.  Define ibm-fncm-secret for Vault
-
-function create_fncm_secret_vault_template(){
-  mkdir -p $FNCM_VAULT_SECRET_FILE_FOLDER >/dev/null 2>&1
-  local _vault_address=${1}
-  local _vault_role=${2}
-  local _vault_path=${3}
-  local _tmp_gcd_db_servername=${4}
-  local _fncm_secret_name="ibm-fncm-secret"
-
-  # Build conditional sections for OS databases
-  local os_sections=""
-  local os_secretprovider_sections=""
-  
-  # Get content OS number from property file
-  local content_os_number
-  content_os_number=$(prop_tmp_property_file CONTENT_OS_NUMBER)
-  
-  # Call helper function and capture output
-  local os_result
-  os_result=$(add_content_os_dynamically "true" "$content_os_number" "$_vault_path" "$_fncm_secret_name")
-  
-  # Parse the output using awk to extract sections properly
-  os_sections=$(echo "$os_result" | awk '/###OS_SECTIONS_START###/{flag=1;next}/###OS_SECTIONS_END###/{flag=0}flag')
-  os_secretprovider_sections=$(echo "$os_result" | awk '/###OS_SECRETPROVIDER_SECTIONS_START###/{flag=1;next}/###OS_SECRETPROVIDER_SECTIONS_END###/{flag=0}flag')
-  
-  # Debug: show what was parsed
-  # echo "DEBUG - Parsed os_sections: '$os_sections'"
-  # echo "DEBUG - Parsed os_secretprovider_sections: '$os_secretprovider_sections'"
-
-  # Get main GCD database info
-  tmp_gcd_db_servername="$(prop_db_name_user_property_file_for_server_name GCD_DB_USER_NAME)"
-  tmp_gcd_db_servername=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_gcd_db_servername")
-  
-  # Get PostgreSQL POSTGRESQL_SSL_CLIENT_SERVER for GCD
-  local gcd_postgresql_client_flag=""
-  if [[ $DB_TYPE = "postgresql" ]]; then
-    tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $tmp_gcd_db_servername.POSTGRESQL_SSL_CLIENT_SERVER)")
-    gcd_postgresql_client_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
-  fi
-  
-  if [[ $DB_TYPE = "postgresql-edb" ]]; then
-    gcd_postgresql_client_flag="true"
-  fi
-  
-  # Get GCD credentials
-  tmp_appuser="$(prop_user_profile_property_file CONTENT.APPLOGIN_USER)"
-  tmp_apppwd="$(prop_user_profile_property_file CONTENT.APPLOGIN_PASSWORD)"
-  tmp_ltpapwd="$(prop_user_profile_property_file CONTENT.LTPA_PASSWORD)"
-  tmp_kestorepwd="$(prop_user_profile_property_file CONTENT.KEYSTORE_PASSWORD)"
-  tmp_gcd_dbuser="$(prop_db_name_user_property_file GCD_DB_USER_NAME)"
-  tmp_gcd_dbuserpwd="$(prop_db_name_user_property_file GCD_DB_USER_PASSWORD)"
-
-  # Build GCD password section for JSON
-  local gcd_password_section=""
-  if [[ ! ("$gcd_postgresql_client_flag" == "true" || "$gcd_postgresql_client_flag" == "yes" || "$gcd_postgresql_client_flag" == "y") ]]; then
-    gcd_password_section=",
-  \"gcdDBPassword\": \"$tmp_gcd_dbuserpwd\""
-  fi
-
-  # Build GCD password section for SecretProviderClass
-  local gcd_secretprovider_section=""
-  if [[ ! ("$gcd_postgresql_client_flag" == "true" || "$gcd_postgresql_client_flag" == "yes" || "$gcd_postgresql_client_flag" == "y") ]]; then
-    gcd_secretprovider_section="
-      - secretPath: \"$_vault_path/$_fncm_secret_name\"
-        objectName: \"gcdDBPassword\"
-        secretKey: \"gcdDBPassword\""
-  fi
-
-  # Create JSON template using pre-built strings
-  cat << EOF > "${FNCM_VAULT_SECRET_FILE}"
-{
-  "_comment": "Create a $_fncm_secret_name for Vault (eg: vault kv put <path>/$_fncm_secret_name @${FNCM_VAULT_SECRET_FILE}). Optionally, this property, _comment, can be removed before creating the secret.",
-  "appLoginUsername": "$tmp_appuser",
-  "appLoginPassword": "$tmp_apppwd",
-  "gcdDBUsername": "$tmp_gcd_dbuser"${gcd_password_section}${os_sections},
-  "ltpaPassword": "$tmp_ltpapwd",
-  "keystorePassword": "$tmp_kestorepwd"
-}
-EOF
-
-  # Create SecretProviderClass template
-  cat << EOF > "${FNCM_VAULT_SECRET_PROVIDER_CLASS_FILE}.yaml"
-
-# YAML template for ibm-fncm-secret SecretProviderClass
-# metadata.name must match with the name of the secret created in Vault (eg: $_fncm_secret_name)
-# The keys in this template should match with the keys in the $_fncm_secret_name JSON template
----
-apiVersion: secrets-store.csi.x-k8s.io/v1
-kind: SecretProviderClass
-metadata:
-  name: "$_fncm_secret_name"
-  namespace: "$CP4BA_SERVICES_NS"
-  labels:
-    gcd-db-server: $_tmp_gcd_db_servername
-    db-name: ibm-fncm-secret
-    cp4ba.ibm.com/backup-type: mandatory
-spec:
-  provider: vault
-  parameters:
-    roleName: "$_vault_role"
-    vaultAddress: "$_vault_address"
-    objects:  |
-      - secretPath: "$_vault_path/$_fncm_secret_name"
-        objectName: "appLoginUsername"
-        secretKey: "appLoginUsername"
-      - secretPath: "$_vault_path/$_fncm_secret_name"
-        objectName: "appLoginPassword"
-        secretKey: "appLoginPassword"
-      - secretPath: "$_vault_path/$_fncm_secret_name"
-        objectName: "gcdDBUsername"
-        secretKey: "gcdDBUsername"${gcd_secretprovider_section}${os_secretprovider_sections}
-      - secretPath: "$_vault_path/$_fncm_secret_name"
-        objectName: "ltpaPassword"
-        secretKey: "ltpaPassword"
-      - secretPath: "$_vault_path/$_fncm_secret_name"
-        objectName: "keystorePassword"
-        secretKey: "keystorePassword"
-EOF
-
-#Create SecretProviderClass for DB SSL certificate for separation of duty
-if [[ $SEPARATE_OPERAND_FLAG == "Yes" &&  $CP4BA_OPERATOR_NS != '' ]]; then
-  info "Creating SecretProviderClass for DB SSL certificate in namespace $CP4BA_OPERATOR_NS"
-  cp "${FNCM_VAULT_SECRET_PROVIDER_CLASS_FILE}.yaml" "${FNCM_VAULT_SECRET_PROVIDER_CLASS_FILE}-${CP4BA_OPERATOR_NS}.yaml"
-  #replace the namespace in the copied file
-  ${SED_COMMAND} "s/namespace: \"$CP4BA_SERVICES_NS\"/namespace: \"$CP4BA_OPERATOR_NS\"/g" "${FNCM_VAULT_SECRET_PROVIDER_CLASS_FILE}-${CP4BA_OPERATOR_NS}.yaml"
-fi
-
-  success "Created $_fncm_secret_name secret JSON template and SecretProviderClass template for Vault\n"
 }
 
 # This function cover DB SSL
@@ -492,138 +254,6 @@ fi
   chmod 755 ${CP4A_DB_SSL_SECRET_FILE}
 }
 
-#DBACLD-185209: Vault's implementation for DB SSL
-function create_cp4a_db_ssl_vault_template(){
-  wait_msg "Creating database SSL certificate JSON template for Vault"
-  local _vault_address=${1}
-  local _vault_role=${2}
-  local _vault_path=${3}
-  local _dbserver=${4}
-  local _tmp_ssl_secret_name=${5}
-  local _tmp_cert_folder_name=${6}
-  local _tmp_ssl_client_server=${7}
-  local _tmp_pg_ssl_mode=${8}
-
-  mkdir -p $DB_VAULT_SECRET_FILE_FOLDER/$_dbserver >/dev/null 2>&1
-  local DB_VAULT_SECRET_FILE=${DB_VAULT_SECRET_FILE_FOLDER}/$_dbserver/ibm-cp4ba-db-ssl-cert-secret-for-${_dbserver}.json
-  local DB_VAULT_SECRET_PROVIDER_CLASS_FILE=${DB_VAULT_SECRET_FILE_FOLDER}/$_dbserver/ibm-cp4ba-db-ssl-cert-secret-for-${_dbserver}-provider-class
-
-  # Build JSON content based on database type and SSL configuration
-  local json_content=""
-  local provider_objects=""
-
-  if [[ $DB_TYPE != "postgresql" ]]; then
-    # For DB2, Oracle, SQL Server - use tls.crt and cacert.crt
-    local tls_cert_content=$(<${_tmp_cert_folder_name}/db-cert.crt)
-    local cacert_content=$(<${_tmp_cert_folder_name}/db-cert.crt)
-    
-    # Remove carriage returns and convert multi-line certificates to single line with escaped newlines
-    tls_cert_content=$(echo "$tls_cert_content" | tr -d '\r' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
-    cacert_content=$(echo "$cacert_content" | tr -d '\r' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
-
-    json_content='"tls.crt": "'$tls_cert_content'",
-  "cacert.crt": "'$cacert_content'"'
-    
-    provider_objects='      - secretPath: "'$_vault_path'/'$_tmp_ssl_secret_name'"
-        objectName: "tls.crt"
-        secretKey: "tls.crt"
-      - secretPath: "'$_vault_path'/'$_tmp_ssl_secret_name'"
-        objectName: "cacert.crt"
-        secretKey: "cacert.crt"'
-
-  # Postgres with no client_server
-  elif [[ $DB_TYPE == "postgresql" && ($_tmp_ssl_client_server == "no" || $_tmp_ssl_client_server == "false" || $_tmp_ssl_client_server == "" || -z $_tmp_ssl_client_server) ]]; then
-    # For PostgreSQL with SSL but no client authentication - use tls.crt and serverca.pem
-    local tls_cert_content=$(<${_tmp_cert_folder_name}/db-cert.crt)
-    local serverca_content=$(<${_tmp_cert_folder_name}/db-cert.crt)
-    
-    # Remove carriage returns and convert multi-line certificates to single line with escaped newlines
-    tls_cert_content=$(echo "$tls_cert_content" | tr -d '\r' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
-    serverca_content=$(echo "$serverca_content" | tr -d '\r' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
-
-    json_content='"tls.crt": "'$tls_cert_content'",
-  "serverca.pem": "'$serverca_content'"'
-    
-    provider_objects='      - secretPath: "'$_vault_path'/'$_tmp_ssl_secret_name'"
-        objectName: "tls.crt"
-        secretKey: "tls.crt"
-      - secretPath: "'$_vault_path'/'$_tmp_ssl_secret_name'"
-        objectName: "serverca.pem"
-        secretKey: "serverca.pem"'
-  
-  else # Postgres with client server
-    # For PostgreSQL with SSL client authentication - use tls.crt, ca.crt, tls.key, and sslmode
-    local tls_cert_content=$(<${_tmp_cert_folder_name}/client.crt)
-    local ca_cert_content=$(<${_tmp_cert_folder_name}/root.crt)
-    local tls_key_content=$(<${_tmp_cert_folder_name}/client.key)
-    
-    # Remove carriage returns and convert multi-line certificates to single line with escaped newlines
-    tls_cert_content=$(echo "$tls_cert_content" | tr -d '\r' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
-    ca_cert_content=$(echo "$ca_cert_content" | tr -d '\r' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
-    tls_key_content=$(echo "$tls_key_content" | tr -d '\r' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
-    # Use provided SSL mode or default to verify-full
-    local ssl_mode=${_tmp_pg_ssl_mode:-"verify-full"}
-    
-    json_content='"tls.crt": "'$tls_cert_content'",
-  "ca.crt": "'$ca_cert_content'",
-  "tls.key": "'$tls_key_content'",
-  "sslmode": "'$ssl_mode'"'
-    
-    provider_objects='      - secretPath: "'$_vault_path'/'$_tmp_ssl_secret_name'"
-        objectName: "tls.crt"
-        secretKey: "tls.crt"
-      - secretPath: "'$_vault_path'/'$_tmp_ssl_secret_name'"
-        objectName: "ca.crt"
-        secretKey: "ca.crt"
-      - secretPath: "'$_vault_path'/'$_tmp_ssl_secret_name'"
-        objectName: "tls.key"
-        secretKey: "tls.key"
-      - secretPath: "'$_vault_path'/'$_tmp_ssl_secret_name'"
-        objectName: "sslmode"
-        secretKey: "sslmode"'
-  fi
-
-  # Create JSON template
-  cat << EOF > ${DB_VAULT_SECRET_FILE}
-{
-  "_comment": "Create a $_tmp_ssl_secret_name for Vault (eg: vault kv put <path>/$_tmp_ssl_secret_name @${DB_VAULT_SECRET_FILE}). Optionally, this property, _comment, can be removed before creating the secret.",
-  $json_content
-}
-EOF
-
-  # Create SecretProviderClass template
-  cat << EOF > "${DB_VAULT_SECRET_PROVIDER_CLASS_FILE}.yaml"
-# YAML template for $_tmp_ssl_secret_name SecretProviderClass
-# metadata.name must match with the name of the secret created in Vault (eg: $_tmp_ssl_secret_name)
-# The keys in this template should match with the keys in the $_tmp_ssl_secret_name JSON template
----
-apiVersion: secrets-store.csi.x-k8s.io/v1
-kind: SecretProviderClass
-metadata:
-  name: "$_tmp_ssl_secret_name"
-  namespace: "$CP4BA_SERVICES_NS"
-  labels:
-    cp4ba.ibm.com/backup-type: mandatory
-spec:
-  provider: vault
-  parameters:
-    roleName: "$_vault_role"
-    vaultAddress: "$_vault_address"
-    objects:  |
-$provider_objects
-EOF
-
-#Create SecretProviderClass for DB SSL certificate for separation of duty
-if [[ $SEPARATE_OPERAND_FLAG == "Yes" &&  $CP4BA_OPERATOR_NS != '' ]]; then
-  info "Creating SecretProviderClass for DB SSL certificate in namespace $CP4BA_OPERATOR_NS"
-  cp "${DB_VAULT_SECRET_PROVIDER_CLASS_FILE}.yaml" "${DB_VAULT_SECRET_PROVIDER_CLASS_FILE}-${CP4BA_OPERATOR_NS}.yaml"
-  #replace the namespace in the copied file
-  ${SED_COMMAND} "s/namespace: \"$CP4BA_SERVICES_NS\"/namespace: \"$CP4BA_OPERATOR_NS\"/g" "${DB_VAULT_SECRET_PROVIDER_CLASS_FILE}-${CP4BA_OPERATOR_NS}.yaml"
-fi
-
-  success "Created $_tmp_ssl_secret_name SSL certificate JSON template for Vault\n"
-
-}
 
 function create_fncm_icc_secret_template(){
   mkdir -p $FNCM_SECRET_FOLDER >/dev/null 2>&1
@@ -639,69 +269,14 @@ metadata:
   namespace: "$CP4BA_SERVICES_NS"
   labels:
     cp4ba.ibm.com/backup-type: mandatory
+    icp4asupport/capability: fncm
+    icp4asupport/deployment: ibm-icc-secret
 stringData:
   archiveUserId: "<ARCHIVE_USERID>"
   archivePassword: "<ARCHIVE_PASSWORD>"
 EOF
 }
 
-#DBACLD-185209: Vault's implementation for ibm-icc-secret
-
-function create_fncm_icc_secret_vault_template(){
-
-  mkdir -p $FNCM_ICC_VAULT_SECRET_FILE_FOLDER >/dev/null 2>&1
-  local _vault_address=${1}
-  local _vault_role=${2}
-  local _vault_path=${3}
-  local _archive_id=${4}
-  local _archive_pwd=${5}
-  local _fncm_icc_secret_name="ibm-icc-secret"
-
-  # Create JSON template
-  cat << EOF > ${FNCM_ICC_VAULT_SECRET_FILE}
-{
-  "_comment": "Create a $_fncm_icc_secret_name for Vault (eg: vault kv put <path>/$_fncm_icc_secret_name @${FNCM_ICC_VAULT_SECRET_FILE}). Optionally, this property, _comment, can be removed before creating the secret.",
-  "archiveUserId": "$_archive_id",
-  "archivePassword": "$_archive_pwd"
-}
-EOF
-
-  # Create SecretProviderClass template
-  cat << EOF > "${FNCM_ICC_VAULT_SECRET_PROVIDER_CLASS_FILE}.yaml"
-# YAML template for $_fncm_icc_secret_name SecretProviderClass
-# metadata.name must match with the name of the secret created in Vault (eg: $_fncm_icc_secret_name)
-# The keys in this template should match with the keys in the $_fncm_icc_secret_name JSON template
----
-apiVersion: secrets-store.csi.x-k8s.io/v1
-kind: SecretProviderClass
-metadata:
-  name: "$_fncm_icc_secret_name"
-  namespace: "$CP4BA_SERVICES_NS"
-  labels:
-    cp4ba.ibm.com/backup-type: mandatory
-spec:
-  provider: vault
-  parameters:
-    roleName: "$_vault_role"
-    vaultAddress: "$_vault_address"
-    objects:  |
-      - secretPath: "$_vault_path/$_fncm_icc_secret_name"
-        objectName: "archiveUserId"
-        secretKey: "archiveUserId"
-      - secretPath: "$_vault_path/$_fncm_icc_secret_name"
-        objectName: "archivePassword"
-        secretKey: "archivePassword"
-EOF
-
-#Create SecretProviderClass for FNCM ICC secret for separtion of duty
-if [[ $SEPARATE_OPERAND_FLAG == "Yes" &&  $CP4BA_OPERATOR_NS != '' ]]; then
-  info "Creating SecretProviderClass for FNCM ICC secret in namespace $CP4BA_OPERATOR_NS"
-  cp "${FNCM_ICC_VAULT_SECRET_PROVIDER_CLASS_FILE}.yaml" "${FNCM_ICC_VAULT_SECRET_PROVIDER_CLASS_FILE}-${CP4BA_OPERATOR_NS}.yaml"
-  #replace the namespace in the copied file
-  ${SED_COMMAND} "s/namespace: \"$CP4BA_SERVICES_NS\"/namespace: \"$CP4BA_OPERATOR_NS\"/g" "${FNCM_ICC_VAULT_SECRET_PROVIDER_CLASS_FILE}-${CP4BA_OPERATOR_NS}.yaml"
-fi
-  success "Created $_fncm_icc_secret_name JSON template and SecretProviderClass template for Vault\n"
-}
 
 function create_fncm_iccsap_secret_template(){
   mkdir -p $FNCM_SECRET_FOLDER >/dev/null 2>&1
@@ -789,6 +364,30 @@ EOF
   success "Created Operational Decision Manager secret YAML template\n"
 }
 
+
+# K8s secret template function to create the ODM keystore password secret
+function create_odm_keystore_password_secret_template(){
+  local password=$1 
+  mkdir -p $ODM_SECRET_FOLDER >/dev/null 2>&1
+  wait_msg "Creating Operational Decision Manager Keystore Password secret YAML template"
+
+cat << EOF > ${ODM_KEYSTORE_SECRET_FILE}
+# YAML template for ibm-odm-keystore-secret secret
+---
+kind: Secret
+apiVersion: v1
+type: Opaque
+metadata:
+  name: ibm-odm-keystore-secret
+  namespace: "$CP4BA_SERVICES_NS"
+  labels:
+    cp4ba.ibm.com/backup-type: mandatory
+stringData:
+  keystorePassword: "$password"
+EOF
+  success "Created Operational Decision Manager Keystore Password secret YAML template\n"
+}
+
 # function for creating the template for CP4BA BAN capabilities secret 
 function create_ban_secret_template(){
   local dbname=$1
@@ -811,6 +410,8 @@ metadata:
     db-server: $dbserver
     db-name: $dbname
     cp4ba.ibm.com/backup-type: mandatory
+    icp4asupport/capability: fncm
+    icp4asupport/deployment: ibm-ban-secret
 stringData:
   appLoginUsername: "<APPLOGIN_USER>"
   appLoginPassword: "<APPLOGIN_PASSWORD>"
@@ -823,125 +424,6 @@ stringData:
 EOF
 }
 
-#DBACLD-185209: Vault's implementation.  Define ibm-ban-secret for Vault
-function create_ban_secret_vault_template() {
-  wait_msg "Creating ibm-ban-secret JSON template for Vault"
-  mkdir -p $BAN_VAULT_SECRET_FILE_FOLDER >/dev/null 2>&1
-  local _vault_address=${1}
-  local _vault_role=${2}
-  local _vault_path=${3}
-  local _app_login_user=${4}
-  local _app_login_pwd=${5}
-  local _icn_db_user=${6}
-  local _icn_db_pwd=${7}
-  local _jmail_user=${8}
-  local _jmail_pwd=${9}
-  local _ltpa_pwd=${10}
-  local _keystore_pwd=${11}
-  local _pg_client_flag=${12}
-  local _db_server=${13}
-  local _db_name=${14}
-  local _ban_secret_name="ibm-ban-secret"
-
-  # Build conditional sections as variables first
-  # Only create this section when it's NOT EDB
-  local icn_pwd_section=""
-  if [[ ! ("$_pg_client_flag" == "true" || "$_pg_client_flag" == "yes" || "$_pg_client_flag" == "y") ]]; then
-    icn_pwd_section=',
-  "navigatorDBPassword": "'$_icn_db_pwd'"'
-  fi
-  
-  # Only create this section when jmail user and jmail password are not <Optional>
-  local jmail_section=""
-  if [[ ! ("$_jmail_user" == "<Optional>" || "$_jmail_pwd" == "<Optional>" || -z "$_jmail_user" || -z "$_jmail_pwd") ]]; then
-    jmail_section=',
-  "jMailUsername": "'$_jmail_user'",
-  "jMailPassword": "'$_jmail_pwd'"'
-  fi
-
-  # Create JSON template using pre-built strings
-  cat << EOF > "${BAN_VAULT_SECRET_FILE}"
-{
-  "_comment": "Create a $_ban_secret_name for Vault (eg: vault kv put <path>/$_ban_secret_name @${BAN_VAULT_SECRET_FILE}). Optionally, this property, _comment, can be removed before creating the secret.",
-  "appLoginUsername": "$_app_login_user",
-  "appLoginPassword": "$_app_login_pwd",
-  "navigatorDBUsername": "$_icn_db_user"${icn_pwd_section}${jmail_section},
-  "ltpaPassword": "$_ltpa_pwd",
-  "keystorePassword": "$_keystore_pwd"
-}
-EOF
-
-  # Build conditional sections for SecretProviderClass
-  # Only create this section when it's NOT EDB
-  local icn_pwd_secret_section=""
-  if [[ ! ("$_pg_client_flag" == "true" || "$_pg_client_flag" == "yes" || "$_pg_client_flag" == "y") ]]; then
-    icn_pwd_secret_section='
-      - secretPath: "'$_vault_path'/'$_ban_secret_name'"
-        objectName: "navigatorDBPassword"
-        secretKey: "navigatorDBPassword"'
-  fi
-  
-  # Only create this section when jmail user and jmail password are not <Optional>
-  local jmail_secret_section=""
-  if [[ ! ("$_jmail_user" == "<Optional>" || "$_jmail_pwd" == "<Optional>" || -z "$_jmail_user" || -z "$_jmail_pwd") ]]; then
-    jmail_secret_section='
-      - secretPath: "'$_vault_path'/'$_ban_secret_name'"
-        objectName: "jMailUsername"
-        secretKey: "jMailUsername"
-      - secretPath: "'$_vault_path'/'$_ban_secret_name'"
-        objectName: "jMailPassword"
-        secretKey: "jMailPassword"'
-  fi
-
-  # Create SecretProviderClass template using pre-built strings
-  cat << EOF > "${BAN_VAULT_SECRET_PROVIDER_CLASS_FILE}.yaml"
-
-# YAML template for ibm-ban-secret SecretProviderClass
-# metadata.name must match with the name of the secret created in Vault (eg: $_ban_secret_name)
-# The keys in this template should match with the keys in the $_ban_secret_name JSON template
----
-apiVersion: secrets-store.csi.x-k8s.io/v1
-kind: SecretProviderClass
-metadata:
-  name: "$_ban_secret_name"
-  namespace: "$CP4BA_SERVICES_NS"
-  labels:
-    cp4ba.ibm.com/backup-type: mandatory
-    db-server: "$_db_server"
-    db-name: "$_db_name"
-spec:
-  provider: vault
-  parameters:
-    roleName: "$_vault_role"
-    vaultAddress: "$_vault_address"
-    objects:  |
-      - secretPath: "$_vault_path/$_ban_secret_name"
-        objectName: "appLoginUsername"
-        secretKey: "appLoginUsername"
-      - secretPath: "$_vault_path/$_ban_secret_name"
-        objectName: "appLoginPassword"
-        secretKey: "appLoginPassword"
-      - secretPath: "$_vault_path/$_ban_secret_name"
-        objectName: "navigatorDBUsername"
-        secretKey: "navigatorDBUsername"${icn_pwd_secret_section}${jmail_secret_section}
-      - secretPath: "$_vault_path/$_ban_secret_name"
-        objectName: "ltpaPassword"
-        secretKey: "ltpaPassword"
-      - secretPath: "$_vault_path/$_ban_secret_name"
-        objectName: "keystorePassword"
-        secretKey: "keystorePassword"
-EOF
-
-# Create SecretProviderClass for ibm-ban-secret for separation of duties
-if [[ $SEPARATE_OPERAND_FLAG == "Yes" &&  $CP4BA_OPERATOR_NS != '' ]]; then
-  info "Creating SecretProviderClass for ibm-ban-secret in namespace $CP4BA_OPERATOR_NS"
-  cp "${BAN_VAULT_SECRET_PROVIDER_CLASS_FILE}.yaml" "${BAN_VAULT_SECRET_PROVIDER_CLASS_FILE}-${CP4BA_OPERATOR_NS}.yaml"
-  #replace the namespace in the copied file
-  ${SED_COMMAND} "s/namespace: \"$CP4BA_SERVICES_NS\"/namespace: \"$CP4BA_OPERATOR_NS\"/g" "${BAN_VAULT_SECRET_PROVIDER_CLASS_FILE}-${CP4BA_OPERATOR_NS}.yaml"
-fi
-
-  success "Created $_ban_secret_name secret JSON template and SecretProviderClass template for Vault\n"
-}
 
 # This function cover DB2
 function create_ban_db2_ssl_template(){
@@ -954,7 +436,7 @@ cat << EOF > ${BAN_DB_SSL_SECRET_FILE}
 if [[ -f "<ban-crt-file-in-local>/db-cert.crt" ]]; then
   ${CLI_CMD} delete secret "<ban-db-ssl-secret-name>" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
   ${CLI_CMD} create secret generic "<ban-db-ssl-secret-name>" --from-file=tls.crt="<ban-crt-file-in-local>" -n "$CP4BA_SERVICES_NS"
-  ${CLI_CMD} label secret "<ban-db-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "<ban-db-ssl-secret-name>" cp4ba.ibm.com/backup-type=mandatory icp4asupport/capability=fncm icp4asupport/deployment=ibm-ban-db-ssl-cert-secret -n "$CP4BA_SERVICES_NS"
 else
   printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"db-cert.crt"\" into \"<ban-crt-file-in-local>\" first."
   exit 1
@@ -1013,18 +495,22 @@ function create_aca_db_secret_template(){
     local db_name_array=()
     local db_user_array=()
     local db_userpwd_array=()
+    local db_server_array=()
 
     local tmp_dbname=$(prop_db_name_user_property_file ADP_PROJECT_DB_NAME)
     local tmp_dbuser=$(prop_db_name_user_property_file ADP_PROJECT_DB_USER_NAME)
     local tmp_dbuserpwd=$(prop_db_name_user_property_file ADP_PROJECT_DB_USER_PASSWORD)
+    local tmp_dbservername_list=$(prop_db_name_user_property_file ADP_PROJECT_DB_SERVER)
     tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
     tmp_dbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbuser")
     tmp_dbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbuserpwd")
+    tmp_dbservername_list=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbservername_list")
 
     OIFS=$IFS
     IFS=',' read -ra db_name_array <<< "$tmp_dbname"
     IFS=',' read -ra db_user_array <<< "$tmp_dbuser"
     IFS=',' read -ra db_userpwd_array <<< "$tmp_dbuserpwd"
+    IFS=',' read -ra db_server_array <<< "$tmp_dbservername_list"
     IFS=$OIFS
 
     # Determine postgres client-auth flag for the ADP DB server (used to decide whether to add per-project DB passwords)
@@ -1046,9 +532,15 @@ function create_aca_db_secret_template(){
         tmp_postgresql_client_flag="true"
       fi
 
-    if [[ ${#db_name_array[@]} != ${#db_user_array[@]} || ${#db_user_array[@]} != ${#db_userpwd_array[@]} ]]; then
-        fail "The number of values of: ADP_PROJECT_DB_NAME, ADP_PROJECT_DB_USER_NAME, ADP_PROJECT_DB_USER_PASSWORD must all be equal. Exit ..."
-    else
+    # Validate array lengths - password array only checked if not using client auth
+    if [[ (${#db_name_array[@]} != ${#db_user_array[@]}) || (${#db_name_array[@]} != ${#db_server_array[@]}) ]]; then
+        fail "The number of values of: ADP_PROJECT_DB_NAME, ADP_PROJECT_DB_USER_NAME, ADP_PROJECT_DB_SERVER must all be equal. Exit ..."
+    fi
+    if ! is_pg_client_auth && [[ ${#db_name_array[@]} != ${#db_userpwd_array[@]} ]]; then
+        fail "The number of values of: ADP_PROJECT_DB_USER_PASSWORD must match other arrays when not using client certificate authentication. Exit ..."
+    fi
+    
+    if [[ ${#db_name_array[@]} -gt 0 ]]; then
         # Check if SSL is being used, if so, we need to add a line for path to certificate files
         # ADP only supports 1 database server, so only the first property in array will be used
         tmp_dbservername=${db_server_array[0]}
@@ -1089,8 +581,8 @@ function create_aca_db_secret_template(){
             tmp_dbuser=${db_user_array[num]}
             tmp_dbuserpwd=${db_userpwd_array[num]}
             # If Postgres client-auth is enabled for the ADP DB server, DO NOT add per-project DB password fields.
-            # Other DB types will still add the PROJ_DB_CONFIG passwords.
-            if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
+            # Other DB types will still add the PROJ_DB_CONFIG passwords. Except EDB, we will keep the password in secret even POSTGRESQL_SSL_CLIENT_SERVER is true because EDB needs password to connect.
+            if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") || $DB_TYPE == "postgresql-edb" ]]; then
                 update_secret_template_passwords "$tmp_dbuserpwd" "${tmp_dbname}_DB_CONFIG" "$ADP_BASE_DB_SECRET_YAML_FILE"
             fi
         done
@@ -1521,7 +1013,7 @@ EOF
 function create_ads_decisiondesigner_secret_template(){
   local dbname=$1
   local dbserver=$2
-  wait_msg "Creating Automation Decision Services secret for decision designer YAML template"
+  wait_msg "Creating Decision Intelligence Client Managed Software secret for decision designer YAML template"
   mkdir -p $ADS_SECRET_FOLDER >/dev/null 2>&1
   
 cat << EOF > ${ADS_DESIGNER_FILE}
@@ -1539,11 +1031,11 @@ metadata:
     cp4ba.ibm.com/backup-type: mandatory
 type: Opaque
 stringData:
-  username: <ADS_DESIGNER_DB_USERNAME>
-  password: <ADS_DESIGNER_DB_PASSWORD>
+  username: <DICMS_DESIGNER_DB_USERNAME>
+  password: <DICMS_DESIGNER_DB_PASSWORD>
 EOF
 
-success "Created Automation Decision Services secret for decision designer YAML template\n"
+success "Created Decision Intelligence Client Managed Software secret for decision designer YAML template\n"
 }
 
 ### <https://jsw.ibm.com/browse/DBACLD-168159> - Added missing namespace parameters in secret yaml and update function to match other create secret template functions
@@ -1551,7 +1043,7 @@ success "Created Automation Decision Services secret for decision designer YAML 
 function create_ads_decisionruntime_secret_template(){
   local dbname=$1
   local dbserver=$2
-  wait_msg "Creating Automation Decision Services secret for decision runtime YAML template"
+  wait_msg "Creating Decision Intelligence Client Managed Software secret for decision runtime YAML template"
   mkdir -p $ADS_SECRET_FOLDER >/dev/null 2>&1
 
 cat << EOF > ${ADS_RUNTIME_FILE}
@@ -1569,11 +1061,11 @@ metadata:
     cp4ba.ibm.com/backup-type: mandatory
 type: Opaque
 stringData:
-  username: <ADS_RUNTIME_DB_USERNAME>
-  password: <ADS_RUNTIME_DB_USERNAME>
+  username: <DICMS_RUNTIME_DB_USERNAME>
+  password: <DICMS_RUNTIME_DB_USERNAME>
 EOF
 
-success "Created Automation Decision Services secret for decision runtime YAML template\n"
+success "Created Decision Intelligence Client Managed Software secret for decision runtime YAML template\n"
 }
 
 
@@ -1644,9 +1136,13 @@ EOF
 
 function create_im_external_db_secret_template(){
   wait_msg "Creating im-datastore-edb-secret secret YAML template for IM metastore external Postgres DB"
-  mkdir -p $IM_SECRET_FOLDER >/dev/null 2>&1
 
-cat << EOF > ${IM_SECRET_FILE}
+#DBACLD-193988: IM Vault integration - create secret template for IM metastore external Postgres DB with SSL enabled, the secret will be used to store the certificate/key files for SSL connection to external Postgres DB
+if [[ $vault_enabled == "true" ]]; then
+  create_im_datastore_edb_secret_vault_template "im-datastore-edb-secret" "$im_external_db_cert_folder"
+else
+  mkdir -p $IM_SECRET_FOLDER >/dev/null 2>&1
+  cat << EOF > ${IM_SECRET_FILE}
 #!/bin/bash
 # Shell template for im-datastore-edb-secret.sh
 if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-local>/client.crt" && -f "<cp4a-db-crt-file-in-local>/client.key" ]]; then
@@ -1668,6 +1164,7 @@ fi
 EOF
   success "Created im-datastore-edb-secret secret YAML template for IM metastore external Postgres DB\n"
   chmod 755 ${IM_SECRET_FILE}
+fi
 }
 
 function create_im_external_db_configmap_template(){
@@ -1698,10 +1195,33 @@ EOF
 }
 
 function create_bts_external_db_secret_template(){
-  wait_msg "Creating bts-datastore-edb-secret secret YAML template for BTS metastore external Postgres DB"
-  mkdir -p $BTS_SECRET_FOLDER >/dev/null 2>&1
+    wait_msg "Creating bts-datastore-edb-secret secret YAML template for BTS metastore external Postgres DB"
 
-cat << EOF > ${BTS_SSL_SECRET_FILE}
+    # DBACLD-193988: BTS Vault integration - create secret template for BTS metastore external Postgres DB with SSL enabled, the secret will be used to store the certificate/key files for SSL connection to external Postgres DB
+    
+    # Setting this flag to true initially until overridden by vault_enabled flag
+    bts_create_k8_secret="true"
+
+    # --------------------------------------------------
+    # IMPORTANT TODO: 
+    # As a temporary measure, we need to create both K8s secret and Vault for BTS metastore external Postgres DB
+    # Uncomment these 3 lines below once we get BTS Operator that supports Vault for the DB secret 
+    # --------------------------------------------------
+    if [ "$vault_enabled" == "true" ]; then
+        bts_create_k8_secret="false"
+    fi
+    
+    if [[ $vault_enabled == "true" ]]; then
+        # Create template for Vault
+        create_bts_datastore_edb_secret_vault_template "bts-datastore-edb-secret" "$bts_external_db_cert_folder"
+    fi
+
+    if [[ $bts_create_k8_secret == "true" ]]; then # Non-Vault
+        mkdir -p $BTS_SECRET_FOLDER >/dev/null 2>&1
+        # Create template for K8s secret
+        # For https://jsw.ibm.com/browse/DBACLD-238245 and https://jsw.ibm.com/browse/DBACLD-238566 we now need to update the bts-datastore-edb-secret template to have a different key
+        # THe key tls.key will be replaced to be tls.pk8 as the client.key file that it stores is in pk8 format. With new Postgres drivers, if you name it tls.key it expects the the key cert to be in PEM format.
+        cat << EOF > ${BTS_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for bts-datastore-edb-secret.sh
 if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-local>/client.crt" && -f "<cp4a-db-crt-file-in-local>/client.key" ]]; then
@@ -1714,19 +1234,26 @@ if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-loca
   ${CLI_CMD} delete secret "bts-datastore-edb-secret" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
   ${CLI_CMD} create secret generic "bts-datastore-edb-secret" --from-file=ca.crt="<cp4a-db-crt-file-in-local>/root.pem"\
   --from-file=tls.crt="<cp4a-db-crt-file-in-local>/client.pem"\
-  --from-file=tls.key="<cp4a-db-crt-file-in-local>/tls_key.pk8" -n "$CP4BA_SERVICES_NS"
+  --from-file=tls.pk8="<cp4a-db-crt-file-in-local>/tls_key.pk8" -n "$CP4BA_SERVICES_NS"
   ${CLI_CMD} label secret "bts-datastore-edb-secret" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
   printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
-  success "Created bts-datastore-edb-secret secret YAML template for BTS metastore external Postgres DB\n"
-  chmod 755 ${BTS_SSL_SECRET_FILE}
+        chmod 755 ${BTS_SSL_SECRET_FILE}
+
+        ${SED_COMMAND} "s|<cp4a-db-crt-file-in-local>|$bts_external_db_cert_folder|g" ${BTS_SSL_SECRET_FILE}
+
+        success "Created bts-datastore-edb-secret secret YAML template for BTS metastore external Postgres DB\n"
+    fi
+
 }
 
 function create_bts_external_db_configmap_template(){
   wait_msg "Creating ibm-bts-config-extension configMap YAML template for BTS metastore external Postgres DB"
+  # For https://jsw.ibm.com/browse/DBACLD-238245 and https://jsw.ibm.com/browse/DBACLD-238566 we now need to update the ibm-bts-config-extension template to have a different file path
+  # THe key tls.key file path will be replaced end with tls.pk8 as the client.key file that it stores is in pk8 format. With new Postgres drivers, if you name it tls.key it expects the the key to be in PEM format.
   mkdir -p $BTS_SECRET_FOLDER >/dev/null 2>&1
 cat << EOF > ${BTS_CONFIGMAP_FILE}
 # YAML template for ibm-bts-config-extension configMap
@@ -1746,7 +1273,7 @@ data:
   sslMode: verify-ca
   sslSecretName: bts-datastore-edb-secret
   customPropertyName1: sslKey
-  customPropertyValue1: "/opt/ibm/wlp/usr/shared/resources/security/db/tls.key"
+  customPropertyValue1: "/opt/ibm/wlp/usr/shared/resources/security/db/tls.pk8"
   customPropertyName2: user
   customPropertyValue2: "<DatabaseUserName>"
 EOF
@@ -1799,57 +1326,438 @@ EOF
 
 }
 
-#DBACLD-185209: Vault's implementation.  Create optional CP4BA root-CA (root-ca).  KC link: https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.0?topic=tls-changing-default-root-ca-signer-certificate
-# This function will genreate the JSON and SecretProviderClass all commented out as this is an optional secret
-function create_cp4ba_root_ca_vault_template(){
-  local _vault_address=${1}
-  local _vault_path=${2}
-  local _vault_role=${3}
-  local _vault_secret_name=${4:-root-ca}
+# Create WatsonX LWE SSL secret template for enabled providers with SSL enabled
+#
+# Purpose:
+#   Generates a shell script template that creates a Kubernetes secret containing
+#   the SSL/TLS certificate for WatsonX Lightweight Engine (LWE) providers.
+#
+# Prerequisites:
+#   - PARSED_PROVIDERS array must be populated (from parse_multi_provider_property_file)
+#   - AI_SERVICES_SECRET_FOLDER must be defined (from common.sh)
+#   - AI_SERVICES_SSL_SECRET_FILE must be defined (from common.sh)
+#   - AI_SERVICES_SSL_SECRET_NAME must be defined (from common.sh)
+#
+# Behavior:
+#   - Scans all providers to check if any LWE provider has SSL_ENABLED=true
+#   - If no LWE providers with SSL, returns without creating anything
+#   - If SSL is enabled, creates a shell script that:
+#     * Validates the certificate file exists (lwe.crt)
+#     * Creates/updates the Kubernetes secret with the certificate
+#     * Labels the secret for backup
+#
+# Generated Secret:
+#   - Name: watsonx-lwe-ssl-secret (from AI_SERVICES_SSL_SECRET_NAME)
+#   - Type: generic
+#   - Data: tls.crt (mounted from lwe.crt file)
+#   - Label: cp4ba.ibm.com/backup-type=mandatory
+#
+# Certificate Requirements:
+#   - File must be named 'lwe.crt'
+#   - Must be placed in TLS_CERT_LOCATION folder
+#   - Must be valid X.509 certificate
+#
+# Returns:
+#   0 - Success (secret template created or skipped)
+#
+function create_watsonx_lwe_ssl_secret_template() {
+    local provider_count=0
+    local has_lwe_ssl=false
+    
+    # Count total providers by scanning PARSED_PROVIDERS array for PROVIDER_ID keys
+    for key in "${!PARSED_PROVIDERS[@]}"; do
+        if [[ "$key" =~ ^([0-9]+)_PROVIDER_ID$ ]]; then
+            provider_count=$((provider_count + 1))
+        fi
+    done
+    
+    # Check if any enabled LWE provider has SSL enabled
+    for ((i=1; i<=provider_count; i++)); do
+        local provider_name="${PARSED_PROVIDERS[${i}_PROVIDER_NAME]}"
+        local provider_enabled="${PARSED_PROVIDERS[${i}_ENABLED]}"
+        local ssl_enabled="${PARSED_PROVIDERS[${i}_SSL_ENABLED]}"
+        
+        if [[ "$provider_enabled" == "true" ]] && [[ "$provider_name" == "watsonx_lightweightengine" ]] && [[ "$ssl_enabled" == "true" ]]; then
+            has_lwe_ssl=true
+            break
+        fi
+    done
+    
+    # Skip secret creation if no LWE providers have SSL enabled
+    if [[ "$has_lwe_ssl" == "false" ]]; then
+        return 0
+    fi
+    
+    # Create secret folder if it doesn't exist
+    mkdir -p "$AI_SERVICES_SECRET_FOLDER" >/dev/null 2>&1
+    
+    # Get the TLS_CERT_LOCATION from the first enabled LWE provider with SSL
+    # All LWE providers share the same SSL secret, so we only need one certificate location
+    local cert_location=""
+    for ((i=1; i<=provider_count; i++)); do
+        local provider_name="${PARSED_PROVIDERS[${i}_PROVIDER_NAME]}"
+        local provider_enabled="${PARSED_PROVIDERS[${i}_ENABLED]}"
+        local ssl_enabled="${PARSED_PROVIDERS[${i}_SSL_ENABLED]}"
+        
+        if [[ "$provider_enabled" == "true" ]] && [[ "$provider_name" == "watsonx_lightweightengine" ]] && [[ "$ssl_enabled" == "true" ]]; then
+            cert_location="${PARSED_PROVIDERS[${i}_TLS_CERT_LOCATION]}"
+            break
+        fi
+    done
+    
+    # Generate the shell script that will create the SSL secret
+    # This script is executed by the user after placing the certificate file
+    cat << EOF > "${AI_SERVICES_SSL_SECRET_FILE}"
+#!/bin/bash
+# Shell template for WatsonX LWE SSL certificate secret creation
+#
+# Purpose: Creates a Kubernetes secret containing the SSL/TLS certificate
+#          for WatsonX Lightweight Engine (LWE) providers
+#
+# Prerequisites:
+#   - Certificate file 'lwe.crt' must exist in: $cert_location
+#   - User must have permissions to create secrets in namespace: $NAMESPACE
+#
+# Usage:
+#   1. Place your LWE certificate as 'lwe.crt' in: $cert_location
+#   2. Run this script: ./watsonx-lwe-ssl-secret.sh
+#
+# Secret Details:
+#   - Name: ${AI_SERVICES_SSL_SECRET_NAME}
+#   - Type: generic
+#   - Data: tls.crt (from lwe.crt file)
+#   - Namespace: $NAMESPACE
+#   - Label: cp4ba.ibm.com/backup-type=mandatory
 
-  mkdir -p $CP4A_ROOT_CA_FOLDER >/dev/null 2>&1
-  cat << EOF > ${CP4A_ROOT_CA_SECRET_FILE}
-{
-  "_comment": "Optional custom CP4BA root CA certificate. Create a custom CP4BA root CA certificate with a name of root-ca.  This certificate will be used to sign other certificates.",
-  "key": "<Content of custom root CA key in a single-line>",
-  "cert": "<Content of custom root CA certificate in a single-line>"
+if [[ -f "$cert_location/lwe.crt" ]]; then
+  # Delete existing secret if present (allows updates)
+  ${CLI_CMD} delete secret "${AI_SERVICES_SSL_SECRET_NAME}" -n "$NAMESPACE" >/dev/null 2>&1
+  
+  # Create new secret from certificate file
+  ${CLI_CMD} create secret generic "${AI_SERVICES_SSL_SECRET_NAME}" --from-file=tls.crt="$cert_location/lwe.crt" -n "$NAMESPACE"
+  
+  # Label secret for backup
+  ${CLI_CMD} label secret "${AI_SERVICES_SSL_SECRET_NAME}" cp4ba.ibm.com/backup-type=mandatory -n "$NAMESPACE"
+  
+  echo "Successfully created SSL secret: ${AI_SERVICES_SSL_SECRET_NAME}"
+else
+  printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"lwe.crt\" into \"$cert_location\" first."
+  exit 1
+fi
+EOF
+    
+    # Make the script executable
+    chmod 755 "${AI_SERVICES_SSL_SECRET_FILE}"
 }
 
-EOF
 
-cat << EOF > ${CP4A_ROOT_CA_SECRET_PROVIDER_CLASS_FILE}
-# YAML template for OPTIONAL custom CP4BA root CA certificate SecretProviderClass
-# metadata.name must match with the name of the secret created in Vault (eg: $_vault_secret_name), and match with shared_configuration.root_ca_secret
-# The keys in this template should match with the keys in the $_vault_secret_name JSON template
-# Rename the $CP4A_ROOT_CA_SECRET_PROVIDER_CLASS_FILE to $CP4A_ROOT_CA_SECRET_PROVIDER_CLASS_FILE.yaml to enable
+# Generate the JSON-based providers configuration secret using jq
+#
+# Purpose:
+#   Creates a Kubernetes secret YAML containing provider and model configurations
+#   in JSON format. Supports multiple AI providers (WatsonX SaaS, WatsonX LWE, Azure)
+#   with multiple models per provider.
+#
+# Prerequisites:
+#   - PARSED_PROVIDERS array must be populated (from parse_multi_provider_property_file)
+#   - PARSED_MODELS array must be populated (from parse_multi_provider_property_file)
+#   - AI_SERVICES_SECRET_FOLDER must be defined (from common.sh)
+#   - AI_SERVICES_SECRET_FILE must be defined (from common.sh)
+#   - jq must be installed for JSON generation
+#
+# Secret Structure:
+#   The generated secret contains a JSON configuration with:
+#   - active_llm: Key of the default model (from model with DEFAULT=true)
+#   - llms: Object containing all model configurations, keyed by "PROVIDER_ID_SANITIZED_MODEL_ID"
+#          (special characters like /, -, . are removed from MODEL_ID)
+#
+# Model Configuration Fields (provider-specific):
+#   Common to all:
+#     - provider: Provider type ("watsonx" or "azure")
+#     - model: Model identifier
+#     - temperature: Sampling temperature (optional)
+#     - max_completion_tokens: Max tokens to generate (optional)
+#     - context_window_token_limit: Max context window size (optional)
+#
+#   WatsonX SaaS specific:
+#     - deployment_mode: "saas"
+#     - url: WatsonX API endpoint
+#     - api_key: IBM Cloud API key
+#     - space_id: Deployment space ID (optional)
+#     - project_id: Project ID (optional)
+#
+#   WatsonX LWE specific:
+#     - deployment_mode: "lightweight"
+#     - url: CPD cluster URL
+#     - instance_id: "openshift"
+#     - version: "5.3"
+#     - username: Zen username
+#     - api_key: Zen API key (or password)
+#     - verify_ssl: false or "/etc/certs/lwe/tls.crt" (if SSL enabled)
+#     - ssl_secret_name: "watsonx-lwe-ssl-secret" (if SSL enabled)
+#
+#   Azure OpenAI specific:
+#     - provider: "azure"
+#     - endpoint: Azure OpenAI endpoint
+#     - api_key: Azure API key
+#     - use_entra_id: false
+#     - timeout: 60
+#     - api_version: "2024-12-01-preview"
+#
+# Behavior:
+#   - Skips disabled providers (ENABLED=false)
+#   - Validates credentials (API_KEY or PASSWORD for LWE)
+#   - Builds JSON using jq for clean, maintainable code
+#   - Generates unique keys for each model: "PROVIDER_ID_SANITIZED_MODEL_ID"
+#     (e.g., "watsonx_openaigptoss120b" for model_id "openai/gpt-oss-120b")
+#   - Sets active_llm from model with DEFAULT=true
+#
+# Returns:
+#   0 - Success (secret created)
+#   1 - Failure (jq not found or other error)
+#
+function generate_multi_provider_secret() {
+    # Create secret folder if it doesn't exist
+    mkdir -p "$AI_SERVICES_SECRET_FOLDER" >/dev/null 2>&1
+    
+    # Count total providers by scanning PARSED_PROVIDERS array
+    local provider_count=0
+    for key in "${!PARSED_PROVIDERS[@]}"; do
+        if [[ "$key" =~ ^([0-9]+)_PROVIDER_ID$ ]]; then
+            provider_count=$((provider_count + 1))
+        fi
+    done
+    
+    # Initialize variables for JSON building
+    local active_llm_key=""      # Will be set from model with DEFAULT=true
+    local llms_json="{}"          # Will contain all model configurations
+    
+    # Iterate through all providers
+    for ((i=1; i<=provider_count; i++)); do
+        # Extract provider configuration from PARSED_PROVIDERS array
+        local provider_id="${PARSED_PROVIDERS[${i}_PROVIDER_ID]}"
+        local provider_name="${PARSED_PROVIDERS[${i}_PROVIDER_NAME]}"
+        local provider_enabled="${PARSED_PROVIDERS[${i}_ENABLED]}"
+        local provider_url="${PARSED_PROVIDERS[${i}_PROVIDER_URL]}"
+        local api_key="${PARSED_PROVIDERS[${i}_API_KEY]}"
+        local username="${PARSED_PROVIDERS[${i}_USERNAME]}"
+        local password="${PARSED_PROVIDERS[${i}_PASSWORD]}"
+        local space_id="${PARSED_PROVIDERS[${i}_SPACE_ID]}"
+        local project_id="${PARSED_PROVIDERS[${i}_PROJECT_ID]}"
+        local ssl_enabled="${PARSED_PROVIDERS[${i}_SSL_ENABLED]}"
+        local tls_cert_location="${PARSED_PROVIDERS[${i}_TLS_CERT_LOCATION]}"
+        
+        # Skip disabled providers (allows temporary disabling without deletion)
+        if [[ "$provider_enabled" != "true" ]]; then
+            continue
+        fi
+        
+        # Validate authentication credentials based on provider type
+        # LWE: Supports both API_KEY (preferred) and PASSWORD
+        # SaaS/Azure: Requires API_KEY only
+        if [[ "$provider_name" == "watsonx_lightweightengine" ]]; then
+            if [[ -n "$api_key" && "$api_key" != "<Required>" ]]; then
+                password=""  # Clear password if API_KEY is provided (API_KEY takes precedence)
+            elif [[ -n "$password" && "$password" != "<Required>" ]]; then
+                api_key=""   # Clear API_KEY if only PASSWORD is provided
+            else
+                warning "Skipping provider $provider_id: Neither API_KEY nor PASSWORD provided for LWE"
+                continue
+            fi
+        else
+            # SaaS and Azure require API_KEY
+            if [[ -z "$api_key" || "$api_key" == "<Required>" ]]; then
+                warning "Skipping provider $provider_id: API key not provided"
+                continue
+            fi
+        fi
+        
+        # Count models for this provider by scanning PARSED_MODELS array
+        local model_count=0
+        for model_key in "${!PARSED_MODELS[@]}"; do
+            if [[ "$model_key" =~ ^${i}_([0-9]+)_MODEL_ID$ ]]; then
+                model_count=$((model_count + 1))
+            fi
+        done
+        
+        # Generate entries for each model using jq
+        for ((m=1; m<=model_count; m++)); do
+            local model_id="${PARSED_MODELS[${i}_${m}_MODEL_ID]}"
+            local model_default="${PARSED_MODELS[${i}_${m}_DEFAULT]}"
+            local temperature="${PARSED_MODELS[${i}_${m}_TEMPERATURE]}"
+            local max_tokens="${PARSED_MODELS[${i}_${m}_MAX_TOKENS]}"
+            local context_window_token_limit="${PARSED_MODELS[${i}_${m}_CONTEXT_WINDOW_TOKEN_LIMIT]}"
+            
+            # Generate unique key by concatenating provider_id with sanitized model_id
+            # Remove special characters (/, -, ., etc.) from model_id for the key
+            local sanitized_model_id=$(echo "$model_id" | tr -d '/-.')
+            local llm_key="${provider_id}_${sanitized_model_id}"
+            
+            # Track default model
+            if [[ "$model_default" == "true" ]]; then
+                active_llm_key="$llm_key"
+            fi
+            
+            # Build model configuration using jq based on provider type
+            local model_json=""
+            case "$provider_name" in
+                azure)
+                    model_json=$(jq -n \
+                        --arg provider "azure" \
+                        --arg endpoint "$provider_url" \
+                        --arg model "$model_id" \
+                        --arg api_key "$api_key" \
+                        --argjson use_entra_id false \
+                        --argjson timeout 60 \
+                        --arg api_version "2024-12-01-preview" \
+                        '{
+                            provider: $provider,
+                            endpoint: $endpoint,
+                            model: $model,
+                            api_key: $api_key,
+                            use_entra_id: $use_entra_id,
+                            timeout: $timeout,
+                            api_version: $api_version
+                        }' | \
+                        if [[ -n "$max_tokens" && "$max_tokens" != "0" ]]; then
+                            jq --argjson max_tokens "$max_tokens" '. + {max_completion_tokens: $max_tokens}'
+                        else
+                            cat
+                        fi | \
+                        if [[ -n "$temperature" ]]; then
+                            jq --argjson temperature "$temperature" '. + {temperature: $temperature}'
+                        else
+                            cat
+                        fi | \
+                        if [[ -n "$context_window_token_limit" ]]; then
+                            jq --argjson context_window_token_limit "$context_window_token_limit" '. + {context_window_token_limit: $context_window_token_limit}'
+                        else
+                            cat
+                        fi
+                    )
+                    ;;
+                    
+                watsonx_saas)
+                    model_json=$(jq -n \
+                        --arg provider "watsonx" \
+                        --arg deployment_mode "saas" \
+                        --arg url "$provider_url" \
+                        --arg api_key "$api_key" \
+                        --arg model "$model_id" \
+                        '{
+                            provider: $provider,
+                            deployment_mode: $deployment_mode,
+                            url: $url,
+                            api_key: $api_key,
+                            model: $model
+                        }' | \
+                        if [[ -n "$space_id" ]]; then
+                            jq --arg space_id "$space_id" '. + {space_id: $space_id}'
+                        else
+                            cat
+                        fi | \
+                        if [[ -n "$project_id" ]]; then
+                            jq --arg project_id "$project_id" '. + {project_id: $project_id}'
+                        else
+                            cat
+                        fi | \
+                        if [[ -n "$max_tokens" ]]; then
+                            jq --argjson max_tokens "$max_tokens" '. + {max_completion_tokens: $max_tokens}'
+                        else
+                            cat
+                        fi | \
+                        if [[ -n "$temperature" ]]; then
+                            jq --argjson temperature "$temperature" '. + {temperature: $temperature}'
+                        else
+                            cat
+                        fi | \
+                        if [[ -n "$context_window_token_limit" ]]; then
+                            jq --argjson context_window_token_limit "$context_window_token_limit" '. + {context_window_token_limit: $context_window_token_limit}'
+                        else
+                            cat
+                        fi
+                    )
+                    ;;
+                    
+                watsonx_lightweightengine)
+                    model_json=$(jq -n \
+                        --arg provider "watsonx" \
+                        --arg deployment_mode "lightweight" \
+                        --arg url "$provider_url" \
+                        --arg instance_id "openshift" \
+                        --arg version "5.3" \
+                        --arg model "$model_id" \
+                        '{
+                            provider: $provider,
+                            deployment_mode: $deployment_mode,
+                            url: $url,
+                            instance_id: $instance_id,
+                            version: $version,
+                            model: $model
+                        }' | \
+                        if [[ -n "$username" ]]; then
+                            jq --arg username "$username" '. + {username: $username}'
+                        else
+                            cat
+                        fi | \
+                        if [[ -n "$api_key" ]]; then
+                            jq --arg api_key "$api_key" '. + {api_key: $api_key}'
+                        elif [[ -n "$password" ]]; then
+                            jq --arg password "$password" '. + {password: $password}'
+                        else
+                            cat
+                        fi | \
+                        if [[ "$ssl_enabled" == "true" ]]; then
+                            jq --arg verify_ssl "/etc/certs/lwe/tls.crt" \
+                               --arg ssl_secret_name "watsonx-lwe-ssl-secret" \
+                               '. + {verify_ssl: $verify_ssl, ssl_secret_name: $ssl_secret_name}'
+                        else
+                            jq --argjson verify_ssl false '. + {verify_ssl: $verify_ssl}'
+                        fi | \
+                        if [[ -n "$max_tokens" ]]; then
+                            jq --argjson max_tokens "$max_tokens" '. + {max_completion_tokens: $max_tokens}'
+                        else
+                            cat
+                        fi | \
+                        if [[ -n "$temperature" ]]; then
+                            jq --argjson temperature "$temperature" '. + {temperature: $temperature}'
+                        else
+                            cat
+                        fi | \
+                        if [[ -n "$context_window_token_limit" ]]; then
+                            jq --argjson context_window_token_limit "$context_window_token_limit" '. + {context_window_token_limit: $context_window_token_limit}'
+                        else
+                            cat
+                        fi
+                    )
+                    ;;
+            esac
+            
+            # Add model to llms object
+            llms_json=$(echo "$llms_json" | jq --arg key "$llm_key" --argjson value "$model_json" '. + {($key): $value}')
+        done
+    done
+    
+    # Build final JSON
+    local json_content=$(jq -n \
+        --arg active_llm "$active_llm_key" \
+        --argjson llms "$llms_json" \
+        '{active_llm: $active_llm, llms: $llms}')
+    
+    # Create the secret YAML
+    cat > "$AI_SERVICES_SECRET_FILE" << EOF
+# YAML template for ibm-providers-config-secret
 ---
-apiVersion: secrets-store.csi.x-k8s.io/v1
-kind: SecretProviderClass
+kind: Secret
+apiVersion: v1
+type: Opaque
 metadata:
-  name: "$_vault_secret_name"
-  namespace: "$CP4BA_SERVICES_NS"
+  name: ibm-providers-config-secret
+  namespace: "$NAMESPACE"
   labels:
     cp4ba.ibm.com/backup-type: mandatory
-spec:
-  provider: vault
-  parameters:
-    roleName: "$_vault_role"
-    vaultAddress: "$_vault_address"
-    objects: |
-      - secretPath: "$_vault_path/$_vault_secret_name"
-        objectName: "key"
-        secretKey: "key"
-      - secretPath: "$_vault_path/$_vault_secret_name"
-        objectName: "cert"
-        secretKey: "cert"
+stringData:
+  providers_config.json: |
+$(echo "$json_content" | sed 's/^/    /')
 EOF
-
-#Create SecretProviderClass for OPTIONAL custom CP4BA root CA certificate when for separation of duties 
-if [[ $SEPARATE_OPERAND_FLAG == "Yes" &&  $CP4BA_OPERATOR_NS != '' ]]; then
-  info "Creating SecretProviderClass for root-ca in $CP4BA_OPERATOR_NS namespace"
-  cp "${CP4A_ROOT_CA_SECRET_PROVIDER_CLASS_FILE}" "${CP4A_ROOT_CA_SECRET_PROVIDER_CLASS_FILE}-${CP4BA_OPERATOR_NS}"
-  #replace the namespace in the copied file
-  ${SED_COMMAND} "s/namespace: \"$CP4BA_SERVICES_NS\"/namespace: \"$CP4BA_OPERATOR_NS\"/g" "${CP4A_ROOT_CA_SECRET_PROVIDER_CLASS_FILE}-${CP4BA_OPERATOR_NS}"
-fi
-success "Created OPTIONAL custom CP4BA root CA certificate template and SecretProviderClass template for Vault\n"
 }

@@ -12,7 +12,7 @@ spec:
     spec:
       containers:
       - name: create-file-gid-job
-        image: "{{ docker_registry }}/ibm-cp4d-public/storage-util:1.0-{{ arch }}"
+        image: {{ storage_val_image }}
         imagePullPolicy: "Always"
         env:
           - name: FILE_NAME_GID

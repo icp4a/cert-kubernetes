@@ -39,8 +39,8 @@ spec:
         - crd
         - lsr #non-data license service reporter resources
         - lsr-data #license service reporter data
-        - cs-db-data #pgdump approach to BR IM EDB data
-        - cs-db #velero plugin approach to BR IM EDB data
+        - cs-db-data #pgdump approach to BR IM DB data
+        - cs-db #velero plugin approach to BR IM DB data
         - keycloak-data #pgdump approach to BR keycloak data
         - keycloak #velero plugin approach to BR keycloak data
         - user-mgmt #non-data user-management operator resources
@@ -55,6 +55,8 @@ spec:
         - zen-cluster
         - edb-chart
         - edb-cluster
+        - ibm-pg-chart
+        - ibm-pg-cluster
         - iam-chart
         - iam-cluster
         - nss-cluster

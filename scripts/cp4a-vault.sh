@@ -59,11 +59,14 @@
 CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )" # This is helper/vault
-
+#DBACLD-189643: Define backup directories for CSVs during upgrade
+UPGRADE_DEPLOYMENT_FOLDER=${CUR_DIR}/cp4ba-upgrade/project/$CP4BA_SERVICES_NS
+UPGRADE_DEPLOYMENT_CSV_BAK=${UPGRADE_DEPLOYMENT_FOLDER}/csv/backup
 
 
 # Source common.sh from the helper directory
 source ${CUR_DIR}/helper/common.sh
+source ${CUR_DIR}/helper/ext-secrets-mgmt/common_functions_vault.sh
 
 export CURR_TIME=$(date "+%Y%m%d-%H%M%S")
 
@@ -84,7 +87,10 @@ function show_help() {
   echo "                       generate: Generate CSV but don't apply (generate only)."
   echo "  -n | --namespace     : Services namespace for SecretProviderClass files"
   echo "  --operatorNamespace  : [Optional]Operator namespace for CSV  (defaults to --namespace)"
-  echo "  --csv                : Name of the CSV (ClusterServiceVersion) to patch"
+  echo "  --csv                : Name of the CSV(s) to patch. Accepts a single CSV or a comma-separated list."
+  echo "                         e.g. --csv ibm-cp4a-operator.$CP4BA_CSV_VERSION"
+  echo "                         e.g. --csv ibm-cp4a-operator.$CP4BA_CSV_VERSION,ibm-content-operator.$CP4BA_CSV_VERSION"
+  echo "                         e.g. --csv \"ibm-cp4a-operator.$CP4BA_CSV_VERSION,ibm-content-operator.$CP4BA_CSV_VERSION\" (spaces around commas are trimmed)"
   echo "  --csvDeploymentName  : [Optional]Name of the deployment inside the CSV to patch. Default will be the first deployment"
   echo "  -h | --help          : Show this help message"
   echo ""
@@ -92,25 +98,32 @@ function show_help() {
   echo "${GREEN_TEXT}Examples:${RESET_TEXT}"
 
   echo "${GREEN_TEXT}==== Separation of duties ====${RESET_TEXT}"
-  echo "  $0 -m patch -n operand-ns --operatorNamespace operator-ns --csv ibm-cp4a-operator.v25.0.1"
+  echo "  $0 -m patch -n operand-ns --operatorNamespace operator-ns --csv ibm-cp4a-operator.$CP4BA_CSV_VERSION"
   echo ""
-  echo "  $0 -m strategic -n operand-ns --operatorNamespace operator-ns --csv ibm-cp4a-operator.v25.0.1 --csvDeploymentName ibm-cp4a-operator"
+  echo "  $0 -m strategic -n operand-ns --operatorNamespace operator-ns --csv ibm-cp4a-operator.$CP4BA_CSV_VERSION --csvDeploymentName ibm-cp4a-operator"
   echo ""
-  echo "  $0 -m unpatch -n operand-ns --operatorNamespace operator-ns --csv ibm-cp4a-operator.v25.0.1"
+  echo "  $0 -m unpatch -n operand-ns --operatorNamespace operator-ns --csv ibm-cp4a-operator.$CP4BA_CSV_VERSION"
   echo ""
-  echo "  $0 -m generate -n operand-ns --operatorNamespace operator-ns --csv ibm-cp4a-operator.v25.0.1"
+  echo "  $0 -m generate -n operand-ns --operatorNamespace operator-ns --csv ibm-cp4a-operator.$CP4BA_CSV_VERSION"
   echo ""
   echo "${GREEN_TEXT}==== End of Separation of duties examples ====${RESET_TEXT}"
   echo ""
   echo "${GREEN_TEXT}==== Non separation of duties ====${RESET_TEXT}"
-  echo "  $0 -m patch -n cp4ba-ns --csv ibm-cp4a-operator.v25.0.1"
+  echo "  $0 -m patch -n cp4ba-ns --csv ibm-cp4a-operator.$CP4BA_CSV_VERSION"
   echo ""
-  echo "  $0 -m strategic -n cp4ba-ns --csv ibm-cp4a-operator.v25.0.1 --csvDeploymentName ibm-cp4a-operator"
+  echo "  $0 -m strategic -n cp4ba-ns --csv ibm-cp4a-operator.$CP4BA_CSV_VERSION --csvDeploymentName ibm-cp4a-operator"
   echo ""
-  echo "  $0 -m unpatch -n cp4ba-ns --csv ibm-cp4a-operator.v25.0.1"
+  echo "  $0 -m unpatch -n cp4ba-ns --csv ibm-cp4a-operator.$CP4BA_CSV_VERSION"
   echo ""
-  echo "  $0 -m generate -n cp4ba-ns --csv ibm-cp4a-operator.v25.0.1"
+  echo "  $0 -m generate -n cp4ba-ns --csv ibm-cp4a-operator.$CP4BA_CSV_VERSION"
   echo "${GREEN_TEXT}==== End of non separation of duties ====${RESET_TEXT}"
+  echo ""
+  # Below is the undocumented mode for calling during the upgrade script. This mode should not be run by users directly.
+  # echo "${GREEN_TEXT}==== Upgrade (migrate vault CSI mounts from old CSV version to new CSV version) ====${RESET_TEXT}"
+  # echo "  $0 -m upgrade -n operand-ns [--operatorNamespace operator-ns]"
+  # echo ""
+  # echo "  $0 -m upgrade -n cp4ba-ns"
+  # echo "${GREEN_TEXT}==== End of upgrade examples ====${RESET_TEXT}"
 
 }
 
@@ -125,11 +138,11 @@ function parse_arguments(){
                 exit 1
             fi
             RUNTIME_MODE=$1
-            if [[ $RUNTIME_MODE == "patch" || $RUNTIME_MODE == "strategic" || $RUNTIME_MODE == "unpatch" || $RUNTIME_MODE == "generate" ]]; then
+            if [[ $RUNTIME_MODE == "patch" || $RUNTIME_MODE == "strategic" || $RUNTIME_MODE == "unpatch" || $RUNTIME_MODE == "generate" || $RUNTIME_MODE == "upgrade" ]]; then
                 # Valid mode
                 info "Mode set to: $RUNTIME_MODE"
             else
-                error "Use a valid value: -m [patch|strategic|unpatch|generate]"
+                error "Use a valid value: -m [patch|strategic|unpatch|generate|upgrade]"
                 exit 1
             fi
             ;;
@@ -172,7 +185,25 @@ function parse_arguments(){
                 echo "Invalid option: --csv requires an argument"
                 exit 1
             fi
-            CSV=$1
+            CSV="$1"
+            # Consume space-separated continuation tokens to support forms like:
+            #   --csv a , b       ($2=","  $3="b")
+            #   --csv a ,b        ($2=",b")
+            # A continuation is either a bare "," or a token starting with "," (and not a flag).
+            while true; do
+                if [[ "$2" == "," ]]; then
+                    shift  # consume the bare ","
+                    if [[ -n "$2" && "$2" != -* ]]; then
+                        shift
+                        CSV="${CSV},${1}"
+                    fi
+                elif [[ "$2" == ,* && "$2" != -* ]]; then
+                    shift
+                    CSV="${CSV}${1}"  # $1 already starts with ","
+                else
+                    break
+                fi
+            done
             ;;
         --csvDeploymentName)
             shift
@@ -205,7 +236,7 @@ function parse_arguments(){
 
 # Validate required arguments after parsing
 if [ -z "$RUNTIME_MODE" ]; then
-    error "Mode is required. Use -m [patch|strategic|unpatch|generate]"
+    error "Mode is required. Use -m [patch|strategic|unpatch|generate|upgrade]"
     show_help
     exit 1
 fi
@@ -216,7 +247,7 @@ if [ -z "$TARGET_PROJECT_NAME" ]; then
     exit 1
 fi
 
-if [ -z "$CSV" ]; then
+if [ -z "$CSV" ] && [[ "$RUNTIME_MODE" != "upgrade" ]]; then
     error "CSV name is required. Use --csv <csv_name>"
     show_help
     exit 1
@@ -234,7 +265,7 @@ function retrieve_csv() {
   ${CLI_CMD} get csv $CSV -n $OPERATOR_NAMESPACE -o yaml > $TMP_DIR/$CSV.yaml
   if [ $? -ne 0 ]; then
     error "Failed to retrieve CSV: $CSV from namespace: $OPERATOR_NAMESPACE"
-    exit 1
+    return 1
   else
     success "CSV $CSV retrieved successfully from namespace $OPERATOR_NAMESPACE and saved to $TMP_DIR/$CSV.yaml"
     retrieve_secret_provider_classes $CSV
@@ -243,6 +274,11 @@ function retrieve_csv() {
 function retrieve_secret_provider_classes() {
   info "Retrieving SecretProviderClasses for CSV: $CSV"
   cp $TMP_DIR/$CSV.yaml $TMP_DIR/$CSV-patched.yaml > /dev/null 2>&1
+
+  # Strip version suffix from CSV name (e.g. ibm-cp4a-operator.v25.0.1 -> ibm-cp4a-operator)
+  # Not local so create_volumes_structure (generate mode summary) can reference it
+  csv_base_name="${CSV%%.*}"
+  info "CSV base name (version stripped): $csv_base_name"
 
   info "Get a list of all SecretProviderClass yaml files from $SECRET_PROVIDER_CLASS_DIR recursively"
   
@@ -266,22 +302,55 @@ function retrieve_secret_provider_classes() {
   # Loop through each SecretProviderClass file, get the metadata.name and determine mount path
   for spc_file in $SECRET_PROVIDER_CLASS_FILES; do
     info "Retrieving CSV with SecretProviderClass: $spc_file"
+
+    # Filter by cp4ba.ibm.com/owned-by annotation: only mount if the base CSV name is listed.
+    # If the annotation is absent, apply to all CSVs (fallback for unlabeled SPC files).
+    local owned_by
+    owned_by=$($YQ_CMD ".metadata.annotations[\"cp4ba.ibm.com/owned-by\"] // \"\"" "$spc_file" 2>/dev/null)
+    owned_by=$(sed -e 's/^"//' -e 's/"$//' <<<"$owned_by")  # strip surrounding quotes from yq output
+    if [[ -n "$owned_by" ]]; then
+      # owned-by is a comma-separated list; check if csv_base_name is one of the entries
+      local match=0
+      IFS=',' read -ra owned_by_arr <<< "$owned_by"
+      for owner in "${owned_by_arr[@]}"; do
+        owner=$(echo "$owner" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+        if [[ "$owner" == "$csv_base_name" ]]; then
+          match=1
+          break
+        fi
+      done
+      if [[ $match -eq 0 ]]; then
+        info "Skipping $spc_file: '$csv_base_name' not in owned-by list '$owned_by'"
+        continue
+      fi
+    else
+      info "No cp4ba.ibm.com/owned-by annotation found in $spc_file — applying to all CSVs (fallback)"
+    fi
+
     # Use yq to get the metadata.name, and add to the list recursively
     SPC_NAME=$($YQ_CMD ".metadata.name" $spc_file)
     success "Found SecretProviderClass name: $SPC_NAME"
     SECRET_PROVIDER_CLASS_NAMES+=("$SPC_NAME")
     
-    # Determine mount path based on file location
-    if [[ "$spc_file" == *"/vault/secrets/"* ]]; then
+    # Determine mount path: prefer cp4ba.ibm.com/secret-store-type annotation; fall back to sub-directory name
+    local store_type
+    store_type=$($YQ_CMD ".metadata.annotations[\"cp4ba.ibm.com/secret-store-type\"] // \"\"" "$spc_file" 2>/dev/null)
+    store_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$store_type")
+    if [[ "$store_type" == "tls" ]]; then
+      SECRET_PROVIDER_CLASS_MOUNT_PATHS+=("/tmp/certificates/$SPC_NAME")
+      info "SecretProviderClass $SPC_NAME will mount to /tmp/certificates/$SPC_NAME (annotation: tls)"
+    elif [[ "$store_type" == "secrets" ]]; then
       SECRET_PROVIDER_CLASS_MOUNT_PATHS+=("/tmp/secrets/$SPC_NAME")
-      info "SecretProviderClass $SPC_NAME will mount to /tmp/secrets/$SPC_NAME (secrets folder)"
+      info "SecretProviderClass $SPC_NAME will mount to /tmp/secrets/$SPC_NAME (annotation: secrets)"
+    elif [[ "$spc_file" == *"/vault/secrets/"* ]]; then
+      SECRET_PROVIDER_CLASS_MOUNT_PATHS+=("/tmp/secrets/$SPC_NAME")
+      info "SecretProviderClass $SPC_NAME will mount to /tmp/secrets/$SPC_NAME (fallback: secrets folder)"
     elif [[ "$spc_file" == *"/vault/tls/"* ]]; then
       SECRET_PROVIDER_CLASS_MOUNT_PATHS+=("/tmp/certificates/$SPC_NAME")
-      info "SecretProviderClass $SPC_NAME will mount to /tmp/certificates/$SPC_NAME (tls folder)"
+      info "SecretProviderClass $SPC_NAME will mount to /tmp/certificates/$SPC_NAME (fallback: tls folder)"
     else
-      # Default fallback to secrets if not clearly in tls folder
       SECRET_PROVIDER_CLASS_MOUNT_PATHS+=("/tmp/secrets/$SPC_NAME")
-      warning "SecretProviderClass $SPC_NAME path unclear, defaulting to /tmp/secrets/$SPC_NAME"
+      warning "SecretProviderClass $SPC_NAME: no annotation or known sub-directory, defaulting to /tmp/secrets/$SPC_NAME"
     fi
     
     echo "${SECRET_PROVIDER_CLASS_NAMES[@]}"
@@ -289,8 +358,8 @@ function retrieve_secret_provider_classes() {
   done
 
   if [ ${#SECRET_PROVIDER_CLASS_NAMES[@]} -eq 0 ]; then
-    warning "No SecretProviderClasses found for CSV: $CSV"
-    exit 1
+    warning "No SecretProviderClasses need to be included for CSV '$CSV' (base name: '$csv_base_name'). Either no files exist or none have '$csv_base_name' in their cp4ba.ibm.com/owned-by label."
+    return 1
   else
     create_volumes_structure
   fi
@@ -313,27 +382,24 @@ function create_volumes_structure(){
     apply_strategic_patch "$TMP_DIR/$CSV-patched.yaml" "$CSV" "$OPERATOR_NAMESPACE" "$DEPLOYMENT_NAME"
   elif [[ $RUNTIME_MODE == "patch" ]]; then
     info "Applying patched CSV: $CSV to namespace: $OPERATOR_NAMESPACE"
-    scale_deployment "$DEPLOYMENT_NAME" 0 "$OPERATOR_NAMESPACE"
-    
-    # Try standard patch first
-    patch_output=$(${CLI_CMD} apply -f "$TMP_DIR/$CSV-patched.yaml" -n "$OPERATOR_NAMESPACE" 2>&1)
-    patch_exit_code=$?
-    
-    if [ $patch_exit_code -eq 0 ]; then
-      success "CSV $CSV applied successfully to namespace: $OPERATOR_NAMESPACE"
-      # Scale up the operator deployment after patch
-      scale_deployment "$DEPLOYMENT_NAME" 1 "$OPERATOR_NAMESPACE"
-    else
-      # Check if the error is due to annotation size limit
-      if echo "$patch_output" | grep -q "Too long: must have at most 262144 bytes"; then
-        warning "Standard patch failed due to annotation size limit. Trying strategic patch first..."
-        echo "$patch_output"
-        
-        # Try strategic patch as first fallback
-        info "Applying strategic patch as primary fallback..."
-        apply_strategic_patch "$TMP_DIR/$CSV-patched.yaml" "$CSV" "$OPERATOR_NAMESPACE" "$DEPLOYMENT_NAME"
+
+    if [[ ${#JSON_PATCH_OPS[@]} -eq 0 ]]; then
+      info "All CSI volumes already present in '$CSV', no changes needed."
+    else # -m patch
+      local patch_json
+      patch_json="[$(IFS=,; echo "${JSON_PATCH_OPS[*]}")]"
+      info "Patching CSV '$CSV' with ${#JSON_PATCH_OPS[@]} operation(s) via JSON patch..."
+      patch_output=$(${CLI_CMD} patch csv "$CSV" -n "$OPERATOR_NAMESPACE" --type=json -p "$patch_json" 2>&1)
+      patch_exit_code=$?
+
+      if [ $patch_exit_code -eq 0 ]; then
+        success "CSV $CSV patched successfully in namespace: $OPERATOR_NAMESPACE"
+        info "Restarting deployment '$DEPLOYMENT_NAME' to pick up new vault mounts..."
+        ${CLI_CMD} rollout restart deployment/"$DEPLOYMENT_NAME" -n "$OPERATOR_NAMESPACE" 2>/dev/null || true
+        check_pods_running_status "$OPERATOR_NAMESPACE" "$CSV" "$DEPLOYMENT_NAME" 180
+        validate_csv_vault_mounts "$TMP_DIR/$CSV-patched.yaml" "$CSV" "$OPERATOR_NAMESPACE"
       else
-        error "Failed to apply CSV: $CSV to namespace: $OPERATOR_NAMESPACE"
+        error "Failed to patch CSV: $CSV in namespace: $OPERATOR_NAMESPACE"
         echo "$patch_output"
         exit 1
       fi
@@ -351,12 +417,22 @@ function create_volumes_structure(){
     fi
   elif [[ $RUNTIME_MODE == "generate" ]]; then
     info "CSV patching completed. Generated file: $TMP_DIR/$CSV-patched.yaml"
+    info "--- owned-by annotation filter summary (csv_base_name: '$csv_base_name') ---"
+    if [[ ${#SECRET_PROVIDER_CLASS_NAMES[@]} -gt 0 ]]; then
+      info "SecretProviderClasses included for '$csv_base_name':"
+      for spc in "${SECRET_PROVIDER_CLASS_NAMES[@]}"; do
+        info "  + $spc"
+      done
+    else
+      warning "No SecretProviderClasses matched for '$csv_base_name' — generated file will have no CSI mounts."
+    fi
     success "Generated patched CSV without applying. File saved to: $TMP_DIR/$CSV-patched.yaml"
   fi
 }
 
 function patch_volume_to_csv(){
   info "Patching volumes to CSV..."
+  JSON_PATCH_OPS=()
   
   # Find the deployment index - use index 0 if CSV_DEPLOYMENT_NAME is not provided
   if [ -z "$CSV_DEPLOYMENT_NAME" ]; then
@@ -404,6 +480,7 @@ function patch_volume_to_csv(){
     ${YQ_CMD} -i ".spec.install.spec.deployments[$DEPLOYMENT_INDEX].spec.template.spec.volumes[$VOLUME_INDEX].csi.readOnly = true" $TMP_DIR/$CSV-patched.yaml
     ${YQ_CMD} -i ".spec.install.spec.deployments[$DEPLOYMENT_INDEX].spec.template.spec.volumes[$VOLUME_INDEX].csi.volumeAttributes.secretProviderClass = \"$SPC_NAME\"" $TMP_DIR/$CSV-patched.yaml
     
+    JSON_PATCH_OPS+=("{\"op\":\"add\",\"path\":\"/spec/install/spec/deployments/$DEPLOYMENT_INDEX/spec/template/spec/volumes/-\",\"value\":{\"name\":\"$SPC_NAME\",\"csi\":{\"driver\":\"secrets-store.csi.k8s.io\",\"readOnly\":true,\"volumeAttributes\":{\"secretProviderClass\":\"$SPC_NAME\"}}}}")  
     CURRENT_VOLUMES=$((CURRENT_VOLUMES + 1))
   done
   
@@ -451,6 +528,7 @@ function add_volume_mounts() {
     ${YQ_CMD} -i ".spec.install.spec.deployments[$deployment_index].spec.template.spec.containers[0].volumeMounts[$MOUNT_INDEX].mountPath = \"$MOUNT_PATH\"" $TMP_DIR/$CSV-patched.yaml
     ${YQ_CMD} -i ".spec.install.spec.deployments[$deployment_index].spec.template.spec.containers[0].volumeMounts[$MOUNT_INDEX].readOnly = true" $TMP_DIR/$CSV-patched.yaml
     
+    JSON_PATCH_OPS+=("{\"op\":\"add\",\"path\":\"/spec/install/spec/deployments/$deployment_index/spec/template/spec/containers/0/volumeMounts/-\",\"value\":{\"name\":\"$SPC_NAME\",\"mountPath\":\"$MOUNT_PATH\",\"readOnly\":true}}")  
     CURRENT_MOUNTS=$((CURRENT_MOUNTS + 1))
   done
   
@@ -530,6 +608,94 @@ function unpatch_volumes_from_csv(){
   echo "CSV volume unpatching completed. Updated file: $TMP_DIR/$CSV-patched.yaml"
 }
 
+# Validate that every CSI vault volume and volumeMount present in <patched_yaml>
+# also exists in the live cluster CSV <csv_name> in <namespace>.
+# Usage: validate_csv_vault_mounts <patched_yaml> <csv_name> <namespace>
+# Returns 0 if all expected mounts are present, 1 if any are missing.
+function validate_csv_vault_mounts() {
+  local patched_yaml="$1"
+  local csv_name="$2"
+  local namespace="$3"
+
+  if [[ -z "$patched_yaml" || ! -f "$patched_yaml" ]]; then
+    warning "validate_csv_vault_mounts: patched yaml '$patched_yaml' not found, skipping validation."
+    return 0
+  fi
+
+  info "Validating vault CSI mounts for CSV '$csv_name' in namespace '$namespace'..."
+
+  # Fetch live CSV from cluster into a temp file
+  local live_csv_file
+  live_csv_file=$(mktemp)
+  ${CLI_CMD} get csv "$csv_name" -n "$namespace" -o yaml > "$live_csv_file" 2>&1
+  if [[ $? -ne 0 || ! -s "$live_csv_file" ]]; then
+    warning "Could not retrieve live CSV '$csv_name' from namespace '$namespace', skipping validation."
+    rm -f "$live_csv_file"
+    return 0
+  fi
+
+  local deploy_count
+  deploy_count=$(${YQ_CMD} '.spec.install.spec.deployments | length' "$patched_yaml" 2>/dev/null)
+  deploy_count=${deploy_count:-0}
+
+  local missing=0
+
+  for ((d=0; d<deploy_count; d++)); do
+    local deploy_name
+    deploy_name=$(${YQ_CMD} ".spec.install.spec.deployments[$d].name" "$patched_yaml" 2>/dev/null)
+
+    # Find matching deployment index in the live CSV
+    local live_idx
+    live_idx=$(${YQ_CMD} '.spec.install.spec.deployments[].name' "$live_csv_file" \
+        | grep -n "^${deploy_name}$" | cut -d: -f1)
+    if [[ -z "$live_idx" ]]; then
+      warning "  [SKIP] Deployment '$deploy_name' not found in live CSV, skipping."
+      continue
+    fi
+    live_idx=$((live_idx - 1))
+
+    # Check each CSI volume in the patched file
+    local expected_vols
+    expected_vols=$(${YQ_CMD} ".spec.install.spec.deployments[$d].spec.template.spec.volumes[] | select(.csi.driver == \"secrets-store.csi.k8s.io\") | .name" "$patched_yaml" 2>/dev/null)
+
+    while IFS= read -r vol_name; do
+      [[ -z "$vol_name" ]] && continue
+      local found_vol
+      found_vol=$(${YQ_CMD} ".spec.install.spec.deployments[$live_idx].spec.template.spec.volumes[] | select(.name == \"$vol_name\" and .csi.driver == \"secrets-store.csi.k8s.io\") | .name" "$live_csv_file" 2>/dev/null)
+      if [[ -n "$found_vol" ]]; then
+        success "  [OK]  volume '$vol_name' present in live CSV (deployment: $deploy_name)"
+      else
+        warning "  [MISSING] volume '$vol_name' NOT found in live CSV (deployment: $deploy_name)"
+        missing=$((missing + 1))
+      fi
+    done <<< "$expected_vols"
+
+    # Check each CSI volumeMount in the patched file (only those whose volume is CSI)
+    while IFS= read -r vol_name; do
+      [[ -z "$vol_name" ]] && continue
+      local found_mount
+      found_mount=$(${YQ_CMD} ".spec.install.spec.deployments[$live_idx].spec.template.spec.containers[0].volumeMounts[] | select(.name == \"$vol_name\") | .name" "$live_csv_file" 2>/dev/null)
+      if [[ -n "$found_mount" ]]; then
+        success "  [OK]  volumeMount '$vol_name' present in live CSV (deployment: $deploy_name)"
+      else
+        warning "  [MISSING] volumeMount '$vol_name' NOT found in live CSV (deployment: $deploy_name)"
+        missing=$((missing + 1))
+      fi
+    done <<< "$expected_vols"
+
+  done
+
+  rm -f "$live_csv_file"
+
+  if [[ $missing -eq 0 ]]; then
+    success "Validation passed: all expected vault CSI mounts are present in live CSV '$csv_name'"
+    return 0
+  else
+    warning "Validation found $missing missing item(s) in live CSV '$csv_name'"
+    return 1
+  fi
+}
+
 function apply_strategic_patch() {
   info "Applying strategic patch to CSV: $CSV"
 
@@ -544,6 +710,7 @@ function apply_strategic_patch() {
   if [ $strategic_exit_code -eq 0 ]; then
     success "Strategic patch applied successfully to CSV: $CSV"
     scale_deployment "$DEPLOYMENT_NAME" 1 "$OPERATOR_NAMESPACE"
+    validate_csv_vault_mounts "$TMP_DIR/$CSV-patched.yaml" "$CSV" "$OPERATOR_NAMESPACE"
     return 0
   fi
   
@@ -563,9 +730,16 @@ function apply_strategic_patch() {
     else
       error "Replace failed for CSV: $CSV"
       echo "$replace_output"
+      scale_deployment "$DEPLOYMENT_NAME" 1 "$OPERATOR_NAMESPACE"
       exit 1
     fi
   fi
+
+  # Server-side apply failed for a reason other than annotation size
+  error "Failed to apply CSV: $CSV"
+  echo "$strategic_output"
+  scale_deployment "$DEPLOYMENT_NAME" 1 "$OPERATOR_NAMESPACE"
+  exit 1
 }
 
 function scale_deployment() {
@@ -595,6 +769,169 @@ function scale_deployment() {
     error "Failed to scale deployment '$deployment_name' in namespace '$namespace'"
     return 1
   fi
+}
+
+# Migrate CSI vault volumes and volumeMounts to the current CSVs in the cluster by reading
+# SPC annotations (cp4ba.ibm.com/owned-by, cp4ba.ibm.com/secret-store-type) from the cluster.
+# Usage: upgrade_csv_between_versions   (no parameters)
+function upgrade_csv_between_versions() {
+    info "=== Upgrade mode: building CSV-to-SPC mapping from live cluster SPCs ==="
+
+    local spc_list
+    spc_list=$(${CLI_CMD} get secretproviderclass -n "$OPERATOR_NAMESPACE" --no-headers \
+        -o custom-columns="NAME:.metadata.name" 2>/dev/null)
+    if [[ -z "$spc_list" ]]; then
+        warning "No SecretProviderClass resources found in namespace '$OPERATOR_NAMESPACE'"
+        return 1
+    fi
+
+    declare -A _op_spc_map
+    declare -A _op_mount_map
+
+    while IFS= read -r spc_name; do
+        [[ -z "$spc_name" ]] && continue
+
+        local owned_by store_type
+        owned_by=$(${CLI_CMD} get secretproviderclass "$spc_name" -n "$OPERATOR_NAMESPACE" \
+            -o jsonpath='{.metadata.annotations.cp4ba\.ibm\.com/owned-by}' 2>/dev/null)
+        store_type=$(${CLI_CMD} get secretproviderclass "$spc_name" -n "$OPERATOR_NAMESPACE" \
+            -o jsonpath='{.metadata.annotations.cp4ba\.ibm\.com/secret-store-type}' 2>/dev/null)
+
+        if [[ -z "$owned_by" || "$owned_by" == "null" ]]; then
+            warning "SPC '$spc_name' missing 'cp4ba.ibm.com/owned-by' annotation — skipping."
+            continue
+        fi
+
+        local mount_path
+        if [[ "$store_type" == "tls" ]]; then
+            mount_path="/tmp/certificates/${spc_name}"
+        elif [[ "$store_type" == "secrets" ]]; then
+            mount_path="/tmp/secrets/${spc_name}"
+        else
+            warning "SPC '$spc_name' missing/unknown 'cp4ba.ibm.com/secret-store-type' ('$store_type'), defaulting to /tmp/secrets/"
+            mount_path="/tmp/secrets/${spc_name}"
+        fi
+        # Extract operator names from owned_by (comma-separated), trim whitespace, and build mapping.  End results:
+        ## _op_spc_map[ibm-cp4a-operator]="root-ca external-tls-cert trusted-cert ..." 
+        ## _op_spc_map[ibm-content-operator]="root-ca trusted-cert cp4ba-db-ssl..."
+        ## _op_mount_map[ibm-cp4a-operator]="/tmp/certificates/root-ca /tmp/certificates/external-tls-cert /tmp/secrets/trusted-cert ..." 
+        ## _op_mount_map[ibm-content-operator]="/tmp/certificates/root-ca /tmp/secrets/trusted-cert /tmp/secrets/cp4ba-db-ssl..."
+        IFS=',' read -ra owners <<< "$owned_by"
+        for owner in "${owners[@]}"; do
+            owner=$(echo "$owner" | xargs)
+            [[ -z "$owner" ]] && continue
+
+            local excluded=false
+            for excl_op in "${VAULT_EXCLUDE_PATCH_LIST_OF_CSV[@]}"; do
+                excl_op="${excl_op%,}"
+                excl_op=$(echo "$excl_op" | xargs)
+                if [[ "$owner" == "$excl_op" ]]; then
+                    excluded=true
+                    info "Skipping '$spc_name' for operator '$owner' (in VAULT_EXCLUDE_PATCH_LIST_OF_CSV)"
+                    break
+                fi
+            done
+            [[ "$excluded" == true ]] && continue
+
+            if [[ -n "${_op_spc_map[$owner]+_}" ]]; then
+                _op_spc_map[$owner]+=" $spc_name"
+                _op_mount_map[$owner]+=" $mount_path"
+            else
+                _op_spc_map[$owner]="$spc_name"
+                _op_mount_map[$owner]="$mount_path"
+            fi
+        done
+    done <<< "$spc_list"
+
+    if [[ ${#_op_spc_map[@]} -eq 0 ]]; then
+        warning "No operators found to patch after applying exclusion list."
+        return 1
+    fi
+
+    info "=== CSV-to-SPC mapping (operators to patch) ==="
+    for op in "${!_op_spc_map[@]}"; do
+        info "  $op: ${_op_spc_map[$op]}"
+    done
+
+    # Patch each CSV based on the mapping built from the live cluster.  This ensures we are patching the correct CSV names and only those that have SPCs referencing them, rather than relying on hardcoded CSV names or assumptions about which operators use which SPCs.  
+    #It also allows us to handle multiple operators and multiple SPCs per operator in a dynamic way based on the actual cluster state.
+    local found_any=0
+    for operator in "${!_op_spc_map[@]}"; do
+        local csv_name="${operator}.${CP4BA_CSV_VERSION}"
+        info "=== Patching CSV: $csv_name ==="
+
+        local csv_exists
+        csv_exists=$(${CLI_CMD} get csv "$csv_name" -n "$OPERATOR_NAMESPACE" \
+            --ignore-not-found --no-headers 2>/dev/null)
+        if [[ -z "$csv_exists" ]]; then
+            warning "CSV '$csv_name' not found in namespace '$OPERATOR_NAMESPACE', skipping."
+            continue
+        fi
+        found_any=1
+
+        mkdir -p "$TMP_DIR" >/dev/null 2>&1
+        local csv_file="$TMP_DIR/${csv_name}.yaml"
+        local csv_patched="$TMP_DIR/${csv_name}-patched.yaml"
+
+        ${CLI_CMD} get csv "$csv_name" -n "$OPERATOR_NAMESPACE" -o yaml > "$csv_file" 2>&1
+        if [[ $? -ne 0 || ! -s "$csv_file" ]]; then
+            error "Failed to retrieve CSV '$csv_name', skipping."
+            continue
+        fi
+        cp "$csv_file" "$csv_patched"
+
+        CSV="$csv_name"
+        csv_base_name="$operator"
+        SECRET_PROVIDER_CLASS_NAMES=()
+        SECRET_PROVIDER_CLASS_MOUNT_PATHS=()
+        JSON_PATCH_OPS=()
+        CSV_DEPLOYMENT_NAME=""
+
+        IFS=' ' read -ra _spc_arr <<< "${_op_spc_map[$operator]}"
+        IFS=' ' read -ra _mnt_arr <<< "${_op_mount_map[$operator]}"
+        for i in "${!_spc_arr[@]}"; do
+            SECRET_PROVIDER_CLASS_NAMES+=("${_spc_arr[$i]}")
+            SECRET_PROVIDER_CLASS_MOUNT_PATHS+=("${_mnt_arr[$i]}")
+        done
+
+        patch_volume_to_csv
+
+        if [[ ${#JSON_PATCH_OPS[@]} -eq 0 ]]; then
+            info "All CSI volumes already present in '$csv_name', no changes needed."
+            continue
+        fi
+
+        local patch_json
+        patch_json="[$(IFS=,; echo "${JSON_PATCH_OPS[*]}")]"
+        info "Patching '$csv_name' with ${#JSON_PATCH_OPS[@]} operation(s) via JSON patch..."
+        local patch_out
+        patch_out=$(${CLI_CMD} patch csv "$csv_name" -n "$OPERATOR_NAMESPACE" \
+            --type=json -p "$patch_json" 2>&1)
+        if [[ $? -ne 0 ]]; then
+            error "Failed to patch CSV '$csv_name'"
+            echo "$patch_out"
+            continue
+        fi
+        success "CSV '$csv_name' patched. Patched file saved: $csv_patched"
+
+        validate_csv_vault_mounts "$csv_patched" "$csv_name" "$OPERATOR_NAMESPACE"
+
+        local deploy_count
+        deploy_count=$(${YQ_CMD} '.spec.install.spec.deployments | length' "$csv_patched" 2>/dev/null)
+        deploy_count=${deploy_count:-0}
+        for ((rd=0; rd<deploy_count; rd++)); do
+            local dep_name
+            dep_name=$(${YQ_CMD} ".spec.install.spec.deployments[$rd].name" "$csv_patched" 2>/dev/null)
+            [[ -z "$dep_name" ]] && continue
+            info "Restarting deployment '$dep_name'..."
+            ${CLI_CMD} rollout restart deployment/"$dep_name" -n "$OPERATOR_NAMESPACE" 2>/dev/null || true
+            check_pods_running_status "$OPERATOR_NAMESPACE" "$dep_name" "$dep_name" 180
+        done
+        success "Vault CSI mounts applied to '$csv_name'"
+    done
+
+    [[ $found_any -eq 0 ]] && { warning "No matching CSVs were found to patch."; return 1; }
+    success "Upgrade vault migration completed for all operators."
 }
 
 function check_pods_running_status() {
@@ -667,6 +1004,7 @@ fi
 parse_arguments "$@"
 
 # Set default OPERATOR_NAMESPACE to TARGET_PROJECT_NAME if not provided
+info "TARGET_PROJECT_NAME set to: $TARGET_PROJECT_NAME"
 OPERATOR_NAMESPACE=${OPERATOR_NAMESPACE:-$TARGET_PROJECT_NAME}
 info "OPERATOR_NAMESPACE set to: $OPERATOR_NAMESPACE"
 
@@ -675,6 +1013,7 @@ TMP_DIR="${CUR_DIR}/.tmp/${TARGET_PROJECT_NAME}"
 SECRET_PROVIDER_CLASS_DIR="${CUR_DIR}/cp4ba-prerequisites/project/${TARGET_PROJECT_NAME}/secret_template/vault"
 # Initialize arrays for SecretProviderClass names and their corresponding mount paths
 SECRET_PROVIDER_CLASS_NAMES=()
+csv_base_name=""  # set by retrieve_secret_provider_classes; used by create_volumes_structure (generate summary)
 SECRET_PROVIDER_CLASS_MOUNT_PATHS=()
 ## End of global variables
 # 
@@ -689,5 +1028,19 @@ echo "OPERATOR_NAMESPACE (for CSV operations): $OPERATOR_NAMESPACE"
 
 
 if [[ $RUNTIME_MODE == "patch" || $RUNTIME_MODE == "strategic" || $RUNTIME_MODE == "unpatch" || $RUNTIME_MODE == "generate" ]]; then
-  retrieve_csv $CSV $OPERATOR_NAMESPACE
+  # Parse comma-separated CSV list; trim spaces around commas
+  IFS=',' read -ra CSV_LIST <<< "$CSV"
+  for csv_item in "${CSV_LIST[@]}"; do
+    csv_item=$(echo "$csv_item" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+    [[ -z "$csv_item" ]] && continue
+    CSV="$csv_item"
+    # Reset per-CSV state before each iteration
+    SECRET_PROVIDER_CLASS_NAMES=()
+    SECRET_PROVIDER_CLASS_MOUNT_PATHS=()
+    csv_base_name=""
+    info "=== Processing CSV: $CSV ==="
+    retrieve_csv "$CSV" "$OPERATOR_NAMESPACE" || { continue; }
+  done
+elif [[ $RUNTIME_MODE == "upgrade" ]]; then
+  upgrade_csv_between_versions
 fi

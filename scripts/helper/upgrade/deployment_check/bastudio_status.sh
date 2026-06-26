@@ -9,10 +9,12 @@
 #
 ######################## BAA #######################
 # Check ae-icp4adeploy-workspace-aae upgrade status
-isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.bastudio.service // ""' -`
+isInstalled=`cat ${current_cr_details_location} | ${YQ_CMD} '.status.components.bastudio.service // ""' -`
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_BASTUDIO_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
+    CP4BA_BASTUDIO_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
+elif [[ "$isInstalled" == "Ready" && "$RECONCILE_SEEN_FLAG" == "false" ]]; then
     CP4BA_BASTUDIO_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
 elif [[ "$isInstalled" == "Ready" ]]; then
     CP4BA_BASTUDIO_DEPLOYMENT_STATUS="${GREEN_TEXT}Done${RESET_TEXT}"
@@ -24,13 +26,15 @@ elif [ -z "${isInstalled}"  ]; then
     CP4BA_BASTUDIO_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 fi
 
-PLAYBAK_DEPLOYMENT=`${YQ_CMD} ".spec.bastudio_configuration.playback_server.admin_user // \"\"" "$UPGRADE_STATUS_FILE"`
+PLAYBAK_DEPLOYMENT=`${YQ_CMD} ".spec.bastudio_configuration.playback_server.admin_user // \"\"" "$current_cr_details_location"`
 if [[ ! -z "$PLAYBAK_DEPLOYMENT" ]]; then
     # Check playback upgrade status
-    isInstalled=$(cat "${UPGRADE_STATUS_FILE}" | ${YQ_CMD} ".status.components[\"ae-${cr_metaname}-pbk\"].service // \"\"" -)
+    isInstalled=$(cat "${current_cr_details_location}" | ${YQ_CMD} ".status.components[\"ae-${current_cr_name}-pbk\"].service // \"\"" -)
     if [ "$isInstalled" == "NotInstalled" ]; then
         CP4BA_BAA_PBK_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
     elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
+        CP4BA_BAA_PBK_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
+    elif [[ "$isInstalled" == "Ready" && "$RECONCILE_SEEN_FLAG" == "false" ]]; then
         CP4BA_BAA_PBK_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
     elif [[ "$isInstalled" == "Ready" ]]; then
         CP4BA_BAA_PBK_DEPLOYMENT_STATUS="${GREEN_TEXT}Done${RESET_TEXT}"

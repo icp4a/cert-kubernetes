@@ -235,6 +235,17 @@ function label_all_resources(){
                     oc label certificate ibm-zen-metastore-edb-certificate -n $namespace foundationservices.cloudpak.ibm.com-
                 done
             fi
+
+            #remove label from metastore-db certificate and secret
+            metastore_secret_ns_list=$(oc get secret -n $namespace --no-headers | grep  ibm-zen-metastore-secret | awk '{print $1}' | tr "\n" " ")
+            if [[ $metastore_secret_ns_list != "" ]]; then
+                info "removing label from zen-metastore-secret and certificate."
+                for ns in $metastore_secret_ns_list
+                do
+                    oc label secret ibm-zen-metastore-secret -n $namespace foundationservices.cloudpak.ibm.com-
+                    oc label certificate ibm-zen-metastore-certificate -n $namespace foundationservices.cloudpak.ibm.com-
+                done
+            fi
         done
     else
         #CRDS
@@ -394,6 +405,17 @@ function label_all_resources(){
             do
                 oc label secret ibm-zen-metastore-edb-secret -n $ns foundationservices.cloudpak.ibm.com-
                 oc label certificate ibm-zen-metastore-edb-certificate -n $ns foundationservices.cloudpak.ibm.com-
+            done
+        fi
+
+        #remove label from metastore-db certificate and secret
+        metastore_secret_ns_list=$(oc get secret -A --no-headers | grep  ibm-zen-metastore-secret | awk '{print $1}' | tr "\n" " ")
+        if [[ $metastore_secret_ns_list != "" ]]; then
+            info "removing label from zen-metastore-secret and certificate."
+            for ns in $metastore_secret_ns_list
+            do
+                oc label secret ibm-zen-metastore-secret -n $namespace foundationservices.cloudpak.ibm.com-
+                oc label certificate ibm-zen-metastore-certificate -n $namespace foundationservices.cloudpak.ibm.com-
             done
         fi
     fi

@@ -1,0 +1,25 @@
+apiVersion: operator.ibm.com/v1
+kind: IBMServiceMeterDefinition
+metadata:
+  name: cp4ba-ier-metrics
+  namespace: REPLACE_NAMESPACE
+spec:
+  mappingId: cp4baierdeployment0000000000000001
+  processing: LAST
+  repeat: true
+  breakdownDefs:
+    - breakdownBy:
+        name: INSTANCE_COUNT
+      groupBy:
+        - version
+        - environment
+        - architecture
+        - platform
+      source: metricQuantity
+      processing: LAST
+  data:
+    productId: 7b0caa58999c4a4384619aac20ed8875
+    productName: Enterprise Records Containers
+    metricName: INSTANCE_COUNT
+    metricDescription: count of IER instances
+    metricType: ADOPTION

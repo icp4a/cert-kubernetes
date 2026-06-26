@@ -16,10 +16,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
-  appVersion: 25.0.1
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "accept"
   ibm_license: ""
@@ -30,8 +30,8 @@ spec:
   shared_configuration:
     ## This is an optional parameter, If the user installing cp4ba in a CNCF cluster and they selected the parameter sc_deployment_platform as "OCP" then the possible values for this parameter is: ARO or ROSA.
     sc_deployment_ocp_platform:
-    ## FileNet Content Manager (FNCM) license and possible values are: user, concurrent-user, authorized-user, non-production, and production.
-    ## This value could be different from the other licenses in the CR.
+    ## This is the Content Cortex license  parameter and the possible values are: user, concurrent-user, authorized-user, non-production, and production.
+    ## This value could be different from the rest of the licenses.
     sc_deployment_fncm_license: "<Required>"
 
     ## Use this parameter to specify the license for the CP4A deployment and
@@ -90,16 +90,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-jobcontainer
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-dbcompatibility-initcontainer
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -119,9 +119,11 @@ spec:
     sc_deployment_patterns: workflow
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
-    ## The optional components are: bai,pfs,kafka. Please do not delete baw_authoring, because it determines that this is a Workflow Authoring environment.
+    ## The optional components are: bai,pfs,kafka,workflow_runtime_mcp_server,application_connectors. Please do not delete baw_authoring, because it determines that this is a Workflow Authoring environment.
     ## pfs will bring advanced full text search function to portal and workplace. And the external workplace can be enabled only when pfs is enabled
     ## kafka will install a kafka cluster and enable kafka service for workflow authoring
+    ## When workflow_runtime_mcp_server is selected as an optional component, pfs must also be added to sc_optional_components for workflow authoring.
+    ## If PFS and Workflow Runtime MCP Server are enabled, opensearch need to be enabled.
     sc_optional_components: baw_authoring
 
     ## The deployment type as selected by the user.  Possible values are: Starter and Production.
@@ -162,25 +164,27 @@ spec:
     ## the external service to the component's truststore.
     trusted_certificate_list: []
 
-    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers,
-    ## all the files must be compressed in a single file.
-    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or
-    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed
-    ## file should have the following structure and content:
+    ## Provide a URL to a compressed file containing custom JDBC drivers and/or ICCSAP drivers.
+    ## IMPORTANT: Custom drivers provided via this URL will automatically take precedence over out-of-the-box drivers.
+    ## Only one driver per database type will be present in the persistent volume, with customer-supplied drivers taking priority.
+    ##
+    ## Package your drivers in the format: "saplibs/drivers_files" and/or "jdbc/db2|oracle|postgresql|sqlserver/driver_files"
+    ## Example structure for DB2 and Oracle JDBC drivers with ICCSAP drivers:
     ##   /jdbc/db2/db2jcc4.jar
     ##   /jdbc/db2/db2jcc_license_cu.jar
     ##   /jdbc/oracle/ojdbc8.jar
     ##   /saplibs/libicudata.so.50
     ##   /saplibs/...
-    ## Then you need to put the compressed package on an anonymously accessible web server and provide the link here.
-    ## The CR can handle .zip files using unzip as well as .tar, .tar.gz, .tar.bz2, .tar.xz. Does not handle .gz files, .bz2 files, .xz, or .zst files that do not contain a .tar archive.
+    ##
+    ## Place the compressed package on an anonymously accessible web server and provide the URL here.
+    ## Supported formats: .zip, .tar, .tar.gz, .tar.bz2, .tar.xz (does not handle standalone .gz, .bz2, .xz, or .zst files)
     sc_drivers_url:
 
     ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
     ## This secret is also used by Workflow and BAStudio to store AES encryption key.
     encryption_key_secret: ibm-iaws-shared-key-secret
 
-    ## Enable/disable ECM (FNCM) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
+    ## Enable/disable ECM (Content Cortex) / BAN initialization (e.g., creation of P8 domain, creation/configuration of object stores,
     ## creation/configuration of CSS servers, and initialization of Navigator (ICN)).  If the "initialize_configuration" section
     ## is defined with the required parameters in the CR (below) and sc_content_initialization is set to "true", then the initialization will occur.
     ## However, if sc_content_initialization is set to "false" (or the parameter doesn't exist), then the initialization will not occur (even with the "initialize_configuration" section defined)
@@ -188,7 +192,7 @@ spec:
     ## If you already initialized content or want to upgrade, please set sc_content_initialization to "false" before you apply the CR.
     sc_content_initialization: true
 
-    ## Enable/disable the ECM (FNCM) / BAN verification (e.g., creation of test folder, creation of test document,
+    ## Enable/disable the ECM (Content Cortex) / BAN verification (e.g., creation of test folder, creation of test document,
     ## execution of CBR search, and creation of Navigator demo repository and desktop).  If the "verify_configuration"
     ## section is defined in the CR and sc_content_verification is set to true, then the verification will occur.  Note that if you are upgrading or
     ## migrating, set this parameter to "false" since the env has been previously verified.
@@ -207,9 +211,9 @@ spec:
     ## The CPE container and other components that use HTTP Basic Authentication are configured to use the OAuth JaaS loginModule
     ## to remove all remaining LDAP dependencies by allowing username/password credentials to be converted into an OAuth token for
     ## authentication. When you are upgrading from a release prior to CP4BA 22.0.2 to 22.0.2 or later, or when
-    ## you are migrating FileNet Content Manager on-prem or standalone deployment to IBM Cloud Pak for Business Automation (CP4BA),
+    ## you are migrating Content Cortex on-prem or standalone deployment to IBM Cloud Pak for Business Automation (CP4BA),
     ## you must set "sc_skip_ldap_config: false".  If you are performing fresh install using 23.0.2-IF004 or later, you can also set
-    ## "sc_skip_ldap_config: false" in order to have the FileNet Content Manager P8 domain to be configured with direct LDAP bind
+    ## "sc_skip_ldap_config: false" in order to have the Content Cortex P8 domain to be configured with direct LDAP bind
     ## as opposed to the default SCIM configuration.
     ## NOTE: Setting 'sc_skip_ldap_config' to false is not supported when 'PingDirectory' is selected as the LDAP type.
     ## Ensure this parameter remains set to 'true' when using PingDirectory.
@@ -223,6 +227,10 @@ spec:
     ## By default, the sc_is_multiple_az parameter is set to true. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
     sc_is_multiple_az: true
+
+    ## By default we will always set the sc_enable_usage_metering flag to true and this will enable the operators to deploy the cron jobs to send usage metrics to software central.
+    ## Only set this flag to "false" if you want to opt-out sending usage metrics.
+    sc_enable_usage_metering: true
 
   ## The beginning section of LDAP configuration for CP4A
   ldap_configuration:
@@ -574,6 +582,7 @@ spec:
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
       dc_use_postgres: false
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
       ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
@@ -630,6 +639,7 @@ spec:
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
       dc_use_postgres: false
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
       ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
@@ -686,6 +696,7 @@ spec:
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
       dc_use_postgres: false
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
       ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
@@ -748,6 +759,7 @@ spec:
     #   # GCD configuration above.
     # - dc_database_type: "<Required>"
     #   ## Provide the label for the CPE data source.  The default value is "os" if not defined.
+    #   ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
     #   ## This label must match the secret you define in ibm-fncm-secret.
     #   ## If you define dc_os_label: "ch" , then your secret must be defined as:
     #   ## --from-literal=chDBUsername="<your db username>" --from-literal=chDBPassword="<your db password>".
@@ -803,28 +815,28 @@ spec:
       ## Workflow Authoring image repository URL.
       repository: cp.icr.io/cp/cp4a/bas/workflow-authoring
       ## Image tag for Workflow Authoring container.
-      tag: "25.0.1-IF001"
+      tag: "26.0.0"
       ## Pull policy for Workflow Authoring container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pullPolicy: IfNotPresent
     upgrade_job:
       ## Workflow Authoring database handling image repository URL.
       repository: cp.icr.io/cp/cp4a/baw/workflow-server-dbhandling
       ## Workflow Authoring database handling image repository tag.
-      tag: "25.0.1-IF001"
+      tag: "26.0.0"
       ## Pull policy for database handling. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pullPolicy: IfNotPresent
     bas_auto_import_job:
       ## Workflow Authoring Business Automation Studio toolkit init image repository URL.
       repository: cp.icr.io/cp/cp4a/baw/toolkit-installer
       ## Workflow Authoring Business Automation Studio toolkit init image repository tag.
-      tag: "25.0.1-IF001"
+      tag: "26.0.0"
       ## Pull policy for Workflow Authoring Business Automation Studio toolkit init image. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pullPolicy: IfNotPresent
     ibm_workplace_job:
       ## Workflow Authoring IBM Workplace deployment job image repository URL
       repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
       ## Workflow Authoring IBM Workplace deployment job image repository tag.
-      tag: "25.0.1-IF001"
+      tag: "26.0.0"
       ## Pull policy for Workflow Authoring IBM Workplace deployment job image. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
       pull_policy: IfNotPresent
 
@@ -834,7 +846,7 @@ spec:
         ## Image name for content integration container.
         repository: cp.icr.io/cp/cp4a/baw/iaws-ps-content-integration
         ## Image tag for content integration container.
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
         ## Pull policy for content integration container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
         pull_policy: IfNotPresent
       ## Domain name for content integration. The value must be the same as initialize_configuration.ic_domain_creation.domain_name.
@@ -852,7 +864,7 @@ spec:
         ## Image name for CASE init job container.
         repository: cp.icr.io/cp/cp4a/baw/workflow-server-case-initialization
         ## Image tag for CASE init job container.
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
         ## Pull policy for CASE init job container. Default value is IfNotPresent. Possible values are IfNotPresent, Always.
         pull_policy: IfNotPresent
 
@@ -1096,7 +1108,7 @@ spec:
       image:
         repository: cp.icr.io/cp/cp4a/baw/bui-task-prioritization
         ## Image tag for Intelligent Task Prioritization container
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
         pull_policy: IfNotPresent
       ## Resource configuration
       resources:
@@ -1140,7 +1152,7 @@ spec:
           initial_delay_seconds: 40
       image:
         repository: cp.icr.io/cp/cp4a/baw/workforce-insights
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
         pull_policy: IfNotPresent
       ## Resource configuration
       resources:
@@ -1168,7 +1180,7 @@ spec:
         min_replicas: 2
         target_cpu_utilization_percentage: 80
   ########################################################################
-  ########   IBM FileNet Content Manager configuration            ########
+  ########   IBM Content Cortex configuration            ########
   ########################################################################
   ecm_configuration:
 
@@ -1261,7 +1273,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1440,7 +1452,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/fncm/cpe-audit-log
-          tag: "25.0.1-IF001"
+          tag: "26.0.0"
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
         initresources:
@@ -1540,7 +1552,7 @@ spec:
       #     pull_policy: IfNotPresent
       #     ## The default repository is the IBM Entitled Registry.
       #     repository: cp.icr.io/cp/cp4a/fncm/lscollector
-      #     tag: "25.0.1-IF001"
+      #     tag: "26.0.0"
       #   ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
       #   ## If more resources are needed, make the changes here to meet your requirement.
       #   resources:
@@ -1581,7 +1593,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1634,6 +1646,10 @@ spec:
           # cooldown window before applying scaleDown action, default value is 300 (seconds)
           stabilization_window_seconds: "<Optional>"
 
+      ## This flag enable or disable Pod Disruption Budget (PDB) creation for cmis component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
+      ## A PDB for cmis will be created with a `minAvailable: 1` only if the cmis replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
+      enable_pdb: true
+      
       ## Below are the default CMIS Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
       cmis_production_setting:
         time_zone: Etc/UTC
@@ -1744,7 +1760,7 @@ spec:
     #    pull_policy: IfNotPresent
     #    ## The default repository is the IBM Entitled Registry.
     #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-    #    tag: "25.0.1-IF001"
+    #    tag: "26.0.0"
     #  ## Below are the default LSReporter Production settings.
     #  ## Make the necessary changes as you see fit.
     #  product_settings:
@@ -1794,7 +1810,7 @@ spec:
     #      failure_threshold: 6
 
   ########################################################################
-  ########  IBM FileNet Content Manager initialize configuration  ########
+  ########  IBM Content Cortex initialize configuration  ########
   ########################################################################
   ## The deployment of FNCM will be initialized with the default values assigned to the parameters below.
   ## The initialization process includes the creation of the P8 domain, the creation of the directory services,
@@ -2009,7 +2025,7 @@ spec:
 
 
 ########################################################################
-  ######## IBM FileNet Content Manager Verification configuration ######
+  ######## IBM Content Cortex Verification configuration ######
   ########################################################################
   ## After the initialization process (see section above), the verification process will take place.
   ## The verification process ensures that the FNCM and BAN components are functioning correctly.  The verification

@@ -16,10 +16,10 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
     cp4ba.ibm.com/backup-type: mandatory
 spec:
-  appVersion: 25.0.1
+  appVersion: 26.0.0
 
   ## MUST exist, used to accept ibm license, valid value only can be "true"
   license:
@@ -54,7 +54,7 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/baw/dba-keytool-initcontainer
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
         pull_policy: IfNotPresent
         # The pull secret list
         # Examples:
@@ -64,7 +64,7 @@ spec:
         pull_secrets: []
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/baw/dba-umsregistration-initjob
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
         pull_policy: IfNotPresent
         # The pull secret list
         # Examples:
@@ -86,18 +86,20 @@ spec:
     ## For ROKS Ingress, provide TLS secret name for Ingress controller. If you are not using ROKS, comment out this line.
     sc_ingress_tls_secret_name: <Required>
 
-    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers,
-    ## all the files must be compressed in a single file.
-    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or
-    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed
-    ## file should have the following structure and content:
+    ## Provide a URL to a compressed file containing custom JDBC drivers and/or ICCSAP drivers.
+    ## IMPORTANT: Custom drivers provided via this URL will automatically take precedence over out-of-the-box drivers.
+    ## Only one driver per database type will be present in the persistent volume, with customer-supplied drivers taking priority.
+    ##
+    ## Package your drivers in the format: "saplibs/drivers_files" and/or "jdbc/db2|oracle|postgresql|sqlserver/driver_files"
+    ## Example structure for DB2 and Oracle JDBC drivers with ICCSAP drivers:
     ##   /jdbc/db2/db2jcc4.jar
     ##   /jdbc/db2/db2jcc_license_cu.jar
     ##   /jdbc/oracle/ojdbc8.jar
     ##   /saplibs/libicudata.so.50
     ##   /saplibs/...
-    ## Then you need to put the compressed package on an anonymously accessible web server and provide the link here.
-    ## The CR can handle .zip files using unzip as well as .tar, .tar.gz, .tar.bz2, .tar.xz. Does not handle .gz files, .bz2 files, .xz, or .zst files that do not contain a .tar archive.
+    ##
+    ## Place the compressed package on an anonymously accessible web server and provide the URL here.
+    ## Supported formats: .zip, .tar, .tar.gz, .tar.bz2, .tar.xz (does not handle standalone .gz, .bz2, .xz, or .zst files)
     sc_drivers_url:
 
     ## Shared encryption key secret name that is used for Workflow or Workstream Services and Process Federation Server integration.
@@ -128,6 +130,10 @@ spec:
     ## By default, the sc_is_multiple_az parameter is set to true. When the value is set to true, the pods of the CP4BA deployment are spread across your user-defined topology domains.
     ## The pod API includes a spec.topologySpreadConstraints field, which is used by the CP4BA operator to configure it.
     sc_is_multiple_az: true
+
+    ## By default we will always set the sc_enable_usage_metering flag to true and this will enable the operators to deploy the cron jobs to send usage metrics to software central.
+    ## Only set this flag to "false" if you want to opt-out sending usage metrics.
+    sc_enable_usage_metering: true
 
   ########################################################################
   ########   IBM Process Federation Server configuration          ########
@@ -177,7 +183,7 @@ spec:
       ## The default repository is the IBM Entitled Registry.
       repository: cp.icr.io/cp/cp4a/baw/pfs-prod
       ## Process Federation Server image tag
-      tag: "25.0.1-IF001"
+      tag: "26.0.0"
       ## Process Federation Server image pull policy. This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
       # The pull secret list
@@ -372,7 +378,7 @@ spec:
     application_engine:
       workplace_image:
         repository: cp.icr.io/cp/cp4a/baw/iaws-ibm-workplace
-        tag: "25.0.1-IF001"
+        tag: "26.0.0"
         pull_policy: IfNotPresent
         # The pull secret list
         # Examples:

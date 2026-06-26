@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ibm-cp4a-operator-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      name: ibm-cp4a-operator
+  unhealthyPodEvictionPolicy: AlwaysAllow

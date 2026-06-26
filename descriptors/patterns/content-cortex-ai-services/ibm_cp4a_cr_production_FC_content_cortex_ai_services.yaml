@@ -1,0 +1,505 @@
+###############################################################################
+##
+##Licensed Materials - Property of IBM
+##
+##(C) Copyright IBM Corp. 2021, 2026. All Rights Reserved.
+##
+##US Government Users Restricted Rights - Use, duplication or
+##disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+##
+###############################################################################
+apiVersion: ccxaiservices.operator.ibm.com/v1
+kind: CCXAIServices
+metadata:
+  name: ai-services
+  labels:
+    app.kubernetes.io/instance: ibm-ai-services-operator
+    app.kubernetes.io/managed-by: ibm-ai-services-operator
+    app.kubernetes.io/name: ibm-ai-services-operator
+    release: 26.0.0
+    cxaiservices.operator.ibm.com/backup-type: mandatory
+spec:
+
+  ## You must read the license agreement: https://www.ibm.com/support/customer/csol/terms/?id=L-UXBF-EQ4UGB and accept the ibm license.
+  ## The only valid value is "true"
+  license: 
+    accept: true
+  
+  appVersion: 26.0.0
+
+  ##########################################################################
+  ## This section contains the shared configuration for all AI Services components #
+  ##########################################################################
+  shared_configuration:
+    ## This is an optional parameter, If the user installing AI Services in a CNCF cluster and they selected the parameter sc_deployment_platform as "OCP" then the possible values for this parameter is: ARO or ROSA.
+    sc_deployment_ocp_platform:
+
+    ## The deployment context. Possible values are: "CP4A" or "FNCM"
+    ## Unless you are instructed to change this value or know the reason to change this value, please use one of these values.
+    sc_deployment_context: "CP4A"
+
+    ## All AI Services components must use/share the image_pull_secrets to pull images.
+    image_pull_secrets:
+    - ibm-entitlement-key
+
+    ## All AI Services components must use/share the same docker image repository.  For example, if IBM Entitled Registry is used, then
+    ## it should be "cp.icr.io".  Otherwise, it will be a local docker registry.
+    sc_image_repository: cp.icr.io
+
+    ## Used to sign all AI Services internal certificates for internal services communications. In most cases, this value should not be changed.
+    ## All AI Services components must use/share the root_ca_secret in order for integration.
+    root_ca_secret: icp4a-root-ca
+
+    ## Optional: You can specify a profile size - valid values are small,medium,large - default is small.
+    sc_deployment_profile_size: "small"
+
+    ## If your Openshift cluster is configured for Hugepages and you want the applicable deployment resources to consume Hugepages.
+    ## You must set "true" for sc_hugepages.enabled. Default is "false".
+    ## You must set type for "Hugepages" like hugepages-2Mi or hugepages-1Gi. Default is "hugepages-2Mi".
+    ## You must set size for value which is suitable for Openshift cluster.
+    sc_hugepages:
+      enabled: false
+      type: ""
+      value: ""
+
+    ## Flag to control deploying redis, by default it is set to false and file storage/ PVCs will be used
+    sc_redis_enable: false
+
+    ## Shared custom TLS secret which will be used to sign all external routes if defined.
+    ## If this is not defined, all external routes will be signed with `root_ca_secret`
+    ## Starting with AI Services 26.0.0 release, this parameter only applies to non-OCP deployments. For OCP, all external traffic is routed via a
+    ## common front door in Platform UI so custom TLS certificates must be configured in AutomationUIConfig. Please refer
+    ## to https://www.ibm.com/docs/en/cloud-paks/1.0?topic=foundation-custom-resources#automationuiconfig for more information.
+    external_tls_certificate_secret:
+
+    ## Specify the RunAsUser for the security context of the pod.  This is usually a numeric value that corresponds to a user ID.
+    ## For non-OCP (e.g., CNCF platforms such as AWS, GKE, etc), this parameter is optional. It is not supported on OCP and ROKS.
+    sc_run_as_user:
+
+    ## Optional setting for secure computing mode (seccomp) profile for AI Services containers.  The default seccomp profile is RuntimeDefault on OCP 4.11 (k8s v1.24) or higher. seccomp profile won't be created on OCP 4.10 (k8s v1.23) or lower.
+    ## For more information on seccomp please refer to https://kubernetes.io/docs/tutorials/security/seccomp/ and https://docs.openshift.com/container-platform/4.12/security/seccomp-profiles.html
+    ## NOTE: Defining a custom, localhost seccomp profile that is stricter than the default RuntimeDefault profile may cause our pods fail to start.  This custom profile should be created at the worker nodes.
+    sc_seccomp_profile:
+    #  type: # RuntimeDefault, Localhost, Unconfined
+    #  localhost_profile: # Local path of custom seccomp profile when type `Localhost` is used. The custom profile must be accessible by the pod and must exist locally on all worker nodes.  For example: `/profiles/fine-grained.json`.
+
+
+    ## Enables integration with Instana to collect application and infrastructure metrics for enhanced observability. 
+    ## This optional parameter controls the instana instrumentation. If the parameter is not defined, then the default value is "false".
+    ## Set this flag to "true" if you plan to enable instana monitoring for AI Services application.
+    sc_enable_instana_metric_collection: false
+
+    ## The optional parameter to enable/disable the creation of sample network policy templates for AI Services components.  If the parameter is not defined, then the default value is "false".
+    ## Set this flag to "true" if you plan to have restricted network policies in AI Services namespaces so that the operators can create sample network policy templates for AI Services components.
+    ## Please refer to the AI Services documentation for more information about how to retrieve and apply the sample network policy templates.
+    sc_generate_sample_network_policies: false
+
+    ## For ROKS Ingress, provide TLS secret name for Ingress controller. If you are not using ROKS, comment out this line.
+    #sc_ingress_tls_secret_name: <Required>
+
+    ## Optional. This parameter is used to create legacy OCP routes. The default hostname suffix will be <route-name>-{{meta.namespace}}.<router-canonical-hostname> when not defined.
+    ## For more information refer to <>
+    ## All AI Services application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
+    #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
+
+    ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
+    ## the external service to the component's truststore.
+    trusted_certificate_list: []
+
+    ## On OCP 3.x and 4.x, the User script will populate these three (3) parameters based on your input for "production" deployment.
+    ## If you manually deploying without using the User script, then you would provide the different storage classes for the slow.  
+    storage_configuration:
+      sc_slow_file_storage_classname: "<Required>"
+      # Block storage is only required when Redis has been enabled i.e sc_redis_enable: true
+      sc_block_storage_classname: "<Optional>"
+    
+    ## Optional: This parameter is used to optionally enable integration with HashiCorp Vault. If the parameter is not defined, then the default value is "false". If the parameter is not defined, then the default value is "false".
+    ## IMPORTANT: Only set this flag to "true" if want to integrate with Vault and have already completed the mandatory prerequisites for Vault integration. See the IBM CP4BA KC topic "External secret management".
+    ## WARNING: If you set the flag to "true" without completing the mandatory prerequisites for Vault integration for CP4BA, the CP4BA deployment will fail.
+    sc_vault_configuration:
+      enable_external_secret_store: false
+
+
+    ## This optional property is a string value corresponding to the "ipFamilyPolicy" property of Kubernetes "service" objects.
+    ## Ref: https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
+    ## This setting is only applicable in dual-stack clusters where both IPv4 and IPv6 are enabled.
+    ## If not set, then the "ipFamilyPolicy" property of the services will default to the cluster-level settings.
+    ## ALLOWED VALUES (case-sensitive): "PreferDualStack", "RequireDualStack"
+    ## WARNING: Setting this property to a value not supported by your cluster will cause Content Cortex AI Services deployment to fail.
+    ## For example, if your cluster only supports one IP family, using "RequireDualStack" will cause deployment to fail.
+    sc_service_ip_family_policy:
+
+    ## This optional property is a list value corresponding to the "ipFamilies" property of Kubernetes "service" objects.
+    ## Ref: https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
+    ## This parameter works in conjunction with the ipFamilyPolicy to define the IP addressing behaviors for the Service.
+    ## If not set, then the "ipFamilies" property of the services will default to the cluster-level settings.
+    ## ALLOWED VALUES (case-sensitive):
+    ##   If "sc_service_ip_family_policy: PreferDualStack" or "RequireDualStack", then a list of two IP families supported by your cluster in desired order ("IPv6", "IPv4")
+    ## WARNING: Setting this property to a value not supported by your cluster will cause Content Cortex AI Services deployment to fail.
+    ## For example, if your cluster does not support "IPv6" family, then including "IPv6" in this property will cause deployment to fail.
+    ## IMPORTANT: This setting is only supported for initial deployment. Updating this property after deployment has completed may
+    ## cause system instability and require some pods (such as "ibm-nginx") to be manually restarted.
+    sc_service_ip_families:
+
+    ## If a cluster is configured for multiple availability zones (AZ) and the parameter sc_is_multiple_az is set to true, then the pods are spread across all the zones.
+    ## By default, the sc_is_multiple_az parameter is set to true. When the value is set to true, the pods of the Content Cortex AI Services deployment are spread across your user-defined topology domains.
+    ## The pod API includes a spec.topologySpreadConstraints field, which is used by the Content Cortex AI Services operator to configure it.
+    sc_is_multiple_az: true
+
+    ## The global flag to enable or disable Pod Disruption Budget (PDB) creation across all components.  Default is true
+    ## A PDB will be created with a 'minAvailable: 1' only if the replica count of a particular deployment is greater than 1.  Otherwise, the PDB will have 'minAvailable: 0' if the replica is 1.
+    sc_enable_pdb: true
+
+    # Enable debug logging 
+    show_sensitive_logs: false
+
+  ########################################################################
+  ########           Reasoning Service Configuration               ########
+  ########################################################################
+  reasoning_service_configuration:
+    # Secret containing provider credentials and configuration
+    reasoning_service_secret_name: ibm-providers-config-secret
+    
+    # Optional: Use an existing certificate for automatic creation of OpenShift routes.
+    reasoning_service_ext_tls_secret_name: ""
+    
+    # The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes.
+    reasoning_service_auth_ca_secret_name: ""
+
+    ## By default, all the components create ingress and routes with required annotations. In case any custom annotation is needed for the environment provide below.
+    #    route_ingress_annotations:
+    #      - haproxy.router.openshift.io/balance: roundrobin
+    #route_ingress_annotations:
+    
+    ## Number of replicas (overrides profile size default)
+    replica_count: 2
+
+    ## Rolling update settings for CPE deployment.  By default, max_unavailable is set to 99% and max_surge is set to 1.  This will improve the efficiency of the rolling update.
+    ## Valid values for max_unavailable are 0-100% or 0-<number of replicas>.
+    rolling_update:
+      max_unavailable: "25%"
+      max_surge: 1
+
+    ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
+    arch:
+      amd64: "3 - Most preferred"
+    
+    ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+    image:
+      repository: cp.icr.io/cp/cp4a/fncm/reasoning-services
+      tag: "26.0.0"
+      pull_policy: IfNotPresent
+      ## Alternative: use digest instead of tag
+      # digest: sha256:1234567890abcdef...
+  
+    ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.  If more resources are needed,
+    ## make the changes here to meet your requirement.
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+        ephemeral_storage: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+        ephemeral_storage: 2Gi
+    
+    ## By default, "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
+    ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
+    auto_scaling:
+      enabled: false
+      max_replicas: "<Required>"
+      min_replicas: "<Required>"
+      ## This is the default cpu percentage before autoscaling occurs.
+      target_cpu_average_utilization: "<Required>"
+      ## Set this parameter (in percentage) if you want HPA  scales a deployment based on the average memory utilization 
+      target_memory_average_utilization: "<Required>"
+      ## Define scaleup/scaledown sections to control how fast and how often scaling happens. 
+      ## These sections are optional; if they are not defined, the default values are set.
+      scaleup:  # policy is Pod
+        # the maximum number of pods that the HPA is allowed to add during each periodSeconds interval, default value is 1
+        policies_pods_value: "<Optional>" 
+        # defines how often the HPA can apply a scaling action, default value is 15 (seconds)
+        policies_pods_period_seconds: "<Optional>" 
+        # cooldown window before applying scaleUp action, default value is 30 (seconds)
+        stabilization_window_seconds: "<Optional>"
+      scaledown:
+        # the maximum number of pods that the HPA is allowed to remove during each periodSeconds interval, default value is 1
+        policies_pods_value: "<Optional>"
+        # defines how often the HPA can apply a scaling action, default value is 15 (seconds)
+        policies_pods_period_seconds: "<Optional>"
+        # cooldown window before applying scaleDown action, default value is 300 (seconds)
+        stabilization_window_seconds: "<Optional>"
+
+    node_affinity:
+      #-------------------------------------
+      # custom_node_selector_match_expression will be added in node selector match expressions.
+      # It accepts array list inputs. You can assign multiple selector match expressions except (kubernetes.io/arch)
+      # Example value:
+      # - key: kubernetes.io/hostname
+      #   operator: In
+      #   values:
+      #     - worker0
+      #     - worker1
+      #     - worker3
+      #-------------------------------------
+      custom_node_selector_match_expression: [ ]
+    ## Values in this field will be used as annotations in all generated pods, and it must be valid annotation key value pairs.
+    # Example:
+    # customAnnotationKey: customAnnotationValue
+    ## To include '{{ }}' in annotation like '{{example}}', add a backward slash before curly brace like '\{\{example\}\}'.
+    custom_annotations: { }
+    ## Values in this field will be used as labels in all generated pods, and it must be valid label key value pairs
+    # Example:
+    # customLabelKey: customLabelValue
+    custom_labels: { }
+
+    ## Tolerations are specified in the pod specification to allow the pod to be scheduled on tainted nodes.
+    ## Example, if you want to schedule the pod on a node with taints, you can add tolerations to the pod specification.
+    ## tolerations:
+    ##   - key: "component"
+    ##     operator: "Equal"
+    ##     value: "css"
+    ##     effect: "NoSchedule"
+    ## Default is empty list [], which uses Kubernetes defaults.
+    tolerations: [ ]
+    
+    ## Set securityContext for CPE deployment.
+    security_context:
+      ## Controls which group IDs containers add. For example "supplemental_groups: [1000620001,1000620002]"
+      supplemental_groups: []
+      ## This can take an array of key value pairs to assign SELinux labels to a Container, for example
+      ## selinux_options:
+        ## level: "s0:c123,c456"
+        ## type: "spc_t
+      selinux_options: {}
+      # Defines behavior for changing ownership and permission of the volume before being exposed inside a Pod. This field has two possible values (Always,OnRootMismatch)
+      # For example fs_groupchangepolicy: "OnRootMismatch"
+      fs_groupchangepolicy: ""
+    
+    ## Custom ConfigMaps to mount
+    #custom_configmap:
+    #  - name: custom-config
+    #    volume_path: /app/custom-config
+    #    is_env: false
+    
+    ## Production settings with detailed logging configuration
+    reasoning_service_production_setting:
+      ## Application logging levels
+      ## Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+      log_level: info              # General application log level
+      mcp_client: info             # MCP client communication logs
+      basic_search: info           # Basic search agent logs
+      watsonx_search: info         # Watson X search agent logs
+      api: info                    # API endpoint logs
+      agent_registry: info         # Agent registry operations
+      thread_manager: info         # Thread management logs
+      tool_registry: info          # Tool registry operations
+      auth: warning                # Authentication logs (warning+ only for security)
+      
+      ## Logging output configuration
+      console_output: false        # Disable console logging (use file-based logging)
+      file_output: true            # Enable file-based logging for persistence
+      
+      ## Log file paths (mounted volumes should be configured accordingly)
+      file_mcp_client_path: "/app/logs/mcp_client.log"
+      file_basic_search_path: "/app/logs/basic_search_agent.log"
+      file_watsonx_search_path: "/app/logs/watsonx_search_agent.log"
+      file_api_path: "/app/logs/api.log"
+      file_agent_registry_path: "/app/logs/api.log"
+      file_thread_manager_path: "/app/logs/api.log"
+      file_tool_registry_path: "/app/logs/utils.log"
+      file_auth_path: "/app/logs/api.log"
+      
+      ## Watson X AI Provider settings
+      provider_settings:
+        model_id: "mistral-large-2512"
+        max_new_tokens: "256000"
+        temperature: "0.7"
+      
+      # Startup configuration
+      startup:
+        workers: 4
+        limit_concurrency: 4
+        limit_max_requests: 2000
+        timeout_keep_alive: 600
+    
+    # Persistent Volume Claims
+    # NOTE: Use EITHER emptyDir (default) OR PVCs, not both
+    # If PVCs are specified, emptyDir volumes will NOT be created
+    datavolume:
+      # Optional: PVC for configuration storage
+      existing_pvc_for_reasoning_service_cfgstore:
+        name: reasoning-service-config-pvc
+        size: 5Gi
+      # Optional: PVC for log storage
+      existing_pvc_for_reasoning_service_logstore:
+        name: reasoning-service-logs-pvc
+        size: 10Gi
+    
+    ## Default values for both startup, readiness and liveness probes.  Modify these values to meet your requirements.
+    probe:
+      startup:
+        initial_delay_seconds: 30
+        period_seconds: 10
+        timeout_seconds: 5
+        failure_threshold: 30
+      readiness:
+        initial_delay_seconds: 10
+        period_seconds: 10
+        timeout_seconds: 5
+        failure_threshold: 3
+      liveness:
+        initial_delay_seconds: 60
+        period_seconds: 30
+        timeout_seconds: 5
+        failure_threshold: 3
+
+  ##################################################
+  ########       Core MCP Configuration      ########
+  ##################################################
+  core_mcp_server_configuration:
+    # Optional: Use an existing certificate for automatic creation of OpenShift routes.
+    core_mcp_ext_tls_secret_name: ""
+
+    # The Certificate Authority (CA) used to sign the external TLS secret for automatic creation of OpenShift routes.
+    core_mcp_auth_ca_secret_name: ""
+
+    ## By default, all the components create ingress and routes with required annotations. In case any custom annotation is needed for the environment provide below.
+    #    route_ingress_annotations:
+    #      - haproxy.router.openshift.io/balance: roundrobin
+    #route_ingress_annotations:
+
+    ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
+    arch:
+      amd64: "3 - Most preferred"
+
+    ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+    ## it is recommended to have 2 or more.
+    replica_count: 2
+
+    ## Rolling update settings for Core MCP deployment.  By default, max_unavailable is set to 99% and max_surge is set to 1.  This will improve the efficiency of the rolling update.
+    ## Valid values for max_unavailable are 0-100% or 0-<number of replicas>.
+    rolling_update:
+      max_unavailable: "25%"
+      max_surge: 1
+
+    ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled
+    image:
+      repository: cp.icr.io/cp/cp4a/fncm/core-mcp-server
+      tag: "26.0.0"
+      pull_policy: IfNotPresent
+      ## Alternative: use digest instead of tag
+      # digest: sha256:1234567890abcdef...
+
+    ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.  If more resources are needed,
+    ## make the changes here to meet your requirement.
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+        ephemeral_storage: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+        ephemeral_storage: 2Gi
+    
+    ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
+    ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
+    auto_scaling:
+      enabled: false
+      max_replicas: "<Required>"
+      min_replicas: "<Required>"
+      ## This is the default cpu percentage before autoscaling occurs.
+      target_cpu_average_utilization: "<Required>"
+      ## Set this parameter (in percentage) if you want HPA  scales a deployment based on the average memory utilization
+      target_memory_average_utilization: "<Required>"
+      ## Define scaleup/scaledown sections to control how fast and how often scaling happens.
+      ## These sections are optional; if they are not defined, the default values are set.
+      scaleup:  # policy is Pod
+        # the maximum number of pods that the HPA is allowed to add during each periodSeconds interval, default value is 1
+        policies_pods_value: "<Optional>"
+        # defines how often the HPA can apply a scaling action, default value is 15 (seconds)
+        policies_pods_period_seconds: "<Optional>"
+        # cooldown window before applying scaleUp action, default value is 30 (seconds)
+        stabilization_window_seconds: "<Optional>"
+      scaledown:
+        # the maximum number of pods that the HPA is allowed to remove during each periodSeconds interval, default value is 1
+        policies_pods_value: "<Optional>"
+        # defines how often the HPA can apply a scaling action, default value is 15 (seconds)
+        policies_pods_period_seconds: "<Optional>"
+        # cooldown window before applying scaleDown action, default value is 300 (seconds)
+        stabilization_window_seconds: "<Optional>"
+    
+    node_affinity:
+      #-------------------------------------
+      # custom_node_selector_match_expression will be added in node selector match expressions.
+      # It accepts array list inputs. You can assign multiple selector match expressions except (kubernetes.io/arch)
+      # Example value:
+      # - key: kubernetes.io/hostname
+      #   operator: In
+      #   values:
+      #     - worker0
+      #     - worker1
+      #     - worker3
+      #-------------------------------------
+      custom_node_selector_match_expression: [ ]
+    ## Values in this field will be used as annotations in all generated pods, and it must be valid annotation key value pairs.
+    # Example:
+    # customAnnotationKey: customAnnotationValue
+    ## To include '{{ }}' in annotation like '{{example}}', add a backward slash before curly brace like '\{\{example\}\}'.
+    custom_annotations: { }
+    ## Values in this field will be used as labels in all generated pods, and it must be valid label key value pairs
+    # Example:
+    # customLabelKey: customLabelValue
+    custom_labels: { }
+    
+    ## Set securityContext for CPE deployment.
+    security_context:
+      ## Controls which group IDs containers add. For example "supplemental_groups: [1000620001,1000620002]"
+      supplemental_groups: []
+      ## This can take an array of key value pairs to assign SELinux labels to a Container, for example
+      ## selinux_options:
+        ## level: "s0:c123,c456"
+        ## type: "spc_t
+      selinux_options: {}
+      # Defines behavior for changing ownership and permission of the volume before being exposed inside a Pod. This field has two possible values (Always,OnRootMismatch)
+      # For example fs_groupchangepolicy: "OnRootMismatch"
+      fs_groupchangepolicy: ""
+    
+    ## Custom ConfigMaps to mount
+    #custom_configmap:
+    #  - name: custom-config
+    #    volume_path: /app/custom-config
+    #    is_env: false
+
+    core_mcp_production_setting:
+      log_level: info
+      # Request per minute limit for the core mcp server
+      rate_limit_rpm: 100
+      # Rate limit burst capacity for the core mcp server
+      rate_limit_burst: 150
+      # Startup configuration
+      startup:
+        workers: 4
+        limit_concurrency: 4
+        limit_max_requests: 2000
+        timeout_keep_alive: 600
+
+    ## Default values for both startup, readiness and liveness probes.  Modify these values to meet your requirements.
+    probe:
+      startup:
+        initial_delay_seconds: 20
+        period_seconds: 10
+        timeout_seconds: 5
+        failure_threshold: 20
+      readiness:
+        initial_delay_seconds: 10
+        period_seconds: 10
+        timeout_seconds: 5
+        failure_threshold: 3
+      liveness:
+        initial_delay_seconds: 30
+        period_seconds: 30
+        timeout_seconds: 5
+        failure_threshold: 3

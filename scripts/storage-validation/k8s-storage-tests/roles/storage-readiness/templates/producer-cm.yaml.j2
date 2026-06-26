@@ -73,8 +73,7 @@ data:
   lock-file.sh: |
     set -ex
     touch ${FILE_NAME}
-    gcc -o /tmp/lock-file /tmp/lock-file.c
-    /tmp/lock-file ${FILE_NAME}
+    lock-file ${FILE_NAME}
     ecode=$?
     exit $ecode
   file-create-uid.sh: |

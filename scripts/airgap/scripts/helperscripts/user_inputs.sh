@@ -402,10 +402,6 @@ process_image_storage_location(){
             esac
         done
         if [[ "$CUSTOM_IMAGE_STORAGE_PATH" == "false" ]]; then
-            break
-        fi
-        collect_private_image_storage_location
-        if [[ "$PRIVATE_REGISTRY_IMAGE_STORAGE_VALIDATION" == "true" ]]; then
             # If the user decided not to share a specific location, the default location will be at the root path of registry server and hence we are setting the mirroring path to what the private registry server is.
             info "Images will be mirrored to: \"$PRIVATE_REGISTRY_HOST\" "
             PRIVATE_REGISTRY_IMAGE_STORAGE_VALIDATION="true"
@@ -415,6 +411,10 @@ process_image_storage_location(){
             else
                 PRIVATE_REGISTRY_MIRRORING_PATH=$PRIVATE_REGISTRY_HOST
             fi
+            break
+        fi
+        collect_private_image_storage_location
+        if [[ "$PRIVATE_REGISTRY_IMAGE_STORAGE_VALIDATION" == "true" ]]; then
             break
         else
             VALIDATION_ATTEMPTS=$((VALIDATION_ATTEMPTS + 1))

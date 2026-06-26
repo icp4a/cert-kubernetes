@@ -19,7 +19,44 @@ function verify_storage_class_valid(){
   local sc_name=$1
   local sc_mode=$2
   local sample_pvc_name=$3
-
+  
+  # Check if storage class exists first
+  if ! ${CLI_CMD} get storageclass "$sc_name" &>/dev/null; then
+    fail "Storage class '$sc_name' does not exist!"
+    verification_sc_passed="No"
+    return 1
+  fi
+  
+  # Get the volumeBindingMode
+  local binding_mode=$(${CLI_CMD} get storageclass "$sc_name" -o jsonpath='{.volumeBindingMode}' 2>/dev/null)
+  
+  # If binding mode is empty, default is Immediate
+  if [[ -z "$binding_mode" ]]; then
+    binding_mode="Immediate"
+  fi
+  
+  # Skip PVC test for WaitForFirstConsumer
+  # https://jsw.ibm.com/browse/DBACLD-229416
+  if [[ "$binding_mode" == "WaitForFirstConsumer" ]]; then
+    info "Storage class '$sc_name' detected with volumeBindingMode: WaitForFirstConsumer"
+    warning "Skipping PVC binding test - PVC will bind when first pod is scheduled during deployment"
+    success "Verification storage class: \"${sc_name}\", PASSED (existence and configuration verified)!"
+    verification_sc_passed="Yes"
+    printf "\n"
+    return 0
+  fi
+  
+  # Continue with normal PVC test for Immediate binding mode
+  info "Storage class '$sc_name' uses volumeBindingMode: $binding_mode . The script will now perform a PVC binding test for the storage class"
+  
+  #DBACLD-227596: Set default size to 155Gi if the storage class is ibmc-vpc-block-sdp-max-bandwidth or contains "ibmc-vpc-block" or "ibmc-vpc-file"
+  ## Block storage doc https://cloud.ibm.com/docs/vpc?topic=vpc-block-storage-profiles&interface=ui#defined-performance-profile
+  if [[ "$sc_name" == *"sdp"*  || "$sc_name" == *"max-bandwidth"* ]]; then
+    local storage_size="155Gi"
+  else
+    local storage_size="10Mi"
+  fi
+  
 cat << EOF > ${STORAGE_CLASS_SAMPLE}
 # YAML template for sample storage class
 ---
@@ -34,20 +71,14 @@ spec:
   - ${sc_mode}
   resources:
     requests:
-      storage: 10Mi
+      storage: ${storage_size}
   storageClassName: ${sc_name}
 EOF
   
-    # CREATE_PVC_CMD="kubectl apply -f ${STORAGE_CLASS_SAMPLE}"
-    # if $CREATE_PVC_CMD ; then
-    #     printf '%b\n' "\x1B[1mDone\x1B[0m"
-    # else
-    #     printf '%b\n' "\x1B[1;31mFailed\x1B[0m"
-    # fi
    # Check Operator Persistent Volume status every 5 seconds (max 1 minutes) until allocate.
     ${CLI_CMD} apply -f ${STORAGE_CLASS_SAMPLE} >&3 2>&3
     ATTEMPTS=0
-    TIMEOUT=12
+    TIMEOUT=24
     printf "\n"
     info "Checking the storage class: \"${sc_name}\"..."
     until ${CLI_CMD} get pvc | grep ${sample_pvc_name}| grep -q -m 1 "Bound" || [ $ATTEMPTS -eq $TIMEOUT ]; do
@@ -56,7 +87,6 @@ EOF
         sleep 5
         if [ $ATTEMPTS -eq $TIMEOUT ] ; then
             fail "Failed to allocate the persistent volumes using storage class: \"${sc_name}\"!"
-            # info "Run the following command to check the claim 'kubectl describe pvc ${sample_pvc_name}'"
             verification_sc_passed="No"
         fi
     done
@@ -209,7 +239,11 @@ function validate_secret_in_cluster(){
             info "Please create all required secrets in the cluster correctly, exiting..."
             exit 1
         else
-            INFO "All secrets have been created in the cluster, PASSED!"
+            if [[ "$ENABLE_VAULT_ON_EXIST" != "true" ]]; then
+                INFO "All secrets have been created in the cluster, PASSED!"
+            else
+                INFO "All SecretProviderClasses have been created in the cluster, PASSED!"
+            fi
         fi
     else
         success "No secrets are needed for the selected configuration. Skipping this step."
@@ -265,7 +299,7 @@ function verify_ldap_connection(){
       # Extract everything from "LDAP Users Summary" until "Total time taken"
       # /LDAP Users Summary/ {flag=1} starts printing everything from LDAP Users Summary and /Total time taken/ {flag=0} stops printing when Total time taken is found
       # https://jsw.ibm.com/browse/DBACLD-159190
-      # showing the group summary only if grouplist passed to the jar is not empty, One such use case is for an ADS only deployment that requires no LDAP group is required to be specified in the property file
+      # showing the group summary only if grouplist passed to the jar is not empty, One such use case is for a DICMS only deployment that requires no LDAP group is required to be specified in the property file
       if [[ ${#ldap_group_list} -eq 0 ]]; then
         ldap_validation_table=$(echo "$output" | awk '/LDAP Users Summary/ {flag=1} /LDAP Groups Summary/ {flag=0} flag')
       else
@@ -297,7 +331,7 @@ function verify_ldap_connection(){
       # Extract everything from "LDAP Users Summary" until "Total time taken"
       # /LDAP Users Summary/ {flag=1} starts printing everything from LDAP Users Summary and /Total time taken/ {flag=0} stops printing when Total time taken is found
       # https://jsw.ibm.com/browse/DBACLD-159190
-      # showing the group summary only if grouplist passed to the jar is not empty, One such use case is for an ADS only deployment that requires no LDAP group is required to be specified in the property file
+      # showing the group summary only if grouplist passed to the jar is not empty, One such use case is for a DICMS only deployment that requires no LDAP group is required to be specified in the property file
       if [[ ${#ldap_group_list} -eq 0 ]]; then
         ldap_validation_table=$(echo "$output" | awk '/LDAP Users Summary/ {flag=1} /LDAP Groups Summary/ {flag=0} flag')
       else
@@ -493,7 +527,7 @@ function verify_db_connection(){
               elif [[ "$result" == *"VERIFICATION_FAILED"* ]]; then
                 fail "Certificate verification failed."
               fi
-
+              # ssl_connection_str: "encrypt=true;trustServerCertificate=false;trustStore={{ban_cert_dir}}/ibm_customBANTrustStore.p12;trustStorePassword={{ ban_keystore_decoded_pwd|first if '{xor}' in ban_keystore_password else ban_keystore_password }}"
               SSL_CONNECTION_STR="encrypt=true;trustServerCertificate=false;trustStore=${TRUSTSTORE_FOLDER}/sqlserver-db-truststore.p12;trustStorePassword=${db_truststore_password}"
               output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -cp "${DB_JDBC_NAME}/mssql-jdbc.jre11.jar:${DB_CONNECTION_JAR_PATH}/SQLJDBCConnection.jar" SQLConnection -h $dbserver -p $dbport -d $dbname -u $dbuser -pwd $dbuserpwd -ssl "$SSL_CONNECTION_STR" 2>&1)
               if [[ "$output" == *"Connected to the database Success"* && "$result" == *"SUCCESS"* ]]; then
@@ -514,8 +548,8 @@ function verify_db_connection(){
               tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
               if [[ $tmp_flag == "no" || $tmp_flag == "false" || $tmp_flag == "" || -z $tmp_flag ]]; then
                 postgres_cafile="${dbcafolder}/db-cert.crt"
-              output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode require -ca $postgres_cafile 2>&1)
-              if [[ "$output" == *"Connected to the database Success"* ]]; then
+                output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode require -ca $postgres_cafile 2>&1)
+                if [[ "$output" == *"Connected to the database Success"* ]]; then
                   success "Check for DB connection for \"$dbname\" on database server \"$dbserver\", has PASSED!"
                   printf "\n"
                   connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
@@ -523,7 +557,7 @@ function verify_db_connection(){
                     display_latency_warning $connection_time "Database"
                   fi
                 else
-                  warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode require -ca $postgres_cafile" && \
+                  warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode require -ca $postgres_cafile" && \
                   fail "Unable to connect to database \"$dbname\" on database server \"$dbserver\", please check configuration again."
                 fi
               elif [[ $tmp_flag == "yes" || $tmp_flag == "true" || $tmp_flag == "y" ]]; then
@@ -534,7 +568,7 @@ function verify_db_connection(){
                 rm -rf ${dbcafolder}/clientkey.pk8 2>&1 </dev/null
                 openssl pkcs8 -topk8 -outform DER -in $postgres_clientkeyfile -out ${dbcafolder}/clientkey.pk8 -nocrypt 2>&1 </dev/null
                 dbuserpwd="changit" # client auth does not need dbuserpwd
-                output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${dbcafolder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
+                output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${dbcafolder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
                 if [[ "$output" == *"Connected to the database Success"* ]]; then
                   success "Check for DB connection for \"$dbname\" on database server \"$dbserver\", has PASSED!"
                   printf "\n"
@@ -543,7 +577,7 @@ function verify_db_connection(){
                     display_latency_warning $connection_time "Database"
                   fi
                 else
-                  warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode verify-ca -ca $postgres_cafile -clientkey ${dbcafolder}/clientkey.pk8 -clientcert $postgres_clientcertfile" && \
+                  warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode verify-ca -ca $postgres_cafile -clientkey ${dbcafolder}/clientkey.pk8 -clientcert $postgres_clientcertfile" && \
                   fail "Unable to connect to database \"$dbname\" on database server \"$dbserver\", please check configuration again."
                 fi
               fi                                                                                                                                                                                  # -h {{ postgres_host }} -p {{ postgres_port }} -db {{ postgres_db }} -u {{ postgresql_server_user }} -pwd {{ postgres_pwd }} -sslmode require -ca {{ postgres_cafile}}              
@@ -611,7 +645,7 @@ function verify_db_connection(){
               break
               ;;
           "postgresql")                                                                                                                                                                                    # -h {{ postgres_host }} -p {{ postgres_port }} -db {{ postgres_db }} -u {{ postgresql_server_user }} -pwd {{ postgres_pwd }} -sslmode require -ca {{ postgres_cafile}}
-              output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -cp "${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode disable 2>&1)
+              output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -cp "${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode disable 2>&1)
               if [[ "$output" == *"Connected to the database Success"* ]]; then
                 success "Check for DB connection for \"$dbname\" on database host server \"$dbserver\", has PASSED!"
                 printf "\n"
@@ -620,7 +654,7 @@ function verify_db_connection(){
                   display_latency_warning $connection_time "Database"
                 fi
               else
-                warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -cp \"${DB_JDBC_NAME}/postgresql-42.7.2.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode disable" && \
+                warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -cp \"${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode disable" && \
                 fail "Unable to connect to database \"$dbname\" on database host server \"$dbserver\", please check configuration again."
               fi
               break

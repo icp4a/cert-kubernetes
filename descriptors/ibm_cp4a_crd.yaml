@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/instance: ibm-dba
     app.kubernetes.io/managed-by: ibm-dba
     app.kubernetes.io/name: ibm-dba
-    release: 25.0.1
+    release: 26.0.0
 spec:
   group: icp4a.ibm.com
   names:
@@ -770,8 +770,6 @@ spec:
                         type: string
                       port:
                         type: string
-                      use_custom_jdbc_drivers:
-                        type: boolean
                       alternative_host:
                         type: string
                         nullable: true
@@ -781,12 +779,6 @@ spec:
                       type:
                         type: string
                       oracle_url:
-                        type: string
-                        nullable: true
-                      custom_jdbc_pvc:
-                        type: string
-                        nullable: true
-                      jdbc_driver_files:
                         type: string
                         nullable: true
                       ssl_enabled:
@@ -804,9 +796,7 @@ spec:
                       admin_secret_name: 
                         type: string
                         nullable: true
-                      use_custom_jdbc_drivers:
-                        type: boolean
-                      database: 
+                      database:
                         type: object
                         x-kubernetes-preserve-unknown-fields: true
                         properties:
@@ -831,9 +821,6 @@ spec:
                             type: string
                             nullable: true
                           oracle_sso_wallet_secret_name:
-                            type: string
-                            nullable: true
-                          custom_jdbc_pvc:
                             type: string
                             nullable: true
                           enable_ssl:
@@ -878,9 +865,7 @@ spec:
                     admin_secret_name:
                       type: string
                       nullable: true
-                    use_custom_jdbc_drivers:
-                      type: boolean
-                    database: 
+                    database:
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
                       properties:
@@ -905,9 +890,6 @@ spec:
                           type: string
                           nullable: true
                         oracle_sso_wallet_secret_name:
-                          type: string
-                          nullable: true
-                        custom_jdbc_pvc:
                           type: string
                           nullable: true
                         enable_ssl:
@@ -1010,14 +992,6 @@ spec:
                           type: string
                           nullable: true
                         jdbc_url: 
-                          type: string
-                          nullable: true
-                        use_custom_jdbc_drivers: 
-                          type: boolean
-                        custom_jdbc_pvc: 
-                          type: string
-                          nullable: true
-                        jdbc_driver_files: 
                           type: string
                           nullable: true
                         hadr:

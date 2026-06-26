@@ -1,0 +1,25 @@
+apiVersion: operator.ibm.com/v1
+kind: IBMServiceMeterDefinition
+metadata:
+  name: cp4ba-workflow-metrics
+  namespace: REPLACE_NAMESPACE
+spec:
+  mappingId: cp4babasdeployment0000000001
+  processing: LAST
+  repeat: true
+  breakdownDefs:
+    - breakdownBy:
+        name: INSTANCE_COUNT
+      groupBy:
+        - version
+        - environment
+        - architecture
+        - platform
+      source: metricQuantity
+      processing: LAST
+  data:
+    productId: 548b34304806411693fe77097b688702
+    productName: Business Automation Studio
+    metricName: INSTANCE_COUNT
+    metricDescription: count of BAStudio instances
+    metricType: ADOPTION

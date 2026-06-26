@@ -1,4 +1,5 @@
 #!/bin/bash
+
 export LC_ALL=C
 export LC_CTYPE=C
 
@@ -14,11 +15,63 @@ export LC_CTYPE=C
 ###############################################################################
 
 # This script contains shared utility functions and environment variables.
-# CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-# PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 
 # Open file descriptor 3 for suppressing output
 exec 3>/dev/null
+
+# Deployment Pattern Mapping: CR names to Display names
+# This associative array provides the pattern name mappings.
+# TODO: To avoid duplication, we can investigate using this to replace the separate pattern mappings that are defined in:
+# - "helper/select_pattern.sh": in vars "deployment_pattern_names/deployment_pattern_cr_names"
+# - "cp4a-prerequisites.sh": in vars "options/options_cr_val"
+# - "helper/update-selected-components/update-selected-components.sh": in vars "deployment_pattern_names/deployment_pattern_cr_names"
+declare -A PATTERN_DISPLAY_NAMES=(
+    ["content"]="Content Cortex Standard Edition"
+    ["decisions"]="Operational Decision Manager"
+    ["decisions_ads"]="Decision Intelligence Client Managed Software"
+    ["application"]="Business Automation Application"
+    ["workflow"]="Business Automation Workflow"
+    ["workflow-authoring"]="(a) Workflow Authoring"
+    ["workflow-runtime"]="(b) Workflow Runtime"
+    ["workstreams"]="Automation Workstream Services"
+    ["document_processing"]="IBM Automation Document Processing"
+    ["document_processing_designer"]="(a) Development Environment"
+    ["document_processing_runtime"]="(b) Runtime Environment"
+    ["workflow-process-service"]="Workflow Process Service Authoring"
+)
+
+# Helper function to get pattern display name from CR name
+function get_pattern_display_name() {
+    local cr_name="$1"
+    echo "${PATTERN_DISPLAY_NAMES[$cr_name]:-$cr_name}"
+}
+
+# Deployment Pattern to Foundation Components Mapping
+# Maps each pattern to its required foundation components 
+# Source: scripts/helper/select_pattern.sh lines 77-90
+# IMPORTANT: this mapping is specific to Production deploy on platform OCP (not "other")
+declare -A PATTERN_FOUNDATION_COMPONENTS=(
+    ["content"]="BAN RR"
+    ["decisions"]="BAN RR"
+    ["decisions_ads"]="BAN RR"
+    ["application"]="BAN RR AE"
+    ["workflow"]="BAN RR"
+    ["workflow-authoring"]="BAN RR BAS AE"
+    ["workflow-runtime"]="BAN RR AE"
+    ["workstreams"]="BAN RR AE"
+    ["document_processing"]="BAN RR"
+    ["document_processing_designer"]="BAN RR AE BAS"
+    ["document_processing_runtime"]="BAN RR AE"
+)
+
+# Helper function to get foundation components for a pattern
+function get_pattern_foundation_components() {
+    local cr_name="$1"
+    echo "${PATTERN_FOUNDATION_COMPONENTS[$cr_name]:-}"
+}
+
+# CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 
 TEMP_FOLDER=${CUR_DIR}/.tmp
 
@@ -41,6 +94,7 @@ PREREQUISITES_FOLDER_BAK=${CUR_DIR}/cp4ba-prerequisites-backup/project/$1
 PROPERTY_FILE_FOLDER=${PREREQUISITES_FOLDER}/propertyfile
 PROPERTY_FILE_FOLDER_BAK=${PREREQUISITES_FOLDER_BAK}/propertyfile
 CREATE_SECRET_SCRIPT_FILE=$PREREQUISITES_FOLDER/create_secret.sh
+FINAL_CR_FOLDER=${CUR_DIR}/generated-cr/project/$1
 
 SSL_CERT_FOLDER=${PROPERTY_FILE_FOLDER}/cert
 LDAP_SSL_CERT_FOLDER=${SSL_CERT_FOLDER}/ldap
@@ -54,7 +108,9 @@ AE_REDIS_SSL_CERT_FOLDER=${DB_SSL_CERT_FOLDER}/redis-ae
 PLAYBACK_REDIS_SSL_CERT_FOLDER=${DB_SSL_CERT_FOLDER}/redis-playback
 ADP_GIT_SSL_CERT_FOLDER=${SSL_CERT_FOLDER}/adp_git
 ADP_CDRA_CERT_FOLDER=${SSL_CERT_FOLDER}/adp_cdra
-
+ROOT_CA_CERT_FOLDER=${SSL_CERT_FOLDER}/root_ca
+EXTERNAL_TLS_CERT_FOLDER=${SSL_CERT_FOLDER}/external_tls
+TRUSTED_CERT_FOLDER=${SSL_CERT_FOLDER}/trusted_cert_list
 
 TEMPORARY_PROPERTY_FILE=${TEMP_FOLDER}/.TEMPORARY.property
 LDAP_PROPERTY_FILE=${PROPERTY_FILE_FOLDER}/cp4ba_LDAP.property
@@ -66,14 +122,15 @@ USER_PROFILE_PROPERTY_FILE=${PROPERTY_FILE_FOLDER}/cp4ba_user_profile.property
 
 BAW_AUTH_OS_ARR=("BAWDOCS" "BAWDOS" "BAWTOS")
 AEOS=("AEOS")
+
 # Directory and script file for DB Script
 DB_SCRIPT_FOLDER=${PREREQUISITES_FOLDER}/dbscript
-FNCM_DB_SCRIPT_FOLDER=${DB_SCRIPT_FOLDER}/fncm
+FNCM_DB_SCRIPT_FOLDER=${DB_SCRIPT_FOLDER}/content-cortex
 BAN_DB_SCRIPT_FOLDER=${DB_SCRIPT_FOLDER}/ban
 ODM_DB_SCRIPT_FOLDER=${DB_SCRIPT_FOLDER}/odm
 BAS_DB_SCRIPT_FOLDER=${DB_SCRIPT_FOLDER}/bas
 ADP_DB_SCRIPT_FOLDER=${DB_SCRIPT_FOLDER}/adp
-ADS_DB_SCRIPT_FOLDER=${DB_SCRIPT_FOLDER}/ads
+ADS_DB_SCRIPT_FOLDER=${DB_SCRIPT_FOLDER}/dicms
 BAA_DB_SCRIPT_FOLDER=${DB_SCRIPT_FOLDER}/baa
 AE_DB_SCRIPT_FOLDER=${DB_SCRIPT_FOLDER}/ae
 BAW_DB_SCRIPT_FOLDER=${DB_SCRIPT_FOLDER}/baw-authoring
@@ -81,57 +138,6 @@ BAW_AWS_DB_SCRIPT_FOLDER=${DB_SCRIPT_FOLDER}/baw-aws
 
 # Directory and template file for secret YAML template
 SECRET_FILE_FOLDER=${PREREQUISITES_FOLDER}/secret_template
-
-##DBACLD-185209: Vault's implementation.  Define supported secret/certificates names for Vault
-# If it's a regular (non-tls) secret then use VAULT_SECRET_FILE_FOLDER.  Otherwise, use VAULT_TLS_SECRET_FILE_FOLDER
-VAULT_SECRET_FILE_FOLDER=${SECRET_FILE_FOLDER}/vault/secrets
-VAULT_TLS_SECRET_FILE_FOLDER=${SECRET_FILE_FOLDER}/vault/tls
-
-#ldap-bind-secret
-VAULT_LDAP_SECRET_FILE=${VAULT_SECRET_FILE_FOLDER}/ldap-bind-secret.json
-VAULT_LDAP_SECRET_PROVIDER_CLASS_FILE=${VAULT_SECRET_FILE_FOLDER}/ldap-bind-secret-provider-class
-
-#ldap-bind-secret-tls
-VAULT_LDAP_SECRET_TLS_FOLDER=${VAULT_TLS_SECRET_FILE_FOLDER}/cp4ba_ldap_ssl_secret
-VAULT_LDAP_SECRET_TLS_FILE=${VAULT_LDAP_SECRET_TLS_FOLDER}/ldap-bind-secret-tls.json
-VAULT_LDAP_SECRET_TLS_PROVIDER_CLASS_FILE=${VAULT_LDAP_SECRET_TLS_FOLDER}/ldap-bind-secret-tls-provider-class
-
-#ibm-ban-secret
-BAN_VAULT_SECRET_FILE_FOLDER=${VAULT_SECRET_FILE_FOLDER}/ban
-BAN_VAULT_SECRET_FILE=${BAN_VAULT_SECRET_FILE_FOLDER}/ibm-ban-secret.json
-BAN_VAULT_SECRET_PROVIDER_CLASS_FILE=${BAN_VAULT_SECRET_FILE_FOLDER}/ibm-ban-secret-provider-class
-
-#This is a list of CSV that is supported with Vault.  For 25.1.0, only ibm-cp4a-operator, ibm-content-operator and icp4a-foundation-operator are supported. 
-# From this list, we'll generate the command for the customer to run to patch the CSV.
-VAULT_SUPPORT_LIST_OF_CSV=(
-  "ibm-cp4a-operator"
-  "ibm-content-operator"
-  "icp4a-foundation-operator"
-)
-
-#ibm-fncm-secret
-FNCM_VAULT_SECRET_FILE_FOLDER=${VAULT_SECRET_FILE_FOLDER}/fncm
-FNCM_VAULT_SECRET_FILE=${FNCM_VAULT_SECRET_FILE_FOLDER}/ibm-fncm-secret.json
-FNCM_VAULT_SECRET_PROVIDER_CLASS_FILE=${FNCM_VAULT_SECRET_FILE_FOLDER}/ibm-fncm-secret-provider-class
-
-#db-ssl-secret
-DB_VAULT_SECRET_FILE_FOLDER=${VAULT_TLS_SECRET_FILE_FOLDER}/cp4ba_db_ssl_secret
-# DB_VAULT_SECRET_FILE=${DB_VAULT_SECRET_FILE_FOLDER}/ibm-db-ssl-secret.json
-# DB_VAULT_SECRET_PROVIDER_CLASS_FILE=${DB_VAULT_SECRET_FILE_FOLDER}/ibm-db-ssl-secret-provider-class.yaml
-
-#ibm-icc-secret
-FNCM_ICC_VAULT_SECRET_FILE_FOLDER=${VAULT_SECRET_FILE_FOLDER}/fncm
-FNCM_ICC_VAULT_SECRET_FILE=${FNCM_ICC_VAULT_SECRET_FILE_FOLDER}/ibm-fncm-icc-secret.json
-FNCM_ICC_VAULT_SECRET_PROVIDER_CLASS_FILE=${FNCM_ICC_VAULT_SECRET_FILE_FOLDER}/ibm-fncm-icc-secret-provider-class
-
-#icp4ba-root-ca. Our script does not generate this secret.  The customer can either manually create it or our operator will create an internal self-sign rootCA
-#NOTE: The $CP4A_ROOT_CA_SECRET_PROVIDER_CLASS_FILE does not have the yaml extension.  The customer will need to add the .yaml if they want to use the custom root CA.
-CP4A_ROOT_CA_FOLDER=${VAULT_TLS_SECRET_FILE_FOLDER}/cp4ba_root_ca
-CP4A_ROOT_CA_SECRET_FILE=${CP4A_ROOT_CA_FOLDER}/icp4ba-root-ca-secret.json
-CP4A_ROOT_CA_SECRET_PROVIDER_CLASS_FILE=${CP4A_ROOT_CA_FOLDER}/icp4ba-root-ca-secret-provider-class
-
-## End of Vault's implementation
-
 
 DB_SSL_SECRET_FOLDER=${SECRET_FILE_FOLDER}/cp4ba_db_ssl_secret
 LDAP_SSL_SECRET_FOLDER=${SECRET_FILE_FOLDER}/cp4ba_ldap_ssl_secret
@@ -146,16 +152,34 @@ CP4A_EXT_LDAP_SSL_SECRET_FILE=${LDAP_SSL_SECRET_FOLDER}/ibm-cp4ba-external-ldap-
 
 
 
+
+
 LDAP_SECRET_FILE=${SECRET_FILE_FOLDER}/ldap-bind-secret.yaml
 EXT_LDAP_SECRET_FILE=${SECRET_FILE_FOLDER}/ext-ldap-bind-secret.yaml
 
-FNCM_SECRET_FOLDER=${SECRET_FILE_FOLDER}/fncm
-FNCM_SECRET_FILE=${FNCM_SECRET_FOLDER}/ibm-fncm-secret.yaml
+FNCM_SECRET_FOLDER=${SECRET_FILE_FOLDER}/content-cortex
+FNCM_SECRET_FILE=${FNCM_SECRET_FOLDER}/ibm-content-cortex-secret.yaml
 
-FNCM_ICC_SECRET_FILE=${FNCM_SECRET_FOLDER}/ibm-fncm-icc-secret.yaml
-FNCM_ICCSAP_SECRET_FILE=${FNCM_SECRET_FOLDER}/ibm-fncm-iccsap-secret.yaml
-FNCM_IER_SECRET_FILE=${FNCM_SECRET_FOLDER}/ibm-fncm-ier-secret.yaml
-FNCM_DB_SSL_SECRET_FILE=${FNCM_SECRET_FOLDER}/ibm-fncm-db-ssl-cert-secret.sh
+FNCM_ICC_SECRET_FILE=${FNCM_SECRET_FOLDER}/ibm-content-cortex-icc-secret.yaml
+FNCM_ICCSAP_SECRET_FILE=${FNCM_SECRET_FOLDER}/ibm-content-cortex-iccsap-secret.yaml
+FNCM_IER_SECRET_FILE=${FNCM_SECRET_FOLDER}/ibm-content-cortex-ier-secret.yaml
+FNCM_DB_SSL_SECRET_FILE=${FNCM_SECRET_FOLDER}/ibm-content-cortex-db-ssl-cert-secret.sh
+
+
+
+# AI Services secret file related variables
+AI_SERVICES_SECRET_FOLDER=${SECRET_FILE_FOLDER}/aiservices
+AI_SERVICES_SECRET_FILE=${AI_SERVICES_SECRET_FOLDER}/ibm-providers-config-secret.yaml
+AI_SERVICES_SSL_SECRET_NAME="watsonx-lwe-ssl-secret"	
+AI_SERVICES_SSL_SECRET_FILE=${AI_SERVICES_SECRET_FOLDER}/${AI_SERVICES_SSL_SECRET_NAME}.sh
+# AI services property file location
+AI_SERVICES_PROPERTY_FILE=${PROPERTY_FILE_FOLDER}/cp4ba_ai_services.property
+WATSONX_SSL_CERT_FOLDER=${SSL_CERT_FOLDER}/aiservices
+
+# AI services CR file locations
+CONTENT_CORTEX_AI_SERVICES_PATTERN_FILE_TMP=$TEMP_FOLDER/.ibm_content_cortex_ai_services_cr_final_tmp.yaml
+CONTENT_CORTEX_AI_SERVICES_PATTERN_FILE_FINAL=$FINAL_CR_FOLDER/content-cortex-ai-services/ibm_content_cortex_ai_services_cr_final.yaml
+CONTENT_CORTEX_AI_SERVICES_PATTERN_FILE=${PARENT_DIR}/descriptors/patterns/content-cortex-ai-services/ibm_cp4a_cr_production_content_cortex_ai_services.yaml
 
 
 BAN_SECRET_FOLDER=${SECRET_FILE_FOLDER}/ban
@@ -164,13 +188,14 @@ BAN_DB_SSL_SECRET_FILE=${BAN_SECRET_FOLDER}/ibm-ban-db-ssl-cert-secret.sh
 
 ODM_SECRET_FOLDER=${SECRET_FILE_FOLDER}/odm
 ODM_SECRET_FILE=${ODM_SECRET_FOLDER}/ibm-odm-db-secret.yaml
+ODM_KEYSTORE_SECRET_FILE=${ODM_SECRET_FOLDER}/ibm-odm-keystore-secret.yaml
 ODM_DB_SSL_SECRET_FILE=${ODM_SECRET_FOLDER}/ibm-odm-db-ssl-cert-secret.sh
 
 ADP_SECRET_FOLDER=${SECRET_FILE_FOLDER}/adp
 ADP_BASE_DB_SECRET_FILE=${ADP_SECRET_FOLDER}/ibm-aca-db-secret.sh
 ADP_BASE_DB_SECRET_YAML_FILE=${ADP_SECRET_FOLDER}/ibm-aca-db-secret.yaml
 ADP_GIT_SSL_SECRET_FILE=${ADP_SECRET_FOLDER}/ibm-adp-git-connection-secret.sh
-ADP_CDRA_SSL_SECRET_FILE=${ADP_SECRET_FOLDER}/ibm-adp-cdra-route-secret.sh
+ADP_CDRA_SSL_SECRET_FILE=${ADP_SECRET_FOLDER}/ibm-adp-cdra-ssl-secret.sh
 ADP_SECRET_FILE=${ADP_SECRET_FOLDER}/ibm-adp-secret.yaml
 ADP_ACA_DESIGN_API_KEY_SECRET_FILE=${ADP_SECRET_FOLDER}/ibm-adp-aca-design-api-key-secret.sh
 
@@ -195,8 +220,8 @@ BAS_SECRET_FOLDER=${SECRET_FILE_FOLDER}/bas
 BAS_SECRET_FILE=${BAS_SECRET_FOLDER}/ibm-bas-admin-secret.yaml
 BAS_DB_SSL_SECRET_FILE=${BAS_SECRET_FOLDER}/ibm-bas-admin-db-ssl-cert-secret.sh
 
-#add ads varibles
-ADS_SECRET_FOLDER=${SECRET_FILE_FOLDER}/ads
+#add DICMS varibles
+ADS_SECRET_FOLDER=${SECRET_FILE_FOLDER}/dicms
 ADS_SECRET_FILE=${ADS_SECRET_FOLDER}/ibm-dba-ads-mongo-secret.yaml
 ADS_DB_SSL_SECRET_FILE=${ADS_SECRET_FOLDER}/ibm-dba-ads-mongo-db-ssl-cert-secret.sh
 ADS_DESIGNER_FILE=${ADS_SECRET_FOLDER}/ibm-ads-designer-database.yaml
@@ -223,34 +248,36 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 
 # Release/Patch version for CP4BA
 # CP4BA_RELEASE_BASE is for fetch content/foundation operator pod, only need to change for major release.
-CP4BA_RELEASE_BASE="25.0.1"
+CP4BA_RELEASE_BASE="26.0.0"
 # CP4BA_RELEASE_BASE_MAJOR_VERSION is used in certain checks where we used to hardcode to see if a upgrade is not ifix to ifix,change this only for major release
-CP4BA_RELEASE_BASE_MAJOR_VERSION="25.1"
-CP4BA_PATCH_VERSION="IF001"
+CP4BA_RELEASE_BASE_MAJOR_VERSION="26.0"
+CP4BA_PATCH_VERSION="GA"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v25.1.1"
+CP4BA_CSV_VERSION="v26.0.0"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
-CP4BA_CHANNEL_VERSION="v25.1"
+CP4BA_CHANNEL_VERSION="v26.0"
+# Storage Validation prerequisites versions
+STORAGE_MINIMUM_ANSIBLE_VERSION="2.15"
+STORAGE_K8S_CORE_VERSION="6.2.0"
+
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.18.0"
+CS_OPERATOR_VERSION="v4.18.1"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
 CS_CHANNEL_VERSION="v4.18"
 # CS CHANNEL VERSION that is used in the KC
 CS_CHANNEL_KC="4.x_cd"
-# CERT_LICENSE_OPERATOR_VERSION is for checking IBM cert-manager/licensing operator upgrade status, need to update for each IFIX
-CERT_LICENSE_OPERATOR_VERSION="v4.2.21"
 # CERT_LICENSE_CHANNEL_VERSION is for for IBM cert-manager/licensing script -c option, need to update for each IFIX
 CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
 CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-18-0"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v6.4.2"
+ZEN_OPERATOR_VERSION="v6.4.7"
 # BTS_CHANNEL_VERSION is for for BTS, need to update for each IFIX
 BTS_CHANNEL_VERSION="v3.35"
-# BTS_CATALOG_VERSION is for BTS 3.35.9.
+# BTS_CATALOG_VERSION is for BTS 3.35.11.
 BTS_CATALOG_VERSION="ibm-bts-operator-catalog-v3-35"
 # REQUIREDVER_BTS is for checking bts operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_BTS="3.35.9"
+REQUIREDVER_BTS="3.35.11"
 # REQUIREDVER_POSTGRESQL is for checking postgresql operator upgrade status before run removal_iaf.sh, need to update for each IFIX
 REQUIREDVER_POSTGRESQL="1.25.6"
 # EVENTS_OPERATOR_VERSION is for checking IBM Events operator upgrade status, need to update for each IFIX
@@ -259,7 +286,31 @@ EVENTS_OPERATOR_VERSION="v5.2.1"
 #This should change with each new version of CP4BA.  For example, if the next version is 25.0.1, we need to update this list to include the minimum version that is supported for upgrade to 25.0.1 such as 25.0.0.
 # 24.1.2 means the customer must have 24.1.2 installed to upgrade to 25.0.0.
 # When setting to an empty array, only fresh installation is supported.
-MINIMUM_SUPPORTED_UPGRADE_VERSIONS=("25.1.0")
+# In 26.0.0, we will only support upgrade from 25.0.4, 25.1.1, and 24.0.9, which means if the customer is on 24.1.x, they need to first upgrade to 25.0.4 before upgrading to 26.0.0.
+MINIMUM_SUPPORTED_UPGRADE_VERSIONS=(24.0.9 25.0.4 25.1.1)
+
+# UMS Related Variables
+
+# UMS_CHANNEL_VERSION is for UMS, need to update for each IFIX
+UMS_CHANNEL_VERSION="v1.0"
+# UMS_CSV_VERSION is for UMS, need to update for each IFIX
+UMS_CSV_VERSION="v1.0.6"
+# UMS_CATALOG_VERSION is the current UMS catalog name.
+UMS_CATALOG_VERSION="ibm-usage-metering-catalog"
+# UMS connection point secret name
+UMS_CONNECTION_POINT_SECRET_NAME="cp4ba-ums-secret"
+# UMS OPERATOR subscription template location
+UMS_OLM_SUBSCRIPTION=${PARENT_DIR}/descriptors/op-olm/cp4ba-metrics/subscription.yaml
+# UMS static CR location
+UMS_STATIC_CR_LOCATION="${PARENT_DIR}/descriptors/patterns/cp4ba-metrics"
+# UMS Connection Point Static CR location
+UMS_CONNECTION_POINT_STATIC_CR_LOCATION="${PARENT_DIR}/descriptors/patterns/cp4ba-metrics/software-central-connection"
+
+
+#VPC metrics Related Variables
+
+# Connection connection point secret name
+ILS_CONNECTION_POINT_SECRET_NAME="cp4ba-ils-secret"
 
 # Zen metastore EDB configmap name
 ZEN_EDB_CFG="ibm-zen-metastore-edb-cm"
@@ -287,7 +338,7 @@ COMMON_SERVICES_CM_DEDICATE_FILE="${PARENT_DIR}/descriptors/${COMMON_SERVICES_CM
 COMMON_SERVICES_CM_DEDICATE_FILE_UPDATE="${PARENT_DIR}/descriptors/${COMMON_SERVICES_CM_DEDICATE_FILE_NAME_UPDATE}"
 
 #List of operators to be scale up or down
-CP4BA_OPERATOR_LIST="ibm-cp4a-operator ibm-content-operator icp4a-foundation-operator  ibm-ads-operator  ibm-cp4a-wfps-operator ibm-dpe-operator ibm-insights-engine-operator ibm-odm-operator ibm-pfs-operator ibm-workflow-operator"
+CP4BA_OPERATOR_LIST="ibm-cp4a-operator ibm-content-operator icp4a-foundation-operator  ibm-ads-operator  ibm-ccx-ai-services-operator ibm-cp4a-wfps-operator ibm-dpe-operator ibm-insights-engine-operator ibm-odm-operator ibm-pfs-operator ibm-workflow-operator"
 
 # CP4BA EDB default instance name
 EDB_INSTANCE_CP4BA_NAME="postgres-cp4ba"
@@ -298,9 +349,9 @@ SSL_CERT_ERROR_TAG=false
 # Becomes true if any required parameters are null or empty (Used in validate_property_file_required_fields)
 MISSING_REQUIRED_PARAMETERS=false
 
-#DBACLD-194974: This variable is used to specify the version that will skip EDB and Starter deployment option. It should be in the format of ${CP4BA_RELEASE_BASE}_${CP4BA_PATCH_VERSION}
-# For 25.0.1_IF001 we will remove the Starter option and EDB option.
-VERSION_TO_SKIP_EDB="25.0.1_IF001"
+#DBACLD-222678: This variable is used to specify the version that will skip EDB and Starter deployment option. It should be in the format of ${CP4BA_RELEASE_BASE}_${CP4BA_PATCH_VERSION}
+# For 26.0.0_GA we will remove the Starter option and EDB option.
+VERSION_TO_SKIP_EDB="26.0.0_GA"
 
 # Global array to store all optional parameter keys
 OPTIONAL_PARAMETERS_LIST=()
@@ -355,7 +406,9 @@ function prop_db_oracle_server_property_file() {
     grep "^${1}=" ${DB_SERVER_INFO_PROPERTY_FILE}|cut -d'"' -f2
 }
 
-
+function prop_content_cortex_ai_services_property_file() {
+    grep "^${1}=" ${AI_SERVICES_PROPERTY_FILE}|cut -d'"' -f2
+}
 
 
 function set_global_env_vars() {
@@ -694,29 +747,23 @@ function allocate_operator_pvc(){
 function save_log(){
     local LOG_DIR="$CUR_DIR/$1"
     LOG_FILE="$LOG_DIR/$2_$(date +'%Y%m%d%H%M%S').log"
+    local output_to_stderr="${3:-false}"  # Optional 3rd parameter
 
     if [[ ! -d $LOG_DIR ]]; then
         mkdir -p "$LOG_DIR"
     fi
-
+    
+    # Output LOGFILE to stderr BEFORE redirecting (for FastAPI integration)
+    if [[ "$output_to_stderr" == "true" ]]; then
+        echo "LOGFILE:$LOG_FILE" >&2
+    fi
+    
     # Redirect output to log-file
     exec > >(tee -a "$LOG_FILE") 2>&1
-
+    
     # Open fd 3 directly to log file
     exec 3>> "$LOG_FILE"
-
 }
-#function save_log1() {
-#    local LOG_DIR="$CUR_DIR/$1"
-#    LOG_FILE="$LOG_DIR/$2_$(date +'%Y%m%d%H%M%S').log"
-#
-#    if [[ ! -d $LOG_DIR ]]; then
-#        mkdir -p "$LOG_DIR"
-#    fi
-#
-#    # Redirect stdout and stderr directly to the log file
-#    exec > >(tee -a "$LOG_FILE") 2>&1
-#}
 
 function cleanup_log() {
     # Check if the log file already exists
@@ -739,6 +786,22 @@ function decode_xor_password() {
   else
     echo "$encoded"
   fi
+}
+
+# Function to decode Base64-encoded password if it has {Base64} prefix otherwise returns original value
+# Usage: decoded_pwd=$(decode_base64_password "$password_value")
+# Returns: decoded password if {Base64} prefix exists, otherwise returns original value
+function decode_base64_password() {
+    local password_value="$1"
+    
+    # Check if password starts with {Base64} prefix
+    if [[ "${password_value:0:8}" == "{Base64}" ]]; then
+        # Remove {Base64} prefix and decode
+        echo "$password_value" | sed -e "s/^{Base64}//" | base64 --decode
+    else
+        # Return original value if no {Base64} prefix
+        echo "$password_value"
+    fi
 }
 
 # Function to encode the certificate contents to a base64 string
@@ -1230,7 +1293,6 @@ function check_ssl_cert() {
     local invalid_msg="$5"
     local valid_msg="$6"
 
-    
     if [[ ! -f "$cert_path" ]]; then
         MISSING_CERTS+=("$config_name|$cert_path")
         error "$missing_msg"
@@ -1255,6 +1317,57 @@ function check_ssl_cert() {
         fi
     fi
     
+}
+
+# Same as function "check_ssl_cert" above, but allow for empty file as a backdoor, in case the 
+# user prefers to provide cert directly in their secret template instead of as file.
+#
+# Helper function for (validate_ssl_certificates) to check a single SSL certificate
+# check type -> either certificate or key as the validation command for both are different
+# config_name -> the configuration for which we are doing the check for i.e LDAP or DB etc
+# cert_path -> full cert path including the required name of the cert to check for
+# missing_msg -> display message if the cert is not found
+# invalid_msg -> display message if the cert is invalid
+# valid_msg -> display message if the cert is valid
+function check_ssl_cert_allow_empty() {
+    local check_type="$1"
+    local config_name="$2"
+    local cert_path="$3"
+    local missing_msg="$4"
+    local invalid_msg="$5"
+    local valid_msg="$6"
+
+    
+    if [[ ! -f "$cert_path" ]]; then
+        MISSING_CERTS+=("$config_name|$cert_path")
+        error "$missing_msg"
+    else
+        file_content=$(<"$cert_path")
+ 
+        # Check if files are empty
+        if [[ -z "$file_content" ]]; then
+            warning "The file at $cert_path is empty. The secret template will be created with a placeholder that you need to replace with the correct value later."
+        else
+            # If we are checking for a certificate the open ssl command is different from that of private key
+            if [[ "$check_type" == "certificate" ]]; then
+                if openssl x509 -in "$cert_path" -noout -text >/dev/null 2>&1; then
+                    success "$valid_msg"
+                else
+                    error "$invalid_msg"
+                    FAILING_CERTS+=("$config_name|$cert_path")
+                fi
+            else
+                #https://jsw.ibm.com/browse/DBACLD-194329
+                # Updated command that will tackle all types of formats of a private key
+                if openssl rsa -in "$cert_path" -check -noout >/dev/null 2>&1 || openssl ec -in "$cert_path" -check -noout >/dev/null 2>&1 || openssl pkcs8 -in "$cert_path" -inform PEM -nocrypt -noout >/dev/null 2>&1; then
+                    success "$valid_msg"
+                else
+                    error "$invalid_msg"
+                    FAILING_CERTS+=("$config_name|$cert_path")
+                fi
+            fi
+        fi
+    fi
 }
 
 # Helper function for (validate_ssl_certificates) to print summary of cert check results
@@ -1340,10 +1453,8 @@ function validate_ssl_certificates() {
     else
         # DB cert checks
         for db_alias in "${db_server_array[@]}"; do
-            db_ssl_enabled=$(prop_db_server_property_file "${db_alias}.DATABASE_SSL_ENABLE" |
-            tr '[:upper:]' '[:lower:]')
-            db_type=$(prop_db_server_property_file "${db_alias}.DATABASE_TYPE" |
-            tr '[:upper:]' '[:lower:]')
+            db_ssl_enabled=$(prop_db_server_property_file "${db_alias}.DATABASE_SSL_ENABLE" | tr '[:upper:]' '[:lower:]')
+            db_type=$(prop_db_server_property_file "${db_alias}.DATABASE_TYPE" | tr '[:upper:]' '[:lower:]')
             # If the DB type is postgres-edb then we do not check for SSL certificate as there no requirement for it
             if [[ "$db_type" != "postgresql-edb" ]]; then
                 # IF the DB type is postgresql then the user can have client side SSL enabled or not and if so there are different number of certificates and the naming is also different
@@ -1401,8 +1512,6 @@ function validate_ssl_certificates() {
         done
     fi
 
-
-
     # External PostgreSQL cert checks for IM, ZEN, BTS
     for ext_db in IM ZEN BTS; do
         flag_var="EXTERNAL_POSTGRESDB_FOR_${ext_db}_FLAG"
@@ -1449,9 +1558,157 @@ function validate_ssl_certificates() {
         fi
     done
 
-    
+    # If vault is enabled, use special check for shared secrets (root_ca_secret, external_tls_certificate, ...)
+    if [[ $vault_enabled == 'true' ]]; then
+        root_ca_secret="$(prop_user_profile_property_file CP4BA.ROOT_CA_SECRET 2>/dev/null || echo '')"
+        if [[ -n "$root_ca_secret" && "$root_ca_secret" != "<Optional>" ]]; then
+            # check "tls.crt" file
+            check_ssl_cert_allow_empty \
+            "certificate" \
+            "Root CA certificate" \
+            "${ROOT_CA_CERT_FOLDER}/tls.crt" \
+            "Root CA certificate file at \"${ROOT_CA_CERT_FOLDER}/tls.crt\" is missing. If you do not want to customize root CA certificate, unset CP4BA.ROOT_CA_SECRET property. If you do not want to provide the file, create empty file at the location and rerun. A placeholder will be used in the template." \
+            "Root CA certificate file at \"${ROOT_CA_CERT_FOLDER}/tls.crt\" is invalid. If you do not want to customize root CA certificate, unset CP4BA.ROOT_CA_SECRET property. If you do not want to provide the file, create empty file at the location and rerun. A placeholder will be used in the template." \
+            "Root CA certificate file at \"${ROOT_CA_CERT_FOLDER}/tls.crt\" is valid."
+        
+            # check "tls.key" file
+            check_ssl_cert_allow_empty \
+            "key" \
+            "Root CA certificate private key" \
+            "${ROOT_CA_CERT_FOLDER}/tls.key" \
+            "Root CA certificate key file at \"${ROOT_CA_CERT_FOLDER}/tls.key\" is missing. If you do not want to customize root CA certificate, unset CP4BA.ROOT_CA_SECRET property. If you do not want to provide the file, create empty file at the location and rerun. A placeholder will be used in the template." \
+            "Root CA certificate key file at \"${ROOT_CA_CERT_FOLDER}/tls.key\" is invalid. If you do not want to customize root CA certificate, unset CP4BA.ROOT_CA_SECRET property. If you do not want to provide the file, create empty file at the location and rerun. A placeholder will be used in the template." \
+            "Root CA certificate key file at \"${ROOT_CA_CERT_FOLDER}/tls.key\" is valid."
+        fi
+        
+        # Generate external TLS certificate secret template if user has customized it
+        external_tls_cert_secret="$(prop_user_profile_property_file CP4BA.EXTERNAL_TLS_CERTIFICATE_SECRET 2>/dev/null || echo '')"
+        if [[ -n "$external_tls_cert_secret" && "$external_tls_cert_secret" != "<Optional>" ]]; then
+            # check "tls.crt" file
+            check_ssl_cert_allow_empty \
+            "certificate" \
+            "External TLS certificate" \
+            "${EXTERNAL_TLS_CERT_FOLDER}/tls.crt" \
+            "External TLS certificate file at \"${EXTERNAL_TLS_CERT_FOLDER}/tls.crt\" is missing. If you do not want to customize external TLS certificate, unset CP4BA.EXTERNAL_TLS_CERTIFICATE_SECRET property. If you do not want to provide the file, create empty file at the location and rerun. A placeholder will be used in the template." \
+            "External TLS certificate file at \"${EXTERNAL_TLS_CERT_FOLDER}/tls.crt\" is invalid. If you do not want to customize external TLS certificate, unset CP4BA.EXTERNAL_TLS_CERTIFICATE_SECRET property. If you do not want to provide the file, create empty file at the location and rerun. A placeholder will be used in the template." \
+            "External TLS certificate file at \"${EXTERNAL_TLS_CERT_FOLDER}/tls.crt\" is valid."
+        
+            # check "tls.key" file
+            check_ssl_cert_allow_empty \
+            "key" \
+            "External TLS certificate private key" \
+            "${EXTERNAL_TLS_CERT_FOLDER}/tls.key" \
+            "External TLS certificate key file at \"${EXTERNAL_TLS_CERT_FOLDER}/tls.key\" is missing. If you do not want to customize external TLS certificate, unset CP4BA.EXTERNAL_TLS_CERTIFICATE_SECRET property. If you do not want to provide the file, create empty file at the location and rerun. A placeholder will be used in the template." \
+            "External TLS certificate key file at \"${EXTERNAL_TLS_CERT_FOLDER}/tls.key\" is invalid. If you do not want to customize external TLS certificate, unset CP4BA.EXTERNAL_TLS_CERTIFICATE_SECRET property. If you do not want to provide the file, create empty file at the location and rerun. A placeholder will be used in the template." \
+            "External TLS certificate key file at \"${EXTERNAL_TLS_CERT_FOLDER}/tls.key\" is valid."
+        fi
+        
+        # Validate trusted certificate list if user has specified them
+        trusted_cert_list="$(prop_user_profile_property_file CP4BA.TRUSTED_CERTIFICATE_LIST 2>/dev/null || echo '')"
+        if [[ -n "$trusted_cert_list" && "$trusted_cert_list" != "<Optional>" ]]; then
+            # Remove any spaces and split by comma
+            trusted_cert_list=$(echo "$trusted_cert_list" | tr -d ' ')
+            IFS=',' read -ra cert_array <<< "$trusted_cert_list"
+            
+            for cert_name in "${cert_array[@]}"; do
+                if [[ -n "$cert_name" ]]; then
+                    # Check the certificate file for each trusted certificate
+                    check_ssl_cert_allow_empty \
+                    "certificate" \
+                    "Trusted certificate: ${cert_name}" \
+                    "${TRUSTED_CERT_FOLDER}/${cert_name}.crt" \
+                    "Trusted certificate file \"${cert_name}.crt\" is missing at \"${TRUSTED_CERT_FOLDER}/\". If you do not want to include this certificate, remove it from CP4BA.TRUSTED_CERTIFICATE_LIST property. If you do not want to provide the file, create empty file at the location and rerun. A placeholder will be used in the template." \
+                    "Trusted certificate file \"${cert_name}.crt\" is invalid at \"${TRUSTED_CERT_FOLDER}/\". If you do not want to include this certificate, remove it from CP4BA.TRUSTED_CERTIFICATE_LIST property. If you do not want to provide the file, create empty file at the location and rerun. A placeholder will be used in the template." \
+                    "Trusted certificate file \"${cert_name}.crt\" is valid at \"${TRUSTED_CERT_FOLDER}/\"."
+                fi
+            done
+        fi
+    fi
+
+    # AI Services cert check for multi-provider configuration
+    # Check SSL certificates for WatsonX LWE providers with SSL enabled
+    # Note: PARSED_PROVIDERS array is populated by parse_multi_provider_property_file()
+    # which is called in cp4a-prerequisites.sh before validate_ssl_certificates()
+    if [[ -f "$AI_SERVICES_PROPERTY_FILE" && "$SETUP_CONTENT_CORTEX_AI_SERVICES" == "true" ]]; then
+        # Check if PARSED_PROVIDERS array exists and has data
+        if [[ ${#PARSED_PROVIDERS[@]} -gt 0 ]]; then
+            local has_lwe_ssl=false
+            local provider_count=0
+            
+            # Count providers
+            for key in "${!PARSED_PROVIDERS[@]}"; do
+                if [[ "$key" =~ ^([0-9]+)_PROVIDER_ID$ ]]; then
+                    provider_count=$((provider_count + 1))
+                fi
+            done
+            
+            # Check each provider for LWE with SSL enabled
+            for ((i=1; i<=provider_count; i++)); do
+                local provider_name="${PARSED_PROVIDERS[${i}_PROVIDER_NAME]}"
+                local provider_enabled="${PARSED_PROVIDERS[${i}_ENABLED]}"
+                local ssl_enabled="${PARSED_PROVIDERS[${i}_SSL_ENABLED]}"
+                
+                if [[ "$provider_enabled" == "true" ]] && [[ "$provider_name" == "watsonx_lightweightengine" ]] && [[ "$ssl_enabled" == "true" ]]; then
+                    has_lwe_ssl=true
+                    local provider_id="${PARSED_PROVIDERS[${i}_PROVIDER_ID]}"
+                    local tls_cert_location="${PARSED_PROVIDERS[${i}_TLS_CERT_LOCATION]}"
+                    local cert_file="$tls_cert_location/lwe.crt"
+                    
+                    check_ssl_cert \
+                        "certificate" \
+                        "WatsonX LWE ($provider_id)" \
+                        "$cert_file" \
+                        "SSL certificate for WatsonX Lightweight Engine provider '$provider_id' is missing at: $cert_file" \
+                        "SSL certificate for WatsonX Lightweight Engine provider '$provider_id' is invalid at: $cert_file" \
+                        "SSL certificate for WatsonX Lightweight Engine provider '$provider_id' is valid."
+                fi
+            done
+            
+            if [[ "$has_lwe_ssl" == "false" ]]; then
+                info "Skipping SSL certificate validation for AI Services - no WatsonX LWE providers with SSL enabled"
+            fi
+        else
+            info "Skipping SSL certificate validation for AI Services - property file not yet parsed"
+        fi
+    fi
+
     print_cert_summary
 }
+
+#DBACLD-203586: Check if PostgreSQL client authentication is enabled
+# Returns 0 (true) when POSTGRESQL_SSL_CLIENT_SERVER and DATABASE_SSL_ENABLE are both set to `true`
+# Returns 1 (false) otherwise
+function is_pg_client_auth() {
+    # Build the list of DB aliases from DB_SERVER_LIST
+    local tmp_pg_array=$(prop_db_server_property_file DB_SERVER_LIST)
+    tmp_pg_array=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_pg_array")
+    
+    local OIFS=$IFS
+    local db_server_array
+    IFS=',' read -ra db_server_array <<< "$tmp_pg_array"
+    IFS=$OIFS
+
+    # Check each database server
+    for db_alias in "${db_server_array[@]}"; do
+        local db_ssl_enabled=$(prop_db_server_property_file "${db_alias}.DATABASE_SSL_ENABLE" | tr '[:upper:]' '[:lower:]')
+        
+        # Check if this is PostgreSQL with SSL enabled
+        if [[ "$db_ssl_enabled" == "true" ]]; then
+            local client_server_ssl_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $db_alias.POSTGRESQL_SSL_CLIENT_SERVER)")
+            client_server_ssl_flag=$(echo $client_server_ssl_flag | tr '[:upper:]' '[:lower:]')
+            
+            # If client-server SSL is enabled, return true
+            if [[ "$client_server_ssl_flag" == "yes" || "$client_server_ssl_flag" == "true" ]]; then
+                return 0
+            fi
+        fi
+    done
+    
+    # No PostgreSQL databases with client auth found
+    return 1
+}
+
+
 
 # Fixes: https://jsw.ibm.com/browse/DBACLD
 # Validates that all required fields in a property file have valid values.
@@ -1473,6 +1730,14 @@ function mark_optional() {
     cleaned_params=$(echo "$cleaned_params" | sed 's/,[^,]*\.DATABASE_SSL_SECRET_NAME//g' | sed 's/^[^,]*\.DATABASE_SSL_SECRET_NAME,//g' | sed 's/^[^,]*\.DATABASE_SSL_SECRET_NAME$//g')
     cleaned_params=$(echo "$cleaned_params" | sed 's/,[^,]*\.DATABASE_SSL_CERT_FILE_FOLDER//g' | sed 's/^[^,]*\.DATABASE_SSL_CERT_FILE_FOLDER,//g' | sed 's/^[^,]*\.DATABASE_SSL_CERT_FILE_FOLDER$//g')
     cleaned_params=$(echo "$cleaned_params" | sed 's/,[^,]*\.POSTGRESQL_SSL_CLIENT_SERVER//g' | sed 's/^[^,]*\.POSTGRESQL_SSL_CLIENT_SERVER,//g' | sed 's/^[^,]*\.POSTGRESQL_SSL_CLIENT_SERVER$//g')
+    
+    # Remove database password parameters from existing params (using regex to match DB password fields specifically)
+    # Match patterns like: postgres.XXX_DB_USER_PASSWORD or ADP_PROJECT_DB_USER_PASSWORD
+    cleaned_params=$(echo "$cleaned_params" | sed 's/,[^,]*_DB_USER_PASSWORD//g' | sed 's/^[^,]*_DB_USER_PASSWORD,//g' | sed 's/^[^,]*_DB_USER_PASSWORD$//g')
+    
+    # Remove LC_AD_GC_HOST and LC_AD_GC_PORT to prevent duplicates
+    cleaned_params=$(echo "$cleaned_params" | sed 's/,LC_AD_GC_HOST//g' | sed 's/LC_AD_GC_HOST,//g' | sed 's/^LC_AD_GC_HOST$//g')
+    cleaned_params=$(echo "$cleaned_params" | sed 's/,LC_AD_GC_PORT//g' | sed 's/LC_AD_GC_PORT,//g' | sed 's/^LC_AD_GC_PORT$//g')
     
     # Remove the old line
     ${SED_COMMAND} '/^OPTIONAL_PARAMETERS:/d' "$TEMPORARY_PROPERTY_FILE"
@@ -1770,8 +2035,15 @@ function check_required_values(){
     if [ $value_empty -ne 0 ] ; then
         #Extract ALL the parameter names and include them in a comma separated list to the error message when the parameters are not properly filled out.
         parameter_name=$(grep "${search_text}" "${property_file}" | awk -F'=' '{print $1}'  | tr -d ' ' | paste -sd ',' -)
-        error "Found invalid value(s) \"$required_field\" for parameter \"$parameter_name\" in property file \"${property_file}\", please input the correct value."
-        empty_value_tag=1
+        
+        # Skip WATSONX_SPACE_ID and WATSONX_PROJECT_ID for AI Services (they have either/or validation)
+        parameter_name=$(echo "$parameter_name" | tr ',' '\n' | grep -v "^WATSONX_SPACE_ID$" | grep -v "^WATSONX_PROJECT_ID$" | paste -sd ',' -)
+        
+        # Only report error if there are parameters left after filtering
+        if [[ -n "$parameter_name" ]]; then
+            error "Found invalid value(s) \"$required_field\" for parameter \"$parameter_name\" in property file \"${property_file}\", please input the correct value."
+            empty_value_tag=1
+        fi
     fi
 }
 
@@ -1881,7 +2153,7 @@ iam_user_validation() {
     if [[ -n "$decoded_pwd" ]]; then
       _bind_pwd="$decoded_pwd"
     else
-      WARN "Failed to decode Base64 LDAP bind password — using raw value"
+      warning "Failed to decode Base64 LDAP bind password — using raw value"
       _bind_pwd="$b64_payload"
     fi
   else
@@ -1890,7 +2162,7 @@ iam_user_validation() {
   fi   
 
   if [[ -z "$LDAP_PROPERTY_FILE" || -z "$_host" || -z "$_port" || -z "$_base_dn" || -z "$_bind_dn" || -z "$_bind_pwd" ]]; then
-    ERROR "Missing LDAP properties. Check LDAP_PROPERTY_FILE=$LDAP_PROPERTY_FILE"
+    error "Missing LDAP properties. Check LDAP_PROPERTY_FILE=$LDAP_PROPERTY_FILE"
     return 2
   fi
 
@@ -2061,7 +2333,9 @@ function validate_java_runtime() {
         printf '%b\n' " - Re-run this script with the Java (JRE) path parameter, using --java-path <path_to_java>; e.g., $0 -m validate -n $TARGET_PROJECT_NAME --java-path=/custom/java/path"
         exit 1
     fi
-    info "Using Java version: $CURRENT_JAVA_VERSION located at: $(command -v "$JAVA_CMD")"  
+    
+    info "Using Java version: $CURRENT_JAVA_VERSION located at: $(command -v "$JAVA_CMD")"
+    
     # Step 3: Validate keytool
     "$KEYTOOL_CMD" -help &>/dev/null
     if [[ $? -ne 0 ]]; then
@@ -2109,7 +2383,7 @@ function add_content_os_dynamically() {
       tmp_dbuserpwd="$(prop_db_name_user_property_file OS$((j+1))_DB_USER_PASSWORD)"
       
       # Always add username
-			if [[ $is_vault_enabled == "true" ]]; then
+	  if [[ $is_vault_enabled == "true" ]]; then
             os_sections="$os_sections,
   \"os$((j+1))DBUsername\": \"$tmp_dbuser\""
             
@@ -2120,7 +2394,7 @@ function add_content_os_dynamically() {
         secretKey: \"os$((j+1))DBUsername\""
             
             # Only add password if PostgreSQL SSL client authentication is not enabled
-            if [[ ! ("$tmp_postgresql_client_flag" == "true" || "$tmp_postgresql_client_flag" == "yes" || "$tmp_postgresql_client_flag" == "y") ]]; then
+            if [[ (! ("$tmp_postgresql_client_flag" == "true" || "$tmp_postgresql_client_flag" == "yes" || "$tmp_postgresql_client_flag" == "y")) || $DB_TYPE == "postgresql-edb" ]]; then
                 os_sections="$os_sections,
   \"os$((j+1))DBPassword\": \"$tmp_dbuserpwd\""
                 
@@ -2131,7 +2405,8 @@ function add_content_os_dynamically() {
         secretKey: \"os$((j+1))DBPassword\""
             fi
 				else # Non-Vault implementation
-					if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") ]]; then
+					# when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret. Except EDB, we will keep the password in secret even POSTGRESQL_SSL_CLIENT_SERVER is true because EDB needs password to connect.
+					if [[ ! ($tmp_postgresql_client_flag == "true" || $tmp_postgresql_client_flag == "yes" || $tmp_postgresql_client_flag == "y") || $DB_TYPE == "postgresql-edb" ]]; then
 							# For https://jsw.ibm.com/browse/DBACLD-157020
 							# Function that updates the secret template with the base64 password
 							update_secret_template_passwords "$tmp_dbuserpwd" "osDBPassword" "$FNCM_SECRET_FILE" "os$((j+1))DBPassword"
@@ -2158,7 +2433,7 @@ function add_content_os_dynamically() {
 
 #DBACLD-194974: Version to remove EDB and skip Starter deployment option for CP4BA 25.0.1 by checking the version $CP4BA_PATCH_VERSION and $CP4BA_RELEASE_BASE
 #Update the version and patch here to skip EDB and Starter deployment option.  
-function skip_edb_for_2501() {
+function skip_edb() {
     local _existing_cp4ba_version=${CP4BA_RELEASE_BASE}_${CP4BA_PATCH_VERSION}
     local _version_to_skip="$VERSION_TO_SKIP_EDB"
 
@@ -2169,7 +2444,138 @@ function skip_edb_for_2501() {
     fi
 }
 
+#DBACLD-222678: Function to check whether EDB is detected
+function is_edb_detected(){
+    local ns=$1
+    is_edb=$($CLI_CMD get cluster.postgresql.k8s.enterprisedb.io -n $ns --no-headers --ignore-not-found 2>/dev/null | awk {'print $1'} || echo "")
+    if [[ ! -z $is_edb ]]; then
+        info "The following EDB instances are found: \n$is_edb"
+        return 0
+    else
+        return 1
+    fi
+}
+
+# DBACLD-238578: Function to create ODM keystore password secret for upgrade
+# This function checks if the secret already exists or is referenced in the CR before creating it
+function create_odm_keystore_secret_for_upgrade() {
+    local namespace=$1
+    local cr_file=$2
+    local secret_name="ibm-odm-keystore-secret"
+    
+    # Check if passwordSecretRef is already defined in the CR
+    local password_secret_ref=$(${YQ_CMD} '.spec.odm_configuration.dba.passwordSecretRef' "$cr_file" 2>/dev/null)
+    
+    if [[ -n "$password_secret_ref" && "$password_secret_ref" != "null" ]]; then
+        info "ODM keystore password secret reference already exists in CR: $password_secret_ref. Skipping secret creation."
+        return 0
+    fi
+    
+    # Check if the secret already exists in the namespace
+    local secret_exists=$(${CLI_CMD} get secret "$secret_name" -n "$namespace" --ignore-not-found 2>/dev/null)
+    
+    if [[ -n "$secret_exists" ]]; then
+        info "ODM keystore password secret '$secret_name' already exists in namespace '$namespace'. Skipping secret creation."
+        return 0
+    fi
+    
+    # Generate a random 16-character password
+    local password=$(openssl rand -hex 8)
+    
+    # Create the secret using kubectl create secret generic with --from-literal
+    ${CLI_CMD} create secret generic "${secret_name}" \
+        --from-literal=keystorePassword="${password}" \
+        -n "${namespace}" >/dev/null 2>&1
+    
+    if [[ $? -eq 0 ]]; then
+        # Add the label to the secret
+        ${CLI_CMD} label secret "${secret_name}" \
+            cp4ba.ibm.com/backup-type=mandatory \
+            -n "${namespace}" >/dev/null 2>&1
+        
+        success "Successfully created ODM keystore password secret '${secret_name}' in namespace '${namespace}'"
+    else
+        step_num=1
+        warning "Failed to automatically create ODM keystore password secret '${secret_name}'. Please create it manually."
+        echo
+        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT} Starting with CP4BA release 26.0.0, deployments that include the Operational Decision Manager (ODM) pattern require a secret named \"ibm-odm-keystore-secret\" to be created before applying the upgraded Custom Resource file."
+        echo
+        echo "    This secret must contain a 'keystorePassword' field. If this secret already exists in your namespace, no action is required."
+        echo
+        echo "    To create the secret, follow these sub-steps:"
+        echo
+        echo "      ${step_num}.a Check if the secret already exists:"
+        echo "      ${GREEN_TEXT} # ${CLI_CMD} get secret ibm-odm-keystore-secret -n ${namespace}${RESET_TEXT}"
+        echo
+        echo "      ${step_num}.b Create the secret with the required label using the following command:"
+        echo "      ${GREEN_TEXT} # ${CLI_CMD} create secret generic ibm-odm-keystore-secret --from-literal=keystorePassword=\"\${KEYSTORE_PASSWORD}\" -n ${namespace} ${RESET_TEXT}"
+        echo
+        echo "      ${step_num}.c Add the required label to the secret:"
+        echo "      ${GREEN_TEXT} # ${CLI_CMD} label secret ibm-odm-keystore-secret \"cp4ba.ibm.com/backup-type=mandatory\" -n ${namespace} ${RESET_TEXT}"
+        echo
+        echo "      ${step_num}.d Verify the secret was created successfully with the correct label:"
+        echo "      ${GREEN_TEXT} # ${CLI_CMD} get secret ibm-odm-keystore-secret -n ${namespace} --show-labels ${RESET_TEXT}"
+        echo
+        echo "    ${YELLOW_TEXT}Note:${RESET_TEXT} For more information, refer to: https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/${CP4BA_RELEASE_BASE}?topic=automation-upgrading"
+        echo
+    fi
+}
+
 # This function is to patch the kafka strimzi podset for an upgrade to a version having Events Operator 5.2 or higher
+
+# DBACLD-240347: Function to copy ibm-workflow-operator-sa service account from operator namespace to services namespace
+# This function is needed for CP4BA 26.0.0-GA to ensure the workflow operator service account exists in the services namespace
+# Arguments:
+#   $1 - operator_ns: The namespace where operators are deployed
+#   $2 - services_ns: The namespace where services are deployed
+function copy_workflow_operator_sa() {
+    local operator_ns=$1
+    local services_ns=$2
+    
+    # Check if the service account exists in the operator namespace
+    local sa_exists_in_operator_ns=$(${CLI_CMD} get serviceaccount ibm-workflow-operator-sa -n "$operator_ns" --ignore-not-found 2>/dev/null)
+    
+    if [[ -n "$sa_exists_in_operator_ns" ]]; then
+        # Check if it already exists in the services namespace
+        local sa_exists_in_services_ns=$(${CLI_CMD} get serviceaccount ibm-workflow-operator-sa -n "$services_ns" --ignore-not-found 2>/dev/null)
+        
+        if [[ -z "$sa_exists_in_services_ns" ]]; then
+            info "Copying service account 'ibm-workflow-operator-sa' from namespace '$operator_ns' to '$services_ns'"
+            
+            # Create a temporary file for the service account
+            local temp_sa_file=$(mktemp)
+            
+            # Get the service account from operator namespace and update namespace using yq
+            ${CLI_CMD} get serviceaccount ibm-workflow-operator-sa -n "$operator_ns" -o yaml > "$temp_sa_file"
+            
+            # Update namespace to services namespace
+            ${YQ_CMD} -i ".metadata.namespace = \"$services_ns\"" "${temp_sa_file}"
+            
+            # Remove Kubernetes-managed metadata fields that would cause conflicts
+            ${YQ_CMD} -i "del(.metadata.resourceVersion)" "${temp_sa_file}"
+            ${YQ_CMD} -i "del(.metadata.uid)" "${temp_sa_file}"
+            ${YQ_CMD} -i "del(.metadata.creationTimestamp)" "${temp_sa_file}"
+            ${YQ_CMD} -i "del(.metadata.ownerReferences)" "${temp_sa_file}"
+            
+            # Apply the service account to services namespace
+            ${CLI_CMD} apply -f "${temp_sa_file}" -n "$services_ns"
+            
+            # Verify the service account was created successfully
+            local sa_created=$(${CLI_CMD} get serviceaccount ibm-workflow-operator-sa -n "$services_ns" --ignore-not-found 2>/dev/null)
+            
+            if [[ -n "$sa_created" ]]; then
+                success "Successfully copied service account 'ibm-workflow-operator-sa' to namespace '$services_ns'"
+            else
+                warning "Failed to copy service account 'ibm-workflow-operator-sa' to namespace '$services_ns'"
+            fi
+            
+            # Clean up temporary file
+            rm -f "$temp_sa_file"
+        else
+            info "Service account 'ibm-workflow-operator-sa' already exists in namespace '$services_ns'. Skipping copy."
+        fi
+    fi
+}
 # The function checks if events operator subscription is on channel 5.2 and if so gets the kafka strimzi podset and replaces an annotation which will allow the zen upgrade to complete
 # The subscription for events operator is updated after the new CR is applied and the cp4a-operator/foundation-operator applies the new operand request, so this function is called during upgradeDeploymentStatus
 # For https://jsw.ibm.com/browse/DBACLD-199163 https://jsw.ibm.com/browse/DBACLD-199093
@@ -2177,7 +2583,7 @@ function patch_strimzi_podset(){
     local operator_namespace=$1
     local services_namespace=$2
 
-    echo "Checking the ibm-events-operator subscription and the channel..."
+    echo "Checking the ibm-events-operator subscription and channel..."
     # Check if the events operator subscription exists and get its actual name. we found sometimes the subscription gets created with the channel appended to the name.
     events_operator_subscription_name=$(${CLI_CMD} get subscription.operators.coreos.com -n $operator_namespace --no-headers -o custom-columns=":metadata.name" 2>/dev/null | grep "ibm-events-operator" | head -n 1 || echo "")
 
@@ -2260,6 +2666,7 @@ function patch_strimzi_podset(){
     fi
 }
 
+
 # Function to check if the deployment is SaaS 
 # We detect if sc_deploy_zen_with_iaf is explicitly set to false in the CR 
 # Returns: "true" if sc_deploy_zen_with_iaf is false, "false" otherwise
@@ -2290,8 +2697,6 @@ function check_saas_deployment() {
         return 1
     fi
 }
-
-
 
 function validate_zen_upgrade_status(){
     zen_service_name=$(${CLI_CMD} get zenService --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS |awk '{print $1}')
@@ -2369,53 +2774,829 @@ function validate_zen_upgrade_status(){
         else
             echo "zenService Progress       : ${RED_TEXT}$isProgressDone${RESET_TEXT}"
         fi
-
-        # Another example of where script was checking for each version newer than 23.0.2 and explicitly mentioning it in the condition
-        # Instead of we can just check for the finite list of versions prior to and including 23.0.2
-        # IF you see the old condition we would have to add 25.* and then 26.* and so on
-
-        #### START of OLD CONDITION #####
-        # if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "24."*) && "$ALLOW_DIRECT_UPGRADE" == 1 ]]; then
-        #### END of OLD CONDITION #####
-
-        # For https://jsw.ibm.com/browse/DBACLD-186019
-        if [[ ( "$cp4ba_original_csv_ver_for_upgrade_script" == "21."* || "$cp4ba_original_csv_ver_for_upgrade_script" == "22."* || "$cp4ba_original_csv_ver_for_upgrade_script" == "23."* ) && "$ALLOW_DIRECT_UPGRADE" == 1 ]]; then
-            ## Create tow route after zenService ready
-            TARGET_PROJECT_NAME_CS=$(${CLI_CMD} get route --no-headers --ignore-not-found  -A |grep  cp-console-iam-provider|awk '{print $1}')
-            if [[ -z $TARGET_PROJECT_NAME_CS ]]; then
-                warning "cp-console-iam-provider not found in the cluster. continuing..."
-            else
-                get_default_cp_console_route
-                res=$?
-                if [[ ${res} == "0" ]]; then
-                    create_custom_idprovider_route "platform-identity-provider"
-                    create_custom_idmgmt_route "platform-identity-management"
-                fi
-            fi
-
-            # start all cp4ba operators after zen/im ready
-            startup_operator $TEMP_OPERATOR_PROJECT_NAME "silent"
-            sleep 10
-
-            ## Apply workaround for https://jsw.ibm.com/browse/DBACLD-137719 before start migration CPfs
-            ## scale up ibm-bts-operator-controller-manager in ibm-common-services project after zenService ready
-            if [[ $ALL_NAMESPACE_FLAG == "yes" ]]; then
-                bts_operator_name=$(${CLI_CMD} get deployment ibm-bts-operator-controller-manager --no-headers --ignore-not-found -n ibm-common-services -o name)
-                if [[ ! -z $bts_operator_name ]]; then
-                    ${CLI_CMD} scale --replicas=1 deployment ibm-bts-operator-controller-manager -n ibm-common-services >/dev/null 2>&1
-                    if [[ $? -ne 0 ]]; then
-                        warning "Failed to scale up ibm-bts-operator-controller-manager operator in the project \"ibm-common-services\". Scale up the ibm-bts-operator-controller-manager operator manually."
-                    fi
-                fi
-            fi
-        fi
     else
         fail "ZenService not found in the project \"$CP4BA_SERVICES_NS\", exiting..."
         echo "****************************************************************************"
         exit 1
     fi
 }
+# DBACLD-189643: Function to retrieve all existing CSV from a given namespace (input) and save to a file at a given directory (input)
+function get_existing_csvs() {
+    # Usage: get_existing_csvs <namespace> <output_dir> <sub_name>
+    # Reads the installedCSV from the given subscription and saves its YAML to <output_dir>/<csv_name>.yaml
+    local namespace="$1"
+    local output_dir="$2"
+    local sub_name="$3"
 
+    if [[ -z "$namespace" || -z "$output_dir" || -z "$sub_name" ]]; then
+        warning "Namespace, output directory, and subscription name must be provided."
+        return 1
+    fi
+
+    mkdir -p "$output_dir" >/dev/null 2>&1
+
+    # Extract the installedCSV name from the subscription status, e.g. ibm-ads-operator.v25.1.1
+    local csv_name
+    csv_name=$(${CLI_CMD} get subscription.operators.coreos.com "$sub_name" -n "$namespace" \
+        --no-headers --ignore-not-found -o 'jsonpath={.status.installedCSV}') >&3 2>&3
+    if [[ -z "$csv_name" ]]; then
+        warning "No installedCSV found for subscription \"$sub_name\" in namespace \"$namespace\", skipping."
+        return 0
+    fi
+
+    local output_file="${output_dir}/${csv_name}.yaml"
+    # If the file already exists, rename it with a timestamp suffix before writing a new one
+    if [[ -e "$output_file" ]]; then
+        local ts
+        ts=$(date +'%Y%m%d%H%M%S')
+        mv "$output_file" "${output_file%.yaml}_${ts}.yaml_bak"
+        info "Existing backup renamed to \"${output_file%.yaml}_${ts}.yaml_bak\""
+    fi
+    ${CLI_CMD} get csv "$csv_name" -n "$namespace" --ignore-not-found -o yaml > "$output_file" 2>&3
+    if [[ $? -eq 0 && -s "$output_file" ]]; then
+        info "Backed up CSV \"$csv_name\" to \"$output_file\""
+    else
+        warning "Failed to back up CSV \"$csv_name\" from namespace \"$namespace\"."
+    fi
+    return 0
+}
+
+
+
+#############################################################
+##### Functions to install IBM Usage Metering Operator ######
+#############################################################
+
+
+# Function to apply Subscription for the UMS Operator
+# https://jsw.ibm.com/browse/DBACLD-216413
+# https://jsw.ibm.com/browse/DBACLD-225399
+function apply_subscription() {
+    local namespace="$1"
+    local channel="$2"
+    local catalog_name="$3"
+    local catalog_namespace="$4"
+    UMS_OLM_SUBSCRIPTION_TMP=${TEMP_FOLDER}/.ums_subscription.yaml
+
+    info "Creating IBM Usage Metering Subscription in namespace: $namespace"
+
+    if [ ! -f "$UMS_OLM_SUBSCRIPTION" ]; then
+        TMP_MESSAGE="IBM Usage Metering Installation failed as the IBM Usage Metering Installation Operator Subscription creation failed"
+        displayClusterAdminMessage "$TMP_MESSAGE" "$CP4BA_RELEASE_BASE-$CP4BA_PATCH_VERSION"
+        exit 1
+    fi
+    
+    # Copy template to temp file
+    cp "$UMS_OLM_SUBSCRIPTION" "$UMS_OLM_SUBSCRIPTION_TMP"
+    
+    # Replace REPLACE_NAMESPACE with actual namespace using yq
+    ${YQ_CMD} eval '(.. | select(. == "REPLACE_NAMESPACE")) = "'"$namespace"'"' -i "$UMS_OLM_SUBSCRIPTION_TMP"
+    
+    # Replace REPLACE_CHANNEL with actual channel using yq
+    ${YQ_CMD} eval '(.. | select(. == "REPLACE_CHANNEL")) = "'"$channel"'"' -i "$UMS_OLM_SUBSCRIPTION_TMP"
+    
+    # Set sourceNamespace
+    ${YQ_CMD} eval ".spec.sourceNamespace = \"$catalog_namespace\"" -i "$UMS_OLM_SUBSCRIPTION_TMP"
+    
+    # Set source (catalog name)
+    ${YQ_CMD} eval ".spec.source = \"$catalog_name\"" -i "$UMS_OLM_SUBSCRIPTION_TMP"
+
+    ${CLI_CMD} apply -f ${UMS_OLM_SUBSCRIPTION_TMP}
+    if [ $? -eq 0 ]
+        then
+        success "UMS Operator Subscription Created!"
+    else
+        TMP_MESSAGE="IBM Usage Metering Installation failed as the IBM Usage Metering Installation Operator Subscription creation failed"
+        displayClusterAdminMessage "$TMP_MESSAGE" "$CP4BA_RELEASE_BASE-$CP4BA_PATCH_VERSION"
+        exit 1
+    fi
+}
+
+
+# Function to create the ibm usage metering connection point secret
+# It uses the Entitlement key to generate a secret named cp4ba-ums-secret/cp4ba-ils-secret based on the function calling it.
+# In the future the entitlement key secret already created would be used
+# https://jsw.ibm.com/browse/DBACLD-216413
+# https://jsw.ibm.com/browse/DBACLD-225399
+function create_connection_point_secret(){
+    local secret_name=$1
+    local services_namespace=$2
+    local entitlement_key=$3
+    # Use a variable to detect if the connection point creation passed
+    connection_point_secret_creation="false"
+
+    if ${CLI_CMD} get secret "$secret_name" -n "${services_namespace}" >/dev/null 2>&1; then
+        success "Secret $secret_name already exists in namespace $services_namespace, skipping recreation."
+        connection_point_secret_creation="true"
+        return 0
+    fi
+    
+    info "Creating the $secret_name secret using the Entitlement key which will be used for configuring the connection point in the project $services_namespace..."
+    echo
+    
+    if ${CLI_CMD} create secret generic "$secret_name" \
+        --from-literal="token=$entitlement_key" \
+        -n "$services_namespace"; then
+        success "Secret $secret_name has been successfully created"
+        connection_point_secret_creation="true"
+    else
+        fail "Failed to create the secret $secret_name."
+    fi
+        
+}
+
+# Function to process and apply IBMServiceMeterDefinition YAMLs
+# Parameters:
+#   $1 - namespace
+#   $2 - file location (directory containing YAML files)
+# https://jsw.ibm.com/browse/DBACLD-216413
+function apply_service_meter_definitions() {
+    local namespace="$1"
+    local file_location="$2"
+    
+    
+    if [[ -z "$file_location" ]]; then
+        error "File location parameter is required"
+        return 1
+    fi
+    
+    if [[ ! -d "$file_location" ]]; then
+        error "Directory '$file_location' does not exist"
+        return 1
+    fi
+    
+    info "Processing IBMServiceMeterDefinition YAMLs in: $file_location"
+    info "Target namespace for the YAMLs to be applied in: $namespace"
+    
+    # Process each YAML file in the directory
+    for yaml_file in "$file_location"/*.yaml "$file_location"/*.yml; do
+        # Skip if no files match
+        [[ -e "$yaml_file" ]] || continue
+        
+        local filename=$(basename "$yaml_file")
+        
+        # Check if the file is of kind IBMServiceMeterDefinition
+        local kind=$(${YQ_CMD} eval '.kind' "$yaml_file" 2>/dev/null)
+        
+        if [[ "$kind" != "IBMServiceMeterDefinition" ]]; then
+            #echo "Skipping $filename - not an IBMServiceMeterDefinition (kind: $kind)"
+            continue
+        fi
+        
+        # Create a temporary file for modifications
+        local temp_file="${TEMP_FOLDER}/${filename}"
+        cp "$yaml_file" "$temp_file"
+        
+        # Update namespace
+        ${YQ_CMD} eval ".metadata.namespace = \"$namespace\"" -i "$temp_file"
+        
+        # If flag is set, rename componentId to productId and componentName to productName
+        # This is a temporary block that will be removed once UMS pushes a fix in their next release
+        #if [[ "$RENAME_COMPONENT_FIELDS" == "true" ]]; then
+        #    
+        #    # Check if componentId exists directly under data and rename to productId
+        #    local component_id=$(${YQ_CMD} eval ".spec.data.componentId" "$temp_file" 2>/dev/null)
+        #    if [[ "$component_id" != "null" && -n "$component_id" ]]; then
+        #        ${YQ_CMD} eval ".spec.data.productId = .spec.data.componentId | del(.spec.data.componentId)" -i "$temp_file"
+        #    fi
+
+            # Check if componentName exists directly under data and rename to productName
+        #    local component_name=$(${YQ_CMD} eval ".spec.data.componentName" "$temp_file" 2>/dev/null)
+        #    if [[ "$component_name" != "null" && -n "$component_name" ]]; then
+        #        ${YQ_CMD} eval ".spec.data.productName = .spec.data.componentName | del(.spec.data.componentName)" -i "$temp_file"
+        #    fi
+            
+            # Process sources array - rename componentId and componentName in each source
+        #    local sources_count=$(${YQ_CMD} eval '.spec.sources | length' "$temp_file" 2>/dev/null)
+        #    if [[ "$sources_count" != "null" && "$sources_count" != "0" ]]; then
+        #        # Rename all componentId to productId in sources array
+        #        ${YQ_CMD} eval '(.spec.sources[] | select(has("componentId"))) |= (.productId = .componentId | del(.componentId))' -i "$temp_file"
+                
+                # Rename all componentName to productName in sources array
+        #        ${YQ_CMD} eval '(.spec.sources[] | select(has("componentName"))) |= (.productName = .componentName | del(.componentName))' -i "$temp_file"
+        #        
+        #    fi
+            
+        #fi
+        
+        # Apply the modified YAML
+        info "  - Applying $filename to namespace $namespace"
+        if ${CLI_CMD} apply -f "$temp_file" -n "$namespace"; then
+            success "Successfully applied $filename"
+        else
+            error "Failed to apply $filename"
+        fi
+        
+        # Clean up temp file
+        rm -f "$temp_file"
+        echo ""
+    done
+    
+    success "All IBMServiceMeterDefinition Static CRs for the Usage Metering Service have been applied."
+    echo
+}
+
+
+# Function to process and apply IBMUsageMetering YAMLs. As of right now there is only 1 yaml to be applied but function can handle multiple
+# Parameters:
+#   $1 - namespace (replaces REPLACE_NAMESPACE)
+#   $2 - secret name (replaces REPLACE_SECRET_NAME)
+#   $3 - file location (directory containing YAML files)
+#   $4 - mode parameter which will tell us if the user is deploying with the dev mode. If the user did not use the dev flag, this parameter will be empty and if not the sanbox:true will be patched into the UsageMetering CR.
+# https://jsw.ibm.com/browse/DBACLD-216413
+# https://jsw.ibm.com/browse/DBACLD-225399
+function apply_usage_metering_definition () {
+    local namespace="$1"
+    local secret_name="$2"
+    local file_location="$3"
+    local mode="$4"
+    local airgap_mode="$5"
+    
+    
+    if [[ -z "$file_location" ]]; then
+        error "File location parameter is required"
+        return 1
+    fi
+    
+    if [[ ! -d "$file_location" ]]; then
+        error "Directory '$file_location' does not exist"
+        return 1
+    fi
+
+    if [[ "$mode" == "dev" ]]; then
+        info "Usage Metering mode is dev, setting sandbox=true"
+    fi
+    
+    # Create temp folder if it doesn't exist
+    mkdir -p "$TEMP_FOLDER"
+    
+    info "Processing IBMUsageMetering YAMLs in: $file_location"
+    info "Target namespace: $namespace"
+    
+    # Process each YAML file in the directory
+    for yaml_file in "$file_location"/*.yaml "$file_location"/*.yml; do
+        # Skip if no files match
+        [[ -e "$yaml_file" ]] || continue
+        
+        local filename=$(basename "$yaml_file")
+        
+        # Check if the file is of kind IBMUsageMetering
+        local kind=$(${YQ_CMD} eval '.kind' "$yaml_file" 2>/dev/null)
+        
+        if [[ "$kind" != "IBMUsageMetering" ]]; then
+            echo "Skipping $filename - not an IBMUsageMetering (kind: $kind)"
+            continue
+        fi
+        
+        
+        # Create a temporary file for modifications
+        local temp_file="${TEMP_FOLDER}/${filename}"
+        cp "$yaml_file" "$temp_file"
+        
+        # Check and replace namespace if it contains REPLACE_NAMESPACE
+        local current_namespace=$(${YQ_CMD} eval '.metadata.namespace' "$temp_file" 2>/dev/null)
+        if [[ "$current_namespace" == "REPLACE_NAMESPACE" ]]; then
+            ${YQ_CMD} eval ".metadata.namespace = \"$namespace\"" -i "$temp_file"
+        fi
+        
+        if [[ "$airgap_mode" == "true" || "$airgap_mode" == "yes" || "$airgap_mode" == "Yes" ]]; then
+            #info "Airgap mode detected, removing .spec.sender.softwareCentral from $filename"
+            ${YQ_CMD} eval 'del(.spec.sender.softwareCentral)' -i "$temp_file"
+        else
+            # Check and replace secret name if it contains REPLACE_SECRET_NAME
+            local current_secret=$(${YQ_CMD} eval '.spec.sender.softwareCentral.entitlementKeySecret' "$temp_file" 2>/dev/null)
+            if [[ "$current_secret" == "REPLACE_SECRET_NAME" ]]; then
+                ${YQ_CMD} eval ".spec.sender.softwareCentral.entitlementKeySecret = \"$secret_name\"" -i "$temp_file"
+            fi
+
+            # If mode is dev, set sandbox to true
+            # https://jsw.ibm.com/browse/DBACLD-225399
+            if [[ "$mode" == "dev" ]]; then
+                ${YQ_CMD} eval '.spec.sender.softwareCentral.sandbox = true' -i "$temp_file"
+            fi
+        fi
+        
+        # Apply the modified YAML
+        info "  - Applying $filename to namespace $namespace"
+        if ${CLI_CMD} apply -f "$temp_file" -n "$namespace"; then
+            success "Successfully applied $filename"
+        else
+            error "Failed to apply $filename"
+        fi
+        
+        # Clean up temp file
+        rm -f "$temp_file"
+        echo ""
+    done
+    
+    success "All IBM Usage Metering Static CRs for the Usage Metering Service have been applied."
+    echo
+}
+
+# Function to patch UMS subscription with new channel
+function patch_ums_subscription() {
+    local operator_namespace=$1
+    local channel=$2
+    local catalog_namespace=$3
+    
+    # Find subscription with "ibm-usage-metering" in the name
+    local subscription_name=$(${CLI_CMD} get subscription -n "$operator_namespace" --no-headers 2>/dev/null | grep "ibm-usage-metering" | awk '{print $1}' | head -n 1)
+    
+    if [ -z "$subscription_name" ]; then
+        error "No subscription containing 'ibm-usage-metering' found in namespace '$operator_namespace'"
+        return 1
+    fi
+    
+    info "Found subscription: '$subscription_name'"
+    info "Patching subscription with channel '$channel'..."
+    ${CLI_CMD} patch subscription "$subscription_name" -n "$operator_namespace" \
+        --type='json' \
+        -p="[{'op': 'replace', 'path': '/spec/channel', 'value': '$channel'}]"
+    
+    if [ $? -eq 0 ]; then
+        success "Subscription '$subscription_name' patched successfully with channel '$channel'"
+        return 0
+    else
+        error "Failed to patch subscription '$subscription_name'"
+        return 1
+    fi
+    
+    info "Patching subscription with sourcenamespace '$catalog_namespace'..."
+    ${CLI_CMD} patch subscription "$subscription_name" -n "$operator_namespace" \
+        --type='json' \
+        -p="[{'op': 'replace', 'path': '/spec/sourceNamespace', 'value': '$catalog_namespace'}]"
+    
+    if [ $? -eq 0 ]; then
+        success "Subscription '$subscription_name' patched successfully with sourcenamespace '$catalog_namespace'"
+        return 0
+    else
+        error "Failed to patch subscription '$subscription_name'"
+        return 1
+    fi      
+}
+
+# Function to extract entitlement key password from a dockerconfigjson secret.
+#
+# Lookup order:
+#   1. Secret passed in as $1 in the namespace passed in as $2
+#   2. pull-secret in openshift-config namespace
+#
+# Registry lookup order inside the dockerconfigjson:
+#   1. cp.icr.io
+#   2. cp.stg.icr.io
+#
+# The function reads the registry "auth" field, decodes it from base64,
+# and extracts the password/token portion from the "username:password" value.
+#
+# Arguments:
+#   $1 - secret name to check first, typically ibm-entitlement-key
+#   $2 - namespace where the secret should exist
+#
+# Output:
+#   Sets global variable: entitlement_key
+#
+# Return:
+#   0 on success
+#   1 if the entitlement key could not be extracted
+function get_entitlement_key_from_secret() {
+    local secret_name="$1"
+    local namespace="$2"
+    local dockerconfigjson=""
+    local auth_value=""
+    local decoded_auth=""
+    local source_secret_name=""
+    local source_namespace=""
+
+    info "Extracting entitlement key from secret '$secret_name' in namespace '$namespace'..."
+
+    # Step 1: Check whether the requested secret exists in the provided namespace.
+    # If it exists, use it as the primary source.
+    if ${CLI_CMD} get secret "$secret_name" -n "$namespace" &>/dev/null; then
+        source_secret_name="$secret_name"
+        source_namespace="$namespace"
+        info "Found secret '$source_secret_name' in namespace '$source_namespace'"
+    else
+        warning "Secret '$secret_name' not found in namespace '$namespace'. Checking 'pull-secret' in namespace 'openshift-config'..."
+
+        # Step 2: If the original secret is not present, fall back to the cluster pull-secret.
+        if ${CLI_CMD} get secret pull-secret -n openshift-config &>/dev/null; then
+            source_secret_name="pull-secret"
+            source_namespace="openshift-config"
+            info "Found fallback secret '$source_secret_name' in namespace '$source_namespace'"
+        else
+            error "Neither secret '$secret_name' in namespace '$namespace' nor secret 'pull-secret' in namespace 'openshift-config' was found. Failed to extract the entitlement-key from the cluster."
+            return 1
+        fi
+    fi
+
+    # Step 3: Extract and decode the dockerconfigjson payload from the selected secret.
+    dockerconfigjson=$(${CLI_CMD} get secret "$source_secret_name" -n "$source_namespace" -o yaml | \
+        ${YQ_CMD} eval '.data[".dockerconfigjson"]' - | \
+        ${BASE64_DECODE})
+
+    if [[ -z "$dockerconfigjson" ]] || [[ "$dockerconfigjson" == "null" ]]; then
+        error "Failed to extract the entitlement-key from secret '$source_secret_name' in namespace '$source_namespace'."
+        return 1
+    fi
+
+    # Step 4: Try cp.icr.io first by reading the auth field.
+    auth_value=$(printf '%s' "$dockerconfigjson" | ${YQ_CMD} eval '.auths."cp.icr.io".auth' -)
+
+    # Step 5: If cp.icr.io is not present, try cp.stg.icr.io.
+    if [[ -z "$auth_value" ]] || [[ "$auth_value" == "null" ]]; then
+        auth_value=$(printf '%s' "$dockerconfigjson" | ${YQ_CMD} eval '.auths."cp.stg.icr.io".auth' -)
+    fi
+
+    # Step 6: If both registry auth entries are missing, handle it the same as empty password.
+    if [[ -z "$auth_value" ]] || [[ "$auth_value" == "null" ]]; then
+        error "Failed to extract password from dockerconfigjson (tried cp.icr.io and cp.stg.icr.io)"
+        return 1
+    fi
+
+    # Step 7: Decode the auth entry. It should be in the form username:password
+    decoded_auth=$(printf '%s' "$auth_value" | ${BASE64_DECODE})
+
+    if [[ -z "$decoded_auth" ]] || [[ "$decoded_auth" == "null" ]]; then
+        error "Failed to decode auth field from dockerconfigjson"
+        return 1
+    fi
+
+    # Step 8: Extract the password/token portion after the first colon.
+    entitlement_key=$(printf '%s' "$decoded_auth" | sed 's/^[^:]*://')
+
+    # Step 9: If the extracted password is empty, handle it as failure.
+    if [[ -z "$entitlement_key" ]] || [[ "$entitlement_key" == "$decoded_auth" ]]; then
+        error "Failed to extract password from decoded auth field"
+        return 1
+    fi
+
+    return 0
+}
+
+
+# Main installation function for UMS for either fresh install or upgrade
+# based on argument 3 the function is able to perform the required steps for either of those scenarios
+# $1 Operator namespace
+# $2 Services namespace
+# $3 scenario i.e fresh_install or upgrade
+# $4 entitlement_key which is the key used to generate the connection point secret
+# $5 runtime mode that tells the script if it is being used in dev mode and if so the sandbox setting is enabled
+# $6 catalog namespace incase the user is going to deploy 26.0.0 GA with global catalog
+# $7 airgap mode which makes sure that the connection point CR is created without the softwareCentral section
+# https://jsw.ibm.com/browse/DBACLD-216413
+function install_ibm_usage_metering() {
+    local operator_namespace=$1
+    local services_namespace=$2
+    local scenario=$3
+    local entitlement_key=$4
+    local runtime_mode=$5
+    local catalog_namespace=$6
+    local airgap_mode=$7
+    local create_secret_and_resources="true"
+    echo ""
+    echo "=========================================="
+    echo "IBM Usage Metering Operator Installation"
+    echo "=========================================="
+    echo ""
+
+    # Step 1: Check if CatalogSource exists
+    if ! ${CLI_CMD} get catalogsource "$UMS_CATALOG_VERSION" -n "$catalog_namespace" &>/dev/null; then
+        error "CatalogSource '$UMS_CATALOG_VERSION' not found in namespace '$catalog_namespace'"
+        echo ""
+        return 1
+    fi
+
+    # Wait for CatalogSource to be ready
+    echo "Waiting for IBM Usage Metering Catalog Source to be ready..."
+    local timeout=300
+    local elapsed=0
+    while [ $elapsed -lt $timeout ]; do
+        local state=$(${CLI_CMD} get catalogsource "$UMS_CATALOG_VERSION" -n "$catalog_namespace" -o jsonpath='{.status.connectionState.lastObservedState}' 2>/dev/null)
+        if [ "$state" = "READY" ]; then
+            info "IBM Usage Metering Catalog Source is ready."
+            break
+        fi
+        sleep 10
+        elapsed=$((elapsed + 10))
+    done
+
+    if [ $elapsed -ge $timeout ]; then
+        TMP_MESSAGE="IBM Usage Metering Installation failed due to Catalog source not being ready"
+        if [[ "$scenario" == "upgrade" ]]; then
+            displayUpgradeOperatorMessage "$TMP_MESSAGE" $services_namespace $cp4a_operator_csv_version
+        else
+            displayClusterAdminMessage "$TMP_MESSAGE" "$CP4BA_RELEASE_BASE-$CP4BA_PATCH_VERSION"
+        fi
+        exit 1
+    fi
+    echo ""
+
+
+    # Step 2: Handle Subscription based on scenario
+    if [[ "$scenario" == "fresh_install" ]]; then
+        
+        info "Creating the IBM Usage Metering Subscription..."
+        apply_subscription "$operator_namespace" "$UMS_CHANNEL_VERSION" "$UMS_CATALOG_VERSION" "$catalog_namespace"
+        echo ""
+    # For upgrade scenario we might have to apply a new subscription or patch it based on the version the user is already on.
+    elif [[ "$scenario" == "upgrade" ]]; then
+        info "Checking for existing IBM Usage Metering Subscription..."
+        
+        # Check if any subscription with "ibm-usage-metering" exists
+        local subscription_exists=$(${CLI_CMD} get subscription -n "$operator_namespace" --no-headers 2>/dev/null | grep "ibm-usage-metering" | wc -l)
+        
+        if [ "$subscription_exists" -gt 0 ]; then
+            patch_ums_subscription "$operator_namespace" "$UMS_CHANNEL_VERSION" "$catalog_namespace"
+            if [ $? -ne 0 ]; then
+                TMP_MESSAGE="IBM Usage Metering Installation failed as patching the IBM Usage Metering Installation Operator Subscription failed."
+                displayUpgradeOperatorMessage "$TMP_MESSAGE" $services_namespace $cp4a_operator_csv_version
+                exit 1
+            fi
+        else
+            info "No IBM Usage Metering subscription found. Creating new subscription..."
+            
+            apply_subscription "$operator_namespace" "$UMS_CHANNEL_VERSION" "$UMS_CATALOG_VERSION" "$catalog_namespace"
+        fi
+        echo ""
+    fi
+
+    # Step 3: Wait for UMS operator to be ready
+    echo "Waiting for the IBM Usage Metering operator to be ready and in running state"
+    timeout=600
+    elapsed=0
+    while [ $elapsed -lt $timeout ]; do
+        if ${CLI_CMD} get csv -n "$operator_namespace" 2>/dev/null | grep -q "ibm-usage-metering.*Succeeded"; then
+            success "IBM Usage Metering operator is ready"
+            break
+        fi
+        sleep 10
+        elapsed=$((elapsed + 10))
+        echo "  Waiting... (${elapsed}s/${timeout}s)"
+    done
+
+    if [ $elapsed -ge $timeout ]; then
+        TMP_MESSAGE="IBM Usage Metering Installation failed as IBM Usage Metering operator did not become ready in time."
+        if [[ "$scenario" == "upgrade" ]]; then
+            displayUpgradeOperatorMessage "$TMP_MESSAGE" $services_namespace $cp4a_operator_csv_version
+        else
+            displayClusterAdminMessage "$TMP_MESSAGE" "$CP4BA_RELEASE_BASE-$CP4BA_PATCH_VERSION"
+        fi
+        exit 1
+    fi
+    echo ""
+
+    # This block makes sure the UMS operator pod is running
+    timeout=300
+    elapsed=0
+    while [ $elapsed -lt $timeout ]; do
+        if ${CLI_CMD} get pods -n "$operator_namespace" -l app.kubernetes.io/name=ibm-usage-metering-operator --field-selector=status.phase=Running 2>/dev/null | grep -q Running; then
+            info "IBM Usage Metering operator pod is running"
+            break
+        fi
+        sleep 10
+        elapsed=$((elapsed + 10))
+    done
+
+    if [ $elapsed -ge $timeout ]; then
+        warning "Operator pod not running yet, but continuing..."
+    fi
+    echo ""
+
+    # This is the flag that helps modify the static CRs to apply. Right now this flag is needed but once UMS pushes a fix it can be removed
+    #RENAME_COMPONENT_FIELDS="true"
+    
+    # Step 4: Applying the service metering definition static CRs from the descriptors folder
+    apply_service_meter_definitions "$services_namespace" "$UMS_STATIC_CR_LOCATION"
+    
+    # Step 5 which is to create the the connection point secret and connection point CR
+    # Step 5(a) For airgap deployments, do not create the UMS secret and apply the UsageMetering CR without the softwareCentral section.
+    # Step 5(b) For non-airgap deployments, create the secret only when needed and only apply the CR if the secret exists or was created successfully.
+    if [[ "$airgap_mode" == "true" || "$airgap_mode" == "yes" || "$airgap_mode" == "Yes" ]]; then
+        info "Airgap mode detected. Skipping creation of secret '$UMS_CONNECTION_POINT_SECRET_NAME' and applying UsageMetering CR."
+        apply_usage_metering_definition "$services_namespace" "$UMS_CONNECTION_POINT_SECRET_NAME" "$UMS_CONNECTION_POINT_STATIC_CR_LOCATION" "$runtime_mode" "$airgap_mode"
+    else
+        if ${CLI_CMD} get secret "$UMS_CONNECTION_POINT_SECRET_NAME" -n "$services_namespace" >/dev/null 2>&1; then
+            success "UMS connection point secret '$UMS_CONNECTION_POINT_SECRET_NAME' already exists in namespace '$services_namespace', skipping the creation of the secret."
+            create_secret_and_resources="true"
+            connection_point_secret_creation="true"
+        else
+            info "UMS connection point secret '$UMS_CONNECTION_POINT_SECRET_NAME' not found in namespace '$services_namespace', the script will now proceed to creating it using the entitlement key."
+
+            # For upgrade non-airgap, if the entitlement key was not passed in, retrieve it from an existing secret.
+            if [[ -z "$entitlement_key" && "$scenario" == "upgrade" ]]; then
+                get_entitlement_key_from_secret "ibm-entitlement-key" "$services_namespace"
+                if [ $? -ne 0 ]; then
+                    warning "Failed to extract entitlement key from secret.Refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE for more information on how to create the $UMS_CONNECTION_POINT_SECRET_NAME secret and the UsageMetering connection point custom resource file."
+                    create_secret_and_resources="false"
+                fi
+            fi
+
+            # For fresh install non-airgap, entitlement key is expected to be passed in. If not present, do not create the secret or CR.
+            if [[ -z "$entitlement_key" ]]; then
+                warning "[IMPORTANT]The IBM Entitlement key is not available, so the $UMS_CONNECTION_POINT_SECRET_NAME secret and the UsageMetering connection point Custom Resource file will not be created.Refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE for more information on how to create the $UMS_CONNECTION_POINT_SECRET_NAME secret and the UsageMetering connection point Custom Resource file."
+                create_secret_and_resources="false"
+            fi
+        fi
+
+        # Step 6: Creating the connection point secret and UsageMetering CR only if we were able to retrieve or were passed the entitlement key
+        if [[ "$create_secret_and_resources" == "true" ]]; then
+            create_connection_point_secret "$UMS_CONNECTION_POINT_SECRET_NAME" "$services_namespace" "$entitlement_key"
+            if [[ "$connection_point_secret_creation" == "true" ]]; then
+                apply_usage_metering_definition "$services_namespace" "$UMS_CONNECTION_POINT_SECRET_NAME" "$UMS_CONNECTION_POINT_STATIC_CR_LOCATION" "$runtime_mode" "$airgap_mode"
+            else
+                warning "[IMPORTANT]Since the $UMS_CONNECTION_POINT_SECRET_NAME could not be created, the UsageMetering connection point Custom Resource file will not be created.Refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE for more information on how to create the $UMS_CONNECTION_POINT_SECRET_NAME secret and the UsageMetering connection point Custom Resource file."
+            fi
+        fi
+    fi
+
+    echo "================================================="
+    echo "Usage Metering Operator Installation Complete!"
+    echo "================================================="
+    echo ""
+    
+}
+
+
+# Patch an existing IBMLicensing resource to configure Software Central uploads.
+# Arguments:
+#   $1 - secret name to set in spec.sender.softwareCentral.entitlementKeySecret
+#   $2 - IBMLicensing resource name
+#   $3 - runtime mode; if "dev", sandbox=true is added
+function patch_ils_instance() {
+    local secret_name="$1"
+    local licensing_name="$2"
+    local mode="$3"
+    local patch_payload=""
+
+    # Build the default merge patch payload
+    patch_payload=$(cat <<EOF
+{
+  "spec": {
+      "softwareCentral": {
+        "enable": true,
+        "frequency": "5 0 * * *",
+        "entitlementKeySecret": "$secret_name"
+      }
+    }
+}
+EOF
+)
+
+    # Add sandbox only in dev mode
+    if [[ "$mode" == "dev" ]]; then
+        info "Runtime mode is dev, setting spec.softwareCentral.sandbox=true"
+        patch_payload=$(cat <<EOF
+{
+  "spec": {
+      "softwareCentral": {
+        "enable": true,
+        "frequency": "5 0 * * *",
+        "entitlementKeySecret": "$secret_name",
+        "sandbox": true
+      }
+  }
+}
+EOF
+)
+    fi
+
+    # Patch the IBMLicensing custom resource
+    info "Patching IBMLicensing resource \"$licensing_name\""
+    if ${CLI_CMD} patch IBMLicensing "$licensing_name" --type=merge -p "$patch_payload"; then
+        success "Successfully patched IBMLicensing resource \"$licensing_name\""
+        return 0
+    else
+        error "Failed to patch IBMLicensing resource \"$licensing_name\""
+        return 1
+    fi
+}
+
+
+# Configure Software Central integration for an existing IBMLicensing resource.
+#
+# Flow:
+#   1. Check whether an IBMLicensing resource exists.
+#   2. If no IBMLicensing resource exists, skip the configuration.
+#   3. Check whether the ILS connection point secret already exists.
+#   4. If the secret does not exist:
+#      - use the provided entitlement key if available
+#      - otherwise, for upgrade scenario only, try to retrieve it from ibm-entitlement-key
+#      - if no entitlement key can be obtained, skip secret creation and CR patching
+#      - if entitlement key is available, create the secret
+#   5. Patch the IBMLicensing resource to enable Software Central uploads.
+#   6. In dev mode, also set sandbox=true.
+#
+# Arguments:
+#   $1 - namespace where the ILS connection point secret should exist
+#   $2 - services namespace where ibm-entitlement-key may exist
+#   $3 - entitlement key value; may be empty during upgrade
+#   $4 - scenario value such as "upgrade" or "fresh_install"
+#   $5 - runtime mode such as "dev" or "prod"
+function setup_ils_configuration_for_vpc_metrics() {
+    local licensing_namespace="$1"
+    local services_namespace="$2"
+    local entitlement_key="$3"
+    local scenario="$4"
+    local mode="$5"
+    local licensing_name=""
+    local mode_lower=""
+    local create_secret_and_resources="true"
+
+    # Normalize runtime mode to lowercase for comparison
+    mode_lower=$(echo "$mode" | tr '[:upper:]' '[:lower:]')
+
+    # Step 1: Check whether an IBMLicensing resource exists
+    info "Checking for IBMLicensing resource..."
+    licensing_name=$(${CLI_CMD} get IBMLicensing --no-headers --ignore-not-found 2>/dev/null | awk 'NR==1{print $1}')
+
+    if [[ -z "$licensing_name" ]]; then
+        warning "No IBMLicensing resource found. Skipping ILS Software Central configuration."
+        return 0
+    fi
+
+    success "Found IBMLicensing resource: $licensing_name"
+
+    # Step 2: Check whether the ILS connection point secret already exists
+    if ${CLI_CMD} get secret "$ILS_CONNECTION_POINT_SECRET_NAME" -n "$licensing_namespace" >/dev/null 2>&1; then
+        success "ILS connection point secret '$ILS_CONNECTION_POINT_SECRET_NAME' already exists in namespace '$licensing_namespace'."
+
+        # Step 3: Patch the IBMLicensing resource even if the secret already exists
+        patch_ils_instance "$ILS_CONNECTION_POINT_SECRET_NAME" "$licensing_name" "$mode_lower"
+        return $?
+    fi
+
+    info "ILS connection point secret '$ILS_CONNECTION_POINT_SECRET_NAME' not found in namespace '$licensing_namespace'. The script will attempt to create it."
+
+    # Step 4: If no entitlement key was passed and this is an upgrade, try retrieving it
+    if [[ -z "$entitlement_key" && "$scenario" == "upgrade" ]]; then
+        info "Entitlement key was not passed in upgrade scenario. Attempting to retrieve it from secret \"ibm-entitlement-key\" in namespace \"$services_namespace\"."
+
+        get_entitlement_key_from_secret "ibm-entitlement-key" "$services_namespace"
+        if [ $? -ne 0 ]; then
+            warning "Failed to extract entitlement key from secret. Refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE for more information on how to create the $ILS_CONNECTION_POINT_SECRET_NAME secret and update the IBMLicensing custom resource."
+            create_secret_and_resources="false"
+        fi
+    fi
+
+    # Step 5: If entitlement key is still empty, do not create the secret or patch the CR
+    if [[ -z "$entitlement_key" ]]; then
+        warning "Entitlement key is empty. Skipping creation of secret '$ILS_CONNECTION_POINT_SECRET_NAME' and the script will skip the patch of IBMLicensing."
+        return 0
+    fi
+
+    # Step 6: Create the secret only if allowed
+    if [[ "$create_secret_and_resources" == "true" ]]; then
+        info "Creating ILS connection point secret '$ILS_CONNECTION_POINT_SECRET_NAME' in namespace '$licensing_namespace'"
+        create_connection_point_secret "$ILS_CONNECTION_POINT_SECRET_NAME" "$licensing_namespace" "$entitlement_key"
+
+        if [[ "$connection_point_secret_creation" == "true" ]]; then
+            # Step 7: Patch the IBMLicensing resource after secret creation
+            patch_ils_instance "$ILS_CONNECTION_POINT_SECRET_NAME" "$licensing_name" "$mode_lower"
+            return $?
+        else
+            warning "[IMPORTANT]Since the $ILS_CONNECTION_POINT_SECRET_NAME could not be created, the IBMLicensing instance will not be patched by the script.Refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE for more information on how to create the $ILS_CONNECTION_POINT_SECRET_NAME secret and patch the IBMLicensing Instance."
+        fi
+    fi
+
+    return 0
+}
+
+# Function to get the total reconcile count for a CP4BA operator pod.
+# Sets the global variable OPERATOR_RECONCILE_COUNT to a numeric value.
+# Returns:
+#   0 when reconcile artifact count was found and parsed
+#   1 when the artifact count could not be found
+function get_cp4ba_operator_reconcile_count() {
+    local operator_namespace="$1"
+    local operator_pod_name="$2"
+    local top_level_cr_kind="$3"
+    local top_level_cr_name="$4"
+    local cr_kind_path=""
+    local reconcile_count=""
+
+    OPERATOR_RECONCILE_COUNT=0
+
+    if [[ -z "$operator_namespace" || -z "$operator_pod_name" || -z "$top_level_cr_kind" || -z "$top_level_cr_name" || -z "$CP4BA_SERVICES_NS" ]]; then
+        return 1
+    fi
+
+    if [[ "$top_level_cr_kind" == "content" ]]; then
+        cr_kind_path="Content"
+    else
+        cr_kind_path="ICP4ACluster"
+    fi
+
+    reconcile_count=$(${CLI_CMD} -n "$operator_namespace" exec "$operator_pod_name" -- sh -c "
+        ls /tmp/ansible-operator/runner/icp4a.ibm.com/v1/${cr_kind_path}/${CP4BA_SERVICES_NS}/${top_level_cr_name}/artifacts/ 2>/dev/null | grep -c '^[0-9]'
+    " 2>/dev/null)
+
+    if [[ $? -eq 0 && "$reconcile_count" =~ ^[0-9]+$ ]]; then
+        OPERATOR_RECONCILE_COUNT="$reconcile_count"
+        return 0
+    fi
+
+    return 1
+}
 
 
 # Function to check if all components are ready
@@ -2426,7 +3607,7 @@ function validate_zen_upgrade_status(){
 function check_if_all_components_are_ready() {
     # Check all component status values in the array
     for status_value in "${CP4BA_COMPONENT_STATUS_VALUES[@]}"; do
-
+        
         # Skip if empty or whitespace only
         if [[ -z "$status_value" ]] || [[ "$status_value" =~ ^[[:space:]]*$ ]]; then
             continue
@@ -2436,7 +3617,7 @@ function check_if_all_components_are_ready() {
         if [[ "$status_value" =~ "Not Installed" ]]; then
             continue
         fi
-
+        
         # Check for non-ready states
         if [[ "$status_value" =~ "In Progress" ]] || \
            [[ "$status_value" =~ "Not Ready" ]] || \
@@ -2445,12 +3626,774 @@ function check_if_all_components_are_ready() {
            [[ "$status_value" =~ "Upgrading" ]]; then
             return 1  # Not ready
         fi
-
+        
         # Must contain "Done" or "Ready"
         if [[ ! "$status_value" =~ "Done" ]] && [[ ! "$status_value" =~ "Ready" ]]; then
             return 1  # Not ready
         fi
     done
-
+    
     return 0  # All components ready
+}
+
+
+# Retrieve CR details
+# This function takes 1 argument i.e the services namespace
+# This function is defined in the common.sh script and the function find the top level CR kind and name
+# Top level CR kind and name are stored in the variables top_level_cr_type and top_level_cr_name
+# The function also stores the name of the icp4acluster and content CR names in the variables icp4acluster_cr_name,content_cr_name
+function retrieve_custom_resource_details(){
+    local cr_namespace=$1
+    local icp4acluster_cr_details_location=$2
+    local content_cr_details_location=$3
+    top_level_cr_kind=""
+    top_level_cr_name=""
+    top_level_cr_details_location=""
+    top_level_cr_details_backup_location=""
+    content_cr_name=""
+    icp4acluster_cr_name=""
+    content_cr_present="false"
+    icp4acluster_cr_present="false"
+
+    #Logic that detects what the top level CR is in the deployment
+    # If the content CR does not have an owner reference , it is the top level CR otherwise the top level CR is the ICP4ACLuster CR
+    ${CLI_CMD} get crd |grep contents.icp4a.ibm.com >/dev/null 2>&1
+    if [[ $? -eq 0 ]]; then
+        content_cr_name=$(${CLI_CMD} get content -n $cr_namespace --no-headers --ignore-not-found | awk '{print $1}')
+        if [[ ! -z $content_cr_name ]]; then
+            owner_ref=$(${CLI_CMD} get content $content_cr_name -n $cr_namespace -o yaml | ${YQ_CMD} '.metadata.ownerReferences.[0].kind' -)
+            # Store the Content CR contents in a certain file location
+            ${CLI_CMD} get content $content_cr_name -n $cr_namespace -o yaml > ${content_cr_details_location}
+            if [[ ${owner_ref} != "ICP4ACluster" ]]; then
+                top_level_cr_kind="content"
+                top_level_cr_name="$content_cr_name"
+                top_level_cr_details_location="${content_cr_details_location}" 
+                top_level_cr_details_backup_location="${UPGRADE_DEPLOYMENT_CONTENT_CR_BAK}"              
+            fi
+        fi
+    fi
+
+    if [[ -z "$top_level_cr_kind" ]]; then
+        icp4acluster_cr_name=$(${CLI_CMD} get icp4acluster -n $cr_namespace --no-headers --ignore-not-found | awk '{print $1}')
+        if [[ ! -z $icp4acluster_cr_name ]]; then
+            # Store the Content CR contents in a certain file location
+            ${CLI_CMD} get icp4acluster $icp4acluster_cr_name -n $cr_namespace -o yaml > ${icp4acluster_cr_details_location}
+            top_level_cr_kind="icp4acluster"
+            top_level_cr_name="$icp4acluster_cr_name"
+            top_level_cr_details_location="${icp4acluster_cr_details_location}" 
+            top_level_cr_details_backup_location="${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_BAK}" 
+        fi
+    fi
+
+    if [[ -z "$top_level_cr_kind" || -z "$top_level_cr_name" ]]; then
+        error "Could not find a IC4ACluster Kind Custom Resource file or a Content Kind Custom Resource file in the $cr_namespace namespace. The script will now exit."
+        exit
+    fi
+
+    # Retrieve the CR info and store it in a certain file location defined
+
+    # Display Custom Resource Details
+    echo ""
+    echo "================================================================================"
+    echo "${YELLOW_TEXT}Custom Resource Details - Namespace: ${cr_namespace}${RESET_TEXT}"
+    echo "================================================================================"
+    
+    # Display ICP4ACluster CR
+    if [[ ! -z "$icp4acluster_cr_name" ]]; then
+        echo "ICP4ACluster CR : ${GREEN_TEXT}${icp4acluster_cr_name}${RESET_TEXT}"
+    else
+        echo "ICP4ACluster CR : Not found"
+    fi
+    
+    # Display Content CR
+    if [[ ! -z "$content_cr_name" ]]; then
+        echo "Content CR      : ${GREEN_TEXT}${content_cr_name}${RESET_TEXT}"
+    else
+        echo "Content CR      : Not found"
+    fi
+
+    echo ""
+    echo "========================================================================================================================"
+    echo "Top Level CR Kind   : ${YELLOW_TEXT}${top_level_cr_kind}${RESET_TEXT}"
+    echo "Top Level CR Name   : ${GREEN_TEXT}${top_level_cr_name}${RESET_TEXT}"
+    echo "Top Level CR Stored at : ${GREEN_TEXT}${top_level_cr_details_location}${RESET_TEXT}"
+    echo "========================================================================================================================"
+    echo ""
+}
+
+#create a YAML file for the ibm-cp4ba-shared-info ConfigMap
+#used to store shared information related to the CP4BA deployment, such as operator versions and last reconciliation details
+# Function is called in populate_shared_info_configmap based on the top level CR kind
+function create_ibm_cp4ba_shared_info_cm_yaml(){
+    mkdir -p ${UPGRADE_DEPLOYMENT_CR}
+cat << EOF > ${UPGRADE_ICP4A_SHARED_INFO_CM_FILE}
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: ibm-cp4ba-shared-info
+  namespace: <cp4a_namespace>
+  labels:
+    app.kubernetes.io/managed-by: Operator
+    app.kubernetes.io/name: ibm-cp4ba-shared-info
+    app.kubernetes.io/version: <cr_version>
+    release: <cr_version>
+  ownerReferences:
+    - apiVersion: icp4a.ibm.com/v1
+      kind: ICP4ACluster
+      name: <cr_metaname>
+      uid: <cr_uid>
+data:
+  ads_operator_of_last_reconcile: <csv_version>
+  cp4ba_operator_of_last_reconcile: <csv_version>
+  odm_operator_of_last_reconcile: <csv_version>
+  baw_operator_of_last_reconcile: <csv_version>
+EOF
+}
+
+#create a YAML file for the ibm-cp4ba-shared-info ConfigMap
+#used to store shared information related to the CP4BA deployment, such as operator versions and last reconciliation details
+# Function is called in populate_shared_info_configmap based on the top level CR kind
+function create_ibm_cp4ba_content_shared_info_cm_yaml(){
+    mkdir -p ${UPGRADE_DEPLOYMENT_CR}
+cat << EOF > ${UPGRADE_ICP4A_CONTENT_SHARED_INFO_CM_FILE}
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: ibm-cp4ba-content-shared-info
+  namespace: <content_namespace>
+  labels:
+    app.kubernetes.io/managed-by: Operator
+    app.kubernetes.io/name: ibm-cp4ba-shared-info
+    app.kubernetes.io/version: <cr_version>
+    release: <cr_version>
+  ownerReferences:
+    - apiVersion: icp4a.ibm.com/v1
+      kind: Content
+      name: <cr_metaname>
+      uid: <cr_uid>
+data:
+  content_operator_of_last_reconcile: <csv_version>
+EOF
+}
+
+# This is a common function that can create the shared info configmap or patch it with required values.
+# The function replaces code that was essentially repeating with the only differences being the name of the configmap based on the top level CR
+# The function takes in 4 parameters
+# 1. The name of the configmap
+# 2. The current details of that configmap
+# 3. The namespace to check for the configmap
+# 4. The temporary file location that is used to as a template yaml to create the configmap if it is not present
+# 5. The top level CR kind
+# Variables like $cr_metaname, $cr_uid , $cp4a_operator_csv_version , $cr_version are already set at this point in time
+function populate_shared_info_configmap(){
+    local configmap_name=$1
+    local current_shared_info_configmap_details=$2
+    local namespace=$3
+    local temp_configmap_details_location=$4
+    local cr_kind=$5
+    if [[ -z $current_shared_info_configmap_details ]]; then
+        info "$configmap_name configMap could not be found,the script will now create it."
+        if [[ "$cr_kind" == "icp4acluster" ]]; then
+            create_ibm_cp4ba_shared_info_cm_yaml
+        elif [[ "$cr_kind" == "content" ]]; then
+            create_ibm_cp4ba_content_shared_info_cm_yaml
+        else
+            fail "No top level CP4BA custom resource found on this cluster in the project \"$namespace\"."
+            exit 1
+        fi
+        ${SED_COMMAND} "s|<cp4a_namespace>|$namespace|g" ${temp_configmap_details_location}
+        ${SED_COMMAND} "s|<cr_metaname>|$cr_metaname|g" ${temp_configmap_details_location}
+        ${SED_COMMAND} "s|<cr_uid>|$cr_uid|g" ${temp_configmap_details_location}
+        ${SED_COMMAND} "s|<csv_version>|$cp4a_operator_csv_version|g" ${temp_configmap_details_location}
+        ${SED_COMMAND} "s|<cr_version>|$cr_version|g" ${temp_configmap_details_location}
+
+        ${CLI_CMD} apply -f $temp_configmap_details_location  >&3 2>&3
+        if [ $? -eq 0 ]; then
+            success "$configmap_name configMap has been created in the project \"$namespace\"!"
+            ${CLI_CMD} patch configmap $configmap_name -n $namespace --type=json -p="[{'op': 'add', 'path': '/data/cp4ba_original_csv_ver_for_upgrade_script', 'value': '$(echo "$cp4a_operator_csv_version")'}]" >&3 2>&3
+            ${CLI_CMD} patch configmap $configmap_name -n $namespace --type=json -p="[{'op': 'add', 'path': '/data/cpfs_original_csv_ver_for_upgrade_script', 'value': '$(echo "$cpfs_operator_csv_version")'}]" >&3 2>&3
+            cp4ba_original_csv_ver_for_upgrade_script=$cp4a_operator_csv_version
+        else
+            fail "Failed to create $configmap_name configMap in the project \"$namespace\"!"
+        fi
+    else
+        success "$configmap_name configMap was found in namespace \"$namespace\"!"
+        ${CLI_CMD} patch configmap $configmap_name -n $namespace --type=json -p="[{'op': 'add', 'path': '/data/cp4ba_original_csv_ver_for_upgrade_script', 'value': '$(echo "$cp4a_operator_csv_version")'}]" >&3 2>&3
+        ${CLI_CMD} patch configmap $configmap_name -n $namespace --type=json -p="[{'op': 'add', 'path': '/data/cpfs_original_csv_ver_for_upgrade_script', 'value': '$(echo "$cpfs_operator_csv_version")'}]" >&3 2>&3
+        cp4ba_original_csv_ver_for_upgrade_script=$cp4a_operator_csv_version
+    fi
+}
+
+
+# Function to extract and set BAI recovery path for a component
+# Parameters: $1 = component name (e.g., "event-forwarder", "content", "icm", etc.)
+function set_bai_recovery_path() {
+    local component_name="$1"
+    local search_pattern="bai-${component_name}"
+    local tmp_recovery_path=""
+    
+    # Extract recovery path based on platform
+    if [[ "$machine" == "Mac" ]]; then
+        tmp_recovery_path=$(cat ${UPGRADE_DEPLOYMENT_CR}/bai.json | jq '.[].location' | grep "$search_pattern")
+    else
+        tmp_recovery_path=$(grep -Po '"location":.*?[^\\]"' ${UPGRADE_DEPLOYMENT_CR}/bai.json | grep "$search_pattern" | cut -d':' -f2)
+    fi
+    
+    # Clean up quotes
+    tmp_recovery_path=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_recovery_path")
+    
+    # Set recovery path if found
+    if [ ! -z "$tmp_recovery_path" ]; then
+        ${YQ_CMD} -i ".spec.bai_configuration.${component_name}.recovery_path = \"${tmp_recovery_path}\"" ${UPGRADE_DEPLOYMENT_BAI_TMP}
+        success "Merged Flink savepoint for ${component_name^^}: \"$tmp_recovery_path\""
+        info "When running \"cp4a-deployment -m upgradeDeployment\", this savepoint will be auto-filled into spec.bai_configuration.${component_name}.recovery_path."
+    fi
+}
+
+#######################################################
+# Get BAI Management URL from ZenExtension
+# Sets the MANAGEMENT_URL variable directly
+# 
+# Parameters:
+#   $1 - namespace: Namespace to search for ZenExtension
+# Returns:
+#   0 on success, 1 on failure
+#######################################################
+function get_bai_management_url_from_zenextension() {
+    local namespace="$1"
+    local zen_extension_name=""
+    
+    # Find ZenExtension ending with insights-engine-zen-extension-cr
+    zen_extension_name=$(${CLI_CMD} get zenextension -n "${namespace}" --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep 'insights-engine-zen-extension-cr$' | head -n 1)
+    
+    if [[ -z "$zen_extension_name" ]]; then
+        error "No ZenExtension ending with 'insights-engine-zen-extension-cr' found in namespace ${namespace}"
+        return 1
+    fi
+    
+    # Get the ZenExtension as YAML and extract proxy_pass URL from nginx.conf
+    local zen_yaml=$(${CLI_CMD} get zenextension "${zen_extension_name}" -n "${namespace}" -o yaml 2>/dev/null)
+    
+    if [[ -z "$zen_yaml" ]]; then
+        error "Failed to retrieve ZenExtension ${zen_extension_name}"
+        return 1
+    fi
+    
+    # Extract nginx.conf and find proxy_pass URL for /bai-management/
+    MANAGEMENT_URL=$(echo "$zen_yaml" | ${YQ_CMD} '.spec."nginx.conf"' | awk '/location \/bai-management\// {found=1} found && /proxy_pass/ {print; exit}' | sed -n 's/.*proxy_pass \(https:\/\/[^;]*\).*/\1/p')
+    
+    if [[ -z "$MANAGEMENT_URL" ]]; then
+        error "Failed to extract proxy_pass URL from location /bai-management/ in ZenExtension ${zen_extension_name}"
+        return 1
+    fi
+    
+    # Remove trailing slash if present
+    MANAGEMENT_URL="${MANAGEMENT_URL%/}"
+    
+    return 0
+}
+
+
+
+# FUnction to create BAI Savepoints
+# This function is only called when BAI is an optional component and it is an n-1 to n upgrade
+# the function takes 4 parameters
+# 1. The services namespace, 
+# 2. the CR contents location that was retrieved at the beginning of the mode
+# 3. the CR contents back up location.
+
+# There was repetitive code for each different BAI component for which flink jobs exist and that has been converted to a dynamic function called set_bai_recovery_path
+# The script also had the same savepoint logic repeating once for a ICP4ACluster CR and once for a Content CR, where it would first try to check if BAI was enabled and then do the savepoint creation. 
+# Since we now determine if BAI is enabled before entering the function and also already know the top level CR which helps us identify if BAI is an optional components, the code has become leaner
+
+function create_bai_savepoints(){
+    local namespace=$1
+    local cr_contents_location=$2
+    local cr_contents_backup_location=$3
+    
+    # Backup existing top level CR
+    mkdir -p ${cr_contents_backup_location} >/dev/null 2>&1
+    ${COPY_CMD} -rf ${cr_contents_location} ${cr_contents_backup_location}
+    
+    mkdir -p ${TEMP_FOLDER} >/dev/null 2>&1
+    # Check the jq install on MacOS
+    if [[ "$machine" == "Mac" ]]; then
+        which jq &>/dev/null
+        [[ $? -ne 0 ]] && \
+        printf '%b\n'  "\x1B[1;31mUnable to locate the jq CLI. You must install it to run this script on macOS.\x1B[0m" && \
+        exit 1
+    fi
+
+    info "Create the BAI savepoints for recovery path which will be referenced when the new custom resource file is generated as a part of the upgradeDeployment mode."
+    ${CLI_CMD} get crd |grep insightsengines.icp4a.ibm.com >&3 2>&3
+    if [ $? -eq 0 ]; then
+        INSIGHTS_ENGINE_CR=$(${CLI_CMD} get insightsengines.icp4a.ibm.com --no-headers --ignore-not-found -n ${namespace} -o name)
+    fi
+    if [[ -z $INSIGHTS_ENGINE_CR ]]; then
+        INSIGHTS_ENGINE_CR=$(${CLI_CMD} get insightsengines.insightsengine.automation.ibm.com --no-headers --ignore-not-found -n ${namespace} -o name)
+        if [[ -z $INSIGHTS_ENGINE_CR ]]; then
+            error "An InsightsEngine kind custom resource was not found in the project \"${namespace}\"."
+            return 1
+        fi
+    fi
+    if [[ ! -z $INSIGHTS_ENGINE_CR ]]; then
+        
+        if [[ "$SKIP_FOR_API" == "true" ]]; then
+            info "Upgrade is being executed via API endpoints, retrieving Management URL from ZenExtension..."
+            get_bai_management_url_from_zenextension "${namespace}"
+            if [[ $? -ne 0 || -z "$MANAGEMENT_URL" ]]; then
+                error "Failed to retrieve Management URL from ZenExtension"
+                return 1
+            fi
+            info "Retrieved Management URL from ZenExtension: ${MANAGEMENT_URL}"
+        else
+            MANAGEMENT_URL=$(${CLI_CMD} get ${INSIGHTS_ENGINE_CR} --no-headers --ignore-not-found -n ${namespace} -o jsonpath='{.status.components.management.endpoints[?(@.scope=="External")].uri}')
+            info "Retrieved Management URL from InsightsEngine CR: ${MANAGEMENT_URL}"
+        fi
+        MANAGEMENT_AUTH_SECRET=$(${CLI_CMD} get ${INSIGHTS_ENGINE_CR} --no-headers --ignore-not-found -n ${namespace} -o jsonpath='{.status.components.management.endpoints[?(@.scope=="External")].authentication.secret.secretName}')
+        MANAGEMENT_USERNAME=$(${CLI_CMD} get secret ${MANAGEMENT_AUTH_SECRET} --no-headers --ignore-not-found -n ${namespace} -o jsonpath='{.data.username}' | base64 -d)
+        MANAGEMENT_PASSWORD=$(${CLI_CMD} get secret ${MANAGEMENT_AUTH_SECRET} --no-headers --ignore-not-found -n ${namespace} -o jsonpath='{.data.password}' | base64 -d)
+        if [[ -z "$MANAGEMENT_URL" || -z "$MANAGEMENT_AUTH_SECRET" || -z "$MANAGEMENT_USERNAME" || -z "$MANAGEMENT_PASSWORD" ]]; then
+            error "Can not create the BAI savepoints for recovery path."
+            return 1
+        else
+            # Ensure output directory exists
+            mkdir -p ${UPGRADE_DEPLOYMENT_CR} >/dev/null 2>&1
+            touch ${UPGRADE_DEPLOYMENT_BAI_TMP} >/dev/null 2>&1
+            if [[ -e ${UPGRADE_DEPLOYMENT_CR}/bai.json ]]; then
+                [ "$(cat ${UPGRADE_DEPLOYMENT_CR}/bai.json)" != "[]" ] && mkdir -p ${UPGRADE_DEPLOYMENT_CR}/bai-json-backup && cp ${UPGRADE_DEPLOYMENT_CR}/bai.json ${UPGRADE_DEPLOYMENT_CR}/bai-json-backup/bai_$(date +'%Y%m%d%H%M%S').json
+            fi
+            curl -X POST -k -u ${MANAGEMENT_USERNAME}:${MANAGEMENT_PASSWORD} "${MANAGEMENT_URL}/api/v1/processing/jobs/savepoints" -o ${UPGRADE_DEPLOYMENT_CR}/bai.json >&3 2>&3
+
+            json_file_content="[]"
+            if [ "$json_file_content" == "$(cat ${UPGRADE_DEPLOYMENT_CR}/bai.json)" ] ;then
+                fail "None return in \"${UPGRADE_DEPLOYMENT_CR}/bai.json\" when request BAI savepoint through REST API: curl -X POST -k -u ${MANAGEMENT_USERNAME}:${MANAGEMENT_PASSWORD} \"${MANAGEMENT_URL}/api/v1/processing/jobs/savepoints\" "
+                warning "Fetch Flink job savepoints for the recovery path using above REST API manually, then place the JSON file (bai.json) under the directory \"${TEMP_FOLDER}/\""
+                if [[ "$SKIP_FOR_API" != "true" ]]; then
+                    prompt_press_any_key_to_continue
+                fi
+            fi
+            ##########################################################################################################################
+            ## In 24.0.1 and later, we'll only support n-1 upgrade therefore we're back to the old way of saving content event-forwarder savepoint and bai-content savepoint UNLESS the ALLOW_DIRECT_UPGRADE == 1 .
+            ##########################################################################################################################
+            # Process savepoints for different components
+            # For n-1 upgrade (not direct upgrade), process event-forwarder and content
+            if [[ "$ALLOW_DIRECT_UPGRADE" != 1 ]]; then
+                set_bai_recovery_path "event-forwarder"
+                set_bai_recovery_path "content"
+            fi
+            
+            # Process other components (always)
+            set_bai_recovery_path "icm"
+            set_bai_recovery_path "odm"
+            set_bai_recovery_path "bawadv"
+            set_bai_recovery_path "bpmn"
+            set_bai_recovery_path "navigator"
+            set_bai_recovery_path "ads"
+        fi
+    fi
+}
+
+
+# Helper function to scale operators for upgradeDeploymentStatus
+function scale_operator() {
+    local operator_name=$1
+    local operator_label=$2
+    
+    info "Scaling up \"$operator_label\" operator"
+    ${CLI_CMD} scale --replicas=1 deployment $operator_name -n $CP4BA_OPERATOR_NS >&3 2>&3
+    if [ $? -eq 0 ]; then
+        sleep 1
+    else
+        fail "Failed to scale up \"$operator_label\" operator"
+    fi
+}
+
+# Generic helper function to set PostgreSQL client flag for a given database
+# Parameters:
+#   $1: DB user name property key (e.g., "ADP_GG_DB_USER_NAME", "AEOS_DB_USER_NAME", "DEVOS_DB_USER_NAME")
+#   $2: Output variable name (e.g., "adpgg_postgresql_client_flag", "aeos_postgresql_client_flag", "devos_postgresql_client_flag")
+#   $3: (Optional) Use server-specific DB_TYPE instead of global $DB_TYPE (default: "false")
+function get_postgresql_client_flag() {
+    local db_user_property_key="$1"
+    local output_var_name="$2"
+    local use_server_db_type="${3:-false}"
+    
+    # Get DB server name
+    local tmp_dbservername
+    tmp_dbservername="$(prop_db_name_user_property_file_for_server_name "$db_user_property_key")"
+    tmp_dbservername=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbservername")
+    check_dbserver_name_valid "$tmp_dbservername" "$db_user_property_key"
+    
+    # Determine which DB_TYPE to use
+    local db_type_to_check
+    if [[ "$use_server_db_type" == "true" ]]; then
+        # Get DB type from server properties (for ADP GG)
+        db_type_to_check="$(prop_db_server_property_file "$tmp_dbservername.DATABASE_TYPE")"
+        db_type_to_check=$(sed -e 's/^"//' -e 's/"$//' <<<"$db_type_to_check")
+        db_type_to_check=$(echo "$db_type_to_check" | tr '[:upper:]' '[:lower:]')
+    else
+        # Use global DB_TYPE (for AEOS and DEVOS)
+        db_type_to_check="$DB_TYPE"
+    fi
+    
+    # Get PostgreSQL SSL client flag
+    local result_flag=""
+    if [[ "$db_type_to_check" == "postgresql" ]]; then
+        local tmp_flag
+        tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file "$tmp_dbservername.POSTGRESQL_SSL_CLIENT_SERVER")")
+        result_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
+    elif [[ "$db_type_to_check" == "postgresql-edb" ]]; then
+        result_flag="true"
+    elif [[ "$use_server_db_type" == "true" ]]; then
+        # For non-PostgreSQL databases when using server-specific type (ADP GG case)
+        result_flag="true"
+    fi
+    
+    # Set the output variable dynamically
+    eval "$output_var_name=\"$result_flag\""
+}
+
+#DBACLD-231157: This function will display messages about external PG when the customer selects ADP GG or ADS with database type other than external PG.
+# The function will take 3 parameters:
+# 1. mode: Depending on the mode (property, generate, deployment), the message will be different.
+# 2. component: The component for which the message is being displayed such as ADP GG or ADS
+# 3. update_property_file: Whether to update the property file (default: false)
+function adp_ads_ext_pg_message() {
+    local mode="$1"
+    local component="${2:-Decision Intelligence Client Managed Software and/or IBM Automation Document Processing}"
+    local update_property_file="${3:-false}"
+    
+    #Display during -m property mode when customer selecting ADP/ADS with DB type other than external PG. The message will be a notice about the requirement of external PG for these components and that more information will be provided in later modes
+    if [[ "$mode" == "property" ]]; then
+        if [[ "$update_property_file" == "true" ]]; then
+            # We need to remove the line of note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##" from the generated properties file since it is not relevant when DB type is not external PostgreSQL and it is causing confusion for customers who are selecting ADP GG or ADS capabilities with a DB type other than external PostgreSQL
+            ${SED_COMMAND} "/## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service\/server details and create a database ##/d" ${DB_NAME_USER_PROPERTY_FILE} >&3 2>&3
+        
+        else
+            info "${YELLOW_TEXT}[IMPORTANT]: External Postgresql must be used since $component capabilities are selected.  More detail information will be provided in later modes. ${RESET_TEXT}"
+            # add new line
+            echo ""
+        fi
+    fi
+    # Displaying during -m generate mode
+    if [[ "$mode" == "generate" ]]; then
+        info "${YELLOW_TEXT}[IMPORTANT]: Since $component capabilities are selected and database type is not selected as external PostgreSQL. Please follow the instructions in ADP_DICMS_PG.md to setup the external PostgreSQL databases for these components before running validate mode. ${RESET_TEXT}"
+        # add new line
+        echo ""
+    fi
+    # Displaying during cp4a-deployment -n <namespace>
+    if [[ "$mode" == "deployment" ]]; then
+        info "${YELLOW_TEXT}[IMPORTANT]: Since $component capabilities are selected and database type is not selected as external PostgreSQL. Please follow the instructions in ADP_DICMS_PG.md to update the CR YAML before applying it to the cluster. ${RESET_TEXT}"
+        # add new line
+        echo ""
+    fi
+}
+
+
+
+# Function to update BTS datastore configuration for tls.key to tls.pk8 migration
+# This function checks for the ConfigMap 'ibm-bts-config-extension' and Secret 'bts-datastore-edb-secret'
+# and updates tls.key references to tls.pk8 where needed.
+#
+# Usage: update_bts_datastore_resources $services_namespace
+#
+# Parameters:
+#   $1 - namespace: The CP4BA namespace to check
+
+function update_bts_datastore_resources() {
+    local namespace="$1"
+    local bts_configmap_name="ibm-bts-config-extension"
+    local bts_secret_name="bts-datastore-edb-secret"
+    
+    info "Checking if the current deployment has the Secret '$bts_secret_name' and ConfigMap '$bts_configmap_name' created in the namespace: $namespace"
+    echo
+    # Check if ConfigMap exists
+    local cm_exists=false
+    if ${CLI_CMD} get configmap "$bts_configmap_name" -n "$namespace" &> /dev/null; then
+        cm_exists=true
+        info "ConfigMap '$bts_configmap_name' found in namespace '$namespace'"
+    else
+        info "ConfigMap '$bts_configmap_name' not found in namespace '$namespace'"
+    fi
+    
+    # Check if Secret exists
+    local secret_exists=false
+    if ${CLI_CMD} get secret "$bts_secret_name" -n "$namespace" &> /dev/null; then
+        secret_exists=true
+        info "Secret '$bts_secret_name' found in namespace '$namespace'"
+    else
+        info "Secret '$bts_secret_name' not found in namespace '$namespace'"
+    fi
+    
+    # Exit if neither resource exists
+    if [[ "$cm_exists" == "false" && "$secret_exists" == "false" ]]; then
+        info "Neither ConfigMap '$bts_configmap_name' nor Secret '$bts_secret_name' exist in this deployment. Skipping the resource updates as they are not required."
+        return 0
+    fi
+    echo
+    # Process Secret if it exists
+    if [[ "$secret_exists" == "true" ]]; then
+        info "Processing Secret '$bts_secret_name' to check for 'tls.key' field..."
+        
+        # Check if secret has tls.key using jsonpath
+        local has_tls_key=$(${CLI_CMD} get secret "$bts_secret_name" -n "$namespace" -o jsonpath='{.data.tls\.key}' 2>/dev/null)
+        
+        if [[ -n "$has_tls_key" ]]; then
+            warning "Found 'tls.key' field in Secret '$bts_secret_name'. This field needs to be renamed to 'tls.pk8' for compatibility with the latest BTS version."
+            info "Applying patch to rename 'tls.key' to 'tls.pk8' in Secret '$bts_secret_name'..."
+            
+            # Create a patch to rename tls.key to tls.pk8
+            ${CLI_CMD} patch secret "$bts_secret_name" -n "$namespace" --type=json -p="[
+                {\"op\": \"add\", \"path\": \"/data/tls.pk8\", \"value\": \"$has_tls_key\"},
+                {\"op\": \"remove\", \"path\": \"/data/tls.key\"}
+            ]"
+            
+            if [[ $? -eq 0 ]]; then
+                success "Successfully renamed 'tls.key' to 'tls.pk8' in Secret '$bts_secret_name'"
+            else
+                error "Failed to update Secret '$bts_secret_name'. Please check the secret permissions and try again."
+                return 1
+            fi
+        else
+            # Check if tls.pk8 already exists
+            local has_tls_pk8=$(${CLI_CMD} get secret "$bts_secret_name" -n "$namespace" -o jsonpath='{.data.tls\.pk8}' 2>/dev/null)
+            if [[ -n "$has_tls_pk8" ]]; then
+                info "Secret '$bts_secret_name' already has 'tls.pk8' field. No changes needed."
+            fi
+        fi
+    fi
+    
+    # Process ConfigMap if it exists
+    if [[ "$cm_exists" == "true" ]]; then
+        info "Processing ConfigMap '$bts_configmap_name' to check for 'tls.key' file path references..."
+        
+        # Get all keys from ConfigMap data section
+        local all_keys=$(${CLI_CMD} get configmap "$bts_configmap_name" -n "$namespace" -o jsonpath='{.data}' 2>/dev/null)
+        
+        if [[ -z "$all_keys" || "$all_keys" == "{}" ]]; then
+            warning "No data found in ConfigMap '$bts_configmap_name'. ConfigMap appears to be empty."
+        else
+            # Find all customPropertyName keys and check for sslKey value
+            local ssl_key_num=""
+            local custom_prop_names=$(${CLI_CMD} get configmap "$bts_configmap_name" -n "$namespace" -o json | grep -o '"customPropertyName[0-9]*"' | tr -d '"')
+            
+            if [[ -z "$custom_prop_names" ]]; then
+                info "No 'customPropertyName' keys found in ConfigMap '$bts_configmap_name'. No SSL key configuration to update."
+            else
+                # Check each customPropertyName to find sslKey
+                while IFS= read -r key; do
+                    if [[ -n "$key" ]]; then
+                        local value=$(${CLI_CMD} get configmap "$bts_configmap_name" -n "$namespace" -o jsonpath="{.data.$key}" 2>/dev/null)
+                        
+                        if [[ "$value" == "sslKey" ]]; then
+                            # Extract the number from customPropertyNameX
+                            ssl_key_num=$(echo "$key" | grep -o '[0-9]*$')
+                            info "Found 'sslKey' property at '$key'"
+                            break
+                        fi
+                    fi
+                done <<< "$custom_prop_names"
+                
+                if [[ -n "$ssl_key_num" ]]; then
+                    # Check the corresponding customPropertyValue
+                    local custom_prop_value_key="customPropertyValue$ssl_key_num"
+                    local current_value=$(${CLI_CMD} get configmap "$bts_configmap_name" -n "$namespace" -o jsonpath="{.data.$custom_prop_value_key}" 2>/dev/null)
+                    
+                    if [[ -n "$current_value" ]]; then
+                        
+                        # Check if the path ends with tls.key
+                        if [[ "$current_value" == *"tls.key" ]]; then
+                            local new_value="${current_value%tls.key}tls.pk8"
+                            warning "File path ends with 'tls.key' which needs to be updated to 'tls.pk8' for compatibility with the latest BTS version."
+                            info "Applying patch to update '$custom_prop_value_key' from '$current_value' to '$new_value'..."
+                            
+                            # Patch the ConfigMap
+                            ${CLI_CMD} patch configmap "$bts_configmap_name" -n "$namespace" --type=json -p="[
+                                {\"op\": \"replace\", \"path\": \"/data/$custom_prop_value_key\", \"value\": \"$new_value\"}
+                            ]"
+                            
+                            if [[ $? -eq 0 ]]; then
+                                success "Successfully updated the '$custom_prop_value_key' key in ConfigMap '$bts_configmap_name'"
+                            else
+                                error "Failed to update ConfigMap '$bts_configmap_name'. Please check the configmap '$bts_configmap_name' permissions and try again."
+                                return 1
+                            fi
+                        elif [[ "$current_value" == *"tls.pk8" ]]; then
+                            info "File path already ends with 'tls.pk8'. No changes needed."
+                        else
+                            echo
+                        fi
+                    else
+                        warning "Property '$custom_prop_value_key' not found or is empty in ConfigMap '$bts_configmap_name'."
+                        warning "Expected to find the SSL key file path at this property."
+                    fi
+                else
+                    info "No 'sslKey' property found in ConfigMap '$bts_configmap_name'."
+                    info "Please verify the '$bts_configmap_name' configmap before proceeding with next steps."
+                fi
+            fi
+        fi
+    fi
+    
+    success "BTS Datasource resources are compatible with the latest BTS version."
+    return 0
+}
+
+# Function to replace "ADS_" string with "DICMS_" in the prop file DB_NAME_USER_PROPERTY_FILE
+# In the future, we might need to add more prop files, but currently I only see ADS properties in DB_NAME_USER_PROPERTY_FILE
+# This is useful for case when we are migrating prop files from a prior version of CP4BA where the props were named "ADS"
+# In CP4BA 26.0.0, we renamed ADS to DICMS
+function update_ads_name_to_dicms_in_prop_file(){
+    if [[ -z "${DB_NAME_USER_PROPERTY_FILE}" ]]; then
+        error "DB_NAME_USER_PROPERTY_FILE variable is not set. Cannot update property file."
+        return 1
+    fi
+    
+    if [[ ! -f "${DB_NAME_USER_PROPERTY_FILE}" ]]; then
+        error "Property file '${DB_NAME_USER_PROPERTY_FILE}' does not exist."
+        return 1
+    fi
+    
+    info "Updating property file: ${DB_NAME_USER_PROPERTY_FILE}"
+    info "Renaming all variables named 'ADS_' to 'DICMS_' because ADS has been renamed to DICMS ..."
+    
+    # Create a backup of the original file
+    local backup_file="${DB_NAME_USER_PROPERTY_FILE}.bak_ads_to_dicms"
+    ${COPY_CMD} "${DB_NAME_USER_PROPERTY_FILE}" "${backup_file}"
+    
+    if [[ $? -ne 0 ]]; then
+        error "Failed to create backup of property file."
+        return 1
+    fi
+    
+    # Replace all instances of ADS_ with DICMS_ in the file
+    ${SED_COMMAND} 's/ADS_/DICMS_/g' ${DB_NAME_USER_PROPERTY_FILE}
+    
+    if [[ $? -eq 0 ]]; then
+        success "Successfully renamed 'ADS_' variables to 'DICMS_' in ${DB_NAME_USER_PROPERTY_FILE}"
+        # Remove backup ${backup_file}
+        rm -f "${backup_file}" 2>/dev/null
+        # Clean up any sed backup files with "" suffix
+        rm -f "${DB_NAME_USER_PROPERTY_FILE}\"\"" 2>/dev/null
+        return 0
+    else
+        error "Failed to update property file. Restoring from backup..."
+        ${COPY_CMD} "${backup_file}" "${DB_NAME_USER_PROPERTY_FILE}"
+        return 1
+    fi
+}
+
+#
+# Function to add DICMS properties to property files that are needed specifically in the Vault scenario
+# (originally in "cp4a-prerequisites.sh", moved to this helper function so it can be reused in multiple scenarios)
+#
+function add_dicms_props_for_vault() {
+    # DICMS is chosen as a component and whatever database is used, if vault mode is enabled we need more user properties
+    # NOTE: Properties are only added if they don't already exist (to avoid duplication)
+    if [[ " ${pattern_cr_arr[@]} " =~ " decisions_ads " && "$VAULT_ENABLED" == "true" ]]; then
+        if [[ " ${optional_component_cr_arr[@]} " =~ " ads_designer " ]]; then
+            tip="##       USER Properties for DICMS Designer       ##"
+            echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "$tip" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
+            # DI Designer user profile
+            if ! grep -q "^DICMS_DESIGNER_ENCRYPTION_KEYS=" ${USER_PROFILE_PROPERTY_FILE} 2>/dev/null; then
+                echo "## Choose an encryption keys in JSON format." >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "DICMS_DESIGNER_ENCRYPTION_KEYS=\"{\\\"activeKey\\\": \\\"key1\\\", \\\"secretKeyList\\\": [ {\\\"secretKeyId\\\": \\\"key1\\\", \\\"value\\\": \\\"<Required>\\\"} ] }\"" >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            fi
+            if ! grep -q "^DICMS_DESIGNER_SSL_KEYSTORE_PASSWORD=" ${USER_PROFILE_PROPERTY_FILE} 2>/dev/null; then
+                echo "## Choose a SSL keystore password." >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "DICMS_DESIGNER_SSL_KEYSTORE_PASSWORD=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            fi
+        fi   
+        if [[ " ${optional_component_cr_arr[@]} " =~ " ads_runtime " ]]; then
+            tip="##      USER Properties for DICMS Runtime         ##"
+            echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "$tip" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
+            # DI Designer user profile
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            if ! grep -q "^DICMS_RUNTIME_DEPLOYMENT_SPACE_MANAGER_USERNAME=" ${USER_PROFILE_PROPERTY_FILE} 2>/dev/null; then
+                echo "## IMPORTANT: You must use distinct user names for each DICMS_RUNTIME_*_USERNAME property as they are used to map to distinct application roles." >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "## Choose a deployment space manager username." >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "DICMS_RUNTIME_DEPLOYMENT_SPACE_MANAGER_USERNAME=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            fi
+            if ! grep -q "^DICMS_RUNTIME_DEPLOYMENT_SPACE_MANAGER_PASSWORD=" ${USER_PROFILE_PROPERTY_FILE} 2>/dev/null; then
+                echo "## Choose a deployment space manager password." >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "DICMS_RUNTIME_DEPLOYMENT_SPACE_MANAGER_PASSWORD=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            fi
+            if ! grep -q "^DICMS_RUNTIME_DECISION_SERVICE_USERNAME=" ${USER_PROFILE_PROPERTY_FILE} 2>/dev/null; then
+                echo "## Choose a decision service username." >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "DICMS_RUNTIME_DECISION_SERVICE_USERNAME=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            fi
+            if ! grep -q "^DICMS_RUNTIME_DECISION_SERVICE_PASSWORD=" ${USER_PROFILE_PROPERTY_FILE} 2>/dev/null; then
+                echo "## Choose a decision service password." >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "DICMS_RUNTIME_DECISION_SERVICE_PASSWORD=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            fi
+            if ! grep -q "^DICMS_RUNTIME_DECISION_SERVICE_MANAGER_USERNAME=" ${USER_PROFILE_PROPERTY_FILE} 2>/dev/null; then
+                echo "## Choose a decision service manager username." >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "DICMS_RUNTIME_DECISION_SERVICE_MANAGER_USERNAME=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            fi
+            if ! grep -q "^DICMS_RUNTIME_DECISION_SERVICE_MANAGER_PASSWORD=" ${USER_PROFILE_PROPERTY_FILE} 2>/dev/null; then
+                echo "## Choose a decision service manager password." >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "DICMS_RUNTIME_DECISION_SERVICE_MANAGER_PASSWORD=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            fi
+            if ! grep -q "^DICMS_RUNTIME_DECISION_RUNTIME_MONITOR_USERNAME=" ${USER_PROFILE_PROPERTY_FILE} 2>/dev/null; then
+                echo "## Choose a decision runtime monitor username." >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "DICMS_RUNTIME_DECISION_RUNTIME_MONITOR_USERNAME=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            fi
+            if ! grep -q "^DICMS_RUNTIME_DECISION_RUNTIME_MONITOR_PASSWORD=" ${USER_PROFILE_PROPERTY_FILE} 2>/dev/null; then
+                echo "## Choose a decision runtime monitor password." >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "DICMS_RUNTIME_DECISION_RUNTIME_MONITOR_PASSWORD=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            fi
+            if ! grep -q "^DICMS_RUNTIME_ENCRYPTION_KEYS=" ${USER_PROFILE_PROPERTY_FILE} 2>/dev/null; then
+                echo "## Choose encryption keys in JSON format." >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "DICMS_RUNTIME_ENCRYPTION_KEYS=\"{\\\"activeKey\\\": \\\"key1\\\", \\\"secretKeyList\\\": [ {\\\"secretKeyId\\\": \\\"key1\\\", \\\"value\\\": \\\"<Required>\\\"} ] }\"" >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            fi
+            if ! grep -q "^DICMS_RUNTIME_SSL_KEYSTORE_PASSWORD=" ${USER_PROFILE_PROPERTY_FILE} 2>/dev/null; then
+                echo "## Choose a SSL keystore password." >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "DICMS_RUNTIME_SSL_KEYSTORE_PASSWORD=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+                echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            fi
+        fi
+
+        success "Extra properties for Decision Intelligence Client Managed Software in vault mode have been added\n"
+    fi
+}
+
+#
+# Function to add ODM properties to property files 
+# (originally in "cp4a-prerequisites.sh", moved to this helper function so it can be reused in multiple scenarios)
+# No longer needed https://jsw.ibm.com/browse/DBACLD-238578?focusedId=30084545&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-30084545
+function add_odm_props() {
+
+    if ! grep -q "^ODM.KEYSTORE_PASSWORD=" ${USER_PROFILE_PROPERTY_FILE} 2>/dev/null; then
+        # user property section for ODM which for now has just a keystorePassword field
+        # https://jsw.ibm.com/browse/DBACLD-238578
+        tip="##       USER Property for ODM   ##"
+        echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "$tip" >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
+        # Adding a new property for the keystore password required for generating the ibm-odm-keystore-secret
+        # https://jsw.ibm.com/browse/DBACLD-238578
+        echo "## Provide a string for keystorePassword in the ibm-odm-keystore-secret that will be used when creating the keystore." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "## If password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text. (NOTES: ODM.KEYSTORE_PASSWORD must exceed 16 characters when fips enabled.)" >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "## Note: If you enable external Vault feature, enter your password in plain text, regardless of whether it contains special characters." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "ODM.KEYSTORE_PASSWORD=\"{Base64}<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+        
+        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+        success "Property file has been updated with IBM Operational Decision Manager properties.\n"
+    fi
 }
