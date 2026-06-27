@@ -12,6 +12,10 @@
 ###############################################################################
 CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
+
+# Open file descriptor 3 for suppressing output
+exec 3>/dev/null
+
 # Import common utilities and environment variables
 source ${CUR_DIR}/helper/common.sh
 
@@ -33,7 +37,7 @@ function show_help() {
     echo "                If CP4BA is deployed using separate namespaces for operators and operands/services and the script is being used for upgrade, the value is the namespace where the CP4BA operators are deployed"
     echo "                If CP4BA is deployed using separate namespaces for operators and operands/services and the script is being used for generating a custom resource file, the value is the namespace where CP4BA operands/services are to be deployed."
     echo
-    echo "  -i  Optional: Operator image name. By default, it is cp.icr.io/cp/cp4a/icp4a-operator:$CP4BA_RELEASE_BASE"
+    echo "  -i  Optional: Operator image name. By default, it is icr.io/cpopen/icp4a-operator:$CP4BA_RELEASE_BASE"
     echo
     echo "  -p  Optional: Pull secret to use to connect to the registry. By default, it is ibm-entitlement-key."
     echo
@@ -2628,7 +2632,7 @@ function select_optional_component(){
         tips2="\x1B[1;31mTips\x1B[0m:\x1B[1m Press [ENTER] when you are done\x1B[0m"
         fncm_tips="\x1B[1mNote: IBM Enterprise Records (IER) and IBM Content Collector for SAP (ICCSAP) do not integrate with User Management Service (UMS).\n"
         linux_starter_tips="\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;31mIBM Content Collector for SAP (4) does NOT support a cluster running a Linux on Power architecture.\n\x1B[0m"
-        linux_production_tips="\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;31mIBM Content Collector for SAP (5) does NOT support a cluster running a Linux on Power architecture.\n\x1B[0m"
+        linux_production_tips="\x1B[33;5m[ATTENTION]: \x1B[0m\x1B[1;31mIBM Content Collector for SAP (4) does NOT support a cluster running a Linux on Power architecture.\n\x1B[0m"
         ads_tips="\x1B[1mTips:\x1B[0m Decision Designer is typically required if you are deploying a development or test environment.\nThis feature will automatically install Business Automation Studio, if not already present. \n\nDecision Runtime is typically recommended if you are deploying a test or production environment.\n\nDecision Runtime is required when Decision Designer is selected.\n\nYou should choose at least one these features to have a minimum environment configuration.\n"
         if [[ $DEPLOYMENT_TYPE == "starter" ]];then
             decision_tips="\x1B[1mTips:\x1B[0m Decision Center, Rule Execution Server and Decision Runner will be installed by default.\n"
@@ -5347,7 +5351,16 @@ function select_objectstore_number(){
                 printf '%b\n' "\x1B[1;31mEnter a valid number [0 to 10]\x1B[0m"
                 content_os_number=""
             fi
-        elif [[ " ${pattern_cr_arr[@]}" =~ "content" ]]; then
+        elif [[ " ${pattern_cr_arr[@]}" =~ "document_processing" && " ${pattern_cr_arr[@]}" =~ "content" ]]; then
+            read -erp "" content_os_number
+            [[ $content_os_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"; continue; }
+            if [ "$content_os_number" -ge 1 ] && [ "$content_os_number" -le 10 ]; then
+                break
+            else
+                printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"
+                content_os_number=""
+            fi
+        elif [[ " ${pattern_cr_arr[@]}" =~ "content" && (! " ${pattern_cr_arr[@]}" =~ "document_processing") ]]; then
             read -erp "" content_os_number
             [[ $content_os_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"; continue; }
             if [ "$content_os_number" -ge 1 ] && [ "$content_os_number" -le 10 ]; then
@@ -9054,7 +9067,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     
     ################## Start of workaround for https://jsw.ibm.com/browse/DBACLD-167061  
     # We're setting spec.enableSuperuserAccess to true for our postgres-cp4ba edb instance
-    info "Determinig if EnterpriseDB PostgreSQL \"$EDB_INSTANCE_CP4BA_NAME\" is installed for IBM Cloud Pak for Business Automation."
+    info "Determining if EnterpriseDB PostgreSQL \"$EDB_INSTANCE_CP4BA_NAME\" is installed for IBM Cloud Pak for Business Automation."
     # Check if EnterpriseDB PostgreSQL CRD exists first
     ${CLI_CMD} get crd clusters.postgresql.k8s.enterprisedb.io >&3 2>&3
     if [ $? -eq 0 ]; then
@@ -9436,6 +9449,13 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         fi
     fi
     ############## End - Check CSS selected or not ##############
+
+    # Create the ODM keystore secret before upgrade, keystore password is auto generated
+    # ODM secret is only created if it is not found in the existing namespace. There is a chance the user is upgrading from a version that already contains the required changes for this issue.
+    # https://jsw.ibm.com/browse/DBACLD-238578
+    if [[ "${EXISTING_PATTERN_ARR[@]} " =~ "decisions" ]]; then
+        create_odm_keystore_secret_for_upgrade "$CP4BA_SERVICES_NS" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"
+    fi
 
     ######### START - THE CHeck to see if SCIM is configured in the Domain ########
 
@@ -10318,6 +10338,18 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                     rm -rf $TMP_LICENSING_OLM_CATALOG >&3 2>&3
                 fi
 
+                # Record existing catalog sources before applying new ones for cleanup after upgrade
+                CATALOG_BACKUP_FILE="${TEMP_FOLDER}/.pre_upgrade_catalog_sources"
+                info "Recording existing catalog sources before upgrade..."
+                ${CLI_CMD} get catalogsource -n "$TARGET_PROJECT_NAME" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}' > "${CATALOG_BACKUP_FILE}.target"
+                ${CLI_CMD} get catalogsource -n "$CERT_MANAGER_PROJECT" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}' > "${CATALOG_BACKUP_FILE}.cert"
+                ${CLI_CMD} get catalogsource -n "$LICENSE_MANAGER_PROJECT" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}' > "${CATALOG_BACKUP_FILE}.license"
+                # Save configuration for cleanup phase
+                echo "ENABLE_PRIVATE_CATALOG_USED=1" > "$CATALOG_BACKUP_FILE"
+                echo "TARGET_PROJECT_NAME=\"$TARGET_PROJECT_NAME\"" >> "$CATALOG_BACKUP_FILE"
+                echo "CERT_MANAGER_PROJECT=\"$CERT_MANAGER_PROJECT\"" >> "$CATALOG_BACKUP_FILE"
+                echo "LICENSE_MANAGER_PROJECT=\"$LICENSE_MANAGER_PROJECT\"" >> "$CATALOG_BACKUP_FILE"
+
                 sed "s/REPLACE_CATALOG_SOURCE_NAMESPACE/$CATALOG_NAMESPACE/g" ${OLM_CATALOG} > ${OLM_CATALOG_TMP}
                 # replace all other catalogs with <CP4BA NS> namespaces
                 ${SED_COMMAND} "s|namespace: .*|namespace: \"$TARGET_PROJECT_NAME\"|g" ${OLM_CATALOG_TMP}
@@ -10325,28 +10357,6 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                 ${SED_COMMAND} "/name: ibm-cert-manager-catalog/{n;s/namespace: .*/namespace: $CERT_MANAGER_PROJECT/;}" ${OLM_CATALOG_TMP}
                 # replace openshift-marketplace for ibm-licensing-catalog with ibm-licensing
                 ${SED_COMMAND} "/name: ibm-licensing-catalog/{n;s/namespace: .*/namespace: $LICENSE_MANAGER_PROJECT/;}" ${OLM_CATALOG_TMP}
-
-                # CPFS suggestion to delete the old BTS Catalogs after the new catalog source for BTS is applied. 
-                # Saving the name of the current BTS Catalog sources so that it can be deleted once the new catalog sources are applied
-                # Any existing bts catalogs in the stream v3-35 must be deleted and only what was applied must be kept
-                # To be dynamic this loop will check for any v3-35-1 or v3-35-2 catalog source names and then accordingly remove them.
-                # It will not delete any older BTS catalogs like v3-33 or v3-34 
-                # Moving forward from the latest refresh of the public 24.0.1 IF002 this BTS catalog will be v3-35 for any catalog source in that stream
-                # In 24.0.1 IF001 , 24.0.1 GA , 24.0.0 IF005,24.0.0 IF004 we have v3-35-1 and in 24.0.1 IF002 we will have v3-35 so it will remove the older one when we upgrade
-                # In 24.0.0 IF003 we have v3-34 so there will be no problems with keeping that catalog and we will not delete it.
-
-                # https://jsw.ibm.com/browse/DBACLD-176790
-
-                pre_upgrade_bts_catalog_names=$(${CLI_CMD} get catalogsource -n "$TARGET_PROJECT_NAME" --no-headers 2>/dev/null | awk '$1 ~ /^ibm-bts-operator-catalog/ { print $1 }')
-                pre_upgrade_bts_catalog_names_to_delete=()
-                for pre_upgrade_bts_catalog_name in $pre_upgrade_bts_catalog_names; do
-                    #echo "here catalog ->$pre_upgrade_bts_catalog_name"
-                    if [[ "$pre_upgrade_bts_catalog_name" == *"ibm-bts-operator-catalog-v3-35"* && "$pre_upgrade_bts_catalog_name" != "ibm-bts-operator-catalog-v3-35" ]]; then
-                        #echo "addng this to Deleting catalog source: $pre_upgrade_bts_catalog_name"
-                        pre_upgrade_bts_catalog_names_to_delete+=("$pre_upgrade_bts_catalog_name")
-                        #${CLI_CMD} delete catalogsource "$pre_upgrade_bts_catalog_name" -n "$TARGET_PROJECT_NAME"
-                    fi
-                done
 
                 ${CLI_CMD} apply -f $OLM_CATALOG_TMP
                 if [ $? -eq 0 ]; then
@@ -10356,38 +10366,15 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                     exit 1
                 fi
 
-
-                
-                # Delete matching BTS catalog sources
-                for cs in "${pre_upgrade_bts_catalog_names_to_delete[@]}"; do
-                    ${CLI_CMD} delete catalogsource "$cs" -n "$TARGET_PROJECT_NAME"
-                done
-
             else
                 TEMP_CATALOG_PROJECT_NAME="openshift-marketplace"
 
-                # CPFS suggestion to delete the old BTS Catalogs after the new catalog source for BTS is applied. 
-                # Saving the name of the current BTS Catalog sources so that it can be deleted once the new catalog sources are applied
-                # Any existing bts catalogs in the stream v3-35 must be deleted and only what was applied must be kept
-                # To be dynamic this loop will check for any v3-35-1 or v3-35-2 catalog source names and then accordingly remove them.
-                # It will not delete any older BTS catalogs like v3-33 or v3-34 
-                # Moving forward from the latest refresh of the public 24.0.1 IF002 this BTS catalog will be v3-35 for any catalog source in that stream
-                # In 24.0.1 IF001 , 24.0.1 GA , 24.0.0 IF005,24.0.0 IF004 we have v3-35-1 and in 24.0.1 IF002 we will have v3-35 so it will remove the older one when we upgrade
-                # In 24.0.0 IF003 we have v3-34 so there will be no problems with keeping that catalog and we will not delete it.
-
-                # https://jsw.ibm.com/browse/DBACLD-176790
-
-                pre_upgrade_bts_catalog_names=$(${CLI_CMD} get catalogsource -n "$TEMP_CATALOG_PROJECT_NAME" --no-headers 2>/dev/null | awk '$1 ~ /^ibm-bts-operator-catalog/ { print $1 }')
-                pre_upgrade_bts_catalog_names_to_delete=()
-                for pre_upgrade_bts_catalog_name in $pre_upgrade_bts_catalog_names; do
-                    #echo "here catalog ->$pre_upgrade_bts_catalog_name"
-                    if [[ "$pre_upgrade_bts_catalog_name" == *"ibm-bts-operator-catalog-v3-35"* && "$pre_upgrade_bts_catalog_name" != "ibm-bts-operator-catalog-v3-35" ]]; then
-                        #echo "addng this to Deleting catalog source: $pre_upgrade_bts_catalog_name"
-                        pre_upgrade_bts_catalog_names_to_delete+=("$pre_upgrade_bts_catalog_name")
-                        #${CLI_CMD} delete catalogsource "$pre_upgrade_bts_catalog_name" -n "$TARGET_PROJECT_NAME"
-                    fi
-                done
-
+                # Record existing catalog sources before applying new ones for cleanup after upgrade
+                CATALOG_BACKUP_FILE="${TEMP_FOLDER}/.pre_upgrade_catalog_sources"
+                info "Recording existing catalog sources before upgrade..."
+                ${CLI_CMD} get catalogsource -n "openshift-marketplace" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}' > "${CATALOG_BACKUP_FILE}.marketplace"
+                # Save configuration for cleanup phase
+                echo "ENABLE_PRIVATE_CATALOG_USED=0" > "$CATALOG_BACKUP_FILE"
 
                 info "Apply latest CP4BA catalog source ..."
                 OLM_CATALOG=${PARENT_DIR}/descriptors/op-olm/catalog_source.yaml
@@ -10397,17 +10384,6 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                     exit 1
                 fi
                 echo "Done!"
-
-
-                # Delete BTS catalog sources that are no longer required and would cause problems with upgrade
-                # https://jsw.ibm.com/browse/DBACLD-176790
-
-                for cs in "${pre_upgrade_bts_catalog_names_to_delete[@]}"; do
-                    #echo "Deleting catalog source: $cs"
-                    ${CLI_CMD} delete catalogsource "$cs" -n "$TEMP_CATALOG_PROJECT_NAME"
-                done
-
-                
             fi
 
             # Checking ibm-cp4a-operator catalog source pod
@@ -11436,6 +11412,117 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         done
         success "Completed to check the channel of subscription for CP4BA operators"
 
+        # Cleanup old catalog sources after operator upgrade completes successfully
+        # This removes old catalog sources that were replaced during the operator upgrade
+        CATALOG_BACKUP_FILE="${TEMP_FOLDER}/.pre_upgrade_catalog_sources"
+        if [[ -f "$CATALOG_BACKUP_FILE" ]]; then
+            info "Checking for old catalog sources to cleanup after operator upgrade..."
+            
+            # Load the saved catalog configuration
+            source "$CATALOG_BACKUP_FILE"
+            
+            # Cleanup catalog sources based on the upgrade mode
+            if [[ "$ENABLE_PRIVATE_CATALOG_USED" -eq 1 ]]; then
+                # Cleanup in private catalog mode (namespace-scoped)
+                for CLEANUP_NAMESPACE in "$TARGET_PROJECT_NAME" "$CERT_MANAGER_PROJECT" "$LICENSE_MANAGER_PROJECT"; do
+                    if [[ "$CLEANUP_NAMESPACE" == "$TARGET_PROJECT_NAME" ]]; then
+                        CLEANUP_BACKUP_FILE="${CATALOG_BACKUP_FILE}.target"
+                    elif [[ "$CLEANUP_NAMESPACE" == "$CERT_MANAGER_PROJECT" ]]; then
+                        CLEANUP_BACKUP_FILE="${CATALOG_BACKUP_FILE}.cert"
+                    else
+                        CLEANUP_BACKUP_FILE="${CATALOG_BACKUP_FILE}.license"
+                    fi
+                    
+                    if [[ -f "$CLEANUP_BACKUP_FILE" ]]; then
+                        # Get current catalog sources in this namespace
+                        current_catalogs=$(${CLI_CMD} get catalogsource -n "$CLEANUP_NAMESPACE" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}')
+                        
+                        # Read old catalog sources from backup and process each one
+                        while IFS= read -r old_catalog; do
+                            if [[ -z "$old_catalog" ]]; then
+                                continue
+                            fi
+                            
+                            # Check if this old catalog still exists
+                            if echo "$current_catalogs" | grep -q "^${old_catalog}$"; then
+                                # Extract base name by removing version suffix
+                                base_name=$(echo "$old_catalog" | sed -E 's/-v?[0-9]+(-[0-9]+)*$//')
+                                
+                                # Check if there's a newer catalog with the same base name
+                                newer_exists=false
+                                for current_catalog in $current_catalogs; do
+                                    current_base=$(echo "$current_catalog" | sed -E 's/-v?[0-9]+(-[0-9]+)*$//')
+                                    if [[ "$base_name" == "$current_base" && "$old_catalog" != "$current_catalog" ]]; then
+                                        newer_exists=true
+                                        break
+                                    fi
+                                done
+                                
+                                # If a newer version exists, delete the old one
+                                if [[ "$newer_exists" == "true" ]]; then
+                                    info "Deleting old catalog source: $old_catalog from namespace: $CLEANUP_NAMESPACE"
+                                    ${CLI_CMD} delete catalogsource "$old_catalog" -n "$CLEANUP_NAMESPACE" --ignore-not-found >&3 2>&3
+                                    if [ $? -eq 0 ]; then
+                                        success "Deleted old catalog source: $old_catalog"
+                                    else
+                                        warning "Failed to delete old catalog source: $old_catalog"
+                                    fi
+                                fi
+                            fi
+                        done < "$CLEANUP_BACKUP_FILE"
+                    fi
+                done
+            else
+                # Cleanup in global catalog mode (openshift-marketplace)
+                CLEANUP_NAMESPACE="openshift-marketplace"
+                CLEANUP_BACKUP_FILE="${CATALOG_BACKUP_FILE}.marketplace"
+                
+                if [[ -f "$CLEANUP_BACKUP_FILE" ]]; then
+                    # Get current catalog sources in openshift-marketplace
+                    current_catalogs=$(${CLI_CMD} get catalogsource -n "$CLEANUP_NAMESPACE" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}')
+                    
+                    # Read old catalog sources from backup and process each one
+                    while IFS= read -r old_catalog; do
+                        if [[ -z "$old_catalog" ]]; then
+                            continue
+                        fi
+                        
+                        # Check if this old catalog still exists
+                        if echo "$current_catalogs" | grep -q "^${old_catalog}$"; then
+                            # Extract base name by removing version suffix
+                            base_name=$(echo "$old_catalog" | sed -E 's/-v?[0-9]+(-[0-9]+)*$//')
+                            
+                            # Check if there's a newer catalog with the same base name
+                            newer_exists=false
+                            for current_catalog in $current_catalogs; do
+                                current_base=$(echo "$current_catalog" | sed -E 's/-v?[0-9]+(-[0-9]+)*$//')
+                                if [[ "$base_name" == "$current_base" && "$old_catalog" != "$current_catalog" ]]; then
+                                    newer_exists=true
+                                    break
+                                fi
+                            done
+                            
+                            # If a newer version exists, delete the old one
+                            if [[ "$newer_exists" == "true" ]]; then
+                                info "Deleting old catalog source: $old_catalog from namespace: $CLEANUP_NAMESPACE"
+                                ${CLI_CMD} delete catalogsource "$old_catalog" -n "$CLEANUP_NAMESPACE" --ignore-not-found >&3 2>&3
+                                if [ $? -eq 0 ]; then
+                                    success "Deleted old catalog source: $old_catalog"
+                                else
+                                    warning "Failed to delete old catalog source: $old_catalog"
+                                fi
+                            fi
+                        fi
+                    done < "$CLEANUP_BACKUP_FILE"
+                fi
+            fi
+            
+            # Clean up backup files
+            rm -f "${CATALOG_BACKUP_FILE}" "${CATALOG_BACKUP_FILE}."* >/dev/null 2>&1
+            
+            success "Completed cleanup of old catalog sources"
+        fi
+
         # DBACLD-166239 -> Update EDB configmap ibm-zen-metastore-edb-cm to add new parameters with CPFS 4.10 or later by calling patch_edb_configmap()
         patch_edb_configmap $TMP_SERVICES_NAMESPACE
         
@@ -11459,6 +11546,11 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             info "Found ${cr_name}-ban-custom-ssl-secret and the script will now delete the secret."
             ${CLI_CMD} delete secret ${cr_name}-ban-custom-ssl-secret -n $CP4BA_SERVICES_NS
         fi
+
+            # Update BTS datastore resources for PostgreSQL JDBC driver compatibility
+            # The secret keys have to tls.pk8 as the the client key cert is added in the secret in Pk8 format. If it is tls.key ,BTS expects it to be a PEM format key           
+            # https://jsw.ibm.com/browse/DBACLD-238583
+            update_bts_datastore_resources "$CP4BA_SERVICES_NS"
 
         # shutdown CP4BA operators and show tips for [NEXT ACTION]
         if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "24.1"*) ]]; then
@@ -11928,6 +12020,7 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
     TEMP_CP_CONSOLE_FILE_ID_PROVIDER=${UPGRADE_DEPLOYMENT_FOLDER}/id-provider-cp-console.yaml
     TEMP_CP_CONSOLE_FILE_ID_MGMT=${UPGRADE_DEPLOYMENT_FOLDER}/id-mgmt-cp-console.yaml
     source ${CUR_DIR}/helper/upgrade/upgrade_merge_yaml.sh $TARGET_PROJECT_NAME $ALLOW_DIRECT_UPGRADE
+    source ${CUR_DIR}/helper/messages.sh
 
     CP_CONSOLE='cp-console'
     ID_PROVIDER_ROUTE_NAME='cp-console-iam-provider'
@@ -12148,32 +12241,7 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
             exit 1
         fi
     fi
-    # info "Scaling up \"IBM CP4BA FileNet Content Manager\" operator"
-    # ${CLI_CMD} scale --replicas=1 deployment ibm-content-operator -n $TEMP_OPERATOR_PROJECT_NAME 
-    # if [ $? -eq 0 ]; then
-    #     sleep 1
-    #     echo "Done!"
-    # else
-    #     fail "Failed to scale up \"IBM CP4BA FileNet Content Manager\" operator"
-    # fi
-    # info "Scaling up \"IBM Cloud Pak for Business Automation (CP4BA) multi-pattern\" operator"
-    # ${CLI_CMD} scale --replicas=1 deployment ibm-cp4a-operator -n $TEMP_OPERATOR_PROJECT_NAME 
-    # if [ $? -eq 0 ]; then
-    #     sleep 1
-    #     echo "Done!"
-    # else
-    #     fail "Failed to scale up \"IBM Cloud Pak for Business Automation (CP4BA) multi-pattern\" operator"
-    # fi
-
-    # info "Scaling up \"IBM CP4BA Foundation\" operator"
-    # ${CLI_CMD} scale --replicas=1 deployment icp4a-foundation-operator -n $TEMP_OPERATOR_PROJECT_NAME 
-    # if [ $? -eq 0 ]; then
-    #     sleep 1
-    #     echo "Done!"
-    # else
-    #     fail "Failed to scale up \"IBM CP4BA Foundation\" operator"
-    # fi
-
+    
     while true; do
         clear
         isReady_cp4ba=$(${CLI_CMD} get configmap ibm-cp4ba-shared-info --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath='{.data.cp4ba_operator_of_last_reconcile}')
@@ -12192,136 +12260,178 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
 
     # The control variable used to detect if the strimzi patch function has to be executed.
     strimzi_patched=false
-    # check for zenStatus and currentverison for zen
+    # The control varaible used to display manual steps to patch the strimzipodset, by default we should keep display unless the patch was confirmed to be successful or not required.
+    DISPLAY_MANUAL_PATCH_STEPS=true
 
-    zen_service_name=$(${CLI_CMD} get zenService --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS |awk '{print $1}')
-    if [[ ! -z "$zen_service_name" ]]; then
-        clear
-        maxRetry=360
-        for ((retry=0;retry<=${maxRetry};retry++)); do
-            # As workaround for https://github.ibm.com/IBMPrivateCloud/roadmap/issues/64207
-            # update secret postgresql-operator-controller-manager-config in <cp4ba> namespace and/or ibm-common-services namespace and add this annotation ibm-bts/skip-updates: "true"
-            if ${CLI_CMD} get secret -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found | grep postgresql-operator-controller-manager-config >&3 2>&3; then
-                ${CLI_CMD} patch secret postgresql-operator-controller-manager-config -n $CP4BA_SERVICES_NS -p '{"metadata": {"annotations": {"ibm-bts/skip-updates": "true"}}}' >&3 2>&3
-            fi
-
-            zenservice_version=$(${CLI_CMD} get zenService $zen_service_name --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath='{.status.currentVersion}')
-            isCompleted=$(${CLI_CMD} get zenService $zen_service_name --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath='{.status.zenStatus}')
-            # DBACLD-165802:Updated zenService check from "Progress" to "progress" for CPFS 4.10 and above.
-            isProgressDone=$(${CLI_CMD} get zenService $zen_service_name --no-headers --ignore-not-found -n $CP4BA_SERVICES_NS -o jsonpath='{.status.progress}')
-
-            if [[ "$isCompleted" != "Completed" || "$isProgressDone" != "100%" || "$zenservice_version" != "${ZEN_OPERATOR_VERSION//v/}" ]]; then
-                clear
-                CP4BA_DEPLOYMENT_STATUS="Waiting for the zenService to be ready (could take up to 120 minutes) before upgrade the CP4BA capabilities..."
-                printf '%s %s\n' "$(date)" "[refresh interval: 60s]"
-                echo -en "[Press Ctrl+C to exit] \t\t"
-                printf "\n"
-                echo "${YELLOW_TEXT}$CP4BA_DEPLOYMENT_STATUS${RESET_TEXT}"
-                printHeaderMessage "CP4BA Upgrade Status"
-                if [[ "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
-                    echo "zenService Version (Expected - ${ZEN_OPERATOR_VERSION//v/})       : ${GREEN_TEXT}$zenservice_version${RESET_TEXT}"
-                else
-                    echo "zenService Version (Expected - ${ZEN_OPERATOR_VERSION//v/})       : ${RED_TEXT}$zenservice_version${RESET_TEXT}"
-                fi
-                if [[ "$isCompleted" == "Completed" && "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
-                    echo "zenService Status (Expected - Completed)    : ${GREEN_TEXT}$isCompleted${RESET_TEXT}"
-                else
-                    echo "zenService Status (Expected - Completed)    : ${RED_TEXT}$isCompleted${RESET_TEXT}"
-                fi
-
-                if [[ "$isProgressDone" == "100%" && "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
-                    echo "zenService Progress (Expected - 100%)       : ${GREEN_TEXT}$isProgressDone${RESET_TEXT}"
-                else
-                    echo "zenService Progress (Expected - 100%)       : ${RED_TEXT}$isProgressDone${RESET_TEXT}"
-                fi
-                sleep 60
-            elif [[ "$isCompleted" == "Completed" && "$isProgressDone" == "100%" && "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
-                break
-            elif [[ $retry -eq ${maxRetry} ]]; then
-                printf "\n"
-                warning "Timeout waiting for the Zen Service to start"
-                echo -e "\x1B[1mCheck the status of the Zen Service\x1B[0m"
-                printf "\n"
-                exit 1
-            fi
-        done
-        clear
-        # success "The Zen Service (${ZEN_OPERATOR_VERSION//v/}) is ready for CP4BA"
-        CP4BA_DEPLOYMENT_STATUS="The Zen Service (${ZEN_OPERATOR_VERSION//v/}) is ready for CP4BA"
-        printf '%s %s\n' "$(date)" "[refresh interval: 30s]"
-        echo -en "[Press Ctrl+C to exit] \t\t"
-        printf "\n"
-        echo "${YELLOW_TEXT}$CP4BA_DEPLOYMENT_STATUS${RESET_TEXT}"
-        info "Starting all CP4BA Operators to upgrade CP4BA capabilities"
-        printHeaderMessage "CP4BA Upgrade Status"
-        if [[ "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
-            echo "zenService Version        : ${GREEN_TEXT}$zenservice_version${RESET_TEXT}"
-        else
-            echo "zenService Version        : ${RED_TEXT}$zenservice_version${RESET_TEXT}"
-        fi
-        if [[ "$isCompleted" == "Completed" ]]; then
-            echo "zenService Status         : ${GREEN_TEXT}$isCompleted${RESET_TEXT}"
-        else
-            echo "zenService Status         : ${RED_TEXT}$isCompleted${RESET_TEXT}"
-        fi
-
-        if [[ "$isProgressDone" == "100%" && "$zenservice_version" == "${ZEN_OPERATOR_VERSION//v/}" ]]; then
-            echo "zenService Progress       : ${GREEN_TEXT}$isProgressDone${RESET_TEXT}"
-        else
-            echo "zenService Progress       : ${RED_TEXT}$isProgressDone${RESET_TEXT}"
-        fi
-
-        if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "24."*) && "$ALLOW_DIRECT_UPGRADE" == 1 ]]; then
-            ## Create tow route after zenService ready
-            TARGET_PROJECT_NAME_CS=$(${CLI_CMD} get route --no-headers --ignore-not-found  -A |grep  cp-console-iam-provider|awk '{print $1}')
-            if [[ -z $TARGET_PROJECT_NAME_CS ]]; then
-                warning "cp-console-iam-provider not found in the cluster. continuing..."
-            else
-                get_default_cp_console_route
-                res=$?
-                if [[ ${res} == "0" ]]; then
-                    create_custom_idprovider_route "platform-identity-provider"
-                    create_custom_idmgmt_route "platform-identity-management"
-                fi
-            fi
-
-            # start all cp4ba operators after zen/im ready
-            startup_operator $TEMP_OPERATOR_PROJECT_NAME "silent"
-            sleep 10
-
-            ## Apply workaround for https://jsw.ibm.com/browse/DBACLD-137719 before start migration CPfs
-            ## scale up ibm-bts-operator-controller-manager in ibm-common-services project after zenService ready
-            if [[ $ALL_NAMESPACE_FLAG == "yes" ]]; then
-                bts_operator_name=$(${CLI_CMD} get deployment ibm-bts-operator-controller-manager --no-headers --ignore-not-found -n ibm-common-services -o name)
-                if [[ ! -z $bts_operator_name ]]; then
-                    ${CLI_CMD} scale --replicas=1 deployment ibm-bts-operator-controller-manager -n ibm-common-services >&3 2>&3
-                    if [[ $? -ne 0 ]]; then
-                        warning "Failed to scale up ibm-bts-operator-controller-manager operator in the project \"ibm-common-services\". Scale up the ibm-bts-operator-controller-manager operator manually."
-                    fi
-                fi
-            fi
-        # elif [[ "$is_ifix_to_ifix_upgrade" == "false" ]]; then # Startup operator pods in the target project
-        else
-            startup_operator $TARGET_PROJECT_NAME "silent"
-        fi
+    # Check if the deployment is SaaS
+    if [[ "$CONTENT_CR_EXIST" == "Yes" ]]; then
+        top_level_cr_kind="content"
+        top_level_cr_name="$content_cr_name"
     else
-        fail "ZenService not found in the project \"$CP4BA_SERVICES_NS\", exiting..."
-        echo "****************************************************************************"
-        exit 1
+        top_level_cr_kind="icp4acluster"
+        top_level_cr_name="$icp4acluster_cr_name"
     fi
 
-    # show_cp4ba_upgrade_status
-    while true
+
+    # Call function to check if the deployment SaaS
+    is_saas_deployment=false
+    if check_saas_deployment "$top_level_cr_kind" "$top_level_cr_name" "$CP4BA_SERVICES_NS"; then
+        is_saas_deployment=true
+    else
+        is_saas_deployment=false
+    fi
+
+    # check for zenStatus and currentverison for zen only if the deployment is NOT SaaS.
+    # If the deployment is SaaS we can skip the Zen related checks
+    if [[ "$is_saas_deployment" == "false" ]]; then
+        # Moved the entire Zen Upgrade Status check code into its own function so that the main upgrade flow is much cleaner
+        validate_zen_upgrade_status
+    fi
+
+    # Start up all other CP4BA operators
+    # This was happening inside a zen upgrade check condition after zen was upgraded
+    # This will maintain the same behavior but also allow operators to be scaled up when the deployment is SaaS and there is no Zen
+    startup_operator $TEMP_OPERATOR_PROJECT_NAME "silent"
+
+    # Patch strimzi podset if required with timeout
+    if [[ $strimzi_patched == "false" ]]; then
+        info "Checking if Strimzi PodSet patch is required..."
+        
+        # 10 minutes = 600 seconds / 30 seconds interval = 20 retries
+        maxRetry=20
+        REFRESH_INTERVAL=30
+        retry=0
+        
+        while [[ $strimzi_patched == "false" && $retry -le $maxRetry ]]
+        do
+            elapsed_time=$((retry * REFRESH_INTERVAL))
+            elapsed_minutes=$((elapsed_time / 60))
+            remaining_time=$(((maxRetry - retry) * REFRESH_INTERVAL))
+            remaining_minutes=$((remaining_time / 60))
+            
+            if [[ $retry -gt 0 ]]; then
+                echo "Attempting to patch Strimzi PodSet (Elapsed: ${elapsed_minutes}m, Remaining: ${remaining_minutes}m, Attempt: $((retry+1))/${maxRetry})"
+            fi
+            
+            # Each refresh of the zen upgrade, we check if we need to update the kafka strimzi podset
+            # The function patch_strimzi_podset which is defined in common.sh will set strimzi_patched to true once the patch is completed
+            # For upgrades to 24.0.1 or newer, kafka tasks in the cp4a-operator happen after zen is upgraded so this block is after zen upgrade completes
+            # For upgrades to 24.0.0, kafka tasks in the cp4a-operator happen before zen is upgraded
+            patch_strimzi_podset "$CP4BA_OPERATOR_NS" "$CP4BA_SERVICES_NS"
+            
+            # Check if patch was successful
+            if [[ $strimzi_patched == "true" ]]; then
+                success "Strimzi PodSet patch completed successfully"
+                DISPLAY_MANUAL_PATCH_STEPS=false
+                break
+            fi
+            
+            # Check if max retries reached
+            if [[ $retry -eq $maxRetry ]]; then
+                warning "✗ Strimzi PodSet patch failed - Timeout after 10 minutes"
+                printf "\n"
+                echo "${RED_TEXT}The Strimzi PodSet could not be patched automatically.${RESET_TEXT}"
+                echo "This may be due to:"
+                echo "  - Events Operator not being ready"
+                echo "  - StrimziPodSet resource not found"
+                echo "  - Network or permission issues"
+                printf "\n"
+                DISPLAY_MANUAL_PATCH_STEPS=true
+                printf "\n"
+                warning "Continuing with the upgrade process. Please apply the manual steps if needed."
+                printf "\n"
+                # Set to true to prevent further attempts
+                strimzi_patched=true
+                break
+            fi
+            
+            retry=$((retry + 1))
+            sleep ${REFRESH_INTERVAL}
+        done
+    else
+        info "Strimzi PodSet patch not required or already completed"
+    fi
+
+
+    # Monitor CP4BA upgrade status with timeout
+    info "Starting CP4BA upgrade status monitoring (timeout: 30 minutes, refresh interval: 60s)"
+
+    # 45 minutes = 2700 seconds / 60 seconds interval = 30 retries
+    maxRetry=45
+    REFRESH_INTERVAL=60
+    retry=0
+    all_components_ready=false
+
+    while [[ $retry -le $maxRetry ]]
     do
-        # Each refresh of the zen upgrade , we check if we need to update the kafka strimzi podset
-        # The function patch_strimzi_podset which is defined in common.sh will set strimzi_patched  to true once the patch is completed
-        # For upgrades to 24.0.1 or newer, kafka tasks in the cp4a-operator happen after zen is upgraded so this block is after zen upgrade completes
-        # For upgrades to 24.0.0, kafka tasks in the cp4a-operator happen before zen is upgraded
-        if [[ $strimzi_patched == "false" ]]; then
-            patch_strimzi_podset $cp4ba_operators_namespace $cp4ba_services_namespace
+        clear
+        
+        # Calculate elapsed and remaining time
+        elapsed_time=$((retry * REFRESH_INTERVAL))
+        elapsed_minutes=$((elapsed_time / 60))
+        remaining_time=$(((maxRetry - retry) * REFRESH_INTERVAL))
+        remaining_minutes=$((remaining_time / 60))
+        
+
+        # Display header with timing info
+        printf '%s\n' "$(date)"
+        printf '%b' "[Monitoring CP4BA Upgrade Status - Elapsed: ${elapsed_minutes}m, Remaining: ${remaining_minutes}m, Refresh: ${REFRESH_INTERVAL}s]"
+        printf "\n"
+        printf '%b' "[Press Ctrl+C to exit monitoring]"
+        printf "\n\n"
+        
+        # Global array to track all component status variables
+        # Every retry this variable has to be re-initialized so that it can pick up the latest status only
+        CP4BA_COMPONENT_STATUS_VALUES=()
+
+        # Get and display the upgrade status
+        show_cp4ba_upgrade_status
+        
+        # Display manual patch steps if needed
+        # This gets displayed in case the patch by the operator does not work
+        if [[ "$DISPLAY_MANUAL_PATCH_STEPS" == "true" ]]; then
+            displayManualStrimziPodsetPatchingMessage "$CP4BA_OPERATOR_NS" "$CP4BA_SERVICES_NS"
+            echo ""
+            echo
         fi
-        printf '%s\n' "$(clear; show_cp4ba_upgrade_status)"
-        sleep 30
+        
+        # Check if all components are ready
+        if check_if_all_components_are_ready; then
+            all_components_ready=true
+            printf "\n"
+            success "All components are in 'Done' status which means that all CP4BA components have been upgraded successfully!"
+            printf "\n"
+            echo "======================================================================================================="
+            success "${GREEN_TEXT}The upgrade to CP4BA $CP4BA_RELEASE_BASE $CP4BA_PATCH_VERSION is complete.${RESET_TEXT}"
+            echo "======================================================================================================="
+            printf "\n"
+            exit 0
+        fi
+        
+        # Check if max retries reached
+        if [[ $retry -eq $maxRetry ]]; then
+            printf "\n"
+            error "CP4BA upgrade monitoring timeout - 45 minutes elapsed"
+            printf "\n"
+            echo "================================================================================"
+            echo "${RED_TEXT}CP4BA Upgrade Status - TIMEOUT${RESET_TEXT}"
+            echo "================================================================================"
+            printf "\n"
+            warning "Some components failed to complete the upgrade within the expected timeframe."
+            printf "\n"
+            echo "${YELLOW_TEXT}Next Steps:${RESET_TEXT}"
+            echo "1. Review the component status above to identify which components are not ready"
+            echo "2. Check the operator logs for errors:"
+            echo "   ${CLI_CMD} logs -n ${CP4BA_OPERATOR_NS} -l name=ibm-cp4a-operator --tail=100"
+            echo "3. Check the component pod logs in namespace: ${CP4BA_SERVICES_NS}"
+            printf "\n"
+            echo "For more information, refer to the CP4BA Knowledge Center - Troubleshooting section"
+            printf "\n"
+            exit 1
+        fi
+        
+        retry=$((retry + 1))
+        sleep ${REFRESH_INTERVAL}
     done
 fi
 ### End of running with -m upgradeDeploymentStatus mode

@@ -321,6 +321,7 @@ spec:
       ## If you want PostgresDB to be created for an OS database, set this parameter to true
       dc_use_postgres: false
       ## Provide the object store label for the object store.  The default value is "os" or not defined.
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "abc", then your OS secret must be defined as:
       ## --from-literal=abcDBUsername="<your os db username>" --from-literal=abcDBPassword="<your os db password>"
@@ -373,6 +374,7 @@ spec:
       ##   --from-literal=devos1DBUsername="<your os db username>" --from-literal=devos1DBPassword="<your os db password>"
       ## If you have multiple object stores, then you need to define multiple datasource sections starting at "dc_database_type" element after this section.
       ## Each dc_os_label shoudl be different (e.g., dc_os_label: "os1", dc_os_label: "os2", dc_os_label: "os3", etc).
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "os1", then your OS secret must be defined as:
       ## --from-literal=os1DBUsername="<your os db username>" --from-literal=os1DBPassword="<your os db password>"
@@ -422,6 +424,7 @@ spec:
       ##   --from-literal=aeosDBUsername="<your os db username>" --from-literal=aeosDBPassword="<your os db password>"
       ## If you have multiple object stores, then you need to define multiple datasource sections starting at "dc_database_type" element after this section.
       ## Each dc_os_label shoudl be different (e.g., dc_os_label: "os1", dc_os_label: "os2", dc_os_label: "os3", etc).
+      ## NOTE: dc_os_label is for credential mapping (NOT Display Name) and must NOT contain spaces.
       ## This label must match the OS secret you define in ibm-fncm-secret.
       ## For example, if you define dc_os_label: "os1", then your OS secret must be defined as:
       ## --from-literal=os1DBUsername="<your os db username>" --from-literal=os1DBPassword="<your os db password>"
@@ -621,7 +624,7 @@ spec:
         - "<Required>" # user name and group name for object store admin, for example, "CEAdmin".  This parameter accepts a list of values.
     ic_icn_init_info:
       icn_repos:
-      - add_repo_id: "devos1_repo1"
+      - add_repo_id: "demo_repo1"
         add_repo_ce_wsi_url: "https://{{ meta.name }}-cpe-stateless-svc.{{ meta.namespace }}.svc:9443/wsi/FNCEWS40MTOM/"
         add_repo_os_sym_name: "DEVOS1"
         add_repo_os_dis_name: "DEVOS1"
@@ -633,5 +636,5 @@ spec:
         add_desktop_name: "icn_desktop"
         add_desktop_description: "This is ICN desktop"
         add_desktop_is_default: false
-        add_desktop_repo_id: "devos1_repo1"
+        add_desktop_repo_id: "demo_repo1"
         add_desktop_repo_workflow_enable: false

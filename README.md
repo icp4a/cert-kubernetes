@@ -1,4 +1,4 @@
-# IBM Cloud Pak for Business Automation 24.0.1-IF007 on Certified Kubernetes
+# IBM Cloud Pak for Business Automation 24.0.1-IF008 on Certified Kubernetes
 
 This repository includes folders and resources to help you install the IBM Cloud Pak for Business Automation capabilities. Installation of the capabilities is done with the Cloud Pak operator.
 

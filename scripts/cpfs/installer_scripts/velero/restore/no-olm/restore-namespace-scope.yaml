@@ -27,5 +27,6 @@ spec:
       - ui-chart
       - zen-chart
       - edb-chart
+      - ibm-pg-chart
       - iam-chart
       - nss

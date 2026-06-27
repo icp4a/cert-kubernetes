@@ -15,7 +15,7 @@ metadata:
   namespace: openshift-marketplace
 spec:
   displayName: "IBM BAW on Containers Catalog"
-  image: icr.io/cpopen/ibm-cs-bawautomation-catalog@sha256:110dd9d1b75bbeb0a595b55667fbef2e7e4813004a38a31969f51fedaa2ff4c2
+  image: icr.io/cpopen/ibm-cs-bawautomation-catalog@sha256:b08f3e161b9c9c7bb07600e8991a02b5fef2dceda9d159c140dc225447754d7e
   publisher: IBM
   sourceType: grpc
   updateStrategy:

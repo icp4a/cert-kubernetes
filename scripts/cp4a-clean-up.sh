@@ -987,65 +987,6 @@ if [[ $CLEAN_CPFS == "true" ]]; then
 	fi
 fi
 
-# For cleaning up IBM Cert Manager and IBM Licensing. DEV and QA only. Using -a option.
-if [[ $SELECT_ALL == "true" ]]; then
-	# IBM Cert Manager
-	${CLI_CMD} delete sub,csv --all -n ${IBM_CERT_MANAGER_NAMESPACE} --ignore-not-found=true --wait=true
-	${CLI_CMD} delete deploy,sts,job,svc --all -n ${IBM_CERT_MANAGER_NAMESPACE} --ignore-not-found=true --wait=true
-	${CLI_CMD} delete certmanagerconfig --all --ignore-not-found=true --wait=true
-	${CLI_CMD} delete ValidatingWebhookConfiguration cert-manager-webhook
-	${CLI_CMD} delete MutatingWebhookConfiguration cert-manager-webhook
-
-
-	# IBM Licensing
-	${CLI_CMD} delete ibmlicensing --all -n "${IBM_LICENSING_NAMESPACE}" --ignore-not-found=true --wait=true
-	${CLI_CMD} delete sub,csv --all -n "${IBM_LICENSING_NAMESPACE}" --ignore-not-found=true --wait=true
-	${CLI_CMD} delete deploy,sts,job,svc --all -n "${IBM_LICENSING_NAMESPACE}" --ignore-not-found=true --wait=true
-
-	INFO "Deleting namespace ${IBM_CERT_MANAGER_NAMESPACE}"
-	${CLI_CMD} delete project "${IBM_CERT_MANAGER_NAMESPACE}"
-	info "Wait until namespace ${IBM_CERT_MANAGER_NAMESPACE} is completely deleted."
-	count=0
-	while :; do
-		${CLI_CMD} get project "${IBM_CERT_MANAGER_NAMESPACE}" 2>/dev/null
-		if [[ $? -gt 0 ]]; then
-			success "Namespace ${IBM_CERT_MANAGER_NAMESPACE} deletion successful"
-			break
-		else
-			((count += 1))
-			if ((count <= 36)); then
-				wait_msg "Waiting for namespace ${IBM_CERT_MANAGER_NAMESPACE} to be terminated.  ... Rechecking in  10 seconds"
-				sleep 10
-			else
-				error "Deleting namespace ${IBM_CERT_MANAGER_NAMESPACE} is taking too long and giving up"
-				${CLI_CMD} get project "${IBM_CERT_MANAGER_NAMESPACE}" -o yaml
-				exit 1
-			fi
-		fi
-	done
-
-	INFO "Deleting namespace ${IBM_LICENSING_NAMESPACE}"
-	${CLI_CMD} delete project "${IBM_LICENSING_NAMESPACE}"
-	info "Wait until namespace ${IBM_LICENSING_NAMESPACE} is completely deleted."
-	count=0
-	while :; do
-		${CLI_CMD} get project "${IBM_LICENSING_NAMESPACE}" 2>/dev/null
-		if [[ $? -gt 0 ]]; then
-			success "Namespace ${IBM_LICENSING_NAMESPACE} deletion successful."
-			break
-		else
-			((count += 1))
-			if ((count <= 36)); then
-				wait_msg "Waiting for namespace ${IBM_LICENSING_NAMESPACE} to be terminated.  ... Rechecking in  10 seconds"
-				sleep 10
-			else
-				error "Deleting namespace ${IBM_LICENSING_NAMESPACE} is taking too long and giving up"
-				${CLI_CMD} get project "${IBM_LICENSING_NAMESPACE}" -o yaml
-				exit 1
-			fi
-		fi
-	done
-fi
 
 # Delete common-service-maps.yaml temp file if it exists
 if [[ -n "${CS_MAPS_YAML:-}" && -f "${CS_MAPS_YAML}" ]]; then

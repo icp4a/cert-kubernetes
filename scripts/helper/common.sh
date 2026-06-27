@@ -13,7 +13,8 @@ export LC_CTYPE=C
 # disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
 #
 ###############################################################################
-
+# Open file descriptor 3 for suppressing output
+exec 3>/dev/null
 # This script contains shared utility functions and environment variables.
 # CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
@@ -104,6 +105,7 @@ BAN_DB_SSL_SECRET_FILE=${BAN_SECRET_FOLDER}/ibm-ban-db-ssl-cert-secret.sh
 
 ODM_SECRET_FOLDER=${SECRET_FILE_FOLDER}/odm
 ODM_SECRET_FILE=${ODM_SECRET_FOLDER}/ibm-odm-db-secret.yaml
+ODM_KEYSTORE_SECRET_FILE=${ODM_SECRET_FOLDER}/ibm-odm-keystore-secret.yaml
 ODM_DB_SSL_SECRET_FILE=${ODM_SECRET_FOLDER}/ibm-odm-db-ssl-cert-secret.sh
 
 ADP_SECRET_FOLDER=${SECRET_FILE_FOLDER}/adp
@@ -159,33 +161,31 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 # Release/Patch version for CP4BA
 # CP4BA_RELEASE_BASE is for fetch content/foundation operator pod, only need to change for major release.
 CP4BA_RELEASE_BASE="24.0.1"
-CP4BA_PATCH_VERSION="IF007"
+CP4BA_PATCH_VERSION="IF008"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v24.1.7"
+CP4BA_CSV_VERSION="v24.1.8"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
 CP4BA_CHANNEL_VERSION="v24.1"
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.17.0"
+CS_OPERATOR_VERSION="v4.18.1"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
-CS_CHANNEL_VERSION="v4.17"
+CS_CHANNEL_VERSION="v4.18"
 # CS CHANNEL VERSION that is used in the KC
 CS_CHANNEL_KC="4.x_cd"
-# CERT_LICENSE_OPERATOR_VERSION is for checking IBM cert-manager/licensing operator upgrade status, need to update for each IFIX
-CERT_LICENSE_OPERATOR_VERSION="v4.2.20"
 # CERT_LICENSE_CHANNEL_VERSION is for for IBM cert-manager/licensing script -c option, need to update for each IFIX
 CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
-CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-17-0"
+CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-18-0"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v6.4.0"
+ZEN_OPERATOR_VERSION="v6.4.7"
 # BTS_CHANNEL_VERSION is for for BTS, need to update for each IFIX
 BTS_CHANNEL_VERSION="v3.35"
-# BTS_CATALOG_VERSION is for BTS 3.35.8.
+# BTS_CATALOG_VERSION is for BTS 3.35.11.
 BTS_CATALOG_VERSION="ibm-bts-operator-catalog-v3-35"
 # REQUIREDVER_BTS is for checking bts operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_BTS="3.35.8"
+REQUIREDVER_BTS="3.35.11"
 # REQUIREDVER_POSTGRESQL is for checking postgresql operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_POSTGRESQL="1.25.5"
+REQUIREDVER_POSTGRESQL="1.25.6"
 # EVENTS_OPERATOR_VERSION is for checking IBM Events operator upgrade status, need to update for each IFIX
 EVENTS_OPERATOR_VERSION="v5.2.1"
 # List of CP4BA versions that are supported for upgrade to $CP4BA_CSV_VERSION
@@ -401,6 +401,7 @@ GREEN_TEXT=`tput setaf 2`
 YELLOW_TEXT=`tput setaf 3`
 BLUE_TEXT=`tput setaf 6`
 WHITE_TEXT=`tput setaf 7`
+BOLD_TEXT=`tput bold`
 RESET_TEXT=`tput sgr0`
 
 printHeaderMessage()
@@ -1926,4 +1927,255 @@ function validate_zen_upgrade_status(){
         echo "****************************************************************************"
         exit 1
     fi
+}
+
+# Function to check if all components are ready
+# This function parses the components status variable array defined in upgradeDeploymentStatus and checks for "Done" status
+# This is used as a part of upgrade
+# Check if all CP4BA components have completed upgrade
+# Returns: 0 if all installed components show "Done", 1 otherwise
+function check_if_all_components_are_ready() {
+    # Check all component status values in the array
+    for status_value in "${CP4BA_COMPONENT_STATUS_VALUES[@]}"; do
+
+        # Skip if empty or whitespace only
+        if [[ -z "$status_value" ]] || [[ "$status_value" =~ ^[[:space:]]*$ ]]; then
+            continue
+        fi
+
+        # Skip if "Not Installed"
+        if [[ "$status_value" =~ "Not Installed" ]]; then
+            continue
+        fi
+
+        # Check for non-ready states
+        if [[ "$status_value" =~ "In Progress" ]] || \
+           [[ "$status_value" =~ "Not Ready" ]] || \
+           [[ "$status_value" =~ "Failed" ]] || \
+           [[ "$status_value" =~ "Pending" ]] || \
+           [[ "$status_value" =~ "Upgrading" ]]; then
+            return 1  # Not ready
+        fi
+
+        # Must contain "Done" or "Ready"
+        if [[ ! "$status_value" =~ "Done" ]] && [[ ! "$status_value" =~ "Ready" ]]; then
+            return 1  # Not ready
+        fi
+    done
+
+    return 0  # All components ready
+}
+
+
+# https://jsw.ibm.com/browse/DBACLD-239861: Function to create ODM keystore password secret for upgrade
+# This function checks if the secret already exists or is referenced in the CR before creating it
+function create_odm_keystore_secret_for_upgrade() {
+    local namespace=$1
+    local cr_file=$2
+    local secret_name="ibm-odm-keystore-secret"
+
+    # Check if passwordSecretRef is already defined in the CR
+    local password_secret_ref=$(${YQ_CMD} '.spec.odm_configuration.dba.passwordSecretRef' "$cr_file" 2>/dev/null)
+
+    if [[ -n "$password_secret_ref" && "$password_secret_ref" != "null" ]]; then
+        info "ODM keystore password secret reference already exists in CR: $password_secret_ref. Skipping secret creation."
+        return 0
+    fi
+
+    # Check if the secret already exists in the namespace
+    local secret_exists=$(${CLI_CMD} get secret "$secret_name" -n "$namespace" --ignore-not-found 2>/dev/null)
+
+    if [[ -n "$secret_exists" ]]; then
+        info "ODM keystore password secret '$secret_name' already exists in namespace '$namespace'. Skipping secret creation."
+        return 0
+    fi
+
+    # Generate a random 16-character password
+    local password=$(openssl rand -hex 8)
+
+    # Create the secret using kubectl create secret generic with --from-literal
+    ${CLI_CMD} create secret generic "${secret_name}" \
+        --from-literal=keystorePassword="${password}" \
+        -n "${namespace}" >/dev/null 2>&1
+
+    if [[ $? -eq 0 ]]; then
+        # Add the label to the secret
+        ${CLI_CMD} label secret "${secret_name}" \
+            cp4ba.ibm.com/backup-type=mandatory \
+            -n "${namespace}" >/dev/null 2>&1
+
+        success "Successfully created ODM keystore password secret '${secret_name}' in namespace '${namespace}'"
+    else
+        step_num=1
+        warning "Failed to automatically create ODM keystore password secret '${secret_name}'. Please create it manually."
+        echo
+        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT} Starting with CP4BA release 26.0.0, deployments that include the Operational Decision Manager (ODM) pattern require a secret named \"ibm-odm-keystore-secret\" to be created before applying the upgraded Custom Resource file."
+        echo
+        echo "    This secret must contain a 'keystorePassword' field. If this secret already exists in your namespace, no action is required."
+        echo
+        echo "    To create the secret, follow these sub-steps:"
+        echo
+        echo "      ${step_num}.a Check if the secret already exists:"
+        echo "      ${GREEN_TEXT} # ${CLI_CMD} get secret ibm-odm-keystore-secret -n ${namespace}${RESET_TEXT}"
+        echo
+        echo "      ${step_num}.b Create the secret with the required label using the following command:"
+        echo "      ${GREEN_TEXT} # ${CLI_CMD} create secret generic ibm-odm-keystore-secret --from-literal=keystorePassword=\"\${KEYSTORE_PASSWORD}\" -n ${namespace} ${RESET_TEXT}"
+        echo
+        echo "      ${step_num}.c Add the required label to the secret:"
+        echo "      ${GREEN_TEXT} # ${CLI_CMD} label secret ibm-odm-keystore-secret \"cp4ba.ibm.com/backup-type=mandatory\" -n ${namespace} ${RESET_TEXT}"
+        echo
+        echo "      ${step_num}.d Verify the secret was created successfully with the correct label:"
+        echo "      ${GREEN_TEXT} # ${CLI_CMD} get secret ibm-odm-keystore-secret -n ${namespace} --show-labels ${RESET_TEXT}"
+        echo
+        echo "    ${YELLOW_TEXT}Note:${RESET_TEXT} For more information, refer to: https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/${CP4BA_RELEASE_BASE}?topic=automation-upgrading"
+        echo
+    fi
+}
+
+# Function to update BTS datastore configuration for tls.key to tls.pk8 migration
+# This function checks for the ConfigMap 'ibm-bts-config-extension' and Secret 'bts-datastore-edb-secret'
+# and updates tls.key references to tls.pk8 where needed.
+#
+# Usage: update_bts_datastore_resources $services_namespace
+#
+# Parameters:
+#   $1 - namespace: The CP4BA namespace to check
+
+function update_bts_datastore_resources() {
+    local namespace="$1"
+    local bts_configmap_name="ibm-bts-config-extension"
+    local bts_secret_name="bts-datastore-edb-secret"
+
+    info "Checking if the current deployment has the Secret '$bts_secret_name' and ConfigMap '$bts_configmap_name' created in the namespace: $namespace"
+    echo
+    # Check if ConfigMap exists
+    local cm_exists=false
+    if ${CLI_CMD} get configmap "$bts_configmap_name" -n "$namespace" &> /dev/null; then
+        cm_exists=true
+        info "ConfigMap '$bts_configmap_name' found in namespace '$namespace'"
+    else
+        info "ConfigMap '$bts_configmap_name' not found in namespace '$namespace'"
+    fi
+
+    # Check if Secret exists
+    local secret_exists=false
+    if ${CLI_CMD} get secret "$bts_secret_name" -n "$namespace" &> /dev/null; then
+        secret_exists=true
+        info "Secret '$bts_secret_name' found in namespace '$namespace'"
+    else
+        info "Secret '$bts_secret_name' not found in namespace '$namespace'"
+    fi
+
+    # Exit if neither resource exists
+    if [[ "$cm_exists" == "false" && "$secret_exists" == "false" ]]; then
+        info "Neither ConfigMap '$bts_configmap_name' nor Secret '$bts_secret_name' exist in this deployment. Skipping the resource updates as they are not required."
+        return 0
+    fi
+    echo
+    # Process Secret if it exists
+    if [[ "$secret_exists" == "true" ]]; then
+        info "Processing Secret '$bts_secret_name' to check for 'tls.key' field..."
+
+        # Check if secret has tls.key using jsonpath
+        local has_tls_key=$(${CLI_CMD} get secret "$bts_secret_name" -n "$namespace" -o jsonpath='{.data.tls\.key}' 2>/dev/null)
+
+        if [[ -n "$has_tls_key" ]]; then
+            warning "Found 'tls.key' field in Secret '$bts_secret_name'. This field needs to be renamed to 'tls.pk8' for compatibility with the latest BTS version."
+            info "Applying patch to rename 'tls.key' to 'tls.pk8' in Secret '$bts_secret_name'..."
+
+            # Create a patch to rename tls.key to tls.pk8
+            ${CLI_CMD} patch secret "$bts_secret_name" -n "$namespace" --type=json -p="[
+                {\"op\": \"add\", \"path\": \"/data/tls.pk8\", \"value\": \"$has_tls_key\"},
+                {\"op\": \"remove\", \"path\": \"/data/tls.key\"}
+            ]"
+
+            if [[ $? -eq 0 ]]; then
+                success "Successfully renamed 'tls.key' to 'tls.pk8' in Secret '$bts_secret_name'"
+            else
+                error "Failed to update Secret '$bts_secret_name'. Please check the secret permissions and try again."
+                return 1
+            fi
+        else
+            # Check if tls.pk8 already exists
+            local has_tls_pk8=$(${CLI_CMD} get secret "$bts_secret_name" -n "$namespace" -o jsonpath='{.data.tls\.pk8}' 2>/dev/null)
+            if [[ -n "$has_tls_pk8" ]]; then
+                info "Secret '$bts_secret_name' already has 'tls.pk8' field. No changes needed."
+            fi
+        fi
+    fi
+
+    # Process ConfigMap if it exists
+    if [[ "$cm_exists" == "true" ]]; then
+        info "Processing ConfigMap '$bts_configmap_name' to check for 'tls.key' file path references..."
+
+        # Get all keys from ConfigMap data section
+        local all_keys=$(${CLI_CMD} get configmap "$bts_configmap_name" -n "$namespace" -o jsonpath='{.data}' 2>/dev/null)
+
+        if [[ -z "$all_keys" || "$all_keys" == "{}" ]]; then
+            warning "No data found in ConfigMap '$bts_configmap_name'. ConfigMap appears to be empty."
+        else
+            # Find all customPropertyName keys and check for sslKey value
+            local ssl_key_num=""
+            local custom_prop_names=$(${CLI_CMD} get configmap "$bts_configmap_name" -n "$namespace" -o json | grep -o '"customPropertyName[0-9]*"' | tr -d '"')
+
+            if [[ -z "$custom_prop_names" ]]; then
+                info "No 'customPropertyName' keys found in ConfigMap '$bts_configmap_name'. No SSL key configuration to update."
+            else
+                # Check each customPropertyName to find sslKey
+                while IFS= read -r key; do
+                    if [[ -n "$key" ]]; then
+                        local value=$(${CLI_CMD} get configmap "$bts_configmap_name" -n "$namespace" -o jsonpath="{.data.$key}" 2>/dev/null)
+
+                        if [[ "$value" == "sslKey" ]]; then
+                            # Extract the number from customPropertyNameX
+                            ssl_key_num=$(echo "$key" | grep -o '[0-9]*$')
+                            info "Found 'sslKey' property at '$key'"
+                            break
+                        fi
+                    fi
+                done <<< "$custom_prop_names"
+
+                if [[ -n "$ssl_key_num" ]]; then
+                    # Check the corresponding customPropertyValue
+                    local custom_prop_value_key="customPropertyValue$ssl_key_num"
+                    local current_value=$(${CLI_CMD} get configmap "$bts_configmap_name" -n "$namespace" -o jsonpath="{.data.$custom_prop_value_key}" 2>/dev/null)
+
+                    if [[ -n "$current_value" ]]; then
+
+                        # Check if the path ends with tls.key
+                        if [[ "$current_value" == *"tls.key" ]]; then
+                            local new_value="${current_value%tls.key}tls.pk8"
+                            warning "File path ends with 'tls.key' which needs to be updated to 'tls.pk8' for compatibility with the latest BTS version."
+                            info "Applying patch to update '$custom_prop_value_key' from '$current_value' to '$new_value'..."
+
+                            # Patch the ConfigMap
+                            ${CLI_CMD} patch configmap "$bts_configmap_name" -n "$namespace" --type=json -p="[
+                                {\"op\": \"replace\", \"path\": \"/data/$custom_prop_value_key\", \"value\": \"$new_value\"}
+                            ]"
+
+                            if [[ $? -eq 0 ]]; then
+                                success "Successfully updated the '$custom_prop_value_key' key in ConfigMap '$bts_configmap_name'"
+                            else
+                                error "Failed to update ConfigMap '$bts_configmap_name'. Please check the configmap '$bts_configmap_name' permissions and try again."
+                                return 1
+                            fi
+                        elif [[ "$current_value" == *"tls.pk8" ]]; then
+                            info "File path already ends with 'tls.pk8'. No changes needed."
+                        else
+                            echo
+                        fi
+                    else
+                        warning "Property '$custom_prop_value_key' not found or is empty in ConfigMap '$bts_configmap_name'."
+                        warning "Expected to find the SSL key file path at this property."
+                    fi
+                else
+                    info "No 'sslKey' property found in ConfigMap '$bts_configmap_name'."
+                    info "Please verify the '$bts_configmap_name' configmap before proceeding with next steps."
+                fi
+            fi
+        fi
+    fi
+
+    success "BTS Datasource resources are compatible with the latest BTS version."
+    return 0
 }

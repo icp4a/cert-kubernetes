@@ -32,13 +32,14 @@ function generateImZenBTSMessage() {
   local component=$1
   local ssl_folder=$2
   #Set component specific variables such as default dbname, username, etc...
-  if [[ "$component" == "IM" ]]; then
+  #DBACLD-223078: Change the logic to ignore the case when checking component name to avoid issue caused by user input such as "im" or "Im"
+  if [[ "$(echo "$component" | tr '[:lower:]' '[:upper:]')" == "IM" ]]; then
     default_dbname="imcnpdb"
     default_username="imcnp_user"
-  elif [[ "$component" == "ZEN" ]]; then
+  elif [[ "$(echo "$component" | tr '[:lower:]' '[:upper:]')" == "ZEN" ]]; then
     default_dbname="zencnpdb"
     default_username="zencnp_user"
-  elif [[ "$component" == "BTS" ]]; then
+  elif [[ "$(echo "$component" | tr '[:lower:]' '[:upper:]')" == "BTS" ]]; then
     default_dbname="btscnpdb"
     default_username="btscnp_user"
   else
@@ -102,4 +103,30 @@ function generateImZenBTSMessage() {
     echo "CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_SCHEMA=\"public\"" >> ${USER_PROFILE_PROPERTY_FILE}
     echo "" >> ${USER_PROFILE_PROPERTY_FILE}
   fi
+}
+
+# Function to display the manual steps for StrimziPodset Update
+function displayManualStrimziPodsetPatchingMessage(){
+  local operator_namespace=$1
+  local services_namespace=$2
+
+  echo "=============================================================================================="
+  echo " ${YELLOW_TEXT}[IMPORTANT] Manual Steps to Patch Kafka StrimziPodSet Resource:${RESET_TEXT}"
+  echo "=============================================================================================="
+  echo
+  echo "1. Verify the Events Operator is running:"
+  echo "     ${CLI_CMD} get pods -n ${operator_namespace} | grep ibm-events-operator"
+  echo
+  echo "2. Check the StrimziPodSet exists:"
+  echo "     ${CLI_CMD} get strimzipodsets.core.ibmevents.ibm.com iaf-system-kafka -n ${services_namespace}"
+  echo
+  echo "3. Get the current kafka version annotation:"
+  echo "     KAFKA_VERSION=\$(${CLI_CMD} get strimzipodsets.core.ibmevents.ibm.com iaf-system-kafka -n ${services_namespace} -o jsonpath='{.metadata.annotations.strimzi\.io/kafka-version}')"
+  echo
+  echo "4. Apply the patch manually:"
+  echo "     ${CLI_CMD} patch strimzipodsets.core.ibmevents.ibm.com iaf-system-kafka -n ${services_namespace} --type=merge -p \"{\\\"metadata\\\":{\\\"annotations\\\":{\\\"strimzi.io/kafka-version\\\":null,\\\"ibmevents.ibm.com/kafka-version\\\":\\\"\$KAFKA_VERSION\\\"}}}\""
+  echo
+  echo "5. If there are issues with patching the iaf-system-kafka strimzipodset, you must reach out to the IBM CloudPak Foundation Services Team for further assistance."
+  echo
+  echo "================================================================================"
 }

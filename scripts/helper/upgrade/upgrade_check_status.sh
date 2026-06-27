@@ -905,11 +905,14 @@ function check_cp4ba_deployment_status(){
                 # initial_app_version=`cat $UPGRADE_DEPLOYMENT_CONTENT_CR_BAK | ${YQ_CMD} r - spec.appVersion`
                 CONTENT_CR_EXIST="Yes"
                 source ${CUR_DIR}/helper/upgrade/deployment_check/fncm_status.sh
+                # Add FNCM component status variables to overall status array
+                CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_CPE_DEPLOYMENT_STATUS" "$CP4BA_GRAPHQL_DEPLOYMENT_STATUS" "$CP4BA_CSS_DEPLOYMENT_STATUS" "$CP4BA_CMIS_DEPLOYMENT_STATUS" "$CP4BA_IER_DEPLOYMENT_STATUS" "$CP4BA_ICC_DEPLOYMENT_STATUS" "$CP4BA_TM_DEPLOYMENT_STATUS" "$CP4BA_BAN_DEPLOYMENT_STATUS" "$CP4BA_ES_DEPLOYMENT_STATUS")
                 bai_flag=`${YQ_CMD} ".spec.content_optional_components.bai // \"\"" "$UPGRADE_STATUS_FILE"`
                 if [[ ! -z "$bai_flag" ]]; then
                     bai_flag=$(echo "$bai_flag" | tr '[:upper:]' '[:lower:]')
                     if [[ "${bai_flag}" == "true" ]]; then
                         source ${CUR_DIR}/helper/upgrade/deployment_check/bai_status.sh
+                        CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BAI_DEPLOYMENT_STATUS")
                     fi
                 fi
                 css_flag=`${YQ_CMD} ".spec.content_optional_components.css" "$UPGRADE_STATUS_FILE"`
@@ -938,16 +941,20 @@ function check_cp4ba_deployment_status(){
             #################### FNCM #######################
             if [[ $CONTENT_CR_EXIST == "Yes" || " ${EXISTING_PATTERN_ARR[@]}" =~ "workflow-runtime" || " ${EXISTING_PATTERN_ARR[@]}" =~ "workflow-authoring" || " ${EXISTING_PATTERN_ARR[@]}" =~ "content" || " ${EXISTING_PATTERN_ARR[@]}" =~ "document_processing" || "${EXISTING_OPT_COMPONENT_ARR[@]}" =~ "ae_data_persistence" ]]; then
                 source ${CUR_DIR}/helper/upgrade/deployment_check/fncm_status.sh
+                # Add FNCM component status variables to array
+                CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_CPE_DEPLOYMENT_STATUS" "$CP4BA_GRAPHQL_DEPLOYMENT_STATUS" "$CP4BA_CSS_DEPLOYMENT_STATUS" "$CP4BA_CMIS_DEPLOYMENT_STATUS" "$CP4BA_IER_DEPLOYMENT_STATUS" "$CP4BA_ICC_DEPLOYMENT_STATUS" "$CP4BA_TM_DEPLOYMENT_STATUS" "$CP4BA_BAN_DEPLOYMENT_STATUS" "$CP4BA_ES_DEPLOYMENT_STATUS")
             fi
 
             #################### ADP #######################
             if [[ " ${EXISTING_PATTERN_ARR[@]}" =~ "document_processing" ]]; then
                 source ${CUR_DIR}/helper/upgrade/deployment_check/adp_status.sh
+                CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_ADP_ACA_DEPLOYMENT_STATUS" "$CP4BA_ADP_VIEWONE_DEPLOYMENT_STATUS" "$CP4BA_ADP_CDRA_DEPLOYMENT_STATUS" "$CP4BA_ADP_CDS_DEPLOYMENT_STATUS" "$CP4BA_ADP_CPDS_DEPLOYMENT_STATUS" "$CP4BA_ADP_GITSVC_DEPLOYMENT_STATUS")
             fi
 
             #################### ADS #######################
             if [[ " ${EXISTING_PATTERN_ARR[@]}" =~ "decisions_ads" ]]; then
-            source ${CUR_DIR}/helper/upgrade/deployment_check/ads_status.sh
+                source ${CUR_DIR}/helper/upgrade/deployment_check/ads_status.sh
+                CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_ADS_CREDENTIALS_SERVICE_DEPLOYMENT_STATUS" "$CP4BA_ADS_GIT_SERVICE_DEPLOYMENT_STATUS" "$CP4BA_ADS_LTPA_CREATION_DEPLOYMENT_STATUS" "$CP4BA_ADS_PARSING_SERVICE_DEPLOYMENT_STATUS" "$CP4BA_ADS_RESTAPI_DEPLOYMENT_STATUS" "$CP4BA_ADS_RRREGISTRATION_DEPLOYMENT_STATUS" "$CP4BA_ADS_RUN_SERVICE_DEPLOYMENT_STATUS" "$CP4BA_ADS_RUNTIME_SERVICE_DEPLOYMENT_STATUS")
             fi
 
             #################### ODM #######################
@@ -955,10 +962,12 @@ function check_cp4ba_deployment_status(){
             odm_Val=$?
             if [[ $odm_Val -eq 0 ]]; then
                 source ${CUR_DIR}/helper/upgrade/deployment_check/odm_status.sh
+                CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_ODM_DECISION_CENTER_DEPLOYMENT_STATUS" "$CP4BA_ODM_DECISION_RUNNER_DEPLOYMENT_STATUS" "$CP4BA_ODM_DECISIONSERVER_CONSOLE_DEPLOYMENT_STATUS" "$CP4BA_ODM_DECISIONSERVER_RUNTIME_DEPLOYMENT_STATUS")
             fi
 
             #################### RR #######################
             source ${CUR_DIR}/helper/upgrade/deployment_check/rr_status.sh
+            CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_RR_DEPLOYMENT_STATUS")
 
             #################### BAA AE Multiple instance #######################
             AE_ENGINE_DEPLOYMENT=`${YQ_CMD} ".spec.application_engine_configuration // \"\"" "$UPGRADE_STATUS_FILE"`
@@ -971,6 +980,7 @@ function check_cp4ba_deployment_status(){
                         break
                     else
                         source ${CUR_DIR}/helper/upgrade/deployment_check/baa_status.sh
+                        CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BAA_WORKSPACE_AAE_DEPLOYMENT_STATUS")
                         ((item++))
                     fi
                 done
@@ -979,16 +989,19 @@ function check_cp4ba_deployment_status(){
             BASTUDIO_DEPLOYMENT=`${YQ_CMD} ".spec.bastudio_configuration.admin_user // \"\"" "$UPGRADE_STATUS_FILE"`
             if [[ ! -z "$BASTUDIO_DEPLOYMENT" ]]; then
                 source ${CUR_DIR}/helper/upgrade/deployment_check/bastudio_status.sh
+                CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BASTUDIO_DEPLOYMENT_STATUS")
             fi
             #################### BAI #######################
             if [[ " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "bai" ]]; then
                 source ${CUR_DIR}/helper/upgrade/deployment_check/bai_status.sh
+                CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BAI_DEPLOYMENT_STATUS")
             fi
 
             #################### BAML #######################
             BAML_DEPLOYMENT=`${YQ_CMD} ".spec.baml_configuration // \"\"" "$UPGRADE_STATUS_FILE"`
             if [[ ! -z "$BAML_DEPLOYMENT" ]]; then
                 source ${CUR_DIR}/helper/upgrade/deployment_check/baml_status.sh
+                CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BAML_DEPLOYMENT_STATUS")
             fi
 
             #################### BAW runtime Multiple instance #######################
@@ -1002,6 +1015,7 @@ function check_cp4ba_deployment_status(){
                         break
                     else
                         source ${CUR_DIR}/helper/upgrade/deployment_check/baw_runtime_status.sh
+                        CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_BAW_DEPLOYMENT_STATUS")
                         ((item++))
                     fi
                 done
@@ -1018,6 +1032,7 @@ function check_cp4ba_deployment_status(){
             ${CLI_CMD} get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml > ${UPGRADE_STATUS_FILE}
             #################### WfPS #######################
             source ${CUR_DIR}/helper/upgrade/deployment_check/wfps_status.sh
+            CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_WFPS_DEPLOYMENT_STATUS")
         done
 
     fi
@@ -1031,12 +1046,15 @@ function check_cp4ba_deployment_status(){
             ${CLI_CMD} get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml > ${UPGRADE_STATUS_FILE}
             #################### WfPS #######################
             source ${CUR_DIR}/helper/upgrade/deployment_check/pfs_status.sh
+            CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_PFS_DEPLOYMENT_STATUS")
         done
 
     fi
 
 }
 
+# This function picks up the table built from the check_cp4ba_deployment_status and in addition shows some more messages based on the components displayed
+# This function is called in loop until failure or all components are upgraded
 function show_cp4ba_upgrade_status() {
     printf '%s %s\n' "$(date)"
     check_cp4ba_deployment_status "${CP4BA_SERVICES_NS}"
@@ -1180,9 +1198,11 @@ function check_cp4ba_separate_operand(){
             info "This CP4BA deployment is separation of operators and operands"
             SEPARATE_OPERAND_FLAG="Yes"
             CP4BA_SERVICES_NS=$cp4ba_services_namespace
+            CP4BA_OPERATOR_NS=$cp4ba_operators_namespace
         else
             SEPARATE_OPERAND_FLAG="No"
-            CP4BA_SERVICES_NS=$TARGET_PROJECT_NAME
+            CP4BA_SERVICES_NS=$cp4ba_services_namespace
+            CP4BA_OPERATOR_NS=$cp4ba_operators_namespace
         fi
     else
         warning "\"operator_namespace\\services_namespace\" was not found in \"ibm-cp4ba-common-config\" configMap under the project \"$tmp_namespace_val\""

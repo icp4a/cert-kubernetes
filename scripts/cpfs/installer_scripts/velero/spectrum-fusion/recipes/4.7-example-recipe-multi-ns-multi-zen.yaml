@@ -253,7 +253,7 @@ spec:
           name: podReady
           onError: fail
           timeout: 600
-      labelSelector: 'k8s.enterprisedb.io/cluster=common-service-db,role=primary'
+      labelSelector: 'foundationservices.cloudpak.ibm.com=cs-db,role=primary'
       name: common-service-db-check
       namespace: <service namespace>
       onError: fail

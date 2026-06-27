@@ -16,7 +16,9 @@ PARENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 OLM_SUBSCRIPTION=${PARENT_DIR}/descriptors/op-olm/subscription.yaml
 OLM_SUBSCRIPTION_TMP=${TEMP_FOLDER}/.subscription.yaml
 
+# Open file descriptor 3 for suppressing output
 exec 3>/dev/null
+
 TEMP_FOLDER=${CUR_DIR}/.tmp
 BAK_FOLDER=${CUR_DIR}/.bak
 mkdir -p $TEMP_FOLDER >/dev/null 2>&1
@@ -52,7 +54,7 @@ function show_help {
     echo "  -h  Display help"
     echo "  -n  The namespace to deploy Operator"
     echo "  -a  Accept IBM license"
-    echo "  -i  Optional: Operator image name, by default it is cp.icr.io/cp/cp4a/icp4a-operator:22.0.1"
+    echo "  -i  Optional: Operator image name, by default it is icr.io/cpopen/icp4a-operator:22.0.1"
     printf '%b\n' "  -p  Optional: Pull secret to use to connect to the registry, by default it is ibm-entitlement-key\n"
 
 }

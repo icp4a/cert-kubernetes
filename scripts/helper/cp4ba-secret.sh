@@ -338,6 +338,29 @@ EOF
   success "Created Operational Decision Manager secret YAML template\n"
 }
 
+# K8s secret template function to create the ODM keystore password secret
+function create_odm_keystore_password_secret_template(){
+  local password=$1 
+  mkdir -p $ODM_SECRET_FOLDER >/dev/null 2>&1
+  wait_msg "Creating Operational Decision Manager Keystore Password secret YAML template"
+
+cat << EOF > ${ODM_KEYSTORE_SECRET_FILE}
+# YAML template for ibm-odm-keystore-secret secret
+---
+kind: Secret
+apiVersion: v1
+type: Opaque
+metadata:
+  name: ibm-odm-keystore-secret
+  namespace: "$CP4BA_SERVICES_NS"
+  labels:
+    cp4ba.ibm.com/backup-type: mandatory
+stringData:
+  keystorePassword: "$password"
+EOF
+  success "Created Operational Decision Manager Keystore Password secret YAML template\n"
+}
+
 # function for creating the template for CP4BA BAN capabilities secret 
 function create_ban_secret_template(){
   local dbname=$1
@@ -1040,6 +1063,9 @@ function create_bts_external_db_secret_template(){
   wait_msg "Creating bts-datastore-edb-secret secret YAML template for BTS metastore external Postgres DB"
   mkdir -p $BTS_SECRET_FOLDER >/dev/null 2>&1
 
+# For https://jsw.ibm.com/browse/DBACLD-238245 and https://jsw.ibm.com/browse/DBACLD-238583 we now need to update the bts-datastore-edb-secret template to have a different key
+# THe key tls.key will be replaced to be tls.pk8 as the client.key file that it stores is in pk8 format. With new Postgres drivers, if you name it tls.key it expects the the key cert to be in PEM format.
+
 cat << EOF > ${BTS_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for bts-datastore-edb-secret.sh
@@ -1053,7 +1079,7 @@ if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-loca
   ${CLI_CMD} delete secret "bts-datastore-edb-secret" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
   ${CLI_CMD} create secret generic "bts-datastore-edb-secret" --from-file=ca.crt="<cp4a-db-crt-file-in-local>/root.pem"\
   --from-file=tls.crt="<cp4a-db-crt-file-in-local>/client.pem"\
-  --from-file=tls.key="<cp4a-db-crt-file-in-local>/tls_key.pk8" -n "$CP4BA_SERVICES_NS"
+  --from-file=tls.pk8="<cp4a-db-crt-file-in-local>/tls_key.pk8" -n "$CP4BA_SERVICES_NS"
   ${CLI_CMD} label secret "bts-datastore-edb-secret" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
   printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
@@ -1067,6 +1093,8 @@ EOF
 function create_bts_external_db_configmap_template(){
   wait_msg "Creating ibm-bts-config-extension configMap YAML template for BTS metastore external Postgres DB"
   mkdir -p $BTS_SECRET_FOLDER >/dev/null 2>&1
+# For https://jsw.ibm.com/browse/DBACLD-238245 and https://jsw.ibm.com/browse/DBACLD-238583 we now need to update the ibm-bts-config-extension template to have a different file path
+# THe key tls.key file path will be replaced end with tls.pk8 as the client.key file that it stores is in pk8 format. With new Postgres drivers, if you name it tls.key it expects the the key to be in PEM format.
 cat << EOF > ${BTS_CONFIGMAP_FILE}
 # YAML template for ibm-bts-config-extension configMap
 ---
@@ -1085,7 +1113,7 @@ data:
   sslMode: verify-ca
   sslSecretName: bts-datastore-edb-secret
   customPropertyName1: sslKey
-  customPropertyValue1: "/opt/ibm/wlp/usr/shared/resources/security/db/tls.key"
+  customPropertyValue1: "/opt/ibm/wlp/usr/shared/resources/security/db/tls.pk8"
   customPropertyName2: user
   customPropertyValue2: "<DatabaseUserName>"
 EOF
