@@ -3028,6 +3028,75 @@ function recreate_cp4ba_common_configmap() {
 
 }
 
+
+
+#######################################################
+# Grant ibm-licensing secret access for content operator
+# 
+# Parameters:
+#   $1 - operator_namespace: Namespace where the operator service account exists
+#   $2 - licensing_namespace: Namespace containing the secrets to access
+#   $3 - service_account_name: Name of the service account (default: ibm-cp4a-content-operator)
+#######################################################
+# This function is required for lsreporter deployment where the content operator has to have access to ibm-licensing secrets
+# # https://jsw.ibm.com/browse/DBACLD-236572 https://jsw.ibm.com/browse/DBACLD-236556
+function grant_ibm_licensing_namespace_secret_access() {
+    local operator_namespace="${1}"
+    local licensing_namespace="${2}"
+    local service_account_name="${3:-ibm-cp4a-content-operator}"
+
+
+    info "Creating RBAC resources to grant ${service_account_name} in ${operator_namespace} access to secrets in ${licensing_namespace}..."
+
+    # Create Role in target namespace
+    cat <<EOF | ${CLI_CMD} apply -f -
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ${licensing_namespace}-secret-reader
+  namespace: ${licensing_namespace}
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list"]
+EOF
+
+    if [[ $? -ne 0 ]]; then
+        warning "ERROR: Failed to create Role in ${licensing_namespace}"
+        return 1
+    fi
+
+    # Create RoleBinding in target namespace
+    cat <<EOF | ${CLI_CMD} apply -f -
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ${service_account_name}-${licensing_namespace}-access
+  namespace: ${licensing_namespace}
+subjects:
+- kind: ServiceAccount
+  name: ${service_account_name}
+  namespace: ${operator_namespace}
+roleRef:
+  kind: Role
+  name: ${licensing_namespace}-secret-reader
+  apiGroup: rbac.authorization.k8s.io
+EOF
+
+    if [[ $? -ne 0 ]]; then
+        warning "ERROR: Failed to create RoleBinding in ${licensing_namespace}"
+        return 1
+    fi
+
+    success "Successfully created RBAC resources."
+
+}
+
+
+
+
 ################################################
 #### Begin - Main step for install operator ####
 ################################################
@@ -3262,6 +3331,10 @@ else
     prepare_install
     apply_cp4a_operator
 fi
+
+# Function to create RBAC resources to allow the content operator to access secrets in the ibm-licensing Namespace
+# https://jsw.ibm.com/browse/DBACLD-236572 https://jsw.ibm.com/browse/DBACLD-236556
+grant_ibm_licensing_namespace_secret_access "$operator_ns" "ibm-licensing" "ibm-cp4a-content-operator"
 
 # create_scc
 display_storage_classes

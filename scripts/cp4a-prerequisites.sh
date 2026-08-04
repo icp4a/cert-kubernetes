@@ -17,6 +17,9 @@ CLI_CMD="kubectl"
 source ${CUR_DIR}/helper/common.sh
 source ${CUR_DIR}/helper/messages.sh
 
+# Define constant for external PostgreSQL server prefix used for ADPGG/ADS
+EXTERNAL_POSTGRES_SERVER_PREFIX="postgresql-external"
+
 function show_help() {
     printf '%b\n' "\nUsage: cp4a-prerequisites.sh -m [modetype] -n [cp4baNamespace] [options]\n"
     echo "Options:"
@@ -1914,6 +1917,15 @@ function check_property_file(){
         bts_external_db_cert_folder=$(sed -e 's/^"//' -e 's/"$//' <<<"$bts_external_db_cert_folder")
         cert_dir_array=( "${cert_dir_array[@]}" "${bts_external_db_cert_folder}" )
     fi
+
+    # ADPGG/ADS external Postgres DB
+    tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS_FLAG)")
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
+    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
+        adpgg_ads_external_db_cert_folder="${DB_SSL_CERT_FOLDER}/${EXTERNAL_POSTGRES_SERVER_PREFIX}"
+        cert_dir_array=( "${cert_dir_array[@]}" "${adpgg_ads_external_db_cert_folder}" )
+    fi
+
     # Issuer to make Opensearch/Kafka use external certificate
     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_CERT_OPENSEARCH_KAFKA_FLAG)")
     tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
@@ -1925,6 +1937,10 @@ function check_property_file(){
 
     declare -A dir_count
     for element in "${cert_dir_array[@]}"; do
+        # Skip empty elements
+        if [[ -z "$element" ]]; then
+            continue
+        fi
         if [[ -n "${dir_count[$element]}" ]]; then
             dir_count[$element]=$((dir_count[$element] + 1))
         else
@@ -2669,6 +2685,10 @@ function create_prerequisites() {
         create_odm_secret_template $tmp_dbname $tmp_dbservername
         #  replace basedb user
         tmp_dbuser="$(prop_db_name_user_property_file ODM_DB_USER_NAME)"
+        # Generate a random 16-character password for odm-keystore-password secret so we don't need to need to take user inputs
+        # https://jsw.ibm.com/browse/DBACLD-239861
+        tmp_odm_keystore_password="$(openssl rand -hex 8)"
+
         ${YQ_CMD} -i ".stringData.db-user = \"$tmp_dbuser\"" ${ODM_SECRET_FILE}
 
         # when POSTGRESQL_SSL_CLIENT_SERVER is true, remove pwd from secret
@@ -2680,6 +2700,12 @@ function create_prerequisites() {
             # Function that updates the secret template with the base64 password
             update_secret_template_passwords "$tmp_dbuserpwd" "db-password" "$ODM_SECRET_FILE"
         fi
+
+        # Create ODM secret template for the ODM keystore password secret
+        # https://jsw.ibm.com/browse/DBACLD-239861
+        create_odm_keystore_password_secret_template "$tmp_odm_keystore_password"
+        # Function that updates the secret template with the base64 password
+        update_secret_template_passwords "$tmp_odm_keystore_password" "keystorePassword" "$ODM_KEYSTORE_SECRET_FILE"
 
     fi
 
@@ -3055,7 +3081,10 @@ function create_prerequisites() {
                     ${SED_COMMAND} "s|<cp4a-db-crt-file-in-local>|$tmp_name|g" ${CP4A_DB_SSL_SECRET_FILE}
 
                     #  replace sslMode for postgresql
-                    if [[ $DB_TYPE == "postgresql" ]]; then
+                    # Get the DATABASE_TYPE for this specific item to support mixed database scenarios
+                    tmp_item_db_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.DATABASE_TYPE)")
+                    tmp_item_db_type=$(echo "$tmp_item_db_type" | tr '[:upper:]' '[:lower:]')
+                    if [[ $tmp_item_db_type == "postgresql" ]]; then
                         ssl_tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.POSTGRESQL_SSL_CLIENT_SERVER)")
                         ssl_tmp_flag=$(echo "$ssl_tmp_flag" | tr '[:upper:]' '[:lower:]')
                         if [[ $ssl_tmp_flag == "yes" || $ssl_tmp_flag == "true" ]]; then
@@ -3544,6 +3573,13 @@ function create_temp_property_file(){
         echo "EXTERNAL_POSTGRESDB_FOR_BTS_FLAG=false" >> ${TEMPORARY_PROPERTY_FILE}
     fi
 
+    # save external Postgres DB for ADPGG/ADS flag
+    if [[ $EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS == "true" ]]; then
+        echo "EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS_FLAG=true" >> ${TEMPORARY_PROPERTY_FILE}
+    else
+        echo "EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS_FLAG=false" >> ${TEMPORARY_PROPERTY_FILE}
+    fi
+
     # save external certificate for Opensearch/Kafka flag
     if [[ $EXTERNAL_CERT_OPENSEARCH_KAFKA == "true" ]]; then
         echo "EXTERNAL_CERT_OPENSEARCH_KAFKA_FLAG=true" >> ${TEMPORARY_PROPERTY_FILE}
@@ -3684,17 +3720,17 @@ element_val.POSTGRESQL_SSL_CLIENT_SERVER=\"True\"\\${nl}" ${DB_SERVER_INFO_PROPE
         if [[ $DB_TYPE == "postgresql" ]]; then
             nl=$'\n' # fix sed issue on Mac, DO NOT change the script format
             if [[ "$machine" == "Mac" ]]; then
-                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\ 
+                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\
 element_val.POSTGRESQL_SSL_MODE=\"require\"\\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
-                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\ 
-## There are three modes [require|verify-ca|verify-full].\\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
-                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\ 
+                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\
+## There are three modes [require|verify-ca|verify-full]. Update this value to match your PostgreSQL server SSL configuration.\\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
+                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\
 ## The value for the sslmode which determines whether or with what priority a secure SSL TCP/IP connection will be negotiated with the PostgreSQL database server.\\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
                 ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\ 
 \\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
             else
                 ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\element_val.POSTGRESQL_SSL_MODE=\"require\"" ${DB_SERVER_INFO_PROPERTY_FILE}
-                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\## There are three modes [require|verify-ca|verify-full]." ${DB_SERVER_INFO_PROPERTY_FILE}
+                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\## There are three modes [require|verify-ca|verify-full]. Update this value to match your PostgreSQL server SSL configuration." ${DB_SERVER_INFO_PROPERTY_FILE}
                 ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\## The value for the sslmode which determines whether or with what priority a secure SSL TCP/IP connection will be negotiated with the PostgreSQL database server." ${DB_SERVER_INFO_PROPERTY_FILE}
                 ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\ " ${DB_SERVER_INFO_PROPERTY_FILE}
             fi
@@ -3772,6 +3808,57 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             fi
         fi
     done
+
+    # Add external PostgreSQL configuration for ADPGG/ADS when using non-PostgreSQL databases
+    if [[ "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" == "true" ]]; then
+        # Create SSL certificate folder for external PostgreSQL server
+        mkdir -p "${DB_SSL_CERT_FOLDER}/${EXTERNAL_POSTGRES_SERVER_PREFIX}" >/dev/null 2>&1
+
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## Please input the value for the external PostgreSQL database server/instance name, which is used for ADPGG/ADS databases ##" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## (NOTES: The value (CAN NOT CONTAIN DOT CHARACTER) is alias name for database server/instance, it is not real database server/instance host name.) ##" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+
+        # Update DB_SERVER_LIST to include external PostgreSQL server
+        tmp_db_list=$(prop_db_server_property_file DB_SERVER_LIST)
+        tmp_db_list=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_list")
+        if [[ -n "$tmp_db_list" ]]; then
+            ${SED_COMMAND} "s|DB_SERVER_LIST=\"${tmp_db_list}\"|DB_SERVER_LIST=\"${tmp_db_list},${EXTERNAL_POSTGRES_SERVER_PREFIX}\"|g" ${DB_SERVER_INFO_PROPERTY_FILE}
+        else
+            ${SED_COMMAND} "s|DB_SERVER_LIST=\"\"|DB_SERVER_LIST=\"${EXTERNAL_POSTGRES_SERVER_PREFIX}\"|g" ${DB_SERVER_INFO_PROPERTY_FILE}
+        fi
+
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "####################################################" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## Property for Database Server \"${EXTERNAL_POSTGRES_SERVER_PREFIX}\" required by IBM Cloud Pak for Business Automation on postgresql type database ##" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "####################################################" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "${EXTERNAL_POSTGRES_SERVER_PREFIX}.DATABASE_TYPE=\"postgresql\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## Provide the database server name or IP address of the database server. If use IPv6, the addresses need to be enclosed with the square brackets ([...]), e.g. [XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX]." >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "${EXTERNAL_POSTGRES_SERVER_PREFIX}.DATABASE_SERVERNAME=\"<Required>\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## Provide the database server port.  For Postgresql, the default is \"5432\"." >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "${EXTERNAL_POSTGRES_SERVER_PREFIX}.DATABASE_PORT=\"5432\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## The parameter is used to support database connection over SSL for database. Default value is \"True\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "${EXTERNAL_POSTGRES_SERVER_PREFIX}.DATABASE_SSL_ENABLE=\"True\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## Whether your PostgreSQL database enables server only or both server and client authentication. Default value is \"True\" for enabling both server and client authentication, \"False\" is for enabling server-only authentication." >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "${EXTERNAL_POSTGRES_SERVER_PREFIX}.POSTGRESQL_SSL_CLIENT_SERVER=\"True\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## The value for the sslmode which determines whether or with what priority a secure SSL TCP/IP connection will be negotiated with the PostgreSQL database server." >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## There are three modes [require|verify-ca|verify-full]. Update this value to match your PostgreSQL server SSL configuration." >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "${EXTERNAL_POSTGRES_SERVER_PREFIX}.POSTGRESQL_SSL_MODE=\"require\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## If POSTGRESQL_SSL_CLIENT_SERVER is \"True\" and DATABASE_SSL_ENABLE is \"True\", please get \"<your-server-certification: root.crt>\" \"<your-client-certification: client.crt>\" \"<your-client-key: client.key>\" from server and client, and copy into this directory." >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## If POSTGRESQL_SSL_CLIENT_SERVER is \"False\" and DATABASE_SSL_ENABLE is \"True\", please get the SSL certificate file (rename db-cert.crt) from server and then copy into this directory." >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "${EXTERNAL_POSTGRES_SERVER_PREFIX}.DATABASE_SSL_CERT_FILE_FOLDER=\"${DB_SSL_CERT_FOLDER}/${EXTERNAL_POSTGRES_SERVER_PREFIX}\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## The name of the secret that contains the PostgreSQL SSL certificate if SSL is enabled" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "${EXTERNAL_POSTGRES_SERVER_PREFIX}.DATABASE_SSL_SECRET_NAME=\"ibm-cp4ba-db-ssl-secret-for-${EXTERNAL_POSTGRES_SERVER_PREFIX}\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+    fi
+
     success "DB Server property file for CP4BA has been created.\n"
     fi
 
@@ -4775,15 +4862,16 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
     # generate property for ADP
     if [[ "${pattern_cr_arr[@]}" =~ "document_processing" ]]; then
         wait_msg "Creating Property file for IBM Automation Document Processing"
-        tip="## Processing's Property for Document Processing Engine (DPE) databases on ${DB_TYPE} type database ##"
+        tip="## Property for Document Processing Engine (DPE) databases on ${DB_TYPE} type database ##"
+        # DBACLD-244556: Emit ADP section header unconditionally so ADP properties are always
+        # placed under their own section, separate from ODM's section.
+        echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
+        echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
+        echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
         #Generating property file (cp4ba_db_name_user.property) for ADP Gitgateway databases
         if [[ $DB_TYPE == "postgresql-edb" && "${pattern_cr_arr[@]}" =~ "document_processing_designer" ]]; then
-                tip="## Property for Document Processing Engine (DPE) databases required for Gitgateway"
                 note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
-                echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "$note" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "## The designated database name for Automation Document Processing. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "$DB_SERVER_PREFIX.ADP_GG_DB_NAME=\"adpggdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "## The designated user name of the database for Automation Document Processing. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -4797,19 +4885,36 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         ### -- https://jsw.ibm.com/browse/DBACLD-154816 - <Migration from Mongo to Postgres-edb for ADP>
         #Generating property file (cp4ba_db_name_user.property) for ADP Gitgateway databases
         if [[ $DB_TYPE == "db2"* && "${pattern_cr_arr[@]}" =~ "document_processing_designer" ]]; then
-                tip="## Property for Document Processing Engine (DPE) databases required for Gitgateway ##"
-                note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
-                echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "$note" >> ${DB_NAME_USER_PROPERTY_FILE} 
-                echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "## The designated database name for Automation Document Processing. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "$DB_SERVER_PREFIX.ADP_GG_DB_NAME=\"adpggdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "## The designated user name of the database for Automation Document Processing. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "$DB_SERVER_PREFIX.ADP_GG_DB_USER_NAME=\"adpuser\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                # Use external PostgreSQL server prefix if external PostgreSQL is enabled for ADPGG/ADS
+                if [[ "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" == "true" ]]; then
+                    ADP_DB_SERVER_PREFIX="$EXTERNAL_POSTGRES_SERVER_PREFIX"
+                else
+                    ADP_DB_SERVER_PREFIX="$DB_SERVER_PREFIX"
+                fi
 
-                echo "## The designated password for the user of Automation Document Processing. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "$DB_SERVER_PREFIX.ADP_GG_DB_USER_PASSWORD=\"adpuser\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                if [[ "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" == "true" ]]; then
+                    note="## NOTE: \"${EXTERNAL_POSTGRES_SERVER_PREFIX}\" identifies your external PostgreSQL server for the ADPGG database. All other CP4BA databases use your ${DB_TYPE} server alias \"${DB_SERVER_PREFIX}\". You will need to create this PostgreSQL database using the auto-generated DB scripts before applying the CP4BA Custom Resource. ##"
+                else
+                    note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
+                fi
+
+                echo "$note" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated database name for Automation Document Processing. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$ADP_DB_SERVER_PREFIX.ADP_GG_DB_NAME=\"adpggdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                if [[ "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" == "true" ]]; then
+                    echo "## The designated user name of the database for Automation Document Processing." >> ${DB_NAME_USER_PROPERTY_FILE}
+                    echo "$ADP_DB_SERVER_PREFIX.ADP_GG_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    echo "## The designated schema name for the ADP Git Gateway database. Default is the database user name. Provide a custom name if needed." >> ${DB_NAME_USER_PROPERTY_FILE}
+                    echo "$ADP_DB_SERVER_PREFIX.ADP_GG_DB_SCHEMA=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    echo "## The designated password for the user of Automation Document Processing. (Provide the password in plain text or Base64 encoded with {Base64} prefix if it contains special characters.)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    echo "$ADP_DB_SERVER_PREFIX.ADP_GG_DB_USER_PASSWORD=\"{Base64}<yourpassword>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                else
+                    echo "## The designated user name of the database for Automation Document Processing. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    echo "$ADP_DB_SERVER_PREFIX.ADP_GG_DB_USER_NAME=\"adpuser\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+
+                    echo "## The designated password for the user of Automation Document Processing. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    echo "$ADP_DB_SERVER_PREFIX.ADP_GG_DB_USER_PASSWORD=\"adpuser\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                fi
                 echo "" >> ${DB_NAME_USER_PROPERTY_FILE}
         fi
 
@@ -4866,7 +4971,8 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                 echo "## The designated database server(s) for the Document Processing Engine Project databases.  Must match the value of \"DB_SERVER_LIST\" defined in cp4ba_db_server.property. Example: \"DBSERVER1,DBSERVER2\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "ADP_PROJECT_DB_SERVER=\"$DB_SERVER_PREFIX,$DB_SERVER_PREFIX\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "## The designated user names for the Document Processing Engine Project databases. Example: \"dbuser1,dbuser2\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "ADP_PROJECT_DB_USER_NAME=\"acauser,acauser\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## Note: When using postgresql-edb as database type, ADP_PROJECT_DB_USER_NAME will be same as ADP_PROJECT_DB_NAME" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "ADP_PROJECT_DB_USER_NAME=\"proj1,proj2\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "## The designated passwords for the Document Processing Engine Project databases. Example: \"mypwd1,mypwd2\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "ADP_PROJECT_DB_USER_PASSWORD=\"acauser,acauser\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             fi
@@ -4911,8 +5017,8 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## Provide the name of the database for ADS. For example: \"adpggdb\" (Notes: the database name must be lowercase)" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.ADP_GG_DB_NAME=\"adpggdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$DB_SERVER_PREFIX.ADP_GG_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.ADP_GG_DB_CURRENT_SCHEMA")
+            echo "## Provide the ADP Git Gateway schema name. Default is the database user name. Provide a custom name if needed." >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$DB_SERVER_PREFIX.ADP_GG_DB_SCHEMA=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## Provide the user name of the database for the ADP Git Gateway of P8Domain. For example: \"dbuser1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.ADP_GG_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## Provide the password (if password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text) of the database user for the ADS of P8Domain." >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -5615,39 +5721,71 @@ fi
 # generate property for Automation Decision Services (ADS) database if the database is db2/Oracle/MSSQL
 if [[ "${pattern_cr_arr[@]}" =~ "decisions_ads" && "$DB_TYPE" != "postgresql-edb" ]]; then
     wait_msg "Creating Property file for Automation Decision Services"
+
+    # Use external PostgreSQL server prefix if external PostgreSQL is enabled for ADPGG/ADS
+    if [[ "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" == "true" ]]; then
+        ADS_DB_SERVER_PREFIX="$EXTERNAL_POSTGRES_SERVER_PREFIX"
+    else
+        ADS_DB_SERVER_PREFIX="$DB_SERVER_PREFIX"
+    fi
+
     # Generating property file (cp4ba_db_name_user.property) when Decision Designer as optional component for ADS
     if [[ "${optional_component_arr[@]}" =~ "DecisionDesigner" ]]; then
         if [[ $DB_TYPE == "db2"* || $DB_TYPE == "oracle" || $DB_TYPE == "sqlserver" ]]; then
-            tip="## Property for Automation Decision Services(ADS) with Decision Designer as optional component ##"
-            note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$note" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "## The designated database name on the Automation Decision Services(ADS) with Decision Designer as optional component. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$DB_SERVER_PREFIX.ADS_DESIGNER_DB_NAME=\"adsdesignerdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "## The designated user name of the database for Automation Decision Services(ADS). (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$DB_SERVER_PREFIX.ADS_DESIGNER_DB_USER_NAME=\"adsdesigner\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "## The designated password for the user of Automation Decision Services(ADS). (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$DB_SERVER_PREFIX.ADS_DESIGNER_DB_USER_PASSWORD=\"adsdesigner\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            if [[ "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" == "true" ]]; then
+                echo "## Property for Decision Intelligence Client Managed Software(DICMS) with Decision Designer as optional component - using external PostgreSQL for ADPGG/DICMS ##" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## NOTE: The \"${EXTERNAL_POSTGRES_SERVER_PREFIX}\" prefix below is specific to the DICMS Designer database on your external PostgreSQL server. All other CP4BA databases use the alias you entered for your ${DB_TYPE} server (e.g. \"dbserver1\"). You will need to create the PostgreSQL DB using the auto-generated scripts before applying the CP4BA Custom Resource ##" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated database name on the Decision Intelligence Client Managed Software(DICMS) with Decision Designer as optional component." >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$ADS_DB_SERVER_PREFIX.ADS_DESIGNER_DB_NAME=\"adsdesignerdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated user name of the database for Decision Intelligence Client Managed Software(DICMS)." >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$ADS_DB_SERVER_PREFIX.ADS_DESIGNER_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated password for the user of Decision Intelligence Client Managed Software(DICMS). (Provide the password in plain text or Base64 encoded with {Base64} prefix if it contains special characters.)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$ADS_DB_SERVER_PREFIX.ADS_DESIGNER_DB_USER_PASSWORD=\"{Base64}<yourpassword>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated schema name for the DICMS Designer database. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$ADS_DB_SERVER_PREFIX.ADS_DESIGNER_DB_CURRENT_SCHEMA=\"adsdesigner\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            else
+                echo "## Property for Automation Decision Services(ADS) with Decision Designer as optional component ##" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated database name on the Automation Decision Services(ADS) with Decision Designer as optional component. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$ADS_DB_SERVER_PREFIX.ADS_DESIGNER_DB_NAME=\"adsdesignerdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated user name of the database for Automation Decision Services(ADS). (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$ADS_DB_SERVER_PREFIX.ADS_DESIGNER_DB_USER_NAME=\"adsdesigner\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated password for the user of Automation Decision Services(ADS). (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$ADS_DB_SERVER_PREFIX.ADS_DESIGNER_DB_USER_PASSWORD=\"adsdesigner\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            fi
             echo "" >> ${DB_NAME_USER_PROPERTY_FILE}
         fi
     fi
 
     if [[ "${optional_component_arr[@]}" =~ "DecisionRuntime" ]]; then
         if [[ $DB_TYPE = "db2"* || $DB_TYPE = "oracle" || $DB_TYPE = "sqlserver" ]]; then
-            tip="## Property for Automation Decision Services(ADS) with Decision Runtime as optional component ##"
-            note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$note" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "## The designated database name on the Automation Decision Services(ADS) with Decision Runtime as optional component. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$DB_SERVER_PREFIX.ADS_RUNTIME_DB_NAME=\"adsruntimedb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "## The designated user name of the database for Automation Decision Services(ADS). (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$DB_SERVER_PREFIX.ADS_RUNTIME_DB_USER_NAME=\"adsruntime\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "## The designated password for the user of Automation Decision Services(ADS). (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$DB_SERVER_PREFIX.ADS_RUNTIME_DB_USER_PASSWORD=\"adsruntime\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            if [[ "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" == "true" ]]; then
+                echo "## Property for Decision Intelligence Client Managed Software(DICMS) with Decision Runtime as optional component - using external PostgreSQL for ADPGG/DICMS ##" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## NOTE: The \"${EXTERNAL_POSTGRES_SERVER_PREFIX}\" prefix below is specific to the DICMS Runtime database on your external PostgreSQL server. All other CP4BA databases use the alias you entered for your ${DB_TYPE} server (e.g. \"dbserver1\"). You will need to create the PostgreSQL DB using the auto-generated scripts before applying the CP4BA Custom Resource ##" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated database name on the Decision Intelligence Client Managed Software(DICMS) with Decision Runtime as optional component." >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$ADS_DB_SERVER_PREFIX.ADS_RUNTIME_DB_NAME=\"adsruntimedb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated user name of the database for Decision Intelligence Client Managed Software(DICMS)." >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$ADS_DB_SERVER_PREFIX.ADS_RUNTIME_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated password for the user of Decision Intelligence Client Managed Software(DICMS). (Provide the password in plain text or Base64 encoded with {Base64} prefix if it contains special characters.)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$ADS_DB_SERVER_PREFIX.ADS_RUNTIME_DB_USER_PASSWORD=\"{Base64}<yourpassword>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated schema name for the DICMS Runtime database. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$ADS_DB_SERVER_PREFIX.ADS_RUNTIME_DB_CURRENT_SCHEMA=\"adsruntime\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            else
+                echo "## Property for Automation Decision Services(ADS) with Decision Runtime as optional component ##" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated database name on the Automation Decision Services(ADS) with Decision Runtime as optional component. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$ADS_DB_SERVER_PREFIX.ADS_RUNTIME_DB_NAME=\"adsruntimedb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated user name of the database for Automation Decision Services(ADS). (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$ADS_DB_SERVER_PREFIX.ADS_RUNTIME_DB_USER_NAME=\"adsruntime\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated password for the user of Automation Decision Services(ADS). (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$ADS_DB_SERVER_PREFIX.ADS_RUNTIME_DB_USER_PASSWORD=\"adsruntime\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            fi
             echo "" >> ${DB_NAME_USER_PROPERTY_FILE}
         fi
     fi
@@ -5994,6 +6132,11 @@ fi
     printf '%b\n'  "  - Properties for the global value used by the CP4BA deployment, such as \"sc_deployment_license\".\n"
     printf '%b\n'  "  - properties for the value used by each component of CP4BA, such as <APPLOGIN_USER>/<APPLOGIN_PASSWORD>\n"
 
+    
+    echo
+    printf '%b\n' "$RED_TEXT[IMPORTANT]:$RESET_TEXT Please make sure to save the property files located at $PROPERTY_FILE_FOLDER after you have deployed. These property files will be leveraged in the future for certain upgrade scenarios as well as when you are adding/removing components to your deployment. "  
+    echo
+    
     #DBACLD-196427 - clear next-step instruction after running with -m property mode
     printf '%b\n' "\x1b[32m* [Next Step]:\x1B[0m"
     printf '%b\n' "  - When all the required certificates and property files are prepared, run the following command to generate the database scripts and secret YAML files:"
@@ -6148,6 +6291,15 @@ function load_property_before_generate(){
 
     # Mark the LDAP SSL parameters as optional
     mark_optional
+
+    # Load external PostgreSQL flags for ADPGG/ADS
+    tmp_flag=$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS_FLAG)
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
+    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
+        EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS="true"
+    else
+        EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS="false"
+    fi
 }
 
 function create_db_script(){
@@ -6163,8 +6315,8 @@ function create_db_script(){
     
 
 
-    # Create db script only if postgres is chosen as an external database
-    if [[ " ${pattern_cr_arr[@]} " =~ " decisions_ads " && "$DB_TYPE" == "postgresql" ]]; then
+    # Create db script when DB_TYPE is postgresql OR when external PostgreSQL is enabled for ADPGG/ADS
+    if [[ " ${pattern_cr_arr[@]} " =~ " decisions_ads " && ("$DB_TYPE" == "postgresql" || "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" == "true") ]]; then
 
         # Create db script for each optional components chosen
 
@@ -6193,7 +6345,15 @@ function create_db_script(){
                 check_single_quotes_password "$tmp_dbuserpwd" "ADS_DESIGNER_DB_USER_PASSWORD"
             fi
 
-            create_adsdesignerdb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_db_current_schema_name"
+            # Get DATABASE_TYPE for this server to support mixed database scenarios
+            tmp_database_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file ${tmp_dbservername}.DATABASE_TYPE)")
+
+            # Source PostgreSQL ADS script functions if needed for external PostgreSQL ADS database
+            if [[ "$tmp_database_type" == "postgresql" && "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" == "true" && $DB_TYPE != "postgresql" ]]; then
+                source ${CUR_DIR}/helper/database-sql/postgresql/ads/create-ads-dbscript.sh
+            fi
+
+            create_adsdesignerdb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_db_current_schema_name" "$tmp_database_type"
 
             success "Created the DB SQL statement file for ADS DESIGNER database\n"
         fi
@@ -6223,7 +6383,15 @@ function create_db_script(){
                 check_single_quotes_password "$tmp_dbuserpwd" "ADS_RUNTIME_DB_USER_PASSWORD"
             fi
 
-            create_adsruntimedb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_db_current_schema_name"
+            # Get DATABASE_TYPE for this server to support mixed database scenarios
+            tmp_database_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file ${tmp_dbservername}.DATABASE_TYPE)")
+
+            # Source PostgreSQL ADS script functions if needed for external PostgreSQL ADS database
+            if [[ "$tmp_database_type" == "postgresql" && "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" == "true" && $DB_TYPE != "postgresql" ]]; then
+                source ${CUR_DIR}/helper/database-sql/postgresql/ads/create-ads-dbscript.sh
+            fi
+
+            create_adsruntimedb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_db_current_schema_name" "$tmp_database_type"
 
             success "Created the DB SQL statement file for ADS RUNTIME database\n"
         fi
@@ -7049,11 +7217,12 @@ function create_db_script(){
 
     fi
 
-    if [[ " ${pattern_cr_arr[@]} " =~ " document_processing_designer " && "$DB_TYPE" == "postgresql" ]]; then
+    # Create ADP GITGATEWAY database script when DB_TYPE is postgresql OR when external PostgreSQL is enabled for ADPGG/ADS
+    if [[ " ${pattern_cr_arr[@]} " =~ " document_processing_designer " && ("$DB_TYPE" == "postgresql" || "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" == "true") ]]; then
             echo "Creating the DB SQL statement file for ADP GITGATEWAY database"
             tmp_dbname="$(prop_db_name_user_property_file ADP_GG_DB_NAME)"
             tmp_dbschemaname=""
-            tmp_db_current_schema_name="$(prop_db_name_user_property_file ADP_GG_DB_CURRENT_SCHEMA)"
+            tmp_db_current_schema_name="$(prop_db_name_user_property_file ADP_GG_DB_SCHEMA)"
             # Remove leading and trailing spaces
             tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
 
@@ -7074,7 +7243,15 @@ function create_db_script(){
                 check_single_quotes_password "$tmp_dbuserpwd" "ADP_GG_DB_USER_PASSWORD"
             fi
 
-            create_adpggdb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_dbschemaname"
+            # Get DATABASE_TYPE for this server to support mixed database scenarios
+            tmp_database_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file ${tmp_dbservername}.DATABASE_TYPE)")
+
+            # Source PostgreSQL ADP script functions if needed for external PostgreSQL ADPGG database
+            if [[ "$tmp_database_type" == "postgresql" && "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" == "true" && $DB_TYPE != "postgresql" ]]; then
+                source ${CUR_DIR}/helper/database-sql/postgresql/adp/create-adp-dbscript.sh
+            fi
+
+            create_adpggdb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_dbschemaname" "$tmp_database_type"
 
             success "Created the DB SQL statement file for ADP GITGATEWAY database\n"
     fi
@@ -7826,6 +8003,30 @@ function select_external_postgresdb_for_bts(){
     done
 }
 
+function select_external_postgresdb_for_adpgg_ads(){
+    printf "\n"
+    echo ""
+    while true; do
+        printf "\x1B[1mDo you want to use an external Postgres DB for ADPGG and ADS in this CP4BA deployment?\x1B[0m\n"
+        printf "[${YELLOW_TEXT}NOTE${RESET_TEXT}: IF YES, DB SCRIPTS WILL BE AUTO-GENERATED. YOU WILL NEED TO CREATE THE POSTGRESQL DBs USING THESE SCRIPTS BEFORE APPLYING THE CP4BA CUSTOM RESOURCE]\n"
+        read -erp "Enter your choice (Yes/No, default: No): " ans
+        ans=$(echo "$ans" | tr '[:upper:]' '[:lower:]')
+        case "$ans" in
+        "y"|"yes")
+            EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS="true"
+            break
+            ;;
+        "n"|"no"|"")
+            EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS="false"
+            break
+            ;;
+        *)
+            printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
+            ;;
+        esac
+    done
+}
+
 function select_external_cert_opensearch_kafka(){
     printf "\n"
     echo ""
@@ -8010,7 +8211,7 @@ function select_db_type(){
     if [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "document_processing" ]]; then
         # if [[ $PROFILE_TYPE == "small" ]]; then
         ## -- https://jsw.ibm.com/browse/DBACLD-170077 <updating the name of the DB type of PostgreSQL>
-        options=("IBM Db2 Database" "IBM Db2 HADR" "Amazon RDS for Db2" "Amazon RDS for Db2 HADR" "External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("IBM Db2 Database" "IBM Db2 HADR" "Amazon RDS for Db2" "Amazon RDS for Db2 HADR" "External PostgreSQL" "IBM Cloud Native Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 6]: '
         # else
         #     options=("IBM Db2 Database" "PostgreSQL")
@@ -8018,7 +8219,7 @@ function select_db_type(){
         # fi
     elif [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-process-service" && "${#PATTERNS_CR_SELECTED[@]}" -eq "1" ]]; then
         # if [[ $PROFILE_TYPE == "small" ]]; then
-        options=("External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("External PostgreSQL" "IBM Cloud Native Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 2]: '
         # else
         #     options=("PostgreSQL")
@@ -8026,7 +8227,7 @@ function select_db_type(){
         # fi
     elif [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-process-service" && " ${PATTERNS_CR_SELECTED[@]} " =~ "decisions" && "${#PATTERNS_CR_SELECTED[@]}" -eq "2" ]]; then
         # if [[ $PROFILE_TYPE == "small" ]]; then
-        options=("External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("External PostgreSQL" "IBM Cloud Native Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 2]: '
         # else
         #     options=("PostgreSQL")
@@ -8034,7 +8235,7 @@ function select_db_type(){
         # fi
     elif [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-process-service" && " ${PATTERNS_CR_SELECTED[@]} " =~ "content" && "${#PATTERNS_CR_SELECTED[@]}" -eq "2" ]]; then
         # if [[ $PROFILE_TYPE == "small" ]]; then
-        options=("External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("External PostgreSQL" "IBM Cloud Native Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 2]: '
         # else
         #     options=("PostgreSQL")
@@ -8042,7 +8243,7 @@ function select_db_type(){
         # fi
     elif [[ ("${PATTERNS_CR_SELECTED[@]}" =~ "workflow-authoring" || " ${optional_component_cr_arr[@]}" =~ "app_designer" || " ${optional_component_cr_arr[@]}" =~ "ads_designer") && " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-process-service" ]]; then
         # if [[ $PROFILE_TYPE == "small" ]]; then
-        options=("IBM Db2 Database" "IBM Db2 HADR" "Amazon RDS for Db2" "Amazon RDS for Db2 HADR" "Oracle" "Microsoft SQL Server" "External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("IBM Db2 Database" "IBM Db2 HADR" "Amazon RDS for Db2" "Amazon RDS for Db2 HADR" "Oracle" "Microsoft SQL Server" "External PostgreSQL" "IBM Cloud Native Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 8]: '
         # else
         #     options=("IBM Db2 Database" "Oracle" "Microsoft SQL Server" "PostgreSQL")
@@ -8050,7 +8251,7 @@ function select_db_type(){
         # fi
     elif [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-process-service" && " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-runtime" && "${#PATTERNS_CR_SELECTED[@]}" -eq "3" ]]; then
         # if [[ $PROFILE_TYPE == "small" ]]; then
-        options=("External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("External PostgreSQL" "IBM Cloud Native Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 2]: '
         # else
         #     options=("PostgreSQL")
@@ -8058,7 +8259,7 @@ function select_db_type(){
         # fi
     else
         # if [[ $PROFILE_TYPE == "small" ]]; then
-        options=("IBM Db2 Database" "IBM Db2 HADR" "Amazon RDS for Db2" "Amazon RDS for Db2 HADR" "Oracle" "Microsoft SQL Server" "External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("IBM Db2 Database" "IBM Db2 HADR" "Amazon RDS for Db2" "Amazon RDS for Db2 HADR" "Oracle" "Microsoft SQL Server" "External PostgreSQL" "IBM Cloud Native Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 8]: '
         # else
         #     options=("IBM Db2 Database" "Oracle" "Microsoft SQL Server" "PostgreSQL")
@@ -8096,13 +8297,19 @@ function select_db_type(){
                 DB_TYPE="postgresql"
                 break
                 ;;
-            "EDB Postgres (deployed by the CP4BA Operator)")
+            "IBM Cloud Native Postgres (deployed by the CP4BA Operator)")
                 DB_TYPE="postgresql-edb"
                 break
                 ;;
             *) echo "invalid option $REPLY";;
         esac
     done
+
+    # Ask user if they want to use external PostgreSQL for ADPGG/ADS when using non-PostgreSQL databases
+    # Only ask when document_processing or decisions patterns are selected
+    if [[ ($DB_TYPE == "db2" || $DB_TYPE == "db2hadr" || $DB_TYPE == "db2rds" || $DB_TYPE == "db2rdshadr" || $DB_TYPE == "oracle" || $DB_TYPE == "sqlserver") && (" ${pattern_cr_arr[@]} " =~ "document_processing" || " ${pattern_cr_arr[@]} " =~ "decisions") ]]; then
+        select_external_postgresdb_for_adpgg_ads
+    fi
 
     if [[ $DB_TYPE != "postgresql-edb" ]]; then
         msgRed "You can change the parameter \"DATABASE_SSL_ENABLE\" in the property file \"$DB_SERVER_INFO_PROPERTY_FILE\" later. \"DATABASE_SSL_ENABLE\" is \"TRUE\" by default."
@@ -8328,7 +8535,16 @@ function input_information(){
     if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]]; then
         generate_sample_network_policies
         ### <https://jsw.ibm.com/browse/DBACLD-170742> - We only prompt the user to ask if they want to use external PostgreSQL for Zen and IM when external PostgreSQL is selected.
-        if [[ $DB_TYPE == "postgresql" ]]; then
+        
+        # Latest update on using external postgres
+        # The scenarios where external Postgres can be used for CPFS is
+        # CP4BA and CPFS use CNPG
+        # CP4BA uses external Postgres and CPFS uses CNPG
+        # CP4BA uses external Postgres and CPFS uses external Postgres
+        # CP4BA uses a non Postgres flavor DB type (DB2 , Oracle , MSSQL ) and CPFS uses CNPG
+        # CP4BA uses a non Postgres flavor DB type (DB2 , Oracle , MSSQL ) and CPFS uses external Postgres
+        # This change was made once we started supporting CNPG -> https://jsw.ibm.com/browse/DBACLD-241273
+        if [[ $DB_TYPE != "postgresql-edb" ]]; then
             select_external_postgresdb_for_im
             select_external_postgresdb_for_zen
         else
@@ -8342,7 +8558,16 @@ function input_information(){
 
         if [[ $ads_Val -eq 0 || " ${pattern_cr_arr[@]} " =~ "workflow-authoring" || " ${pattern_cr_arr[@]} " =~ "document_processing" || " ${pattern_cr_arr[@]} " =~ "application" || " ${optional_component_cr_arr[@]} " =~ "bai" ]]; then
             ### <https://jsw.ibm.com/browse/DBACLD-170742> - We only prompt the user to ask if they want to use external PostgreSQL for BTS when external PostgreSQL is selected.
-            if [[ $DB_TYPE == "postgresql" ]]; then
+            
+            #latest update on selecting external postgres for BTS
+            # The scenarios where external Postgres can be used for CPFS is
+            # CP4BA and CPFS use CNPG
+            # CP4BA uses external Postgres and CPFS uses CNPG
+            # CP4BA uses external Postgres and CPFS uses external Postgres
+            # CP4BA uses a non Postgres flavor DB type (DB2 , Oracle , MSSQL ) and CPFS uses CNPG
+            # CP4BA uses a non Postgres flavor DB type (DB2 , Oracle , MSSQL ) and CPFS uses external Postgres
+            # This change was made once we started supporting CNPG -> https://jsw.ibm.com/browse/DBACLD-241273
+            if [[ $DB_TYPE != "postgresql-edb" ]]; then
                 select_external_postgresdb_for_bts
             else
                 EXTERNAL_POSTGRESDB_FOR_BTS="false"
@@ -9140,7 +9365,7 @@ function validate_prerequisites(){
         rm -rf ${im_external_db_cert_folder}/clientkey.pk8 2>&1 </dev/null
         openssl pkcs8 -topk8 -outform DER -in $postgres_clientkeyfile -out ${im_external_db_cert_folder}/clientkey.pk8 -nocrypt 2>&1 </dev/null
 
-        output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${im_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
+        output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.13.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${im_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
         retVal_verify_db_tmp=$?
         connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
         if [[ ! -z $connection_time ]]; then
@@ -9148,7 +9373,7 @@ function validate_prerequisites(){
         fi
 
         [[ retVal_verify_db_tmp -ne 0 ]] && \
-        warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode verify-ca -ca $postgres_cafile -clientkey ${im_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile" && \
+        warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.13.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode verify-ca -ca $postgres_cafile -clientkey ${im_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile" && \
         fail "Unable to connect to database \"$dbname\" on database server \"$dbserver\", please check the configuration again."
         [[ retVal_verify_db_tmp -eq 0 ]] && \
         success "Checked DB connection for \"$dbname\" on database server \"$dbserver\", PASSED!"
@@ -9180,7 +9405,7 @@ function validate_prerequisites(){
         rm -rf ${zen_external_db_cert_folder}/clientkey.pk8 2>&1 </dev/null
         openssl pkcs8 -topk8 -outform DER -in $postgres_clientkeyfile -out ${zen_external_db_cert_folder}/clientkey.pk8 -nocrypt 2>&1 </dev/null
 
-        output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${zen_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
+        output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.13.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${zen_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
         retVal_verify_db_tmp=$?
         connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
         if [[ ! -z $connection_time ]]; then
@@ -9188,7 +9413,7 @@ function validate_prerequisites(){
         fi
 
         [[ retVal_verify_db_tmp -ne 0 ]] && \
-        warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode verify-ca -ca $postgres_cafile -clientkey ${zen_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile" && \
+        warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.13.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode verify-ca -ca $postgres_cafile -clientkey ${zen_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile" && \
         fail "Unable to connect to database \"$dbname\" on database server \"$dbserver\", please check the configuration again."
         [[ retVal_verify_db_tmp -eq 0 ]] && \
         success "Checked DB connection for \"$dbname\" on database server \"$dbserver\", PASSED!"
@@ -9220,7 +9445,7 @@ function validate_prerequisites(){
         rm -rf ${bts_external_db_cert_folder}/clientkey.pk8 2>&1 </dev/null
         openssl pkcs8 -topk8 -outform DER -in $postgres_clientkeyfile -out ${bts_external_db_cert_folder}/clientkey.pk8 -nocrypt 2>&1 </dev/null
 
-        output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${bts_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
+        output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.13.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${bts_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
         retVal_verify_db_tmp=$?
         connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
         if [[ ! -z $connection_time ]]; then
@@ -9228,7 +9453,7 @@ function validate_prerequisites(){
         fi
 
         [[ retVal_verify_db_tmp -ne 0 ]] && \
-        warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode verify-ca -ca $postgres_cafile -clientkey ${bts_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile" && \
+        warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.13.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode verify-ca -ca $postgres_cafile -clientkey ${bts_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile" && \
         fail "Unable to connect to database \"$dbname\" on database server \"$dbserver\", please check the configuration again."
         [[ retVal_verify_db_tmp -eq 0 ]] && \
         success "Checked DB connection for \"$dbname\" on database server \"$dbserver\", PASSED!"
@@ -9299,6 +9524,8 @@ if [[ $RUNTIME_MODE == "generate" ]]; then
             # Import function for DB Script
                 source ${CUR_DIR}/helper/database-sql/${DB_TYPE}/adp/create-adp-dbscript.sh
             fi
+            # Note: PostgreSQL ADS/ADP script functions for ADPGG will be sourced later, right before they're needed
+            # to avoid overwriting DB2/Oracle/SQL Server function definitions
             # check whether user already input value for the <Required>
         fi
         check_property_file

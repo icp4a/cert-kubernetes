@@ -4,71 +4,7 @@
     "path": "/spec/install/spec/deployments/0/spec/template/spec/volumes",
     "value": [
       {
-        "name": "license-folder-pvc",
-        "ephemeral": {
-          "volumeClaimTemplate": {
-            "spec": {
-              "storageClassName": "managed-nfs-storage",
-              "accessModes": ["ReadWriteOnce"],
-              "resources": {
-                "requests": {
-                  "storage": "500Mi"
-                }
-              }
-            }
-          }
-        }
-      },
-      {
         "name": "tmp-folder-pvc",
-        "ephemeral": {
-          "volumeClaimTemplate": {
-            "spec": {
-              "storageClassName": "managed-nfs-storage",
-              "accessModes": ["ReadWriteOnce"],
-              "resources": {
-                "requests": {
-                  "storage": "1Gi"
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "ansible-folder-pvc",
-        "ephemeral": {
-          "volumeClaimTemplate": {
-            "spec": {
-              "storageClassName": "managed-nfs-storage",
-              "accessModes": ["ReadWriteOnce"],
-              "resources": {
-                "requests": {
-                  "storage": "1Gi"
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "log-folder-pvc",
-        "ephemeral": {
-          "volumeClaimTemplate": {
-            "spec": {
-              "storageClassName": "managed-nfs-storage",
-              "accessModes": ["ReadWriteOnce"],
-              "resources": {
-                "requests": {
-                  "storage": "1Gi"
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "ibm-folder-pvc",
         "ephemeral": {
           "volumeClaimTemplate": {
             "spec": {

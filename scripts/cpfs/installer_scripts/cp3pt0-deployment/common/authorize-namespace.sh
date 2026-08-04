@@ -19,6 +19,10 @@
 # Project roles and role bindings to another namespace
 #
 
+# Get script directory for sourcing cli_compat.sh
+SCRIPT_DIR=$(cd $(dirname "$0") && pwd -P)
+. ${SCRIPT_DIR}/cli_compat.sh
+
 function help() {
     echo "authorize-namespace.sh - Authorize a namespace to be manageable from another namespace through the NamespaceScope operator"
     echo "See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=co-authorizing-foundational-services-perform-operations-workloads-in-namespace for more information."
@@ -98,9 +102,9 @@ done
 #
 
 if [ -z $TARGETNS ]; then
-    TARGETNS=$(${OC} project -q)
-    if [ $? -ne 0 ]; then
-      echo "Error: You do not seem to be logged into Openshift" >&2
+    TARGETNS=$(get_current_namespace "${OC}")
+    if [ $? -ne 0 ] || [ -z "$TARGETNS" ]; then
+      echo "Error: You do not seem to be logged into the Kubernetes cluster" >&2
       help
       exit 1
     fi

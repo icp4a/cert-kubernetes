@@ -23,9 +23,9 @@ function create_ban_db2_sql_file(){
     dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
     dbschema=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbschema")
 
-    # use dbuser as schema when schema is empty
+    # use ICNDB as schema when schema is empty
     if [[ $dbschema == "" ]]; then
-       dbschema=$dbuser
+       dbschema="ICNDB" 
     fi
 
     mkdir -p $BAN_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
@@ -68,9 +68,9 @@ function create_ban_db2rds_sql_file(){
     dbschema=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbschema")
     dbpassword=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbpassword")
 
-    # use dbuser as schema when schema is empty
+    # use ICNDB as schema when schema is empty
     if [[ $dbschema == "" ]]; then
-       dbschema=$dbuser
+       dbschema="ICNDB" 
     fi
 
     mkdir -p $BAN_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1

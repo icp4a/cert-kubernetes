@@ -53,6 +53,7 @@ PREVIEW_DIR="/tmp/setup-tenant-$(date +'%Y%m%d%H%M%S')-preview"
 # ---------- Main functions ----------
 
 . ${BASE_DIR}/common/utils.sh
+. ${BASE_DIR}/common/cli_compat.sh
 
 function main() {
     parse_arguments "$@"
@@ -162,7 +163,7 @@ function print_usage() {
     echo "See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=online-installing-foundational-services-by-using-script for more information."
     echo ""
     echo "Options:"
-    echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH"
+    echo "   --oc string                    Optional. File path to oc/kubectl CLI. Default uses oc in your PATH"
     echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH"
     echo "   --enable-licensing             Optional. Set this flag to install ibm-licensing-operator"
     echo "   --operator-namespace string    Required. Namespace to install Foundational services operator"
@@ -198,12 +199,12 @@ function pre_req() {
     check_command "${YQ}"
     check_yq_version
 
-    # Checking oc command logged in
-    user=$($OC whoami 2> /dev/null)
-    if [ $? -ne 0 ]; then
-        error "You must be logged into the OpenShift Cluster from the oc command line"
+    # Checking cluster CLI command logged in
+    user=$(get_current_user "$OC")
+    if [ $? -ne 0 ] || [ -z "$user" ]; then
+        error "You must be logged into the Kubernetes cluster from the $OC command line"
     else
-        success "oc command logged in as ${user}"
+        success "$OC command logged in as ${user}"
     fi
 
     if [ $LICENSE_ACCEPT -ne 1 ]; then

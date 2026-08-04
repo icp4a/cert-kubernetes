@@ -18,6 +18,7 @@ function create_adsdesignerdb_postgresql_sql_file(){
     dbuserpwd=$3
     dbserver=$4
     dbschema=$5
+    database_type=$6
 
     # remove quotes from beginning and end of string
     dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbname")
@@ -25,6 +26,13 @@ function create_adsdesignerdb_postgresql_sql_file(){
     dbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuserpwd")
     dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
     dbschema=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbschema")
+    database_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$database_type")
+
+    # Use DATABASE_TYPE if provided, otherwise fall back to DB_TYPE for backward compatibility
+    if [[ -z "$database_type" ]]; then
+        database_type="$DB_TYPE"
+    fi
+
     # convert to lowercase for postgreSQL dbname
     dbname=$(echo "$dbname" | tr '[:upper:]' '[:lower:]')
     dbschema=$(echo "$dbschema" | tr '[:upper:]' '[:lower:]')
@@ -36,9 +44,9 @@ function create_adsdesignerdb_postgresql_sql_file(){
        dbschema="ads"
     fi
 
-    mkdir -p $ADS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
-    rm -rf $ADS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createADSDESIGNERDB.sql
-cat << EOF > $ADS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createADSDESIGNERDB.sql
+    mkdir -p $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver >/dev/null 2>&1
+    rm -rf $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver/createADSDESIGNERDB.sql
+cat << EOF > $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver/createADSDESIGNERDB.sql
 -- create user ${dbuser}
 CREATE ROLE ${dbuser} WITH INHERIT LOGIN ENCRYPTED PASSWORD '${dbuserpwd}';
 
@@ -67,6 +75,7 @@ function create_adsruntimedb_postgresql_sql_file(){
     dbuserpwd=$3
     dbserver=$4
     dbschema=$5
+    database_type=$6
 
     # remove quotes from beginning and end of string
     dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbname")
@@ -74,6 +83,13 @@ function create_adsruntimedb_postgresql_sql_file(){
     dbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuserpwd")
     dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
     dbschema=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbschema")
+    database_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$database_type")
+
+    # Use DATABASE_TYPE if provided, otherwise fall back to DB_TYPE for backward compatibility
+    if [[ -z "$database_type" ]]; then
+        database_type="$DB_TYPE"
+    fi
+
     # convert to lowercase for postgreSQL dbname
     dbname=$(echo "$dbname" | tr '[:upper:]' '[:lower:]')
     dbschema=$(echo "$dbschema" | tr '[:upper:]' '[:lower:]')
@@ -85,9 +101,9 @@ function create_adsruntimedb_postgresql_sql_file(){
        dbschema="ads"
     fi
 
-    mkdir -p $ADS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
-    rm -rf $ADS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createADSRUNTIMEDB.sql
-cat << EOF > $ADS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createADSRUNTIMEDB.sql
+    mkdir -p $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver >/dev/null 2>&1
+    rm -rf $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver/createADSRUNTIMEDB.sql
+cat << EOF > $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver/createADSRUNTIMEDB.sql
 -- create user ${dbuser}
 CREATE ROLE ${dbuser} WITH INHERIT LOGIN ENCRYPTED PASSWORD '${dbuserpwd}';
 

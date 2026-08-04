@@ -34,6 +34,7 @@ LOG_FILE="uninstall_tenant_log_$(date +'%Y%m%d%H%M%S').log"
 # ---------- Main functions ----------
 
 . ${BASE_DIR}/common/utils.sh
+. ${BASE_DIR}/common/cli_compat.sh
 
 function main() {
     parse_arguments "$@"
@@ -126,7 +127,7 @@ function print_usage() {
     echo "The --operator-namespace must be provided."
     echo ""
     echo "Options:"
-    echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH"
+    echo "   --oc string                    Optional. File path to oc/kubectl CLI. Default uses oc in your PATH"
     echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH"
     echo "   --helm string                  Optional. File path to helm CLI. Default uses helm in your PATH"
     echo "   --operator-namespace string    Required. Namespace to uninstall Foundational services operators and the whole tenant."
@@ -151,12 +152,12 @@ function pre_req() {
     fi
     check_yq_version
 
-    # Checking oc command logged in
-    user=$(${OC} whoami 2> /dev/null)
-    if [ $? -ne 0 ]; then
-        error "You must be logged into the OpenShift Cluster from the oc command line"
+    # Checking cluster CLI command logged in
+    user=$(get_current_user "${OC}")
+    if [ $? -ne 0 ] || [ -z "$user" ]; then
+        error "You must be logged into the Kubernetes cluster from the ${OC} command line"
     else
-        success "oc command logged in as ${user}"
+        success "${OC} command logged in as ${user}"
     fi
 
     if [ "$OPERATOR_NS" == "" ]; then
@@ -231,22 +232,6 @@ function uninstall_odlm_resource() {
             ${OC} delete -n "$ns" operandrequests ${opreq//$'\n'/ } --timeout=60s
         fi
     done
-
-    # Add a temp workaround for CPD 5.3.1/Zen 6.4.0
-    # We manually delete the finalizer on zen-ca-operandrequest and cleanup the resources it created
-    # this field will be removed in next release, and zen will not create this operandrequest in operator namespace
-    info "Removing finalizers from zen-ca-operand-request in operator namespaces"
-    for ns in ${OPERATOR_NS_LIST//,/ }; do
-        # Check if zen-ca-operand-request exists in the namespace
-        zen_ca_opreq=$(${OC} get operandrequest zen-ca-operand-request -n "$ns" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}')
-        if [ "$zen_ca_opreq" != "" ]; then
-            info "Found zen-ca-operand-request in namespace: $ns, removing finalizers"
-            ${OC} patch operandrequest zen-ca-operand-request -n "$ns" --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]' 2>/dev/null || warning "Failed to remove finalizers from zen-ca-operand-request in $ns"
-            ${OC} delete operandrequest zen-ca-operand-request -n "$ns" --ignore-not-found --timeout=30s || warning "Failed to delete zen-ca-operand-request in $ns"           
-        fi
-    done
-    ### workaround end here
-
     # Remove finalizers from any remaining OperandRequests blocking deletion
     info "Removing finalizers from remaining OperandRequests in tenant namespaces"
     for ns in ${TENANT_NAMESPACES//,/ }; do
@@ -380,6 +365,9 @@ function delete_webhook() {
             ${OC} delete mutatingwebhookconfiguration postgresql-operator-mutating-webhook-configuration-${ns} --ignore-not-found
             ${OC} delete validatingwebhookconfiguration postgresql-operator-validating-webhook-configuration-${ns} --ignore-not-found
             ${OC} delete service postgresql-operator-webhook-service -n $ns --ignore-not-found
+            ${OC} delete mutatingwebhookconfiguration ibm-pg-mutating-webhook-configuration-${ns} --ignore-not-found
+            ${OC} delete validatingwebhookconfiguration ibm-pg-validating-webhook-configuration-${ns} --ignore-not-found
+            ${OC} delete service ibm-pg-webhook-service -n $ns --ignore-not-found
         fi
     done
 }
@@ -517,7 +505,7 @@ function cleanup_extra_resources() {
     for ns in ${TENANT_NAMESPACES//,/ }; do
         ${OC} delete issuer cs-ss-issuer cs-ca-issuer -n $ns --ignore-not-found
         ${OC} delete certificate cs-ca-certificate -n $ns --ignore-not-found
-        ${OC} delete configmap cloud-native-postgresql-image-list ibm-cpp-config -n $ns --ignore-not-found
+        ${OC} delete configmap cloud-native-postgresql-image-list ibm-cpp-config ibm-pg-operator-config ibm-pg-default-monitoring ibm-pg-operator-operand-images -n $ns --ignore-not-found
         ${OC} delete secret common-service-db-im-tls-secret postgresql-operator-controller-manager-config cs-ca-certificate-secret common-service-db-tls-secret common-service-db-replica-tls-secret common-service-db-zen-tls-secret common-web-ui-cert identity-provider-secret platform-auth-secret platform-identity-management saml-auth-secret -n $ns --ignore-not-found
         ${OC} delete commonservice common-service im-common-service -n $ns --ignore-not-found
         ${OC} delete operandconfig common-service -n $ns --ignore-not-found
@@ -534,7 +522,11 @@ function cleanup_extra_resources() {
             done
         fi
         info "Remaining resources (minus package manifests and events) in namespace $ns:"
-        ${OC} get "$(${OC} api-resources --namespaced=true --verbs=list -o name | awk '{printf "%s%s",sep,$0;sep=","}')"  --ignore-not-found -n $ns -o=custom-columns=KIND:.kind,NAME:.metadata.name --sort-by='kind' | grep -v PackageManifest | grep -v Event
+        # Get list of API resources first
+        local api_resources=$(${OC} api-resources --namespaced=true --verbs=list -o name | awk '{printf "%s%s",sep,$0;sep=","}')
+        if [[ -n "$api_resources" ]]; then
+            ${OC} get "$api_resources" --ignore-not-found -n $ns -o=custom-columns=KIND:.kind,NAME:.metadata.name --sort-by='kind' 2>/dev/null | grep -v PackageManifest | grep -v Event || true
+        fi
     done
     success "Excess resources cleaned up in retained tenant namespaces."
 }

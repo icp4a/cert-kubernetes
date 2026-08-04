@@ -32,7 +32,7 @@ function main() {
     source $OUTPUT_FILE
     prereq
     if [[ $HUB_SETUP == "true" ]]; then
-        save_log "logs" "hub_setup_log"
+        save_log "logs" "hub_setup_log" "$DEBUG"
         trap cleanup_log EXIT
         validate_sc
         install_sf_br "hub"
@@ -45,7 +45,7 @@ function main() {
         success "Fusion resources configured on Hub Cluster, ready for Backup."
     fi
     if [[ $RESTORE_SETUP == "true" ]]; then
-        save_log "logs" "spoke_setup_log"
+        save_log "logs" "spoke_setup_log" "$DEBUG"
         trap cleanup_log EXIT
         install_sf_br "spoke"
         success "Spoke cluster prepped for Restore."
@@ -232,7 +232,7 @@ function install_sf_br(){
     info "executing install-isf-br.sh script with catalog image $catalog_image in namespace $SF_NAMESPACE."
     if [[ $role == "hub" ]]; then
         info "Installing Spectrum Fusion BR Hub..."
-        ./cmd-line-install/install/install-isf-br.sh $catalog_image -n $SF_NAMESPACE || error "SF install script failed to install on hub cluster."
+        ./cmd-line-install/install/install-isf-br.sh -f $SF_NAMESPACE -c $STORAGE_CLASS $catalog_image || error "SF install script failed to install on hub cluster."
         apiurl=$(oc whoami --show-server)
         cluster=$(echo $apiurl | cut -d":" -f2 | tr -d /)
         info "Waiting for BR Hub service to install on hub cluster $cluster..."
@@ -249,7 +249,7 @@ function install_sf_br(){
         #oc login to spoke cluster
         ${OC} login -u $SPOKE_USERNAME -p $SPOKE_PASSWORD --server=$SPOKE_SERVER --insecure-skip-tls-verify=true
         validate_sc
-        ./cmd-line-install/install/install-isf-br.sh -s $catalog_image -n $SF_NAMESPACE || error="true"
+        ./cmd-line-install/install/install-isf-br.sh -s -f $SF_NAMESPACE $catalog_image || error="true"
         if [[ $error == "true" ]]; then
             ${OC} login -u $HUB_USERNAME -p $HUB_PASSWORD --server=$HUB_SERVER --insecure-skip-tls-verify=true
             error "SF install script failed to install on spoke cluster. Logging back into hub cluster $HUB_SERVER."

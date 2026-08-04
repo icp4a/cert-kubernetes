@@ -36,6 +36,50 @@ UPGRADE_DEPLOYMENT_BAI_TMP=${UPGRADE_DEPLOYMENT_CR}/.bai_tmp.yaml
 UPGRADE_ICP4A_SHARED_INFO_CM_FILE=${UPGRADE_DEPLOYMENT_CR}/.ibm_cp4ba_shared_info.yaml
 UPGRADE_ICP4A_CONTENT_SHARED_INFO_CM_FILE=${UPGRADE_DEPLOYMENT_CR}/.ibm_cp4ba_content_shared_info.yaml
 
+# Reads the schema value stored in the gitsvc secret's data-access.json and writes it into
+# dc_adp_datasource.database_schema in the CR, so the upgrade uses the same schema as the
+# fresh install.
+#
+# Arguments:
+#   $1 - CR name (e.g. "icp4adeploy")
+#   $2 - Namespace / project name
+#   $3 - CR file location
+#
+# Relies on: CLI_CMD, YQ_CMD being set in caller scope.
+function apply_adpgg_schema_from_gitsvc_secret(){
+    local cr_name=$1
+    local ns=$2
+    local cr_location=$3
+    local _secret_name="${cr_name}-gitsvc-secret"
+    local _b64 _schema
+    # Use -o json + awk to extract the base64 value — avoids jsonpath dot-escaping
+    # issues with "data-access.json" across different oc/kubectl versions.
+    # The key and value are on the same line in oc/kubectl JSON output:
+    #   "data-access.json": "eyJ..."
+    # Split on the key pattern and take the value field that follows.
+    _b64=$(${CLI_CMD} get secret "$_secret_name" -n "$ns" -o json 2>/dev/null \
+        | awk -F'"data-access\\.json"[[:space:]]*:[[:space:]]*"' 'NF>1{split($2,a,"\""); print a[1]; exit}' \
+        | tr -d '[:space:]')
+    if [[ -n "$_b64" ]]; then
+        # Decode and extract the top-level "schema" value.
+        # base64 --decode is portable across GNU and BSD coreutils.
+        _schema=$(echo "$_b64" | base64 --decode 2>/dev/null \
+            | awk -F'"schema"[[:space:]]*:[[:space:]]*"' '{print $2}' \
+            | awk -F'"' '{print $1}' \
+            | tr -d '[:space:]')
+        if [[ -n "$_schema" ]]; then
+            info "Setting dc_adp_datasource.database_schema = \"$_schema\" (from secret $_secret_name)"
+            # Delete first so a pre-existing null node from the live CR is fully replaced.
+            ${YQ_CMD} -i 'del(.spec.datasource_configuration.dc_adp_datasource.database_schema)' "$cr_location"
+            ${YQ_CMD} -i ".spec.datasource_configuration.dc_adp_datasource.database_schema = \"$_schema\"" "$cr_location"
+        else
+            warning "Could not extract schema from secret $_secret_name data-access.json; review dc_adp_datasource.database_schema in the CR manually."
+        fi
+    else
+        warning "Secret $_secret_name not found or has no data-access.json key; review dc_adp_datasource.database_schema in the CR manually."
+    fi
+}
+
 # For https://jsw.ibm.com/browse/DBACLD-154068
 # Function to update the FNCM and BAW license value if it is user
 # The value user is a valid license type but from 24.0.1 but the customer can also replace it with concurrent-user and authorized-user
@@ -2010,6 +2054,18 @@ function upgrade_deployment(){
         if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") ]]; then
             ${SED_COMMAND} 's/\(nodelabel_value: \)\([^"][^ ]*\)/\1"\2"/' ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP} >/dev/null 2>&1
         fi
+
+        # If dc_adp_datasource exists with dc_use_postgres=false (external PG) and database_schema is
+        # absent or empty, read the schema from the gitsvc secret and patch it in before null-stripping.
+        if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") \
+            && (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "document_processing_designer") ]]; then
+            _adp_dc_use_postgres=$(${YQ_CMD} '.spec.datasource_configuration.dc_adp_datasource.dc_use_postgres' "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP" 2>/dev/null)
+            _adp_dc_schema=$(${YQ_CMD} '.spec.datasource_configuration.dc_adp_datasource.database_schema' "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP" 2>/dev/null)
+            if [[ "$_adp_dc_use_postgres" == "false" && ( -z "$_adp_dc_schema" || "$_adp_dc_schema" == "null" ) ]]; then
+                apply_adpgg_schema_from_gitsvc_secret "$icp4acluster_cr_name" "$deployment_project_name" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"
+            fi
+        fi
+
         # Remove all null string
         ${SED_COMMAND} "s/: null/: /g" ${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP}
 

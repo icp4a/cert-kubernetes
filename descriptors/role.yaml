@@ -390,7 +390,7 @@ rules:
     - update
     - watch
   - apiGroups:
-    - postgresql.k8s.enterprisedb.io
+    - pg.ibm.com
     resources:
     - clusters
     verbs:

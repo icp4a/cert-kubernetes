@@ -50,7 +50,7 @@ function show_help() {
     echo "  ${YELLOW_TEXT}* To create a custom resource file for a new CP4BA deployment, follow these step:${RESET_TEXT}"
     echo "      - STEP 1: Run the script with \"-n <CP4BA_NAMESPACE>\"."
     echo "  ${YELLOW_TEXT}* Running the script to upgrade a CP4BA deployment from 24.0.1-IF002 or newer to $CP4BA_RELEASE_BASE GA/$CP4BA_RELEASE_BASE.X. You must run the modes in the following order:${RESET_TEXT}"
-    echo "      - STEP 1 (Required): Run the script in [upgradeOperator] mode to upgrade CP4BA operators/migrate (Cluster-scoped -> Cluster-scoped [AllNamespaces] / Namespace-scoped -> Namespace-scoped) the IBM Cloud Pak foundational services and then shutdown all CP4BA operators before upgrade CP4BA deployment."
+    echo "      - STEP 1 (Required): Run the script in [upgradeOperator] mode to upgrade CP4BA operators/migrate (Cluster-scoped -> Cluster-scoped [AllNamespaces] / Namespace-scoped -> Namespace-scoped) the IBM Cloud Pak foundational services and then shutdown all CP4BA operators before upgrade CP4BA deployment.This step will also include the Postgres EDB to CNPG migration if required."
     echo "      - STEP 2 (Optional): Run the script in [upgradeOperatorStatus] mode to verify the upgrade of CP4BA operators and dependencies."
     echo "      - STEP 3 (Required): Run the script in [upgradeDeployment] mode to upgrade the CP4BA deployment. The script will generate the new version of the custom resource, which can be reviewed and modified offline, or applied directly without modification."
     echo "      - STEP 4 (Required): Run the script in [upgradeDeploymentStatus] mode to start the necessary CP4BA operators to upgrade the dependent service (zenService) first, then start all CP4BA operators to complete the upgrade of the CP4BA deployment, while also verifying the success of the upgrade."
@@ -3619,12 +3619,26 @@ function select_iam_default_admin() {
     read -r ans
     case "$ans" in
       "y"|"Y"|"yes"|"Yes"|"YES"|"")
-        if iam_user_validation "$default_user"; then
+        iam_user_validation "$default_user"
+        local validation_result=$?
+        if [[ $validation_result -eq 2 ]]; then
+          printf '%b\n' "\x1B[1;31m[ERROR]:\x1B[0m LDAP server is not reachable. Please check LDAP connectivity and configuration."
+          exit 1
+        elif [[ $validation_result -eq 0 ]]; then
           printf '%b\n' "\x1B[33m[WARNING]:\x1B[0m \x1B[1mUsername '$default_user' exists in LDAP\x1B[0m — \x1B[1;31mSwitching IM admin username to '$fallback_user'\x1B[0m"
           selected_user="$fallback_user"
-          while iam_user_validation "$selected_user"; do
-            selected_user="${fallback_user}-${suffix}"
-            ((suffix++))
+          while true; do
+            iam_user_validation "$selected_user"
+            validation_result=$?
+            if [[ $validation_result -eq 2 ]]; then
+              printf '%b\n' "\x1B[1;31m[ERROR]:\x1B[0m LDAP server is not reachable. Please check LDAP connectivity and configuration."
+              exit 1
+            elif [[ $validation_result -eq 0 ]]; then
+              selected_user="${fallback_user}-${suffix}"
+              ((suffix++))
+            else
+              break
+            fi
           done
           USE_DEFAULT_IAM_ADMIN="No"
         else
@@ -3647,7 +3661,12 @@ function select_iam_default_admin() {
             continue
           fi
 
-          if iam_user_validation "$NON_DEFAULT_IAM_ADMIN"; then
+          iam_user_validation "$NON_DEFAULT_IAM_ADMIN"
+          local validation_result=$?
+          if [[ $validation_result -eq 2 ]]; then
+            printf '%b\n' "\x1B[1;31m[ERROR]:\x1B[0m LDAP server is not reachable. Please check LDAP connectivity and configuration."
+            exit 1
+          elif [[ $validation_result -eq 0 ]]; then
             printf '%b\n' "\x1B[1;31mUsername '$NON_DEFAULT_IAM_ADMIN' already exists in LDAP. Choose another.\x1B[0m"
             continue
           fi
@@ -6455,7 +6474,6 @@ function sync_property_into_final_cr(){
             # fi
         fi
     fi
-
     # Applying value in ICN property file into final CR
     if [[ " ${foundation_component_arr[@]}" =~ "BAN" ]]; then
         if [[ ! (" ${pattern_cr_arr[@]} " =~ "workstreams" && "${#pattern_cr_arr[@]}" -eq "1") ]]; then
@@ -6976,7 +6994,8 @@ function sync_property_into_final_cr(){
 
             ### -- https://jsw.ibm.com/browse/DBACLD-151937 - <Migration from Mongo to external Postgresql for ADS>
             # Applying values for external postgresql into final CR
-            if [[ $DB_TYPE = "postgresql" ]]; then
+            # Also apply when DB_TYPE is db2/oracle/sqlserver but external PostgreSQL is enabled for ADPGG/ADS
+            if [[ $DB_TYPE = "postgresql" || ( ($DB_TYPE == "db2" || $DB_TYPE == "oracle" || $DB_TYPE == "sqlserver") && "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" == "true" ) ]]; then
                 # Getting values from propertyfiles for external postgresql
                 tmp_ads_designer_db_servername_prefix="$(prop_db_name_user_property_file_for_server_name ADS_DESIGNER_DB_USER_NAME)"
                 tmp_ads_designer_db_servername_prefix=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_ads_designer_db_servername_prefix")
@@ -7046,7 +7065,8 @@ function sync_property_into_final_cr(){
 
             ### -- https://jsw.ibm.com/browse/DBACLD-151937 - <Migration from Mongo to external Postgresql for ADS>
             # Applying values for external postgresql into final CR
-            if [[ $DB_TYPE = "postgresql" ]]; then
+            # Also apply when DB_TYPE is db2/oracle/sqlserver but external PostgreSQL is enabled for ADPGG/ADS
+            if [[ $DB_TYPE = "postgresql" || ( ($DB_TYPE == "db2" || $DB_TYPE == "oracle" || $DB_TYPE == "sqlserver") && "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" == "true" ) ]]; then
                 # Getting properties from propertyfiles for external postgresql
                 tmp_ads_runtime_db_servername_prefix="$(prop_db_name_user_property_file_for_server_name ADS_RUNTIME_DB_USER_NAME)"
                 tmp_ads_runtime_db_servername_prefix=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_ads_runtime_db_servername_prefix")
@@ -7120,7 +7140,8 @@ function sync_property_into_final_cr(){
         else
             ### -- https://jsw.ibm.com/browse/DBACLD-151937 - <Migration from Mongo to external Postgresql for ADP>
             # Applying values for external postgresql into final CR
-            if [[ $DB_TYPE = "postgresql" ]]; then
+            # Also apply when DB_TYPE is db2/oracle/sqlserver but external PostgreSQL is enabled for ADPGG/ADS
+            if [[ $DB_TYPE = "postgresql" || ( ($DB_TYPE == "db2" || $DB_TYPE == "oracle" || $DB_TYPE == "sqlserver") && "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" == "true" ) ]]; then
                 # Getting properties from propertyfiles for external postgresql
                 tmp_adp_gg_db_servername_prefix="$(prop_db_name_user_property_file_for_server_name ADP_GG_DB_USER_NAME)"
                 tmp_adp_gg_db_servername_prefix=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_adp_gg_db_servername_prefix")
@@ -7162,7 +7183,7 @@ function sync_property_into_final_cr(){
                 # Applying customized schema for ADP into final CR
                 tmp_adp_gg_schema_name=$(prop_db_name_user_property_file ADP_GG_DB_SCHEMA)
                 tmp_adp_gg_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_adp_gg_schema_name")
-                if [[ $tmp_adp_gg_schema_name != "<Optional>" && $tmp_adp_gg_schema_name != ""  ]]; then
+                if [[ $tmp_adp_gg_schema_name != "<Optional>" && $tmp_adp_gg_schema_name != "" && $tmp_adp_gg_schema_name != "<youruser1>" ]]; then
                     tmp_adp_gg_schema_name=$(echo "$tmp_adp_gg_schema_name" | tr '[:upper:]' '[:lower:]')
                     ${YQ_CMD} -i ".spec.datasource_configuration.dc_adp_datasource.database_schema = \"${tmp_adp_gg_schema_name}\"" ${CP4A_PATTERN_FILE_TMP}
                 else
@@ -7240,16 +7261,17 @@ function sync_property_into_final_cr(){
     fi
 
     ### -- https://jsw.ibm.com/browse/DBACLD-154816 - <Migration from Mongo to Postgres-edb for ADS>
-    # Check if the required pattern is present in pattern_cr_arr for decisions_ads if select db2 
+    # Check if the required pattern is present in pattern_cr_arr for decisions_ads if select db2
     if [[ "${pattern_cr_arr[@]}" =~ "decisions_ads" ]]; then
 
-        # Set database names for ADS Designer and ADS Runtime 
+        # Set database names for ADS Designer and ADS Runtime
         tmp_dbname_designer="$(prop_db_name_user_property_file ADS_DESIGNER_DB_NAME)"
         tmp_dbname_runtime="$(prop_db_name_user_property_file ADS_RUNTIME_DB_NAME)"
 
         # Applying value in ADS property file into final CR if postgre-edb selected for all cp4ba for ads_designer
         if [[ "${optional_component_arr[@]}" =~ "DecisionDesigner" ]]; then
-            if [[ $DB_TYPE == "db2" || $DB_TYPE == "oracle" || $DB_TYPE == "sqlserver" ]]; then
+            # Use EDB PostgreSQL unless DB_TYPE is external postgresql OR external PostgreSQL is explicitly enabled
+            if [[ $DB_TYPE != "postgresql" && "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" != "true" ]]; then
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource = null' ${CP4A_PATTERN_FILE_TMP}
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource.dc_use_postgres = true' ${CP4A_PATTERN_FILE_TMP}
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource.dc_database_type = "postgresql"' ${CP4A_PATTERN_FILE_TMP}
@@ -7265,7 +7287,8 @@ function sync_property_into_final_cr(){
         fi
         # Applying value in ADS property file into final CR if postgre-edb selected for all cp4ba for ads_runtime
         if [[ "${optional_component_arr[@]}" =~ "DecisionRuntime" ]]; then
-            if [[ $DB_TYPE == "db2" || $DB_TYPE == "oracle" || $DB_TYPE == "sqlserver" ]]; then
+            # Use EDB PostgreSQL unless DB_TYPE is external postgresql OR external PostgreSQL is explicitly enabled
+            if [[ $DB_TYPE != "postgresql" && "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" != "true" ]]; then
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource = null' ${CP4A_PATTERN_FILE_TMP}
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.dc_use_postgres = true' ${CP4A_PATTERN_FILE_TMP}
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.dc_database_type = "postgresql"' ${CP4A_PATTERN_FILE_TMP}
@@ -7278,12 +7301,11 @@ function sync_property_into_final_cr(){
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.ssl_secret_name = "{{ meta.name }}-pg-client-cert-secret"' ${CP4A_PATTERN_FILE_TMP}
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.database_instance_secret = "ibm-ads-runtime-database"' ${CP4A_PATTERN_FILE_TMP}
             fi
-        fi  
+        fi
     fi
 
     ### -- https://jsw.ibm.com/browse/DBACLD-154816 - <Migration from Mongo to Postgres-edb for ADP>
-     # Applying value in ADP property file into final CR if select the db2
-     #document_processing
+     # Applying value in ADP property file into final CR for document_processing
     if [[ "${pattern_cr_arr[@]}" =~ "document_processing" ]]; then
         # DBACLD-178324: Remove dc_adp_datasouce section when document_processing_designer is not selected
         if ! [[ "${pattern_cr_arr[@]}" =~ "document_processing_designer" ]]; then
@@ -7291,7 +7313,8 @@ function sync_property_into_final_cr(){
         else
             tmp_dbname="$(prop_db_name_user_property_file ADP_GG_DB_NAME)"
 
-            if [[ $DB_TYPE == "db2" ]]; then
+            # Use EDB PostgreSQL unless DB_TYPE is external postgresql OR external PostgreSQL is explicitly enabled
+            if [[ $DB_TYPE != "postgresql" && "$EXTERNAL_POSTGRESDB_FOR_ADPGG_ADS" != "true" ]]; then
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_adp_datasource = null' ${CP4A_PATTERN_FILE_TMP}
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_adp_datasource.dc_use_postgres = true' ${CP4A_PATTERN_FILE_TMP}
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_adp_datasource.dc_database_type = "postgresql"' ${CP4A_PATTERN_FILE_TMP}
@@ -7941,6 +7964,9 @@ function apply_pattern_cr(){
                 esac
             done
         done
+
+        # Set CR name to be content for an only content based deployment
+        ${YQ_CMD} -i '.metadata.name = "content"' ${CP4A_PATTERN_FILE_TMP}
     else
         # Set sc_deployment_patterns
         ${SED_COMMAND} "s|sc_deployment_patterns:.*|sc_deployment_patterns: \"$pattern_joined\"|g" ${CP4A_PATTERN_FILE_TMP}
@@ -7951,6 +7977,8 @@ function apply_pattern_cr(){
         else
             ${SED_COMMAND} "s|sc_optional_components:.*|sc_optional_components: \"$opt_components_joined\"|g" ${CP4A_PATTERN_FILE_TMP}
         fi
+        # Set CR name to be icp4adeploy for more than 1 pattern
+        ${YQ_CMD} -i '.metadata.name = "icp4adeploy"' ${CP4A_PATTERN_FILE_TMP}
     fi
     # Set sc_deployment_platform
     ${SED_COMMAND} "s|sc_deployment_platform:.*|sc_deployment_platform: \"$PLATFORM_SELECTED\"|g" ${CP4A_PATTERN_FILE_TMP}
@@ -8987,7 +9015,7 @@ function cncf_install(){
 }
 
 function patch_edb_configmap(){
-# DBACLD-166239 -> Update EDB configmap ibm-zen-metastore-edb-cm to add new parameters with CPFS 4.10 or later.
+# DBACLD-166239 -> Update EDB configmap ibm-zen-metastore-cm to add new parameters with CPFS 4.10 or later.
 # During upgrade, we check the existence of the configmap along with these 2 new parameters (DATABASE_ENABLE_SSL and DATABASE_SSL_MODE).
 # If those parameters exists then we will not patch the configmap as the configmap is same for embedded and external postgres.
 # Input:
@@ -9432,34 +9460,6 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     fi
     ################## End - Apply third-party WORKAROUND ####################
 
-    ################## Start of workaround for https://jsw.ibm.com/browse/DBACLD-167061  
-    # We're setting spec.enableSuperuserAccess to true for our postgres-cp4ba edb instance
-    info "Determining if EnterpriseDB PostgreSQL \"$EDB_INSTANCE_CP4BA_NAME\" is installed for IBM Cloud Pak for Business Automation."
-    # DBACLD-217914 Check if EnterpriseDB PostgreSQL CRD exists first
-    ${CLI_CMD} get crd clusters.postgresql.k8s.enterprisedb.io >&3 2>&3
-    if [ $? -eq 0 ]; then
-	    edb_instance_cp4ba_cr=$( ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found $EDB_INSTANCE_CP4BA_NAME | awk '{print $1}' )
-	    if [[ $edb_instance_cp4ba_cr == $EDB_INSTANCE_CP4BA_NAME  ]]; then
-	      info "Found EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\""
-	
-	      info "In certain deployment scenarios, such as if IBM Automation Document Processing deployed"
-	      info "Patching the EnterpriseDB PostgreSQL \"$EDB_INSTANCE_CP4BA_NAME\" with '{\"spec\": {\"enableSuperuserAccess\":true}}' is required"
-	
-	      enable_superuser_access=$( ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n $CP4BA_SERVICES_NS --no-headers --ignore-not-found $EDB_INSTANCE_CP4BA_NAME -o jsonpath='{.spec.enableSuperuserAccess}' )
-	      if [[ "$(echo "$enable_superuser_access" | tr '[:upper:]' '[:lower:]')" != "true" ]]; then
-	
-	        ${CLI_CMD} patch cluster.postgresql.k8s.enterprisedb.io  $EDB_INSTANCE_CP4BA_NAME -n $CP4BA_SERVICES_NS --type=merge -p '{"spec": {"enableSuperuserAccess":true}}'  >&3 2>&3
-	      else
-	        info "The EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\" already as the field \"enableSuperuserAccess\" set to true."
-	      fi
-	    else 
-	      info "Unable to find EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\""
-	      info "If the EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\" exists, execute the command: "
-	      info "${CLI_CMD} patch cluster.postgresql.k8s.enterprisedb.io  $EDB_INSTANCE_CP4BA_NAME -n $CP4BA_SERVICES_NS --type=merge -p '{\"spec\": {\"enableSuperuserAccess\":true}}'"
-	    fi
-     fi
-    ################## End of setting spec.enableSuperuserAccess to true for our postgres-cp4ba edb instance
-
 
     ############## Start - Prepare definition for ibm-cp4ba-shared-info/ibm-cp4ba-content-shared-info/ibm-cp4ba-common-config configMap ##############
     if [[ $SEPARATE_OPERAND_FLAG == "Yes" ]]; then
@@ -9673,7 +9673,9 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         if [ ! -z $content_cr_name ]; then
             cr_metaname=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.name' -)
             owner_ref=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.metadata.ownerReferences.[0].kind' -)
+            top_level_cr_kind="icp4acluster"
             if [[ ${owner_ref} != "ICP4ACluster" ]]; then
+                top_level_cr_kind="content"
                 # Setting this variable to false so that we know the cp4ba-content-shared-info is to be used
                 cp4ba_shared_info_used=false 
                 cr_version=$(${CLI_CMD} get content $content_cr_name -n $CP4BA_SERVICES_NS -o yaml | ${YQ_CMD} '.spec.appVersion' -)
@@ -9718,6 +9720,59 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         fi
     fi
     ############## End - Check existing icp4acluster/content cr or not ##############
+
+    ############## Start - Check if CPfs migration can be skipped ##############
+    
+    # Check if ${EDB_CNPG_MIGRATION_CM_NAME} ConfigMap exists and has completion flags set
+    # If upgradeOperator-completed and cm-valid are both true, skip CPfs migration steps
+    source "$CUR_DIR/helper/edb-to-cnpg-migration/cp4a-migrate-edb-to-cnpg.sh"
+    SKIP_CPFS_MIGRATION="false"
+    # Fetch both ConfigMap fields in a single kubectl call
+    EDB_MIGRATION_CM_DATA=$(${CLI_CMD} get configmap ${EDB_CNPG_MIGRATION_CM_NAME} -n "$CP4BA_SERVICES_NS" -o jsonpath='{.data.upgradeOperator-completed},{.data.cm-valid}' 2>/dev/null)
+
+    if [[ -n "$EDB_MIGRATION_CM_DATA" ]]; then
+        # Parse the comma-separated values
+        IFS=',' read -r UPGRADE_OPERATOR_COMPLETED CM_VALID <<< "$EDB_MIGRATION_CM_DATA"
+
+        # Default to false if values are empty
+        UPGRADE_OPERATOR_COMPLETED=${UPGRADE_OPERATOR_COMPLETED:-false}
+        CM_VALID=${CM_VALID:-false}
+
+        if [[ "$UPGRADE_OPERATOR_COMPLETED" == "true" && "$CM_VALID" == "true" ]]; then
+            SKIP_CPFS_MIGRATION="true"
+            info "EDB-CNPG migration ConfigMap indicates upgradeOperator phase is already completed."
+            info "Skipping CPfs migration mode determination and related steps."
+            printf "\n"
+        fi
+    fi
+    # Source the file that will help include some display message functions
+    source ${CUR_DIR}/helper/messages.sh
+    ############## End - Check if CPfs migration can be skipped ##############
+
+    # This block will ONLy execute if EDB to CNPG migration failed in some stage and the Operators completed the upgrade of operators compleeted without issues
+    if [[ "$SKIP_CPFS_MIGRATION" == "true" ]]; then
+        ############## Start - Phased EDB to CNPG Migration Integration ##############
+        # Check if EDB PostgreSQL is detected and execute phased migration
+        # This section integrates the migration directly into upgradeOperator mode
+        # using ConfigMap-based state tracking for resumability
+
+        success "CP4BA operator upgrade to version ${CP4BA_CSV_VERSION} has been detected and is complete."
+        info "The remaining step is the EDB to IBM CloudNativePG migration."
+        info "The script will now proceed with the database migration..."
+        printf "\n"
+
+        # Call the EDB migration handler function
+        if ! handle_edb_migration_process "$CP4BA_SERVICES_NS" "$CP4BA_OPERATOR_NS" "$top_level_cr_kind"; then
+            # Migration not complete, exit to allow retry
+            echo
+        fi
+        ############## End - Phased EDB to CNPG Migration Integration ##############
+
+        # Display next steps for major upgrade after upgradeOperator mode
+        # Pass CP4BA_OPERATOR_NS as $4 so the upgradeOperatorStatus step shows the correct namespace in SOD deployments.
+        next_steps_for_major_upgrade_after_upgrade_operator_mode "$CP4BA_SERVICES_NS" "$css_flag" "$CUR_DIR" "$CP4BA_OPERATOR_NS"
+        exit 1
+    fi
 
     ############## Start - Decide which CPfs migration mode should be used ##############
     #DBACLD-166863: Calling determine_upgrade_mode function
@@ -9835,6 +9890,14 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         fi
     fi
     ############## End - Check CSS selected or not ##############
+
+
+    # Create the ODM keystore secret before upgrade, keystore password is auto generated
+    # ODM secret is only created if it is not found in the existing namespace. There is a chance the user is upgrading from a version that already contains the required changes for this issue.
+    # https://jsw.ibm.com/browse/DBACLD-239861
+    if [[ "${EXISTING_PATTERN_ARR[@]} " =~ "decisions" ]]; then
+        create_odm_keystore_secret_for_upgrade "$CP4BA_SERVICES_NS" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"
+    fi
 
     ######### START - THE Check to see if SCIM is configured in the Domain ########
 
@@ -10567,6 +10630,31 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     fi
     ############## End - Decide whether to create savepoint for Flink job ##############
 
+    ############## Start - Check and annotate BusinessTeamsService for migration ##############
+    # Check if BusinessTeamsService CR exists and annotate it for migration
+    BTS_CR_NAME=$(${CLI_CMD} get BusinessTeamsService -n "$CP4BA_SERVICES_NS" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}')
+
+    if [[ -n "$BTS_CR_NAME" ]]; then
+        info "Found BusinessTeamsService CR: $BTS_CR_NAME in namespace $CP4BA_SERVICES_NS"
+        info "Annotating BusinessTeamsService CR with migration-in-progress annotation..."
+
+        if ${CLI_CMD} patch BusinessTeamsService "$BTS_CR_NAME" -n "$CP4BA_SERVICES_NS" \
+            --type=merge \
+            -p '{"metadata":{"annotations":{"operator.ibm.com/migration-in-progress":"true"}}}' >&3 2>&3; then
+            success "Successfully annotated BusinessTeamsService CR: $BTS_CR_NAME"
+        else
+            error "Failed to annotate BusinessTeamsService CR: $BTS_CR_NAME"
+            echo
+            echo "${YELLOW_TEXT}[ATTENTION]:${RESET_TEXT} Please manually run the following command to annotate the BusinessTeamsService CR:"
+            echo "           ${GREEN_TEXT}${CLI_CMD} patch BusinessTeamsService $BTS_CR_NAME -n $CP4BA_SERVICES_NS --type=merge -p '{\"metadata\":{\"annotations\":{\"operator.ibm.com/migration-in-progress\":\"true\"}}}'${RESET_TEXT}"
+            echo
+            displayEdbMigrationRetryMessage "backup" "$CP4BA_SERVICES_NS" "$CP4BA_CSV_VERSION"
+            exit 1
+        fi
+        echo
+    fi
+    ############## End - Check and annotate BusinessTeamsService for migration ##############
+
     ############## Start - Migration CPfs mode and upgrade CP4BA Operators ##############
     if [[ "$PLATFORM_SELECTED" == "other" ]]; then
         [ -f ${UPGRADE_DEPLOYMENT_FOLDER}/upgradeOperator.yaml ] && rm ${UPGRADE_DEPLOYMENT_FOLDER}/upgradeOperator.yaml
@@ -10774,7 +10862,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             for ((retry=0;retry<=${maxRetry};retry++)); do
                 cp4a_catalog_pod_name=$(${CLI_CMD} get pod -l=olm.catalogSource=ibm-cp4a-operator-catalog -n $TEMP_CATALOG_PROJECT_NAME -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
                 fncm_catalog_pod_name=$(${CLI_CMD} get pod -l=olm.catalogSource=ibm-fncm-operator-catalog -n $TEMP_CATALOG_PROJECT_NAME -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
-                postgresql_catalog_pod_name=$(${CLI_CMD} get pod -l=olm.catalogSource=cloud-native-postgresql-catalog -n $TEMP_CATALOG_PROJECT_NAME -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
+                postgresql_catalog_pod_name=$(${CLI_CMD} get pod -l=olm.catalogSource=ibm-pg-operator-catalog -n $TEMP_CATALOG_PROJECT_NAME -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
                 cs_catalog_pod_name=$(${CLI_CMD} get pod -l=olm.catalogSource=$CS_CATALOG_VERSION -n $TEMP_CATALOG_PROJECT_NAME -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
                 if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
                     cert_mgr_catalog_pod_name=$(${CLI_CMD} get pod -l=olm.catalogSource=ibm-cert-manager-catalog -n $CERT_MANAGER_PROJECT -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
@@ -10791,7 +10879,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         elif [[ -z $fncm_catalog_pod_name ]]; then
                             warning "Timeout waiting for ibm-fncm-operator-catalog catalog pod to be ready in the project \"$TEMP_CATALOG_PROJECT_NAME\""
                         elif [[ -z $postgresql_catalog_pod_name ]]; then
-                            warning "Timeout waiting for cloud-native-postgresql-catalog catalog pod to be ready in the project \"$TEMP_CATALOG_PROJECT_NAME\""
+                            warning "Timeout waiting for ibm-pg-operator-catalog catalog pod to be ready in the project \"$TEMP_CATALOG_PROJECT_NAME\""
                         elif [[ -z $cs_catalog_pod_name ]]; then
                             warning "Timeout waiting for $CS_CATALOG_VERSION catalog pod to be ready in the project \"$TEMP_CATALOG_PROJECT_NAME\""
                         elif [[ -z $cert_mgr_catalog_pod_name ]]; then
@@ -11912,7 +12000,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             success "Completed cleanup of old catalog sources"
         fi
 
-        # DBACLD-166239 -> Update EDB configmap ibm-zen-metastore-edb-cm to add new parameters with CPFS 4.10 or later by calling patch_edb_configmap()
+        # DBACLD-166239 -> Update EDB configmap ibm-zen-metastore-cm to add new parameters with CPFS 4.10 or later by calling patch_edb_configmap()
         patch_edb_configmap $TMP_SERVICES_NAMESPACE
 
         # DBACLD-168537: need to re-create {{meta.name}}-fncm-custom-ssl-secret to add CSS DNSName (in case they are missing from previous deployment) which will be included in FNCM's keystores
@@ -11936,6 +12024,10 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             ${CLI_CMD} delete secret ${cr_name}-ban-custom-ssl-secret -n $CP4BA_SERVICES_NS
         fi
 
+			# Update BTS datastore resources for PostgreSQL JDBC driver compatibility
+            # The secret keys have to tls.pk8 as the the client key cert is added in the secret in Pk8 format. If it is tls.key ,BTS expects it to be a PEM format key           
+            # https://jsw.ibm.com/browse/DBACLD-238583
+            update_bts_datastore_resources "$CP4BA_SERVICES_NS"
 
         # shutdown CP4BA operators and show tips for [NEXT ACTION]
         if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "$CP4BA_RELEASE_BASE_MAJOR_VERSION"*) ]]; then
@@ -11956,31 +12048,63 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             echo "${YELLOW_TEXT}  - All CP4BA operators will start up automatically when running [upgradeDeploymentStatus] mode of the cp4a-deployment.sh script.${RESET_TEXT}"
             printf "\n"
             echo "${YELLOW_TEXT}[NEXT ACTIONS]:${RESET_TEXT}"
-            step_num=1
-            echo "  - STEP ${step_num} ${YELLOW_TEXT}(Optional)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${CUR_DIR}/cp4a-deployment.sh -m upgradeOperatorStatus -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to check whether the upgrade of the CP4BA operator and its dependencies is successful."
-            step_num=$((step_num + 1))
-
-            if [[ $css_flag == "true" || " ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "css" ]]; then
-                echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You have Content Search Services (CSS) installed. Make sure you stop the IBM Content Search Services index dispatcher. Refer to the FileNet P8 Platform Documentation for more details."
-                echo "    ${YELLOW_TEXT}* Stopping the IBM Content Search Services index dispatcher.${RESET_TEXT}"
-                echo "      1. Log in to the Administration Console for Content Platform Engine."
-                echo "      2. In the navigation pane, select the domain icon."
-                echo "      3. In the edit pane, click the Text Search Subsystem tab and clear the Enable indexing check box."
-                echo "      4. Click Save to apply your changes."
-                step_num=$((step_num + 1))
+            
+            ############## Start - Phased EDB to CNPG Migration Integration ##############
+            # Check if EDB PostgreSQL is detected and execute phased migration
+            # This section integrates the migration directly into upgradeOperator mode
+            # using ConfigMap-based state tracking for resumability
+            if is_edb_detected "$CP4BA_SERVICES_NS"; then
+                # Only proceed with migration if postgres-cp4ba instance is detected
+                if [[ "$CP4BA_EDB_INSTANCE_DETECTED" == "true" ]]; then
+                    # Call the EDB migration handler function
+                    if ! handle_edb_migration_process "$CP4BA_SERVICES_NS" "$CP4BA_OPERATOR_NS" "$top_level_cr_kind"; then
+                        # Migration not complete, exit to allow retry
+                        echo
+                    fi
+                else
+                    info "EDB instances detected, but postgres-cp4ba instance not found. Skipping CP4BA EDB migration."
+                fi
             fi
-            echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You need to run ${GREEN_TEXT}\"${CUR_DIR}/cp4a-deployment.sh -m upgradeDeployment -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to upgrade CP4BA deployment."
-            echo "    ${RED_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}When you run the [upgradeDeployment] mode of the cp4a-deployment.sh script, the updated custom resource (CR) must be manually applied that all required additional actions can be completed before the upgrade process begins. Refer to the Knowledge Center: \"Updating the custom resource for each capability in your deployment\" topic to complete the REQUIRED steps for the installed pattern(s).${RESET_TEXT}"
-            step_num=$((step_num + 1))
-            echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${CUR_DIR}/cp4a-deployment.sh -m upgradeDeploymentStatus -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to check whether the upgrade of the CP4BA deployment was successful."
+            ############## End - Phased EDB to CNPG Migration Integration ##############
+            
+            # Display next steps for major upgrade after upgradeOperator mode
+            # Pass CP4BA_OPERATOR_NS as $4 so the upgradeOperatorStatus step shows the correct namespace in SOD deployments.
+            next_steps_for_major_upgrade_after_upgrade_operator_mode "$CP4BA_SERVICES_NS" "$css_flag" "$CUR_DIR" "$CP4BA_OPERATOR_NS"
+
         else
+
+            ############## Start - Phased EDB to CNPG Migration Integration ##############
+            # Check if EDB PostgreSQL is detected and execute phased migration
+            # This section integrates the migration directly into upgradeOperator mode
+            # using ConfigMap-based state tracking for resumability
+            if is_edb_detected "$CP4BA_SERVICES_NS"; then
+                # Only proceed with migration if postgres-cp4ba instance is detected
+                if [[ "$CP4BA_EDB_INSTANCE_DETECTED" == "true" ]]; then
+
+                    info " CP4BA Operators with be shut down before executing the EDB to CNPG migration."
+                    shutdown_operator $TEMP_OPERATOR_PROJECT_NAME
+                    printf "\n"
+                    # Call the EDB migration handler function
+                    if ! handle_edb_migration_process "$CP4BA_SERVICES_NS" "$CP4BA_OPERATOR_NS" "$top_level_cr_kind"; then
+                        # Migration not complete, exit to allow retry
+                        echo
+                    fi
+                else
+                    info "EDB instances detected, but postgres-cp4ba instance not found. Skipping CP4BA EDB migration."
+                fi
+            fi
+            ############## End - Phased EDB to CNPG Migration Integration ##############
+
             # for upgrading IFIX by IFIX
 	    ## -- https://jsw.ibm.com/browse/DBACLD-186607 - <To fix the incorrect script path while running the deployment script in the upgrade mode>
             CUR_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
             printf "\n"
             echo "${YELLOW_TEXT}[NEXT ACTIONS]:${RESET_TEXT}"
             step_num=1
-            echo "  - STEP ${step_num} ${YELLOW_TEXT}(Optional)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${CUR_DIR}/cp4a-deployment.sh -m upgradeOperatorStatus -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to check whether the upgrade of the CP4BA operator and its dependencies was successful."
+            # In SOD deployments upgradeOperatorStatus must be run against the operator namespace,
+            # not the operand namespace passed as -n.  CP4BA_OPERATOR_NS is set by check_cp4ba_separate_operand.
+            _upgrade_op_status_ns=${CP4BA_OPERATOR_NS:-$TARGET_PROJECT_NAME}
+            echo "  - STEP ${step_num} ${YELLOW_TEXT}(Optional)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${CUR_DIR}/cp4a-deployment.sh -m upgradeOperatorStatus -n $_upgrade_op_status_ns\"${RESET_TEXT} to check whether the upgrade of the CP4BA operator and its dependencies was successful."
             printf "\n"
             step_num=$((step_num + 1))
             echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${CUR_DIR}/cp4a-deployment.sh -m upgradeDeploymentStatus -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to check whether the upgrade of the CP4BA deployment was successful."
@@ -12027,19 +12151,32 @@ if [ "$RUNTIME_MODE" == "upgradeOperatorStatus" ]; then
     #Get the name of the CP4BA operator's CSV in the all-namespaces, to check if the operator is deployed in the all-namespaces mode.
     cp4a_operator_csv_name_allnamespace_ns=$(${CLI_CMD} get csv -n $ALL_NAMESPACE_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
 
+    # In SOD deployments the CP4BA operators live in CP4BA_OPERATOR_NS (e.g. cp4ba-operators),
+    # not in the operand namespace passed as -n. Check that namespace explicitly so that
+    # TEMP_OPERATOR_PROJECT_NAME is always set correctly before calling check_operator_status.
+    cp4a_operator_csv_name_operator_ns=""
+    if [[ $SEPARATE_OPERAND_FLAG == "Yes" && -n $CP4BA_OPERATOR_NS ]]; then
+        cp4a_operator_csv_name_operator_ns=$(${CLI_CMD} get csv -n $CP4BA_OPERATOR_NS --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
+    fi
+
     #determine where the CP4BA operator is deployed, in specific ns or all namespace.
-    if [[ -z $cp4a_operator_csv_name_allnamespace_ns && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
-        #when CP4BA operator is deployed only in the target project namespace.
-        success "The IBM Cloud Pak for Business Automation Operator was found deployed in the project \"$TARGET_PROJECT_NAME\"."
-        ALL_NAMESPACE_FLAG="No"
-        TEMP_OPERATOR_PROJECT_NAME=$TARGET_PROJECT_NAME
-    elif [[ (! -z $cp4a_operator_csv_name_allnamespace_ns) && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
+    if [[ (! -z $cp4a_operator_csv_name_allnamespace_ns) && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
         #when CP4BA operator is deployed in all-namespaces mode.
         success "The IBM Cloud Pak for Business Automation Operator was found deployed as AllNamespace mode in the project \"$ALL_NAMESPACE_NAME\"."
         ALL_NAMESPACE_FLAG="Yes"
         #since all-ns, set project name to the default all-namespaces operators project.
         project_name="openshift-operators"
         TEMP_OPERATOR_PROJECT_NAME="openshift-operators"
+    elif [[ $SEPARATE_OPERAND_FLAG == "Yes" && (! -z $cp4a_operator_csv_name_operator_ns) ]]; then
+        #when CP4BA is in SOD mode, operators live in CP4BA_OPERATOR_NS, not in the operand namespace.
+        success "The IBM Cloud Pak for Business Automation Operator was found deployed in the operator project \"$CP4BA_OPERATOR_NS\"."
+        ALL_NAMESPACE_FLAG="No"
+        TEMP_OPERATOR_PROJECT_NAME=$CP4BA_OPERATOR_NS
+    elif [[ -z $cp4a_operator_csv_name_allnamespace_ns && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
+        #when CP4BA operator is deployed only in the target project namespace (non-SOD).
+        success "The IBM Cloud Pak for Business Automation Operator was found deployed in the project \"$TARGET_PROJECT_NAME\"."
+        ALL_NAMESPACE_FLAG="No"
+        TEMP_OPERATOR_PROJECT_NAME=$TARGET_PROJECT_NAME
     fi
 
     # Get value of cp4ba_original_csv_ver_for_upgrade_script, for upgrade script to know the original version of CP4BA.
@@ -12123,10 +12260,36 @@ if [ "$RUNTIME_MODE" == "upgradeOperatorStatus" ]; then
             shutdown_operator $TEMP_OPERATOR_PROJECT_NAME
         fi
         printf "\n"
-        echo "${YELLOW_TEXT}[NEXT ACTION]${RESET_TEXT}: "
         #check if the original CSV version is not matching a specific pattern (version "25.0.")
         #check ensures that the shutdown operation is only performed if the version is not the major version, i.e we are not doing a ifix ifix upgrade The version check helps in controlling upgrade.
         CUR_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
+
+
+        # Source messages.sh for EDB migration messaging
+        source "$CUR_DIR/helper/messages.sh"
+        source "$CUR_DIR/helper/edb-to-cnpg-migration/cp4a-migrate-edb-to-cnpg.sh"
+
+        # Check if EDB PostgreSQL is detected and also if the EDB instance still found is postgres-cp4ba
+        #Only if those two conditions matched should we then validate if the EDB to CNPG migration completed and where it failed
+        # If those conditions are not met, that means the validation either completed or is not required in the specific upgrade scenario
+    
+        if is_edb_detected "$CP4BA_SERVICES_NS"; then
+            # Only proceed with migration check if postgres-cp4ba instance is detected
+            # This variable is set in the is_edb_detected function
+            if [[ "$CP4BA_EDB_INSTANCE_DETECTED" == "true" ]]; then
+                # Validate EDB to CNPG migration status
+                # Function displays migration status and retry steps if incomplete
+                # Returns 0 if no EDB detected or migration complete, 1 if incomplete
+                if ! validate_edb_migration_completed "$CP4BA_SERVICES_NS" "$cp4ba_original_csv_ver_for_upgrade_script" "$CP4BA_CSV_VERSION"; then
+                    exit 1
+                fi
+            fi
+        fi
+
+        printf "\n"
+        echo "${YELLOW_TEXT}[NEXT ACTION]${RESET_TEXT}: "
+
+
         if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "$CP4BA_RELEASE_BASE_MAJOR_VERSION"*) ]]; then
             echo "${YELLOW_TEXT}* Run the script in [upgradeDeployment] mode to upgrade the CP4BA deployment when upgrade CP4BA to $CP4BA_RELEASE_BASE.${RESET_TEXT}"
             echo "${GREEN_TEXT}# ${CUR_DIR}/cp4a-deployment.sh -m upgradeDeployment -n $TARGET_PROJECT_NAME${RESET_TEXT}"
@@ -12144,21 +12307,38 @@ if [ "$RUNTIME_MODE" == "upgradeDeployment" ]; then
     # Check whether the CP4BA is separation of operators and operands.
     check_cp4ba_separate_operand $TARGET_PROJECT_NAME
 
+    # Source messages.sh for EDB migration messaging
+    source "$CUR_DIR/helper/messages.sh"
+    source "$CUR_DIR/helper/edb-to-cnpg-migration/cp4a-migrate-edb-to-cnpg.sh"
+
     #fetch service namespace, which is to determine if the operator is deployed in this specific namespace for upgrade
     cp4a_operator_csv_name_target_ns=$(${CLI_CMD} get csv -n $TARGET_PROJECT_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
     #fetch service namespace, determine if the operator is deployed in AllNamespace mode, which means it is available across all namespaces.
     cp4a_operator_csv_name_allnamespace_ns=$(${CLI_CMD} get csv -n $ALL_NAMESPACE_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
 
+    # In SOD deployments the CP4BA operators live in CP4BA_OPERATOR_NS (e.g. cp4ba-operators),
+    # not in the operand namespace passed as -n.  Check that namespace explicitly so that
+    # TEMP_OPERATOR_PROJECT_NAME is always set correctly before calling upgrade_deployment.
+    cp4a_operator_csv_name_operator_ns=""
+    if [[ $SEPARATE_OPERAND_FLAG == "Yes" && -n $CP4BA_OPERATOR_NS ]]; then
+        cp4a_operator_csv_name_operator_ns=$(${CLI_CMD} get csv -n $CP4BA_OPERATOR_NS --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
+    fi
+
     #Check if the operator is NOT deployed in AllNamespace mode and is deployed in the targeted namespace
-    if [[ -z $cp4a_operator_csv_name_allnamespace_ns && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
-        success "Found IBM Cloud Pak for Business Automation Operator deployed in the project \"$TARGET_PROJECT_NAME\"."
-        ALL_NAMESPACE_FLAG="No"
-        TEMP_OPERATOR_PROJECT_NAME=$TARGET_PROJECT_NAME
-    elif [[ (! -z $cp4a_operator_csv_name_allnamespace_ns) && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
+    if [[ (! -z $cp4a_operator_csv_name_allnamespace_ns) && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
         success "Found IBM Cloud Pak for Business Automation Operator deployed as AllNamespace mode in the project \"$ALL_NAMESPACE_NAME\"."
         ALL_NAMESPACE_FLAG="Yes"
         project_name="openshift-operators"
         TEMP_OPERATOR_PROJECT_NAME="openshift-operators"
+    elif [[ $SEPARATE_OPERAND_FLAG == "Yes" && (! -z $cp4a_operator_csv_name_operator_ns) ]]; then
+        #when CP4BA is in SOD mode, operators live in CP4BA_OPERATOR_NS, not in the operand namespace.
+        success "Found IBM Cloud Pak for Business Automation Operator deployed in the operator project \"$CP4BA_OPERATOR_NS\"."
+        ALL_NAMESPACE_FLAG="No"
+        TEMP_OPERATOR_PROJECT_NAME=$CP4BA_OPERATOR_NS
+    elif [[ -z $cp4a_operator_csv_name_allnamespace_ns && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
+        success "Found IBM Cloud Pak for Business Automation Operator deployed in the project \"$TARGET_PROJECT_NAME\"."
+        ALL_NAMESPACE_FLAG="No"
+        TEMP_OPERATOR_PROJECT_NAME=$TARGET_PROJECT_NAME
     fi
 
     # Get value of cp4ba_original_csv_ver_for_upgrade_script, which stores csv and used in setup of environment
@@ -12184,6 +12364,32 @@ if [ "$RUNTIME_MODE" == "upgradeDeployment" ]; then
         echo "Exiting ..."
         exit 1
     fi
+
+    ############## Start - Validate EDB to CNPG Migration Completion ##############
+    # Before proceeding with upgradeDeployment, validate that EDB to CNPG migration
+    # has been completed if EDB was detected. This ensures data integrity and prevents
+    # deployment issues due to incomplete migration.
+    info "Checking if EDB to CNPG migration is required and completed..."
+
+    
+    # Check if EDB PostgreSQL is detected and also if the EDB instance still found is postgres-cp4ba
+    #Only if those two conditions matched should we then validate if the EDB to CNPG migration completed and where it failed
+    # If those conditions are not met, that means the validation either completed or is not required in the specific upgrade scenario
+
+    if is_edb_detected "$CP4BA_SERVICES_NS"; then
+        # Only proceed with migration check if postgres-cp4ba instance is detected
+        # This variable is set in the is_edb_detected function
+        if [[ "$CP4BA_EDB_INSTANCE_DETECTED" == "true" ]]; then
+            # Validate EDB to CNPG migration status
+            # Function displays migration status and retry steps if incomplete
+            # Returns 0 if no EDB detected or migration complete, 1 if incomplete
+            if ! validate_edb_migration_completed "$CP4BA_SERVICES_NS" "$cp4ba_original_csv_ver_for_upgrade_script" "$CP4BA_CSV_VERSION"; then
+                exit 1
+            fi
+        fi
+    fi
+    
+    ############## End - Validate EDB to CNPG Migration Completion ##############
 
     #check whether operands (resources managed by the operator) are deployed separately from the main CP4BA project
     if [[ $SEPARATE_OPERAND_FLAG == "Yes" ]]; then
@@ -12494,15 +12700,28 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
     cp4a_operator_csv_name_target_ns=$(${CLI_CMD} get csv -n $TARGET_PROJECT_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
     cp4a_operator_csv_name_allnamespace_ns=$(${CLI_CMD} get csv -n $ALL_NAMESPACE_NAME --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
 
-    if [[ -z $cp4a_operator_csv_name_allnamespace_ns && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
-        success "The IBM Cloud Pak for Business Automation Operator was found deployed in the project \"$TARGET_PROJECT_NAME\"."
-        ALL_NAMESPACE_FLAG="No"
-        TEMP_OPERATOR_PROJECT_NAME=$TARGET_PROJECT_NAME
-    elif [[ (! -z $cp4a_operator_csv_name_allnamespace_ns) && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
+    # In SOD deployments the CP4BA operators live in CP4BA_OPERATOR_NS (e.g. cp4ba-operators),
+    # not in the operand namespace passed as -n.  Check that namespace explicitly so that
+    # TEMP_OPERATOR_PROJECT_NAME is always set correctly before starting operators.
+    cp4a_operator_csv_name_operator_ns=""
+    if [[ $SEPARATE_OPERAND_FLAG == "Yes" && -n $CP4BA_OPERATOR_NS ]]; then
+        cp4a_operator_csv_name_operator_ns=$(${CLI_CMD} get csv -n $CP4BA_OPERATOR_NS --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
+    fi
+
+    if [[ (! -z $cp4a_operator_csv_name_allnamespace_ns) && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
         success "The IBM Cloud Pak for Business Automation Operator was found deployed as AllNamespace mode in the project \"$ALL_NAMESPACE_NAME\"."
         ALL_NAMESPACE_FLAG="Yes"
         project_name="openshift-operators"
         TEMP_OPERATOR_PROJECT_NAME="openshift-operators"
+    elif [[ $SEPARATE_OPERAND_FLAG == "Yes" && (! -z $cp4a_operator_csv_name_operator_ns) ]]; then
+        #when CP4BA is in SOD mode, operators live in CP4BA_OPERATOR_NS, not in the operand namespace.
+        success "The IBM Cloud Pak for Business Automation Operator was found deployed in the operator project \"$CP4BA_OPERATOR_NS\"."
+        ALL_NAMESPACE_FLAG="No"
+        TEMP_OPERATOR_PROJECT_NAME=$CP4BA_OPERATOR_NS
+    elif [[ -z $cp4a_operator_csv_name_allnamespace_ns && (! -z $cp4a_operator_csv_name_target_ns) ]]; then
+        success "The IBM Cloud Pak for Business Automation Operator was found deployed in the project \"$TARGET_PROJECT_NAME\"."
+        ALL_NAMESPACE_FLAG="No"
+        TEMP_OPERATOR_PROJECT_NAME=$TARGET_PROJECT_NAME
     fi
 
     # Get value of cp4ba_original_csv_ver_for_upgrade_script
@@ -12519,6 +12738,27 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
         tmp_csv_val=$(${CLI_CMD} get configmap ibm-cp4ba-content-shared-info -n $CP4BA_SERVICES_NS -o jsonpath='{.data.cp4ba_original_csv_ver_for_upgrade_script}')
         if [[ ! -z $tmp_csv_val ]]; then
             cp4ba_original_csv_ver_for_upgrade_script=$tmp_csv_val
+        fi
+    fi
+
+    # Source messages.sh for EDB migration messaging
+    source "$CUR_DIR/helper/messages.sh"
+    source "$CUR_DIR/helper/edb-to-cnpg-migration/cp4a-migrate-edb-to-cnpg.sh"
+
+    # Check if EDB PostgreSQL is detected and also if the EDB instance still found is postgres-cp4ba
+    #Only if those two conditions matched should we then validate if the EDB to CNPG migration completed and where it failed
+    # If those conditions are not met, that means the validation either completed or is not required in the specific upgrade scenario
+
+    if is_edb_detected "$CP4BA_SERVICES_NS"; then
+        # Only proceed with migration check if postgres-cp4ba instance is detected
+        # This variable is set in the is_edb_detected function
+        if [[ "$CP4BA_EDB_INSTANCE_DETECTED" == "true" ]]; then
+            # Validate EDB to CNPG migration status
+            # Function displays migration status and retry steps if incomplete
+            # Returns 0 if no EDB detected or migration complete, 1 if incomplete
+            if ! validate_edb_migration_completed "$CP4BA_SERVICES_NS" "$cp4ba_original_csv_ver_for_upgrade_script" "$CP4BA_CSV_VERSION"; then
+                exit 1
+            fi
         fi
     fi
 
@@ -12760,6 +13000,15 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
             success "${GREEN_TEXT}The upgrade to CP4BA $CP4BA_RELEASE_BASE $CP4BA_PATCH_VERSION is complete.${RESET_TEXT}"
             echo "======================================================================================================="
             printf "\n"
+
+            # Reset EDB-CNPG migration ConfigMap validity flag to false after successful upgrade
+            if ${CLI_CMD} get configmap ${EDB_CNPG_MIGRATION_CM_NAME} -n $CP4BA_SERVICES_NS >/dev/null 2>&1; then
+                #info "Resetting EDB-CNPG migration ConfigMap validity flag to 'false' after successful upgrade..."
+                ${CLI_CMD} patch configmap ${EDB_CNPG_MIGRATION_CM_NAME} -n $CP4BA_SERVICES_NS \
+                    --type merge \
+                    -p '{"data":{"cm-valid":"false"}}' >/dev/null 2>&1 || true
+            fi
+
             exit 0
         fi
         

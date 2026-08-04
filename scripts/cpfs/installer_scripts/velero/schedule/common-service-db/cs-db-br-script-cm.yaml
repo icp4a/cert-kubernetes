@@ -152,7 +152,7 @@ data:
         job_exists=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers || echo fail)
         if [[ $job_exists != "fail" ]]; then
             completed=$(oc get job/$job_name -n $CSDB_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='Complete')].type}")
-            retry_count=20
+            retry_count=30
             while [[ $completed != "Complete" ]] && [[ $retry_count > 0 ]]
             do
                 info "Wait for job $job_name to complete. Try again in 15s."
@@ -203,7 +203,7 @@ data:
         cluster_cr_exists=$(oc get clusters.postgresql.k8s.enterprisedb.io $CLUSTER_CR -n $CSDB_NAMESPACE --no-headers || echo fail)
         if [[ $cluster_cr_exists != "fail" ]]; then
             completed=$(oc get clusters.postgresql.k8s.enterprisedb.io $CLUSTER_CR -n $CSDB_NAMESPACE -o=jsonpath='{.status.phase}')
-            retry_count=40
+            retry_count=50
             while [[ $completed != "Cluster in healthy state" ]] && [[ $retry_count > 0 ]]
             do
                 info "Wait for cluster $CLUSTER_CR to complete. Try again in 15s."

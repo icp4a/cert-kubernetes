@@ -184,9 +184,11 @@ if [[ "$separation_of_duties_flag" == false ]]; then
 fi
 
 ### END - SETTING THE VARIABLES USED ###
-
-save_log "${netpol_targ_log_path}" "network-policy-log"
-trap cleanup_log EXIT
+if [[ "$RUNTIME_MODE" == "generate" || "$RUNTIME_MODE" == "install" || "$RUNTIME_MODE" == "delete" ]]; then
+    source ${CUR_DIR}/helper/common.sh "$TARGET_PROJECT_NAME"
+    save_log "${netpol_targ_log_path}" "network-policy-log"
+    trap cleanup_log EXIT
+fi
 
 #=======================================================================================================================
 # Main

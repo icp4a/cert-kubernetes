@@ -401,7 +401,7 @@ data:
         job_exists=$(oc get job $job_name -n $ZEN_NAMESPACE --no-headers || echo fail)
         if [[ $job_exists != "fail" ]]; then
             completed=$(oc get job $job_name -n $ZEN_NAMESPACE --no-headers | awk '{print $2}')
-            retry_count=20
+            retry_count=50
             while ([[ $completed != "1/1" ]] && [[ $completed != "Complete" ]]) && [[ $retry_count > 0 ]]
             do
                 info "Wait for job $job_name to complete. Try again in 15s."

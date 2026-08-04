@@ -199,10 +199,10 @@ function install_delete_network_policies() {
         # Intervals required so that we can prevent server throttling and cache issues
         if [[ "$mode" == "delete" ]]; then
             sleep 2
-            ${CLI_CMD} $mode -f "${file}" -n $np_namespace --ignore-not-found >> "${LOG_FILE}" 2>&1
+            ${CLI_CMD} $mode -f "${file}" -n $np_namespace --ignore-not-found 
         else
             sleep 2
-            ${CLI_CMD} $mode -f "${file}" -n $np_namespace >> "${LOG_FILE}" 2>&1
+            ${CLI_CMD} $mode -f "${file}" -n $np_namespace 
         fi
         
         sleep 1
@@ -329,14 +329,14 @@ function remove_owner_reference() {
       echo
       echo " - Removing owner reference from network policy file ${file} ..."
         # Remove the specified metadata fields
-        ${YQ_CMD} -i 'del(.metadata.ownerReferences)' "${file}" >> "${LOG_FILE}" 2>&1
-        ${YQ_CMD} -i 'del(.metadata.creationTimestamp)' "${file}" >> "${LOG_FILE}" 2>&1
-        ${YQ_CMD} -i 'del(.metadata.generation)' "${file}" >> "${LOG_FILE}" 2>&1
-        ${YQ_CMD} -i 'del(.metadata.managedFields)' "${file}" >> "${LOG_FILE}" 2>&1
-        ${YQ_CMD} -i 'del(.metadata.resourceVersion)' "${file}" >> "${LOG_FILE}" 2>&1
-        ${YQ_CMD} -i 'del(.metadata.selfLink)' "${file}" >> "${LOG_FILE}" 2>&1
-        ${YQ_CMD} -i 'del(.metadata.uid)' "${file}" >> "${LOG_FILE}" 2>&1
-        ${YQ_CMD} -i 'del(.status)' "${file}" >> "${LOG_FILE}" 2>&1
+        ${YQ_CMD} -i 'del(.metadata.ownerReferences)' "${file}" 
+        ${YQ_CMD} -i 'del(.metadata.creationTimestamp)' "${file}" 
+        ${YQ_CMD} -i 'del(.metadata.generation)' "${file}" 
+        ${YQ_CMD} -i 'del(.metadata.managedFields)' "${file}" 
+        ${YQ_CMD} -i 'del(.metadata.resourceVersion)' "${file}" 
+        ${YQ_CMD} -i 'del(.metadata.selfLink)' "${file}" 
+        ${YQ_CMD} -i 'del(.metadata.uid)' "${file}" 
+        ${YQ_CMD} -i 'del(.status)' "${file}" 
         
         echo " - Removed owner reference and metadata from ${file}."
     done
