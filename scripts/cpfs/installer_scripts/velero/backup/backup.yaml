@@ -26,27 +26,27 @@ spec:
       - subscription
       - singleton-subscription
       - operand
-      - zen-data
+      - zen-data #zen 4 data
       - mongo-data
       - entitlementkey
       - commonservice
       - pull-secret
       - operatorgroup
-      - zen
+      - zen #non-data zen 4 resources
       - licensing
       - cert-manager
       - namespace
       - configmap
-      - zen5
-      - zen5-data
+      - zen5 #non-data zen 5 resources
+      - zen5-data #zen 5 data
       - crd
-      - lsr
-      - lsr-data
-      - cs-db-data
-      - cs-db
-      - keycloak-data
-      - keycloak
-      - user-mgmt
+      - lsr #non-data license service reporter resources
+      - lsr-data #license service reporter data
+      - cs-db-data #pgdump approach to BR IM EDB data
+      - cs-db #velero plugin approach to BR IM EDB data
+      - keycloak-data #pgdump approach to BR keycloak data
+      - keycloak #velero plugin approach to BR keycloak data
+      - user-mgmt #non-data user-management operator resources
       - nss
       - cs-chart
       - cs-cluster
@@ -58,6 +58,8 @@ spec:
       - zen-cluster
       - edb-chart
       - edb-cluster
+      - ibm-pg-chart
+      - ibm-pg-cluster
       - iam-chart
       - iam-cluster
       - nss-cluster
@@ -66,6 +68,7 @@ spec:
       - lsr-cluster
       - lsr-chart
       - ibm-cm-chart
+      - ums
   snapshotMoveData: false
   storageLocation: <storage location name>
   ttl: 4h0m0s

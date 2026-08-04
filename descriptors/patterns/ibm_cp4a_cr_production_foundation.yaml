@@ -109,9 +109,9 @@ spec:
     ## All CP4A components must use/share the root_ca_secret in order for integration
     root_ca_secret: icp4a-root-ca
 
-    ## CP4A patterns or capabilities to be deployed.  This CR represents the "application" pattern (aka Business Automation Manager), which includes the following
-    ## mandatory components: ban(Business Automation Navigator), ums (User Management Service), app_engine( Application Engine) and optional components: app_designerollowing
-    ## mandatory components: icn (BAN/Navigator), rr (Resource Registry) and optional components: ums, bas, and bai
+    ## CP4A patterns or capabilities to be deployed. This CR represents the "application" pattern (aka Business Automation Manager), which includes the following:
+    ## - Mandatory components: ban (Business Automation Navigator / Content Navigator), ums (User Management Service), app_engine (Application Engine), and rr (Resource Registry)
+    ## - Optional components: app_designer, bas, and bai
     sc_deployment_patterns: foundation
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.  User can

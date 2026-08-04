@@ -89,7 +89,7 @@ process_datavolumes() {
 function add_quotes_to_values(){
     local input_yaml="$1"
     # Use sed to add quotes around jvm_customize_options values if not already quoted
-    ${SED_COMMAND} -E '/jvm_customize_options:/ { /: *["'"'"']/ ! s/: *(.+)/: "\1"/ }' "${input_yaml}"
+    ${SED_COMMAND} -E '/jvm_customize_options:/ { /: *["'"'"']/ !s/: *(.+)/: "\1"/; }' "${input_yaml}"
 
     annotations_paths=$(${YQ_CMD} \
     '.. | path
@@ -551,17 +551,6 @@ function upgrade_deployment(){
                 ${COPY_CMD} -rf ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} ${UPGRADE_DEPLOYMENT_CONTENT_CR_BAK}
                 # fi
 
-                # DBACLD-190549 - Remove "null" values from jvm_customize_options before any yq operations
-                ${SED_COMMAND} -E '
-                  /jvm_customize_options/ {
-                    s/: "null, */: "/g
-                    s/: null, */: /g
-                    s/, *null, */,/g
-                    s/, *null"/"/g
-                    s/, *null$//g
-                  }
-                ' "${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}"
-
                 info "Merging existing CP4BA Content Custom Resource with new version ($CP4BA_RELEASE_BASE)"
                 # Delete unnecessary section in CR
                 ${YQ_CMD} -i 'del(.status)' "${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}"
@@ -576,6 +565,9 @@ function upgrade_deployment(){
                 dryrun $UPGRADE_DEPLOYMENT_CONTENT_CR_TMP $deployment_project_name
                 #applying the latest tmp CR so that we can update the kubectl.kubernetes.io/last-applied-configuration section to include any potential user edits
                 ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
+
+                # DBACLD-190549 - Remove "null" values from jvm_customize_options
+                ${SED_COMMAND} -E '/jvm_customize_options/ { s/: "null, */: "/g; s/: null, */: /g; s/, *null, */,/g; s/, *null"/"/g; s/, *null$//g; s/"null, */"/g; s/":"null,/":"/g; }' "${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}"
 
                 # replace release/appVersion
                 ${SED_COMMAND} "s|release: .*|release: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_CONTENT_CR_TMP}

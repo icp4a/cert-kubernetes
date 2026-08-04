@@ -24,4 +24,5 @@ spec:
       values:
       - ui-chart
       - edb-chart
+      - ibm-pg-chart
       - iam-chart

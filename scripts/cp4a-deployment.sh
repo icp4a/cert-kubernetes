@@ -5352,7 +5352,16 @@ function select_objectstore_number(){
                 printf '%b\n' "\x1B[1;31mEnter a valid number [0 to 10]\x1B[0m"
                 content_os_number=""
             fi
-        elif [[ " ${pattern_cr_arr[@]}" =~ "content" ]]; then
+        elif [[ " ${pattern_cr_arr[@]}" =~ "document_processing" && " ${pattern_cr_arr[@]}" =~ "content" ]]; then
+            read -erp "" content_os_number
+            [[ $content_os_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"; continue; }
+            if [ "$content_os_number" -ge 1 ] && [ "$content_os_number" -le 10 ]; then
+                break
+            else
+                printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"
+                content_os_number=""
+            fi
+        elif [[ " ${pattern_cr_arr[@]}" =~ "content" && (! " ${pattern_cr_arr[@]}" =~ "document_processing") ]]; then
             read -erp "" content_os_number
             [[ $content_os_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"; continue; }
             if [ "$content_os_number" -ge 1 ] && [ "$content_os_number" -le 10 ]; then
@@ -7579,6 +7588,9 @@ function apply_pattern_cr(){
                 esac
             done
         done
+
+        # Set CR name to be content for an only content based deployment
+        ${YQ_CMD} -i '.metadata.name = "content"' ${CP4A_PATTERN_FILE_TMP}
     else
         # Set sc_deployment_patterns
         ${SED_COMMAND} "s|sc_deployment_patterns:.*|sc_deployment_patterns: \"$pattern_joined\"|g" ${CP4A_PATTERN_FILE_TMP}
@@ -7589,6 +7601,9 @@ function apply_pattern_cr(){
         else
             ${SED_COMMAND} "s|sc_optional_components:.*|sc_optional_components: \"$opt_components_joined\"|g" ${CP4A_PATTERN_FILE_TMP}
         fi
+
+        # Set CR name to be icp4adeploy for more than 1 pattern
+        ${YQ_CMD} -i '.metadata.name = "icp4adeploy"' ${CP4A_PATTERN_FILE_TMP}
     fi
     # Set sc_deployment_platform
     ${SED_COMMAND} "s|sc_deployment_platform:.*|sc_deployment_platform: \"$PLATFORM_SELECTED\"|g" ${CP4A_PATTERN_FILE_TMP}
@@ -9097,6 +9112,13 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     if [[ -z $content_cr_name && -z $icp4acluster_cr_name ]]; then
         fail "No CP4BA custom resource found in the cluster in the project \"$CP4BA_SERVICES_NS\"."
         exit 1
+    fi
+
+    # Create the ODM keystore secret before upgrade, keystore password is auto generated
+    # ODM secret is only created if it is not found in the existing namespace. There is a chance the user is upgrading from a version that already contains the required changes for this issue.
+    # https://jsw.ibm.com/browse/DBACLD-239861
+    if [[ "${EXISTING_PATTERN_ARR[@]} " =~ "decisions" ]]; then
+        create_odm_keystore_secret_for_upgrade "$CP4BA_SERVICES_NS" "$UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP"
     fi
 
     ${CLI_CMD} get crd |grep elasticsearches.elastic.automation.ibm.com >&3 2>&3
@@ -11907,7 +11929,12 @@ EOF
             info "Found ${cr_name}-ban-custom-ssl-secret and the script will now delete the secret."
             ${CLI_CMD} delete secret ${cr_name}-ban-custom-ssl-secret -n $CP4BA_SERVICES_NS
         fi
-        
+
+            # Update BTS datastore resources for PostgreSQL JDBC driver compatibility
+            # The secret keys have to tls.pk8 as the the client key cert is added in the secret in Pk8 format. If it is tls.key ,BTS expects it to be a PEM format key           
+            # https://jsw.ibm.com/browse/DBACLD-238583
+            update_bts_datastore_resources "$CP4BA_SERVICES_NS"
+            
         if [[ ! ("$cp4ba_original_csv_ver_for_upgrade_script" == "24.0."*) ]]; then
             info "Shutdown CP4BA Operators before upgrade CP4BA capabilities."
             shutdown_operator $TEMP_OPERATOR_PROJECT_NAME

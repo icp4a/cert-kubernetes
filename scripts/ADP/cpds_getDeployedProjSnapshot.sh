@@ -115,7 +115,7 @@ f_usage()
     echo ""
     echo "Example to getDeployedProjSnapshot where all required keys are defined in cpds.properties file and overriding --projectName. "
     echo "$0 "
-    echo "   --file cpds.properties --projectName PROJECT2" --snapshotVersion v3-2020-10-14-1600 
+    echo "   --file cpds.properties --projectName PROJECT2 --snapshotVersion v3-2020-10-14-1600"
     echo "                                    to extract all params from filename except for projectName and snapshotVersion"
     echo "                                    Note: order is important. The overriding argument should be listed last."
 }
@@ -222,5 +222,5 @@ fi
 #echo 
 
 # Call CPDS deploy REST pass in both bearer tokens with different header
-echo "Retrieving the deployed project information for ${runtimeObjectStore}/${projectName}/${snapshotVersion} ...
+echo "Retrieving the deployed project information for ${runtimeObjectStore}/${projectName}/${snapshotVersion} ..."
 curl -X GET --header "Accept-Language:${acceptLanguage}" --header Content-Type:application/json --header Accept:application/json --header "Authorization:Bearer ${RUNTIME_BEARER}" -w '\nReturn Code=%{http_code}\n\n' ${runtimeCpdsUrl}/ibm-dba-content-deployment/v1/deployment/projects/${projectName}/branches/master/snapshots/${snapshotVersion}?repositoryIdentifier=${runtimeObjectStore} -k

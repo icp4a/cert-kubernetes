@@ -80,14 +80,13 @@ spec:
     external_tls_certificate_secret:
 
     ## CP4A patterns or capabilities to be deployed.  This CR represents the "content" pattern (aka FileNet Content Manager), which includes the following
-    ## mandatory components: cpe, icn (BAN/Navigator), graphql and optional components: cmis, es (External Share).
+    ## mandatory components: cpe, icn (BAN/Navigator), graphql and optional components: cmis.
     sc_deployment_patterns: content
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
-    ## The optional components are: Content Manager Image Services (cmis), css (Content Search Services), es (External Share), tm (Task Manager),
+    ## The optional components are: Content Manager Image Services (cmis), css (Content Search Services), tm (Task Manager),
     ##                              IBM Enterprise Records (ier) and IBM Content Collector for SAP (iccsap)
     ## NOTE: ier, and iccsap does NOT support integration with ums.
-    ## NOTE: es does not work when using Zen and IAM for authentication.
     sc_optional_components:
 
     ## The deployment type as selected by the user.  Possible values are: Starter and Production.
@@ -107,7 +106,7 @@ spec:
     images:
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/common/dba-keytool-initcontainer
-        tag: "24.0.0-IF009"
+        tag: "24.0.0-IF010"
 
     ## The platform to be deployed specified by the user.  Possible values are: OCP, ROKS, and other.  This is normally populated by the User script
     ## based on input from the user.
@@ -489,26 +488,6 @@ spec:
     #     # like below
     #     # ibmentryuuid : ibm-entryuuid
 
-
-  ## User script should only uncomment this section if External Share if selected as an optional component.
-  ## If you are deploying without the User script, uncomment the necessary section (depending
-  ## if you are using Active Directory (ad) or Tivoli Directory Service (tds)) accordingly.
-  # ext_ldap_configuration:
-  #   lc_selected_ldap_type: "<Required>"
-  #   lc_ldap_server: "<Required>"
-  #   lc_ldap_port: "<Required>"
-  #   lc_bind_secret: ldap-bind-secret
-  #   lc_ldap_base_dn: "<Required>"
-  #   lc_ldap_ssl_enabled: true
-  #   lc_ldap_ssl_secret_name: "<Required>"
-  #   lc_ldap_user_name_attribute: "<Required>"
-  #   lc_ldap_user_display_name_attr: "<Required>"
-  #   lc_ldap_group_base_dn: "<Required>"
-  #   lc_ldap_group_name_attribute: "<Required>"
-  #   lc_ldap_group_display_name_attr: "cn"
-  #   lc_ldap_group_membership_search_filter: "<Required>"
-  #   lc_ldap_group_member_id_map: "<Required>"
-
     ## The lc_ldap_precheck parameter is used to enable or disable LDAP connection check.
     ## If set to "true", then LDAP connection check will be enabled.
     ## if set to "false", then LDAP connection check will not be enabled.
@@ -879,7 +858,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "24.0.0-IF009"
+        tag: "24.0.0-IF010"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1044,7 +1023,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "24.0.0-IF009"
+        tag: "24.0.0-IF010"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1151,7 +1130,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "24.0.0-IF009"
+        tag: "24.0.0-IF010"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1317,7 +1296,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "24.0.0-IF009"
+        tag: "24.0.0-IF010"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1425,118 +1404,6 @@ spec:
       image_pull_secrets:
         name: "ibm-entitlement-key"
 
-    ###############################################
-    ## Start of configuration for External Share ##
-    ###############################################
-    es:
-      ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
-      arch:
-        amd64: "3 - Most preferred"
-
-      ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
-      ## it is recommended to have 2 or more.
-      replica_count: 2
-
-      ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
-      image:
-        ## The default repository is the IBM Entitled Registry.
-        repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "24.0.0-IF009"
-
-        ## This will override the image pull policy in the shared_configuration.
-        pull_policy: IfNotPresent
-
-      ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.  If more resources are needed,
-      ## make the changes here to meet your requirement.
-      resources:
-        requests:
-          cpu: 500m
-          memory: 1536Mi
-          ephemeral_storage: 1Gi
-        limits:
-          cpu: 1
-          memory: 1536Mi
-          ephemeral_storage: 1Gi
-
-      ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
-      ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
-      auto_scaling:
-        enabled: false
-        max_replicas: "<Required>"
-        min_replicas: "<Required>"
-        ## This is the default cpu percentage before autoscaling occurs.
-        target_cpu_utilization_percentage: "<Required>"
-      
-      ## This flag enable or disable Pod Disruption Budget (PDB) creation for ExtShare component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
-      ## A PDB for ExtShare will be created with a `minAvailable: 1` only if the ExtShare replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
-      enable_pdb: true
-
-      ## Below are the default External Share Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
-      es_production_setting:
-        time_zone: Etc/UTC
-
-        ## The initial use of available memory.
-        jvm_initial_heap_percentage: 40
-        ## The maximum percentage of available memory to use.
-        jvm_max_heap_percentage: 66
-
-        jvm_customize_options:
-        license_model: FNCM.PVUNonProd
-
-        # The license must be set to "accept" in order for the component to install.  This is the default value.
-        license: accept
-        allowed_origins:
-
-        # This section is optional and it takes a list of configmaps.
-        # A configmap can hold files or environment data but it cannot a mix of both.
-        # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
-        # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
-        # then is_env is required and set it to true.
-        #
-        # custom_configmap:
-        #  - name: <name of configmap>
-        #    volume_path:  # optional
-        #  - name: <name of configmap>
-        #    is_env: # required if the configmap holds environment variables.
-
-      ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
-      monitor_enabled: false
-      ## Enable/disable logging where logs can be sent to Elasticsearch.
-      logging_enabled: false
-
-      ## By default, the plugin for Graphite is enable to emit container metrics.
-      collectd_enable_plugin_write_graphite: false
-
-
-      ## Persistent Volume Claims for External Share.  If the storage_configuration in the shared_configuration is configured,
-      ## the Operator will create the PVC using the names below.
-      datavolume:
-        existing_pvc_for_es_cfgstore:
-          name: "es-cfgstore"
-          size: 1Gi
-        existing_pvc_for_es_logstore:
-          name: "es-logstore"
-          size: 1Gi
-
-      ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
-      probe:
-        startup:
-          initial_delay_seconds: 180
-          period_seconds: 10
-          timeout_seconds: 10
-          failure_threshold: 6
-        readiness:
-          period_seconds: 10
-          timeout_seconds: 10
-          failure_threshold: 6
-        liveness:
-          period_seconds: 10
-          timeout_seconds: 5
-          failure_threshold: 6
-      ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
-      image_pull_secrets:
-        name: "ibm-entitlement-key"
-
     #############################################
     ## Start of configuration for Task Manager ##
     #############################################
@@ -1553,7 +1420,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "24.0.0-IF009"
+        tag: "24.0.0-IF010"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1705,7 +1572,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "24.0.0-IF009"
+      tag: "24.0.0-IF010"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -2112,7 +1979,7 @@ spec:
 
       image:
         repository: cp.icr.io/cp/cp4a/ier/ier
-        tag: "24.0.0-IF009"
+        tag: "24.0.0-IF010"
         pull_policy: IfNotPresent
       ier_secret_name: ibm-ier-secret
      # Logging for workloads
@@ -2232,7 +2099,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/iccsap/iccsap
-      tag: "24.0.0-IF009"
+      tag: "24.0.0-IF010"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent

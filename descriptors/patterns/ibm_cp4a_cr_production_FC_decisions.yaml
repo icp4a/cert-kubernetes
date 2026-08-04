@@ -200,13 +200,18 @@ spec:
 
     image:
       # Specify to override the tag docker images in case of an interim fix.
-      tag: "24.0.0-IF009"
+      tag: "24.0.0-IF010"
       # Specify the pull policy for the Docker images. See Kuberntes documentation for more inforations.
       # Possible values : IfNotPresent, Always, Never
       pullPolicy: IfNotPresent
       # Specify the repository used to retrieve the Docker images if you do not want to use the default one.
       # If not specified use the shared_configuration.sc_image_repository.
       repository: cp.icr.io/cp/cp4a/odm
+
+    ## Dedicated Cloud Pak parameter
+    dba:
+      # Specify the secret name that contains the keystorePassword key protecting both the keystore and truststore.
+      passwordSecretRef: ibm-odm-keystore-secret
 
     ## Decision Server Runtime parameters
     decisionServerRuntime:

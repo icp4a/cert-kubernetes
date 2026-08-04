@@ -28,11 +28,11 @@ OUTPUT_FILE="${BASE_DIR}/env-fusion.properties"
 
 function main() {
     parse_arguments "$@"
-    prereq
     info "Base Directory: $BASE_DIR"
     source $OUTPUT_FILE
+    prereq
     if [[ $HUB_SETUP == "true" ]]; then
-        save_log "logs" "hub_setup_log"
+        save_log "logs" "hub_setup_log" "$DEBUG"
         trap cleanup_log EXIT
         validate_sc
         install_sf_br "hub"
@@ -45,7 +45,7 @@ function main() {
         success "Fusion resources configured on Hub Cluster, ready for Backup."
     fi
     if [[ $RESTORE_SETUP == "true" ]]; then
-        save_log "logs" "spoke_setup_log"
+        save_log "logs" "spoke_setup_log" "$DEBUG"
         trap cleanup_log EXIT
         install_sf_br "spoke"
         success "Spoke cluster prepped for Restore."
@@ -113,6 +113,32 @@ function parse_arguments() {
         shift
     done
     echo ""
+}
+
+# Detect PostgreSQL operator type for zen-metastore cluster
+function detect_zen_operator() {
+  local namespace=$1
+  
+  # Check for IBM CloudNativePG cluster (zen-metastore without -edb suffix)
+  IBM_PG_CLUSTER=$(${OC} get cluster.pg.ibm.com zen-metastore -n $namespace --ignore-not-found 2>/dev/null)
+  if [[ -n $IBM_PG_CLUSTER ]]; then
+    info "Detected IBM CNPG cluster for zen-metastore in namespace $namespace"
+    echo "ibm-pg"
+    return 0
+  fi
+  
+  # Check for EDB cluster (zen-metastore-edb with -edb suffix)
+  EDB_CLUSTER=$(${OC} get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -n $namespace --ignore-not-found 2>/dev/null)
+  if [[ -n $EDB_CLUSTER ]]; then
+    info "Detected EDB cluster for zen-metastore-edb in namespace $namespace"
+    echo "edb"
+    return 0
+  fi
+  
+  # Default to EDB if no cluster found (backward compatibility)
+  warning "No PostgreSQL cluster found for zen-metastore in namespace $namespace, defaulting to EDB"
+  echo "edb"
+  return 0
 }
 
 function prereq() {
@@ -206,7 +232,7 @@ function install_sf_br(){
     info "executing install-isf-br.sh script with catalog image $catalog_image in namespace $SF_NAMESPACE."
     if [[ $role == "hub" ]]; then
         info "Installing Spectrum Fusion BR Hub..."
-        ./cmd-line-install/install/install-isf-br.sh $catalog_image -n $SF_NAMESPACE || error "SF install script failed to install on hub cluster."
+        ./cmd-line-install/install/install-isf-br.sh -f $SF_NAMESPACE -c $STORAGE_CLASS $catalog_image || error "SF install script failed to install on hub cluster."
         apiurl=$(oc whoami --show-server)
         cluster=$(echo $apiurl | cut -d":" -f2 | tr -d /)
         info "Waiting for BR Hub service to install on hub cluster $cluster..."
@@ -223,7 +249,7 @@ function install_sf_br(){
         #oc login to spoke cluster
         ${OC} login -u $SPOKE_USERNAME -p $SPOKE_PASSWORD --server=$SPOKE_SERVER --insecure-skip-tls-verify=true
         validate_sc
-        ./cmd-line-install/install/install-isf-br.sh -s $catalog_image -n $SF_NAMESPACE || error="true"
+        ./cmd-line-install/install/install-isf-br.sh -s -f $SF_NAMESPACE $catalog_image || error="true"
         if [[ $error == "true" ]]; then
             ${OC} login -u $HUB_USERNAME -p $HUB_PASSWORD --server=$HUB_SERVER --insecure-skip-tls-verify=true
             error "SF install script failed to install on spoke cluster. Logging back into hub cluster $HUB_SERVER."
@@ -393,7 +419,19 @@ function create_sf_resources(){
         #core recipes
         if [[ $NO_OLM == "true" ]]; then
             cp ../velero/spectrum-fusion/recipes/no-olm/core/child-csdb-recipe-2.10.0.yaml ./templates/child-csdb-recipe.yaml
-            cp ../velero/spectrum-fusion/recipes/no-olm/core/child-zen-recipe-2.10.0.yaml ./templates/child-zen-recipe.yaml
+            
+            # Detect PostgreSQL operator type for zen-metastore and copy appropriate recipe
+            if [[ $ZEN_ENABLED == "true" ]]; then
+                ZEN_OPERATOR=$(detect_zen_operator $SERVICES_NS)
+                if [[ $ZEN_OPERATOR == "ibm-pg" ]]; then
+                    info "Using IBM CNPG zen recipe for namespace $SERVICES_NS"
+                    cp ../velero/spectrum-fusion/recipes/no-olm/core/child-zen-recipe-ibm-pg.yaml ./templates/child-zen-recipe.yaml
+                else
+                    info "Using EDB zen recipe for namespace $SERVICES_NS"
+                    cp ../velero/spectrum-fusion/recipes/no-olm/core/child-zen-recipe-2.10.0.yaml ./templates/child-zen-recipe.yaml
+                fi
+            fi
+            
             cp ../velero/spectrum-fusion/recipes/no-olm/core/parent-cpfs-recipe.yaml ./templates/parent-cpfs-recipe.yaml
             cp ../velero/spectrum-fusion/recipes/no-olm/core/child-cs-odlm-chart-recipe.yaml ./templates/child-cs-odlm-chart-recipe.yaml
             cp ../velero/spectrum-fusion/recipes/no-olm/core/child-edb-chart-recipe.yaml ./templates/child-edb-chart-recipe.yaml
@@ -403,7 +441,19 @@ function create_sf_resources(){
             cp ../velero/spectrum-fusion/recipes/no-olm/core/peripheral-resources.yaml ./templates/peripheral-resources.yaml
         else
             cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-csdb-recipe-2.10.0.yaml ./templates/child-csdb-recipe.yaml
-            cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-zen-recipe-2.10.0.yaml ./templates/child-zen-recipe.yaml
+            
+            # Detect PostgreSQL operator type for zen-metastore and copy appropriate recipe
+            if [[ $ZEN_ENABLED == "true" ]]; then
+                ZEN_OPERATOR=$(detect_zen_operator $SERVICES_NS)
+                if [[ $ZEN_OPERATOR == "ibm-pg" ]]; then
+                    info "Using IBM CNPG zen recipe for namespace $SERVICES_NS"
+                    cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-zen-recipe-ibm-pg.yaml ./templates/child-zen-recipe.yaml
+                else
+                    info "Using EDB zen recipe for namespace $SERVICES_NS"
+                    cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-zen-recipe-2.10.0.yaml ./templates/child-zen-recipe.yaml
+                fi
+            fi
+            
             cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-nss-recipe.yaml ./templates/child-nss-recipe.yaml
             cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/parent-cpfs-recipe.yaml ./templates/parent-cpfs-recipe.yaml
             cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/peripheral-resources.yaml ./templates/peripheral-resources.yaml

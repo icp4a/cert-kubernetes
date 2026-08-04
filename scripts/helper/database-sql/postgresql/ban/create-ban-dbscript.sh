@@ -31,9 +31,9 @@ function create_ban_postgresql_sql_file(){
 
     tablespace="${dbname}_tbs"
 
-    # use dbuser as schema when schema is empty
+    # use ICNDB as schema when schema is empty
     if [[ $dbschema == "" ]]; then
-       dbschema=$dbuser 
+       dbschema="ICNDB" 
     fi
 
     mkdir -p $BAN_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1

@@ -609,7 +609,7 @@ spec:
         - "<Required>" # user name and group name for object store admin, for example, "CEAdmin".  This parameter accepts a list of values.
     ic_icn_init_info:
       icn_repos:
-      - add_repo_id: "devos1_repo1"
+      - add_repo_id: "demo_repo1"
         add_repo_ce_wsi_url: "https://{{ meta.name }}-cpe-stateless-svc.{{ meta.namespace }}.svc:9443/wsi/FNCEWS40MTOM/"
         add_repo_os_sym_name: "DEVOS1"
         add_repo_os_dis_name: "DEVOS1"
@@ -621,5 +621,5 @@ spec:
         add_desktop_name: "icn_desktop"
         add_desktop_description: "This is ICN desktop"
         add_desktop_is_default: false
-        add_desktop_repo_id: "devos1_repo1"
+        add_desktop_repo_id: "demo_repo1"
         add_desktop_repo_workflow_enable: false

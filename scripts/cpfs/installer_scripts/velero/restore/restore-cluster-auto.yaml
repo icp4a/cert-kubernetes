@@ -47,6 +47,7 @@ spec:
       - nss
       - ui-chart
       - edb-chart
+      - ibm-pg-chat
       - iam-chart
       - cs-chart
       - odlm-chart
