@@ -40,9 +40,9 @@ spec:
     ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
     #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
     
-    ## This is the Content Cortex license  parameter and the possible values are: user, concurrent-user, authorized-user, non-production, and production.
+    ## This is the Content Cortex license  parameter and the possible values are: user, non-production, and production.
     ## This value could be different from the rest of the licenses.
-    sc_deployment_fncm_license: ESS.CO
+    sc_deployment_fncm_license: non-production
 
     sc_deployment_patterns: workflow-workstreams
     sc_optional_components:

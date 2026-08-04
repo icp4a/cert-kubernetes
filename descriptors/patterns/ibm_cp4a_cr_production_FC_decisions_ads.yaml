@@ -314,7 +314,7 @@ spec:
     rr_integration:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-rrintegration
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
 
       resources:
         requests:
@@ -327,7 +327,7 @@ spec:
     rest_api:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-restapi
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       replica_count: 1
 
       # Optional: Enable or disable Pod Disruption Budget (PDB) for this service. Default is shared_configuration.sc_enable_pdb value (which defaults to true if not set in shared configuration)
@@ -361,7 +361,7 @@ spec:
     credentials_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-credentials
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       replica_count: 1
 
       # Optional: Enable or disable Pod Disruption Budget (PDB) for this service. Default is shared_configuration.sc_enable_pdb value (which defaults to true if not set in shared configuration)
@@ -393,7 +393,7 @@ spec:
     git_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-gitservice
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       replica_count: 1
 
       # Optional: Enable or disable Pod Disruption Budget (PDB) for this service. Default is shared_configuration.sc_enable_pdb value (which defaults to true if not set in shared configuration)
@@ -425,7 +425,7 @@ spec:
     parsing_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-parsing
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       replica_count: 1
 
       # Optional: Enable or disable Pod Disruption Budget (PDB) for this service. Default is shared_configuration.sc_enable_pdb value (which defaults to true if not set in shared configuration)
@@ -476,7 +476,7 @@ spec:
     run_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-run
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       replica_count: 1
 
       # Optional: Enable or disable Pod Disruption Budget (PDB) for this service. Default is shared_configuration.sc_enable_pdb value (which defaults to true if not set in shared configuration)
@@ -528,7 +528,7 @@ spec:
     decision_runtime_service:
       image:
         repository: cp.icr.io/cp/cp4a/ads/ads-runtime
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       replica_count: 1
 
       # Optional: Enable or disable Pod Disruption Budget (PDB) for this service. Default is shared_configuration.sc_enable_pdb value (which defaults to true if not set in shared configuration)

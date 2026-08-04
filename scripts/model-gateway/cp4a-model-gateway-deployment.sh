@@ -39,6 +39,7 @@ STORAGE_CLASS_BLOCK=""
 STORAGE_CLASS_FILE=""
 STORAGE_VENDOR=""
 LITE_INSTALL="false"
+DEPLOY_INTERNAL_POSTGRES="false"
 REDIS_OPERATOR_CHANNEL="v1.3"
 REDIS_OPERATOR_INSTALL_PLAN="Automatic"
 REDIS_OPERATOR_PACKAGE="ibm-redis-cp"
@@ -92,6 +93,9 @@ function show_help() {
     printf "\n"
     printf "  --lite-install                Use SQLite instead of PostgreSQL (dev/test only)\n"
     printf "\n"
+    printf "  --internal-postgres           Use the internal IBM CNPG PostgreSQL operator\n"
+    printf "                                Mutually exclusive with --lite-install\n"
+    printf "\n"
     printf "  --redis-channel               Redis operator channel (default: v1.3)\n"
     printf "\n"
     printf "  --verify-only                 Only verify prerequisites without deploying\n"
@@ -109,8 +113,11 @@ function show_help() {
     printf "\n"
     printf "Prerequisites:\n"
     printf "\n"
-    tips "External PostgreSQL:"
-    printf "    This release requires an external PostgreSQL database.\n"
+    tips "PostgreSQL:"
+    printf "    By default this script deploys with an external PostgreSQL database.\n"
+    printf "    Use --internal-postgres to deploy the internal IBM CNPG PostgreSQL operator instead.\n"
+    printf "\n"
+    tips "External PostgreSQL (default):"
     printf "    Create secret 'model-gateway-postgres-external-secret' in the instance namespace with:\n"
     printf "      - host: PostgreSQL hostname\n"
     printf "      - port: PostgreSQL port\n"
@@ -123,6 +130,9 @@ function show_help() {
     printf "\n"
     tips "# Deploy with external PostgreSQL (requires secret created first)"
     printf "  ./cp4a-model-gateway-deployment.sh --accept-license -b ocs-storagecluster-ceph-rbd -f ocs-storagecluster-cephfs\n"
+    printf "\n"
+    tips "# Deploy with internal IBM CNPG PostgreSQL"
+    printf "  ./cp4a-model-gateway-deployment.sh --accept-license --internal-postgres -b ocs-storagecluster-ceph-rbd -f ocs-storagecluster-cephfs\n"
     printf "\n"
     tips "# Deploy with custom namespaces and large scale"
     printf "  ./cp4a-model-gateway-deployment.sh --accept-license -o my-operators -n my-instance -s large -b portworx-db -f portworx-shared\n"
@@ -406,26 +416,42 @@ function interactive_mode() {
     fi
     printf "\n"
     
-    # Step 7: PostgreSQL Configuration (Required for non-lite install)
+    # Step 7: PostgreSQL Configuration
     if [ "$LITE_INSTALL" != "true" ]; then
         printf "\n"
-        info "PostgreSQL Configuration (Required)"
+        info "PostgreSQL Configuration"
         printf "\n"
-        info "Model Gateway requires an external PostgreSQL database for production deployments."
+        info "Model Gateway supports two PostgreSQL options:"
+        info "  1. External PostgreSQL - connect to an existing PostgreSQL instance you manage"
+        info "  2. Internal IBM CNPG   - deploy the IBM Cloud Native PostgreSQL operator"
+        printf "\n"
         
-        local property_file="${PARENT_DIR}/scripts/cp4ba-prerequisites/project/${INSTANCE_NAMESPACE}/propertyfile/cp4ba_model_gateway.property"
+        local pg_choice=""
+        while [[ ! "$pg_choice" =~ ^[12]$ ]]; do
+            read -p "$(echo -e "${COLOR_CYAN}Select PostgreSQL option (1 or 2): ${COLOR_RESET}")" pg_choice
+        done
         
-        if [ -f "$property_file" ]; then
-            info "Existing PostgreSQL configuration found."
-            info "You can review and update the configuration or press Enter to keep existing values."
+        if [ "$pg_choice" = "2" ]; then
+            DEPLOY_INTERNAL_POSTGRES="true"
+            success "Using internal IBM CNPG PostgreSQL operator"
         else
-            info "Please provide PostgreSQL connection details."
-        fi
-        printf "\n"
-        
-        if ! prompt_postgres_configuration; then
-            error "Failed to configure PostgreSQL"
-            exit 1
+            DEPLOY_INTERNAL_POSTGRES="false"
+            success "Using external PostgreSQL"
+            
+            local property_file="${PARENT_DIR}/scripts/cp4ba-prerequisites/project/${INSTANCE_NAMESPACE}/propertyfile/cp4ba_model_gateway.property"
+            
+            if [ -f "$property_file" ]; then
+                info "Existing PostgreSQL configuration found."
+                info "You can review and update the configuration or press Enter to keep existing values."
+            else
+                info "Please provide PostgreSQL connection details."
+            fi
+            printf "\n"
+            
+            if ! prompt_postgres_configuration; then
+                error "Failed to configure PostgreSQL"
+                exit 1
+            fi
         fi
         printf "\n"
     fi
@@ -438,6 +464,13 @@ function interactive_mode() {
     printf "  Block Storage Class: %s\n" "$STORAGE_CLASS_BLOCK"
     printf "  File Storage Class: %s\n" "$STORAGE_CLASS_FILE"
     printf "  Scale Configuration: %s\n" "$SCALE_CONFIG"
+    if [ "$LITE_INSTALL" = "true" ]; then
+        printf "  PostgreSQL: SQLite (lite install)\n"
+    elif [ "$DEPLOY_INTERNAL_POSTGRES" = "true" ]; then
+        printf "  PostgreSQL: Internal IBM CNPG\n"
+    else
+        printf "  PostgreSQL: External\n"
+    fi
     printf "\n"
     
     if ! prompt_yes_no "Proceed with deployment?" "y"; then
@@ -706,22 +739,6 @@ function prompt_postgres_configuration() {
     done
     pg_username="$input_username"
     
-    # PostgreSQL Password
-    local input_password=""
-    while [ -z "$input_password" ]; do
-        if [ -n "$pg_password" ]; then
-            read -s -p "$(echo -e "${COLOR_CYAN}Enter PostgreSQL password [****]: ${COLOR_RESET}")" input_password
-            input_password=${input_password:-$pg_password}
-        else
-            read -s -p "$(echo -e "${COLOR_CYAN}Enter PostgreSQL password: ${COLOR_RESET}")" input_password
-        fi
-        echo
-        if [ -z "$input_password" ]; then
-            warning "PostgreSQL password is required"
-        fi
-    done
-    pg_password="$input_password"
-    
     # PostgreSQL Database Name
     read -p "$(echo -e "${COLOR_CYAN}Enter PostgreSQL database name [$pg_dbname]: ${COLOR_RESET}")" input_dbname
     pg_dbname=${input_dbname:-$pg_dbname}
@@ -757,7 +774,7 @@ function prompt_postgres_configuration() {
     if [[ "$pg_ssl_mode" == "verify-ca" || "$pg_ssl_mode" == "verify-full" ]]; then
         echo
         info "SSL mode '$pg_ssl_mode' requires a CA certificate."
-        read -p "$(echo -e "${COLOR_CYAN}Enter path to CA certificate (or press Enter to use default location): ${COLOR_RESET}")" pg_ca_cert_path
+        read -p "$(echo -e "${COLOR_CYAN}Enter path to CA certificate [${cert_dir}/ca.crt]: ${COLOR_RESET}")" pg_ca_cert_path
         
         if [ -z "$pg_ca_cert_path" ]; then
             pg_ca_cert_path="${cert_dir}/ca.crt"
@@ -775,13 +792,13 @@ function prompt_postgres_configuration() {
     if [[ "$use_client_cert" =~ ^[Yy]$ ]]; then
         pg_use_client_cert="true"
         
-        read -p "$(echo -e "${COLOR_CYAN}Enter path to client certificate (or press Enter for default): ${COLOR_RESET}")" pg_client_cert_path
+        read -p "$(echo -e "${COLOR_CYAN}Enter path to client certificate [${cert_dir}/client.crt]: ${COLOR_RESET}")" pg_client_cert_path
         if [ -z "$pg_client_cert_path" ]; then
             pg_client_cert_path="${cert_dir}/client.crt"
             info "Using default client certificate location: $pg_client_cert_path"
         fi
         
-        read -p "$(echo -e "${COLOR_CYAN}Enter path to client private key (or press Enter for default): ${COLOR_RESET}")" pg_client_key_path
+        read -p "$(echo -e "${COLOR_CYAN}Enter path to client private key [${cert_dir}/client.key]: ${COLOR_RESET}")" pg_client_key_path
         if [ -z "$pg_client_key_path" ]; then
             pg_client_key_path="${cert_dir}/client.key"
             info "Using default client key location: $pg_client_key_path"
@@ -790,6 +807,38 @@ function prompt_postgres_configuration() {
         if [ ! -f "$pg_client_cert_path" ] || [ ! -f "$pg_client_key_path" ]; then
             warning "Client certificate or key not found. Please ensure they exist before deployment."
         fi
+    fi
+    
+    # PostgreSQL Password
+    # Password is required for plain and password-over-TLS auth.
+    # When client certificate authentication is used, the server may authenticate via the
+    # certificate alone (pg_hba.conf: cert), so the password becomes optional.
+    echo
+    local input_password=""
+    if [ "$pg_use_client_cert" = "true" ]; then
+        info "Client certificate authentication is enabled."
+        info "Password is optional when the server authenticates via client certificate (pg_hba.conf: cert)."
+        if [ -n "$pg_password" ]; then
+            read -s -p "$(echo -e "${COLOR_CYAN}Enter PostgreSQL password (press Enter to skip) [****]: ${COLOR_RESET}")" input_password
+        else
+            read -s -p "$(echo -e "${COLOR_CYAN}Enter PostgreSQL password (press Enter to skip): ${COLOR_RESET}")" input_password
+        fi
+        echo
+        pg_password=${input_password:-$pg_password}
+    else
+        while [ -z "$input_password" ]; do
+            if [ -n "$pg_password" ]; then
+                read -s -p "$(echo -e "${COLOR_CYAN}Enter PostgreSQL password [****]: ${COLOR_RESET}")" input_password
+                input_password=${input_password:-$pg_password}
+            else
+                read -s -p "$(echo -e "${COLOR_CYAN}Enter PostgreSQL password: ${COLOR_RESET}")" input_password
+            fi
+            echo
+            if [ -z "$input_password" ]; then
+                warning "PostgreSQL password is required"
+            fi
+        done
+        pg_password="$input_password"
     fi
     
     # Create directories
@@ -1094,11 +1143,22 @@ function check_external_postgres_secret() {
     info "Checking external PostgreSQL secret..."
     
     if ! ${CLI_CMD} get secret model-gateway-postgres-external-secret -n "$namespace" &> /dev/null; then
-        warning "External PostgreSQL secret 'model-gateway-postgres-external-secret' not found in namespace: $namespace"
+        info "External PostgreSQL secret 'model-gateway-postgres-external-secret' not found in namespace '$namespace', it will be created."
         
         # Try to create property file template
         if ! create_postgres_property_file; then
-            error "Please edit the property file and re-run the deployment"
+            local property_file="${PARENT_DIR}/scripts/cp4ba-prerequisites/project/${INSTANCE_NAMESPACE}/propertyfile/cp4ba_model_gateway.property"
+            error "Failed to create PostgreSQL property file."
+            error "Please verify the property file exists and contains all required fields:"
+            error "  File: $property_file"
+            error "  Required fields:"
+            error "    MODEL_GATEWAY_POSTGRES_HOST      - PostgreSQL hostname or IP address"
+            error "    MODEL_GATEWAY_POSTGRES_PORT      - PostgreSQL port (e.g. 5432)"
+            error "    MODEL_GATEWAY_POSTGRES_USERNAME  - Database username"
+            error "    MODEL_GATEWAY_POSTGRES_PASSWORD  - Database password"
+            error "    MODEL_GATEWAY_POSTGRES_DBNAME    - Database name"
+            error "    MODEL_GATEWAY_POSTGRES_SSL_MODE  - SSL mode (disable|require|verify-ca|verify-full)"
+            error "Once the file is populated correctly, re-run the deployment."
             return 1
         fi
         
@@ -1107,7 +1167,18 @@ function check_external_postgres_secret() {
             success "External PostgreSQL secret created from property file"
             return 0
         else
-            error "Failed to create external PostgreSQL secret from property file"
+            local property_file="${PARENT_DIR}/scripts/cp4ba-prerequisites/project/${INSTANCE_NAMESPACE}/propertyfile/cp4ba_model_gateway.property"
+            error "Failed to create external PostgreSQL secret from property file."
+            error "Please verify the property file exists and contains all required fields:"
+            error "  File: $property_file"
+            error "  Required fields:"
+            error "    MODEL_GATEWAY_POSTGRES_HOST      - PostgreSQL hostname or IP address"
+            error "    MODEL_GATEWAY_POSTGRES_PORT      - PostgreSQL port (e.g. 5432)"
+            error "    MODEL_GATEWAY_POSTGRES_USERNAME  - Database username"
+            error "    MODEL_GATEWAY_POSTGRES_PASSWORD  - Database password"
+            error "    MODEL_GATEWAY_POSTGRES_DBNAME    - Database name"
+            error "    MODEL_GATEWAY_POSTGRES_SSL_MODE  - SSL mode (disable|require|verify-ca|verify-full)"
+            error "Once the file is populated correctly, re-run the deployment."
             return 1
         fi
     fi
@@ -2612,8 +2683,8 @@ function verify_prerequisites() {
         echo
     fi
     
-    # Check external PostgreSQL secret
-    if [ "$LITE_INSTALL" != "true" ]; then
+    # Check external PostgreSQL secret (skip for lite install and internal postgres)
+    if [ "$LITE_INSTALL" != "true" ] && [ "$DEPLOY_INTERNAL_POSTGRES" != "true" ]; then
         if check_namespace "$INSTANCE_NAMESPACE"; then
             check_external_postgres_secret "$INSTANCE_NAMESPACE" || errors=$((errors + 1))
         else
@@ -2784,8 +2855,18 @@ function install_operator() {
     
     if [ "$LITE_INSTALL" == "true" ]; then
         helm_args+=("--set" "modelGateway.lite_install=true")
+    elif [ "$DEPLOY_INTERNAL_POSTGRES" == "true" ]; then
+        # Deploy the internal IBM CNPG PostgreSQL operator
+        helm_args+=("--set" "modelGateway.deploy_postgres=true")
+        info "Using internal IBM CNPG PostgreSQL operator"
+        
+        # Disable Redis deployment for small scale config
+        if [ "$SCALE_CONFIG" == "small" ]; then
+            helm_args+=("--set" "modelGateway.deploy_redis=false")
+            info "Redis deployment disabled for small scale configuration"
+        fi
     else
-        # Disable internal PostgreSQL deployment - use external PostgreSQL only
+        # External PostgreSQL — disable internal deployment
         helm_args+=("--set" "modelGateway.deploy_postgres=false")
         
         # Disable Redis deployment for small scale config
@@ -2987,11 +3068,13 @@ function uninstall() {
     info "Deleting Model Gateway secrets..."
     local secrets_deleted=0
     
-    # Delete postgres external secret
-    if ${CLI_CMD} get secret model-gateway-postgres-external-secret -n "$INSTANCE_NAMESPACE" &> /dev/null; then
-        if ${CLI_CMD} delete secret model-gateway-postgres-external-secret -n "$INSTANCE_NAMESPACE" --ignore-not-found; then
-            success "Deleted secret: model-gateway-postgres-external-secret"
-            secrets_deleted=$((secrets_deleted + 1))
+    # Delete postgres external secret (only relevant for external postgres deployments)
+    if [ "$DEPLOY_INTERNAL_POSTGRES" != "true" ]; then
+        if ${CLI_CMD} get secret model-gateway-postgres-external-secret -n "$INSTANCE_NAMESPACE" &> /dev/null; then
+            if ${CLI_CMD} delete secret model-gateway-postgres-external-secret -n "$INSTANCE_NAMESPACE" --ignore-not-found; then
+                success "Deleted secret: model-gateway-postgres-external-secret"
+                secrets_deleted=$((secrets_deleted + 1))
+            fi
         fi
     fi
     
@@ -3187,6 +3270,9 @@ function parse_arguments() {
             --lite-install)
                 LITE_INSTALL="true"
                 ;;
+            --internal-postgres)
+                DEPLOY_INTERNAL_POSTGRES="true"
+                ;;
             --redis-channel)
                 shift
                 REDIS_OPERATOR_CHANNEL="$1"
@@ -3230,6 +3316,13 @@ function parse_arguments() {
         error "  ./cp4a-model-gateway-deployment.sh --accept-license -n production"
         error "  ./cp4a-model-gateway-deployment.sh --uninstall -n production"
         error "  ./cp4a-model-gateway-deployment.sh --configure-providers -n production"
+        exit 1
+    fi
+    
+    # Validate that --internal-postgres and --lite-install are mutually exclusive
+    if [ "$DEPLOY_INTERNAL_POSTGRES" = "true" ] && [ "$LITE_INSTALL" = "true" ]; then
+        error "--internal-postgres and --lite-install are mutually exclusive"
+        error "Please use only one PostgreSQL option"
         exit 1
     fi
     

@@ -86,7 +86,7 @@ spec:
           args:
             - --leader-elect
             - --leader-election-id=ibm-pfs-operator
-          image: icr.io/cpopen/icp4a-pfs-operator@sha256:439be56ec107da794fba34e160a3c3db2b9f2d359efe920a3e6f8ae5c52d1f2b
+          image: icr.io/cpopen/icp4a-pfs-operator@sha256:bea428b3aaecef4a462cb47ca223c8e03117c8e0298166958a3771db725d98a8
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

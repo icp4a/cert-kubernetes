@@ -18,6 +18,7 @@ function create_adsdesignerdb_postgresql_sql_file(){
     dbuserpwd=$3
     dbserver=$4
     dbschema=$5
+    database_type=$6
 
     # remove quotes from beginning and end of string
     dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbname")
@@ -25,6 +26,13 @@ function create_adsdesignerdb_postgresql_sql_file(){
     dbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuserpwd")
     dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
     dbschema=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbschema")
+    database_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$database_type")
+    
+    # Use DATABASE_TYPE if provided, otherwise fall back to DB_TYPE for backward compatibility
+    if [[ -z "$database_type" ]]; then
+        database_type="$DB_TYPE"
+    fi
+    
     # convert to lowercase for postgreSQL dbname
     dbname=$(echo "$dbname" | tr '[:upper:]' '[:lower:]')
     dbschema=$(echo "$dbschema" | tr '[:upper:]' '[:lower:]')
@@ -36,15 +44,15 @@ function create_adsdesignerdb_postgresql_sql_file(){
        dbschema="ads"
     fi
 
-    mkdir -p $ADS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
-    rm -rf $ADS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createDICMSDESIGNERDB.sql
+    mkdir -p $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver >/dev/null 2>&1
+    rm -rf $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver/createDICMSDESIGNERDB.sql
     # Determine CREATE ROLE statement based on client authentication setting
     if is_pg_client_auth; then
         CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN;"
     else
         CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN ENCRYPTED PASSWORD '${dbuserpwd}';"
     fi
-cat << EOF > $ADS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createDICMSDESIGNERDB.sql
+cat << EOF > $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver/createDICMSDESIGNERDB.sql
 -- create user ${dbuser}
 ${CREATE_ROLE_STMT}
 
@@ -73,6 +81,7 @@ function create_adsruntimedb_postgresql_sql_file(){
     dbuserpwd=$3
     dbserver=$4
     dbschema=$5
+    database_type=$6
 
     # remove quotes from beginning and end of string
     dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbname")
@@ -80,6 +89,13 @@ function create_adsruntimedb_postgresql_sql_file(){
     dbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuserpwd")
     dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
     dbschema=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbschema")
+    database_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$database_type")
+    
+    # Use DATABASE_TYPE if provided, otherwise fall back to DB_TYPE for backward compatibility
+    if [[ -z "$database_type" ]]; then
+        database_type="$DB_TYPE"
+    fi
+    
     # convert to lowercase for postgreSQL dbname
     dbname=$(echo "$dbname" | tr '[:upper:]' '[:lower:]')
     dbschema=$(echo "$dbschema" | tr '[:upper:]' '[:lower:]')
@@ -91,15 +107,15 @@ function create_adsruntimedb_postgresql_sql_file(){
        dbschema="ads"
     fi
 
-    mkdir -p $ADS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver >/dev/null 2>&1
-    rm -rf $ADS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createDICMSRUNTIMEDB.sql
+    mkdir -p $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver >/dev/null 2>&1
+    rm -rf $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver/createDICMSRUNTIMEDB.sql
     # Determine CREATE ROLE statement based on client authentication setting
     if is_pg_client_auth; then
         CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN;"
     else
         CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN ENCRYPTED PASSWORD '${dbuserpwd}';"
     fi
-cat << EOF > $ADS_DB_SCRIPT_FOLDER/$DB_TYPE/$dbserver/createDICMSRUNTIMEDB.sql
+cat << EOF > $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver/createDICMSRUNTIMEDB.sql
 -- create user ${dbuser}
 ${CREATE_ROLE_STMT}
 

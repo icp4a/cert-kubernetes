@@ -29,6 +29,7 @@
 VAULT_EXCLUDE_PATCH_LIST_OF_CSV=(
   "ibm-bts-operator"
   "ibm-iam-operator"
+  "ibm-zen-operator"
 )
 
 # Useful for KC links. Set the CP4BA major release version if not already set
@@ -1135,6 +1136,7 @@ function create_cp4a_db_ssl_vault_template(){
   local _tmp_cert_folder_name=${3}
   local _tmp_ssl_client_server=${4}
   local _tmp_pg_ssl_mode=${5}
+  local _tmp_item_db_type=${6}  # Individual database server type (supports mixed database scenarios)
 
   mkdir -p $DB_VAULT_SECRET_FILE_FOLDER/$_dbserver >/dev/null 2>&1
   local DB_VAULT_SECRET_FILE=${DB_VAULT_SECRET_FILE_FOLDER}/$_dbserver/ibm-cp4ba-db-ssl-cert-secret-for-${_dbserver}.json
@@ -1144,7 +1146,13 @@ function create_cp4a_db_ssl_vault_template(){
   local json_content=""
   local provider_objects=""
 
-  if [[ $DB_TYPE != "postgresql" ]]; then
+  # Use individual database server type if provided, otherwise fall back to global DB_TYPE
+  local _db_type_to_check="${_tmp_item_db_type:-$DB_TYPE}"
+  # Strip quotes and convert to lowercase
+  _db_type_to_check=$(sed -e 's/^"//' -e 's/"$//' <<<"$_db_type_to_check")
+  _db_type_to_check=$(echo "$_db_type_to_check" | tr '[:upper:]' '[:lower:]')
+
+  if [[ "$_db_type_to_check" != "postgresql" ]]; then
     # For DB2, Oracle, SQL Server - use tls.crt and cacert.crt
     local tls_cert_content=$(<${_tmp_cert_folder_name}/db-cert.crt)
     local cacert_content=$(<${_tmp_cert_folder_name}/db-cert.crt)
@@ -1164,7 +1172,7 @@ function create_cp4a_db_ssl_vault_template(){
         secretKey: "cacert.crt"'
 
   # Postgres with no client_server
-  elif [[ $DB_TYPE == "postgresql" && ($_tmp_ssl_client_server == "no" || $_tmp_ssl_client_server == "false" || $_tmp_ssl_client_server == "" || -z $_tmp_ssl_client_server) ]]; then
+  elif [[ $_db_type_to_check == "postgresql" && ($_tmp_ssl_client_server == "no" || $_tmp_ssl_client_server == "false" || $_tmp_ssl_client_server == "" || -z $_tmp_ssl_client_server) ]]; then
     # For PostgreSQL with SSL but no client authentication - use tls.crt and serverca.pem
     local tls_cert_content=$(<${_tmp_cert_folder_name}/db-cert.crt)
     local serverca_content=$(<${_tmp_cert_folder_name}/db-cert.crt)
@@ -1770,10 +1778,25 @@ function create_adp_secret_vault_template(){
 
         # Call helper function to determine the postgres client flag
         get_postgresql_client_flag "ADP_GG_DB_USER_NAME" "adpgg_postgresql_client_flag" "true"
- 
-        # When POSTGRESQL_SSL_CLIENT_SERVER is NOT true, add pwd to secret.
-        # For EDB, we will add the pwd to secret even POSTGRESQL_SSL_CLIENT_SERVER is true because EDB needs pwd to connect.
-        if [[ ! ($adpgg_postgresql_client_flag == "true" || $adpgg_postgresql_client_flag == "yes" || $adpgg_postgresql_client_flag == "y") || $tmp_dbtype == "postgresql-edb" ]]; then
+
+        # Resolve the ADPGG server's own DB type (may differ from the ADP Base DB server type
+        # stored in $tmp_dbtype, e.g. when DB_TYPE=db2 but ADPGG uses a CNPG/EDB instance).
+        local _adpgg_dbservername
+        _adpgg_dbservername="$(prop_db_name_user_property_file_for_server_name ADP_GG_DB_USER_NAME)"
+        _adpgg_dbservername=$(sed -e 's/^"//' -e 's/"$//' <<<"$_adpgg_dbservername")
+        local _adpgg_dbtype
+        _adpgg_dbtype="$(prop_db_server_property_file "$_adpgg_dbservername.DATABASE_TYPE" 2>/dev/null)"
+        _adpgg_dbtype=$(sed -e 's/^"//' -e 's/"$//' <<<"$_adpgg_dbtype")
+        _adpgg_dbtype=$(echo "$_adpgg_dbtype" | tr '[:upper:]' '[:lower:]')
+        # If the server property file has no entry (CNPG-managed EDB), the prefix itself is the type.
+        if [[ -z "$_adpgg_dbtype" ]]; then
+            _adpgg_dbtype="$_adpgg_dbservername"
+        fi
+
+        # Include the password in the secret unless this is a plain PostgreSQL server with
+        # SSL client authentication active (in which case the cert replaces the password).
+        # For EDB and all non-PostgreSQL types (db2, oracle, sqlserver) the password is always required.
+        if [[ ! ($adpgg_postgresql_client_flag == "true" || $adpgg_postgresql_client_flag == "yes" || $adpgg_postgresql_client_flag == "y") || $_adpgg_dbtype == "postgresql-edb" || $_adpgg_dbtype != "postgresql" ]]; then
             _adpgg_db_password="$(decode_base64_password "$(prop_db_name_user_property_file ADP_GG_DB_USER_PASSWORD)")"
  
             # Add "adpggDBPassword" to Vault JSON template and SecretProviderClass YAML
@@ -2171,9 +2194,8 @@ function create_bts_datastore_edb_secret_vault_template(){
   # Remove carriage returns and convert multi-line certificate to single line with \n escape sequences
   _bts_client_content=$(echo "$_bts_client_content" | tr -d '\r' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
   _bts_root_content=$(echo "$_bts_root_content" | tr -d '\r' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
-
 # For https://jsw.ibm.com/browse/DBACLD-238245 and https://jsw.ibm.com/browse/DBACLD-238566 we now need to update the bts-datastore-edb-secret template to have a different key
-# THe key tls.key will be replaced to be tls.pk8 as the client.key file that it stores is in pk8 format. With new Postgres drivers, if you name it tls.key it expects the the key cert to be in PEM format. 
+# THe key tls.key will be replaced to be tls.pk8 as the client.key file that it stores is in pk8 format. With new Postgres drivers, if you name it tls.key it expects the the key cert to be in PEM format.   
 cat << EOF > "${BTS_VAULT_SECRET_FILE}"
 {
   "_comment": "Create a $_bts_secret_name for Vault (eg: vault kv put ${kv_vault_path}/$_bts_secret_name @${BTS_VAULT_SECRET_FILE}).  Optionally, this property, _comment, can be removed before creating the secret.",
@@ -2308,6 +2330,78 @@ EOF
   success "Created $_im_secret_name secret JSON template and SecretProviderClass template for Vault\n"
 }
 
+#DBACLD-230919: ibm-zen-metastore-secret
+# --------------------------
+# ibm-zen-metastore-secret
+# --------------------------
+
+function create_zen_metastore_edb_secret_vault_template(){
+  wait_msg "Creating ibm-zen-metastore-secret secret JSON template for Vault"
+  mkdir -p $ZEN_VAULT_SECRET_FILE_FOLDER >/dev/null 2>&1  
+  local _zen_secret_name=$1
+  local _zen_secret_folder=$2
+   
+  if [[ ! -f "$_zen_secret_folder/root.crt" || ! -f "$_zen_secret_folder/client.crt" || ! -f "$_zen_secret_folder/client.key" ]]; then
+    error "Please copy \"root.crt\" \"client.crt\" \"client.key\" into the "$_zen_secret_folder" first"
+    exit 1
+  else
+    openssl x509 -in $_zen_secret_folder/root.crt -noout -subject -issuer -startdate -enddate >/dev/null 2>&1
+    openssl x509 -in $_zen_secret_folder/client.crt -noout -subject -issuer -startdate -enddate >/dev/null 2>&1
+    openssl rsa -in $_zen_secret_folder/client.key -outform PEM -out $_zen_secret_folder/client_key.pem >/dev/null 2>&1
+    openssl x509 -in $_zen_secret_folder/client.crt -outform PEM -out $_zen_secret_folder/client.pem >/dev/null 2>&1
+    openssl x509 -in $_zen_secret_folder/root.crt -outform PEM -out $_zen_secret_folder/root.pem >/dev/null 2>&1
+  fi
+  _zen_client_content=$(<${_zen_secret_folder}/client.pem)
+  _zen_root_content=$(<${_zen_secret_folder}/root.pem)
+  _zen_client_key_content=$(<${_zen_secret_folder}/client_key.pem)
+  # Remove carriage returns and convert multi-line certificate to single line with \n escape sequences
+  _zen_client_content=$(echo "$_zen_client_content" | tr -d '\r' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
+  _zen_root_content=$(echo "$_zen_root_content" | tr -d '\r' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
+  _zen_client_key_content=$(echo "$_zen_client_key_content" | tr -d '\r' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
+
+  cat << EOF > "${ZEN_VAULT_SECRET_FILE}"
+{
+  "_comment": "Create a $_zen_secret_name for Vault (eg: vault kv put ${kv_vault_path}/$_zen_secret_name @${ZEN_VAULT_SECRET_FILE}).  Optionally, this property, _comment, can be removed before creating the secret.",
+  "ca.crt": "${_zen_root_content}",
+  "tls.crt": "${_zen_client_content}",
+  "tls.key": "${_zen_client_key_content}"
+}
+EOF
+
+cat << EOF > "${ZEN_VAULT_SECRET_PROVIDER_CLASS_FILE}.yaml"
+# YAML template for ibm-zen-metastore-secret SecretProviderClass
+# metadata.name must match with the name of the secret created in Vault (eg: $_zen_secret_name)
+# The keys in this template should match with the keys in the $_zen_secret_name JSON template
+---
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: "$_zen_secret_name"
+  namespace: "$CP4BA_SERVICES_NS"
+  labels:
+    cp4ba.ibm.com/backup-type: mandatory
+  annotations:
+    cp4ba.ibm.com/owned-by: "ibm-zen-operator"
+    cp4ba.ibm.com/secret-store-type: "tls"
+spec:
+  provider: vault
+  parameters:
+    roleName: "$vault_role"
+    vaultAddress: "$vault_address"
+    objects: |
+      - secretPath: "$vault_path/$_zen_secret_name"
+        objectName: "tls.crt"
+        secretKey: "tls.crt"
+      - secretPath: "$vault_path/$_zen_secret_name"
+        objectName: "ca.crt"
+        secretKey: "ca.crt"
+      - secretPath: "$vault_path/$_zen_secret_name"
+        objectName: "tls.key"
+        secretKey: "tls.key"
+EOF
+
+  success "Created $_zen_secret_name secret JSON template and SecretProviderClass template for Vault\n"
+}
 
 # --------------------------
 # ibm-odm-db-secret
@@ -2333,6 +2427,14 @@ function create_odm_secret_vault_template(){
 }
 EOF
 
+  # DBACLD-240890: For embedded CNPG, the CP4BA Operator needs to read the secret to setup the DB
+  local _owned_by
+  if [[ $DB_TYPE != "postgresql-edb" ]]; then
+    _owned_by="ibm-odm-operator"
+  else
+    _owned_by="ibm-odm-operator,ibm-cp4a-operator"
+  fi
+
   cat << EOF > "${ODM_VAULT_SECRET_PROVIDER_CLASS_FILE}.yaml"
 # YAML template for $_odm_secret_name SecretProviderClass
 # metadata.name must match with the name of the secret created in Vault (eg: $_odm_secret_name)
@@ -2348,7 +2450,7 @@ metadata:
     db-server: "$_dbserver"
     db-name: "$_dbname"
   annotations:
-    cp4ba.ibm.com/owned-by: "ibm-odm-operator"
+    cp4ba.ibm.com/owned-by: "$_owned_by"
     cp4ba.ibm.com/secret-store-type: "secrets"
 spec:
   provider: vault
@@ -2362,8 +2464,8 @@ spec:
 EOF
 
 
-  # If Postgres client-auth is not enabled, add password field
-  if [[ ! ($_odm_postgresql_client_flag == "true" || $_odm_postgresql_client_flag == "yes" || $_odm_postgresql_client_flag == "y") ]]; then
+  # If Postgres client-auth is not enabled or using CNPG/EDB, add password field
+  if [[ ! ($_odm_postgresql_client_flag == "true" || $_odm_postgresql_client_flag == "yes" || $_odm_postgresql_client_flag == "y") || $DB_TYPE == "postgresql-edb" ]]; then
     local _odm_db_password="$(decode_base64_password "$(prop_db_name_user_property_file ODM_DB_USER_PASSWORD)")"
     _odm_db_password=$(sed -e 's/^"//' -e 's/"$//' <<<"$_odm_db_password")
 
@@ -2383,8 +2485,6 @@ EOF
   success "Created $_odm_secret_name JSON template and SecretProviderClass template for Vault\n"
 
 }
-
-
 
 # --------------------------
 # ibm-odm-keystore-secret
@@ -2479,6 +2579,17 @@ function create_di_designer_secret_vault_template(){
   _dbservername=$(sed -e 's/^"//' -e 's/"$//' <<<"$_dbservername")
   check_dbserver_name_valid $_dbservername "DICMS_DESIGNER_DB_NAME"
 
+  # Resolve the DICMS Designer server's own DB type (may differ from global DB_TYPE,
+  # e.g. when DB_TYPE=db2 but DICMS Designer uses a CNPG/EDB instance).
+  local _dicms_designer_dbtype
+  _dicms_designer_dbtype="$(prop_db_server_property_file "$_dbservername.DATABASE_TYPE" 2>/dev/null)"
+  _dicms_designer_dbtype=$(sed -e 's/^"//' -e 's/"$//' <<<"$_dicms_designer_dbtype")
+  _dicms_designer_dbtype=$(echo "$_dicms_designer_dbtype" | tr '[:upper:]' '[:lower:]')
+  # If the server property file has no entry (CNPG-managed EDB), the prefix itself is the type.
+  if [[ -z "$_dicms_designer_dbtype" ]]; then
+      _dicms_designer_dbtype="$_dbservername"
+  fi
+
   local _postgresql_client_enabled=$(check_if_property_is_enabled "$(prop_db_server_property_file $_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
   local _database_ssl_enabled=$(check_if_property_is_enabled "$(prop_db_server_property_file $_dbservername.DATABASE_SSL_ENABLE)")
 
@@ -2512,8 +2623,9 @@ function create_di_designer_secret_vault_template(){
       "sslKeystorePassword": $sslKeystorePassword
     }' > "${DI_DESIGNER_VAULT_SECRET_FILE}"
 
-  # When POSTGRESQL_SSL_CLIENT_SERVER is not true, add dbPassword to JSON
-  if [[ "$_postgresql_client_enabled" != "true" ]]; then
+  # Include dbPassword unless this is a plain PostgreSQL server with SSL client auth active.
+  # For EDB and all non-PostgreSQL types (db2, oracle, sqlserver) the password is always required.
+  if [[ "$_postgresql_client_enabled" != "true" || $_dicms_designer_dbtype == "postgresql-edb" || $_dicms_designer_dbtype != "postgresql" ]]; then
     ${YQ_CMD} -i ".dbPassword = \"$_ads_designer_db_password\"" "${DI_DESIGNER_VAULT_SECRET_FILE}"
   fi
 
@@ -2530,6 +2642,14 @@ function create_di_designer_secret_vault_template(){
 
   local _dbname="$(prop_db_name_user_property_file DICMS_DESIGNER_DB_NAME)"
 
+  # DBACLD-240890: For embedded CNPG, the CP4BA Operator needs to read the secret to setup the DB
+  local _owned_by
+  if [[ $_dicms_designer_dbtype != "postgresql-edb" ]]; then
+    _owned_by="ibm-ads-operator"
+  else
+    _owned_by="ibm-ads-operator,ibm-cp4a-operator"
+  fi
+
   cat << EOF > "${DI_DESIGNER_VAULT_SECRET_PROVIDER_CLASS_FILE}.yaml"
 # YAML template for $_ads_designer_secret_name SecretProviderClass
 # metadata.name must match with the name of the secret created in Vault (eg: $_ads_designer_secret_name)
@@ -2545,7 +2665,7 @@ metadata:
     db-server: "$_dbservername"
     db-name: "$_dbname"
   annotations:
-    cp4ba.ibm.com/owned-by: "ibm-ads-operator"
+    cp4ba.ibm.com/owned-by: "$_owned_by"
     cp4ba.ibm.com/secret-store-type: "secrets"
 spec:
   provider: vault
@@ -2564,8 +2684,8 @@ spec:
         secretKey: "sslKeystorePassword"
 EOF
 
-  # When POSTGRESQL_SSL_CLIENT_SERVER is not true, add dbPassword object to SecretProviderClass
-  if [[ "$_postgresql_client_enabled" != "true" ]]; then
+  # When POSTGRESQL_SSL_CLIENT_SERVER is not true or Postgres, add dbPassword object to SecretProviderClass
+  if [[ "$_postgresql_client_enabled" != "true" || $DB_TYPE == "postgresql-edb" ]]; then
     cat << EOF >> "${DI_DESIGNER_VAULT_SECRET_PROVIDER_CLASS_FILE}.yaml"
       - secretPath: "$vault_path/$_ads_designer_secret_name"
         objectName: "dbPassword"
@@ -2626,6 +2746,17 @@ function create_di_runtime_secret_vault_template(){
   local _dbservername="$(prop_db_name_user_property_file_for_server_name DICMS_RUNTIME_DB_NAME)"
   _dbservername=$(sed -e 's/^"//' -e 's/"$//' <<<"$_dbservername")
   check_dbserver_name_valid $_dbservername "DICMS_RUNTIME_DB_NAME"
+
+  # Resolve the DICMS Runtime server's own DB type (may differ from global DB_TYPE,
+  # e.g. when DB_TYPE=db2 but DICMS Runtime uses a CNPG/EDB instance).
+  local _dicms_runtime_dbtype
+  _dicms_runtime_dbtype="$(prop_db_server_property_file "$_dbservername.DATABASE_TYPE" 2>/dev/null)"
+  _dicms_runtime_dbtype=$(sed -e 's/^"//' -e 's/"$//' <<<"$_dicms_runtime_dbtype")
+  _dicms_runtime_dbtype=$(echo "$_dicms_runtime_dbtype" | tr '[:upper:]' '[:lower:]')
+  # If the server property file has no entry (CNPG-managed EDB), the prefix itself is the type.
+  if [[ -z "$_dicms_runtime_dbtype" ]]; then
+      _dicms_runtime_dbtype="$_dbservername"
+  fi
 
   local _postgresql_client_enabled=$(check_if_property_is_enabled "$(prop_db_server_property_file $_dbservername.POSTGRESQL_SSL_CLIENT_SERVER)")
   local _database_ssl_enabled=$(check_if_property_is_enabled "$(prop_db_server_property_file $_dbservername.DATABASE_SSL_ENABLE)")
@@ -2691,8 +2822,9 @@ function create_di_runtime_secret_vault_template(){
       "sslKeystorePassword": $sslKeystorePassword
     }' > "${DI_RUNTIME_VAULT_SECRET_FILE}"
 
-  # When POSTGRESQL_SSL_CLIENT_SERVER is not true, add dbPassword to JSON
-  if [[ "$_postgresql_client_enabled" != "true" ]]; then
+  # Include dbPassword unless this is a plain PostgreSQL server with SSL client auth active.
+  # For EDB and all non-PostgreSQL types (db2, oracle, sqlserver) the password is always required.
+  if [[ "$_postgresql_client_enabled" != "true" || $_dicms_runtime_dbtype == "postgresql-edb" || $_dicms_runtime_dbtype != "postgresql" ]]; then
     ${YQ_CMD} -i ".dbPassword = \"$_ads_runtime_db_password\"" "${DI_RUNTIME_VAULT_SECRET_FILE}"
   fi
 
@@ -2709,6 +2841,14 @@ function create_di_runtime_secret_vault_template(){
 
   local _dbname="$(prop_db_name_user_property_file DICMS_RUNTIME_DB_NAME)"
 
+  # DBACLD-240890: For embedded CNPG, the CP4BA Operator needs to read the secret to setup the DB
+  local _owned_by
+  if [[ $_dicms_runtime_dbtype != "postgresql-edb" ]]; then
+    _owned_by="ibm-ads-operator"
+  else
+    _owned_by="ibm-ads-operator,ibm-cp4a-operator"
+  fi
+
   cat << EOF > "${DI_RUNTIME_VAULT_SECRET_PROVIDER_CLASS_FILE}.yaml"
 # YAML template for $_ads_runtime_secret_name SecretProviderClass
 # metadata.name must match with the name of the secret created in Vault (eg: $_ads_runtime_secret_name)
@@ -2724,7 +2864,7 @@ metadata:
     db-server: "$_dbservername"
     db-name: "$_dbname"
   annotations:
-    cp4ba.ibm.com/owned-by: "ibm-ads-operator"
+    cp4ba.ibm.com/owned-by: "$_owned_by"
     cp4ba.ibm.com/secret-store-type: "secrets"
 spec:
   provider: vault
@@ -2767,8 +2907,8 @@ spec:
         secretKey: "sslKeystorePassword"
 EOF
 
-  # When POSTGRESQL_SSL_CLIENT_SERVER is not true, add dbPassword object to SecretProviderClass
-  if [[ "$_postgresql_client_enabled" != "true" ]]; then
+  # When POSTGRESQL_SSL_CLIENT_SERVER is not true or using CNPG/EDB, add dbPassword object to SecretProviderClass
+  if [[ "$_postgresql_client_enabled" != "true" || $DB_TYPE == "postgresql-edb" ]]; then
     cat << EOF >> "${DI_RUNTIME_VAULT_SECRET_PROVIDER_CLASS_FILE}.yaml"
       - secretPath: "$vault_path/$_ads_runtime_secret_name"
         objectName: "dbPassword"
@@ -3326,34 +3466,61 @@ EOF
 # --------------------------
 # Create templates for IBM Workflow Assistant secret
 function create_workflow_assistant_secret_vault_template(){
-  local watsonx_api_key="$(prop_user_profile_property_file WFA.WATSONX_API_KEY)"
-  watsonx_api_key=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_api_key")
-  
-  local watsonx_project_id="$(prop_user_profile_property_file WFA.WATSONX_PROJECT_ID)"
-  watsonx_project_id=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_project_id")
-  
+  # Get WFA deployment type selected during property mode (stored in TEMPORARY_PROPERTY_FILE)
+  local watsonx_deployment_type="$(prop_tmp_property_file WFA_WATSONX_DEPLOYMENT_TYPE)"
+  watsonx_deployment_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_deployment_type")
+  watsonx_deployment_type=$(echo "$watsonx_deployment_type" | tr '[:lower:]' '[:upper:]')
+
+  # Read all original optional fields
   local watsonx_token="$(prop_user_profile_property_file WFA.WATSONX_TOKEN)"
   watsonx_token=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_token")
-  
-  local watsonx_url="$(prop_user_profile_property_file WFA.WATSONX_URL)"
-  watsonx_url=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_url")
-  
-  if [[ "<Optional>" == $watsonx_token ]]; then
-    watsonx_token=""
-  fi
-  
+  if [[ "<Optional>" == "$watsonx_token" ]]; then watsonx_token=""; fi
+
+  local watsonx_api_key="$(decode_base64_password "$(prop_user_profile_property_file WFA.WATSONX_API_KEY)")"
+  watsonx_api_key=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_api_key")
+  if [[ "<Required>" == "$watsonx_api_key" ]]; then watsonx_api_key=""; fi
+
   local watsonx_password="$(decode_base64_password "$(prop_user_profile_property_file WFA.WATSONX_PASSWORD)")"
   watsonx_password=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_password")
-  
-  if [[ "<Optional>" == $watsonx_password ]]; then
-    watsonx_password=""
-  fi
-  
+  if [[ "<Optional>" == "$watsonx_password" ]]; then watsonx_password=""; fi
+
+  local watsonx_project_id="$(prop_user_profile_property_file WFA.WATSONX_PROJECT_ID)"
+  watsonx_project_id=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_project_id")
+  if [[ "<Required>" == "$watsonx_project_id" ]]; then watsonx_project_id=""; fi
+
+  local watsonx_url="$(prop_user_profile_property_file WFA.WATSONX_URL)"
+  watsonx_url=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_url")
+  if [[ "<Required>" == "$watsonx_url" ]]; then watsonx_url=""; fi
+
+  # Additional LWE-specific fields
+  local watsonx_username="$(prop_user_profile_property_file WFA.WATSONX_USERNAME)"
+  watsonx_username=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_username")
+  if [[ "<Required>" == "$watsonx_username" ]]; then watsonx_username=""; fi
+
+  local watsonx_version="$(prop_user_profile_property_file WFA.WATSONX_VERSION)"
+  watsonx_version=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_version")
+  if [[ "<Required>" == "$watsonx_version" ]]; then watsonx_version=""; fi
+
   local _wfa_secret_name="ibm-workflow-assistant-secrets"
-  
+
   wait_msg "Creating IBM Workflow Assistant secret JSON template for Vault"
   mkdir -p $WORKFLOW_ASSISTANT_VAULT_SECRET_FILE_FOLDER >/dev/null 2>&1
 
+  # Build JSON with original fields; append LWE-specific fields if needed
+  if [[ "$watsonx_deployment_type" == "LWE" ]]; then
+cat << EOF > "${WORKFLOW_ASSISTANT_VAULT_SECRET_FILE}"
+{
+  "_comment": "Create $_wfa_secret_name for Vault (eg: vault kv put ${kv_vault_path}/$_wfa_secret_name @${WORKFLOW_ASSISTANT_VAULT_SECRET_FILE}). The name should match the SecretProviderClass name. Optionally, this property, _comment, can be removed before creating the secret. NOTE: Vault stores passwords in plain text.",
+  "WATSONX_TOKEN": "$watsonx_token",
+  "WATSONX_API_KEY": "$watsonx_api_key",
+  "WATSONX_PASSWORD": "$watsonx_password",
+  "WATSONX_PROJECT_ID": "$watsonx_project_id",
+  "WATSONX_URL": "$watsonx_url",
+  "WATSONX_USERNAME": "$watsonx_username",
+  "WATSONX_VERSION": "$watsonx_version"
+}
+EOF
+  else
 cat << EOF > "${WORKFLOW_ASSISTANT_VAULT_SECRET_FILE}"
 {
   "_comment": "Create $_wfa_secret_name for Vault (eg: vault kv put ${kv_vault_path}/$_wfa_secret_name @${WORKFLOW_ASSISTANT_VAULT_SECRET_FILE}). The name should match the SecretProviderClass name. Optionally, this property, _comment, can be removed before creating the secret. NOTE: Vault stores passwords in plain text.",
@@ -3364,6 +3531,7 @@ cat << EOF > "${WORKFLOW_ASSISTANT_VAULT_SECRET_FILE}"
   "WATSONX_URL": "$watsonx_url"
 }
 EOF
+  fi
 
 cat << EOF > "${WORKFLOW_ASSISTANT_VAULT_SECRET_PROVIDER_CLASS_FILE}.yaml"
 # YAML template for $_wfa_secret_name SecretProviderClass
@@ -3402,6 +3570,18 @@ spec:
         objectName: "WATSONX_URL"
         secretKey: "WATSONX_URL"
 EOF
+
+  # Append LWE-specific keys to the SecretProviderClass
+  if [[ "$watsonx_deployment_type" == "LWE" ]]; then
+cat << EOF >> "${WORKFLOW_ASSISTANT_VAULT_SECRET_PROVIDER_CLASS_FILE}.yaml"
+      - secretPath: "$vault_path/$_wfa_secret_name"
+        objectName: "WATSONX_USERNAME"
+        secretKey: "WATSONX_USERNAME"
+      - secretPath: "$vault_path/$_wfa_secret_name"
+        objectName: "WATSONX_VERSION"
+        secretKey: "WATSONX_VERSION"
+EOF
+  fi
 
   if [[ $SEPARATE_OPERAND_FLAG == "Yes" &&  $CP4BA_OPERATOR_NS != '' ]]; then
     info "Creating SecretProviderClass for Workflow Assistant in namespace $CP4BA_OPERATOR_NS"

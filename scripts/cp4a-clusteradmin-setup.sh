@@ -1450,14 +1450,13 @@ function prepare_olm_install() {
         echo "Found operator group"
         ${CLI_CMD} get og -n "${temp_project_name}"
     else
-      sed "s/REPLACE_NAMESPACE/\"$temp_project_name\"/g" ${OLM_OPT_GROUP} > ${OLM_OPT_GROUP_TMP}
-      ${CLI_CMD} apply -f ${OLM_OPT_GROUP_TMP}
-      if [ $? -eq 0 ]
-         then
-         echo "$CP4BA_NAME Operator Group Created!"
-       else
-         echo "$CP4BA_NAME Operator Operator Group creation failed"
-       fi
+        sed "s/REPLACE_NAMESPACE/\"$temp_project_name\"/g" ${OLM_OPT_GROUP} > ${OLM_OPT_GROUP_TMP}
+        ${CLI_CMD} apply -f ${OLM_OPT_GROUP_TMP}
+        if [ $? -eq 0 ]; then
+            echo "$CP4BA_NAME Operator Group Created!"
+        else
+            echo "$CP4BA_NAME Operator Operator Group creation failed"
+        fi
     fi
 
     sed "s/REPLACE_NAMESPACE/\"$temp_project_name\"/g" ${OLM_SUBSCRIPTION} > ${OLM_SUBSCRIPTION_TMP}
@@ -1474,8 +1473,7 @@ function prepare_olm_install() {
     ${YQ_CMD} -i ".spec.source = \"$online_source\"" ${OLM_SUBSCRIPTION_TMP}
 
     ${CLI_CMD} apply -f ${OLM_SUBSCRIPTION_TMP}
-    if [ $? -eq 0 ]
-        then
+    if [ $? -eq 0 ]; then
         echo "$CP4BA_NAME Operator Subscription Created!"
     else
         echo "$CP4BA_NAME Operator Subscription creation failed"
@@ -1504,36 +1502,18 @@ function prepare_olm_install() {
         ${CLI_CMD} apply -f ${REDIS_SUBSCRIPTION_TMP}
         if [ $? -eq 0 ]; then
             success "IBM Redis Operator subscription created successfully!"
-            
-            # Wait for Redis operator to be ready
-            info "Waiting for IBM Redis Operator to be ready..."
-            local max_retry=60
-            local retry=0
-            local wait_time=5
-            while [ $retry -lt $max_retry ]; do
-                if ${CLI_CMD} get csv -n $temp_project_name 2>/dev/null | grep ibm-redis-cp | grep Succeeded >/dev/null 2>&1; then
-                    success "IBM Redis Operator is ready!"
-                    break
-                fi
-                retry=$((retry+1))
-                if [ $retry -lt $max_retry ]; then
-                    # Check more frequently at first (5s), then slow down after 10 retries (10s)
-                    if [ $retry -gt 10 ]; then
-                        wait_time=10
-                    fi
-                    printf '%s' "."
-                    sleep $wait_time
-                fi
-            done
-            echo ""  
-            
-            if [ $retry -eq $max_retry ]; then
-                warning "IBM Redis Operator CSV not ready after timeout"
-                warning "Please check the operator status manually with: ${CLI_CMD} get csv -n $temp_project_name | grep redis"
-            fi
         else
             warning "IBM Redis Operator subscription creation failed (non-critical, continuing...)"
         fi
+    fi
+
+    # Setup IBM Usage Metering Subscription - validates CatalogSource and creates/updates subscription
+    # $1 Operator namespace
+    # $2 scenario i.e fresh_install or upgrade
+    # $3 catalog namespace (helps differentiate in case global catalog was used)
+    # $4 Services namespace (used for error messages)
+    if [[ $DEPLOYMENT_TYPE == "production" ]]; then
+        setup_ibm_usage_metering_subscription "$temp_project_name" "fresh_install" "$CATALOG_NAMESPACE" "$project_name_cs_service"
     fi
 
     # patch csv to use cp.stg.icr.io/cp instead of icr.io/cpopen with development mode
@@ -1612,9 +1592,9 @@ function prepare_olm_install() {
 
     fi
 
-   printf "\n"
-   info "Waiting for $CP4BA_NAME operator pod initialization"
-   for ((retry=0;retry<=${maxRetry};retry++)); do
+    printf "\n"
+    info "Waiting for $CP4BA_NAME operator pod initialization"
+    for ((retry=0;retry<=${maxRetry};retry++)); do
       if [[ ($RUNTIME_MODE == "process-flow-dev") || ($RUNTIME_MODE == "process-flow") ]]; then
         podCount=$(${CLI_CMD} get pod -n "$temp_project_name" --no-headers | grep ibm-wfps-operator-controller-manager | grep "Running" | wc -l)
       else
@@ -1667,7 +1647,7 @@ function prepare_olm_install() {
         ibmODMPodPresent=$(${CLI_CMD} get pod -n "$temp_project_name" --no-headers --ignore-not-found | grep ibm-odm-operator | wc -l)
         if [[ $ibmODMPodPresent -eq 1 ]]; then
             ibmODMPodCount=$(${CLI_CMD} get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-odm-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
-        else    
+        else
             ibmODMPodCount=0
         fi
         
@@ -1675,7 +1655,7 @@ function prepare_olm_install() {
         ibmPFSPodPresent=$(${CLI_CMD} get pod -n "$temp_project_name" --no-headers --ignore-not-found | grep ibm-pfs-operator | wc -l)
         if [[ $ibmPFSPodPresent -eq 1 ]]; then
             ibmPFSPodCount=$(${CLI_CMD} get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-pfs-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
-        else    
+        else
             ibmPFSPodCount=0
         fi
 
@@ -1683,7 +1663,7 @@ function prepare_olm_install() {
         foundationPodPresent=$(${CLI_CMD} get pod -n "$temp_project_name" --no-headers --ignore-not-found | grep icp4a-foundation-operator | wc -l)
         if [[ $foundationPodPresent -eq 1 ]]; then
             foundationPodCount=$(${CLI_CMD} get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep icp4a-foundation-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
-        else   
+        else
             foundationPodCount=0
         fi
 
@@ -1691,19 +1671,19 @@ function prepare_olm_install() {
         operandLifeCyclePodPresent=$(${CLI_CMD} get pod -n "$temp_project_name" --no-headers --ignore-not-found | grep operand-deployment-lifecycle-manager | wc -l)
         if [[ $operandLifeCyclePodPresent -eq 1 ]]; then
             operandLifeCyclePodCount=$(${CLI_CMD} get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep operand-deployment-lifecycle-manager | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
-        else    
+        else
             operandLifeCyclePodCount=0
-        fi    
+        fi
         podList=($podCount $ibmDpePodCount $ibmInsightsEnginePodCount $ibmADSOperatorPodCount $ibmCommonServicesPodCount $ibmODMPodCount $ibmPFSPodCount $foundationPodCount $operandLifeCyclePodCount)
       elif [[ ($RUNTIME_MODE == "baw") || ($RUNTIME_MODE == "baw-dev") ]]; then
         #checking if ibm-pfs-operator is present and if so checking if the pod is running
         ibmPFSPodPresent=$(${CLI_CMD} get pod -n "$temp_project_name" --no-headers --ignore-not-found | grep ibm-pfs-operator | wc -l)
         if [[ $ibmPFSPodPresent -eq 1 ]]; then
             ibmPFSPodCount=$(${CLI_CMD} get pod -n "$temp_project_name" -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers --ignore-not-found | grep ibm-pfs-operator | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}' | wc -l)
-        else    
+        else
             ibmPFSPodCount=0
         fi
-        podList=($podCount $ibmPFSPodCount)      
+        podList=($podCount $ibmPFSPodCount)
       fi
 
       #if any of the podCounts are zero then that means all pods are not ready and we need to wait for them to get ready
@@ -1747,6 +1727,29 @@ function prepare_olm_install() {
         break
       fi
     done
+
+    # Wait for Redis operator to be ready
+    info "Waiting for IBM Redis Operator to be ready..."
+    local max_retry=10
+    local retry=0
+    local wait_time=5
+    while [ $retry -lt $max_retry ]; do
+        if ${CLI_CMD} get csv -n $temp_project_name 2>/dev/null | grep ibm-redis-cp | grep Succeeded >/dev/null 2>&1; then
+            success "IBM Redis Operator is ready!"
+            break
+        fi
+        retry=$((retry+1))
+        if [ $retry -lt $max_retry ]; then
+            printf '%s' "."
+            sleep $wait_time
+        fi
+    done
+    echo ""  
+    
+    if [ $retry -eq $max_retry ]; then
+        warning "IBM Redis Operator CSV not ready after timeout"
+        warning "Please check the operator status manually with: ${CLI_CMD} get csv -n $temp_project_name | grep redis"
+    fi
 
     if [[ ($RUNTIME_MODE != "process-flow-dev") && ($RUNTIME_MODE != "process-flow") ]]; then
       printf "\n"
@@ -3286,8 +3289,6 @@ function recreate_cp4ba_common_configmap() {
 
 }
 
-
-
 #######################################################
 # Grant ibm-licensing secret access for content operator
 # 
@@ -3351,6 +3352,7 @@ EOF
     success "Successfully created RBAC resources."
     
 }
+
 
 
 ################################################
@@ -3572,18 +3574,21 @@ echo
 # Function to create RBAC resources to allow the content operator to access secrets in the ibm-licensing Namespace
 # https://jsw.ibm.com/browse/DBACLD-236572 https://jsw.ibm.com/browse/DBACLD-236556
 grant_ibm_licensing_namespace_secret_access "$operator_ns" "ibm-licensing" "ibm-cp4a-content-operator"
-# Function that handles all the usage metering operator related tasks
-# At this point the UMS Set up would happen only for production
-# https://jsw.ibm.com/browse/DBACLD-216413
+
+
+
+
+
+# Complete IBM Usage Metering Installation - waits for operator readiness and applies CRs/secrets
+#
 # $1 Operator namespace
 # $2 Services namespace
 # $3 scenario i.e fresh_install or upgrade
 # $4 entitlement_key which is the key used to generate the connection point secret
 # $5 runtime mode that tells the script if it is being used in dev mode and if so the sandbox setting is enabled
-# $6 catalog namespace ( helps differentiate in case global catalog was used)
-# $7 AIRGAP MODE
+# $6 airgap mode which makes sure that the connection point CR is created without the softwareCentral section
 if [[ $DEPLOYMENT_TYPE == "production" ]]; then
-    install_ibm_usage_metering "$operator_ns" "$services_ns" "fresh_install" "$DOCKER_REG_KEY" "$RUNTIME_MODE" "$CATALOG_NAMESPACE" "$AIRGAP_INSTALL"
+    complete_ibm_usage_metering_installation "$operator_ns" "$services_ns" "fresh_install" "$DOCKER_REG_KEY" "$RUNTIME_MODE" "$AIRGAP_INSTALL"
 fi
 
 

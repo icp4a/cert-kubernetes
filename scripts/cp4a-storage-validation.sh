@@ -318,6 +318,14 @@ function run_storage_validation() {
           $SED_COMMAND "s|^storageClass_ReadWriteOnce:.*|storageClass_ReadWriteOnce: $tmp_storage_classname_block|" "$PARAMS_FILE"
           $SED_COMMAND "s|^storageClass_ReadWriteMany:.*|storageClass_ReadWriteMany: $tmp_storage_classname|" "$PARAMS_FILE"
           $SED_COMMAND "s|^storage_validation_namespace:.*|storage_validation_namespace: $STORAGE_NS|" "$PARAMS_FILE"
+          #DBACLD-244540: Set default size to 155Gi if the storage class is ibmc-vpc-block-sdp-max-bandwidth or contains "ibmc-vpc-block" or "ibmc-vpc-file"
+         ## Block storage doc https://cloud.ibm.com/docs/vpc?topic=vpc-block-storage-profiles&interface=ui#defined-performance-profile
+          if [[ "$tmp_storage_classname_block" == *"sdp"*  || "$tmp_storage_classname_block" == *"max-bandwidth"* ]]; then
+                local storage_size="155Gi"
+            else
+                local storage_size="1Gi"
+          fi
+          $SED_COMMAND "s|^storageSize:.*|storageSize: $storage_size|" "$PARAMS_FILE"
 
          (
               SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"

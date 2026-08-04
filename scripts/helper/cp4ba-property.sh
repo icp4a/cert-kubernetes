@@ -451,9 +451,9 @@ AI_SERVICES_COMMON_PROPERTIES=("ENABLE_REDIS"
                                 "CP4BA_SLOW_FILE_STORAGE_CLASSNAME"
                                 "CP4BA_BLOCK_STORAGE_CLASS_NAME")
 
-COMMENTS_AI_SERVICES_COMMON_PROPERTIES=("## Enable Redis for token caching and improved performance.\n## Set to \"true\" to enable Redis, or \"false\" to disable. Default: \"false\""
-                                        "## Provide the storage class name for slow file storage (PVCs).\n## This storage class will be used for persistent volume claims. For example: \"nfs-client\""
-                                        "## Provide the block storage class name (ONLY required when Redis is enabled).\n## This storage class will be used for Redis persistent volumes. For example: \"ibmc-block-gold\"\n## Leave as \"<Required>\" if Redis is not enabled.")
+COMMENTS_AI_SERVICES_COMMON_PROPERTIES=($'## Enable Redis for token caching and improved performance.\n## Set to "true" to enable Redis, or "false" to disable. Default: "false"'
+                                        $'## Provide the storage class name for slow file storage (PVCs).\n## This storage class will be used for persistent volume claims. For example: "nfs-client"'
+                                        $'## Provide the block storage class name (ONLY required when Redis is enabled).\n## This storage class will be used for Redis persistent volumes. For example: "ibmc-block-gold"\n## Leave as "<Required>" if Redis is not enabled.')
 
 DEFAULTS_AI_SERVICES_COMMON_PROPERTIES=("false"
                                         "<Required>"
@@ -473,11 +473,11 @@ AI_SERVICES_PROVIDER_PROPERTIES=("PROVIDER_ID"
                                   "TLS_CERT_LOCATION")
 
 COMMENTS_AI_SERVICES_PROVIDER_PROPERTIES=("## Unique identifier for this provider. This ID is used to reference the provider in the deployment."
-                                          "## Enable or disable this provider. Set to false to exclude this provider from deployment.\n## At least one provider must be enabled."
-                                          "## Provider name determines which AI service is being used.\n## Valid values: \"watsonx_saas\", \"watsonx_lightweightengine\", \"azure\""
-                                          "## Service endpoint URL for the AI provider.\n## - WatsonX SaaS: Regional endpoint (e.g., \"https://us-south.ml.cloud.ibm.com\")\n## - WatsonX LWE: CPD cluster URL (e.g., \"https://cpd-cluster.company.com\")\n## - Azure: Azure OpenAI endpoint (e.g., \"https://your-resource.openai.azure.com\")"
+                                          $'## Enable or disable this provider. Set to false to exclude this provider from deployment.\n## At least one provider must be enabled.'
+                                          $'## Provider name determines which AI service is being used.\n## Valid values: "watsonx_saas", "watsonx_lightweightengine", "azure"'
+                                          $'## Service endpoint URL for the AI provider.\n## - WatsonX SaaS: Regional endpoint (e.g., "https://us-south.ml.cloud.ibm.com")\n## - WatsonX LWE: CPD cluster URL (e.g., "https://cpd-cluster.company.com")\n## - Azure: Azure OpenAI endpoint (e.g., "https://your-resource.openai.azure.com")'
                                           "## Username for WatsonX.ai Lightweight Engine (Zen username). Required for LWE only."
-                                          "## API key for authentication.\n## - WatsonX SaaS: IBM Cloud API key (Required)\n## - WatsonX LWE: Zen API key (Required if PASSWORD not provided)\n## - Azure: Azure OpenAI API key (Required)"
+                                          $'## API key for authentication.\n## - WatsonX SaaS: IBM Cloud API key (Required)\n## - WatsonX LWE: Zen API key (Required if PASSWORD not provided)\n## - Azure: Azure OpenAI API key (Required)'
                                           "## Password for WatsonX.ai Lightweight Engine (Zen password). Required for LWE if API_KEY not provided."
                                           "## WatsonX.ai deployment space ID where models are deployed. Required for SaaS (at least one of SPACE_ID or PROJECT_ID)."
                                           "## WatsonX.ai project ID. Required for SaaS (at least one of SPACE_ID or PROJECT_ID)."

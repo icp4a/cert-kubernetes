@@ -27,9 +27,9 @@ spec:
   ibm_license: ""
 
   shared_configuration:
-    ## This is the Content Cortex license  parameter and the possible values are: user, concurrent-user, authorized-user, non-production, and production.
+    ## This is the Content Cortex license  parameter and the possible values are: user, non-production, and production.
     ## This value could be different from the rest of the licenses.
-    sc_deployment_fncm_license: ESS.CO
+    sc_deployment_fncm_license: non-production
 
     ## Use this parameter to specify the license for the CP4A deployment and
     ## the possible values are: non-production and production and if not set, the license will

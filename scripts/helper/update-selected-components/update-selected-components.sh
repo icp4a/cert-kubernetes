@@ -652,10 +652,13 @@ function retrieve_object_store_count(){
         fi
     else
         prefix="${db_server_array[0]}.OS"
-        # Extract all keys that match the pattern PREFIX_DB_NAME
-        # For example, dbserver.OS1_DB_NAME, dbserver.OS2_DB_NAME, etc.
-        # if it cant find any such instances in the property file it will default to zero
-        content_os_number=$(grep -E "^${prefix}[0-9]+_DB_NAME=" "$ORIGINAL_DB_USER_PROPERTY_FILE" | wc -l | tr -d ' ')
+        #DBACLD-246867: Extract all keys that match the pattern PREFIX_DB_USER_NAME
+        # For example, dbserver.OS1_DB_USER_NAME, dbserver.OS2_DB_USER_NAME, oracle.OS1_DB_USER_NAME, etc.
+        # Using DB_USER_NAME (not DB_NAME) because Oracle property files do not have a separate
+        # OS1_DB_NAME key - Oracle identifies object stores by schema/user rather than DB name.
+        # DB_USER_NAME is present for all supported database types (DB2, PostgreSQL, Oracle, SQL Server).
+        # If no matching keys are found the count will default to zero.
+        content_os_number=$(grep -E "^${prefix}[0-9]+_DB_USER_NAME=" "$ORIGINAL_DB_USER_PROPERTY_FILE" | wc -l | tr -d ' ')
     fi
 
     # Creating a summary dictionary to display the different configurations currently chosen
@@ -734,11 +737,21 @@ function retrieve_current_external_zen_configurations(){
         EXTERNAL_POSTGRESDB_FOR_BTS="true"
     fi
     
-
+    # Check if external PostgreSQL is configured for ADPGG/DICMS by reading flag from temporary property file
+    # DBACLD-243764:
+    check_external_adpgg_dicms_property="$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS_FLAG)"
+    check_external_adpgg_dicms_property=$(echo "$check_external_adpgg_dicms_property" | tr '[:upper:]' '[:lower:]')
+    if [[ "$check_external_adpgg_dicms_property" == "true" ]]; then
+        EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS="true"
+    else
+        EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS="false"
+    fi
+    
     # Creating a summary dictionary to display the different configurations currently chosen
     add_entry_for_summary "External PostgresDB enabled for IM" "${EXTERNAL_POSTGRESDB_FOR_IM}"
     add_entry_for_summary "External PostgresDB enabled for ZEN" "${EXTERNAL_POSTGRESDB_FOR_ZEN}"
     add_entry_for_summary "External PostgresDB enabled for BTS" "${EXTERNAL_POSTGRESDB_FOR_BTS}"
+    add_entry_for_summary "External PostgresDB enabled for ADPGG/DICMS" "${EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS}"
 }
 
 # Function to detect if the new CR is going to be a ICP4ACluster type CR
@@ -797,6 +810,7 @@ function retrieve_current_specifications(){
 
         # These functions retrieve values of certain configurations by either using the existing property files or by using the live CR
         # Once again these functions set the values retrieved in the same variables as the cp4a-prerequisites.sh would set if the script was being executed for a complete fresh install.
+        #DBACLD-246867: Pass in CR type of retrieve_object_store_count function to handle content vs ICP4ACluster CRs
         retrieve_current_deployment_patterns "$cr_type"
         retrieve_current_optional_components "$cr_type"
         retrieve_ldap_type
@@ -806,7 +820,7 @@ function retrieve_current_specifications(){
         retrieve_fips_flag
         retrieve_network_policy_flag 
         retrieve_current_external_zen_configurations
-        retrieve_object_store_count 
+        retrieve_object_store_count "$cr_type"
         retrieve_external_cert_opensearch_kafka
         retrieve_cpe_full_storage_value 
         retrieve_gpu_value

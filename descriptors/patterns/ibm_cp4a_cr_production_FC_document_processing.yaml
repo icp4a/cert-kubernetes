@@ -1014,7 +1014,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cpe
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1200,7 +1200,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/fncm/cpe-audit-log
-          tag: "26.0.0"
+          tag: "26.0.0-IF001"
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
         initresources:
@@ -1300,7 +1300,7 @@ spec:
       #     pull_policy: IfNotPresent
       #     ## The default repository is the IBM Entitled Registry.
       #     repository: cp.icr.io/cp/cp4a/fncm/lscollector
-      #     tag: "26.0.0"
+      #     tag: "26.0.0-IF001"
       #   ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.
       #   ## If more resources are needed, make the changes here to meet your requirement.
       #   resources:
@@ -1336,7 +1336,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/css
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1443,7 +1443,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/cmis
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1642,7 +1642,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/graphql
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1796,7 +1796,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/extshare
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -1925,7 +1925,7 @@ spec:
       image:
         ## The default repository is the IBM Entitled Registry.
         repository: cp.icr.io/cp/cp4a/fncm/taskmgr
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
 
         ## This will override the image pull policy in the shared_configuration.
         pull_policy: IfNotPresent
@@ -2101,7 +2101,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/gitgateway
-          tag: "26.0.0"
+          tag: "26.0.0-IF001"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2206,7 +2206,7 @@ spec:
         image:
         ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cds
-          tag: "26.0.0"
+          tag: "26.0.0-IF001"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2319,7 +2319,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cdra
-          tag: "26.0.0"
+          tag: "26.0.0-IF001"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2450,7 +2450,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/cpds
-          tag: "26.0.0"
+          tag: "26.0.0-IF001"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2586,7 +2586,7 @@ spec:
         image:
           ## The default repository is the IBM Entitled Registry.
           repository: cp.icr.io/cp/cp4a/iadp/viewone
-          tag: "26.0.0"
+          tag: "26.0.0-IF001"
 
           ## This will override the image pull policy in the shared_configuration.
           pull_policy: IfNotPresent
@@ -2711,7 +2711,7 @@ spec:
     #    pull_policy: IfNotPresent
     #    ## The default repository is the IBM Entitled Registry.
     #    repository: cp.icr.io/cp/cp4a/fncm/lsreporter
-    #    tag: "26.0.0"
+    #    tag: "26.0.0-IF001"
     #  ## Below are the default LSReporter Production settings.
     #  ## Make the necessary changes as you see fit.
     #  product_settings:
@@ -2824,7 +2824,7 @@ spec:
     image:
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator
-      tag: "26.0.0"
+      tag: "26.0.0-IF001"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -3149,7 +3149,7 @@ spec:
         max_replicas: "<Required>"  # Required if enable set to "true"
       image:
         repository: "cp.icr.io/cp/cp4a/iadp"
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
         pull_policy: "IfNotPresent"
   ## Overwrite the default SHA digest for Document Processing engine containers by providing the SHA for each containers below.  To use SHA digest, you must comment out the `tag` parameter or leave it blank and you must use entilement registry as the repository.
         doc_processing_digest:
@@ -3228,6 +3228,14 @@ spec:
       # Default is empty list [], which uses Kubernetes defaults.
       tolerations: []
 
+      ## Optional node affinity for this component. If not specified, uses global node affinity.
+      # node_affinity:
+      #   custom_node_selector_match_expression:
+      #     - key: workload-type
+      #       operator: In
+      #       values:
+      #       - messaging
+
       resources:
         limits:
           memory: "1024Mi"
@@ -3251,6 +3259,15 @@ spec:
       #     effect: "NoSchedule"
       # Default is empty list [], which uses Kubernetes defaults.
       tolerations: []
+
+      ## Optional node affinity for this component. If not specified, uses global node affinity.
+      # Backend node affinity also applies to cleanup and feedback cronjobs.
+      # node_affinity:
+      #   custom_node_selector_match_expression:
+      #     - key: workload-type
+      #       operator: In
+      #       values:
+      #       - backend
 
       # Allow to specify a specific port (nodePort) for backend.  The port number must be between 30000-32767.  A random port will be generated if blank.
       port:
@@ -3286,6 +3303,14 @@ spec:
       # Default is empty list [], which uses Kubernetes defaults.
       tolerations: []
 
+      ## Optional node affinity for this component. If not specified, uses global node affinity.
+      # node_affinity:
+      #   custom_node_selector_match_expression:
+      #     - key: workload-type
+      #       operator: In
+      #       values:
+      #       - postprocessing
+
       process_timeout: 1500
       # Set 'replica_count' below to override the default number of pods (the default is based on the 'deployment_profile_size' parameter)
       #replica_count: 2
@@ -3319,6 +3344,14 @@ spec:
       # Default is empty list [], which uses Kubernetes defaults.
       tolerations: []
 
+      ## Optional node affinity for this component. If not specified, uses global node affinity.
+      # node_affinity:
+      #   custom_node_selector_match_expression:
+      #     - key: workload-type
+      #       operator: In
+      #       values:
+      #       - setup
+
       process_timeout: 600
       # Set 'replica_count' below to override the default number of pods (the default is based on the 'deployment_profile_size' parameter)
       #replica_count: 2
@@ -3351,6 +3384,14 @@ spec:
       #     effect: "NoSchedule"
       # Default is empty list [], which uses Kubernetes defaults.
       tolerations: []
+
+      ## Optional node affinity for this component. If not specified, uses global node affinity.
+      # node_affinity:
+      #   custom_node_selector_match_expression:
+      #     - key: workload-type
+      #       operator: In
+      #       values:
+      #       - ocr
 
       # When "deep_learning_object_detection" is set to true, deep learning pods will be deployed and will be used for enhance object detection.
       # The default value will be true for Production deployment.
@@ -3391,6 +3432,14 @@ spec:
       # Default is empty list [], which uses Kubernetes defaults.
       tolerations: []
 
+      ## Optional node affinity for this component. If not specified, uses global node affinity.
+      # node_affinity:
+      #   custom_node_selector_match_expression:
+      #     - key: workload-type
+      #       operator: In
+      #       values:
+      #       - classify
+
       process_timeout: 300
       # Set the replica_count below to override the default number of pods
       #replica_count: 2
@@ -3424,6 +3473,14 @@ spec:
       # Default is empty list [], which uses Kubernetes defaults.
       tolerations: []
 
+      ## Optional node affinity for this component. If not specified, uses global node affinity.
+      # node_affinity:
+      #   custom_node_selector_match_expression:
+      #     - key: workload-type
+      #       operator: In
+      #       values:
+      #       - extraction
+
       process_timeout: 600
       # Set the replica_count below to override the default number of pods
       #replica_count: 2
@@ -3456,6 +3513,14 @@ spec:
       #     effect: "NoSchedule"
       # Default is empty list [], which uses Kubernetes defaults.
       tolerations: []
+
+      ## Optional node affinity for this component. If not specified, uses global node affinity.
+      # node_affinity:
+      #   custom_node_selector_match_expression:
+      #     - key: workload-type
+      #       operator: In
+      #       values:
+      #       - nle
 
       # This parameter indicates how many NLE models will be loaded into cache. By loading models into cache, the NLE document processing task will be improved. Default is `20`.
       # NOTE: Increasing this number may cause the NLE's pod to run out of memory. You need to monitor the NLE's pod and increase the RAM limit appropriately.
@@ -3497,6 +3562,15 @@ spec:
       # Default is empty list [], which uses Kubernetes defaults.
       tolerations: []
 
+      ## Optional node affinity for this component. If not specified, uses global node affinity.
+      # Deep learning typically requires GPU nodes, so you may want to combine this with nodelabel_key/nodelabel_value settings.
+      # node_affinity:
+      #   custom_node_selector_match_expression:
+      #     - key: workload-type
+      #       operator: In
+      #       values:
+      #       - gpu-training
+
       process_timeout: 604800
       gpu_enabled:  # true or false.  Set it to true if you have a GPU enabled worker nodes
       nodelabel_key: # The unique node label key/value on the GPU node. For example: ibm-cloud.kubernetes.io/gpu-enabled:true.  Set this value when `gpu_enabled` is set to true.  This must be a string value
@@ -3536,6 +3610,14 @@ spec:
       # Default is empty list [], which uses Kubernetes defaults.
       tolerations: []
 
+      ## Optional node affinity for this component. If not specified, uses global node affinity.
+      # node_affinity:
+      #   custom_node_selector_match_expression:
+      #     - key: workload-type
+      #       operator: In
+      #       values:
+      #       - wdu-runtime
+
       # Set the replica_count below to override the default number of pods
       #replica_count: 2
       # HPA auto scaling configuration for wduruntime.
@@ -3569,6 +3651,14 @@ spec:
       # Default is empty list [], which uses Kubernetes defaults.
       tolerations: []
 
+      ## Optional node affinity for this component. If not specified, uses global node affinity.
+      # node_affinity:
+      #   custom_node_selector_match_expression:
+      #     - key: workload-type
+      #       operator: In
+      #       values:
+      #       - wdu-extraction
+
       # Set the replica_count below to override the default number of pods
       #replica_count: 2
       # HPA auto scaling configuration for wduextraction.
@@ -3601,6 +3691,14 @@ spec:
       #     effect: "NoSchedule"
       # Default is empty list [], which uses Kubernetes defaults.
       tolerations: []
+
+      ## Optional node affinity for this component. If not specified, uses global node affinity.
+      # node_affinity:
+      #   custom_node_selector_match_expression:
+      #     - key: workload-type
+      #       operator: In
+      #       values:
+      #       - webhook
 
       process_timeout: 604800
       # Set the replica_count below to override the default number of pods

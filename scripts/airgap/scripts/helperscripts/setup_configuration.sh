@@ -32,7 +32,7 @@ configure_oc_mirror(){
 # Based on the script mode we must configure a different REPO with ibm-pak CLI
 configure_ibm_pak_cli(){
     local script_mode=$1
-    if [[ "$script_mode" == "devstagingER" || "$scriptmode" == "devprodER" ]]; then
+    if [[ "$script_mode" == "devstagingER" || "$script_mode" == "devprodER" ]]; then
         REPO="https://raw.github.ibm.com/IBMPrivateCloud/cloud-pak/master/repo/case"
         REPO_NAME="IBM Cloud-Pak Github Repo"
     else

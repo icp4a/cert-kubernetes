@@ -116,7 +116,7 @@ spec:
     spec:
       containers:
         - name: iam-custom-hostname
-          image: icr.io/cpopen/cpfs/iam-custom-hostname:latest
+          image: icr.io/cpopen/cpfs/iam-custom-hostname:4.5.19
           command: ["python3", "/scripts/saas_script.py"]
           imagePullPolicy: Always
           env:

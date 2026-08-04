@@ -75,51 +75,150 @@ function check_adp_ads_version_to_migrate_postgres(){
     return 1
 }
 
-# Handle non-postgres upgrade scenario for ADP/DICMS components
-# This function configures external PostgreSQL when CPE/ICN is on non-Postgres DB
-# For v26.0.0 GA, EDB is not supported; it will be available in v26.0.0-IF001+
-#
-# Note: By the time this function is called, "cp4a-deployment.sh -m upgradeDeployment" has already
-# completed, so the decision to use external PostgreSQL has already been made. This function just
-# informs the user and sets placeholder values in the CR.
+# Reads the schema value stored in the gitsvc secret's data-access.json and writes it into
+# dc_adp_datasource.database_schema in the CR, so the upgrade uses the same schema as the
+# fresh install.
 #
 # Arguments:
-#   $1 - Component name (e.g., "ADP Gitgateway", "DICMS Designer", "DICMS Runtime")
-#   $2 - Datasource path prefix (e.g., "dc_adp_datasource", "dc_ads_designer_datasource", "dc_ads_runtime_datasource")
+#   $1 - CR name (e.g. "icp4adeploy")
+#   $2 - Namespace / project name
 #   $3 - CR file location
-#   $4 - Whether to include SSL settings (true/false)
+#
+# Relies on: CLI_CMD, YQ_CMD being set in caller scope.
+function apply_adpgg_schema_from_gitsvc_secret(){
+    local cr_name=$1
+    local ns=$2
+    local cr_location=$3
+    local _secret_name="${cr_name}-gitsvc-secret"
+    local _b64 _schema
+    # Use -o json + awk to extract the base64 value — avoids jsonpath dot-escaping
+    # issues with "data-access.json" across different oc/kubectl versions.
+    # The key and value are on the same line in oc/kubectl JSON output:
+    #   "data-access.json": "eyJ..."
+    # Split on the key pattern and take the value field that follows.
+    _b64=$(${CLI_CMD} get secret "$_secret_name" -n "$ns" -o json 2>/dev/null \
+        | awk -F'"data-access\\.json"[[:space:]]*:[[:space:]]*"' 'NF>1{split($2,a,"\""); print a[1]; exit}' \
+        | tr -d '[:space:]')
+    if [[ -n "$_b64" ]]; then
+        # Decode and extract the top-level "schema" value.
+        # base64 --decode is portable across GNU and BSD coreutils.
+        _schema=$(echo "$_b64" | base64 --decode 2>/dev/null \
+            | awk -F'"schema"[[:space:]]*:[[:space:]]*"' '{print $2}' \
+            | awk -F'"' '{print $1}' \
+            | tr -d '[:space:]')
+        if [[ -n "$_schema" ]]; then
+            info "Setting dc_adp_datasource.database_schema = \"$_schema\" (from secret $_secret_name)"
+            # Delete first so a pre-existing null node from the live CR is fully replaced.
+            ${YQ_CMD} -i 'del(.spec.datasource_configuration.dc_adp_datasource.database_schema)' "$cr_location"
+            ${YQ_CMD} -i ".spec.datasource_configuration.dc_adp_datasource.database_schema = \"$_schema\"" "$cr_location"
+        else
+            warning "Could not extract schema from secret $_secret_name data-access.json; review dc_adp_datasource.database_schema in the CR manually."
+        fi
+    else
+        warning "Secret $_secret_name not found or has no data-access.json key; review dc_adp_datasource.database_schema in the CR manually."
+    fi
+}
+
+# Handle non-postgres upgrade scenario for ADP/DICMS components
+# This function prompts the user to choose between external PostgreSQL or CNPG (CloudNativePG)
+# when CPE/ICN is on a non-Postgres DB, then writes the appropriate values into the CR.
+#
+# When the user chooses CNPG the caller's upgrade_scenario variable is updated to "new-edb"
+# so that the existing CNPG/EDB instructions block is displayed in the final output.
+# When the user chooses external-postgres the caller's upgrade_scenario remains "non-postgres".
+#
+# Arguments:
+#   $1 - Component name (e.g., "ADP Gitgateway and DICMS Designer/Runtime")
+#   $2 - Datasource path prefix (e.g., "dc_adp_datasource", "dc_ads_designer_datasource",
+#        "dc_ads_runtime_datasource")
+#   $3 - CR file location
+#   $4 - Whether to include SSL settings (true/false) — applies to the external-postgres path only
+#   $5 - (Optional) Pre-resolved db_choice ("cnpg" or "external-postgres"). When provided the
+#        interactive prompt is skipped and this value is used directly.
+#
+# Sets caller-scope variable:
+#   upgrade_scenario - set to "new-edb" when the user chooses CNPG
+#   NON_POSTGRES_UPGRADE_DB_CHOICE - set to the resolved choice so callers can reuse it
 #
 # Returns:
-#   0 - Successfully configured external PostgreSQL
+#   0 - Successfully configured datasource
+#   1 - Error
 function handle_non_postgres_upgrade_scenario(){
     local component_name=$1
     local datasource_prefix=$2
     local cr_location=$3
     local include_ssl_settings=${4:-false}
-    
+    local preset_db_choice=${5:-""}
+
     # Input validation
     if [[ -z "$component_name" || -z "$datasource_prefix" || -z "$cr_location" ]]; then
         error "handle_non_postgres_upgrade_scenario: Missing required arguments"
         return 1
     fi
-    
+
     if [[ ! -f "$cr_location" ]]; then
         error "handle_non_postgres_upgrade_scenario: CR file not found: $cr_location"
         return 1
     fi
-    
-    # Set placeholder values for external PostgreSQL in the CR
-    # Detailed instructions will be shown in the final upgrade instructions section
-    ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.database_servername = \"your-external-postgres-server\"" "$cr_location" || return 1
-    ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.database_port = \"5432\"" "$cr_location" || return 1
-    ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.dc_use_postgres = false" "$cr_location" || return 1
-    
-    if [[ "$include_ssl_settings" == "true" ]]; then
-        ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.ssl_enabled = \"true\"" "$cr_location" || return 1
-        ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.ssl_mode = \"verify-ca\"" "$cr_location" || return 1
-        ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.ssl_secret_name = \"ibm-cp4ba-postgresdb-ssl-secret\"" "$cr_location" || return 1
+
+    # --- Ask the user which Postgres backend to use ---
+    local db_choice=""
+    if [[ -n "$preset_db_choice" ]]; then
+        # Caller already obtained an answer (e.g. for a sibling component) — reuse it
+        db_choice="$preset_db_choice"
+    elif [[ "${SKIP_FOR_API:-false}" == "true" ]]; then
+        # Silent/API mode: honour a pre-set value, defaulting to cnpg (matches the interactive default of No)
+        db_choice="${NON_POSTGRES_UPGRADE_CHOICE:-cnpg}"
     else
-        ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.database_ssl_secret_name = \"ibm-cp4ba-postgresdb-ssl-secret\"" "$cr_location" || return 1
+        printf "\n"
+        printf "\x1B[1mDo you want to use an external Postgres DB for %s in this CP4BA deployment?\x1B[0m\n" "$component_name"
+        printf "[${YELLOW_TEXT}NOTE${RESET_TEXT}: IF YES, YOU WILL NEED TO CREATE THE POSTGRESQL DB BEFORE APPLYING THE CP4BA CUSTOM RESOURCE. IF NO, CNPG (CloudNativePG) WILL BE USED.]\n"
+        while true; do
+            read -erp "Enter your choice (Yes/No, default: No): " ans
+            ans=$(echo "$ans" | tr '[:upper:]' '[:lower:]')
+            case "$ans" in
+                "y"|"yes")
+                    db_choice="external-postgres"
+                    break
+                    ;;
+                "n"|"no"|"")
+                    db_choice="cnpg"
+                    break
+                    ;;
+                *)
+                    printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
+                    ;;
+            esac
+        done
+    fi
+    # Export so the caller can pass the same answer to sibling components
+    NON_POSTGRES_UPGRADE_DB_CHOICE="$db_choice"
+
+    if [[ "$db_choice" == "cnpg" ]]; then
+        # CNPG (CloudNativePG) path — same CR values as the existing EDB cluster
+        upgrade_scenario="new-edb"
+        allow_postgres_edb_for_2600_upgrade="true"
+        ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.database_servername = \"postgres-cp4ba-rw.{{ meta.namespace }}.svc\"" "$cr_location" || return 1
+        ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.database_port = \"5432\"" "$cr_location" || return 1
+        ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.dc_use_postgres = true" "$cr_location" || return 1
+        if [[ "$include_ssl_settings" == "true" ]]; then
+            ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.ssl_secret_name = \"{{ meta.name }}-pg-client-cert-secret\"" "$cr_location" || return 1
+        else
+            ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.database_ssl_secret_name = \"{{ meta.name }}-pg-client-cert-secret\"" "$cr_location" || return 1
+        fi
+    else
+        # External PostgreSQL path — placeholder values; user fills in real server details
+        # upgrade_scenario remains "non-postgres" as set by the caller
+        ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.database_servername = \"your-external-postgres-server\"" "$cr_location" || return 1
+        ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.database_port = \"5432\"" "$cr_location" || return 1
+        ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.dc_use_postgres = false" "$cr_location" || return 1
+        if [[ "$include_ssl_settings" == "true" ]]; then
+            ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.ssl_enabled = \"true\"" "$cr_location" || return 1
+            ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.ssl_mode = \"verify-ca\"" "$cr_location" || return 1
+            ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.ssl_secret_name = \"ibm-cp4ba-postgresdb-ssl-secret\"" "$cr_location" || return 1
+        else
+            ${YQ_CMD} -i ".spec.datasource_configuration.${datasource_prefix}.database_ssl_secret_name = \"ibm-cp4ba-postgresdb-ssl-secret\"" "$cr_location" || return 1
+        fi
     fi
     return 0
 }
@@ -710,8 +809,8 @@ function update_network_policies(){
     if [[ "$SKIP_FOR_API" != "true" ]]; then
         prompt_press_any_key_to_continue
     fi
-    sh ${CUR_DIR}/cp4a-network-policies.sh -m retrieveExisting -n $namespace --kind $cr_type
-    sh ${CUR_DIR}/cp4a-network-policies.sh -m removeRef -n $namespace
+    bash ${CUR_DIR}/cp4a-network-policies.sh -m retrieveExisting -n $namespace --kind $cr_type
+    bash ${CUR_DIR}/cp4a-network-policies.sh -m removeRef -n $namespace
     printf "\n"
     echo "${YELLOW_TEXT}(Notes: Starting from $CP4BA_RELEASE_BASE, the CP4BA operators no longer install network policies automatically.${RESET_TEXT}"
     echo "However, the script \"cp4a-network-policies.sh\" is provided as a tool you can optionally use to generate network policy templates which you can review and apply.  If you want to generate network policy templates, then do the following:"
@@ -1085,6 +1184,20 @@ function upgrade_deployment(){
             ${YQ_CMD} -i 'del(.metadata.resourceVersion)' "${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}"
             ${YQ_CMD} -i 'del(.metadata.uid)' "${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}"
 
+            # replace release/appVersion BEFORE applying the CR so that the cluster
+            # receives the correct appVersion on the first (and only necessary) apply.
+            # Previously this sed ran after the apply, leaving appVersion: 24.0.0 in
+            # the first kubectl apply and relying on a second apply at line 1181 to
+            # correct it.  Moving it here fixes the ordering.
+            # ${SED_COMMAND} "s|release: .*|release: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_PFS_CR_TMP}
+            ${SED_COMMAND} "s|appVersion: .*|appVersion: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}
+
+            # Remove stale image tags so the operator uses the built-in digest for the new version.
+            # A pinned spec.image.tag (e.g. 25.0.0-IF005-amd64) prevents the operator from rolling
+            # pods to the upgraded image. Same logic is applied to Content/ICP4ACluster CRs via
+            # common_cr_cleanup(). WfPS CR does not go through common_cr_cleanup() so we call it here.
+            remove_image_tags ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}
+
             # Scale up wfps operator deployment to enable webhook for CR validation
             ${CLI_CMD} scale --replicas=1 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
             wait_for_pod $operator_project_name ibm-cp4a-wfps-operator
@@ -1097,10 +1210,6 @@ function upgrade_deployment(){
             ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
             # Scale down wfps operator deployment again
             ${CLI_CMD} scale --replicas=0 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
-
-            # replace release/appVersion
-            # ${SED_COMMAND} "s|release: .*|release: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_PFS_CR_TMP}
-            ${SED_COMMAND} "s|appVersion: .*|appVersion: ${CP4BA_RELEASE_BASE}|g" ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}
 
 
             # # change failureThreshold/periodSeconds for WfPS before upgrade
@@ -1191,7 +1300,26 @@ function upgrade_deployment(){
             fi
         done
     fi
-            
+
+    # Update appVersion in ProcessFederationServer CR if present.
+    # ProcessFederationServer has its own spec.appVersion field (separate CR kind)
+    # and is not handled by the WfPSRuntime loop or common_cr_updates() above.
+    exist_pfs_cr_array=($(${CLI_CMD} get ProcessFederationServer -n $deployment_project_name --no-headers --ignore-not-found | awk '{print $1}'))
+    if [[ ! -z $exist_pfs_cr_array ]]; then
+        for item in "${exist_pfs_cr_array[@]}"
+        do
+            info "Updating appVersion in ProcessFederationServer CR: \"${item}\""
+            ${CLI_CMD} patch ProcessFederationServer ${item} -n $deployment_project_name \
+                --type merge \
+                -p "{\"spec\":{\"appVersion\":\"${CP4BA_RELEASE_BASE}\"}}" >/dev/null 2>&1
+            if [[ $? -eq 0 ]]; then
+                success "ProcessFederationServer \"${item}\" appVersion updated to ${CP4BA_RELEASE_BASE}"
+            else
+                warning "Failed to patch ProcessFederationServer \"${item}\" appVersion — operator may not be running"
+            fi
+        done
+    fi
+
     # Using the retrieve_custom_resource details the top level CR details are already set, the function also copies the CR to a certain location
     # For icp4acluster the CR is created in UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR_TMP
     if [[ "$top_level_cr_kind" == "icp4acluster" ]]; then
@@ -1233,21 +1361,46 @@ function upgrade_deployment(){
         cpe_database_servername=""
         allow_postgres_edb_for_2600_upgrade="false"
 
+        # Helper: detect whether an EDB (24.x, cluster.postgresql.k8s.enterprisedb.io) or CNPG
+        # (26.x, cluster.pg.ibm.com) PostgreSQL instance named $EDB_INSTANCE_CP4BA_NAME exists.
+        # Sets local variable pg_instance_found to "cnpg", "edb", or "".
+        _detect_pg_instance() {
+            local ns=$1
+            local inst=$2
+            local cnpg_cr edb_cr
+            cnpg_cr=$( ${CLI_CMD} get cluster.pg.ibm.com -n "$ns" --no-headers --ignore-not-found "$inst" 2>/dev/null | awk '{print $1}' )
+            if [[ "$cnpg_cr" == "$inst" ]]; then
+                pg_instance_found="cnpg"
+                return
+            fi
+            edb_cr=$( ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n "$ns" --no-headers --ignore-not-found "$inst" 2>/dev/null | awk '{print $1}' )
+            if [[ "$edb_cr" == "$inst" ]]; then
+                pg_instance_found="edb"
+                return
+            fi
+            pg_instance_found=""
+        }
+
+        # Shared non-postgres db_choice for ADPGG + DICMS (asked once, reused for all three datasources)
+        NON_POSTGRES_UPGRADE_DB_CHOICE=""
+
         if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && "${CP4BA_RELEASE_BASE}" == "26.0.0" && (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") && (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "document_processing_designer") ]] && check_adp_ads_version_to_migrate_postgres "${cp4ba_original_csv_ver_for_upgrade_script}"; then
             ${YQ_CMD} -i '.spec.datasource_configuration.dc_adp_datasource.dc_database_type = "postgresql"' $top_level_cr_details_location
             ${YQ_CMD} -i '.spec.datasource_configuration.dc_adp_datasource.database_name = "adpggdb"' $top_level_cr_details_location
 
-            info "Determining if EnterpriseDB PostgreSQL \"$EDB_INSTANCE_CP4BA_NAME\" is installed for IBM Cloud Pak for Business Automation."
-            edb_instance_cp4ba_cr=$( ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n $deployment_project_name --no-headers --ignore-not-found $EDB_INSTANCE_CP4BA_NAME >/dev/null 2>&1 | awk '{print $1}' )
-	        if [[ $edb_instance_cp4ba_cr == $EDB_INSTANCE_CP4BA_NAME ]]; then
-                info "Found EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\"" 
-                upgrade_scenario="edb-already-exists"  # Postgres EDB exists
+            info "Determining if PostgreSQL \"$EDB_INSTANCE_CP4BA_NAME\" is installed for IBM Cloud Pak for Business Automation."
+            pg_instance_found=""
+            _detect_pg_instance "$deployment_project_name" "$EDB_INSTANCE_CP4BA_NAME"
+            if [[ -n "$pg_instance_found" ]]; then
+                info "Found PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\" ($pg_instance_found)"
+                upgrade_scenario="edb-already-exists"  # CNPG/EDB exists
+                allow_postgres_edb_for_2600_upgrade="true"
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_adp_datasource.database_servername = "postgres-cp4ba-rw.{{ meta.namespace }}.svc"' $top_level_cr_details_location
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_adp_datasource.database_port = "5432"' $top_level_cr_details_location
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_adp_datasource.database_ssl_secret_name = "{{ meta.name }}-pg-client-cert-secret"' $top_level_cr_details_location
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_adp_datasource.dc_use_postgres = true' $top_level_cr_details_location
-            else 
-                info "Not found EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\""
+            else
+                info "Not found PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\""
                 cpe_database_type=`${YQ_CMD} ".spec.datasource_configuration.dc_gcd_datasource.dc_database_type" "$top_level_cr_details_location"`
                 if [[ $cpe_database_type == "postgresql" ]]; then
                     # CP4BA is using external Postgres, so ADPGG will use the same external Postgres
@@ -1259,24 +1412,36 @@ function upgrade_deployment(){
                     ${YQ_CMD} -i ".spec.datasource_configuration.dc_adp_datasource.database_port = \"$cpe_database_port\"" $top_level_cr_details_location
                     ${YQ_CMD} -i ".spec.datasource_configuration.dc_adp_datasource.database_ssl_secret_name = \"$cpe_database_ssl_secret_name\"" $top_level_cr_details_location
                     ${YQ_CMD} -i '.spec.datasource_configuration.dc_adp_datasource.dc_use_postgres = false' $top_level_cr_details_location
+                    # Carry the schema used at install time forward into the CR.
+                    apply_adpgg_schema_from_gitsvc_secret "$top_level_cr_name" "$deployment_project_name" "$top_level_cr_details_location"
                 else
-                    # CP4BA is not using Postgres
-                    # For v26.0.0 GA, only external Postgres is supported for ADPGG when CPE is on non-Postgres DB
-                    # EDB support for ADPGG will be available in v26.0.0-IF001+
+                    # CP4BA is not using Postgres — prompt user to choose external Postgres or CNPG for ADPGG and DICMS
                     upgrade_scenario="non-postgres"  # External Postgres for ADPGG when CPE is on non-Postgres DB
                     warning "CP4BA is using non-PostgreSQL database (DB2/Oracle/MSSQL)."
-                    
-                    if ! handle_non_postgres_upgrade_scenario "ADP Gitgateway" "dc_adp_datasource" "$top_level_cr_details_location" "false"; then
+
+                    if ! handle_non_postgres_upgrade_scenario "ADP Gitgateway and DICMS Designer/Runtime" "dc_adp_datasource" "$top_level_cr_details_location" "false"; then
                         exit 1
                     fi
-                    
-                    # TODO: Uncomment this section for v26.0.0-IF001+ when EDB support is available
-                    # upgrade_scenario="new-edb"  # Provision Postgres EDB for ADPGG
-                    # ${YQ_CMD} -i '.spec.datasource_configuration.dc_adp_datasource.database_servername = "postgres-cp4ba-rw.{{ meta.namespace }}.svc"' $top_level_cr_details_location
-                    # ${YQ_CMD} -i '.spec.datasource_configuration.dc_adp_datasource.database_port = "5432"' $top_level_cr_details_location
-                    # ${YQ_CMD} -i '.spec.datasource_configuration.dc_adp_datasource.database_ssl_secret_name = "{{ meta.name }}-pg-client-cert-secret"' $top_level_cr_details_location
-                    # ${YQ_CMD} -i '.spec.datasource_configuration.dc_adp_datasource.dc_use_postgres = true' $top_level_cr_details_location
+                    # NON_POSTGRES_UPGRADE_DB_CHOICE is now set by handle_non_postgres_upgrade_scenario
+                    # If the user chose external Postgres, carry the schema from the gitsvc secret into the CR.
+                    if [[ "$NON_POSTGRES_UPGRADE_DB_CHOICE" == "external-postgres" ]]; then
+                        apply_adpgg_schema_from_gitsvc_secret "$top_level_cr_name" "$deployment_project_name" "$top_level_cr_details_location"
+                    fi
                 fi
+            fi
+        fi
+
+        # For upgrades from any prior version (24.x, 25.x, …): if dc_adp_datasource already
+        # exists in the CR with dc_use_postgres=false (external PG) and database_schema is
+        # absent or empty, read the schema from the gitsvc secret and patch it in.
+        if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && "${CP4BA_RELEASE_BASE}" == "26.0.0" \
+            && (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") \
+            && (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "document_processing_designer") ]]; then
+            _adp_dc_use_postgres=$(${YQ_CMD} '.spec.datasource_configuration.dc_adp_datasource.dc_use_postgres' "$top_level_cr_details_location" 2>/dev/null)
+            _adp_dc_schema=$(${YQ_CMD} '.spec.datasource_configuration.dc_adp_datasource.database_schema' "$top_level_cr_details_location" 2>/dev/null)
+            # Only patch when: datasource exists (dc_use_postgres is set) AND uses external PG AND schema is absent/null/empty
+            if [[ "$_adp_dc_use_postgres" == "false" && ( -z "$_adp_dc_schema" || "$_adp_dc_schema" == "null" ) ]]; then
+                apply_adpgg_schema_from_gitsvc_secret "$top_level_cr_name" "$deployment_project_name" "$top_level_cr_details_location"
             fi
         fi
 
@@ -1288,17 +1453,19 @@ function upgrade_deployment(){
             ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource.database_name = "adsdesignerdb"' $top_level_cr_details_location
             ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource.current_schema = "adsdesigner"' $top_level_cr_details_location
             ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource.database_instance_secret = "ibm-ads-designer-database"' $top_level_cr_details_location
-            info "Determining if EnterpriseDB PostgreSQL \"$EDB_INSTANCE_CP4BA_NAME\" is installed for IBM Cloud Pak for Business Automation."
-            edb_instance_cp4ba_cr=$( ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n $deployment_project_name --no-headers --ignore-not-found $EDB_INSTANCE_CP4BA_NAME >/dev/null 2>&1 | awk '{print $1}' )
-            if [[ $edb_instance_cp4ba_cr == $EDB_INSTANCE_CP4BA_NAME ]]; then
-                info "Found EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\"" 
-                upgrade_scenario="edb-already-exists"  # Postgres EDB exists
+            info "Determining if PostgreSQL \"$EDB_INSTANCE_CP4BA_NAME\" is installed for IBM Cloud Pak for Business Automation."
+            pg_instance_found=""
+            _detect_pg_instance "$deployment_project_name" "$EDB_INSTANCE_CP4BA_NAME"
+            if [[ -n "$pg_instance_found" ]]; then
+                info "Found PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\" ($pg_instance_found)"
+                upgrade_scenario="edb-already-exists"  # CNPG/EDB exists
+                allow_postgres_edb_for_2600_upgrade="true"
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource.database_servername = "postgres-cp4ba-rw.{{ meta.namespace }}.svc"' $top_level_cr_details_location
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource.database_port = "5432"' $top_level_cr_details_location
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource.ssl_secret_name = "{{ meta.name }}-pg-client-cert-secret"' $top_level_cr_details_location
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource.dc_use_postgres = true' $top_level_cr_details_location
-            else 
-                info "Not found EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\""
+            else
+                info "Not found PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\""
                 icn_database_type=`${YQ_CMD} ".spec.datasource_configuration.dc_icn_datasource.dc_database_type" "$top_level_cr_details_location"`
                 if [[ $icn_database_type == "postgresql" ]]; then
                     # ICN is using external Postgres, so DICMS will use the same external Postgres
@@ -1314,22 +1481,14 @@ function upgrade_deployment(){
                     ${YQ_CMD} -i ".spec.datasource_configuration.dc_ads_designer_datasource.ssl_secret_name = \"$icn_database_ssl_secret_name\"" $top_level_cr_details_location
                     ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource.dc_use_postgres = false' $top_level_cr_details_location
                 else
-                    # CP4BA is not using Postgres
-                    # For v26.0.0 GA, only external Postgres is supported for DICMS when ICN is on non-Postgres DB
-                    # EDB support for DICMS will be available in v26.0.0-IF001+
+                    # CP4BA is not using Postgres — reuse the choice already made for ADPGG (or ask if ADPGG block was skipped)
                     upgrade_scenario="non-postgres"  # External Postgres for DICMS when ICN is on non-Postgres DB
                     warning "CP4BA is using non-PostgreSQL database (DB2/Oracle/MSSQL)."
-                    
-                    if ! handle_non_postgres_upgrade_scenario "DICMS Designer" "dc_ads_designer_datasource" "$top_level_cr_details_location" "true"; then
+
+                    if ! handle_non_postgres_upgrade_scenario "DICMS Designer" "dc_ads_designer_datasource" "$top_level_cr_details_location" "true" "$NON_POSTGRES_UPGRADE_DB_CHOICE"; then
                         exit 1
                     fi
-                    
-                    # TODO: Uncomment this section for v26.0.0-IF001+ when EDB support is available
-                    # upgrade_scenario="new-edb"  # Provision Postgres EDB for DICMS
-                    # ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource.database_servername = "postgres-cp4ba-rw.{{ meta.namespace }}.svc"' $top_level_cr_details_location
-                    # ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource.database_port = "5432"' $top_level_cr_details_location
-                    # ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource.ssl_secret_name = "{{ meta.name }}-pg-client-cert-secret"' $top_level_cr_details_location
-                    # ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_designer_datasource.dc_use_postgres = true' $top_level_cr_details_location
+                    # NON_POSTGRES_UPGRADE_DB_CHOICE already set by handle_non_postgres_upgrade_scenario; keep for runtime block
                 fi
             fi
         fi
@@ -1340,21 +1499,23 @@ function upgrade_deployment(){
             ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.database_name = "adsruntimedb"' $top_level_cr_details_location
             ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.current_schema = "adsruntime"' $top_level_cr_details_location
             ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.database_instance_secret = "ibm-ads-runtime-database"' $top_level_cr_details_location
-            info "Determining if EnterpriseDB PostgreSQL \"$EDB_INSTANCE_CP4BA_NAME\" is installed for IBM Cloud Pak for Business Automation."
-            edb_instance_cp4ba_cr=$( ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n $deployment_project_name --no-headers --ignore-not-found $EDB_INSTANCE_CP4BA_NAME >/dev/null 2>&1 | awk '{print $1}' )
-	        if [[ $edb_instance_cp4ba_cr == $EDB_INSTANCE_CP4BA_NAME ]]; then
-                info "Found EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\"" 
-                upgrade_scenario="edb-already-exists"  # Postgres EDB exists
+            info "Determining if PostgreSQL \"$EDB_INSTANCE_CP4BA_NAME\" is installed for IBM Cloud Pak for Business Automation."
+            pg_instance_found=""
+            _detect_pg_instance "$deployment_project_name" "$EDB_INSTANCE_CP4BA_NAME"
+            if [[ -n "$pg_instance_found" ]]; then
+                info "Found PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\" ($pg_instance_found)"
+                upgrade_scenario="edb-already-exists"  # CNPG/EDB exists
+                allow_postgres_edb_for_2600_upgrade="true"
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.dc_use_postgres = true' $top_level_cr_details_location
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.database_servername = "postgres-cp4ba-rw.{{ meta.namespace }}.svc"' $top_level_cr_details_location
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.database_port = "5432"' $top_level_cr_details_location
                 ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.ssl_secret_name = "{{ meta.name }}-pg-client-cert-secret"' $top_level_cr_details_location
-            else 
-                info "Not found EnterpriseDB PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\""
+            else
+                info "Not found PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\""
                 icn_database_type=`${YQ_CMD} ".spec.datasource_configuration.dc_icn_datasource.dc_database_type" "$top_level_cr_details_location"`
-		        if [[ $icn_database_type == "postgresql" ]]; then
-		                  # CP4BA is using external Postgres, so DICMS will use the same external Postgres
-		                  upgrade_scenario="external-postgres"  # External Postgres is used
+                if [[ $icn_database_type == "postgresql" ]]; then
+                    # CP4BA is using external Postgres, so DICMS will use the same external Postgres
+                    upgrade_scenario="external-postgres"  # External Postgres is used
                     icn_database_servername=`${YQ_CMD} ".spec.datasource_configuration.dc_icn_datasource.database_servername" "$top_level_cr_details_location"`
                     icn_database_port=`${YQ_CMD} ".spec.datasource_configuration.dc_icn_datasource.database_port" "$top_level_cr_details_location"`
                     icn_database_ssl_secret_name=`${YQ_CMD} ".spec.datasource_configuration.dc_icn_datasource.database_ssl_secret_name" "$top_level_cr_details_location"`
@@ -1366,22 +1527,13 @@ function upgrade_deployment(){
                     ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.ssl_mode = "verify-full"' $top_level_cr_details_location
                     ${YQ_CMD} -i ".spec.datasource_configuration.dc_ads_runtime_datasource.ssl_secret_name = \"$icn_database_ssl_secret_name\"" $top_level_cr_details_location
                 else
-                    # CP4BA is not using Postgres
-                    # For v26.0.0 GA, only external Postgres is supported for DICMS when CP4BA is on non-Postgres DB
-                    # EDB support for DICMS will be available in v26.0.0-IF001+
+                    # CP4BA is not using Postgres — reuse the choice already made for ADPGG/DICMS Designer (or ask if both blocks were skipped)
                     upgrade_scenario="non-postgres"  # External Postgres for DICMS when CP4BA is on non-Postgres DB
                     warning "CP4BA is using non-PostgreSQL database (DB2/Oracle/MSSQL)."
-                    
-                    if ! handle_non_postgres_upgrade_scenario "DICMS Runtime" "dc_ads_runtime_datasource" "$top_level_cr_details_location" "true"; then
+
+                    if ! handle_non_postgres_upgrade_scenario "DICMS Runtime" "dc_ads_runtime_datasource" "$top_level_cr_details_location" "true" "$NON_POSTGRES_UPGRADE_DB_CHOICE"; then
                         exit 1
                     fi
-                    
-                    # TODO: Uncomment this section for v26.0.0-IF001+ when EDB support is available
-                    # upgrade_scenario="new-edb"  # Provision Postgres EDB for DICMS
-                    # ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.dc_use_postgres = true' $top_level_cr_details_location
-                    # ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.database_servername = "postgres-cp4ba-rw.{{ meta.namespace }}.svc"' $top_level_cr_details_location
-                    # ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.database_port = "5432"' $top_level_cr_details_location
-                    # ${YQ_CMD} -i '.spec.datasource_configuration.dc_ads_runtime_datasource.ssl_secret_name = "{{ meta.name }}-pg-client-cert-secret"' $top_level_cr_details_location
                 fi
             fi
         fi
@@ -1616,19 +1768,19 @@ function upgrade_deployment(){
         
         # output info for upgrading DICMS for supported upgrade sources
         if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && "${CP4BA_RELEASE_BASE}" == "26.0.0" && (" ${EXISTING_PATTERN_ARR[@]} " =~ "decisions_ads") ]] && check_adp_ads_version_to_migrate_postgres "${cp4ba_original_csv_ver_for_upgrade_script}"; then
-            printf '%b\n' "\x1B[33;5m- Decision Intelligence Client Managed Software capability is installed in this CP4BA deployment: \x1B[0m"
+            printf '%b\n' "\x1B[33m- Decision Intelligence Client Managed Software capability is installed in this CP4BA deployment: \x1B[0m"
 	           echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Review and modify DICMS database configuration for the upgrade scenario"
 	           if [[ $upgrade_scenario == "edb-already-exists" ]]; then
                     if [[ "${allow_postgres_edb_for_2600_upgrade}" != "true" ]]; then
-                        echo "        - EDB Postgres instance \"$EDB_INSTANCE_CP4BA_NAME\" is already installed for IBM Cloud Pak for Business Automation."
-                        echo "        - ${RED_TEXT}(Required)${RESET_TEXT} PostgreSQL EDB is not supported for this 26.0.0 upgrade path."
-                        echo "        - Please wait for a 26.0.0-IF release that adds PostgreSQL EDB support before proceeding with this upgrade."
+                        echo "        - CNPG PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\" is already installed for IBM Cloud Pak for Business Automation."
+                        echo "        - ${RED_TEXT}(Required)${RESET_TEXT} PostgreSQL CNPG is not supported for this 26.0.0 upgrade path."
+                        echo "        - Please wait for a 26.0.0-IF release that adds PostgreSQL CNPG support before proceeding with this upgrade."
                         printf "\n"
                     else
-                        echo "        - In this upgrade scenario, EDB Postgres instance \"$EDB_INSTANCE_CP4BA_NAME\" is already installed for IBM Cloud Pak for Business Automation. Before proceeding, make sure you:"
-                        echo "            a. ${RED_TEXT}(Required)${RESET_TEXT} create DICMS designer and/or runtime database(s) on this EDB Postgres instance. (from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-upgrading, navigate to the section for your current upgrade source version and then \"Option 1\" for the sample scripts)."
-                        echo "            b. ${RED_TEXT}(Required)${RESET_TEXT} create DICMS database_instance_secret secret(s) for DICMS designer/runtime database username and password (password only required if using password authentication). (from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-upgrading, navigate to the section for your current upgrade source version and then \"Option 1\" for the sample scripts)."
-                        echo "            c. ${RED_TEXT}(Required)${RESET_TEXT} review and modify dc_ads_designer_datasource and/or dc_ads_runtime_datasource section(s) in the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\" to match your EDB Postgres configuration."
+                        echo "        - In this upgrade scenario, CNPG PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\" is already installed for IBM Cloud Pak for Business Automation. Before proceeding, make sure you:"
+                        echo "            a. ${RED_TEXT}(Required)${RESET_TEXT} create DICMS designer and/or runtime database(s) on this CNPG PostgreSQL instance. (from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-upgrading, navigate to the section for your current upgrade source version and then \"Option 1\" for the sample scripts)."
+                        echo "            b. ${RED_TEXT}(Required)${RESET_TEXT} create DICMS database_instance_secret secret(s) for DICMS designer/runtime database username and password (password is required as CNPG uses SCRAM-SHA-256 authentication). (from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-upgrading, navigate to the section for your current upgrade source version and then \"Option 1\" for the sample scripts)."
+                        echo "            c. ${RED_TEXT}(Required)${RESET_TEXT} review and modify dc_ads_designer_datasource and/or dc_ads_runtime_datasource section(s) in the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\" to match your CNPG PostgreSQL configuration."
                         printf "\n"
                     fi
             elif [[ $upgrade_scenario == "external-postgres" ]]; then
@@ -1647,13 +1799,13 @@ function upgrade_deployment(){
                     printf "\n"
             elif [[ $upgrade_scenario == "new-edb" ]]; then
                     if [[ "${allow_postgres_edb_for_2600_upgrade}" != "true" ]]; then
-                        echo "        - PostgreSQL EDB would be required for the DICMS Designer/Runtime database in this upgrade scenario."
-                        echo "        - ${RED_TEXT}(Required)${RESET_TEXT} PostgreSQL EDB is not supported for this 26.0.0 upgrade path."
-                        echo "        - Please wait for a 26.0.0-IF release that adds PostgreSQL EDB support before proceeding with this upgrade."
+                        echo "        - PostgreSQL CNPG would be required for the DICMS Designer/Runtime database in this upgrade scenario."
+                        echo "        - ${RED_TEXT}(Required)${RESET_TEXT} PostgreSQL CNPG is not supported for this 26.0.0 upgrade path."
+                        echo "        - Please wait for a 26.0.0-IF release that adds PostgreSQL CNPG support before proceeding with this upgrade."
                         printf "\n"
                     else
-                        echo "        - In this upgrade scenario, EDB Postgres instance \"$EDB_INSTANCE_CP4BA_NAME\" will be provisioned for the DICMS Designer/Runtime database. Before proceeding, make sure you:"
-                        echo "            a. ${RED_TEXT}(Required)${RESET_TEXT} review and modify dc_ads_designer_datasource and/or dc_ads_runtime_datasource section(s) in the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\" to match your EDB Postgres configuration."
+                        echo "        - In this upgrade scenario, CNPG PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\" will be provisioned for the DICMS Designer/Runtime database. Before proceeding, make sure you:"
+                        echo "            a. ${RED_TEXT}(Required)${RESET_TEXT} review and modify dc_ads_designer_datasource and/or dc_ads_runtime_datasource section(s) in the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\" to match your CNPG PostgreSQL configuration."
                         printf "\n"
                     fi
             fi
@@ -1662,7 +1814,7 @@ function upgrade_deployment(){
 
         # output info for upgrading document process databases
         if [[ (" ${EXISTING_PATTERN_ARR[@]} " =~ "document_processing") ]]; then
-                printf '%b\n' "\x1B[33;5m- Automation Document Processing capability is installed in this CP4BA deployment: \x1B[0m"
+                printf '%b\n' "\x1B[33m- Automation Document Processing capability is installed in this CP4BA deployment: \x1B[0m"
                 echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: Upgrade the Automation Document Processing databases"
                 step_num=$((step_num + 1))
             if [[ "${CP4BA_RELEASE_BASE}" == "26.0.0" ]] && is_cp4ba_version_meeting_minimum_supported_upgrade_version "${cp4ba_original_csv_ver_for_upgrade_script}"; then
@@ -1670,14 +1822,14 @@ function upgrade_deployment(){
                 if [[ $cr_version != "${CP4BA_RELEASE_BASE}" && (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "document_processing_designer") ]]; then
                     if [[ $upgrade_scenario == "edb-already-exists" ]]; then
                         if [[ "${allow_postgres_edb_for_2600_upgrade}" != "true" ]]; then
-                            echo "    - EDB Postgres instance \"$EDB_INSTANCE_CP4BA_NAME\" is already installed for IBM Cloud Pak for Business Automation."
-                            echo "    - ${RED_TEXT}(Required)${RESET_TEXT} PostgreSQL EDB is not supported for this 26.0.0 upgrade path."
-                            echo "    - Please wait for a 26.0.0-IF release that adds PostgreSQL EDB support before proceeding with this upgrade."
+                            echo "    - CNPG PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\" is already installed for IBM Cloud Pak for Business Automation."
+                            echo "    - ${RED_TEXT}(Required)${RESET_TEXT} PostgreSQL CNPG is not supported for this 26.0.0 upgrade path."
+                            echo "    - Please wait for a 26.0.0-IF release that adds PostgreSQL CNPG support before proceeding with this upgrade."
                             printf "\n"
                         else
-                            echo "    - In this upgrade scenario, EDB Postgres instance \"$EDB_INSTANCE_CP4BA_NAME\" is already installed for IBM Cloud Pak for Business Automation. Before proceeding, make sure you:"
-                            echo "        a. ${RED_TEXT}(Required)${RESET_TEXT} create ADPGG database on this EDB Postgres instance. (from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-upgrading, navigate to the section for your current upgrade source version and then \"Option 1\" for the sample scripts)."
-                            echo "        b. ${RED_TEXT}(Required)${RESET_TEXT} update ibm-adp-secret to include adpggDBUsername and adpggDBPassword for the ADPGG database (password only required if using password authentication)."
+                            echo "    - In this upgrade scenario, CNPG PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\" is already installed for IBM Cloud Pak for Business Automation. Before proceeding, make sure you:"
+                            echo "        a. ${RED_TEXT}(Required)${RESET_TEXT} create ADPGG database on this CNPG PostgreSQL instance. (from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=automation-upgrading, navigate to the section for your current upgrade source version and then \"Option 1\" for the sample scripts)."
+                            echo "        b. ${RED_TEXT}(Required)${RESET_TEXT} update ibm-adp-secret to include adpggDBUsername and adpggDBPassword for the ADPGG database (password is required as CNPG uses SCRAM-SHA-256 authentication)."
                             echo "        c. ${RED_TEXT}(Required)${RESET_TEXT} do NOT delete mongoUri key from ibm-adp-secret."
                             echo "        d. ${RED_TEXT}(Required)${RESET_TEXT} review and modify dc_adp_datasource section in the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\" to match your Postgres configuration."
                             printf "\n"
@@ -1698,11 +1850,11 @@ function upgrade_deployment(){
                             printf "\n"
                     elif [[ $upgrade_scenario == "new-edb" ]]; then
                         if [[ "${allow_postgres_edb_for_2600_upgrade}" != "true" ]]; then
-                            echo "    - PostgreSQL EDB would be required for ADP Gitgateway in this upgrade scenario."
-                            echo "    - ${RED_TEXT}(Required)${RESET_TEXT} PostgreSQL EDB is not supported for this 26.0.0 upgrade path."
-                            echo "    - Please wait for a 26.0.0-IF release that adds PostgreSQL EDB support before proceeding with this upgrade."
+                            echo "    - PostgreSQL CNPG would be required for ADP Gitgateway in this upgrade scenario."
+                            echo "    - ${RED_TEXT}(Required)${RESET_TEXT} PostgreSQL CNPG is not supported for this 26.0.0 upgrade path."
+                            echo "    - Please wait for a 26.0.0-IF release that adds PostgreSQL CNPG support before proceeding with this upgrade."
                         else
-                            echo "    - In this upgrade scenario, EDB Postgres instance \"$EDB_INSTANCE_CP4BA_NAME\" will be provisioned for ADP Gitgateway. Before proceeding, make sure you:"
+                            echo "    - In this upgrade scenario, CNPG PostgreSQL instance \"$EDB_INSTANCE_CP4BA_NAME\" will be provisioned for ADP Gitgateway. Before proceeding, make sure you:"
                             echo "        a. ${RED_TEXT}(Required)${RESET_TEXT} Do NOT delete mongoUri key from ibm-adp-secret."
                             echo "        b. ${RED_TEXT}(Required)${RESET_TEXT} review and modify dc_adp_datasource section in the custom resource file \"${UPGRADE_DEPLOYMENT_ICP4ACLUSTER_CR}\" to match your Postgres configuration."
                         fi
@@ -1715,12 +1867,16 @@ function upgrade_deployment(){
         
         # Adding a statement to delete the old elastic search CR since we are updating the elastic search CR to switch the quiesce flag from false to true in 24.0.1 to 25.0.0 upgrade
         # https://jsw.ibm.com/browse/DBACLD-166681
+        # Only show ElasticsearchCluster cleanup instructions when upgrading from 24.0.x, as that is the only path
+        # where the old kind:ElasticsearchCluster CR existed. From 25.0.0 onwards the CR is already kind:Cluster.
         if [[ (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "bai") || (" ${EXISTING_OPT_COMPONENT_ARR[@]} " =~ "pfs") ]]; then
-            printf '%b\n' "\x1B[33;5m- Optional Components Business Automation Insights (BAI) or Data Collector and Data Indexer (PFS) are installed in this CP4BA deployment: \x1B[0m"
-            echo "${YELLOW_TEXT}[IMPORTANT]: ${RESET_TEXT}From ($CP4BA_RELEASE_BASE) ,CP4BA will be moving from Opensearch version 2.17.0 (kind: ElasticsearchCluster) to Opensearch version 2.19.x (kind: Cluster). The upgrade process will automatically migrate all the existing indices to new Opensearch version.After the upgrade is completed you must validate and verify all the existing indices are migrated successfully."
-            echo "Once you have verified that indices are migrated successfully you may delete the old Opensearch instance (kind: ElasticsearchCluster) by executing \"${GREEN_TEXT} ${CLI_CMD} delete ElasticsearchCluster opensearch -n $deployment_project_name${RESET_TEXT} \" . "
-            echo "${YELLOW_TEXT}[NOTE]: ${RESET_TEXT} There will be no functional impact of leaving the old Opensearch  (kind: ElasticsearchCluster) running in the cluster."
-            printf "\n"
+            if [[ "${cp4ba_original_csv_ver_for_upgrade_script}" == 24.0.* ]]; then
+                printf '%b\n' "\x1B[33m- Optional Components Business Automation Insights (BAI) or Data Collector and Data Indexer (PFS) are installed in this CP4BA deployment: \x1B[0m"
+                echo "${YELLOW_TEXT}[IMPORTANT]: ${RESET_TEXT}From ($CP4BA_RELEASE_BASE) ,CP4BA will be moving from Opensearch version 2.17.0 (kind: ElasticsearchCluster) to Opensearch version 2.19.x (kind: Cluster). The upgrade process will automatically migrate all the existing indices to new Opensearch version.After the upgrade is completed you must validate and verify all the existing indices are migrated successfully."
+                echo "Once you have verified that indices are migrated successfully you may delete the old Opensearch instance (kind: ElasticsearchCluster) by executing \"${GREEN_TEXT} ${CLI_CMD} delete ElasticsearchCluster opensearch -n $deployment_project_name${RESET_TEXT} \" . "
+                echo "${YELLOW_TEXT}[NOTE]: ${RESET_TEXT} There will be no functional impact of leaving the old Opensearch  (kind: ElasticsearchCluster) running in the cluster."
+                printf "\n"
+            fi
         fi
         if [[ "${CP4BA_RELEASE_BASE}" == "26.0.0" ]] && is_cp4ba_version_meeting_minimum_supported_upgrade_version "${cp4ba_original_csv_ver_for_upgrade_script}"; then
             if [[ "${cp4ba_original_csv_ver_for_upgrade_script}" == 24.0.* ]]; then

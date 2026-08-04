@@ -1473,11 +1473,10 @@ elif [[ $RUNTIME_MODE == "generate" ]]; then
                 exit 1
             fi
             #Validate the property file for Syntax errors
-            ${YQ_CMD} 'true' $CASE_MIGRATION_PROPERTY_FILE > /dev/null
-            then 
+            if ! ${YQ_CMD} 'true' $CASE_MIGRATION_PROPERTY_FILE > /dev/null 2>&1; then
                 error "Invalid Property File Syntax (YAML): \"${CASE_MIGRATION_PROPERTY_FILE}\", correct the synatx and rerun"
                 exit 1
-            fi 
+            fi
         #Import & exeute cp4a-prerequisites
         source ${CUR_DIR}/cp4a-prerequisites.sh
         

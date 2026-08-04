@@ -50,10 +50,9 @@ spec:
     sc_deployment_patterns: content
 
     ## The optional components to be installed if listed here.  This is normally populated by the User script based on input from the user.
-    ## The optional components are: Content Manager Image Services (cmis), css (Content Search Services), es (External Share), tm (Task Manager),
+    ## The optional components are: Content Manager Image Services (cmis), css (Content Search Services), tm (Task Manager),
     ## IBM Enterprise Records (ier) IBM Content Collector for SAP (iccsap)
     ## NOTE: ier, and iccsap does NOT support integration with ums.
-    ## NOTE: es does not work when using Zen and IAM for authentication.
     sc_optional_components:
 
     ## The deployment type as selected by the user.  Possible values are: Starter and Production.
@@ -206,25 +205,6 @@ spec:
     # pds:
     #   lc_user_filter: "(&(uid=%v)(objectclass=person))"
     #   lc_group_filter: "(&(cn=%v)(|(objectclass=groupOfUniqueNames)))"
-
-  ## User script should only uncomment this section if External Share if selected as an optional component.
-  ## If you are deploying without the User script, uncomment the necessary section (depending
-  ## if you are using Active Directory (ad) or Tivoli Directory Service (tds) or PingDirectory Server (pds) accordingly.
-  # ext_ldap_configuration:
-  #   lc_selected_ldap_type: "<Required>"
-  #   lc_ldap_server: "<Required>"
-  #   lc_ldap_port: "<Required>"
-  #   lc_bind_secret: ldap-bind-secret
-  #   lc_ldap_base_dn: "<Required>"
-  #   lc_ldap_ssl_enabled: true
-  #   lc_ldap_ssl_secret_name: "<Required>"
-  #   lc_ldap_user_name_attribute: "<Required>"
-  #   lc_ldap_user_display_name_attr: "<Required>"
-  #   lc_ldap_group_base_dn: "<Required>"
-  #   lc_ldap_group_name_attribute: "<Required>"
-  #   lc_ldap_group_display_name_attr: "cn"
-  #   lc_ldap_group_membership_search_filter: "<Required>"
-  #   lc_ldap_group_member_id_map: "<Required>"
 
     ## User script will uncomment the section needed based on user's input from User script.
     ## If you are deploying without the User script, uncomment the necessary section (depending

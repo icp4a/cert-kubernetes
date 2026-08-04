@@ -39,9 +39,9 @@ spec:
     ## This value could be different from the other licenses in the CR.
     sc_deployment_baw_license: non-production
 
-    ## This is the Content Cortex license  parameter and the possible values are: user, concurrent-user, authorized-user, non-production, and production.
+    ## This is the Content Cortex license  parameter and the possible values are: user, non-production, and production.
     ## This value could be different from the rest of the licenses.
-    sc_deployment_fncm_license: ESS.CO
+    sc_deployment_fncm_license: non-production
 
     sc_deployment_patterns: workflow
     sc_optional_components:

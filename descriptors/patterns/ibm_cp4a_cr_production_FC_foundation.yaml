@@ -78,16 +78,16 @@ spec:
     images:
       keytool_job_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-jobcontainer
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       dbcompatibility_init_container:
         repository: cp.icr.io/cp/cp4a/aae/dba-dbcompatibility-initcontainer
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       keytool_init_container:
         repository: cp.icr.io/cp/cp4a/ums/dba-keytool-initcontainer
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       umsregistration_initjob:
         repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
 
       ## All CP4A components should use this pull_policy as the default, but it can override by each component
       pull_policy: IfNotPresent
@@ -598,7 +598,7 @@ spec:
 
       ## The default repository is the IBM Entitled Registry
       repository: cp.icr.io/cp/cp4a/ban/navigator-sso
-      tag: "26.0.0"
+      tag: "26.0.0-IF001"
 
       ## This will override the image pull policy in the shared_configuration.
       pull_policy: IfNotPresent
@@ -800,7 +800,7 @@ spec:
       pull_policy: IfNotPresent
       resource_registry:
         repository: cp.icr.io/cp/cp4a/aae/dba-etcd
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
     admin_secret_name: resource-registry-admin-secret
     replica_size: 1
     probe:
@@ -899,7 +899,7 @@ spec:
       pull_policy: IfNotPresent
       bastudio:
         repository: cp.icr.io/cp/cp4a/bas/bastudio
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
     #Adjust this one if you created the secret with name other than the default
     admin_secret_name: "{{ meta.name }}-bas-admin-secret"
     #-----------------------------------------------------------------------
@@ -1168,10 +1168,10 @@ spec:
         pull_policy: IfNotPresent
         db_job:
           repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-          tag: "26.0.0"
+          tag: "26.0.0-IF001"
         solution_server:
           repository: cp.icr.io/cp/cp4a/aae/solution-server
-          tag: "26.0.0"
+          tag: "26.0.0-IF001"
       # For most cases, you don't need to input hostname and port here. They can be calculated with your environment informations
       # And all the endpoints can be visit through unified external URL
       # With none zen mode. If you want to customize external hostname and port. Update values here. They will be used as application playback server external visit hostname and port.
@@ -1488,7 +1488,7 @@ spec:
     application_setup:
       image:
         repository: cp.icr.io/cp/cp4a/bai/insights-engine-application-setup
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       # The back-off limit property specifies the number of retries before the setup job is considered failed. Default: 6.
       backoff_limit: 7
       resources:
@@ -1512,7 +1512,7 @@ spec:
     setup:
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-setup
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       # The back-off limit property specifies the number of retries before the setup job is considered failed. Default: 6.
       backoff_limit: 7
       resources:
@@ -1535,7 +1535,7 @@ spec:
     management:
       image:
         repository: cp.icr.io/cp/cp4a/bai/insights-engine-management
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       ## Rolling update settings for BAI Management deployment.
       ## By default, maxUnavailable is set to '25%' and maxSurge is set '25%'. You can override these values by specifying max_unavailable and max_surge below. 
       ## The values can be defined as either a percentage (e.g., '25%') or an absolute number (e.g., 1).  
@@ -1545,7 +1545,7 @@ spec:
       backend:
         image:
           repository: cp.icr.io/cp/cp4a/bai/insights-engine-management-backend
-          tag: "26.0.0"
+          tag: "26.0.0-IF001"
       # You can use this parameter to customize the hostname of the management service route.
       # If not set, the value of shared_configuration.sc_deployment_hostname_suffix is used.
       hostname: "management.bai.{{ shared_configuration.sc_deployment_hostname_suffix }}"
@@ -1555,6 +1555,46 @@ spec:
       ## This flag enable or disable Pod Disruption Budget (PDB) creation for BAI management component.  This flag will override the shared_configuration.sc_enable_pdb flag.  Default is true
       ## A PDB for Management will be created with a `minAvailable: 1` only if the replica count is greater than 1.  Otherwise, the PDB will have `minAvailable: 0` if the replica is 1.
       enable_pdb: true
+      ## Default probe values for BAI management pod (REST container). Optionally, modify these values to meet your requirements.
+      management_rest_probe:
+        startup:
+          initial_delay_seconds: 20
+          period_seconds: 10
+          timeout_seconds: 5
+          success_threshold: 1
+          failure_threshold: 30
+        liveness:
+          initial_delay_seconds: 25
+          period_seconds: 10
+          timeout_seconds: 5
+          success_threshold: 1
+          failure_threshold: 5
+        readiness:
+          initial_delay_seconds: 10
+          period_seconds: 10
+          timeout_seconds: 5
+          success_threshold: 1
+          failure_threshold: 3
+      ## Default probe values for BAI management pod (backend container). Optionally, modify these values to meet your requirements.
+      management_backend_probe:
+        startup:
+          initial_delay_seconds: 20
+          period_seconds: 10
+          timeout_seconds: 5
+          success_threshold: 1
+          failure_threshold: 30
+        liveness:
+          initial_delay_seconds: 25
+          period_seconds: 10
+          timeout_seconds: 5
+          success_threshold: 1
+          failure_threshold: 5
+        readiness:
+          initial_delay_seconds: 10
+          period_seconds: 10
+          timeout_seconds: 5
+          success_threshold: 1
+          failure_threshold: 3
       ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
       ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
       auto_scaling:
@@ -1661,6 +1701,14 @@ spec:
       job_manager_cpu_request: 1
       # The CPU limit for pods of Apache Flink job managers.
       job_manager_cpu_limit: 1
+      # The ephemeral storage limit for pods of Apache Flink task managers.
+      task_manager_ephemeral_storage_limit: '2Gi'
+      # The ephemeral storage limit for pods of Apache Flink job managers.
+      job_manager_ephemeral_storage_limit: '2Gi'
+      # The ephemeral storage request for pods of Apache Flink task managers.
+      task_manager_ephemeral_storage_request: '500Mi'
+      # The ephemeral storage request for pods of Apache Flink job managers.
+      job_manager_ephemeral_storage_request: '500Mi'
       # The number of additional Flink task managers that must be created to host custom Processing Applications.
       # Required only if using custom Processing Applications.
       # Default: 0
@@ -1671,6 +1719,70 @@ spec:
       ## Flink eventprocessing_proxy_image, if you want to use new flink image, specify it here
       ## Format can be cp.icr.io/cp/iaf-eventprocessing-proxy@sha256:fe8062c7485348a09536e02f6bd644a64b28c5ba61d74be0cc880ae65ea89b96
       # eventprocessing_proxy_image:
+
+      ## Default probe values for Flink JobManager pod (flink-main-container). Optionally, modify these values to meet your requirements.
+      job_manager_probe:
+        startup:
+          initial_delay_seconds: 60
+          period_seconds: 15
+          timeout_seconds: 10
+          success_threshold: 1
+          failure_threshold: 40
+        liveness:
+          initial_delay_seconds: 60
+          period_seconds: 60
+          timeout_seconds: 10
+          success_threshold: 1
+          failure_threshold: 5
+        readiness:
+          initial_delay_seconds: 30
+          period_seconds: 20
+          timeout_seconds: 5
+          success_threshold: 1
+          failure_threshold: 3
+
+      ## Default probe values for Flink JobManager pod (tls-proxy container). Optionally, modify these values to meet your requirements.    
+      job_manager_tls_proxy_probe:
+        startup:
+          initial_delay_seconds: 10
+          period_seconds: 10
+          timeout_seconds: 5
+          success_threshold: 1
+          failure_threshold: 30
+        liveness:
+          initial_delay_seconds: 10
+          period_seconds: 20
+          timeout_seconds: 5
+          success_threshold: 1
+          failure_threshold: 5
+        readiness:
+          initial_delay_seconds: 5
+          period_seconds: 10
+          timeout_seconds: 5
+          success_threshold: 1
+          failure_threshold: 3
+
+      ## Default probe values for Flink TaskManager pod. Optionally, modify these values to meet your requirements.
+      task_manager_probe:
+        startup:
+          initial_delay_seconds: 20
+          period_seconds: 10
+          timeout_seconds: 5
+          success_threshold: 1
+          failure_threshold: 30
+        liveness:
+          initial_delay_seconds: 60
+          period_seconds: 60
+          timeout_seconds: 10
+          success_threshold: 1
+          failure_threshold: 5
+        readiness:
+          initial_delay_seconds: 30
+          period_seconds: 20
+          timeout_seconds: 5
+          success_threshold: 1
+          failure_threshold: 3
+
     # The Flink job for processing BPMN events.
     # Enabled automatically if BAI is selected as an optional component of
     # workflow or workflow-workstreams patterns.
@@ -1679,7 +1791,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-bpmn
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1717,7 +1829,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-bawadv
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1749,7 +1861,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-icm
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1786,7 +1898,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-flink
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1818,7 +1930,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-flink
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1850,7 +1962,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-flink
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1883,7 +1995,7 @@ spec:
       install: false
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-flink
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       # The path to the savepoint or checkpoint from which a job will recover.
       # You can use this path to restart the job from a previous state in case of failure.
       # To use the default workflow of the job, leave this option empty.
@@ -1915,7 +2027,7 @@ spec:
     init_image:
       image:
         repository: cp.icr.io/cp/cp4a/bai/bai-init
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
 
     # Business data dashboarding.
     business_performance_center:
@@ -1923,7 +2035,7 @@ spec:
       install: true    
       image:
         repository: cp.icr.io/cp/cp4a/bai/insights-engine-cockpit
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       ## Rolling update settings for BAI Business Performance Center deployment.
       ## By default, maxUnavailable is set to '25%' and maxSurge is set '25%'. You can override these values by specifying max_unavailable and max_surge below. 
       ## The values can be defined as either a percentage (e.g., '25%') or an absolute number (e.g., 1).        
@@ -1952,7 +2064,7 @@ spec:
       init_ums:
         image:
           repository: cp.icr.io/cp/cp4a/aae/dba-umsregistration-initjob
-          tag: "26.0.0"
+          tag: "26.0.0-IF001"
       ## For SaaS
       oidc:
         # The internal communication with single-sign-on (SSO) service.
@@ -2003,6 +2115,9 @@ spec:
       # If not set, the value of shared_configuration.sc_deployment_hostname_suffix is used.
       hostname: "business-performance-center.bai.{{ shared_configuration.sc_deployment_hostname_suffix }}"
       resources:
+        requests:
+          # The minimum ephemeral storage required to start the application setup pod.
+          ephemeral_storage: "2000Mi"
         limits:
           # The maximum memory, including JVM heap size and file system cache, to allocate to the Business Performance Center pod.
           # Adjust this parameter value for better resource allocation and better performance.
@@ -2010,6 +2125,8 @@ spec:
           # The maximum amount of CPU to allocate to the Business Performance Center pod.
           # Adjust this parameter value for better resource allocation and better performance.
           cpu: "2000m"
+          # The maximum ephemeral storage required to allocate to the application setup pod.
+          ephemeral_storage: "2100Mi"
       ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to
       ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
       auto_scaling:
@@ -2048,6 +2165,26 @@ spec:
         enable_notifier: true
         # Set the alert computation polling interval. Default is 5000
         polling_interval: "5000"
+      ## Default probe values for business_performance_center (cockpit) pod. Optionally, modify these values to meet your requirements.
+      probe:
+        startup:
+          initial_delay_seconds: 20
+          period_seconds: 10
+          timeout_seconds: 5
+          success_threshold: 1
+          failure_threshold: 30
+        liveness:
+          initial_delay_seconds: 10
+          period_seconds: 10
+          timeout_seconds: 10
+          success_threshold: 1
+          failure_threshold: 30
+        readiness:
+          initial_delay_seconds: 10
+          period_seconds: 10
+          timeout_seconds: 5
+          success_threshold: 1
+          failure_threshold: 30
 
   #############################################################################
   ######## IBM Business Automation Application server  configurations  ########
@@ -2069,10 +2206,10 @@ spec:
       pull_policy: IfNotPresent
       solution_server:
         repository: cp.icr.io/cp/cp4a/aae/solution-server
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
       db_job:
         repository: cp.icr.io/cp/cp4a/aae/solution-server-helmjob-db
-        tag: "26.0.0"
+        tag: "26.0.0-IF001"
     # If you inputed hostname and port here. They will be used always
     # If you are using pattern mode (the shared_configuration.sc_deployment_patterns contains value)
     # Then you don't need to fill the hostname and port. It will use shared_configuration.sc_deployment_hostname_suffix to generate one

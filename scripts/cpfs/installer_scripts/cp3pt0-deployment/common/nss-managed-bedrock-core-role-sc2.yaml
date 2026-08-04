@@ -1672,6 +1672,25 @@ rules:
       - clusterimagecatalogs
     apiGroups:
       - postgresql.k8s.enterprisedb.io
+  - apiGroups:
+      - postgresql.k8s.enterprisedb.io
+    resources:
+      - failoverquorums
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - postgresql.k8s.enterprisedb.io
+    resources:
+      - failoverquorums/status
+    verbs:
+      - get
+      - patch
+      - update
+      - watch
   - verbs:
       - get
       - list

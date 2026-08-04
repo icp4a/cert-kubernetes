@@ -38,6 +38,12 @@ FLINK_NAMESPACE=
 # opensearch namespace
 OPENSEARCH_NAMESPACE=
 
+# events namespace
+EVENTS_NAMESPACE=
+
+# kafka instance name
+KAFKA_INSTANCE_NAME=
+
 # is uninstall flag?
 UNINSTALL=
 
@@ -121,6 +127,8 @@ function print_usage() {
     echo "   -lsr, --licensing-svc-reporter-namespace string      License Service Reporter namespace. No default value"
     echo "   -flink, --flink-namespace string                     Flink namespace. No default value"
     echo "   -opensearch, --opensearch-namespace string           Opensearch namespace. No default value"
+    echo "   -events, --events-namespace string                   Events namespace. Optional, no default value"
+    echo "   -kafka, --kafka-instance-name string            Kafka instance name (ibmevents.ibm.com CR name). Required when -events is set"
     echo "   -u, --uninstall                                      Uninstall both ingress and egress IBM Common Services Network Policies"
     echo "   -e, --egress                                         Deploy egress NetworkPolicies. Without this option, only ingress NetworkPolicies are deployed"
     echo "   --skipIAM                                            Skip installing network policies with for IAM services, Default is false"
@@ -164,6 +172,14 @@ function parse_arguments() {
         -opensearch | --opensearch-namespace)
             shift
             OPENSEARCH_NAMESPACE=$1
+            ;;
+        -events | --events-namespace)
+            shift
+            EVENTS_NAMESPACE=$1
+            ;;
+        -kafka | --kafka-instance-name)
+            shift
+            KAFKA_INSTANCE_NAME=$1
             ;;
         -u | --uninstall)
             UNINSTALL=true
@@ -290,6 +306,21 @@ function check_prereqs() {
         fi
     fi
 
+    # if EVENTS_NAMESPACE is specified, check existence and create if needed
+    if [[ ! -z "${EVENTS_NAMESPACE}" ]]; then
+        # check existence of EVENTS_NAMESPACE
+        events_namespace_exists=$(oc get project "${EVENTS_NAMESPACE}" 2> /dev/null)
+        if [ $? -ne 0 ]; then
+            info "Creating Events namespace: ${EVENTS_NAMESPACE}"
+            oc create namespace "${EVENTS_NAMESPACE}"
+        fi
+        
+        # if EVENTS_NAMESPACE is specified, KAFKA_INSTANCE_NAME must also be specified
+        if [[ -z "${KAFKA_INSTANCE_NAME}" ]]; then
+            error "Kafka instance name (-kafka or --kafka-instance-name) must be specified when events namespace (-events) is provided"
+        fi
+    fi
+
 }
 
 function install_networkpolicy() {
@@ -304,6 +335,8 @@ function install_networkpolicy() {
     info "Using license-service-reporter namespace: ${LICSVC_REPORTER_NAMESPACE}"
     info "Using flink namespace: ${FLINK_NAMESPACE}"
     info "Using opensearch namespace: ${OPENSEARCH_NAMESPACE}"
+    info "Using events namespace: ${EVENTS_NAMESPACE}"
+    info "Using kafka instance name: ${KAFKA_INSTANCE_NAME}"
     
     if [[ ${SKIP_IAM} == "true" ]]; then
         info "Skipping networkpolicies for IAM services"
@@ -403,6 +436,18 @@ function install_networkpolicy() {
         done
     fi
 
+    # Installing events policies
+    if [[ ! -z "${EVENTS_NAMESPACE}" ]]; then
+        for policyfile in `ls -1 ${BASE_DIR}/events/*.yaml`; do
+            if should_skip_policy "${policyfile}"; then
+                info "Skipping `basename ${policyfile}` due to skip flags ..."
+                continue
+            fi
+            info "Installing `basename ${policyfile}` ..."
+            cat ${policyfile} | sed -e "s/eventsNamespace/${EVENTS_NAMESPACE}/g" | sed -e "s/KAFKA_INSTANCE_NAME/${KAFKA_INSTANCE_NAME}/g" | oc apply -f -
+        done
+    fi
+
     # Installing zen policies
     if [[ ! -z "${ZEN_NAMESPACE}" ]]; then
         for policyfile in `ls -1 ${BASE_DIR}/zen/*.yaml`; do
@@ -462,6 +507,10 @@ function delete_networkpolicy() {
 
     if [[ ! -z "${OPENSEARCH_NAMESPACE}" ]]; then
         oc delete networkpolicies -n ${OPENSEARCH_NAMESPACE} --selector="${selector}"
+    fi
+
+    if [[ ! -z "${EVENTS_NAMESPACE}" ]]; then
+        oc delete networkpolicies -n ${EVENTS_NAMESPACE} --selector="${selector}"
     fi
 
     if [[ ! -z "${ZEN_NAMESPACE}" ]]; then

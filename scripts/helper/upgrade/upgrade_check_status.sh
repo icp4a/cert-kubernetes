@@ -571,6 +571,7 @@ function check_cp4ba_deployment_status(){
             #################### WfPS #######################
             source ${CUR_DIR}/helper/upgrade/deployment_check/wfps_status.sh
             CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_WFPS_DEPLOYMENT_STATUS")
+            CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_WFPS_SERVICE_DEPLOYMENT_STATUS")
         done
 
     fi

@@ -46,9 +46,9 @@ spec:
   ## your application is receiving expected input.
   ## shared configuration among all tribe
   shared_configuration:
-    ## This is the Content Cortex license  parameter and the possible values are: user, concurrent-user, authorized-user, non-production, and production.
+    ## This is the Content Cortex license  parameter and the possible values are: user, non-production, and production.
     ## This value could be different from the rest of the licenses.
-    sc_deployment_fncm_license: ESS.CO
+    sc_deployment_fncm_license: non-production
 
     ## Specify the RunAsUser for the security context of the pod. This is usually a numeric value that corresponds to a user ID
     sc_run_as_user: 

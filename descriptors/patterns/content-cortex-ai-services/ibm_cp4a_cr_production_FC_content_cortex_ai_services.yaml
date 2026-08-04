@@ -187,7 +187,7 @@ spec:
     ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
     image:
       repository: cp.icr.io/cp/cp4a/fncm/reasoning-services
-      tag: "26.0.0"
+      tag: "26.0.0-IF001"
       pull_policy: IfNotPresent
       ## Alternative: use digest instead of tag
       # digest: sha256:1234567890abcdef...
@@ -387,7 +387,7 @@ spec:
     ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled
     image:
       repository: cp.icr.io/cp/cp4a/fncm/core-mcp-server
-      tag: "26.0.0"
+      tag: "26.0.0-IF001"
       pull_policy: IfNotPresent
       ## Alternative: use digest instead of tag
       # digest: sha256:1234567890abcdef...

@@ -37,7 +37,7 @@ function show_help() {
     printf '%s\n' "DESCRIPTION:"
     printf '%s\n' "  This script automates the deployment setup for IBM Content Cortex AI Services."
     printf '%s\n' "  It supports multi-provider AI configuration including WatsonX.ai SaaS,"
-    printf '%s\n' "  WatsonX.ai Lightweight Engine (WLE), and Microsoft Foundry."
+    printf '%s\n' "  WatsonX.ai Lightweight Engine (LWE), and Microsoft Foundry."
     printf '\n'
     printf '%s\n' "USAGE:"
     printf '%s\n' "  Property Mode (Generate property file):"
@@ -434,7 +434,7 @@ function display_provider_setup_banner() {
     printf "\n"
     printf "Supported Provider Types:\n"
     printf "  • WatsonX.ai SaaS - IBM's cloud-based AI platform\n"
-    printf "  • WatsonX.ai Lightweight Engine (WLE) - On-premise AI deployment\n"
+    printf "  • WatsonX.ai Lightweight Engine (LWE) - On-premise AI deployment\n"
     printf "  • Microsoft Foundry - Microsoft's Azure AI platform (https://ai.azure.com/)\n"
     printf "\n"
     printf "💡 Recommendation: Start with 1 provider for initial deployment.\n"
@@ -464,9 +464,9 @@ function prompt_provider_types_multiselect() {
         fi
         
         if [[ " ${selected_providers[@]} " =~ " 2 " ]]; then
-            printf '  2) WatsonX.ai Lightweight Engine (WLE) \x1B[1m(Selected)\x1B[0m\n'
+            printf '  2) WatsonX.ai Lightweight Engine (LWE) \x1B[1m(Selected)\x1B[0m\n'
         else
-            printf '  2) WatsonX.ai Lightweight Engine (WLE)\n'
+            printf '  2) WatsonX.ai Lightweight Engine (LWE)\n'
         fi
         
         if [[ " ${selected_providers[@]} " =~ " 3 " ]]; then
@@ -1401,7 +1401,8 @@ function run_generate_mode() {
     #info "Cleaning up previous generate mode artifacts..."
     rm -rf "$AI_SERVICES_SECRET_FOLDER" >/dev/null 2>&1
     #rm -rf "$TEMP_FOLDER" >/dev/null 2>&1
-    rm -rf "$FINAL_CR_FOLDER" >/dev/null 2>&1
+    # Delete only the content cortex_ai_SERVICES CR folder
+    rm -rf "$FINAL_CR_FOLDER/content-cortex-ai-services" >/dev/null 2>&1
     #success "Cleanup completed"
     printf '\n'
     

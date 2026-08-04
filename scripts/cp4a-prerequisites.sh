@@ -39,6 +39,9 @@ source "${CUR_DIR}/helper/ext-secrets-mgmt/common_functions_vault.sh"
 
 source "${CUR_DIR}/cp4a-storage-validation.sh"
 
+# Define constant for external PostgreSQL server prefix used for ADPGG/DICMS
+EXTERNAL_POSTGRES_SERVER_PREFIX="postgresql-external"
+
 # Open fd 3 for logging early (before parse_arguments) so >&3 redirects in parse_arguments work.
 # TARGET_PROJECT_NAME may be empty here if -n was not provided; save_log handles that gracefully.
 if [[ -n "$TARGET_PROJECT_NAME" ]]; then
@@ -1982,6 +1985,45 @@ function check_property_file(){
         mark_optional
     fi
 
+    # DBACLD-244343: When the main DB is not PostgreSQL (e.g. DB2) but an external PostgreSQL is used for ADPGG/DICMS with client authentication enabled, 
+	# mark only the passwords belonging to that external PostgreSQL server alias as optional (the main DB passwords are unaffected).
+    if is_pg_client_auth && [[ $DB_TYPE != "postgresql" && $EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS == "true" ]]; then
+        local _ext_pg_alias="$EXTERNAL_POSTGRES_SERVER_PREFIX"
+        if [[ -n "$_ext_pg_alias" ]]; then
+            local _ext_pg_ssl
+            _ext_pg_ssl=$(prop_db_server_property_file "${_ext_pg_alias}.DATABASE_SSL_ENABLE" | tr '[:upper:]' '[:lower:]' | tr -d '"')
+            local _ext_pg_client
+            _ext_pg_client=$(prop_db_server_property_file "${_ext_pg_alias}.POSTGRESQL_SSL_CLIENT_SERVER" | tr '[:upper:]' '[:lower:]' | tr -d '"')
+            if [[ "$_ext_pg_ssl" == "true" && ( "$_ext_pg_client" == "true" || "$_ext_pg_client" == "yes" || "$_ext_pg_client" == "y" ) ]]; then
+                # Collect only password keys prefixed with the external PostgreSQL server alias
+                pg_password_key=$(grep -E "^[[:space:]]*${_ext_pg_alias}\\..*_DB_USER_PASSWORD=" "${DB_NAME_USER_PROPERTY_FILE}" | awk -F'=' '{print $1}' | tr -d ' ')
+
+                local invalid_params=()
+                while IFS= read -r param; do
+                    if [[ -n "$param" ]]; then
+                        value=$(grep -E "^[[:space:]]*${param}[[:space:]]*=" "${DB_NAME_USER_PROPERTY_FILE}" 2>/dev/null | awk -F'=' '{print $2}' | tr -d '[:space:]' | tr -d '"')
+                        if [[ -n "${value}" ]]; then
+                            invalid_params+=("${param}")
+                        fi
+                    fi
+                done <<< "$pg_password_key"
+
+                if [[ ${#invalid_params[@]} -gt 0 ]]; then
+                    error "ERROR: The following parameters in ${DB_NAME_USER_PROPERTY_FILE} must be empty since PostgreSQL Client Authentication is enabled:"
+                    printf '  - %s\n' "${invalid_params[@]}"
+                    exit 1
+                fi
+
+                while IFS= read -r param; do
+                    if [[ -n "$param" ]]; then
+                        OPTIONAL_PARAMETERS_LIST+=("$param")
+                    fi
+                done <<< "$pg_password_key"
+                mark_optional
+            fi
+        fi
+    fi
+
     # Mark LC_AD_GC_HOST and LC_AD_GC_PORT as optional before validation
     if [[ ! ("${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "no") ]]; then
         # Remove existing entries to prevent duplicates
@@ -2304,6 +2346,15 @@ function check_property_file(){
         bts_external_db_cert_folder=$(sed -e 's/^"//' -e 's/"$//' <<<"$bts_external_db_cert_folder")
         cert_dir_array=( "${cert_dir_array[@]}" "${bts_external_db_cert_folder}" )
     fi
+
+    # ADPGG/DICMS external Postgres DB
+    tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS_FLAG)")
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
+    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
+        adpgg_dicmis_external_db_cert_folder="${DB_SSL_CERT_FOLDER}/${EXTERNAL_POSTGRES_SERVER_PREFIX}"
+        cert_dir_array=( "${cert_dir_array[@]}" "${adpgg_dicmis_external_db_cert_folder}" )
+    fi
+
     # Issuer to make Opensearch/Kafka use external certificate
     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_CERT_OPENSEARCH_KAFKA_FLAG)")
     tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
@@ -2315,6 +2366,10 @@ function check_property_file(){
 
     declare -A dir_count
     for element in "${cert_dir_array[@]}"; do
+        # Skip empty elements
+        if [[ -z "$element" ]]; then
+            continue
+        fi
         if [[ -n "${dir_count[$element]}" ]]; then
             dir_count[$element]=$((dir_count[$element] + 1))
         else
@@ -2665,10 +2720,12 @@ function create_prerequisites() {
             fi  
 
 
+            # THe template for the content cortex secret(fncm secret) contains osDBPassword and osDBPassword but the script will make updates to update the key accordingly
+            # No version of the secret will contain the key osDBPassword and osDBPassword so we do not need to retain the password even for postgres EDB
+            # There was a condition to not remove it for edb/cnpg in DBACLD-194917 , but since this username password combination is never actually used it can be removed in all cases
+            # Condition removed for https://jsw.ibm.com/browse/DBACLD-244031
             ${SED_COMMAND} '/^  osDBUsername/d' ${FNCM_SECRET_FILE}
-            if [[ $DB_TYPE != "postgresql-edb" ]]; then
-                ${SED_COMMAND} '/^  osDBPassword/d' ${FNCM_SECRET_FILE}
-            fi
+            ${SED_COMMAND} '/^  osDBPassword/d' ${FNCM_SECRET_FILE}
             
             success "YAML secret template for Content Cortex has been created.\n"
 
@@ -3679,7 +3736,13 @@ function create_prerequisites() {
                     # ${SED_COMMAND} "s|<cp4a-db-crt-file-in-local>|$tmp_name|g" ${CP4A_DB_SSL_SECRET_FILE}
 
                     #  replace sslMode for postgresql
-                    if [[ $DB_TYPE == "postgresql" ]]; then
+                    # Get the DATABASE_TYPE for this specific item to support mixed database scenarios
+                    tmp_item_db_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.DATABASE_TYPE)")
+                    tmp_item_db_type=$(echo "$tmp_item_db_type" | tr '[:upper:]' '[:lower:]')
+                    # Initialize variables for PostgreSQL SSL settings
+                    tmp_ssl_client_server=""
+                    tmp_pg_ssl_mode=""
+                    if [[ $tmp_item_db_type == "postgresql" ]]; then
                         tmp_ssl_client_server=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file $item.POSTGRESQL_SSL_CLIENT_SERVER)")
                         tmp_ssl_client_server=$(echo "$tmp_ssl_client_server" | tr '[:upper:]' '[:lower:]')
                         if [[ $tmp_ssl_client_server == "yes" || $tmp_ssl_client_server == "true" ]]; then
@@ -3692,11 +3755,12 @@ function create_prerequisites() {
                     #DBACLD-185209: Vault's implementation for DB SSL
                     if [[ $vault_enabled == "true" ]]; then # Vault
                         create_cp4a_db_ssl_vault_template \
-                        $item \
-                        $tmp_ssl_secret_name \
-                        $tmp_cert_folder_name \
-                        $tmp_ssl_client_server \
-                        $tmp_pg_ssl_mode
+                        "$item" \
+                        "$tmp_ssl_secret_name" \
+                        "$tmp_cert_folder_name" \
+                        "$tmp_ssl_client_server" \
+                        "$tmp_pg_ssl_mode" \
+                        "$tmp_item_db_type"
                     else # Non-Vault
                         create_cp4a_db_ssl_template $item $tmp_ssl_client_server
                         ${SED_COMMAND} "s|<cp4a-db-ssl-secret-name>|$tmp_ssl_secret_name|g" ${CP4A_DB_SSL_SECRET_FILE}
@@ -3871,54 +3935,65 @@ function create_prerequisites() {
     tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
     if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
         
-        # Skip generating K8s Zen Secret/Configmap if ENABLE_VAULT_ON_EXIST mode is on
-        if [[ "$ENABLE_VAULT_ON_EXIST" != "true" ]]; then
-            create_zen_external_db_secret_template
-            #  replace secret file folder
-            zen_external_db_cert_folder="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER)"
-            zen_external_db_cert_folder=$(sed -e 's/^"//' -e 's/"$//' <<<"$zen_external_db_cert_folder")
-            if [[ -z $zen_external_db_cert_folder || $zen_external_db_cert_folder == "" ]]; then
-                zen_external_db_cert_folder=$ZEN_DB_SSL_CERT_FOLDER
-            fi
-            ${SED_COMMAND} "s|<cp4a-db-crt-file-in-local>|$zen_external_db_cert_folder|g" ${ZEN_SECRET_FILE}
+			zen_external_db_cert_folder="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_SSL_CERT_FILE_FOLDER)"
+			zen_external_db_cert_folder=$(sed -e 's/^"//' -e 's/"$//' <<<"$zen_external_db_cert_folder")
+			if [[ -z $zen_external_db_cert_folder || $zen_external_db_cert_folder == "" ]]; then
+					zen_external_db_cert_folder=$ZEN_DB_SSL_CERT_FOLDER
+			fi
+			create_zen_external_db_secret_template
+			#  replace secret file folder (only needed for non-vault path which creates ZEN_SECRET_FILE)
+			if [[ $vault_enabled != 'true' ]]; then
+					${SED_COMMAND} "s|<cp4a-db-crt-file-in-local>|$zen_external_db_cert_folder|g" ${ZEN_SECRET_FILE}
+			fi
 
-            create_zen_external_db_configmap_template
-            #  replace MonitoringSchema
-            tmp_name="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_MONITORING_SCHEMA)"
-            tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
-            ${SED_COMMAND} "s|<MonitoringSchema>|$tmp_name|g" ${ZEN_CONFIGMAP_FILE}
+        #DBACLD-245957 Skip generating the Zen configmap template during upgrade (ENABLE_VAULT_ON_EXIST), consistent with IM and BTS.
+        # Zen metastore does not support K8s-secret-to-Vault migration on existing deployments.
+			if [[ "$ENABLE_VAULT_ON_EXIST" != "true" ]]; then
+				create_zen_external_db_configmap_template
+				#DBACLD-230919: We need to insert DATABASE_CREDENTIAL_SOURCE and DATABASE_SECRET_PROVIDER_CLASS into the ZEN_CONFIGMAP_FILE when Vault is enabled. This is because the ZEN_CONFIGMAP_FILE is used to create the Zen metastore external Postgres DB secret and configmap, and the DATABASE_CREDENTIAL_SOURCE and DATABASE_SECRET_PROVIDER_CLASS are required for Vault to work properly.
+				# DBACLD-245957:NOTE: Zen metastore does not support migrating from K8s secrets to Vault on an existing deployment (ENABLE_VAULT_ON_EXIST).
+				# The vault-specific configmap fields are only applicable for a fresh install with Vault enabled.
+				if [[ $vault_enabled == 'true' ]]; then
+						${YQ_CMD} -i '.data.DATABASE_CREDENTIAL_SOURCE = "VAULT"' "${ZEN_CONFIGMAP_FILE}"
+						${YQ_CMD} -i '.data.DATABASE_SECRET_PROVIDER_CLASS = "ibm-zen-metastore-secret"' "${ZEN_CONFIGMAP_FILE}"
+				fi
+			
+				#  replace MonitoringSchema
+				tmp_name="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_MONITORING_SCHEMA)"
+				tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
+				${SED_COMMAND} "s|<MonitoringSchema>|$tmp_name|g" ${ZEN_CONFIGMAP_FILE}
 
-            #  replace <DatabaseName>
-            tmp_name="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_NAME)"
-            tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
-            ${SED_COMMAND} "s|<DatabaseName>|$tmp_name|g" ${ZEN_CONFIGMAP_FILE}
+				#  replace <DatabaseName>
+				tmp_name="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_NAME)"
+				tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
+				${SED_COMMAND} "s|<DatabaseName>|$tmp_name|g" ${ZEN_CONFIGMAP_FILE}
 
-            #  replace <DatabasePort>
-            tmp_name="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_PORT)"
-            tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
-            ${SED_COMMAND} "s|<DatabasePort>|$tmp_name|g" ${ZEN_CONFIGMAP_FILE}
+				#  replace <DatabasePort>
+				tmp_name="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_PORT)"
+				tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
+				${SED_COMMAND} "s|<DatabasePort>|$tmp_name|g" ${ZEN_CONFIGMAP_FILE}
 
-            #  replace <DatabaseReadHostName>
-            tmp_name="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_R_ENDPOINT)"
-            tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
-            ${SED_COMMAND} "s|<DatabaseReadHostName>|$tmp_name|g" ${ZEN_CONFIGMAP_FILE}
+				#  replace <DatabaseReadHostName>
+				tmp_name="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_R_ENDPOINT)"
+				tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
+				${SED_COMMAND} "s|<DatabaseReadHostName>|$tmp_name|g" ${ZEN_CONFIGMAP_FILE}
 
-            #  replace <DatabaseHostName>
-            zen_external_db_host_name="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_RW_ENDPOINT)"
-            zen_external_db_host_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$zen_external_db_host_name")
-            ${SED_COMMAND} "s|<DatabaseHostName>|$zen_external_db_host_name|g" ${ZEN_CONFIGMAP_FILE}
+				#  replace <DatabaseHostName>
+				zen_external_db_host_name="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_RW_ENDPOINT)"
+				zen_external_db_host_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$zen_external_db_host_name")
+				${SED_COMMAND} "s|<DatabaseHostName>|$zen_external_db_host_name|g" ${ZEN_CONFIGMAP_FILE}
 
-            #  replace <DatabaseSchema>
-            tmp_name="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_SCHEMA)"
-            tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
-            ${SED_COMMAND} "s|<DatabaseSchema>|$tmp_name|g" ${ZEN_CONFIGMAP_FILE}
+				#  replace <DatabaseSchema>
+				tmp_name="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_SCHEMA)"
+				tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
+				${SED_COMMAND} "s|<DatabaseSchema>|$tmp_name|g" ${ZEN_CONFIGMAP_FILE}
 
-            #  replace <DatabaseUser>
-            tmp_name="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_USER)"
-            tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
-            ${SED_COMMAND} "s|<DatabaseUser>|$tmp_name|g" ${ZEN_CONFIGMAP_FILE}
-        fi
-    fi
+				#  replace <DatabaseUser>
+				tmp_name="$(prop_user_profile_property_file CP4BA.ZEN_EXTERNAL_POSTGRES_DATABASE_USER)"
+				tmp_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_name")
+				${SED_COMMAND} "s|<DatabaseUser>|$tmp_name|g" ${ZEN_CONFIGMAP_FILE}
+			fi # End of ENABLE_VAULT_ON_EXIST check
+   	fi
 
     # Create Secret/configMap for BTS metastore external Postgres DB
     tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_BTS_FLAG)")
@@ -4102,43 +4177,67 @@ function create_prerequisites() {
        msgB "* You can use this shell script to create the secret automatically (NOTE: In the scenario that separation of operators and operands is selected , you must switch to the CP4BA DEPLOYMENT PROJECT first): $CREATE_SECRET_SCRIPT_FILE"
     #DBACLD-185209: Vault implementation
     else
-       get_vault_secret_list
-       echo_red "\n**** For Vault integration ****"
-       echo_bold " 1. If you have not yet done so, please ensure you have followed the instructions in the CP4BA Knowledge Center topic \"Optional: Preparing for external secret management\""
-       echo_bold "\n 2. Please REVIEW the templates and create all the secrets in Vault using the JSON templates in the folders: " 
-       echo "    - $VAULT_SECRET_FILE_FOLDER"
-       echo "    - $VAULT_TLS_SECRET_FILE_FOLDER"
-       echo_bold "\n 3. If you want to manually configure other optional custom secrets in your deployment NOT covered by these templates, you will need to manually create the SecretProviderClass and Vault secret based on the corresponding topic for that custom secret in the Knowledge Center, and copy the SecretProviderClass template to the folder from Step 1 (use 'secret' subfolder for non-certificate secrets, and 'tls' subfolder for certificate secrets)"
-       echo "    - FYI: The script has created templates for the following custom secrets (these secrets are already covered):"
-       echo_bold "     $VAULT_SECRET_LIST"
-       echo_bold "\n 4. Please run the script \"${CREATE_SECRET_SCRIPT_FILE}\" to create the 'SecretProviderClasses' in your cluster."
-       echo "    - NOTE: This script only creates the 'SecretProviderClasses', it will NOT create secrets in Vault.  You must manually create them using the provided JSON templates mentioned in Step 2."
-    
-       # Iterate through all the SPC yaml files at $VAULT_SECRET_PARENT_FOLDER
-        # Read the metadata.annotations."cp4ba.ibm.com/owned-by" field in each SPC yaml file
-        # to get the list of comma-separated operators that should have the SPC mounted.
-        # Duplicates will be removed when we aggregate the list of operators from all the SPC yaml files.
-        # If a SPC does not have the "cp4ba.ibm.com/owned-by" annotation, we display a warning
-        # and ignore that SPC for the purpose of determining which CSVs to patch.
-        # Operators in VAULT_EXCLUDE_PATCH_LIST_OF_CSV (exclusion list) are removed from the final CSV list.
-        get_vault_csv_list_from_spc "$CP4BA_CSV_VERSION"
-        
-        if [[ -n "$_vault_csv_list" ]]; then
-            echo_bold "\n 5. Please run the following command to patch the Operator CSV(s) for Vault:"
-            if [[ $SEPARATE_OPERAND_FLAG == "No" ]]; then
-                msgB "  ./cp4a-vault.sh -m patch --csv \"$_vault_csv_list\" -n $CP4BA_SERVICES_NS"
-            else
-                msgB "  ./cp4a-vault.sh -m patch --csv \"$_vault_csv_list\" -n $CP4BA_SERVICES_NS --operatorNamespace $CP4BA_OPERATOR_NS"
-            fi
-        fi
-        
-        # If enabling Vault for existing deployment, they do not need to configure databases or recreate the CR.
-        if [[ "$ENABLE_VAULT_ON_EXIST" == "true" ]]; then
-           echo_bold "\n 6. Please run the command \"./cp4a-prerequisites.sh -m validate --enable-external-secret-management -n $CP4BA_SERVICES_NS\" to verify the configurations selected for this deployment and verify that the required secrets have been created correctly."
+       
+        echo_red "\n**** For Vault integration ****"
 
-           echo_bold "\n 7. Please edit your CR to set the following property to enable Vault integration for custom secrets: \"spec.shared_configuration.sc_vault_configuration.enable_external_secret_store: true\""
-        fi
+        # Check CSV version to determine if we are in the middle of an upgrade scenario
+        cp4a_oper_csv_name=$(${CLI_CMD} get csv -n $CP4BA_OPERATOR_NS --no-headers --ignore-not-found | grep "IBM Cloud Pak for Business Automation" | awk '{print $1}')
+        cp4a_oper_csv_ver=$(${CLI_CMD} get csv -n $CP4BA_OPERATOR_NS $cp4a_oper_csv_name --no-headers --ignore-not-found -o 'jsonpath={.spec.version}')
+
+        if [[ "$cp4a_oper_csv_ver" == "${CP4BA_CSV_VERSION//v/}" ]]; then
+            # If CSV version matches the cert-kube CSV, it means we are NOT in a upgrade scenario (i.e. we are enabling vault on non-vault deployment)
+            get_vault_secret_list
+
+            echo_bold " 1. If you have not yet done so, please ensure you have followed the instructions in the CP4BA Knowledge Center topic \"Optional: Preparing for external secret management\""
+            echo_bold "\n 2. Please REVIEW the JSON templates in the folders listed below and create the secrets in Vault: " 
+            echo "    - $VAULT_SECRET_FILE_FOLDER"
+            echo "    - $VAULT_TLS_SECRET_FILE_FOLDER"
+            echo_bold "\n 3. If you want to manually configure other optional custom secrets in your deployment NOT covered by these templates, you will need to manually create the SecretProviderClass and Vault secret based on the corresponding topic for that custom secret in the Knowledge Center, and copy the SecretProviderClass template to the folder from Step 1 (use 'secret' subfolder for non-certificate secrets, and 'tls' subfolder for certificate secrets)"
+            echo "    - FYI: The script has created templates for the following custom secrets (these secrets are already covered):"
+            echo_bold "     $VAULT_SECRET_LIST"
+            echo_bold "\n 4. Please run the script \"${CREATE_SECRET_SCRIPT_FILE}\" to create the 'SecretProviderClasses' in your cluster."
+            echo "    - NOTE: This script only creates the 'SecretProviderClasses', it will NOT create secrets in Vault.  You must manually create them using the provided JSON templates mentioned in Step 2."
+    
+            # Iterate through all the SPC yaml files at $VAULT_SECRET_PARENT_FOLDER
+            # Read the metadata.annotations."cp4ba.ibm.com/owned-by" field in each SPC yaml file
+            # to get the list of comma-separated operators that should have the SPC mounted.
+            # Duplicates will be removed when we aggregate the list of operators from all the SPC yaml files.
+            # If a SPC does not have the "cp4ba.ibm.com/owned-by" annotation, we display a warning
+            # and ignore that SPC for the purpose of determining which CSVs to patch.
+            # Operators in VAULT_EXCLUDE_PATCH_LIST_OF_CSV (exclusion list) are removed from the final CSV list.
+            get_vault_csv_list_from_spc "$CP4BA_CSV_VERSION"
+            
+            if [[ -n "$_vault_csv_list" ]]; then
+                echo_bold "\n 5. Please run the following command to patch the Operator CSV(s) for Vault:"
+                if [[ $SEPARATE_OPERAND_FLAG == "No" ]]; then
+                    msgB "  ./cp4a-vault.sh -m patch --csv \"$_vault_csv_list\" -n $CP4BA_SERVICES_NS"
+                else
+                    msgB "  ./cp4a-vault.sh -m patch --csv \"$_vault_csv_list\" -n $CP4BA_SERVICES_NS --operatorNamespace $CP4BA_OPERATOR_NS"
+                fi
+            fi
+            
+            # If enabling Vault for existing deployment, they do not need to configure databases or recreate the CR.
+            if [[ "$ENABLE_VAULT_ON_EXIST" == "true" ]]; then
+                echo_bold "\n 6. Please run the command \"./cp4a-prerequisites.sh -m validate --enable-external-secret-management -n $CP4BA_SERVICES_NS\" to verify the configurations selected for this deployment and verify that the required secrets have been created correctly."
+                echo_bold "\n 7. Please edit your CR to set the following property to enable Vault integration for custom secrets: \"spec.shared_configuration.sc_vault_configuration.enable_external_secret_store: true\""
+            fi
+
+        # End of the non-upgrade scenario (enabling vault for non-vault deployment)
+        else # UPGRADE SCENARIO
+            # For upgrade scenario, we want different wording for the instructions and we don't want user to run "cp4a-vault.sh" and "cp4a-prerequisites.sh -m validate"
+            echo_bold "\nIt has been detected that you are upgrading from an earlier version of CP4BA with Vault-enabled. Please follow the steps below.\n" 
+            echo_bold " 1. Please review the instructions in the CP4BA Knowledge Center topic \"Optional: Preparing for external secret management\" for any changes in the prerequisites for Vault since the last release of CP4BA."
+            echo_bold "\n 2. There may be new secrets needed in this version of CP4BA. Please REVIEW the JSON templates in the folders listed below and create any secrets you don't yet have in Vault: " 
+            echo "    - $VAULT_SECRET_FILE_FOLDER"
+            echo "    - $VAULT_TLS_SECRET_FILE_FOLDER"
+            echo_bold "\n 3. Please run the script \"${CREATE_SECRET_SCRIPT_FILE}\" to create the 'SecretProviderClasses' in your cluster."
+            echo_bold "\n NOTE: Please do NOT run the \"cp4a-vault.sh\" script in this scenario.  It will be handled by the upgrade portion in the subsequent steps."
+            echo_bold "\n 4. Please reference the upgrade topic in the CP4BA Knowledge Center for the remaining steps for upgrade."
+        fi 
+        # End of the upgrade scenario (vault-enabled to vault-enabled)
+
     fi
+    # End of the "vault-enabled" clause
 
     if [[ "$UPDATE_COMPONENTS" == "true" ]]; then
         msgB "* If you have manually added additional object stores post deployment, you must review the \"ibm-fncm-secret\" secret template generated at ${CUR_DIR}/cp4ba-prerequisites/project/$CP4BA_SERVICES_NS/secret_template/content-cortex and make neccessary updates for the additional content object stores before applying the secret templates. For more information, from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE, navigate to Installing --> Installing Production Deployment --> Installing a CP4BA multi-pattern production deployment --> Preparing your chosen capabilities --> Content Cortex  --> Creating the Content Cortex  databases and secrets without running the provided scripts --> Creating secrets to protect sensitive Content Cortex  configuration data."
@@ -4302,6 +4401,13 @@ function create_temp_property_file(){
         echo "EXTERNAL_POSTGRESDB_FOR_BTS_FLAG=false" >> ${TEMPORARY_PROPERTY_FILE}
     fi
 
+    # save external Postgres DB for ADPGG/DICMS flag
+    if [[ $EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS == "true" ]]; then
+        echo "EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS_FLAG=true" >> ${TEMPORARY_PROPERTY_FILE}
+    else
+        echo "EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS_FLAG=false" >> ${TEMPORARY_PROPERTY_FILE}
+    fi
+
     # save external certificate for Opensearch/Kafka flag
     if [[ $EXTERNAL_CERT_OPENSEARCH_KAFKA == "true" ]]; then
         echo "EXTERNAL_CERT_OPENSEARCH_KAFKA_FLAG=true" >> ${TEMPORARY_PROPERTY_FILE}
@@ -4326,12 +4432,14 @@ function create_temp_property_file(){
     else
         echo "SETUP_CONTENT_CORTEX_AI_SERVICES=$SETUP_CONTENT_CORTEX_AI_SERVICES" >> ${TEMPORARY_PROPERTY_FILE}
     fi
-    # Note: WATSONX_DEPLOYMENT_TYPE and WATSONX_HAS_API_KEY are no longer saved to tmp file
-    # Multi-provider configuration is now stored in the AI services property file
-    
     # Add Watsonx deployment type and authentication method
     if [[ -n $WATSONX_DEPLOYMENT_TYPE ]]; then
         echo "WATSONX_DEPLOYMENT_TYPE=$WATSONX_DEPLOYMENT_TYPE" >> ${TEMPORARY_PROPERTY_FILE}
+    fi
+    # Save WFA-specific deployment type (set interactively by select_wfa_deployment_type())
+    # Used by create_workflow_assistant_secret_template() during generate mode.
+    if [[ -n $WFA_WATSONX_DEPLOYMENT_TYPE ]]; then
+        echo "WFA_WATSONX_DEPLOYMENT_TYPE=$WFA_WATSONX_DEPLOYMENT_TYPE" >> ${TEMPORARY_PROPERTY_FILE}
     fi
     
     if [[ -n $WATSONX_HAS_API_KEY ]]; then
@@ -4498,17 +4606,17 @@ element_val.POSTGRESQL_SSL_CLIENT_SERVER=\"True\"\\${nl}" ${DB_SERVER_INFO_PROPE
         if [[ $DB_TYPE == "postgresql" ]]; then
             nl=$'\n' # fix sed issue on Mac, DO NOT change the script format
             if [[ "$machine" == "Mac" ]]; then
-                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\ 
+                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\
 element_val.POSTGRESQL_SSL_MODE=\"require\"\\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
-                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\ 
-## There are three modes [require|verify-ca|verify-full].\\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
-                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\ 
+                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\
+## There are three modes [require|verify-ca|verify-full]. Update this value to match your PostgreSQL server SSL configuration.\\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
+                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\
 ## The value for the sslmode which determines whether or with what priority a secure SSL TCP/IP connection will be negotiated with the PostgreSQL database server.\\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
                 ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\ 
 \\${nl}" ${DB_SERVER_INFO_PROPERTY_FILE}
             else
                 ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\element_val.POSTGRESQL_SSL_MODE=\"require\"" ${DB_SERVER_INFO_PROPERTY_FILE}
-                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\## There are three modes [require|verify-ca|verify-full]." ${DB_SERVER_INFO_PROPERTY_FILE}
+                ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\## There are three modes [require|verify-ca|verify-full]. Update this value to match your PostgreSQL server SSL configuration." ${DB_SERVER_INFO_PROPERTY_FILE}
                 ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\## The value for the sslmode which determines whether or with what priority a secure SSL TCP/IP connection will be negotiated with the PostgreSQL database server." ${DB_SERVER_INFO_PROPERTY_FILE}
                 ${SED_COMMAND} "/^$item.POSTGRESQL_SSL_CLIENT_SERVER=.*/a\ " ${DB_SERVER_INFO_PROPERTY_FILE}
             fi
@@ -4591,6 +4699,57 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             fi
         fi
     done
+
+    # Add external PostgreSQL configuration for ADPGG/DICMS when using non-PostgreSQL databases
+    if [[ "$EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS" == "true" ]]; then
+        # Create SSL certificate folder for external PostgreSQL server
+        mkdir -p "${DB_SSL_CERT_FOLDER}/${EXTERNAL_POSTGRES_SERVER_PREFIX}" >/dev/null 2>&1
+        
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## Please input the value for the external PostgreSQL database server/instance name, which is used for ADPGG/DICMS databases ##" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## (NOTES: The value (CAN NOT CONTAIN DOT CHARACTER) is alias name for database server/instance, it is not real database server/instance host name.) ##" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        
+        # Update DB_SERVER_LIST to include external PostgreSQL server
+        tmp_db_list=$(prop_db_server_property_file DB_SERVER_LIST)
+        tmp_db_list=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_list")
+        if [[ -n "$tmp_db_list" ]]; then
+            ${SED_COMMAND} "s|DB_SERVER_LIST=\"${tmp_db_list}\"|DB_SERVER_LIST=\"${tmp_db_list},${EXTERNAL_POSTGRES_SERVER_PREFIX}\"|g" ${DB_SERVER_INFO_PROPERTY_FILE}
+        else
+            ${SED_COMMAND} "s|DB_SERVER_LIST=\"\"|DB_SERVER_LIST=\"${EXTERNAL_POSTGRES_SERVER_PREFIX}\"|g" ${DB_SERVER_INFO_PROPERTY_FILE}
+        fi
+        
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "####################################################" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## Property for Database Server \"${EXTERNAL_POSTGRES_SERVER_PREFIX}\" required by IBM Cloud Pak for Business Automation on postgresql type database ##" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "####################################################" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "${EXTERNAL_POSTGRES_SERVER_PREFIX}.DATABASE_TYPE=\"postgresql\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## Provide the database server name or IP address of the database server. If use IPv6, the addresses need to be enclosed with the square brackets ([...]), e.g. [XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX]." >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "${EXTERNAL_POSTGRES_SERVER_PREFIX}.DATABASE_SERVERNAME=\"<Required>\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## Provide the database server port.  For Postgresql, the default is \"5432\"." >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "${EXTERNAL_POSTGRES_SERVER_PREFIX}.DATABASE_PORT=\"5432\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## The parameter is used to support database connection over SSL for database. Default value is \"True\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "${EXTERNAL_POSTGRES_SERVER_PREFIX}.DATABASE_SSL_ENABLE=\"True\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## Whether your PostgreSQL database enables server only or both server and client authentication. Default value is \"True\" for enabling both server and client authentication, \"False\" is for enabling server-only authentication." >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "${EXTERNAL_POSTGRES_SERVER_PREFIX}.POSTGRESQL_SSL_CLIENT_SERVER=\"True\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## The value for the sslmode which determines whether or with what priority a secure SSL TCP/IP connection will be negotiated with the PostgreSQL database server." >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## There are three modes [require|verify-ca|verify-full]. Update this value to match your PostgreSQL server SSL configuration." >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "${EXTERNAL_POSTGRES_SERVER_PREFIX}.POSTGRESQL_SSL_MODE=\"require\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## If POSTGRESQL_SSL_CLIENT_SERVER is \"True\" and DATABASE_SSL_ENABLE is \"True\", please get \"<your-server-certification: root.crt>\" \"<your-client-certification: client.crt>\" \"<your-client-key: client.key>\" from server and client, and copy into this directory." >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## If POSTGRESQL_SSL_CLIENT_SERVER is \"False\" and DATABASE_SSL_ENABLE is \"True\", please get the SSL certificate file (rename db-cert.crt) from server and then copy into this directory." >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "${EXTERNAL_POSTGRES_SERVER_PREFIX}.DATABASE_SSL_CERT_FILE_FOLDER=\"${DB_SSL_CERT_FOLDER}/${EXTERNAL_POSTGRES_SERVER_PREFIX}\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "## The name of the secret that contains the PostgreSQL SSL certificate if SSL is enabled" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "${EXTERNAL_POSTGRES_SERVER_PREFIX}.DATABASE_SSL_SECRET_NAME=\"ibm-cp4ba-db-ssl-secret-for-${EXTERNAL_POSTGRES_SERVER_PREFIX}\"" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+        echo "" >> ${DB_SERVER_INFO_PROPERTY_FILE}
+    fi
+
     success "DB Server property file for CP4BA has been created.\n"
     fi
 
@@ -4811,7 +4970,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
     echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
     echo "## Enable or disable Instana instrumentation for cp4ba deployment." >> ${USER_PROFILE_PROPERTY_FILE}
-    echo "## Note: set as \"true\" for enabling the Instana monitroing for the deployment." >> ${USER_PROFILE_PROPERTY_FILE}
+    echo "## Note: set as \"true\" for enabling the Instana monitoring for the deployment." >> ${USER_PROFILE_PROPERTY_FILE}
     echo "CP4BA.ENABLE_INSTANA_MONITORING=\"$ENABLE_INSTANA_MONITORING\"" >> ${USER_PROFILE_PROPERTY_FILE}
     echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
@@ -5676,40 +5835,86 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
     # generate property for ADP
     if [[ "${pattern_cr_arr[@]}" =~ "document_processing" ]]; then
         wait_msg "Creating Property file for IBM Automation Document Processing"
-        tip="## Processing's Property for Document Processing Engine (DPE) databases on ${DB_TYPE} type database ##"
+        # Resolve the ADP secret name from the live CR; fall back to the default name.
+        _adp_secret_name=$(echo "$cr_output" | ${YQ_CMD} '.spec.document_processing.ibm_adp_secret' - 2>/dev/null | sed -e 's/^"//' -e 's/"$//')
+        if [[ -z "$_adp_secret_name" || "$_adp_secret_name" == "null" ]]; then
+            _adp_secret_name="ibm-adp-secret"
+        fi
+        tip="## Property for Document Processing Engine (DPE) databases on ${DB_TYPE} type database ##"
+        # DBACLD-244556: Emit ADP section header unconditionally so ADP properties are always
+        # placed under their own section, separate from ODM's section.
+        echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
+        echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
+        echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
         #Generating property file (cp4ba_db_name_user.property) for ADP Gitgateway databases
         if [[ $DB_TYPE == "postgresql-edb" && "${pattern_cr_arr[@]}" =~ "document_processing_designer" ]]; then
-                tip="## Property for Document Processing Engine (DPE) databases required for Gitgateway"
                 note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
-                echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "$note" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "## The designated database name for Automation Document Processing." >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "$DB_SERVER_PREFIX.ADP_GG_DB_NAME=\"adpggdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "## The designated user name of the database for Automation Document Processing." >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "$DB_SERVER_PREFIX.ADP_GG_DB_USER_NAME=\"adpuser\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "## The designated password for the user of Automation Document Processing." >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "$DB_SERVER_PREFIX.ADP_GG_DB_USER_PASSWORD=\"$RANDOM_EDB_PASSWORD\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                # When enabling Vault on an existing deployment (no prop files), read the live password
+                # from the existing ADP secret (name resolved from CR, defaulting to ibm-adp-secret).
+                if [[ "$ENABLE_VAULT_ON_EXIST" == "true" && "$ENABLE_VAULT_ON_EXIST_PROP_TYPE" == "none" ]]; then
+                    _existing_adpgg_pwd=$($CLI_CMD get secret "$_adp_secret_name" -n "$CP4BA_SERVICES_NS" -o jsonpath='{.data.adpggDBPassword}' 2>/dev/null | base64 --decode 2>/dev/null)
+                    if [[ -n "$_existing_adpgg_pwd" ]]; then
+                        echo "$DB_SERVER_PREFIX.ADP_GG_DB_USER_PASSWORD=\"$_existing_adpgg_pwd\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    else
+                        warning "Could not retrieve adpggDBPassword from secret $_adp_secret_name; you must manually set ${DB_SERVER_PREFIX}.ADP_GG_DB_USER_PASSWORD in the property file to match the existing database password (found in the 'adpggDBPassword' key of secret $_adp_secret_name) before running generate mode."
+                        echo "$DB_SERVER_PREFIX.ADP_GG_DB_USER_PASSWORD=\"<Required>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    fi
+                else
+                    echo "$DB_SERVER_PREFIX.ADP_GG_DB_USER_PASSWORD=\"$RANDOM_EDB_PASSWORD\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                fi
                 echo "" >> ${DB_NAME_USER_PROPERTY_FILE}
         fi
 
         ### -- https://jsw.ibm.com/browse/DBACLD-154816 - <Migration from Mongo to Postgres-edb for ADP>
         #Generating property file (cp4ba_db_name_user.property) for ADP Gitgateway databases
         if [[ $DB_TYPE == "db2"* && "${pattern_cr_arr[@]}" =~ "document_processing_designer" ]]; then
-                tip="## Property for Document Processing Engine (DPE) databases required for Gitgateway ##"
-                note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
-                echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "$note" >> ${DB_NAME_USER_PROPERTY_FILE} 
-                echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
+                # Use external PostgreSQL server prefix if external PostgreSQL is enabled for ADPGG/DICMS
+                if [[ "$EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS" == "true" ]]; then
+                    ADP_DB_SERVER_PREFIX="$EXTERNAL_POSTGRES_SERVER_PREFIX"
+                else
+                    ADP_DB_SERVER_PREFIX="$DB_SERVER_PREFIX"
+                fi
+                
+                if [[ "$EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS" == "true" ]]; then
+                    note="## NOTE: \"${EXTERNAL_POSTGRES_SERVER_PREFIX}\" identifies your external PostgreSQL server for the ADPGG database. All other CP4BA databases use your ${DB_TYPE} server alias \"${DB_SERVER_PREFIX}\". You will need to create this PostgreSQL database using the auto-generated DB scripts before applying the CP4BA Custom Resource. ##"
+                else
+                    note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
+                fi
+                echo "$note" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "## The designated database name for Automation Document Processing. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "$DB_SERVER_PREFIX.ADP_GG_DB_NAME=\"adpggdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "## The designated user name of the database for Automation Document Processing. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "$DB_SERVER_PREFIX.ADP_GG_DB_USER_NAME=\"adpuser\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$ADP_DB_SERVER_PREFIX.ADP_GG_DB_NAME=\"adpggdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                if [[ "$EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS" == "true" ]]; then
+                    echo "## The designated user name of the database for Automation Document Processing." >> ${DB_NAME_USER_PROPERTY_FILE}
+                    echo "$ADP_DB_SERVER_PREFIX.ADP_GG_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    echo "## The designated schema name for the ADP Git Gateway database. Default is the database user name. Provide a custom name if needed." >> ${DB_NAME_USER_PROPERTY_FILE}
+                    echo "$ADP_DB_SERVER_PREFIX.ADP_GG_DB_SCHEMA=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    echo "## The designated password for the user of Automation Document Processing. (Provide the password in plain text or Base64 encoded with {Base64} prefix if it contains special characters.)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    echo "$ADP_DB_SERVER_PREFIX.ADP_GG_DB_USER_PASSWORD=\"{Base64}<yourpassword>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                else
+                    echo "## The designated user name of the database for Automation Document Processing. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    echo "$ADP_DB_SERVER_PREFIX.ADP_GG_DB_USER_NAME=\"adpuser\"" >> ${DB_NAME_USER_PROPERTY_FILE}
 
-                echo "## The designated password for the user of Automation Document Processing. (Notes: DO NOT change the value in the property)" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "$DB_SERVER_PREFIX.ADP_GG_DB_USER_PASSWORD=\"adpuser\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    echo "## The designated password for the user of Automation Document Processing." >> ${DB_NAME_USER_PROPERTY_FILE}
+                    # When enabling Vault on an existing deployment (no prop files), read the live password
+                    # from the existing ADP secret (name resolved from CR, defaulting to ibm-adp-secret).
+                    if [[ "$ENABLE_VAULT_ON_EXIST" == "true" && "$ENABLE_VAULT_ON_EXIST_PROP_TYPE" == "none" ]]; then
+                        _existing_adpgg_pwd=$($CLI_CMD get secret "$_adp_secret_name" -n "$CP4BA_SERVICES_NS" -o jsonpath='{.data.adpggDBPassword}' 2>/dev/null | base64 --decode 2>/dev/null)
+                        if [[ -n "$_existing_adpgg_pwd" ]]; then
+                            echo "$ADP_DB_SERVER_PREFIX.ADP_GG_DB_USER_PASSWORD=\"$_existing_adpgg_pwd\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        else
+                            warning "Could not retrieve adpggDBPassword from secret $_adp_secret_name; you must manually set ${ADP_DB_SERVER_PREFIX}.ADP_GG_DB_USER_PASSWORD in the property file to match the existing database password (found in the 'adpggDBPassword' key of secret $_adp_secret_name) before running generate mode."
+                            echo "$ADP_DB_SERVER_PREFIX.ADP_GG_DB_USER_PASSWORD=\"<Required>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                        fi
+                    else
+                        echo "$ADP_DB_SERVER_PREFIX.ADP_GG_DB_USER_PASSWORD=\"$RANDOM_EDB_PASSWORD\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    fi
+                fi
                 echo "" >> ${DB_NAME_USER_PROPERTY_FILE}
         fi
 
@@ -5778,7 +5983,8 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
                 echo "## The designated database server(s) for the Document Processing Engine Project databases.  Must match the value of \"DB_SERVER_LIST\" defined in cp4ba_db_server.property. Example: \"DBSERVER1,DBSERVER2\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "ADP_PROJECT_DB_SERVER=\"$DB_SERVER_PREFIX,$DB_SERVER_PREFIX\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "## The designated user names for the Document Processing Engine Project databases. Example: \"dbuser1,dbuser2\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-                echo "ADP_PROJECT_DB_USER_NAME=\"acauser,acauser\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## Note: When using postgresql-edb as database type, ADP_PROJECT_DB_USER_NAME will be same as ADP_PROJECT_DB_NAME" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "ADP_PROJECT_DB_USER_NAME=\"proj1,proj2\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "## The designated passwords for the Document Processing Engine Project databases. Example: \"mypwd1,mypwd2\"" >> ${DB_NAME_USER_PROPERTY_FILE}
                 echo "ADP_PROJECT_DB_USER_PASSWORD=\"$RANDOM_EDB_PASSWORD,$RANDOM_EDB_PASSWORD\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             fi
@@ -5829,8 +6035,8 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## Provide the name of the database for DICMS. For example: \"adpggdb\" (Notes: the database name must be lowercase)" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.ADP_GG_DB_NAME=\"adpggdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$DB_SERVER_PREFIX.ADP_GG_DB_CURRENT_SCHEMA=\"<Optional>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-            OPTIONAL_PARAMETERS_LIST+=("${DB_SERVER_PREFIX}.ADP_GG_DB_CURRENT_SCHEMA")
+            echo "## Provide the ADP Git Gateway schema name. Default is the database user name. Provide a custom name if needed." >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$DB_SERVER_PREFIX.ADP_GG_DB_SCHEMA=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## Provide the user name of the database for the ADP Git Gateway of P8Domain. For example: \"dbuser1\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.ADP_GG_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## Provide the password (if password has special characters then Base64 encoded with {Base64} prefix, otherwise use plain text) of the database user for the DICMS of P8Domain." >> ${DB_NAME_USER_PROPERTY_FILE}
@@ -6167,26 +6373,55 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         success "Property file for IBM Business Automation Workflow Runtime has been created.\n"
     fi
 
-    # generate property for Workflow ssistants
+    # generate property for Workflow Assistants
     if [[ "${optional_component_cr_arr[@]}" =~ "workflow_assistant" || "${optional_component_cr_arr[@]}" =~ "workplace_assistant" ]]; then
         # Add user property into user_profile for Workflow Assistant
-        wait_msg "Creating Property file for Workflow Assistant"
+        # WFA_WATSONX_DEPLOYMENT_TYPE was already set interactively in input_information()
+        wait_msg "Creating Property file for Workflow Assistant ($WFA_WATSONX_DEPLOYMENT_TYPE deployment)"
 
         tip="##           USER Property for Workflow Assistant        ##"
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "$tip" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "## Provide the API Key for WatsonX" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "WFA.WATSONX_API_KEY=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
-        echo "## Provide the Project ID of WatsonX" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "WFA.WATSONX_PROJECT_ID=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+        if [[ "$WFA_WATSONX_DEPLOYMENT_TYPE" == "SaaS" ]]; then
+            echo "## Properties for SaaS Deployment (IBM Cloud)" >> ${USER_PROFILE_PROPERTY_FILE}
+            
+            echo "## IBM Cloud API Key for WatsonX.ai SaaS" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "WFA.WATSONX_API_KEY=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
-        echo "## Provide the URL of WatsonX" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "WFA.WATSONX_URL=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## WatsonX.ai SaaS service endpoint URL" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## Example: https://us-south.ml.cloud.ibm.com" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "WFA.WATSONX_URL=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## WatsonX.ai Project ID" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "WFA.WATSONX_PROJECT_ID=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+        else
+            echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## Properties for LWE Deployment (Lightweight Engine)" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "####################################################" >> ${USER_PROFILE_PROPERTY_FILE}
+            
+            echo "## WatsonX.ai LWE cluster URL" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## Example: https://cpd-cluster.company.com" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "WFA.WATSONX_URL=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## WatsonX.ai LWE username" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "WFA.WATSONX_USERNAME=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## WatsonX.ai LWE password" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "WFA.WATSONX_PASSWORD=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## WatsonX.ai LWE version" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## Example: 5.0.0" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "WFA.WATSONX_VERSION=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+        fi
 
         echo "## Flag to run the Workplace Assistant" >> ${USER_PROFILE_PROPERTY_FILE}
         if [[ "${optional_component_cr_arr[@]}" =~ "workplace_assistant" ]]; then
@@ -6202,26 +6437,6 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         else
           echo "WFA.RUN_AUTHORING_AGENT=\"false\"" >> ${USER_PROFILE_PROPERTY_FILE}
         fi
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the CP4D user name." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "WFA.WATSONX_USERNAME=\"<Optional>\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the CP4D token." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "WFA.WATSONX_TOKEN=\"<Optional>\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the CP4D instance ID." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "WFA.WATSONX_INSTANCE_ID=\"<Optional>\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Provide the CP4D version." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "WFA.WATSONX_VERSION=\"<Optional>\"" >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "" >> ${USER_PROFILE_PROPERTY_FILE}
-
-        echo "## Optional - Only required if WATSONX_API_KEY is not set." >> ${USER_PROFILE_PROPERTY_FILE}
-        echo "WFA.WATSONX_PASSWORD=\"<Optional>\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
         echo "## Optional - The ID of the LLM model to use. Default set to meta-llama/llama-3-3-70b-instruct." >> ${USER_PROFILE_PROPERTY_FILE}
@@ -6245,7 +6460,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
         fi
 
-        success "Property file for Workflow Assistant has been created.\n"
+        success "Property file for Workflow Assistant ($WFA_WATSONX_DEPLOYMENT_TYPE deployment) has been created.\n"
     fi
 
     # generate property for AWS
@@ -6454,6 +6669,15 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
 # generate property for Decision Intelligence Client Managed Software (DICMS) database
 if [[ "${pattern_cr_arr[@]}" =~ "decisions_ads" && "$DB_TYPE" = "postgresql-edb" ]]; then
     wait_msg "Creating Property file for Decision Intelligence Client Managed Software"
+    # Resolve DICMS secret names from the live CR; fall back to the operator-created defaults.
+    _dicms_designer_secret_name=$(echo "$cr_output" | ${YQ_CMD} '.spec.datasource_configuration.dc_ads_designer_datasource.database_instance_secret' - 2>/dev/null | sed -e 's/^"//' -e 's/"$//')
+    if [[ -z "$_dicms_designer_secret_name" || "$_dicms_designer_secret_name" == "null" ]]; then
+        _dicms_designer_secret_name="icp4adeploy-ads-designer-postgres-secret"
+    fi
+    _dicms_runtime_secret_name=$(echo "$cr_output" | ${YQ_CMD} '.spec.datasource_configuration.dc_ads_runtime_datasource.database_instance_secret' - 2>/dev/null | sed -e 's/^"//' -e 's/"$//')
+    if [[ -z "$_dicms_runtime_secret_name" || "$_dicms_runtime_secret_name" == "null" ]]; then
+        _dicms_runtime_secret_name="icp4adeploy-ads-runtime-postgres-secret"
+    fi
     # Generating property file (cp4ba_db_name_user.property) when Decision Designer as optional component for DICMS
     if [[ "${optional_component_arr[@]}" =~ "DecisionDesigner" ]]; then
             tip="## Property for Decision Intelligence Client Managed Software(DICMS) with Decision Designer as optional component ##"
@@ -6467,7 +6691,19 @@ if [[ "${pattern_cr_arr[@]}" =~ "decisions_ads" && "$DB_TYPE" = "postgresql-edb"
             echo "## The designated user name of the database for Decision Intelligence Client Managed Software(DICMS)." >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.DICMS_DESIGNER_DB_USER_NAME=\"adsdesigner\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## The designated password for the user of Decision Intelligence Client Managed Software(DICMS)." >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$DB_SERVER_PREFIX.DICMS_DESIGNER_DB_USER_PASSWORD=\"$RANDOM_EDB_PASSWORD\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            # When enabling Vault on an existing deployment (no prop files), read the live password
+            # from the existing DICMS Designer secret so the property file matches the running deployment.
+            if [[ "$ENABLE_VAULT_ON_EXIST" == "true" && "$ENABLE_VAULT_ON_EXIST_PROP_TYPE" == "none" ]]; then
+                _existing_dicms_designer_pwd=$($CLI_CMD get secret "$_dicms_designer_secret_name" -n "$CP4BA_SERVICES_NS" -o jsonpath='{.data.password}' 2>/dev/null | base64 --decode 2>/dev/null)
+                if [[ -n "$_existing_dicms_designer_pwd" ]]; then
+                    echo "$DB_SERVER_PREFIX.DICMS_DESIGNER_DB_USER_PASSWORD=\"$_existing_dicms_designer_pwd\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                else
+                    warning "Could not retrieve password from secret $_dicms_designer_secret_name; you must manually set ${DB_SERVER_PREFIX}.DICMS_DESIGNER_DB_USER_PASSWORD in the property file to match the existing database password (found in the 'password' key of secret $_dicms_designer_secret_name) before running generate mode."
+                    echo "$DB_SERVER_PREFIX.DICMS_DESIGNER_DB_USER_PASSWORD=\"<Required>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                fi
+            else
+                echo "$DB_SERVER_PREFIX.DICMS_DESIGNER_DB_USER_PASSWORD=\"$RANDOM_EDB_PASSWORD\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            fi
             echo "" >> ${DB_NAME_USER_PROPERTY_FILE}
     fi
 
@@ -6483,7 +6719,19 @@ if [[ "${pattern_cr_arr[@]}" =~ "decisions_ads" && "$DB_TYPE" = "postgresql-edb"
             echo "## The designated user name of the database for Decision Intelligence Client Managed Software(DICMS)." >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$DB_SERVER_PREFIX.DICMS_RUNTIME_DB_USER_NAME=\"adsruntime\"" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## The designated password for the user of Decision Intelligence Client Managed Software(DICMS)." >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$DB_SERVER_PREFIX.DICMS_RUNTIME_DB_USER_PASSWORD=\"$RANDOM_EDB_PASSWORD\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            # When enabling Vault on an existing deployment (no prop files), read the live password
+            # from the existing DICMS Runtime secret so the property file matches the running deployment.
+            if [[ "$ENABLE_VAULT_ON_EXIST" == "true" && "$ENABLE_VAULT_ON_EXIST_PROP_TYPE" == "none" ]]; then
+                _existing_dicms_runtime_pwd=$($CLI_CMD get secret "$_dicms_runtime_secret_name" -n "$CP4BA_SERVICES_NS" -o jsonpath='{.data.password}' 2>/dev/null | base64 --decode 2>/dev/null)
+                if [[ -n "$_existing_dicms_runtime_pwd" ]]; then
+                    echo "$DB_SERVER_PREFIX.DICMS_RUNTIME_DB_USER_PASSWORD=\"$_existing_dicms_runtime_pwd\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                else
+                    warning "Could not retrieve password from secret $_dicms_runtime_secret_name; you must manually set ${DB_SERVER_PREFIX}.DICMS_RUNTIME_DB_USER_PASSWORD in the property file to match the existing database password (found in the 'password' key of secret $_dicms_runtime_secret_name) before running generate mode."
+                    echo "$DB_SERVER_PREFIX.DICMS_RUNTIME_DB_USER_PASSWORD=\"<Required>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                fi
+            else
+                echo "$DB_SERVER_PREFIX.DICMS_RUNTIME_DB_USER_PASSWORD=\"$RANDOM_EDB_PASSWORD\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            fi
             echo "" >> ${DB_NAME_USER_PROPERTY_FILE}
     fi
     success "Property file for Decision Intelligence Client Managed Software has been created\n"
@@ -6623,39 +6871,108 @@ fi
 # generate property for Decision Intelligence Client Managed Software (DICMS) database if the database is db2/Oracle/MSSQL
 if [[ "${pattern_cr_arr[@]}" =~ "decisions_ads" && "$DB_TYPE" != "postgresql-edb" ]]; then
     wait_msg "Creating Property file for Decision Intelligence Client Managed Software"
+    # Resolve DICMS secret names from the live CR; fall back to the operator-created defaults.
+    _dicms_designer_secret_name=$(echo "$cr_output" | ${YQ_CMD} '.spec.datasource_configuration.dc_ads_designer_datasource.database_instance_secret' - 2>/dev/null | sed -e 's/^"//' -e 's/"$//')
+    if [[ -z "$_dicms_designer_secret_name" || "$_dicms_designer_secret_name" == "null" ]]; then
+        _dicms_designer_secret_name="icp4adeploy-ads-designer-postgres-secret"
+    fi
+    _dicms_runtime_secret_name=$(echo "$cr_output" | ${YQ_CMD} '.spec.datasource_configuration.dc_ads_runtime_datasource.database_instance_secret' - 2>/dev/null | sed -e 's/^"//' -e 's/"$//')
+    if [[ -z "$_dicms_runtime_secret_name" || "$_dicms_runtime_secret_name" == "null" ]]; then
+        _dicms_runtime_secret_name="icp4adeploy-ads-runtime-postgres-secret"
+    fi
+    
+    # Use external PostgreSQL server prefix if external PostgreSQL is enabled for ADPGG/DICMS
+    if [[ "$EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS" == "true" ]]; then
+        DICMS_DB_SERVER_PREFIX="$EXTERNAL_POSTGRES_SERVER_PREFIX"
+    else
+        DICMS_DB_SERVER_PREFIX="$DB_SERVER_PREFIX"
+    fi
+    
     # Generating property file (cp4ba_db_name_user.property) when Decision Designer as optional component for DICMS
     if [[ "${optional_component_arr[@]}" =~ "DecisionDesigner" ]]; then
         if [[ $DB_TYPE == "db2"* || $DB_TYPE == "oracle" || $DB_TYPE == "sqlserver" ]]; then
-            tip="## Property for Decision Intelligence Client Managed Software(DICMS) with Decision Designer as optional component ##"
-            note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
+            if [[ "$EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS" == "true" ]]; then
+                tip="## Property for Decision Intelligence Client Managed Software(DICMS) with Decision Designer as optional component - using external PostgreSQL for ADPGG/DICMS ##"
+                note="## NOTE: \"${EXTERNAL_POSTGRES_SERVER_PREFIX}\" identifies your external PostgreSQL server for the DICMS Designer database. All other CP4BA databases use your ${DB_TYPE} server alias \"${DB_SERVER_PREFIX}\". You will need to create this PostgreSQL database using the auto-generated DB scripts before applying the CP4BA Custom Resource. ##"
+            else
+                tip="## Property for Decision Intelligence Client Managed Software(DICMS) with Decision Designer as optional component ##"
+                note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
+            fi
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$note" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## The designated database name on the Decision Intelligence Client Managed Software(DICMS) with Decision Designer as optional component." >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$DB_SERVER_PREFIX.DICMS_DESIGNER_DB_NAME=\"adsdesignerdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "## The designated user name of the database for Decision Intelligence Client Managed Software(DICMS)." >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$DB_SERVER_PREFIX.DICMS_DESIGNER_DB_USER_NAME=\"adsdesigner\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "## The designated password for the user of Decision Intelligence Client Managed Software(DICMS)." >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$DB_SERVER_PREFIX.DICMS_DESIGNER_DB_USER_PASSWORD=\"$RANDOM_EDB_PASSWORD\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$DICMS_DB_SERVER_PREFIX.DICMS_DESIGNER_DB_NAME=\"adsdesignerdb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            if [[ "$EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS" == "true" ]]; then
+                echo "## The designated user name of the database for Decision Intelligence Client Managed Software(DICMS)." >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$DICMS_DB_SERVER_PREFIX.DICMS_DESIGNER_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated password for the user of Decision Intelligence Client Managed Software(DICMS). (Provide the password in plain text or Base64 encoded with {Base64} prefix if it contains special characters.)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$DICMS_DB_SERVER_PREFIX.DICMS_DESIGNER_DB_USER_PASSWORD=\"{Base64}<yourpassword>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated schema name for the DICMS Designer database. Default value is \"adsdesigner\". You can change this to match your external PostgreSQL schema." >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$DICMS_DB_SERVER_PREFIX.DICMS_DESIGNER_DB_CURRENT_SCHEMA=\"adsdesigner\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            else
+                echo "## The designated user name of the database for Decision Intelligence Client Managed Software(DICMS)." >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$DICMS_DB_SERVER_PREFIX.DICMS_DESIGNER_DB_USER_NAME=\"adsdesigner\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated password for the user of Decision Intelligence Client Managed Software(DICMS)." >> ${DB_NAME_USER_PROPERTY_FILE}
+                # When enabling Vault on an existing deployment (no prop files), read the live password
+                # from the existing DICMS Designer secret so the property file matches the running deployment.
+                if [[ "$ENABLE_VAULT_ON_EXIST" == "true" && "$ENABLE_VAULT_ON_EXIST_PROP_TYPE" == "none" ]]; then
+                    _existing_dicms_designer_pwd=$($CLI_CMD get secret "$_dicms_designer_secret_name" -n "$CP4BA_SERVICES_NS" -o jsonpath='{.data.password}' 2>/dev/null | base64 --decode 2>/dev/null)
+                    if [[ -n "$_existing_dicms_designer_pwd" ]]; then
+                        echo "$DICMS_DB_SERVER_PREFIX.DICMS_DESIGNER_DB_USER_PASSWORD=\"$_existing_dicms_designer_pwd\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    else
+                        warning "Could not retrieve password from secret $_dicms_designer_secret_name; you must manually set ${DICMS_DB_SERVER_PREFIX}.DICMS_DESIGNER_DB_USER_PASSWORD in the property file to match the existing database password (found in the 'password' key of secret $_dicms_designer_secret_name) before running generate mode."
+                        echo "$DICMS_DB_SERVER_PREFIX.DICMS_DESIGNER_DB_USER_PASSWORD=\"<Required>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    fi
+                else
+                    echo "$DICMS_DB_SERVER_PREFIX.DICMS_DESIGNER_DB_USER_PASSWORD=\"$RANDOM_EDB_PASSWORD\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                fi
+            fi
             echo "" >> ${DB_NAME_USER_PROPERTY_FILE}
         fi
     fi
 
     if [[ "${optional_component_arr[@]}" =~ "DecisionRuntime" ]]; then
         if [[ $DB_TYPE = "db2"* || $DB_TYPE = "oracle" || $DB_TYPE = "sqlserver" ]]; then
-            tip="## Property for Decision Intelligence Client Managed Software(DICMS) with Decision Runtime as optional component ##"
-            note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
+            if [[ "$EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS" == "true" ]]; then
+                tip="## Property for Decision Intelligence Client Managed Software(DICMS) with Decision Runtime as optional component - using external PostgreSQL for ADPGG/DICMS ##"
+                note="## NOTE: \"${EXTERNAL_POSTGRES_SERVER_PREFIX}\" identifies your external PostgreSQL server for the DICMS Runtime database. All other CP4BA databases use your ${DB_TYPE} server alias \"${DB_SERVER_PREFIX}\". You will need to create this PostgreSQL database using the auto-generated DB scripts before applying the CP4BA Custom Resource. ##"
+            else
+                tip="## Property for Decision Intelligence Client Managed Software(DICMS) with Decision Runtime as optional component ##"
+                note="## If you select the ${DB_TYPE} type database then the operator will deploy the Postgres EDB instance, so you won't need to provide DB service/server details and create a database ##"
+            fi
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$tip" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "$note" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "####################################################" >> ${DB_NAME_USER_PROPERTY_FILE}
             echo "## The designated database name on the Decision Intelligence Client Managed Software(DICMS) with Decision Runtime as optional component." >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$DB_SERVER_PREFIX.DICMS_RUNTIME_DB_NAME=\"adsruntimedb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "## The designated user name of the database for Decision Intelligence Client Managed Software(DICMS)." >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$DB_SERVER_PREFIX.DICMS_RUNTIME_DB_USER_NAME=\"adsruntime\"" >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "## The designated password for the user of Decision Intelligence Client Managed Software(DICMS)." >> ${DB_NAME_USER_PROPERTY_FILE}
-            echo "$DB_SERVER_PREFIX.DICMS_RUNTIME_DB_USER_PASSWORD=\"$RANDOM_EDB_PASSWORD\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            echo "$DICMS_DB_SERVER_PREFIX.DICMS_RUNTIME_DB_NAME=\"adsruntimedb\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            if [[ "$EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS" == "true" ]]; then
+                echo "## The designated user name of the database for Decision Intelligence Client Managed Software(DICMS)." >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$DICMS_DB_SERVER_PREFIX.DICMS_RUNTIME_DB_USER_NAME=\"<youruser1>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated password for the user of Decision Intelligence Client Managed Software(DICMS). (Provide the password in plain text or Base64 encoded with {Base64} prefix if it contains special characters.)" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$DICMS_DB_SERVER_PREFIX.DICMS_RUNTIME_DB_USER_PASSWORD=\"{Base64}<yourpassword>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated schema name for the DICMS Runtime database. Default value is \"adsruntime\". You can change this to match your external PostgreSQL schema." >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$DICMS_DB_SERVER_PREFIX.DICMS_RUNTIME_DB_CURRENT_SCHEMA=\"adsruntime\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+            else
+                echo "## The designated user name of the database for Decision Intelligence Client Managed Software(DICMS)." >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "$DICMS_DB_SERVER_PREFIX.DICMS_RUNTIME_DB_USER_NAME=\"adsruntime\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                echo "## The designated password for the user of Decision Intelligence Client Managed Software(DICMS)." >> ${DB_NAME_USER_PROPERTY_FILE}
+                # When enabling Vault on an existing deployment (no prop files), read the live password
+                # from the existing DICMS Runtime secret so the property file matches the running deployment.
+                if [[ "$ENABLE_VAULT_ON_EXIST" == "true" && "$ENABLE_VAULT_ON_EXIST_PROP_TYPE" == "none" ]]; then
+                    _existing_dicms_runtime_pwd=$($CLI_CMD get secret "$_dicms_runtime_secret_name" -n "$CP4BA_SERVICES_NS" -o jsonpath='{.data.password}' 2>/dev/null | base64 --decode 2>/dev/null)
+                    if [[ -n "$_existing_dicms_runtime_pwd" ]]; then
+                        echo "$DICMS_DB_SERVER_PREFIX.DICMS_RUNTIME_DB_USER_PASSWORD=\"$_existing_dicms_runtime_pwd\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    else
+                        warning "Could not retrieve password from secret $_dicms_runtime_secret_name; you must manually set ${DICMS_DB_SERVER_PREFIX}.DICMS_RUNTIME_DB_USER_PASSWORD in the property file to match the existing database password (found in the 'password' key of secret $_dicms_runtime_secret_name) before running generate mode."
+                        echo "$DICMS_DB_SERVER_PREFIX.DICMS_RUNTIME_DB_USER_PASSWORD=\"<Required>\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                    fi
+                else
+                    echo "$DICMS_DB_SERVER_PREFIX.DICMS_RUNTIME_DB_USER_PASSWORD=\"$RANDOM_EDB_PASSWORD\"" >> ${DB_NAME_USER_PROPERTY_FILE}
+                fi
+            fi
             echo "" >> ${DB_NAME_USER_PROPERTY_FILE}
         fi
     fi
@@ -7224,6 +7541,39 @@ function load_property_before_generate(){
 
     EXTERNAL_DB_WFPS_AUTHORING=$(prop_tmp_property_file EXTERNAL_DB_WFPS_AUTHORING_FLAG)
 
+    # Load external PostgreSQL flags for IM, ZEN, BTS, and ADPGG/DICMS
+    tmp_flag=$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_IM_FLAG)
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
+    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
+        EXTERNAL_POSTGRESDB_FOR_IM="true"
+    else
+        EXTERNAL_POSTGRESDB_FOR_IM="false"
+    fi
+
+    tmp_flag=$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_ZEN_FLAG)
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
+    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
+        EXTERNAL_POSTGRESDB_FOR_ZEN="true"
+    else
+        EXTERNAL_POSTGRESDB_FOR_ZEN="false"
+    fi
+
+    tmp_flag=$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_BTS_FLAG)
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
+    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
+        EXTERNAL_POSTGRESDB_FOR_BTS="true"
+    else
+        EXTERNAL_POSTGRESDB_FOR_BTS="false"
+    fi
+
+    tmp_flag=$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS_FLAG)
+    tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
+    if [[ $tmp_flag == "true" || $tmp_flag == "yes" || $tmp_flag == "y" ]]; then
+        EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS="true"
+    else
+        EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS="false"
+    fi
+
     # Change for DBACLD-190482: Mark LDAP SSL params optional if SSL is disabled
     SELECTED_LDAP="No"
     if [[ " ${pattern_cr_arr[@]} " =~ "content" || " ${pattern_cr_arr[@]} " =~ "workflow-runtime" || " ${pattern_cr_arr[@]} " =~ "workstreams" || " ${pattern_cr_arr[@]} " =~ "document_processing" ]]; then
@@ -7295,8 +7645,8 @@ function create_db_script(){
     
 
 
-    # Create db script only if postgres is chosen as an external database
-    if [[ " ${pattern_cr_arr[@]} " =~ " decisions_ads " && "$DB_TYPE" == "postgresql" ]]; then
+    # Create db script when DB_TYPE is postgresql OR when external PostgreSQL is enabled for ADPGG/DICMS
+    if [[ " ${pattern_cr_arr[@]} " =~ " decisions_ads " && ("$DB_TYPE" == "postgresql" || "$EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS" == "true") ]]; then
 
         # Create db script for each optional components chosen
 
@@ -7325,7 +7675,15 @@ function create_db_script(){
                 check_single_quotes_password "$tmp_dbuserpwd" "DICMS_DESIGNER_DB_USER_PASSWORD"
             fi
 
-            create_adsdesignerdb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_db_current_schema_name"
+            # Get DATABASE_TYPE for this server to support mixed database scenarios
+            tmp_database_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file ${tmp_dbservername}.DATABASE_TYPE)")
+            
+            # Source PostgreSQL DICMS script functions if needed for external PostgreSQL DICMS database
+            if [[ "$tmp_database_type" == "postgresql" && "$EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS" == "true" && $DB_TYPE != "postgresql" ]]; then
+                source ${CUR_DIR}/helper/database-sql/postgresql/dicms/create-dicms-dbscript.sh
+            fi
+            
+            create_adsdesignerdb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_db_current_schema_name" "$tmp_database_type"
 
             success "Created the DB SQL statement file for DICMS DESIGNER database\n"
         fi
@@ -7355,7 +7713,15 @@ function create_db_script(){
                 check_single_quotes_password "$tmp_dbuserpwd" "DICMS_RUNTIME_DB_USER_PASSWORD"
             fi
 
-            create_adsruntimedb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_db_current_schema_name"
+            # Get DATABASE_TYPE for this server to support mixed database scenarios
+            tmp_database_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file ${tmp_dbservername}.DATABASE_TYPE)")
+            
+            # Source PostgreSQL DICMS script functions if needed for external PostgreSQL DICMS database
+            if [[ "$tmp_database_type" == "postgresql" && "$EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS" == "true" && $DB_TYPE != "postgresql" ]]; then
+                source ${CUR_DIR}/helper/database-sql/postgresql/dicms/create-dicms-dbscript.sh
+            fi
+            
+            create_adsruntimedb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_db_current_schema_name" "$tmp_database_type"
 
             success "Created the DB SQL statement file for DICMS RUNTIME database\n"
         fi
@@ -8187,11 +8553,12 @@ function create_db_script(){
 
     fi
 
-    if [[ " ${pattern_cr_arr[@]} " =~ " document_processing_designer " && "$DB_TYPE" == "postgresql" ]]; then
+    # Create ADP GITGATEWAY database script when DB_TYPE is postgresql OR when external PostgreSQL is enabled for ADPGG/DICMS
+    if [[ " ${pattern_cr_arr[@]} " =~ " document_processing_designer " && ("$DB_TYPE" == "postgresql" || "$EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS" == "true") ]]; then
             echo "Creating the DB SQL statement file for ADP GITGATEWAY database"
             tmp_dbname="$(prop_db_name_user_property_file ADP_GG_DB_NAME)"
             tmp_dbschemaname=""
-            tmp_db_current_schema_name="$(prop_db_name_user_property_file ADP_GG_DB_CURRENT_SCHEMA)"
+            tmp_db_current_schema_name="$(prop_db_name_user_property_file ADP_GG_DB_SCHEMA)"
             # Remove leading and trailing spaces
             tmp_db_current_schema_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_db_current_schema_name")
 
@@ -8212,7 +8579,15 @@ function create_db_script(){
                 check_single_quotes_password "$tmp_dbuserpwd" "ADP_GG_DB_USER_PASSWORD"
             fi
 
-            create_adpggdb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_dbschemaname"
+            # Get DATABASE_TYPE for this server to support mixed database scenarios
+            tmp_database_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_db_server_property_file ${tmp_dbservername}.DATABASE_TYPE)")
+            
+            # Source PostgreSQL ADP script functions if needed for external PostgreSQL ADPGG database
+            if [[ "$tmp_database_type" == "postgresql" && "$EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS" == "true" && $DB_TYPE != "postgresql" ]]; then
+                source ${CUR_DIR}/helper/database-sql/postgresql/adp/create-adp-dbscript.sh
+            fi
+            
+            create_adpggdb_postgresql_sql_file "$tmp_dbname" "$tmp_dbuser" "$tmp_dbuserpwd" "$tmp_dbservername" "$tmp_dbschemaname" "$tmp_database_type"
 
             success "Created the DB SQL statement file for ADP GITGATEWAY database\n"
     fi
@@ -8913,8 +9288,9 @@ function select_external_postgresdb_for_im_zen(){
             EXTERNAL_POSTGRESDB_FOR_ZEN="true"
             break
         else
-            printf "\x1B[1mDo you want to use an external Postgres DB for IM and Zen \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THE POSTGRESQL DBs BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE${RESET_TEXT}] \x1B[1m for for IM and Zen services in this CP4BA deployment?\x1B[0m (Yes/No, default: No): "
+            printf "\x1B[1mDo you want to use an external Postgres DB for IM and Zen in this CP4BA deployment?\x1B[0m (Yes/No, default: No): "
             printf "\n"
+            printf "[${YELLOW_TEXT}NOTE${RESET_TEXT}: YOU WILL NEED TO CREATE THE POSTGRESQL DBs BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE]\n"
             read -erp "" ans
 
             ans=$(echo "$ans" | tr '[:upper:]' '[:lower:]')
@@ -8950,7 +9326,9 @@ function select_external_postgresdb_for_bts(){
             EXTERNAL_POSTGRESDB_FOR_BTS="true"
             break
         else
-            printf "\x1B[1mDo you want to use an external Postgres DB for BTS \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE${RESET_TEXT}] \x1B[1m for this CP4BA deployment?\x1B[0m (Yes/No, default: No): "
+            printf "\x1B[1mDo you want to use an external Postgres DB for BTS in this CP4BA deployment?\x1B[0m (Yes/No, default: No): "
+            printf "\n"
+            printf "[${YELLOW_TEXT}NOTE${RESET_TEXT}: YOU WILL NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE]\n"
             read -erp "" ans
             ans=$(echo "$ans" | tr '[:upper:]' '[:lower:]')
             case "$ans" in
@@ -8960,6 +9338,38 @@ function select_external_postgresdb_for_bts(){
                 ;;
             "n"|"no"|"")
                 EXTERNAL_POSTGRESDB_FOR_BTS="false"
+                break
+                ;;
+            *)
+                printf '%b\n' "Answer must be \"Yes\" or \"No\"\n"
+                ;;
+            esac
+        fi
+
+    done
+}
+
+function select_external_postgresdb_for_adpgg_dicmis(){
+    printf "\n"
+    echo ""
+    while true; do
+        if skip_edb; then
+            printf "\x1B[1mFor this ${VERSION_TO_SKIP_EDB} version, you must use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THE POSTGRESQL DBs BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE${RESET_TEXT}] \x1B[1m for ADPGG and DICMS in this CP4BA deployment.\x1B[0m"
+            printf "\n"
+            EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS="true"
+            break
+        else
+            printf "\x1B[1mDo you want to use an external Postgres DB for ADPGG and DICMS in this CP4BA deployment?\x1B[0m\n"
+            printf "[${YELLOW_TEXT}NOTE${RESET_TEXT}: IF YES, DB SCRIPTS WILL BE AUTO-GENERATED. YOU WILL NEED TO CREATE THE POSTGRESQL DBs USING THESE SCRIPTS BEFORE APPLYING THE CP4BA CUSTOM RESOURCE. IF NO (DEFAULT), CNPG (CloudNativePG) WILL BE USED FOR ADPGG AND DICMS.]\n"
+            read -erp "Enter your choice (Yes for external PG/No for CNPG, default: No): " ans
+            ans=$(echo "$ans" | tr '[:upper:]' '[:lower:]')
+            case "$ans" in
+            "y"|"yes")
+                EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS="true"
+                break
+                ;;
+            "n"|"no"|"")
+                EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS="false"
                 break
                 ;;
             *)
@@ -8998,7 +9408,7 @@ function generate_sample_network_policies(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to generate the network policy templates for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Starting from $CP4BA_RELEASE_BASE, the CP4BA operators no longer install network policies automatically. If you want the operators to generate network policies from a set of templates, select Yes. You can install the network policies by running a script after the CP4BA Deployment is installed. If you select No, then no network policies will be generated.)${RESET_TEXT} (Yes/No, default: No):" 
+        printf "\x1B[1mDo you want to generate the network policy templates for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Starting from 25.0.0, the CP4BA operators no longer install network policies automatically. If you want the operators to generate network policies from a set of templates, select Yes. You can install the network policies by running a script after the CP4BA Deployment is installed. If you select No, then no network policies will be generated.)${RESET_TEXT} (Yes/No, default: No):" 
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -9160,6 +9570,34 @@ function select_ldap_type(){
     msgRed "You can change the parameter \"LDAP_SSL_ENABLED\" in the property file \"$LDAP_PROPERTY_FILE\" later. \"LDAP_SSL_ENABLED\" is \"TRUE\" by default."
 }
 
+function select_wfa_deployment_type(){
+    printf "\n"
+    printf "\x1B[1mSelect the WatsonX.ai deployment type for Workplace Assistant and/or Workflow Authoring Assistant:\x1B[0m\n"
+    printf "\n"
+    printf "  1) IBM SaaS (IBM Cloud)\n"
+    printf "  2) Lightweight Engine (LWE)\n"
+    printf "\n"
+    while true; do
+        printf "Enter a valid option [1 to 2, default: 1]: "
+        read -erp "" ans
+        case "$ans" in
+            "1"|"")
+                WFA_WATSONX_DEPLOYMENT_TYPE="SaaS"
+                info "Selected: IBM SaaS deployment"
+                break
+                ;;
+            "2")
+                WFA_WATSONX_DEPLOYMENT_TYPE="LWE"
+                info "Selected: Lightweight Engine (LWE) deployment"
+                break
+                ;;
+            *)
+                echo "Invalid option \"$ans\". Please enter 1 or 2."
+                ;;
+        esac
+    done
+}
+
 function select_profile_type(){
     printf "\n"
     COLUMNS=12
@@ -9203,12 +9641,11 @@ function select_profile_type(){
 function select_db_type(){
     printf "\n"
     COLUMNS=12
-    info "\x1B[1m${YELLOW_TEXT}NOTE: \"EDB Postgres deployed by the CP4BA Operator\" option is not supported in "$VERSION_TO_SKIP_EDB". Similar option will be available in the upcoming iFix and next release.\x1B[0m${RESET_TEXT}"
     printf '%b\n' "\x1B[1mWhat is the Database type that is used for this deployment? \x1B[0m"
     if [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "document_processing" ]]; then
         # if [[ $PROFILE_TYPE == "small" ]]; then
         ## -- https://jsw.ibm.com/browse/DBACLD-170077 <updating the name of the DB type of PostgreSQL>
-        options=("IBM Db2 Database" "IBM Db2 HADR" "Amazon RDS for Db2" "Amazon RDS for Db2 HADR" "External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("IBM Db2 Database" "IBM Db2 HADR" "Amazon RDS for Db2" "Amazon RDS for Db2 HADR" "External PostgreSQL" "IBM Cloud Native Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 6]: '
         # else
         #     options=("IBM Db2 Database" "PostgreSQL")
@@ -9216,7 +9653,7 @@ function select_db_type(){
         # fi
     elif [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-process-service" && "${#PATTERNS_CR_SELECTED[@]}" -eq "1" ]]; then
         # if [[ $PROFILE_TYPE == "small" ]]; then
-        options=("External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("External PostgreSQL" "IBM Cloud Native Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 2]: '
         # else
         #     options=("PostgreSQL")
@@ -9224,7 +9661,7 @@ function select_db_type(){
         # fi
     elif [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-process-service" && " ${PATTERNS_CR_SELECTED[@]} " =~ "decisions" && "${#PATTERNS_CR_SELECTED[@]}" -eq "2" ]]; then
         # if [[ $PROFILE_TYPE == "small" ]]; then
-        options=("External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("External PostgreSQL" "IBM Cloud Native Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 2]: '
         # else
         #     options=("PostgreSQL")
@@ -9232,7 +9669,7 @@ function select_db_type(){
         # fi
     elif [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-process-service" && " ${PATTERNS_CR_SELECTED[@]} " =~ "content" && "${#PATTERNS_CR_SELECTED[@]}" -eq "2" ]]; then
         # if [[ $PROFILE_TYPE == "small" ]]; then
-        options=("External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("External PostgreSQL" "IBM Cloud Native Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 2]: '
         # else
         #     options=("PostgreSQL")
@@ -9240,7 +9677,7 @@ function select_db_type(){
         # fi
     elif [[ ("${PATTERNS_CR_SELECTED[@]}" =~ "workflow-authoring" || " ${optional_component_cr_arr[@]}" =~ "app_designer" || " ${optional_component_cr_arr[@]}" =~ "ads_designer") && " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-process-service" ]]; then
         # if [[ $PROFILE_TYPE == "small" ]]; then
-        options=("IBM Db2 Database" "IBM Db2 HADR" "Amazon RDS for Db2" "Amazon RDS for Db2 HADR" "Oracle" "Microsoft SQL Server" "External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("IBM Db2 Database" "IBM Db2 HADR" "Amazon RDS for Db2" "Amazon RDS for Db2 HADR" "Oracle" "Microsoft SQL Server" "External PostgreSQL" "IBM Cloud Native Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 8]: '
         # else
         #     options=("IBM Db2 Database" "Oracle" "Microsoft SQL Server" "PostgreSQL")
@@ -9248,7 +9685,7 @@ function select_db_type(){
         # fi
     elif [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-process-service" && " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-runtime" && "${#PATTERNS_CR_SELECTED[@]}" -eq "3" ]]; then
         # if [[ $PROFILE_TYPE == "small" ]]; then
-        options=("External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("External PostgreSQL" "IBM Cloud Native Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 2]: '
         # else
         #     options=("PostgreSQL")
@@ -9256,7 +9693,7 @@ function select_db_type(){
         # fi
     else
         # if [[ $PROFILE_TYPE == "small" ]]; then
-        options=("IBM Db2 Database" "IBM Db2 HADR" "Amazon RDS for Db2" "Amazon RDS for Db2 HADR" "Oracle" "Microsoft SQL Server" "External PostgreSQL" "EDB Postgres (deployed by the CP4BA Operator)")
+        options=("IBM Db2 Database" "IBM Db2 HADR" "Amazon RDS for Db2" "Amazon RDS for Db2 HADR" "Oracle" "Microsoft SQL Server" "External PostgreSQL" "IBM Cloud Native Postgres (deployed by the CP4BA Operator)")
         PS3='Enter a valid option [1 to 8]: '
         # else
         #     options=("IBM Db2 Database" "Oracle" "Microsoft SQL Server" "PostgreSQL")
@@ -9264,13 +9701,13 @@ function select_db_type(){
         # fi
     fi
 
-    #DBACLD-194974: Remove the "EDB Postgres (deployed by the CP4BA Operator)" option out of options when skip_edb returns 0
+    #DBACLD-194974: Remove the "IBM Cloud Native Postgres (deployed by the CP4BA Operator)" option out of options when skip_edb returns 0
     if skip_edb; then
         # DBACDL-226283: Remove all the database options except "External PostgreSQL" for all patterns.
         #DBACLD-231157: Allow other DB-types such as DB2, Oracle, external PG, MSSQL except for EDB
         new_options_2=()
         for option in "${options[@]}"; do
-            if [[ "$option" != "EDB Postgres (deployed by the CP4BA Operator)" ]]; then
+            if [[ "$option" != "IBM Cloud Native Postgres (deployed by the CP4BA Operator)" ]]; then
                 new_options_2+=("$option")
             fi
         done
@@ -9311,13 +9748,19 @@ function select_db_type(){
                 DB_TYPE="postgresql"
                 break
                 ;;
-            "EDB Postgres (deployed by the CP4BA Operator)")
+            "IBM Cloud Native Postgres (deployed by the CP4BA Operator)")
                 DB_TYPE="postgresql-edb"
                 break
                 ;;
             *) echo "invalid option $REPLY";;
         esac
     done
+
+    # Ask user if they want to use external PostgreSQL for ADPGG/DICMS when using non-PostgreSQL databases
+    # Only ask when document_processing or decisions patterns are selected (these patterns require PostgreSQL for ADPGG/DICMS)
+    if [[ ($DB_TYPE == "db2" || $DB_TYPE == "db2hadr" || $DB_TYPE == "db2rds" || $DB_TYPE == "db2rdshadr" || $DB_TYPE == "oracle" || $DB_TYPE == "sqlserver") && (" ${PATTERNS_CR_SELECTED[@]} " =~ "document_processing" || " ${PATTERNS_CR_SELECTED[@]} " =~ "decisions") ]]; then
+        select_external_postgresdb_for_adpgg_dicmis
+    fi
 
     if [[ $DB_TYPE != "postgresql-edb" ]]; then
         msgRed "You can change the parameter \"DATABASE_SSL_ENABLE\" in the property file \"$DB_SERVER_INFO_PROPERTY_FILE\" later. \"DATABASE_SSL_ENABLE\" is \"TRUE\" by default."
@@ -9515,6 +9958,10 @@ function input_information(){
         select_baw_only
     fi
     select_optional_component
+    # Ask WatsonX deployment type for workflow_assistant or workplace_assistant after optional component selection
+    if [[ "${optional_component_cr_arr[@]}" =~ "workflow_assistant" || "${optional_component_cr_arr[@]}" =~ "workplace_assistant" ]]; then
+        select_wfa_deployment_type
+    fi
     # whether wfps authoring require LDAP
     if [[ "${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" ]]; then
         select_ldap_type_for_wfps_authoring
@@ -9541,11 +9988,6 @@ function input_information(){
     if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]]; then
         select_fips_enable
     fi
-    #DBACLD-231157: Add logic to display external PostgreSQL message for ADP/ADS components
-    if [[ (" ${pattern_cr_arr[@]}" =~ "decisions_ads" || " ${pattern_cr_arr[@]}" =~ "document_processing") && "$DB_TYPE" != "postgresql" ]]; then
-        adp_ads_ext_pg_message "property" "Decision Intelligence Client Managed Software and/or IBM Automation Document Processing"
-    fi
-
     
     if  [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]]; then
         # DBACLD-185209: Vault implementation.  Ask if user want to enable Vault integration
@@ -9567,7 +10009,16 @@ function input_information(){
         
         #DBACLD-194974: Combine IM/Zen question for ext. PG.  Ask regardless of DB_TYPE 
         #DBACLD-222678: We need to ask the question about PG for IM/Zen for all the DB types instead of only when external PostgreSQL is selected, as even for non-PostgreSQL DB types, users may still want to use external PostgreSQL for IM/Zen if they want to have a separate DB for IM/Zen other than the main DB for other CP4BA components.
-        select_external_postgresdb_for_im_zen
+        # The scenarios where external Postgres can be used for CPFS is
+        # CP4BA and CPFS use CNPG
+        # CP4BA uses external Postgres and CPFS uses CNPG
+        # CP4BA uses external Postgres and CPFS uses external Postgres
+        # CP4BA uses a non Postgres flavor DB type (DB2 , Oracle , MSSQL ) and CPFS uses CNPG
+        # CP4BA uses a non Postgres flavor DB type (DB2 , Oracle , MSSQL ) and CPFS uses external Postgres
+        # This change was made once we started supporting CNPG -> https://jsw.ibm.com/browse/DBACLD-241273
+        if [[ $DB_TYPE != "postgresql-edb" ]]; then
+            select_external_postgresdb_for_im_zen
+        fi
 
         # Create Secret/configMap for BTS metastore external Postgres DB
         containsElement "decisions_ads" "${pattern_cr_arr[@]}"
@@ -9576,7 +10027,17 @@ function input_information(){
         if [[ $ads_Val -eq 0 || " ${pattern_cr_arr[@]} " =~ "workflow-authoring" || " ${pattern_cr_arr[@]} " =~ "document_processing" || " ${pattern_cr_arr[@]} " =~ "application" || " ${optional_component_cr_arr[@]} " =~ "bai" ]]; then
             ### <https://jsw.ibm.com/browse/DBACLD-217809> - We  prompt the user to ask if they want to use external PostgreSQL for Zen and IM when external PostgreSQL is selected.
                 #DBACLD-194974: Combine IM/Zen question for ext. PG.  Ask regardless of DB_TYPE 
-            select_external_postgresdb_for_bts
+
+            # The scenarios where external Postgres can be used for CPFS is
+            # CP4BA and CPFS use CNPG
+            # CP4BA uses external Postgres and CPFS uses CNPG
+            # CP4BA uses external Postgres and CPFS uses external Postgres
+            # CP4BA uses a non Postgres flavor DB type (DB2 , Oracle , MSSQL ) and CPFS uses CNPG
+            # CP4BA uses a non Postgres flavor DB type (DB2 , Oracle , MSSQL ) and CPFS uses external Postgres
+            # This change was made once we started supporting CNPG -> https://jsw.ibm.com/browse/DBACLD-241273
+            if [[ $DB_TYPE != "postgresql-edb" ]]; then
+                select_external_postgresdb_for_bts
+            fi
 
             if [[ " ${pattern_cr_arr[@]} " =~ "workflow-authoring" || " ${pattern_cr_arr[@]} " =~ "workflow-runtime" || " ${optional_component_cr_arr[@]} " =~ "bai" ]]; then
                 select_external_cert_opensearch_kafka
@@ -10612,7 +11073,7 @@ function validate_prerequisites(){
         rm -rf ${im_external_db_cert_folder}/clientkey.pk8 2>&1 </dev/null
         openssl pkcs8 -topk8 -outform DER -in $postgres_clientkeyfile -out ${im_external_db_cert_folder}/clientkey.pk8 -nocrypt 2>&1 </dev/null
 
-        output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${im_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
+        output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.13.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${im_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
         retVal_verify_db_tmp=$?
         connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
         if [[ ! -z $connection_time ]]; then
@@ -10620,7 +11081,7 @@ function validate_prerequisites(){
         fi
 
         [[ retVal_verify_db_tmp -ne 0 ]] && \
-        warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode verify-ca -ca $postgres_cafile -clientkey ${im_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile" && \
+        warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.13.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode verify-ca -ca $postgres_cafile -clientkey ${im_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile" && \
         fail "Unable to connect to database \"$dbname\" on database server \"$dbserver\", please check the configuration again."
         [[ retVal_verify_db_tmp -eq 0 ]] && \
         success "Checked DB connection for \"$dbname\" on database server \"$dbserver\", PASSED!"
@@ -10652,7 +11113,7 @@ function validate_prerequisites(){
         rm -rf ${zen_external_db_cert_folder}/clientkey.pk8 2>&1 </dev/null
         openssl pkcs8 -topk8 -outform DER -in $postgres_clientkeyfile -out ${zen_external_db_cert_folder}/clientkey.pk8 -nocrypt 2>&1 </dev/null
 
-        output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${zen_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
+        output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.13.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${zen_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
         retVal_verify_db_tmp=$?
         connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
         if [[ ! -z $connection_time ]]; then
@@ -10660,7 +11121,7 @@ function validate_prerequisites(){
         fi
 
         [[ retVal_verify_db_tmp -ne 0 ]] && \
-        warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode verify-ca -ca $postgres_cafile -clientkey ${zen_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile" && \
+        warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.13.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode verify-ca -ca $postgres_cafile -clientkey ${zen_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile" && \
         fail "Unable to connect to database \"$dbname\" on database server \"$dbserver\", please check the configuration again."
         [[ retVal_verify_db_tmp -eq 0 ]] && \
         success "Checked DB connection for \"$dbname\" on database server \"$dbserver\", PASSED!"
@@ -10692,7 +11153,7 @@ function validate_prerequisites(){
         rm -rf ${bts_external_db_cert_folder}/clientkey.pk8 2>&1 </dev/null
         openssl pkcs8 -topk8 -outform DER -in $postgres_clientkeyfile -out ${bts_external_db_cert_folder}/clientkey.pk8 -nocrypt 2>&1 </dev/null
 
-        output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${bts_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
+        output=$($JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp "${DB_JDBC_NAME}/postgresql-42.7.13.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd $dbuserpwd -sslmode verify-ca -ca $postgres_cafile -clientkey ${bts_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile 2>&1)
         retVal_verify_db_tmp=$?
         connection_time=$(echo "$output" | awk -F 'Round Trip time: ' '{print $2}' | awk '{print $1}')
         if [[ ! -z $connection_time ]]; then
@@ -10700,7 +11161,7 @@ function validate_prerequisites(){
         fi
 
         [[ retVal_verify_db_tmp -ne 0 ]] && \
-        warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.11.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode verify-ca -ca $postgres_cafile -clientkey ${bts_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile" && \
+        warning "Execute: $JAVA_CMD -Duser.language=$CP4BA_AUTO_LANGUAGE -Duser.country=$CP4BA_AUTO_REGION -Dcom.ibm.jsse2.overrideDefaultTLS=true -Djavax.net.ssl.trustStoreType=PKCS12 -cp \"${DB_JDBC_NAME}/postgresql-42.7.13.jar:${DB_CONNECTION_JAR_PATH}/PostgresJDBCConnection.jar\" PostgresConnection -h $dbserver -p $dbport -db $dbname -u $dbuser -pwd ****** -sslmode verify-ca -ca $postgres_cafile -clientkey ${bts_external_db_cert_folder}/clientkey.pk8 -clientcert $postgres_clientcertfile" && \
         fail "Unable to connect to database \"$dbname\" on database server \"$dbserver\", please check the configuration again."
         [[ retVal_verify_db_tmp -eq 0 ]] && \
         success "Checked DB connection for \"$dbname\" on database server \"$dbserver\", PASSED!"
@@ -10744,7 +11205,14 @@ function update_components_mode(){
     select_pattern
     select_optional_component
 
-    
+    # This array (current_cr_optional_components_array) stores the current optional components deployed.
+    # Only ask for the WatsonX deployment type (SaaS or LWE) if workflow_assistant or workplace_assistant
+    # was not already present in the CR but has been newly selected during the update.
+    if ! [[ " ${current_cr_optional_components_array[@]} " =~ "workflow_assistant" || " ${current_cr_optional_components_array[@]} " =~ "workplace_assistant" ]]; then
+        if [[ "${optional_component_cr_arr[@]}" =~ "workflow_assistant" || "${optional_component_cr_arr[@]}" =~ "workplace_assistant" ]]; then
+            select_wfa_deployment_type
+        fi
+    fi
 
     # This array (current_cr_deployment_patterns_array) stores the current patterns deployed , and we should only ask for the list of object stores numbers if content and document processing was added later
     # This variable gets set in the function retrieve_current_custom_resource_file function
@@ -10806,6 +11274,16 @@ function update_components_mode(){
             content_os_number=0
         fi
     fi
+
+ 	# If document_processing (ADP) and/or decisions_ads (DICMS) were in the current CR but both have been removed during update components, 
+    # reset the external-postgres-for-ADPGG/DICMS flag so that the postgresql-external block is not regenerated. This handles non-Postgres primary DB deployments
+    # (e.g. db2, oracle, mssql) where the flag could legitimately be true from the initial deployment.
+    if [[ " ${current_cr_deployment_patterns_array[@]} " =~ "document_processing" || " ${current_cr_deployment_patterns_array[@]} " =~ "decisions_ads" ]]; then
+        if ! [[ " ${pattern_cr_arr[@]} " =~ "document_processing" || " ${pattern_cr_arr[@]} " =~ "decisions_ads" ]]; then
+            EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS="false"
+        fi
+    fi
+	
     create_temp_property_file
 }
 
@@ -10899,11 +11377,7 @@ if [[ $RUNTIME_MODE == "property" ]]; then
 
     create_property_file
 
-    #DBACLD-231157: # Remove misleading EDB note for ADP/ADS when DB_TYPE is not external PostgreSQL
-    if [[ (" ${pattern_cr_arr[@]}" =~ "decisions_ads" || " ${pattern_cr_arr[@]}" =~ "document_processing") && "$DB_TYPE" != "postgresql" ]]; then
-        adp_ads_ext_pg_message "property" "" "true"
-    fi
-    
+   
     # IF the variable UPDATE_COMPONENTS is set that means we are trying to update the list of deployment patterns or optional components 
     if [[ ! -z $UPDATE_COMPONENTS ]]; then
         update_property_files
@@ -10962,6 +11436,9 @@ if [[ $RUNTIME_MODE == "generate" ]]; then
             # Import function for DB Script
                 source ${CUR_DIR}/helper/database-sql/${DB_TYPE}/adp/create-adp-dbscript.sh
             fi
+            
+            # Note: PostgreSQL ADP script functions for ADPGG will be sourced later, right before they're needed
+            # to avoid overwriting DB2/Oracle/SQL Server function definitions
             # check whether user already input value for the <Required>
         fi
 
@@ -10978,11 +11455,7 @@ if [[ $RUNTIME_MODE == "generate" ]]; then
     if (( db_server_number > 0 )); then
         generate_create_secret_script
     fi
-    
-    #DBACLD-231157: Add logic to display external PostgreSQL message for ADP/ADS components
-    if [[ (" ${pattern_cr_arr[@]}" =~ "decisions_ads" || " ${pattern_cr_arr[@]}" =~ "document_processing") && "$DB_TYPE" != "postgresql" ]]; then
-        adp_ads_ext_pg_message "generate" "Decision Intelligence Client Managed Software and/or IBM Automation Document Processing"
-    fi  
+
 fi
 
 ###############################

@@ -43,9 +43,13 @@ function case_migration_replace(){
     MIG_PROP_TEMP=$(${YQ_CMD} ".$param_in1" ${CASE_MIGRATION_PROPERTY_FILE})
     #printf '%b\n' "$MIG_PROP_TEMP"
     if [ "$param_q1" = "q" ] ;
-    then 
+    then
         ${YQ_CMD} -i ".$param_out1 = \"${MIG_PROP_TEMP}\" | .$param_out1 style=\"double\"" ${CP4A_PATTERN_FILE_BAK_TEMP}
-    else 
+    elif [ "$param_q1" = "b" ] ;
+    then
+        # Write as a YAML boolean (not a quoted string)
+        ${YQ_CMD} -i ".$param_out1 = (\"${MIG_PROP_TEMP}\" | . == \"true\")" ${CP4A_PATTERN_FILE_BAK_TEMP}
+    else
         ${YQ_CMD} -i ".$param_out1 = \"${MIG_PROP_TEMP}\"" ${CP4A_PATTERN_FILE_BAK_TEMP}
     fi
     
@@ -74,9 +78,10 @@ function case_migration_apply_pattern_cr() {
     #Retrieve TO OS Number 
     TOS_NUM="$(prop_tmp_property_file TOS_NUM)"
     #printf '%b\n' "Tos Number fromn file is : $TOS_NUM"
-    ## Removing the initialize_configuration Section from CR 
+    ## Removing the initialize_configuration Section from CR
     ## This section is not needed because you are reusing the existing FileNet domain, Object stores, and LDAP.
     ${YQ_CMD} -i 'del(.spec.initialize_configuration)' "${CP4A_PATTERN_FILE_BAK_TEMP}"
+    ${YQ_CMD} -i 'del(.spec.ic_ldap_creation)' "${CP4A_PATTERN_FILE_BAK_TEMP}"
     
     # Updating icn datasource value 
     ${SED_COMMAND_FORMAT} ${CASE_MIGRATION_PROPERTY_FILE}
@@ -280,7 +285,7 @@ function case_migration_apply_pattern_cr() {
             case_migration_replace "case.tos_list[$j].connection_point_name" "spec.workflow_authoring_configuration.case.tos_list[$j].connection_point_name" "q"
             case_migration_replace "case.tos_list[$j].desktop_id" "spec.workflow_authoring_configuration.case.tos_list[$j].desktop_id" "q"
             case_migration_replace "case.tos_list[$j].target_environment_name" "spec.workflow_authoring_configuration.case.tos_list[$j].target_environment_name" "q"
-            case_migration_replace "case.tos_list[$j].is_default" "spec.workflow_authoring_configuration.case.tos_list[$j].is_default" 
+            case_migration_replace "case.tos_list[$j].is_default" "spec.workflow_authoring_configuration.case.tos_list[$j].is_default" "b"
             temp_flag=$(${YQ_CMD} ".spec.workflow_authoring_configuration.case.tos_list[$j].is_default" ${CP4A_PATTERN_FILE_BAK_TEMP})
             if [[ "$temp_flag" = true ]]; then
                 prop_flag=true;
@@ -335,7 +340,7 @@ function case_migration_apply_pattern_cr() {
             case_migration_replace "case.tos_list[$j].connection_point_name" "spec.baw_configuration[0].case.tos_list[$j].connection_point_name" "q"
             case_migration_replace "case.tos_list[$j].desktop_id" "spec.baw_configuration[0].case.tos_list[$j].desktop_id" "q"
             case_migration_replace "case.tos_list[$j].target_environment_name" "spec.baw_configuration[0].case.tos_list[$j].target_environment_name" "q"
-            case_migration_replace "case.tos_list[$j].is_default" "spec.baw_configuration[0].case.tos_list[$j].is_default"
+            case_migration_replace "case.tos_list[$j].is_default" "spec.baw_configuration[0].case.tos_list[$j].is_default" "b"
             temp_flag=$(${YQ_CMD} ".spec.baw_configuration[0].case.tos_list[$j].is_default" ${CP4A_PATTERN_FILE_BAK_TEMP})
             if [[ "$temp_flag" = true ]]; then
                 prop_flag=true;
@@ -408,11 +413,10 @@ then
             exit 1
         fi
         #Validate the property file for Syntax errors
-        ${YQ_CMD} 'true' $CASE_MIGRATION_PROPERTY_FILE > /dev/null
-        then 
-            error "Invalid Property File Syntax (YAML): \"${CASE_MIGRATION_PROPERTY_FILE}\", correct the synatx and rerun the migration"
+        if ! ${YQ_CMD} 'true' $CASE_MIGRATION_PROPERTY_FILE > /dev/null 2>&1 ; then
+            error "Invalid Property File Syntax (YAML): \"${CASE_MIGRATION_PROPERTY_FILE}\", correct the syntax and rerun the migration"
             exit 1
-        fi 
+        fi
     else 
         error "Migration Property File not Found: \"${CASE_MIGRATION_PROPERTY_FILE}\",  rerun the cp4a-prequisites.sh to create the file"   
         exit 1
@@ -421,8 +425,7 @@ then
         
     ##########################################
     # Migration Function to do changes on cr based on migration requirement
-	# Import common utilities and environment variables
-	CASE_MIGRATION_PROPERTY_FILE="$(prop_tmp_property_file CASE_MIGRATION_PROPERTY_FILE)"
+    # Import common utilities and environment variables
     source ${CUR_DIR}/helper/common.sh $TARGET_PROJECT_NAME
     case_migration_apply_pattern_cr  
     printf '%b\n' "Generated CR is $CP4A_PATTERN_FILE_BAK"

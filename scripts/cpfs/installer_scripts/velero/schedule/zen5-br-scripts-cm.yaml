@@ -375,13 +375,13 @@ data:
         info "Waiting for zenservice $ZENSERVICE_NAME to complete in namespace $ZEN_NAMESPACE."
         zenservice_exists=$(oc get zenservice $ZENSERVICE_NAME -n $ZEN_NAMESPACE --no-headers || echo fail)
         if [[ $zenservice_exists != "fail" ]]; then
-            completed=$(oc get zenservice $ZENSERVICE_NAME -n $ZEN_NAMESPACE -o jsonpath='{.status.progress}')
+            completed=$(oc get zenservice $ZENSERVICE_NAME -n $ZEN_NAMESPACE -o jsonpath='{.status.progress}{.status.Progress}')
             retry_count=60
             while [[ $completed != "100%" ]] && [[ $retry_count > 0 ]]
             do
                 info "Wait for zenservice $ZENSERVICE_NAME to complete. Completion % is $completed. Try again in 60s."
                 sleep 60
-                completed=$(oc get zenservice $ZENSERVICE_NAME -n $ZEN_NAMESPACE -o jsonpath='{.status.progress}')
+                completed=$(oc get zenservice $ZENSERVICE_NAME -n $ZEN_NAMESPACE -o jsonpath='{.status.progress}{.status.Progress}')
                 retry_count=$((retry_count-1))
             done
 

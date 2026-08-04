@@ -364,7 +364,6 @@ EOF
   success "Created Operational Decision Manager secret YAML template\n"
 }
 
-
 # K8s secret template function to create the ODM keystore password secret
 function create_odm_keystore_password_secret_template(){
   local password=$1 
@@ -812,34 +811,44 @@ EOF
 }
 
 function create_workflow_assistant_secret_template(){
-  watsonx_api_key="$(prop_user_profile_property_file WFA.WATSONX_API_KEY)"
-  watsonx_api_key=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_api_key")
-
-  watsonx_project_id="$(prop_user_profile_property_file WFA.WATSONX_PROJECT_ID)"
-  watsonx_project_id=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_project_id")
+  # Get WFA deployment type selected during property mode (stored in TEMPORARY_PROPERTY_FILE)
+  watsonx_deployment_type="$(prop_tmp_property_file WFA_WATSONX_DEPLOYMENT_TYPE)"
+  watsonx_deployment_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_deployment_type")
+  watsonx_deployment_type=$(echo "$watsonx_deployment_type" | tr '[:lower:]' '[:upper:]')
 
   watsonx_token="$(prop_user_profile_property_file WFA.WATSONX_TOKEN)"
   watsonx_token=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_token")
-
-  watsonx_url="$(prop_user_profile_property_file WFA.WATSONX_URL)"
-  watsonx_url=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_url")
-
-  if [[ "<Optional>" == $watsonx_token ]]; then
-    watsonx_token=""
-  fi
+  if [[ "<Optional>" == "$watsonx_token" ]]; then watsonx_token=""; fi
 
   watsonx_password="$(prop_user_profile_property_file WFA.WATSONX_PASSWORD)"
   watsonx_password=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_password")
+  if [[ "<Required>" == "$watsonx_password" || "<Optional>" == "$watsonx_password" ]]; then watsonx_password=""; fi
 
-  if [[ "<Optional>" == $watsonx_password ]]; then
-    watsonx_password=""
-  fi
+  watsonx_api_key="$(prop_user_profile_property_file WFA.WATSONX_API_KEY)"
+  watsonx_api_key=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_api_key")
+  if [[ "<Required>" == "$watsonx_api_key" ]]; then watsonx_api_key=""; fi
+
+  watsonx_project_id="$(prop_user_profile_property_file WFA.WATSONX_PROJECT_ID)"
+  watsonx_project_id=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_project_id")
+  if [[ "<Required>" == "$watsonx_project_id" ]]; then watsonx_project_id=""; fi
+
+  watsonx_url="$(prop_user_profile_property_file WFA.WATSONX_URL)"
+  watsonx_url=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_url")
+  if [[ "<Required>" == "$watsonx_url" ]]; then watsonx_url=""; fi
+
+  # LWE-specific fields
+  watsonx_username="$(prop_user_profile_property_file WFA.WATSONX_USERNAME)"
+  watsonx_username=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_username")
+  if [[ "<Required>" == "$watsonx_username" ]]; then watsonx_username=""; fi
+
+  watsonx_version="$(prop_user_profile_property_file WFA.WATSONX_VERSION)"
+  watsonx_version=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_version")
+  if [[ "<Required>" == "$watsonx_version" ]]; then watsonx_version=""; fi
 
   wait_msg "Creating IBM Workflow Assistant secret YAML template"
-#  mkdir -p $BAW_SECRET_FOLDER >/dev/null 2>&1
 
 cat << EOF > "${SECRET_FILE_FOLDER}/workflow-assistant-secrets.yaml"
-# YAML template for ibm-workflow-assistant-secret secret
+# YAML template for ibm-workflow-assistant-secrets secret
 ---
 apiVersion: v1
 kind: Secret
@@ -856,8 +865,16 @@ stringData:
   WATSONX_PASSWORD: "$watsonx_password"
   WATSONX_PROJECT_ID: "$watsonx_project_id"
   WATSONX_URL: "$watsonx_url"
-
 EOF
+
+  # Append deployment-type-specific additional fields
+  if [[ "$watsonx_deployment_type" == "LWE" ]]; then
+    cat << EOF >> "${SECRET_FILE_FOLDER}/workflow-assistant-secrets.yaml"
+  WATSONX_USERNAME: "$watsonx_username"
+  WATSONX_VERSION: "$watsonx_version"
+EOF
+  fi
+
   success "Created IBM Workflow Assistant secret YAML template\n"
 }
 
@@ -1070,12 +1087,20 @@ success "Created Decision Intelligence Client Managed Software secret for decisi
 
 
 function create_zen_external_db_secret_template(){
-  wait_msg "Creating ibm-zen-metastore-edb-secret secret YAML template for Zen metastore external Postgres DB"
+  wait_msg "Creating ibm-zen-metastore-secret secret YAML template for Zen metastore external Postgres DB"
+#DBACLD-230919: Zen Vault integration - create secret template for Zen metastore external Postgres DB with SSL enabled, the secret will be used to store the certificate/key files for SSL connection to external Postgres DB
+# DBACLD-245957: NOTE: Zen metastore does not support migrating from K8s secrets to Vault on an existing deployment (ENABLE_VAULT_ON_EXIST).
+# Skip creating all templates (both Vault SPC/JSON and K8s shell script) during upgrade to Vault.
+if [[ $vault_enabled == "true" && "$ENABLE_VAULT_ON_EXIST" == "true" ]]; then
+  return 0
+elif [[ $vault_enabled == "true" ]]; then # Fresh install with Vault secrets
+  create_zen_metastore_edb_secret_vault_template "ibm-zen-metastore-secret" "$zen_external_db_cert_folder"
+else # Fresh install with K8s secrets
   mkdir -p $ZEN_SECRET_FOLDER >/dev/null 2>&1
 
-cat << EOF > ${ZEN_SECRET_FILE}
+  cat << EOF > ${ZEN_SECRET_FILE}
 #!/bin/bash
-# Shell template for ibm-zen-metastore-edb-secret.sh
+# Shell template for ibm-zen-metastore-secret.sh
 if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-local>/client.crt" && -f "<cp4a-db-crt-file-in-local>/client.key" ]]; then
   openssl x509 -in <cp4a-db-crt-file-in-local>/root.crt -noout -subject -issuer -startdate -enddate >/dev/null 2>&1
 
@@ -1087,32 +1112,33 @@ if [[ -f "<cp4a-db-crt-file-in-local>/root.crt" && -f "<cp4a-db-crt-file-in-loca
 
   openssl x509 -in <cp4a-db-crt-file-in-local>/root.crt -outform PEM -out <cp4a-db-crt-file-in-local>/root.pem >/dev/null 2>&1
 
-  ${CLI_CMD} delete secret "ibm-zen-metastore-edb-secret" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
-  ${CLI_CMD} create secret generic "ibm-zen-metastore-edb-secret" --from-file=ca.crt="<cp4a-db-crt-file-in-local>/root.pem"\
+  ${CLI_CMD} delete secret "ibm-zen-metastore-secret" -n "$CP4BA_SERVICES_NS" >/dev/null 2>&1
+  ${CLI_CMD} create secret generic "ibm-zen-metastore-secret" --from-file=ca.crt="<cp4a-db-crt-file-in-local>/root.pem"\
   --from-file=tls.crt="<cp4a-db-crt-file-in-local>/client.pem"\
   --from-file=tls.key="<cp4a-db-crt-file-in-local>/client_key.pem"\
   --type=kubernetes.io/tls -n "$CP4BA_SERVICES_NS"
-  ${CLI_CMD} label secret "ibm-zen-metastore-edb-secret" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
+  ${CLI_CMD} label secret "ibm-zen-metastore-secret" cp4ba.ibm.com/backup-type=mandatory -n "$CP4BA_SERVICES_NS"
 else
   printf '%b\n' "\x1B[1;31m[FAILED]:\x1B[0m Please copy \"root.crt\" \"client.crt\" \"client.key\" into \"<cp4a-db-crt-file-in-local>\" first."
   exit 1
 fi
 EOF
-  success "Created ibm-zen-metastore-edb-secret secret YAML template for Zen metastore external Postgres DB\n"
+  success "Created ibm-zen-metastore-secret secret YAML template for Zen metastore external Postgres DB\n"
   chmod 755 ${ZEN_SECRET_FILE}
+fi
 }
 
 function create_zen_external_db_configmap_template(){
-  wait_msg "Creating ibm-zen-metastore-edb-cm configMap YAML template for Zen metastore external Postgres DB"
+  wait_msg "Creating ibm-zen-metastore-cm configMap YAML template for Zen metastore external Postgres DB"
   mkdir -p $ZEN_SECRET_FOLDER >/dev/null 2>&1
 cat << EOF > ${ZEN_CONFIGMAP_FILE}
-# YAML template for ibm-zen-metastore-edb-cm configMap
+# YAML template for ibm-zen-metastore-cm configMap
 # Updated for issue https://jsw.ibm.com/browse/DBACLD-166239 with these 2 DATABASE_ENABLE_SSL,DATABASE_SSL_MODE parameters
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: ibm-zen-metastore-edb-cm
+  name: ibm-zen-metastore-cm
   namespace: "$CP4BA_SERVICES_NS"
   labels:
     cp4ba.ibm.com/backup-type: mandatory
@@ -1128,10 +1154,11 @@ data:
   DATABASE_RW_ENDPOINT: "<DatabaseHostName>"
   DATABASE_SCHEMA: <DatabaseSchema>
   DATABASE_USER: <DatabaseUser>
+  DATABASE_AUTH_TYPE: CERT_AUTH
   DATABASE_ENABLE_SSL: "true"
   DATABASE_SSL_MODE: require 
 EOF
-  success "Created ibm-zen-metastore-edb-cm configMap YAML template for Zen metastore external Postgres DB\n"
+  success "Created ibm-zen-metastore-cm configMap YAML template for Zen metastore external Postgres DB\n"
 }
 
 function create_im_external_db_secret_template(){
@@ -1218,9 +1245,9 @@ function create_bts_external_db_secret_template(){
 
     if [[ $bts_create_k8_secret == "true" ]]; then # Non-Vault
         mkdir -p $BTS_SECRET_FOLDER >/dev/null 2>&1
-        # Create template for K8s secret
         # For https://jsw.ibm.com/browse/DBACLD-238245 and https://jsw.ibm.com/browse/DBACLD-238566 we now need to update the bts-datastore-edb-secret template to have a different key
         # THe key tls.key will be replaced to be tls.pk8 as the client.key file that it stores is in pk8 format. With new Postgres drivers, if you name it tls.key it expects the the key cert to be in PEM format.
+        # Create template for K8s secret
         cat << EOF > ${BTS_SSL_SECRET_FILE}
 #!/bin/bash
 # Shell template for bts-datastore-edb-secret.sh
@@ -1590,7 +1617,7 @@ function generate_multi_provider_secret() {
             
             # Generate unique key by concatenating provider_id with sanitized model_id
             # Remove special characters (/, -, ., etc.) from model_id for the key
-            local sanitized_model_id=$(echo "$model_id" | tr -d '/-.')
+            local sanitized_model_id=$(echo "$model_id" | tr -d '/\-.')
             local llm_key="${provider_id}_${sanitized_model_id}"
             
             # Track default model

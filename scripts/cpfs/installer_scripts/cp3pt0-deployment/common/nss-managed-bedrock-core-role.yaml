@@ -806,6 +806,13 @@ rules:
     resources:
       - deployments/scale
   - verbs:
+      - patch
+      - update
+    apiGroups:
+      - ''
+    resources:
+      - pods/resize
+  - verbs:
       - create
       - patch
     apiGroups:
@@ -1672,6 +1679,25 @@ rules:
       - clusterimagecatalogs
     apiGroups:
       - postgresql.k8s.enterprisedb.io
+  - apiGroups:
+      - postgresql.k8s.enterprisedb.io
+    resources:
+      - failoverquorums
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - postgresql.k8s.enterprisedb.io
+    resources:
+      - failoverquorums/status
+    verbs:
+      - get
+      - patch
+      - update
+      - watch
   - verbs:
       - get
       - list
@@ -2066,3 +2092,12 @@ rules:
       - get
       - list
       - watch
+  - apiGroups:
+      - pg.ibm.com
+    resources:
+      - imagecatalogs
+    verbs:
+      - create
+      - delete
+      - get
+      - update

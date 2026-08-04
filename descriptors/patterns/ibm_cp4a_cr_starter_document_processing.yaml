@@ -30,9 +30,9 @@ spec:
   ## your application is receiving expected input.
   ## shared configuration among all tribe
   shared_configuration:
-    ## This is the Content Cortex license  parameter and the possible values are: user, concurrent-user, authorized-user, non-production, and production.
+    ## This is the Content Cortex license  parameter and the possible values are: user, non-production, and production.
     ## This value could be different from the rest of the licenses.
-    sc_deployment_fncm_license: ESS.CO
+    sc_deployment_fncm_license: non-production
 
     ## CP4A patterns or capabilities to be deployed.  This CR represents the "Starter" deployment for the "document_processing" pattern (aka IBM Automation Document Processing).
     ## The "Starter" deployment will deploy a Development env for the "document_processing" pattern, which consist fo the following components:
