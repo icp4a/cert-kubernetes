@@ -1,0 +1,246 @@
+## Cloud Pak for Business Automation Backup and Restore using IBM Fusion
+
+### Planning for an installation of the Cloud Pak for Business Automation Recipes
+
+A few considerations have to be made before installing the necessary software to use IBM Fusion for backing up and restoring Cloud Pak for Business Automation.
+
+1. The current version of the recipe package `cp4ba-fusion-v0.3.0` supports the following deployment paths and optional components.
+
+    Deployment paths:
+
+      - FileNet Content Manager
+      - Business Automation Workflow
+      - Business Automation Workflow Runtime
+
+    Optional components:
+
+      - Content Search Services (CSS)
+      - Content Management Interoperability (CMIS)
+      - Content Collector for SAP (ICC4SAP)
+
+2. IBM Fusion `v2.13.0` Backup & Restore is the currently the only supported version of IBM Fusion.
+
+3. The version of Cloud Pak for Business Automation supported by `cp4ba-fusion-v0.3.0` is `25.0.0-IF006`.
+
+### Prerequisites
+
+- IBM Fusion `v2.13.0` should be installed.
+- Either Fusion Backup & Restore service (for hubs) or Fusion Backup & Restore Agent (for spokes) service should be installed.
+- A version of Cloud Pak for Business Automation `25.0.0-IF006` should be installed.
+
+- Install a jq bastion host where the Fusion script is run:
+#### For Mac:
+```
+brew install jq
+```
+
+#### For Linux:
+```
+sudo apt update
+sudo apt install jq
+```
+- Make sure that the production storage that is hosting Cloud Pak for Business Automation is Kubernetes Container Storage Interface (CSI)-compatible.                                                                                      
+
+
+### Backup configuration steps
+1. Install the Fusion Backup and Restore service (for hubs) or Fusion Backup and Restore Agent (for spokes) service.  [For more information refer to IBM Fusion documentation](https://www.ibm.com/docs/en/fusion-software/2.13.0).
+
+   a. [Obtain the entitlement key](https://www.ibm.com/docs/en/fusion-software/2.13.0?topic=prerequisites-obtaining-entitlement-key).
+
+   b. [Create an image pull secret](https://www.ibm.com/docs/en/fusion-software/2.13.0?topic=prerequisites-creating-image-pull-secret).
+
+   c. Install the IBM Fusion operator.
+
+   The instructions differ based on the type of Red Hat OpenShift Container Platform deployment. The following link provides an example [for On-premises VMware](https://www.ibm.com/docs/en/fusion-software/2.13.0?topic=fusion-installing-premises-vmware).
+
+   d. [Deploy a Fusion Backup and Restore service](https://www.ibm.com/docs/en/fusion-software/2.13.0?topic=deploying-fusion).  
+2.  Applying the IBM Fusion hotfix for Fusion v2.12.2
+    It is necessary to apply the Fusion Backup & Restore hotfix for version 2.12.2 on the hub and all spoke clusters prior to initiating backup or restore operations. For more background on this fix refer to IBM Fusion hotfix documentation: https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=hotfixes. To apply the fix execute the following:
+    ```
+    oc -n ibm-backup-restore patch deployments/transaction-manager --type json --patch '[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"cp.icr.io/cp/bnr/guardian-transaction-manager@sha256:34609296996c0416d1d84e775ba3cf33b78cdbdfe5e50eebcb632ef20135f895"}]'
+    ```
+    The script output shows the below output.
+    ```
+    deployment.apps/transaction-manager patched
+    ```
+  **Important:** The hotfix command is applicable only when deploying on older Fusion versions. If you are using Fusion 2.13.0, do not apply the hotfix as part of the standard installation procedure.
+
+3. Configure Cloud Pak for Business Automation and IBM Fusion specific Backup & Restore 
+    a. Export the Cloud Pak for Business Automation namespace to the NAMESPACE variable.                                                                                                                           
+    ```
+    CP4BA_NAMESPACE=<cp4ba-project>
+    ```
+4. Install the Fusion recipes.
+    a. Open the downloaded cert-kubernetes package and change the directory to the FusionRecipes folder.
+    b. Verify that you are in the FusionRecipes folder by issuing a pwd command that must have a path: cert-kubernetes/FusionRecipes.
+    c. Go to the namespace for the operator.
+    ```
+    oc project ${NAMESPACE}                                                                                                                                    
+    ```                                                                                                                                    
+    d. Make the configure-cp4ba-fusion.sh script executable. 
+    ```
+    chmod u+x configure-cp4ba-fusion.sh
+    ```
+    e. Run `configure-cp4ba-fusion.sh` script. The only required parameter is namespace, provided by the `-n` or `--namespace` options:
+
+    ```
+    ./configure-cp4ba-fusion.sh --namespace $CP4BA_NAMESPACE
+    ```  
+                                                                                                                                        
+    The script output shows the configuration status.                                                                                                            
+    ```
+    [INFO] Starting CP4BA Storage Fusion backup configuration...
+    [INFO] Checking prerequisites...
+    [SUCCESS] All prerequisites met
+    [INFO] Discovering IBM Storage Fusion namespace...
+    [SUCCESS] Discovered Fusion namespace: ibm-spectrum-fusion-ns
+    [INFO] Checking transaction-manager-ibm-backup-restore ClusterRole...
+    [SUCCESS] ClusterRole already has icp4a.ibm.com permissions. Skipping patch.
+    [INFO] Checking Fusion Application configuration...
+    [SUCCESS] 'openshift-config' already in includedNamespaces
+    [SUCCESS] 'openshift-marketplace' already in includedNamespaces
+    [INFO] Labeling core CP4BA resources...
+    [SUCCESS] Core resources labeled
+    [INFO] Checking for FNCM (FileNet Content Manager) installation...
+    [INFO] FNCM detected. Labeling FNCM-specific resources...
+    [SUCCESS] FNCM resources labeled
+    [INFO] Checking for BAW (Business Automation Workflow) installation...
+    [INFO] BAW detected. Labeling BAW-specific resources...
+    [SUCCESS] BAW resources labeled
+    [SUCCESS] CP4BA Storage Fusion backup configuration completed successfully!
+    ```                                                                                                                                        
+
+    f. Install the Cloud Pak for Business Automation Fusion (`cp4ba-fusion`) package in the target namespace.
+    ```
+    helm install --namespace $NAMESPACE cp4ba-fusion cp4ba-fusion-0.2.0.tgz \
+             --set zenStorageClass=<STORAGE-CLASS-NAME>
+    ```
+    Where <STORAGE-CLASS-NAME> is the name that is specified in the StorageClass CR that is used, and the TGZ file is from the cert-kubernetes Git repository.
+    The following output is displayed.                                                                                                                                    
+    ```
+    NAME: cp4ba-fusion
+    LAST DEPLOYED: Fri Feb 27 15:54:18 2026
+    NAMESPACE: cp4ba
+    STATUS: deployed
+    REVISION: 1
+    TEST SUITE: None                                                                                                                                    
+    ```                                                                                                                                    
+
+    g. Verify that the installation is successful.
+    Run the following command to check the Zen instance.
+   ```
+   $ oc -n $CP4BA_NAMESPACE get deployments/zen5-backup
+   ```
+    The command displays the following information.
+
+   ```
+   NAME          READY   UP-TO-DATE   AVAILABLE   AGE
+   zen5-backup   1/1     1            1           17h
+   ```
+    Run the following command to check that the recipes are installed.
+
+   ```
+   $ oc -n $CP4BA_NAMESPACE get frcpe                   
+   ```
+    The command displays the following information.
+
+   ```
+   NAME                          AGE                    PARENT RECIPE         PARENT RECIPE NAMESPACE
+   cp4ba-baw-auth-child-recipe   2026-03-06T01:31:55Z   cp4ba-parent-recipe   cp4ba
+   cp4ba-fncm-child-recipe       2026-03-06T01:31:55Z   cp4ba-parent-recipe   cp4ba
+   cp4ba-parent-recipe           2026-03-06T01:31:55Z      
+    ```
+5. Create all the resources that you need to make a backup.
+
+   a. Create a backup storage location. For more information, see [backup storage location](https://www.ibm.com/docs/en/fusion-software/2.13.0?topic=machines-backup-storage-locations).
+
+   b. Create a backup policy. For more information, see [Creating a backup policy] (https://www.ibm.com/docs/en/fusion-software/2.13.0?topic=policies-creating-backup-policy).
+
+   c. Create a policy assignment by assigning the policy to the application. For more information, see [Managing a backup policy] (https://www.ibm.com/docs/en/fusion-software/2.13.0?topic=policies-managing-backup-policy).
+       From the Fusion UI, click Back up and restore > Backed up applications > Protect apps > Select a cluster > Select application > Next > Select a backup policy > Assign.
+
+For a more comprehensive description, see [Backup and restore of your applications and virtual machines] (https://www.ibm.com/docs/en/fusion-software/2.13.0?topic=workloads-backup-restore-your-applications-virtual-machines) 
+                                                                                                                                        
+6. In Fusion, edit the policy assignment to point to the parent recipe.
+  
+    a. Identify the policy assignment's name:
+
+        ```
+        $ oc -n ibm-spectrum-fusion-ns get policyassignments
+        
+        NAME                                                   CLUSTER   APPLICATION   BACKUPPOLICY   RECIPE                RECIPENAMESPACE   PHASE      LASTBACKUPTIMESTAMP   CAPACITY
+        cp4ba-sbsa-policy-apps.sbsa-br1.cp.fyre.ibm.com                  cp4ba         sbsa-policy    cp4ba-parent-recipe   cp4ba             Assigned   3d7h                  4521418945
+        ```
+
+
+    b. Update the policy assignment with the recipe name and namespace.
+
+        ```
+        $ oc -n ibm-spectrum-fusion-ns patch policyassignment/POLICY-ASSIGNMENT-NAME --type merge -p '
+        {
+          "spec": {
+            "recipe": {
+              "name":"cp4ba-parent-recipe",
+              "namespace":"'$CP4BA_NAMESPACE'",
+              "apiVersion":"spp-data-protection.isf.ibm.com/v1alpha1"
+            }
+          }
+        }'
+        ```
+
+        Where <POLICY-ASSIGNMENT-NAME> is the name of the PolicyAssignment from the previous command.
+
+
+7. In the Fusion console, start an on-demand backup or use the backup policy to schedule it for you.
+   Click **Back up and restore > Backed up applications**. From the list, select the application and click **Actions > Backup now**.
+
+
+### Restore procedure
+
+Do the following steps to restore data from the storage system on an alternative cluster by using IBM Fusion recipes:
+
+**Note:** Both the ibm-licensing and the certificate manager services should be running in the target cluster, before restoring to it.
+
+1. Configure the Fusion role for the Transaction Manager by running the following command.
+
+    ```
+    $ oc patch clusterroles/transaction-manager-ibm-backup-restore --type json --patch '
+    [
+      {
+        "op": "add",
+        "path": "/rules/-",
+        "value": {
+          "apiGroups": [
+            "icp4a.ibm.com"
+          ],
+          "resources": [
+            "icp4aclusters",
+            "contents"
+          ],
+          "verbs": [
+            "get",
+            "list"
+          ]
+        }
+      }
+    ]'
+    ```
+
+2. In the Fusion console, start a restore.
+    a. Click **Back up and restore > Backed up applications**.
+    b. From the list, select the application.
+    c. Click **Actions > Restore**.
+  As a result, IBM Fusion reinstalls the IBM Cloud Pak® for Business Automation platform instance, restores the data, and recovers the instance to a working state.
+  
+3. Export the Cloud Pak for Business Automation namespace to the NAMESPACE variable.
+    Example:
+    ```
+    export NAMESPACE=<namespace>
+    ```
+
+4. After the restore is complete, apply the following command to make sure nginx is reconfigured and the routes are accessible.
+
+    ```
+    $ oc -n $CP4BA_NAMESPACE get zenextensions -o name | xargs oc -n $CP4BA_NAMESPACE patch --type json --patch '[{"op":"replace","path":"/spec/reconfigure","value":true}]'
+    ```
+    For more information, see [Restore the IBM Cloud Pak for Business Automation platform instance] (https://www.ibm.com/docs/en/fusion-software/2.13.0?topic=machines-restoring-application).

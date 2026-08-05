@@ -153,6 +153,7 @@ patch_clusterrole() {
       ],
       "resources": [
         "icp4aclusters",
+        "icp4aoperationaldecisionmanagers",
         "contents"
       ],
       "verbs": [
