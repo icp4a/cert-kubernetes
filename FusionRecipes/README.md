@@ -57,13 +57,15 @@ sudo apt install jq
 2.  Applying the IBM Fusion hotfix for Fusion v2.12.2
     It is necessary to apply the Fusion Backup & Restore hotfix for version 2.12.2 on the hub and all spoke clusters prior to initiating backup or restore operations. For more background on this fix refer to IBM Fusion hotfix documentation: https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=hotfixes. To apply the fix execute the following:
     ```
-    $ oc -n ibm-backup-restore patch deployments/transaction-manager --type json --patch '[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"cp.icr.io/cp/bnr/guardian-transaction-manager@sha256:34609296996c0416d1d84e775ba3cf33b78cdbdfe5e50eebcb632ef20135f895"}]'
-    
+    oc -n ibm-backup-restore patch deployments/transaction-manager --type json --patch '[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"cp.icr.io/cp/bnr/guardian-transaction-manager@sha256:34609296996c0416d1d84e775ba3cf33b78cdbdfe5e50eebcb632ef20135f895"}]'
+    ```
+    The script output shows the below output.
+    ```
     deployment.apps/transaction-manager patched
     ```
 
 3. Configure Cloud Pak for Business Automation and IBM Fusion specific Backup & Restore 
-    a. Export the Cloud Pak for Business Automation namespace to the NAMESPACE variable.                                                                                                                                    
+    a. Export the Cloud Pak for Business Automation namespace to the NAMESPACE variable.                                                                                                                           
     ```
     CP4BA_NAMESPACE=<cp4ba-project>
     ```
@@ -76,12 +78,12 @@ sudo apt install jq
     ```                                                                                                                                    
     d. Make the configure-cp4ba-fusion.sh script executable. 
     ```
-    $ chmod u+x configure-cp4ba-fusion.sh
+    chmod u+x configure-cp4ba-fusion.sh
     ```
     e. Run `configure-cp4ba-fusion.sh` script. The only required parameter is namespace, provided by the `-n` or `--namespace` options:
 
     ```
-    $ ./configure-cp4ba-fusion.sh --namespace $CP4BA_NAMESPACE
+    ./configure-cp4ba-fusion.sh --namespace $CP4BA_NAMESPACE
     ```  
                                                                                                                                         
     The script output shows the configuration status.                                                                                                            
@@ -108,7 +110,6 @@ sudo apt install jq
     ```                                                                                                                                        
 
     f. Install the Cloud Pak for Business Automation Fusion (`cp4ba-fusion`) package in the target namespace.
-
     ```
     helm install --namespace $NAMESPACE cp4ba-fusion cp4ba-fusion-0.2.0.tgz \
              --set zenStorageClass=<STORAGE-CLASS-NAME>
@@ -125,26 +126,29 @@ sudo apt install jq
     ```                                                                                                                                    
 
     g. Verify that the installation is successful.
-
     Run the following command to check the Zen instance.
-
-        ```
-        $ oc -n $CP4BA_NAMESPACE get deployments/zen5-backup
-        ```
-    The command displays the following information.                                                                                                                                    
-        NAME          READY   UP-TO-DATE   AVAILABLE   AGE
-        zen5-backup   1/1     1            1           17h
-
-    Run the following command to check that the recipes are installed.
-        ```
-        $ oc -n $CP4BA_NAMESPACE get frcpe                   
-        ```
+   ```
+   $ oc -n $CP4BA_NAMESPACE get deployments/zen5-backup
+   ```
     The command displays the following information.
-        NAME                          AGE                    PARENT RECIPE         PARENT RECIPE NAMESPACE
-        cp4ba-baw-auth-child-recipe   2026-03-06T01:31:55Z   cp4ba-parent-recipe   cp4ba
-        cp4ba-fncm-child-recipe       2026-03-06T01:31:55Z   cp4ba-parent-recipe   cp4ba
-        cp4ba-parent-recipe           2026-03-06T01:31:55Z      
 
+   ```
+   NAME          READY   UP-TO-DATE   AVAILABLE   AGE
+   zen5-backup   1/1     1            1           17h
+   ```
+    Run the following command to check that the recipes are installed.
+
+   ```
+   $ oc -n $CP4BA_NAMESPACE get frcpe                   
+   ```
+    The command displays the following information.
+
+   ```
+   NAME                          AGE                    PARENT RECIPE         PARENT RECIPE NAMESPACE
+   cp4ba-baw-auth-child-recipe   2026-03-06T01:31:55Z   cp4ba-parent-recipe   cp4ba
+   cp4ba-fncm-child-recipe       2026-03-06T01:31:55Z   cp4ba-parent-recipe   cp4ba
+   cp4ba-parent-recipe           2026-03-06T01:31:55Z      
+    ```
 5. Create all the resources that you need to make a backup.
 
    a. Create a backup storage location. For more information, see [backup storage location](https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=machines-backup-storage-locations).
@@ -156,7 +160,7 @@ sudo apt install jq
 
 For a more comprehensive description, see [Backup and restore of your applications and virtual machines] (https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=workloads-backup-restore-your-applications-virtual-machines) 
                                                                                                                                         
-7. In Fusion, edit the policy assignment to point to the parent recipe.
+6. In Fusion, edit the policy assignment to point to the parent recipe.
   
     a. Identify the policy assignment's name:
 
@@ -186,7 +190,7 @@ For a more comprehensive description, see [Backup and restore of your applicatio
         Where <POLICY-ASSIGNMENT-NAME> is the name of the PolicyAssignment from the previous command.
 
 
-8. In the Fusion console, start an on-demand backup or use the backup policy to schedule it for you.
+7. In the Fusion console, start an on-demand backup or use the backup policy to schedule it for you.
    Click **Back up and restore > Backed up applications**. From the list, select the application and click **Actions > Backup now**.
 
 
