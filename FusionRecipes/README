@@ -1,6 +1,6 @@
-## Cloud Pak for Business Automation Backup and Restore using IBM Fusion
+# Cloud Pak for Business Automation Backup and Restore using IBM Fusion
 
-### Planning for an installation of the Cloud Pak for Business Automation Recipes
+## Planning for an installation of the Cloud Pak for Business Automation Recipes
 
 A few considerations have to be made before installing the necessary software to use IBM Fusion for backing up and restoring Cloud Pak for Business Automation.
 
@@ -22,26 +22,26 @@ A few considerations have to be made before installing the necessary software to
 
 3. The version of Cloud Pak for Business Automation supported by `cp4ba-fusion-v0.2.0` is `25.0.0-IF005`.
 
-### Prerequisites
+## Prerequisites
 
 - IBM Fusion `v2.12.2` should be installed.
 - Either Fusion Backup & Restore service (for hubs) or Fusion Backup & Restore Agent (for spokes) service should be installed.
 - A version of Cloud Pak for Business Automation `25.0.0-IF005` should be installed.
 
 - Install a jq bastion host where the Fusion script is run:
-#### For Mac:
+### For Mac:
 ```
 brew install jq
 ```
 
-#### For Linux:
+### For Linux:
 ```
 sudo apt update
 sudo apt install jq
 ```
 - Make sure that the production storage that is hosting Cloud Pak for Business Automation is Kubernetes Container Storage Interface (CSI)-compatible.                                                                                      
 
-### Applying the IBM Fusion hotfix for Fusion v2.12.2
+## Applying the IBM Fusion hotfix for Fusion v2.12.2
 
 It is necessary to apply the Fusion Backup & Restore hotfix for version 2.12.2 on the hub and all spoke clusters prior to initiating backup or restore operations. For more background on this fix refer to IBM Fusion hotfix documentation: https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=hotfixes. To apply the fix execute the following:
 
@@ -51,7 +51,7 @@ $ oc -n ibm-backup-restore patch deployments/transaction-manager --type json --p
 deployment.apps/transaction-manager patched
 ```
 
-## Backup configuration steps
+# Backup configuration steps
 1. Install the Fusion Backup and Restore service (for hubs) or Fusion Backup and Restore Agent (for spokes) service.  [For more information refer to IBM Fusion documentation] (https://www.ibm.com/docs/en/fusion-software/2.12.x).
     a. [Obtain the entitlement key] (https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=prerequisites-obtaining-entitlement-key).                                                                                                
     b. [Create an image pull secret] (https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=prerequisites-creating-image-pull-secret).
@@ -181,14 +181,14 @@ The instructions differ based on the type of Red Hat® OpenShift® Container Pla
 
 
 6. In the Fusion console, start an on-demand backup or use the backup policy to schedule it for you.
-   Click *Back up and restore > Backed up applications*. From the list, select the application and click *Actions > Backup now*.
+   Click **Back up and restore > Backed up applications**. From the list, select the application and click **Actions > Backup now**.
 
 
-### Restore procedure
+## Restore procedure
 
 Do the following steps to restore data from the storage system on an alternative cluster by using IBM Fusion recipes:
 
-*Note: Both the ibm-licensing and the certificate manager services should be running in the target cluster, before restoring to it.*
+**Note:** Both the ibm-licensing and the certificate manager services should be running in the target cluster, before restoring to it.
 
 1. Configure the Fusion role for the Transaction Manager by running the following command.
 
@@ -216,9 +216,9 @@ Do the following steps to restore data from the storage system on an alternative
     ```
 
 2. In the Fusion console, start a restore.
-    a. Click Back up and restore > Backed up applications.
+    a. Click **Back up and restore > Backed up applications**.
     b. From the list, select the application.
-    c. Click Actions > Restore.
+    c. Click **Actions > Restore**.
   As a result, IBM Fusion reinstalls the IBM Cloud Pak® for Business Automation platform instance, restores the data, and recovers the instance to a working state.
   
 3. Export the Cloud Pak for Business Automation namespace to the NAMESPACE variable.
