@@ -42,7 +42,7 @@ sudo apt install jq
 - Make sure that the production storage that is hosting Cloud Pak for Business Automation is Kubernetes Container Storage Interface (CSI)-compatible.                                                                                      
 
 
-## Backup configuration steps
+### Backup configuration steps
 1. Install the Fusion Backup and Restore service (for hubs) or Fusion Backup and Restore Agent (for spokes) service.  [For more information refer to IBM Fusion documentation](https://www.ibm.com/docs/en/fusion-software/2.12.x).
 
    a. [Obtain the entitlement key](https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=prerequisites-obtaining-entitlement-key).
