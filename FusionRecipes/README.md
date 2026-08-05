@@ -1,6 +1,6 @@
-# Cloud Pak for Business Automation Backup and Restore using IBM Fusion
+## Cloud Pak for Business Automation Backup and Restore using IBM Fusion
 
-## Planning for an installation of the Cloud Pak for Business Automation Recipes
+### Planning for an installation of the Cloud Pak for Business Automation Recipes
 
 A few considerations have to be made before installing the necessary software to use IBM Fusion for backing up and restoring Cloud Pak for Business Automation.
 
@@ -22,49 +22,52 @@ A few considerations have to be made before installing the necessary software to
 
 3. The version of Cloud Pak for Business Automation supported by `cp4ba-fusion-v0.2.0` is `25.0.0-IF005`.
 
-## Prerequisites
+### Prerequisites
 
 - IBM Fusion `v2.12.2` should be installed.
 - Either Fusion Backup & Restore service (for hubs) or Fusion Backup & Restore Agent (for spokes) service should be installed.
 - A version of Cloud Pak for Business Automation `25.0.0-IF005` should be installed.
 
 - Install a jq bastion host where the Fusion script is run:
-### For Mac:
+#### For Mac:
 ```
 brew install jq
 ```
 
-### For Linux:
+#### For Linux:
 ```
 sudo apt update
 sudo apt install jq
 ```
 - Make sure that the production storage that is hosting Cloud Pak for Business Automation is Kubernetes Container Storage Interface (CSI)-compatible.                                                                                      
 
-## Applying the IBM Fusion hotfix for Fusion v2.12.2
 
-It is necessary to apply the Fusion Backup & Restore hotfix for version 2.12.2 on the hub and all spoke clusters prior to initiating backup or restore operations. For more background on this fix refer to IBM Fusion hotfix documentation: https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=hotfixes. To apply the fix execute the following:
+## Backup configuration steps
+1. Install the Fusion Backup and Restore service (for hubs) or Fusion Backup and Restore Agent (for spokes) service.  [For more information refer to IBM Fusion documentation](https://www.ibm.com/docs/en/fusion-software/2.12.x).
 
-```
-$ oc -n ibm-backup-restore patch deployments/transaction-manager --type json --patch '[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"cp.icr.io/cp/bnr/guardian-transaction-manager@sha256:34609296996c0416d1d84e775ba3cf33b78cdbdfe5e50eebcb632ef20135f895"}]'
+   a. [Obtain the entitlement key](https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=prerequisites-obtaining-entitlement-key).
 
-deployment.apps/transaction-manager patched
-```
+   b. [Create an image pull secret](https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=prerequisites-creating-image-pull-secret).
 
-# Backup configuration steps
-1. Install the Fusion Backup and Restore service (for hubs) or Fusion Backup and Restore Agent (for spokes) service.  [For more information refer to IBM Fusion documentation] (https://www.ibm.com/docs/en/fusion-software/2.12.x).
-    a. [Obtain the entitlement key] (https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=prerequisites-obtaining-entitlement-key).                                                                                                
-    b. [Create an image pull secret] (https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=prerequisites-creating-image-pull-secret).
-    c. Install the IBM Fusion operator.
-The instructions differ based on the type of Red Hat® OpenShift® Container Platform deployment. The following link provides an example [for On-premises VMware] (https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=fusion-installing-premises-vmware).
-    d. [Deploy a Fusion Backup and Restore service] (https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=deploying-fusion).  
+   c. Install the IBM Fusion operator.
 
-2. Configure Cloud Pak for Business Automation and IBM Fusion specific Backup & Restore 
+   The instructions differ based on the type of Red Hat OpenShift Container Platform deployment. The following link provides an example [for On-premises VMware](https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=fusion-installing-premises-vmware).
+
+   d. [Deploy a Fusion Backup and Restore service](https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=deploying-fusion).  
+2.  Applying the IBM Fusion hotfix for Fusion v2.12.2
+    It is necessary to apply the Fusion Backup & Restore hotfix for version 2.12.2 on the hub and all spoke clusters prior to initiating backup or restore operations. For more background on this fix refer to IBM Fusion hotfix documentation: https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=hotfixes. To apply the fix execute the following:
+    ```
+    $ oc -n ibm-backup-restore patch deployments/transaction-manager --type json --patch '[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"cp.icr.io/cp/bnr/guardian-transaction-manager@sha256:34609296996c0416d1d84e775ba3cf33b78cdbdfe5e50eebcb632ef20135f895"}]'
+    
+    deployment.apps/transaction-manager patched
+    ```
+
+3. Configure Cloud Pak for Business Automation and IBM Fusion specific Backup & Restore 
     a. Export the Cloud Pak for Business Automation namespace to the NAMESPACE variable.                                                                                                                                    
     ```
     CP4BA_NAMESPACE=<cp4ba-project>
     ```
-3. Install the Fusion recipes.
+4. Install the Fusion recipes.
     a. Open the downloaded cert-kubernetes package and change the directory to the FusionRecipes folder.
     b. Verify that you are in the FusionRecipes folder by issuing a pwd command that must have a path: cert-kubernetes/FusionRecipes.
     c. Go to the namespace for the operator.
@@ -142,15 +145,18 @@ The instructions differ based on the type of Red Hat® OpenShift® Container Pla
         cp4ba-fncm-child-recipe       2026-03-06T01:31:55Z   cp4ba-parent-recipe   cp4ba
         cp4ba-parent-recipe           2026-03-06T01:31:55Z      
 
-4. Create all the resources that you need to make a backup.
+5. Create all the resources that you need to make a backup.
 
-    a. Create a backup storage location. For more information, see [backup storage location](https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=machines-backup-storage-locations).
-    b. Create a backup policy. For more information, see [Creating a backup policy] (https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=policies-creating-backup-policy).
-    c. Create a policy assignment by assigning the policy to the application. For more information, see [Managing a backup policy] (https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=policies-managing-backup-policy).
-          From the Fusion UI, click Back up and restore > Backed up applications > Protect apps > Select a cluster > Select application > Next > Select a backup policy > Assign.
-    For a more comprehensive description, see [Backup and restore of your applications and virtual machines] (https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=workloads-backup-restore-your-applications-virtual-machines) 
+   a. Create a backup storage location. For more information, see [backup storage location](https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=machines-backup-storage-locations).
+
+   b. Create a backup policy. For more information, see [Creating a backup policy] (https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=policies-creating-backup-policy).
+
+   c. Create a policy assignment by assigning the policy to the application. For more information, see [Managing a backup policy] (https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=policies-managing-backup-policy).
+       From the Fusion UI, click Back up and restore > Backed up applications > Protect apps > Select a cluster > Select application > Next > Select a backup policy > Assign.
+
+For a more comprehensive description, see [Backup and restore of your applications and virtual machines] (https://www.ibm.com/docs/en/fusion-software/2.12.x?topic=workloads-backup-restore-your-applications-virtual-machines) 
                                                                                                                                         
-5. In Fusion, edit the policy assignment to point to the parent recipe.
+7. In Fusion, edit the policy assignment to point to the parent recipe.
   
     a. Identify the policy assignment's name:
 
@@ -180,11 +186,11 @@ The instructions differ based on the type of Red Hat® OpenShift® Container Pla
         Where <POLICY-ASSIGNMENT-NAME> is the name of the PolicyAssignment from the previous command.
 
 
-6. In the Fusion console, start an on-demand backup or use the backup policy to schedule it for you.
+8. In the Fusion console, start an on-demand backup or use the backup policy to schedule it for you.
    Click **Back up and restore > Backed up applications**. From the list, select the application and click **Actions > Backup now**.
 
 
-## Restore procedure
+### Restore procedure
 
 Do the following steps to restore data from the storage system on an alternative cluster by using IBM Fusion recipes:
 
