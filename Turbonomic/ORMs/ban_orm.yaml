@@ -1,0 +1,22 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: ban-orm
+  namespace: {{ placeholder_namespace }}
+spec:
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: navigator
+          path: .spec.template.spec.containers[?(@.name=="{{ meta.name }}-navigator-deploy")].resources
+        ownerPath: .spec.navigator_configuration.resources
+    selectors:
+      navigator:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.name }}-navigator-deploy
+  owner:
+    apiVersion: icp4a.ibm.com/v1
+    kind: ICP4ACluster
+    name: {{ meta.name }}

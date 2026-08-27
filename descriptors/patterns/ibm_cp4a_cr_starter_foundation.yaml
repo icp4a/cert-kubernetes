@@ -1,0 +1,104 @@
+
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2021, 2023. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: icp4adeploy
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 26.0.0
+    cp4ba.ibm.com/backup-type: mandatory
+spec:
+  ## CP4A application version
+  appVersion: 26.0.0
+
+  ## MUST exist, used to accept ibm license, valid value only can be "accept"
+  ibm_license: ""
+
+  shared_configuration:
+    ## This is the Content Cortex license  parameter and the possible values are: user, non-production, and production.
+    ## This value could be different from the rest of the licenses.
+    sc_deployment_fncm_license: non-production
+
+    ## Use this parameter to specify the license for the CP4A deployment and
+    ## the possible values are: non-production and production and if not set, the license will
+    ## be defaulted to production.  This value could be different from the other licenses in the CR.
+    sc_deployment_license: non-production
+
+    ## CP4A patterns or capabilities to be deployed.  The base pattern is "foundation pattern", which includes BAN (Navigator) and RR.
+    sc_deployment_patterns: foundation
+
+    ## The optional components for the "foundation pattern" are ums, bas and bai.  If the user selects any of those optional components,
+    ## it will be set here. Available option:
+    sc_optional_components:
+
+    ## This is the deployment type and the possible values are: starter and production.
+    sc_deployment_type: Starter
+
+    ## This is the deployment platform supported for CP4A and the possible values are: ROKS, OCP, and other (which includes all Certified Kubernetes platforms)
+    sc_deployment_platform:
+
+    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <route-name>-{{meta.namespace}}.<router-canonical-hostname> when not defined.
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/26.0.0?topic=scp-shared-configuration
+    ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
+    #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
+    
+    ## All CP4A components must use/share the same docker image repository.  For example, if IBM Entitled Registry is used, then
+    ## it should be "cp.icr.io".  Otherwise, it will be a local docker registry.
+    sc_image_repository: cp.icr.io
+
+    ## For ROKS, this is used to enable the creation of ingresses. The default value is "false", which routes will be created.
+    sc_ingress_enable: false
+
+    ## If the root certificate authority (CA) key of the external service is not signed by the operator root CA key, provide the TLS certificate of
+    ## the external service to the component's truststore.
+    trusted_certificate_list: []
+
+    storage_configuration:
+      ## For 4.4 or Later, the storage class will be provided by the user
+      ## during the execution of the User script (cp4a-deployment.sh)
+      sc_dynamic_storage_classname:
+      sc_block_storage_classname: ""
+      ## For ROKS (v3.x or v4.x), the Admin script creates the storage classes with the following names: cp4a-file-retain-bronze-gid, cp4a-file-retain-silver-gid,
+      ## and cp4a-file-retain-gold-gid
+      sc_slow_file_storage_classname: cp4a-file-retain-bronze-gid
+      sc_medium_file_storage_classname: cp4a-file-retain-silver-gid
+      sc_fast_file_storage_classname: cp4a-file-retain-gold-gid
+
+    ## IAM Settings
+    sc_iam:
+      ## Provide non default admin user for IAM in case you do not want to use cpadmin
+      default_admin_username: ""
+
+    ## Enable/disable FIPS mode for the deployment (default value is "false")
+    ## Note: If set as "true", in order to complete enablement of FIPS for CP4BA, please refer to "FIPS wall" configuration in IBM documentation.
+    enable_fips: false
+
+    ## Staring with CP4BA 25.0.0, the operators are no longer creating network policies automatically due to a change in the security requirements where the permissions to create network policies have been removed.
+    ## The optional parameter to enable/disable the creation of sample network policy templates for CP4BA components.  If the parameter is not defined, then the default value is "false".
+    ## Set this flag to "true" if you plan to have restricted network policies in CP4BA namespaces so that the operators can create sample network policy templates for CP4BA components.
+    ## Please refer to the CP4BA documentation for more information about how to retrieve and apply the sample network policy templates.
+    sc_generate_sample_network_policies: false
+    
+    ## Enables integration with Instana to collect application and infrastructure metrics for enhanced observability. 
+    ## This optional parameter controls the instana instrumentation. If the parameter is not defined, then the default value is "false".
+    ## Set this flag to "true" if you plan to enable instana monitoring for CP4BA application. 
+    sc_enable_instana_metric_collection: false
+
+  ########################################################################
+  ########      IBM Business Automation Insights configuration    ########
+  ########################################################################
+  bai_configuration:
+    business_performance_center:
+      all_users_access: true

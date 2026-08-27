@@ -1,0 +1,28 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2026 All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+{{- if .Values.route.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "cp4ba-api.fullname" . }}
+  labels:
+    {{- include "cp4ba-api.labels" . | nindent 4 }}
+spec:
+  host: {{.Values.route.hostname}}
+  to:
+    kind: Service
+    name: {{ include "cp4ba-api.fullname" . }}
+  port:
+    targetPort: https
+  tls:
+    termination: passthrough
+    insecureEdgeTerminationPolicy: Redirect
+{{- end }}

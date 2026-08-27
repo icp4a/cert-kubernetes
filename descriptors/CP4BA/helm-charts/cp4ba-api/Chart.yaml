@@ -1,0 +1,23 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2026 All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: v2
+name: cp4a-install-upgrade-automation
+description: CP4BA REST API for install and upgrade automation.
+type: application
+version: 26.0.0
+appVersion: "26.0.0"
+keywords:
+  - cp4ba
+  - api
+  - gitops
+  - automation
+maintainers:
+  - name: IBM CP4BA Operator Team

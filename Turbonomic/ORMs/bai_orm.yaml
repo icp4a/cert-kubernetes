@@ -1,0 +1,33 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: bai-orm
+  namespace: {{ placeholder_namespace }}
+spec:
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: bpc
+          path: '.spec.template.spec.containers[?(@.name=="cockpit")].resources'
+        ownerPath: .spec.bai_configuration.business_performance_center.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: management
+          path: .spec.template.spec.containers[?(@.name=="management")].resources
+        ownerPath: .spec.bai_configuration.management.resources
+    selectors:
+      bpc:
+        matchLabels:
+          app: ibm-cp4ba-insights-engine
+          component: {{ meta.name }}-insights-engine-cockpit
+      management:
+        matchLabels:
+          app: ibm-cp4ba-insights-engine
+          component: {{ meta.name }}-insights-engine-management
+  owner:
+    apiVersion: icp4a.ibm.com/v1
+    kind: InsightsEngine
+    name: {{ meta.name }}

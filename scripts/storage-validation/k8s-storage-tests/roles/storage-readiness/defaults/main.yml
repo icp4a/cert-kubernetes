@@ -1,0 +1,4 @@
+---
+# defaults file for roles/storage-readiness
+
+storage_val_image: "{{ validation_imageurl if validation_imageurl is defined else imageurl }}"

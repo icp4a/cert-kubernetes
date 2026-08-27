@@ -1,0 +1,14 @@
+apiVersion: operator.ibm.com/v1
+kind: IBMUsageMetering
+metadata:
+  name: ibmusagemetering
+  namespace: REPLACE_NAMESPACE
+  labels:
+    cp4ba.ibm.com/backup-type: mandatory
+spec:
+  license:
+    accept: true
+  sender:
+    softwareCentral:
+      enable: true
+      entitlementKeySecret: REPLACE_SECRET_NAME

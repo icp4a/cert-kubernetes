@@ -1,0 +1,27 @@
+apiVersion: operator.ibm.com/v1
+kind: IBMServiceMeterDefinition
+metadata:
+  name: cp4ba-iccsap-metrics
+  namespace: REPLACE_NAMESPACE
+  labels:
+    cp4ba.ibm.com/backup-type: mandatory
+spec:
+  mappingId: iccsapdeployment000000000001
+  processing: LAST
+  repeat: true
+  breakdownDefs:
+    - breakdownBy:
+        name: INSTANCE_COUNT
+      groupBy:
+        - version
+        - environment
+        - architecture
+        - platform
+      source: metricQuantity
+      processing: LAST
+  data:
+    productId: 91fbd935ea3344b68d7667e8b0b60df3
+    productName: Content Collector for SAP Applications Containers
+    metricName: INSTANCE_COUNT
+    metricDescription: count of ICCSAP instances
+    metricType: ADOPTION

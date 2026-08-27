@@ -1,0 +1,344 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cs-db-br-configmap
+  namespace: <cs-db namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: cs-db-data
+data:
+  br_cs-db.sh: |
+    #!/usr/bin/env bash
+
+    # Licensed Materials - Property of IBM
+    # Copyright IBM Corporation 2024. All Rights Reserved
+    # US Government Users Restricted Rights -
+    # Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+    #
+    # This is an internal component, bundled with an official IBM product.
+    # Please refer to that particular license for additional information.
+
+    # ---------- Command arguments ----------
+
+    set -o errtrace
+    set -o errexit
+
+    MODE=$1
+    CSDB_NAMESPACE=$2
+    CLUSTER_CR=common-service-db
+
+    BACKUP_DIR=/cs-db/cs-db-backup
+
+    function main {
+        EMBEDDED=$(oc get cm -n $CSDB_NAMESPACE common-service-db-im -o jsonpath='{.data.IS_EMBEDDED}{"\n"}')
+        if [[ $MODE == "backup" ]]; then
+            save_log "logs" "backup_log"
+            trap cleanup_log EXIT
+            info "Mode set to backup, beginning backup process."
+            backup
+            success "Backup completed successfully."
+        elif [[ $MODE == "restore" ]]; then
+            save_log "logs" "restore_log"
+            trap cleanup_log EXIT
+            info "Mode is set to restore, beginning restore process."
+            restore
+            success "Restore completed successfully."
+        else
+            error "Mode selected is $MODE. Please use either \"backup\" or \"restore\"."
+        fi
+    }
+
+    function backup {
+        if [[ $EMBEDDED == "true" ]] || [[ -z $EMBEDDED ]]; then
+            info "Embedded Postgres DB in use, beginning backup."
+            mkdir -p $BACKUP_DIR/database
+            CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` && \
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- mkdir -p /run/cs-db_backup && \
+            info "Beginning backup of im database..."
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=im -f /run/cs-db_backup/cs-db_im_backup.dump --format=c
+            info "Beginning backup of zen database..."
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=zen -f /run/cs-db_backup/cs-db_zen_backup.dump --format=c
+            ACCOUNT_IAM=$(oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" | grep "account_iam" || echo False)
+            if [[ $ACCOUNT_IAM != "False" ]]; then
+                info "Beginning backup of account_iam database..."
+                oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=account_iam -f /run/cs-db_backup/cs-db_account_iam_backup.dump --format=c
+            fi
+
+            #Move backup to backup location
+            info "Copy backup file."
+            oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump $BACKUP_DIR/database/cs-db_im_backup.dump
+            oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump $BACKUP_DIR/database/cs-db_zen_backup.dump
+            if [[ $ACCOUNT_IAM != "False" ]]; then
+                oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_account_iam_backup.dump $BACKUP_DIR/database/cs-db_account_iam_backup.dump
+            fi
+        else
+            info "External Postgres DB in use, skipping backup."
+        fi
+
+    }
+
+    function restore {
+
+        if [[ $EMBEDDED == "true" ]] || [[ -z $EMBEDDED ]]; then
+            info "Embedded Postgres DB in use, beginning data restore."
+            wait_for_cluster_cr
+            CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` 
+            oc exec $CNPG_PRIMARY_POD -n $CSDB_NAMESPACE -- mkdir -p /run/cs-db_backup
+            oc cp $BACKUP_DIR/database/cs-db_im_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump
+            oc cp $BACKUP_DIR/database/cs-db_zen_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump
+            ACCOUNT_IAM=$(ls $BACKUP_DIR/database/ | grep "cs-db_account_iam_backup.dump" || echo False)
+            if [[ $ACCOUNT_IAM != "False" ]]; then
+                oc cp $BACKUP_DIR/database/cs-db_account_iam_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_account_iam_backup.dump        
+            fi
+            
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+            info "Beginning restore of im database..."
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname im --format=c --clean --if-exists --exit-on-error -v /run/cs-db_backup/cs-db_im_backup.dump
+            info "Beginning restore of zen database..."
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname zen --format=c --clean --if-exists --exit-on-error -v /run/cs-db_backup/cs-db_zen_backup.dump
+            if [[ $ACCOUNT_IAM != "False" ]]; then
+                info "Beginning restore of account_iam database..."
+                oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname account_iam --format=c --clean --if-exists --exit-on-error -v /run/cs-db_backup/cs-db_account_iam_backup.dump        
+                
+                # Update IDP configuration with actual cluster domain
+                update_idp_config
+            fi
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+        else
+            info "External Postgres DB in use, skipping data restore."
+        fi
+        
+        info "🔄 Rerunning OIDC registration job..."
+        oc -n $CSDB_NAMESPACE get job oidc-client-registration -o yaml > /tmp/oidc-client-registration.yaml
+        oc -n $CSDB_NAMESPACE delete job oidc-client-registration
+        yq -i 'del(.metadata.creationTimestamp) | del(.metadata.managedFields) | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.spec.selector) | del(.spec.template.metadata.labels) | del(.status)' /tmp/oidc-client-registration.yaml || error "Failed to remove metadata fields from temp oidc client registration yaml for namespace ${CSDB_NAMESPACE}."
+        info "⏸️ Wait for previous job to delete..."
+        sleep 30
+        oc apply -f /tmp/oidc-client-registration.yaml
+        rm -f /tmp/oidc-client-registration.yaml
+        wait_for_job "oidc-client-registration"
+
+        if [[ $ACCOUNT_IAM != "False" ]]; then
+            info "🔄 Rerunning account-iam-db-migration job..."
+            oc -n $CSDB_NAMESPACE get job account-iam-db-migration-job -o yaml > /tmp/account-iam-db-migration-job.yaml 2>/dev/null || {
+                info "🔍 account-iam-db-migration job not found, skipping..."
+            }
+            if [[ -f /tmp/account-iam-db-migration-job.yaml ]]; then
+                oc -n $CSDB_NAMESPACE delete job account-iam-db-migration-job
+                yq -i 'del(.metadata.creationTimestamp) | del(.metadata.managedFields) | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.spec.selector) | del(.spec.template.metadata.labels) | del(.status)' /tmp/account-iam-db-migration-job.yaml || error "Failed to remove metadata fields from temp account-iam-db-migration-job yaml for namespace ${CSDB_NAMESPACE}."
+                info "⏸️ Wait for previous account-iam-db-migration job to delete..."
+                sleep 10
+                oc apply -f /tmp/account-iam-db-migration-job.yaml
+                rm -f /tmp/account-iam-db-migration-job.yaml
+                wait_for_job "account-iam-db-migration-job"
+            fi
+            info "🔄 Rerunning MCSP IM config job..."
+            oc -n $CSDB_NAMESPACE get job mcsp-im-config-job -o yaml > /tmp/mcsp-im-config-job.yaml 2>/dev/null || {
+                info "🔍 MCSP IM config job not found, skipping..."
+            }
+            if [[ -f /tmp/mcsp-im-config-job.yaml ]]; then
+                oc -n $CSDB_NAMESPACE delete job mcsp-im-config-job
+                yq -i 'del(.metadata.creationTimestamp) | del(.metadata.managedFields) | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.spec.selector) | del(.spec.template.metadata.labels) | del(.status)' /tmp/mcsp-im-config-job.yaml || error "Failed to remove metadata fields from temp mcsp-im-config-job yaml for namespace ${CSDB_NAMESPACE}."
+                info "⏸️ Wait for previous MCSP IM config job to delete..."
+                sleep 10
+                oc apply -f /tmp/mcsp-im-config-job.yaml
+                rm -f /tmp/mcsp-im-config-job.yaml
+                wait_for_job "mcsp-im-config-job"
+            fi
+        fi  
+
+        
+    }
+
+    function update_idp_config {
+        info "Updating IDP configuration with actual cluster domain..."
+        
+        # Get the cluster domain from ibmcloud-cluster-info configmap
+        CLUSTER_DOMAIN=$(oc get cm ibmcloud-cluster-info -n $CSDB_NAMESPACE -o jsonpath='{.data.cluster_address}' 2>/dev/null || echo "")
+        
+        if [[ -z $CLUSTER_DOMAIN ]]; then
+            error "❌ Could not determine cluster domain from ibmcloud-cluster-info configmap. Please update IDP configuration manually."
+            return 1
+        fi
+        
+        info "✅ Detected cluster domain: $CLUSTER_DOMAIN"
+        
+        NEW_IDP_URL="https://${CLUSTER_DOMAIN}/idprovider/v1/auth"
+        
+        info "🎯 Target IDP URL: $NEW_IDP_URL"
+        
+        # Check if account_iam database exists
+        ACCOUNT_IAM_EXISTS=$(oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" | grep "account_iam" || echo False)
+        
+        if [[ $ACCOUNT_IAM_EXISTS != "False" ]]; then
+            # Check current IDP configuration
+            CURRENT_IDP=$(oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d account_iam -t -c "SELECT TRIM(idp) FROM accountiam.idp_config WHERE idp LIKE '%/idprovider/v1/%' LIMIT 1;" 2>/dev/null | head -n1 | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || echo "")
+            info "🌐 Current IDP URL: $CURRENT_IDP"
+            echo ""
+            
+            if [[ -n $CURRENT_IDP ]] && [[ $CURRENT_IDP != $NEW_IDP_URL ]]; then
+                info "🔄 Updating IDP configuration..."
+                
+                oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d account_iam -c "
+                    UPDATE accountiam.idp_config 
+                    SET idp = '$NEW_IDP_URL', 
+                        modified_ts = NOW()
+                    WHERE idp LIKE '%/idprovider/v1/%';
+                "
+                echo ""
+                info "Verifying IDP configuration update..."
+                oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d account_iam -c "
+                    SELECT uid, realm, idp, modified_ts 
+                    FROM accountiam.idp_config 
+                    ORDER BY modified_ts DESC;
+                "
+                
+                success "IDP configuration updated successfully in account_iam database."
+                
+                # Restart account-iam pod to pick up the new configuration
+                info "🔄 Restarting account-iam pod to apply new IDP configuration..."
+                ACCOUNT_IAM_POD=$(oc get pods -n $CSDB_NAMESPACE -l app.kubernetes.io/name=account-iam --no-headers -o custom-columns=":metadata.name" | head -n1 || echo "")
+                
+                if [[ -n $ACCOUNT_IAM_POD ]]; then
+                    info "Found account-iam pod: $ACCOUNT_IAM_POD"
+                    oc delete pod $ACCOUNT_IAM_POD -n $CSDB_NAMESPACE
+                    
+                    info "⏳ Waiting for new account-iam pod to be ready..."
+                    # Wait for new pod to be running and ready
+                    retry_count=30
+                    while [[ $retry_count > 0 ]]; do
+                        NEW_POD=$(oc get pods -n $CSDB_NAMESPACE -l app.kubernetes.io/name=account-iam --no-headers -o custom-columns=":metadata.name,:status.phase" | grep Running | head -n1)
+                        if [[ -n $NEW_POD ]]; then
+                            POD_NAME=$(echo $NEW_POD | awk '{print $1}')
+                            READY_STATUS=$(oc get pod $POD_NAME -n $CSDB_NAMESPACE -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+                            if [[ $READY_STATUS == "True" ]]; then
+                                info "✅ New account-iam pod is ready: $POD_NAME"
+                                break
+                            fi
+                        fi
+                        sleep 2
+                        retry_count=$((retry_count-1))
+                    done
+                    
+                    if [[ $retry_count == 0 ]]; then
+                        warning "⚠️ Timeout waiting for new account-iam pod to be ready"
+                    fi
+                    
+                    info "✅ Account-iam pod restart completed"
+                else
+                    warning "⚠️ Could not find account-iam pod to restart. Please restart manually if needed."
+                fi
+            elif [[ $CURRENT_IDP == $NEW_IDP_URL ]]; then
+                info "✅ IDP configuration already matches target URL, no update needed."
+            else
+                info "No IDP configuration found in database, skipping update."
+            fi
+        else
+            info "account_iam database not found, IDP configuration update not applicable."
+        fi
+    }
+
+    function wait_for_job {
+        local job_name=$1
+        info "⏳ Waiting for job $job_name to complete in namespace $CSDB_NAMESPACE..."
+        job_exists=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers || echo fail)
+        if [[ $job_exists != "fail" ]]; then
+            completed=$(oc get job/$job_name -n $CSDB_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='Complete')].type}")
+            retry_count=20
+            while [[ $completed != "Complete" ]] && [[ $retry_count > 0 ]]
+            do
+                info "⏰ Wait for job $job_name to complete. Try again in 15s..."
+                sleep 15
+                completed=$(oc get job/$job_name -n $CSDB_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='Complete')].type}")
+                retry_count=$((retry_count-1))
+            done
+
+            if [[ $retry_count == 0 ]] && [[ $completed != "Complete" ]]; then
+                error "⏱️ Timed out waiting for job $job_name."
+            else
+                info "✅ Job $job_name completed."
+            fi
+        else
+            error "❌ Job $job_name not present."
+        fi
+    }
+
+    function wait_for_cluster_cr {
+        info "Waiting for EDB Cluster CR $CLUSTER_CR to complete in namespace $CSDB_NAMESPACE."
+        cluster_cr_exists=$(oc get clusters.postgresql.k8s.enterprisedb.io $CLUSTER_CR -n $CSDB_NAMESPACE --no-headers || echo fail)
+        if [[ $cluster_cr_exists != "fail" ]]; then
+            completed=$(oc get clusters.postgresql.k8s.enterprisedb.io $CLUSTER_CR -n $CSDB_NAMESPACE -o=jsonpath='{.status.phase}')
+            retry_count=40
+            while [[ $completed != "Cluster in healthy state" ]] && [[ $retry_count > 0 ]]
+            do
+                info "Wait for cluster $CLUSTER_CR to complete. Try again in 15s."
+                sleep 15
+                completed=$(oc get clusters.postgresql.k8s.enterprisedb.io $CLUSTER_CR -n $CSDB_NAMESPACE -o=jsonpath='{.status.phase}')
+                retry_count=$retry_count-1
+            done
+
+            if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
+                error "Timed out waiting for cluster $CLUSTER_CR."
+            else
+                info "EDB cluster $CLUSTER_CR ready."
+            fi
+        else
+            error "EDB cluster $CLUSTER_CR not present."
+        fi
+    }
+
+    function save_log(){
+        local LOG_DIR="$BACKUP_DIR/$1"
+        LOG_FILE="$LOG_DIR/$2_$(date +'%Y%m%d%H%M%S').log"
+
+        if [[ ! -d $LOG_DIR ]]; then
+            mkdir -p "$LOG_DIR"
+        fi
+
+        # Create a named pipe
+        PIPE=$(mktemp -u)
+        mkfifo "$PIPE"
+
+        # Tee the output to both the log file and the terminal
+        tee "$LOG_FILE" < "$PIPE" &
+
+        # Redirect stdout and stderr to the named pipe
+        exec > "$PIPE" 2>&1
+
+        # Remove the named pipe
+        rm "$PIPE"
+    }
+
+    function cleanup_log() {
+        # Check if the log file already exists
+        if [[ -e $LOG_FILE ]]; then
+            # Remove ANSI escape sequences from log file
+            sed -E 's/\x1B\[[0-9;]+[A-Za-z]//g' "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
+        fi
+    }
+
+    function msg() {
+        printf '%b\n' "$1"
+    }
+
+    function success() {
+        msg "\33[32m[✔] ${1}\33[0m"
+    }
+
+    function warning() {
+        msg "\33[33m[✗] ${1}\33[0m"
+    }
+
+    function error() {
+        msg "\33[31m[✘] ${1}\33[0m"
+        exit 1
+    }
+
+    function title() {
+        msg "\33[34m# ${1}\33[0m"
+    }
+
+    function info() {
+        msg "[INFO] ${1}"
+    }
+
+    main $*

@@ -1,0 +1,25 @@
+apiVersion: operator.ibm.com/v1
+kind: IBMServiceMeterDefinition
+metadata:
+  name: cp4ba-workflow-metrics
+  namespace: REPLACE_NAMESPACE
+  labels:
+    cp4ba.ibm.com/backup-type: mandatory
+spec:
+  mappingId: workflowdeployment0000000001
+  processing: LAST
+  repeat: true
+  breakdownDefs:
+    - breakdownBy:
+        name: INSTANCE_COUNT
+      groupBy:
+        - version
+        - environment
+        - architecture
+        - platform
+      source: metricQuantity
+      processing: LAST
+  data:
+    productId: e3b363dd621c4895a6e00cf3ac852a16
+    productName: Business Automation Workflow Containers
+    metricType: ADOPTION

@@ -1,0 +1,31 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2026 All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+{{- if and .Values.persistence.enabled  (not .Values.persistence.existingClaim) }}
+{{- include "cp4ba-api.validateRequiredValues" . }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "cp4ba-api.fullname" . }}-logs
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    {{- include "cp4ba-api.labels" . | nindent 4 }}
+    {{- include "cp4ba-api.backupLabels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.accessMode }}
+  {{- if .Values.persistence.storageClass }}
+  storageClassName: {{ .Values.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size }}
+{{- end }}

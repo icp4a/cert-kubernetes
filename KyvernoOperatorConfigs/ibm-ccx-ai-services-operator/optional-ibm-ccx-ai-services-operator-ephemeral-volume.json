@@ -1,0 +1,82 @@
+[
+  {
+    "op": "replace",
+    "path": "/spec/install/spec/deployments/0/spec/template/spec/volumes/0",
+    "value": {
+      "name": "license-folder-pvc",
+      "ephemeral": {
+        "volumeClaimTemplate": {
+          "spec": {
+            "storageClassName": "managed-nfs-storage",
+            "accessModes": ["ReadWriteOnce"],
+            "resources": {
+              "requests": {
+                "storage": "10Mi"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "op": "replace",
+    "path": "/spec/install/spec/deployments/0/spec/template/spec/volumes/1",
+    "value": {
+      "name": "tmp-folder-pvc",
+      "ephemeral": {
+        "volumeClaimTemplate": {
+          "spec": {
+            "storageClassName": "managed-nfs-storage",
+            "accessModes": ["ReadWriteOnce"],
+            "resources": {
+              "requests": {
+                "storage": "10Mi"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "op": "replace",
+    "path": "/spec/install/spec/deployments/0/spec/template/spec/volumes/2",
+    "value": {
+      "name": "log-folder-pvc",
+      "ephemeral": {
+        "volumeClaimTemplate": {
+          "spec": {
+            "storageClassName": "managed-nfs-storage",
+            "accessModes": ["ReadWriteOnce"],
+            "resources": {
+              "requests": {
+                "storage": "10Mi"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "op": "replace",
+    "path": "/spec/install/spec/deployments/0/spec/template/spec/volumes/3",
+    "value": {
+      "name": "ibm-folder-pvc",
+      "ephemeral": {
+        "volumeClaimTemplate": {
+          "spec": {
+            "storageClassName": "managed-nfs-storage",
+            "accessModes": ["ReadWriteOnce"],
+            "resources": {
+              "requests": {
+                "storage": "10Mi"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+]

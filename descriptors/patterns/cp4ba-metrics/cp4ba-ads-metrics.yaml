@@ -1,0 +1,26 @@
+apiVersion: operator.ibm.com/v1
+kind: IBMServiceMeterDefinition
+metadata:
+  name: cp4ba-dicms-metrics-prod
+  namespace: REPLACE_NAMESPACE
+  labels:
+    cp4ba.ibm.com/backup-type: mandatory
+spec:
+  mappingId: adsdeployment000000000000001
+  processing: ADD
+  breakdownDefs:
+    - breakdownBy:
+        name: MONTHLY_API_CALL
+      groupBy:
+        - version
+        - environment
+        - architecture
+        - platform
+      source: metricQuantity
+      processing: ADD
+  data:
+    productId: 3f1d7caa69374823813c79d48dce6a1f
+    productName: Decision Intelligence Client Managed Software
+    metricName: MONTHLY_API_CALL
+    metricDescription: count of decision execution in DI CMS
+    metricType: ADOPTION

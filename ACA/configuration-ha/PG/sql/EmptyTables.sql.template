@@ -1,0 +1,33 @@
+--
+-- Licensed Materials - Property of IBM
+-- 5737-I23
+-- Copyright IBM Corp. 2018 - 2022. All Rights Reserved.
+-- U.S. Government Users Restricted Rights:
+-- Use, duplication or disclosure restricted by GSA ADP Schedule
+-- Contract with IBM Corp.
+--
+
+set search_path to "$tenant_ontology" ;
+
+-- Empty tables contents
+CREATE TEMP TABLE tmp_x (tn varchar);
+
+\COPY tmp_x(tn) FROM 'CSVFiles/tables.csv';
+
+DO $$
+DECLARE
+  tbl varchar;
+BEGIN
+  FOR tbl IN SELECT tn FROM tmp_x
+  LOOP
+    EXECUTE 'TRUNCATE TABLE ' || quote_ident(tbl) || ' CASCADE';
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TABLE tmp_x;
+
+-- reset sequence number
+SELECT setval(pg_get_serial_sequence('processed_file', 'id'), 1);
+SELECT setval(pg_get_serial_sequence('error_log', 'id'), 1);
+SELECT setval(pg_get_serial_sequence('smartpages_options', 'id'), 1);

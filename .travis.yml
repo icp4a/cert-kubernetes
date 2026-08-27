@@ -1,0 +1,6 @@
+install:
+  - npm install -g markdown-link-check
+
+script:
+- echo "on going"
+#- ./scripts/checkDeadLinks.sh

@@ -1,0 +1,15 @@
+apiVersion: turbonomic.com/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: oidcclientwatchers.operator.ibm.com
+  labels:
+    component: cpfs
+spec:
+  resourceMappings:
+    - srcResourceSpec:
+        kind: Deployment
+        componentNames:
+          - oidcclient-watcher
+      resourceMappingTemplates:
+        - srcPath: .spec.template.spec.containers[?(@.name=="oidcclient-watcher")].resources
+          destPath: .spec.resources

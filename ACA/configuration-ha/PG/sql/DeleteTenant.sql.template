@@ -1,0 +1,5 @@
+\c "$base_db_name" ;
+
+set search_path to "$base_db_user" ;
+
+delete from TENANTINFO where tenantid='$tenant_id';

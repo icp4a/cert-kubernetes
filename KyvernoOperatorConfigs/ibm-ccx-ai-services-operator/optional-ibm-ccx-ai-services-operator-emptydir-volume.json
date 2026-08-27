@@ -1,0 +1,34 @@
+[
+  {
+    "op": "replace",
+    "path": "/spec/install/spec/deployments/0/spec/template/spec/volumes/0",
+    "value": {
+      "name": "license-folder-pvc",
+      "emptyDir": {}
+    }
+  },
+  {
+    "op": "replace",
+    "path": "/spec/install/spec/deployments/0/spec/template/spec/volumes/1",
+    "value": {
+      "name": "tmp-folder-pvc",
+      "emptyDir": {}
+    }
+  },
+  {
+    "op": "replace",
+    "path": "/spec/install/spec/deployments/0/spec/template/spec/volumes/2",
+    "value": {
+      "name": "log-folder-pvc",
+      "emptyDir": {}
+    }
+  },
+  {
+    "op": "replace",
+    "path": "/spec/install/spec/deployments/0/spec/template/spec/volumes/3",
+    "value": {
+      "name": "ibm-folder-pvc",
+      "emptyDir": {}
+    }
+  }
+]

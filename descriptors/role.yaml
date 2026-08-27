@@ -1,0 +1,493 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2022. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ibm-cp4a-operator
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 26.0.0
+rules:
+  - apigroups:
+    - ''
+    resources:
+    - pods
+    - services
+    - endpoints
+    - persistentvolumeclaims
+    - events
+    - configmaps
+    - secrets
+    - serviceaccounts
+    - namespaces
+    verbs:
+    - watch
+    - get
+    - list
+    - create
+    - delete
+    - update
+    - patch
+    - use
+  - apiGroups:
+    - apps
+    resources:
+    - deployments
+    - replicasets
+    - statefulsets
+    verbs:
+    - create
+    - list
+    - delete
+    - update
+    - patch
+    - get
+    - watch
+  - apiGroups:
+    - monitoring.coreos.com
+    resources:
+    - servicemonitors
+    verbs:
+    - get
+    - create
+  - apiGroups:
+    - apps
+    resources:
+    - deployments/finalizers
+    resourceNames:
+    - icp4a-foundation-operator
+    verbs:
+    - get
+    - list
+    - update
+    - patch
+    - delete
+    - create
+    - watch
+  - apiGroups:
+    - icp4a.ibm.com
+    resources:
+    - '*'
+    verbs:
+    - create
+    - get
+    - watch
+    - list
+  - apiGroups:
+    - ''
+    resources:
+    - pods/exec
+    - pods/log
+    verbs:
+    - get
+    - list
+    - create
+    - delete
+    - update
+    -  patch
+    - watch
+  - apiGroups:
+    - autoscaling
+    resources:
+    - horizontalpodautoscalers
+    verbs:
+    - get
+    - list
+    - create
+    - delete
+    - update
+    - patch
+    - watch
+  - apiGroups:
+    - policy
+    resources:
+    - poddisruptionbudgets
+    - podsecuritypolicies
+    verbs:
+    - get
+    - list
+    - create
+    - delete
+    - update
+    - patch
+    - watch
+  - apiGroups:
+    - networking.k8s.io
+    resources:
+    - networkpolicies
+    - ingresses
+    verbs:
+    - get
+    - list
+    - create
+    - delete
+    - update
+    - patch
+    - watch
+  - apiGroups:
+    - rbac.authorization.k8s.io
+    resources:
+    - roles
+    - rolebindings
+    verbs:
+    - create
+    - list
+    - delete
+    - update
+    - patch
+    - get
+    - wait
+    - watch
+  - apiGroups:
+    - batch
+    resources:
+    - jobs
+    - cronjobs
+    - deployments
+    verbs:
+    - get
+    - list
+    - create
+    - delete
+    - update
+    - patch
+    - watch
+  - apiGroups:
+    - ""
+    - route.openshift.io
+    resources:
+    - routes
+    - routes/custom-host
+    verbs:
+    - get
+    - list
+    - create
+    - delete
+    - update
+    - patch
+  - apiGroups:
+    - extensions
+    resources:
+    - ingresses
+    - jobs
+    - deployments
+    - networkpolicies
+    - replicasets
+    verbs:
+    - create
+    - watch
+    - list
+    - get
+    - delete
+    - update
+    - patch
+  - apiGroups:
+    - core.automation.ibm.com
+    resources:
+    - cartridges
+    - automationuiconfigs
+    verbs:
+    - create
+    - list
+    - get
+    - update
+    - patch
+    - watch
+    - delete
+  - apiGroups:
+    - base.automation.ibm.com
+    resources:
+    - cartridgerequirements
+    - automationbases
+    verbs:
+    - create
+    - get
+    - delete
+    - list
+    - patch
+    - watch
+  - apiGroups:
+    - eventprocessing.automation.ibm.com
+    resources:
+    - eventprocessors
+    verbs:
+    - create
+    - get
+    - list
+    - delete
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - insightsengine.automation.ibm.com
+    resources:
+    - insightsengines
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - certmanager.k8s.io
+    resources:
+    - issuers
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - cert-manager.io
+    resources:
+    - issuers
+    - certificates
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - watch
+    - patch
+  - apiGroups:
+    - oidc.security.ibm.com
+    resources:
+    - clients
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - zen.cpd.ibm.com
+    resources:
+    - zenservices
+    - zenextensions
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - ibmevents.ibm.com
+    resources:
+    - kafkas
+    - kafkausers
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - elastic.automation.ibm.com
+    resources:
+    - elasticsearches
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - elasticsearch.opencontent.ibm.com
+    resources:
+    - elasticsearchclusters
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - icp4a.ibm.com
+    resources:
+    - federatedsystems
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - icp4a.ibm.com
+    resources:
+    - workflowruntimes
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - icp4a.ibm.com
+    resources:
+    - businessautomationmachinelearnings
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - icp4a.ibm.com
+    resources:
+    - icp4aclusters/status
+    - icp4aclusters
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - operators.coreos.com
+    resources:
+    - clusterserviceversions
+    - subscriptions
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - postgresql.k8s.enterprisedb.io
+    resources:
+    - clusters
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - operator.openshift.io
+    resources:
+    - ingresscontrollers
+    verbs:
+    - get
+    - list
+    - patch
+    - watch
+  - apiGroups:
+    - operator.ibm.com
+    resources:
+    - commonservices
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - operator.ibm.com
+    resources:
+    - operandrequests/status
+    verbs:
+    - get
+    - list
+  - apiGroups:
+    - operator.ibm.com
+    resources:
+    - operandrequests
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - extensions
+    resources:
+    - podsecuritypolicies
+    - ingresses
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - policy
+    resources:
+    - poddisruptionbudgets
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - operator.ibm.com
+    resources:
+    - businessteamsservices
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  - apiGroups:
+    - opensearch.cloudpackopen.ibm.com
+    resources:
+    - clusters
+    - nodepools
+    verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch

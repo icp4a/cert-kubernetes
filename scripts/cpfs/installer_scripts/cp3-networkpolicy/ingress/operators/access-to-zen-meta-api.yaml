@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    component: cpfs3
+    service: zen
+  name: access-to-zen-meta-api
+  namespace: "opNamespace"
+spec:
+  ingress:
+  - {}
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: ibm-zen-meta-api
+  policyTypes:
+  - Ingress

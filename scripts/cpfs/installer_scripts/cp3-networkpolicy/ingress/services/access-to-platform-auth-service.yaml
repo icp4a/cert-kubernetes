@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    component: cpfs3
+    service: iam
+  name: access-to-platform-auth-service
+  namespace: "csNamespace"
+spec:
+  ingress:
+  - {}
+  podSelector:
+    matchLabels:
+      k8s-app: platform-auth-service
+  policyTypes:
+  - Ingress

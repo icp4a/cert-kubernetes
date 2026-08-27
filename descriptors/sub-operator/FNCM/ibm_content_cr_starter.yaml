@@ -1,0 +1,90 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2023. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: Content
+metadata:
+  name: content
+  labels:
+    app.kubernetes.io/instance: ibm-dba-content
+    app.kubernetes.io/managed-by: ibm-dba-content
+    app.kubernetes.io/name: ibm-dba-content
+    release: 26.0.0
+    cp4ba.ibm.com/backup-type: mandatory
+spec:
+  appVersion: 26.0.0
+
+  ## MUST exist, used to accept ibm license, valid value only can be "true". 
+  license:
+    accept: true
+  ## The deployment type as selected by the user. Possible values are: Starter and Production.
+  content_deployment_type: Starter
+
+  ## The optional components to be installed if listed here.
+  ## The optional components are: Content Manager Image Services (cmis), css (Content Search Services), es (External Share), tm (Task Manager),
+  ## IBM Enterprise Records (ier), IBM Content Collector for SAP (iccsap), Content Cortex for Microsoft Office (ccxmo).
+  ## NOTE: ier, and iccsap does NOT support integration with ums.
+  ## NOTE: es does not work when using Zen and IAM for authentication.
+  content_optional_components:
+    bai: false
+    cmis: false
+    css: false
+    iccsap: false
+    ier: false
+    tm: false
+    ccxmo: false
+  ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
+  ## For example, serviceAccount in the spec becomes service_account in ansible.
+  ## It is recommended that you perform some type validation in Ansible on the variables to ensure that
+  ## your application is receiving expected input.
+  ## shared configuration among all tribe
+  shared_configuration:
+    ## This is the Content Cortex license  parameter and the possible values are: user, non-production, and production.
+    ## This value could be different from the rest of the licenses.
+    sc_deployment_fncm_license: non-production
+
+    ## Specify the RunAsUser for the security context of the pod. This is usually a numeric value that corresponds to a user ID
+    sc_run_as_user: 
+
+    ## This is the deployment platform supported for CP4A and the possible values are: ROKS, OCP, and other (which includes all Certified Kubernetes platforms)
+    sc_deployment_platform: 
+
+    ## Staring with CP4BA 25.0.0, the operators are no longer creating network policies automatically due to a change in the security requirements where the permissions to create network policies have been removed.
+    ## The optional parameter to enable/disable the creation of sample network policy templates for CP4BA components.  If the parameter is not defined, then the default value is "false".
+    ## Set this flag to "true" if you plan to have restricted network policies in CP4BA namespaces so that the operators can create sample network policy templates for CP4BA components.
+    ## Please refer to the CP4BA documentation for more information about how to retrieve and apply the sample network policy templates.
+    sc_generate_sample_network_policies: false
+
+    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <route-name>-{{meta.namespace}}.<router-canonical-hostname> when not defined.
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/26.0.0?topic=scp-shared-configuration
+    ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
+    #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
+    
+    ## This is necessary if you want to use your own JDBC drivers and/or need to provide ICCSAP drivers.  If you are providing multiple JDBC drivers and ICCSAP drivers, 
+    ## all the files must be compressed in a single file.
+    ## First you need to package your drivers into a compressed package in the format of "saplibs/drivers_files" and/or 
+    ## "jdbc/db2|oracle|postgresql|sqlserver/driver_files". For example, if you are providing your own DB2 and Oracle JDBC drivers and ICCSAP drivers, then the compressed 
+    ## file should have the following structure and content:
+    ##   /jdbc/db2/db2jcc4.jar
+    ##   /jdbc/db2/db2jcc_license_cu.jar
+    ##   /jdbc/oracle/ojdbc8.jar
+    ##   /saplibs/libicudata.so.50
+    ##   /saplibs/...
+    ## Then you need to put the compressed package on an anonymously accessible web server and provide the link here.
+    ## This CR can handle .zip files using unzip as well as .tar, .tar.gz, .tar.bz2, .tar.xz. Does not handle .gz files, .bz2 files, .xz, or .zst files that do not contain a .tar archive.
+    sc_drivers_url:
+
+    storage_configuration:
+      sc_dynamic_storage_classname: ""
+      sc_block_storage_classname: ""
+
+    ## Enable/disable FIPS mode for the deployment (default value is "false")
+    ## Note: If set as "true", in order to complete enablement of FIPS for CP4BA, please refer to "FIPS wall" configuration in IBM documentation.
+    enable_fips: false

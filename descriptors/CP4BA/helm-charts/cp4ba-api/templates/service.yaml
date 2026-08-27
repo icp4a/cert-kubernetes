@@ -1,0 +1,25 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2026 All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cp4ba-api.fullname" . }}
+  labels:
+    {{- include "cp4ba-api.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ if .Values.tls.enabled }}{{ .Values.service.httpsPort }}{{ else }}{{ .Values.service.httpPort }}{{ end }}
+      targetPort: {{ if .Values.tls.enabled }}{{ .Values.service.httpsTargetPort }}{{ else }}{{ .Values.service.httpTargetPort }}{{ end }}
+      protocol: TCP
+      name: {{ if .Values.tls.enabled }}https{{ else }}http{{ end }}
+  selector:
+    {{- include "cp4ba-api.selectorLabels" . | nindent 4 }}

@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: access-to-audit-svc
+  namespace: "zenNamespace"
+  labels:
+    component: cpfs
+spec:
+  podSelector:
+    matchLabels:
+      component: "zen-audit"
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {} 

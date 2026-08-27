@@ -1,0 +1,35 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: bts-orm
+  namespace: {{ placeholder_namespace }}
+spec:
+  owner:
+    apiVersion: operator.ibm.com/v1alpha1
+    kind: BusinessTeamsService
+    name: {{ meta.name }}
+  mappings:
+    selectors:
+      bts:
+        matchLabels:
+          app.kubernetes.io/name: ibm-bts-cp4ba-bts
+          app.kubernetes.io/component: ibm-bts
+      postgres:
+        matchLabels:
+          app.kubernetes.io/name: ibm-bts-cp4ba-bts
+          app.kubernetes.io/component: ibm-bts
+    patterns:
+      # BTS main container
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          selector: bts
+          path: '.spec.template.spec.containers[?(@.name=="bts")].resources'
+        ownerPath: .spec.resources
+      # BTS PostgreSQL database (CloudNativePG)
+      - owned:
+          apiVersion: postgresql.k8s.enterprisedb.io/v1
+          kind: Cluster
+          selector: postgres
+          path: .spec.resources
+        ownerPath: .spec.resourcesPostgres

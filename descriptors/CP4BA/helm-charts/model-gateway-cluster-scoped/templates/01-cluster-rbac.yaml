@@ -1,0 +1,20 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    icpdsupport/addOnId: model_gateway
+  name: modelgateway.modelgateway.cpd.ibm.com-v1-{{ .Values.global.operatorNamespace }}-edit
+rules:
+- apiGroups:
+  - modelgateway.cpd.ibm.com
+  resources:
+  - modelgateway
+  verbs:
+  - get
+  - create
+  - update
+  - patch
+  - delete
+  - list

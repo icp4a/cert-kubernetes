@@ -1,0 +1,16 @@
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: ingress-ibm-flink-operator
+  namespace: "opNamespace"
+  labels:
+    component: cpfs3
+    service: flink
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: flink-kubernetes-operator
+  ingress:
+    - {}
+  policyTypes:
+    - Ingress

@@ -1,0 +1,17 @@
+apiVersion: turbonomic.com/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: policydecisions.operator.ibm.com
+  labels:
+    component: cpfs
+spec:
+  resourceMappings:
+    - srcResourceSpec:
+        kind: Deployment
+        componentNames:
+          - auth-pdp
+      resourceMappingTemplates:
+        - srcPath: .spec.template.spec.containers[?(@.name=="icp-audit-service")].resources
+          destPath: .spec.auditService.resources
+        - srcPath: .spec.template.spec.containers[?(@.name=="auth-pdp")].resources
+          destPath: .spec.resources

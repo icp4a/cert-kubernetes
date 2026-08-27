@@ -1,0 +1,139 @@
+#!/bin/bash
+
+###############################################################################
+#
+# LICENSED MATERIALS - PROPERTY OF IBM
+#
+# (C) COPYRIGHT IBM CORP. 2024. ALL RIGHTS RESERVED.
+#
+# US GOVERNMENT USERS RESTRICTED RIGHTS - USE, DUPLICATION OR
+# DISCLOSURE RESTRICTED BY GSA ADP SCHEDULE CONTRACT WITH IBM CORP.
+#
+###############################################################################
+
+# function for creating the db sql statement file for fncm GCDDB
+function create_adsdesignerdb_postgresql_sql_file(){
+    dbname=$1
+    dbuser=$2
+    dbuserpwd=$3
+    dbserver=$4
+    dbschema=$5
+    database_type=$6
+
+    # remove quotes from beginning and end of string
+    dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbname")
+    dbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuser")
+    dbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuserpwd")
+    dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
+    dbschema=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbschema")
+    database_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$database_type")
+    
+    # Use DATABASE_TYPE if provided, otherwise fall back to DB_TYPE for backward compatibility
+    if [[ -z "$database_type" ]]; then
+        database_type="$DB_TYPE"
+    fi
+    
+    # convert to lowercase for postgreSQL dbname
+    dbname=$(echo "$dbname" | tr '[:upper:]' '[:lower:]')
+    dbschema=$(echo "$dbschema" | tr '[:upper:]' '[:lower:]')
+
+    tablespace="${dbname}_tbs"
+
+    # use ads as schema when schema is empty
+    if [[ $dbschema == "" ]]; then
+       dbschema="ads"
+    fi
+
+    mkdir -p $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver >/dev/null 2>&1
+    rm -rf $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver/createDICMSDESIGNERDB.sql
+    # Determine CREATE ROLE statement based on client authentication setting
+    if is_pg_client_auth; then
+        CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN;"
+    else
+        CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN ENCRYPTED PASSWORD '${dbuserpwd}';"
+    fi
+cat << EOF > $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver/createDICMSDESIGNERDB.sql
+-- create user ${dbuser}
+${CREATE_ROLE_STMT}
+
+-- please modify location follow your requirement
+create tablespace ${tablespace} owner ${dbuser} location '/pgsqldata/${dbname}';
+grant create on tablespace ${tablespace} to ${dbuser};
+
+-- create database ${dbname}
+create database ${dbname} owner ${dbuser} tablespace ${tablespace} template template0 encoding UTF8 ;
+-- Connect to your database and create schema
+\c ${dbname};
+CREATE SCHEMA IF NOT EXISTS ${dbschema} AUTHORIZATION ${dbuser};
+GRANT ALL ON schema ${dbschema} to ${dbuser};
+
+-- create a schema for ${dbname} and set the default
+-- connect to the respective database before executing the below commands
+SET ROLE ${dbuser};
+ALTER DATABASE ${dbname} SET search_path TO ${dbschema};
+revoke connect on database ${dbname} from public;
+EOF
+}
+
+function create_adsruntimedb_postgresql_sql_file(){
+    dbname=$1
+    dbuser=$2
+    dbuserpwd=$3
+    dbserver=$4
+    dbschema=$5
+    database_type=$6
+
+    # remove quotes from beginning and end of string
+    dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbname")
+    dbuser=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuser")
+    dbuserpwd=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbuserpwd")
+    dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbserver")
+    dbschema=$(sed -e 's/^"//' -e 's/"$//' <<<"$dbschema")
+    database_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$database_type")
+    
+    # Use DATABASE_TYPE if provided, otherwise fall back to DB_TYPE for backward compatibility
+    if [[ -z "$database_type" ]]; then
+        database_type="$DB_TYPE"
+    fi
+    
+    # convert to lowercase for postgreSQL dbname
+    dbname=$(echo "$dbname" | tr '[:upper:]' '[:lower:]')
+    dbschema=$(echo "$dbschema" | tr '[:upper:]' '[:lower:]')
+
+    tablespace="${dbname}_tbs"
+
+    # use ads as schema when schema is empty
+    if [[ $dbschema == "" ]]; then
+       dbschema="ads"
+    fi
+
+    mkdir -p $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver >/dev/null 2>&1
+    rm -rf $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver/createDICMSRUNTIMEDB.sql
+    # Determine CREATE ROLE statement based on client authentication setting
+    if is_pg_client_auth; then
+        CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN;"
+    else
+        CREATE_ROLE_STMT="CREATE ROLE ${dbuser} WITH INHERIT LOGIN ENCRYPTED PASSWORD '${dbuserpwd}';"
+    fi
+cat << EOF > $ADS_DB_SCRIPT_FOLDER/$database_type/$dbserver/createDICMSRUNTIMEDB.sql
+-- create user ${dbuser}
+${CREATE_ROLE_STMT}
+
+-- please modify location follow your requirement
+create tablespace ${tablespace} owner ${dbuser} location '/pgsqldata/${dbname}';
+grant create on tablespace ${tablespace} to ${dbuser};
+
+-- create database ${dbname}
+create database ${dbname} owner ${dbuser} tablespace ${tablespace} template template0 encoding UTF8 ;
+-- Connect to your database and create schema
+\c ${dbname};
+CREATE SCHEMA IF NOT EXISTS ${dbschema} AUTHORIZATION ${dbuser};
+GRANT ALL ON schema ${dbschema} to ${dbuser};
+
+-- create a schema for ${dbname} and set the default
+-- connect to the respective database before executing the below commands
+SET ROLE ${dbuser};
+ALTER DATABASE ${dbname} SET search_path TO ${dbschema};
+revoke connect on database ${dbname} from public;
+EOF
+}

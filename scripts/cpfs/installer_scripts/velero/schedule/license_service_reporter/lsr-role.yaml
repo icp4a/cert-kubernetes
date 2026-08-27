@@ -1,0 +1,21 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lsr-backup-role
+  namespace: <lsr instance namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: lsr-data
+rules:
+  - verbs:
+      - get
+      - list
+      - create
+    apiGroups:
+      - ''
+      - batch
+      - extensions
+      - apps
+      - policy
+    resources:
+      - pods
+      - pods/exec

@@ -1,0 +1,180 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2026 All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cp4ba-api.fullname" . }}
+  labels:
+    {{- include "cp4ba-api.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "cp4ba-api.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- include "cp4ba-api.annotations" . | nindent 8 }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "cp4ba-api.podLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "cp4ba-api.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.persistence.enabled }}
+      initContainers:
+      - name: init-pvc-structure
+        image: "{{ .Values.image.repository }}{{ if .Values.image.digest }}@{{ .Values.image.digest }}{{ else }}:{{ .Values.image.tag | default .Chart.AppVersion }}{{ end }}"
+        command: ['sh', '-c']
+        args:
+        - |
+          echo "Creating PVC directory structure for subPath mounts..."
+          mkdir -p /mnt/pvc/logs
+          mkdir -p /mnt/pvc/cp4a-script-logs
+          mkdir -p /mnt/pvc/.tmp
+          mkdir -p /mnt/pvc/cp4ba-upgrade
+          mkdir -p /mnt/pvc/network-policies
+          mkdir -p /mnt/pvc/overrides
+          mkdir -p /mnt/pvc/system
+          chmod -R 777 /mnt/pvc
+          echo "PVC directory structure created successfully:"
+          ls -la /mnt/pvc/
+        volumeMounts:
+        - name: logs
+          mountPath: /mnt/pvc
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+      {{- end }}
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.image.repository }}{{ if .Values.image.digest }}@{{ .Values.image.digest }}{{ else }}:{{ .Values.image.tag | default .Chart.AppVersion }}{{ end }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: {{ if .Values.tls.enabled }}https{{ else }}http{{ end }}
+          containerPort: {{ if .Values.tls.enabled }}{{ .Values.service.httpsTargetPort }}{{ else }}{{ .Values.service.httpTargetPort }}{{ end }}
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.livenessProbe.httpGet.path }}
+            port: {{ if .Values.tls.enabled }}{{ .Values.service.httpsTargetPort }}{{ else }}{{ .Values.service.httpTargetPort }}{{ end }}
+            scheme: {{ if .Values.tls.enabled }}HTTPS{{ else }}HTTP{{ end }}
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.readinessProbe.httpGet.path }}
+            port: {{ if .Values.tls.enabled }}{{ .Values.service.httpsTargetPort }}{{ else }}{{ .Values.service.httpTargetPort }}{{ end }}
+            scheme: {{ if .Values.tls.enabled }}HTTPS{{ else }}HTTP{{ end }}
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+        env:
+        - name: TLS_CERT_VALIDATION_MODE
+          value: {{ .Values.tls.validationMode | default "required" | quote }}
+        - name: TLS_CERT_PATH
+          value: "/etc/certs/server-cert.pem"
+        - name: TLS_KEY_PATH
+          value: "/etc/certs/server-key.pem"
+        - name: LOG_DIR
+          value: "/app/logs"
+        {{- range .Values.env }}
+        - name: {{ .name }}
+          value: {{ .value | quote }}
+        {{- end }}
+        volumeMounts:
+        - name: auth-secrets
+          mountPath: /etc/secrets
+          readOnly: true
+        {{- if .Values.tls.enabled }}
+        - name: tls-certs
+          mountPath: /etc/certs
+          readOnly: true
+        {{- end }}
+        # API logs
+        - name: logs
+          mountPath: /app/logs
+          subPath: logs
+        # Upgrade script log
+        - name: logs
+          mountPath: /app/scripts/cert-kubernetes/scripts/cp4a-script-logs
+          subPath: cp4a-script-logs
+        # Upgrade script tmp
+        - name: logs
+          mountPath: /app/scripts/cert-kubernetes/scripts/.tmp
+          subPath: .tmp
+        # Upgrade script artifacts
+        - name: logs
+          mountPath: /app/scripts/cert-kubernetes/scripts/cp4ba-upgrade
+          subPath: cp4ba-upgrade
+        # Upgrade script network policies
+        - name: logs
+          mountPath: /app/scripts/cert-kubernetes/scripts/network-policies
+          subPath: network-policies
+        # Override files
+        - name: logs
+          mountPath: /app/overrides
+          subPath: overrides
+        # Supervisord logs
+        - name: logs
+          mountPath: /logs/system
+          subPath: system
+        # /tmp mount. Ephemeral storage
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      {{- if .Values.persistence.enabled }}
+      - name: logs
+        persistentVolumeClaim:
+          claimName: {{ .Values.persistence.existingClaim | default (printf "%s-logs" (include "cp4ba-api.fullname" .)) }}
+      {{- end }}
+      - name: auth-secrets
+        secret:
+          secretName: {{ .Values.auth.secretName }}
+          items:
+          - key: username
+            path: user
+          - key: password
+            path: config
+      {{- if .Values.tls.enabled }}
+      - name: tls-certs
+        secret:
+          secretName: {{ .Values.tls.secretName }}
+          items:
+          - key: server-cert.pem
+            path: server-cert.pem
+          - key: server-key.pem
+            path: server-key.pem
+          defaultMode: 0440
+      {{- end }}
+      {{- if .Values.ephemeralStorage.enabled }}
+      - name: tmp
+        emptyDir:
+          sizeLimit: {{ .Values.ephemeralStorage.size }}
+      {{- end }}
+
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cpfs-util-role
+  namespace: <operator namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: cpfs-util-backup
+rules:
+  - verbs:
+      - patch
+      - get
+      - list
+    apiGroups:
+      - ''
+      - batch
+    resources:
+      - jobs

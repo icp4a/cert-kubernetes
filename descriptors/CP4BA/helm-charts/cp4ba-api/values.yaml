@@ -1,0 +1,223 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2026 All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+# Default values for cp4ba-api
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+
+image:
+  repository: icr.io/cpopen/cp4ba-install-upgrade
+  pullPolicy: IfNotPresent
+  digest: "sha256:4f2e94f51209bf36d8714ae65666ad51ef876ca7c2a7f7b40468943363bb9d41"
+
+
+#RBAC
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "cp4ba-api-service-account"
+  # Namespaces where the service account needs access (for RoleBindings)
+  # User namespaces - must be configured by customer
+  operandNamespace: "<Required>" # Namespace where CP4BA operands run. For example: cp4ba-operand
+  operatorNamespace: "<Required>" # Namespace where CP4BA operators run. Set to "" if both CP4BA operators and operands are in the same namespace. For example: cp4ba-operators. 
+  # System namespaces - typically don't need to be changed
+  certManagerNamespace: "ibm-cert-manager"  # Cert-manager namespace
+  certManagerOperatorNamespace: ""  # Cert-manager operator namespace (set to "" to disable if namespace doesn't exist)
+  marketplaceNamespace: "openshift-marketplace"  # Catalog source namespace
+  openshiftOperatorsNamespace: "openshift-operators"  # OpenShift operators namespace
+  ibmLicensingNamespace: "ibm-licensing"  # IBM Licensing namespace
+  kubeSystemNamespace: "kube-system"  # Kubernetes system namespace (for cluster info). Check to see if it is still applied.
+
+
+podSecurityContext:
+  # fsGroup: 2000 # fsGroup is used to allow setting permission in a certain storage provider. Update fsGroup if needed
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  privileged: false
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+service:
+  type: ClusterIP
+  # HTTPS configuration (when tls.enabled=true)
+  httpsPort: 443
+  httpsTargetPort: 9443
+  # HTTP configuration (when tls.enabled=false)
+  httpPort: 80
+  httpTargetPort: 8000
+
+# =============================================================================
+# TLS/SSL Certificate Configuration
+# =============================================================================
+# Configure TLS certificates for HTTPS connections
+# Certificates should be provided via Kubernetes secret: cp4ba_installer_upgrade_tls
+# =============================================================================
+
+tls:
+  # Enable TLS/SSL (HTTPS)
+  enabled: true
+  # Name of the Kubernetes secret containing TLS certificates
+  # Secret should have keys: 'server-cert.pem' and 'server-key.pem'
+  #
+  # Certificate Requirements:
+  # - Self-signed certificate: server-cert.pem contains ONLY the self-signed certificate
+  # - CA-signed certificate: server-cert.pem contains the FULL CHAIN (server cert + intermediate CA(s) + root CA)
+  # - server-key.pem: Always contains just the private key
+  secretName: "cp4ba-installer-upgrade-tls"
+  # Certificate validation mode: required, optional, none
+  # - required: Certificates MUST exist at startup (API won't start without them) - Use for production
+  # - optional: API starts with HTTP if certs missing, HTTPS if present - Use for testing
+  # - none: Always use HTTP, ignore certificates - NOT RECOMMENDED
+  # IMPORTANT: For passthrough TLS termination, use "required" or "optional" (not "none")
+  validationMode: "required"
+# =============================================================================
+# Example: Creating the TLS secret from Route/Ingress certificates
+# =============================================================================
+# kubectl create secret generic cp4ba-installer-upgrade-tls \
+#   --from-file=server-cert.pem=/path/to/tls.crt \
+#   --from-file=server-key.pem=/path/to/tls.key \
+#   -n <namespace>
+#
+# =============================================================================
+
+#Route
+route:
+  enabled: true
+  # Hostname for Route creation. This hostname must match the hostname in the certificate included in the cp4ba-installer-upgrade-tls secret .  
+  # The recommended format for the hostname is cp4ba-api-<namespace>.apps.<cluster-domain>
+  hostname: "<Required>"
+
+#Resources:
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi # 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /health
+  initialDelaySeconds: 20
+  periodSeconds: 45
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+  initialDelaySeconds: 10
+  periodSeconds: 60
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+replicaCount: 1
+
+tolerations: []
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/arch
+              operator: In
+              values:
+                - amd64
+                - s390x
+                - ppc64le
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 3
+        preference:
+          matchExpressions:
+            - key: kubernetes.io/arch
+              operator: In
+              values:
+                - amd64
+                - s390x
+                - ppc64le
+
+# Persistent storage for CP4BA Install and Upgrade pod.
+# The persistent storage must meet the following requirements:
+# - POSIX-compliant
+# - With the type of ReadWriteMany (RWX)
+persistence:
+  enabled: true
+  # Use an existing PVC (if set, chart will not create a new PVC)
+  existingClaim: ""
+  # PVC creation settings (only used when existingClaim is empty)
+  storageClass: "<Required>" #"rook-cephfs"
+  accessMode: ReadWriteMany #ReadWriteMany
+  size: 10Gi
+ephemeralStorage:
+  enabled: true
+  size: 1Gi
+
+# Environment variables for the application
+env:
+  # Application settings
+  - name: MAX_TASKS_IN_MEMORY
+    value: "50"
+  - name: TASK_CLEANUP_INTERVAL_MINUTES
+    value: "5"
+  - name: SCRIPT_BASE_PATH
+    value: "/app/scripts/cert-kubernetes"
+  - name: LOG_LEVEL
+    value: "INFO"
+  - name: MAX_LOG_SIZE
+    value: "10Mi"
+  - name: MAX_LOG_FILES
+    value: 5
+  - name: ENABLE_UI
+    value: false
+# =============================================================================
+# Authentication Configuration
+# =============================================================================
+# Configure HTTP Basic Authentication using Kubernetes secrets
+# =============================================================================
+
+auth:
+  # Name of the Kubernetes secret containing credentials
+  # Secret should have keys: 'username' and 'password'
+  secretName: "cp4ba-api-auth"
+  # SECURITY WARNING: These default credentials are for DEVELOPMENT/TESTING ONLY
+  # For production deployments, you MUST either:
+  # 1. Create the secret manually before deployment (recommended):
+  #    kubectl create secret generic cp4ba-api-auth \
+  #      --from-literal=username=your-username \
+  #      --from-literal=password=your-secure-password \
+  #      -n <namespace>
+  # 2. Override these values with secure credentials in a separate values file
+  # 3. Set createSecret: false and manage the secret externally
+  createSecret: false  # Set to false if you're creating the secret manually
+  username: "<Required>"
+  password: "<Required>"
+
+# =============================================================================
+# Example: Creating the authentication secret
+# =============================================================================
+# kubectl create secret generic cp4ba-api-auth \
+#   --from-literal=username=cp4ba_admin \
+#   --from-literal=password=your-secure-password \
+#   -n <namespace>
+# =============================================================================
+

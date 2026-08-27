@@ -1,0 +1,79 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2024, 2026. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+
+# IBM CloudNativePG Cluster Template for CP4BA
+# This template is used by cp4a-migrate-edb-to-cnpg.sh script
+# The script will automatically populate values from the existing EDB cluster
+
+apiVersion: pg.ibm.com/v1
+kind: Cluster
+metadata:
+  name: postgres-cp4ba
+  namespace: <NAMESPACE>
+spec:
+  instances: <INSTANCES>
+  
+  # IBM PostgreSQL 16 image v1.28.4
+  imageName: icr.io/cpopen/ibm-pg/ibm-pg-16:16.14-v28.4.0@sha256:cd1fd631b3e20141cbd462cdd713bee9e2b062472b674fd20ee4c64f923c5cbf
+  
+  postgresql:
+    parameters:
+      # Connection settings
+      max_connections: "400"
+      
+      # Two-Phase Commit (2PC) - Required for CP4BA distributed transactions
+      max_prepared_transactions: "1000"
+      
+      # Memory settings
+      shared_buffers: "256MB"
+      effective_cache_size: "1GB"
+      maintenance_work_mem: "256MB"
+      work_mem: "64MB"
+      
+      # WAL settings
+      wal_buffers: "16MB"
+      min_wal_size: "1GB"
+      max_wal_size: "4GB"
+      
+      # Query planner settings
+      default_statistics_target: "100"
+      random_page_cost: "1.1"
+      effective_io_concurrency: "200"
+      
+      # Checkpoint settings
+      checkpoint_completion_target: "0.9"
+      
+      # Parallel query settings
+      max_worker_processes: "4"
+      max_parallel_workers_per_gather: "2"
+      max_parallel_workers: "4"
+      max_parallel_maintenance_workers: "2"
+  
+  bootstrap:
+    initdb:
+      database: postgres
+      owner: postgres
+  
+  storage:
+    size: <STORAGE_SIZE>
+    storageClass: <STORAGE_CLASS>
+  
+  resources:
+    requests:
+      memory: "<MEMORY_REQUESTS>"
+      cpu: "<CPU_REQUESTS>"
+    limits:
+      memory: "<MEMORY_LIMITS>"
+      cpu: "<CPU_LIMITS>"
+  
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname

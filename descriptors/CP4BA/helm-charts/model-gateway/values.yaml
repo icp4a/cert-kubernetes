@@ -1,0 +1,51 @@
+# Default values for ibm-model-gateway.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# general values
+global:
+  arch: amd64
+  operatorNamespace: ""
+  instanceNamespace: ""
+  tetheredNamespace: []
+  blockStorageClass: ""
+  fileStorageClass: ""
+  imagePullPrefix: icr.io  # the top level of image registry only, which can be overridden by user's private registry input
+  imagePullSecret: ibm-entitlement-key
+  licenseType: Enterprise
+  licenseAccept: true
+modelGateway:
+  crVersion: 13.0.5
+  operatorImageName: "cpopen/ibm-cpd-model-gateway-operator" # including the sub folder in which the image is saved
+  # development operator image name "cp/ibm-cpd-model-gateway-operator" including the sub folder in which the image is saved
+  devOperatorImageName: ""
+  devImagePullPrefix: ""
+  imageRegistryNamespace: "cp/cpd"
+  operatorImageDigest:
+    amd64: sha256:a7a6e5c2e739ab51a8824eccbdfc3451b7a9f9455f776424557f3f7800ff731b  # pragma: allowlist secret
+    ppc64le: sha256:b92d41ed60b1b5699e5906f187fcf6194276f890bb93c183a2ae29ca533a3744  # pragma: allowlist secret
+    s390x: sha256:5e6e05eb5241092de29691766fd2e4c114b3569ab509e9d348c31c53cf3d05fb  # pragma: allowlist secret
+  scaleConfig: ""
+  lite_install: false
+  deploy_postgres: true
+  deploy_redis: true
+  cp4ba_license: false
+  providerK8sSecret: false
+  tenants: []
+  tls_ca_secrets:
+    - ibm-nginx-internal-tls-ca
+  oTelInstanaConfig:
+    oTel:
+      metrics:
+        insecure: true
+        grpcAddr: "localhost:4317"
+        httpAddr: "localhost:4318"
+      traces:
+        insecure: true
+        grpcAddr: "localhost:4317"
+        httpAddr: "localhost:4318"
+      logs:
+        insecure: true
+        grpcAddr: "localhost:4317"
+        httpAddr: "localhost:4318"
+# service values

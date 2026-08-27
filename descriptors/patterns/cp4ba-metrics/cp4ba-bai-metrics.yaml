@@ -1,0 +1,45 @@
+apiVersion: operator.ibm.com/v1
+kind: IBMServiceMeterDefinition
+metadata:
+  name: cp4ba-bai-metrics
+  namespace: REPLACE_NAMESPACE
+  labels:
+    cp4ba.ibm.com/backup-type: mandatory
+spec:
+  mappingId: baideployment0000000000000001
+  processing: LAST
+  repeat: true
+  breakdownDefs:
+    - breakdownBy:
+        name: INSTANCE_COUNT
+      groupBy:
+        - version
+        - environment
+        - architecture
+        - platform
+        - TOTAL_NUMBER_OF_DOCUMENTS
+        - GLOBAL_STORAGE_SIZE_MB
+        - AVG_DOCUMENT_SIZE_BYTES
+        - TOTAL_NUMBER_OF_MONITORING_SOURCES
+        - NUMBER_OF_DASHBOARDS
+        - NUMBER_OF_ALERTS
+        - NUMBER_OF_GOALS
+        - NUMBER_OF_CHARTS
+        - NUMBER_OF_PREDICTIONS
+        - NUMBER_OF_DOCUMENTS_BPMN_TIMESERIES
+        - NUMBER_OF_DOCUMENTS_ODM_TIMESERIES
+        - NUMBER_OF_DOCUMENTS_CASE_TIMESERIES
+        - NUMBER_OF_DOCUMENTS_CONTENT_TIMESERIES
+        - NUMBER_OF_DOCUMENTS_NAVIGATOR_TIMESERIES
+        - NUMBER_OF_DOCUMENTS_DI_TIMESERIES
+        - NUMBER_OF_DOCUMENTS_BPMN_SUMMARIES
+        - NUMBER_OF_DOCUMENTS_CASE_SUMMARIES
+        - NUMBER_OF_DOCUMENTS_BPEL_SUMMARIES
+      source: metricQuantity
+      processing: LAST
+  data:
+    productId: cf2f2b926ff14ce38aa3014637581037
+    productName: Business Automation Insights
+    metricName: INSTANCE_COUNT
+    metricDescription: count of BAI instances
+    metricType: ADOPTION

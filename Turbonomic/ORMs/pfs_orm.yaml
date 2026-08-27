@@ -1,0 +1,23 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: pfs-orm
+  namespace: {{ placeholder_namespace }}
+spec:
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: StatefulSet
+          path: '.spec.template.spec.containers[?(@.name=="pfs")].resources'
+          selector: pfs
+        ownerPath: .spec.pfs_configuration.resources
+    selectors:
+      pfs:
+        matchLabels:
+          app.kubernetes.io/name: {{ meta.pfs_name }}-pfs
+          app.kubernetes.io/instance: {{ meta.pfs_name }}
+  owner:
+    apiVersion: icp4a.ibm.com/v1
+    kind: ProcessFederationServer
+    name: {{ meta.pfs_name }}

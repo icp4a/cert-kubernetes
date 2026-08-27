@@ -1,0 +1,33 @@
+apiVersion: operator.ibm.com/v1
+kind: IBMServiceMeterDefinition
+metadata:
+  name: cp4ba-odm-metrics
+  namespace: REPLACE_NAMESPACE
+  labels:
+    cp4ba.ibm.com/backup-type: mandatory
+spec:
+  mappingId: cp4baodmdeployment00000000000001
+  processing: LAST
+  repeat: true
+  breakdownDefs:
+    - breakdownBy:
+        name: INSTANCE_COUNT
+      groupBy:
+        - version
+        - environment
+        - architecture
+        - platform
+        - dc_pods_count
+        - dc_registered_users
+        - dc_num_of_artifacts
+        - dr_pods_count
+        - dsc_pods_count
+        - dsr_pods_count
+      source: metricQuantity
+      processing: LAST
+  data:
+    productId: cfdbd71c64094971a70b6985df6b1e93
+    productName: Operational Decision Manager Containers
+    metricName: INSTANCE_COUNT
+    metricDescription: Number of ODM instances
+    metricType: ADOPTION

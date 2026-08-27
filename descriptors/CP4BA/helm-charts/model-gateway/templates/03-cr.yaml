@@ -1,0 +1,66 @@
+apiVersion: modelgateway.cpd.ibm.com/v1beta1
+kind: modelgateway
+metadata:
+  name: modelgateway-cr
+  namespace: {{ .Values.global.instanceNamespace }}
+  labels:
+    component-id: {{ .Chart.Name }}
+    icpdsupport/addOnId: model_gateway
+spec:
+  non_olm: true
+  license:
+    accept: {{ .Values.global.licenseAccept }}
+    license: {{ .Values.global.licenseType }}
+  version: {{ .Values.modelGateway.crVersion }}
+  blockStorageClass: {{ .Values.global.blockStorageClass }}
+  fileStorageClass: {{ .Values.global.fileStorageClass }}
+{{- if .Values.global.storageVendor }}
+  storageVendor: {{ .Values.global.storageVendor }}
+{{- end }}
+  scaleConfig: {{ .Values.modelGateway.scaleConfig }}
+{{- if .Values.modelGateway.devImagePullPrefix }}
+  docker_registry_prefix: {{ .Values.modelGateway.devImagePullPrefix }}
+{{- else }}
+{{ if ne .Values.global.imagePullPrefix "icr.io" }}
+  docker_registry_prefix: {{ .Values.global.imagePullPrefix }}
+{{ else }}
+  docker_registry_prefix: cp.icr.io
+{{ end }}
+{{- end }}
+{{ if .Values.modelGateway.imageRegistryNamespace }}
+  docker_registry_namespace_cpd: {{ .Values.modelGateway.imageRegistryNamespace }}
+{{ end }}
+{{ if .Values.modelGateway.lite_install }}
+  lite_install: {{ .Values.modelGateway.lite_install }}
+{{ end }}
+{{- if not .Values.modelGateway.deploy_postgres }}
+  deploy_postgres: false
+{{- end }}
+{{- if not .Values.modelGateway.deploy_redis }}
+  deploy_redis: false
+{{- end }}
+{{- $existingCr := lookup "modelgateway.cpd.ibm.com/v1beta1" "modelgateway" .Values.global.instanceNamespace "modelgateway-cr" }}
+{{- $existing := dict "tls" (list) }}
+{{- if and $existingCr $existingCr.spec $existingCr.spec.tls_ca_secrets }}
+{{- $_ := set $existing "tls" $existingCr.spec.tls_ca_secrets }}
+{{- end }}
+{{- $valuesTls := .Values.modelGateway.tls_ca_secrets | default (list) }}
+{{- $tlsCaSecrets := uniq (concat $valuesTls ($existing.tls)) }}
+{{- if $tlsCaSecrets }}
+  tls_ca_secrets:
+{{- toYaml $tlsCaSecrets | nindent 4 }}
+{{- end }}
+{{- if eq .Values.modelGateway.cp4ba_license true }}
+  cp4ba_license: true
+{{- end }}
+  imagePullSecret: {{ .Values.global.imagePullSecret }}
+{{- if .Values.modelGateway.providerK8sSecret }}
+  providerK8sSecret: {{ .Values.modelGateway.providerK8sSecret }}
+{{- end }}
+{{- if .Values.modelGateway.tenants }}
+  tenants:
+{{- toYaml .Values.modelGateway.tenants | nindent 4 }}
+{{- end }}
+{{- if .Values.modelGateway.oTelInstanaConfig }}
+  {{- toYaml .Values.modelGateway.oTelInstanaConfig | nindent 2 }}
+{{- end }}

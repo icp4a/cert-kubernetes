@@ -1,0 +1,88 @@
+<server>
+
+  <!-- ODM Administrator definition -->
+    <basicRegistry id="basicRegistry">
+	<!-- ODM super user -->
+	<user name="odmAdmin" password="odmAdmin"/>
+	<!-- Users for Decision Center -->
+	<user name="rtsAdmin" password="rtsAdmin"/>
+	<user name="rtsConfig" password="rtsConfig"/>
+	<user name="rtsUser1" password="rtsUser1"/>
+	<user name="rtsUser2" password="rtsUser2"/>
+	<!-- Users for Decision Server -->
+	<user name="resAdmin" password="resAdmin"/>
+	<user name="resDeployer" password="resDeployer"/>
+	<user name="resMonitor" password="resMonitor"/>
+	<user name="resExecutor" password="resExecutor" />
+	<!-- Groups for Decision Center -->
+      <group name="basicRtsAdministrators">
+        <member name="odmAdmin" />
+        <member name="rtsAdmin" />
+      </group>
+      <group name="basicRtsInstallers">
+        <member name="odmAdmin" />
+        <member name="rtsAdmin" />
+      </group>
+      <group name="basicRtsConfigManagers">
+        <member name="rtsConfig"/>
+      </group>
+      <group name="basicResAdministrators">
+        <member name="odmAdmin" />
+        <member name="resAdmin" />
+      </group>
+      <group name="basicResDeployers">
+        <member name="resDeployer" />
+      </group>
+      <group name="basicResMonitors">
+        <member name="resMonitor" />
+      </group>
+      <group name="basicResExecutors">
+	<member name="odmAdmin" />
+	<member name="resAdmin" />
+	<member name="resDeployer" />
+	<member name="resMonitor" />
+	<member name="resExecutor" />
+      </group>
+    </basicRegistry>
+
+    <ldapRegistry baseDN="dc=example,dc=org" host="openldap" id="LDAPRegistry" ignoreCase="true" ldapType="IBM Tivoli Directory Server" port="389" recursiveSearch="true">
+        <idsFilters  userFilter="(uid=%v)"
+            groupFilter="(cn=%v)"
+            groupMemberIdMap="groupOfNames:member" />
+    </ldapRegistry>
+
+   <federatedRepository id="vmm">
+        <primaryRealm name="o=defaultWIMFileBasedRealm">
+		<participatingBaseEntry name="o=BasicRegistry"/>
+                <participatingBaseEntry name="dc=example,dc=org"/>
+        </primaryRealm>
+    </federatedRepository>
+
+  <!-- Grant access to the role rtsAdministrator for the groups basicRtsAdministrators in basic registry and ldapRtsAdministrators in LDAP -->
+  <variable name="odm.rtsAdministrators.group1" value="group:o=defaultWIMFileBasedRealm/basicRtsAdministrators"/>
+  <variable name="odm.rtsAdministrators.group2" value="group:o=defaultWIMFileBasedRealm/cn=ldapRtsAdministrators,ou=memberlist,dc=example,dc=org"/>
+
+  <!-- Grant access to the role rtsInstaller for the groups basicRtsInstallers in basic registry and ldapRtsInstallers in LDAP -->
+  <variable name="odm.rtsInstallers.group1" value="group:basicRealm/basicRtsInstallers"/>
+  <variable name="odm.rtsInstallers.group2" value="group:o=defaultWIMFileBasedRealm/cn=ldapRtsInstallers,ou=memberlist,dc=example,dc=org"/>
+
+  <!-- Grant access to the role rtsConfigManager for the groups basicRtsConfigManagers in basic registry and ldapRtsConfigManagers in LDAP -->
+  <variable name="odm.rtsConfigManagers.group1" value="group:basicRealm/basicRtsConfigManagers"/>
+  <variable name="odm.rtsConfigManagers.group2" value="group:group:o=defaultWIMFileBasedRealm/cn=ldapRtsConfigManagers,ou=memberlist,dc=example,dc=org"/>
+
+  <!-- Grant access to the role resAdministrator for the groups basicResAdministrators in basic registry and ldapResAdministrators in LDAP -->
+  <variable name="odm.resAdministrators.group1" value="group:o=defaultWIMFileBasedRealm/basicResAdministrators"/>
+  <variable name="odm.resAdministrators.group2" value="group:o=defaultWIMFileBasedRealm/cn=ldapResAdministrators,ou=memberlist,dc=example,dc=org"/>
+
+  <!-- Grant access to the role resDeployers for the groups basicResDeployers in basic registry and ldapResDeployers in LDAP -->
+  <variable name="odm.resDeployers.group1" value="group:o=defaultWIMFileBasedRealm/basicResDeployers"/>
+  <variable name="odm.resDeployers.group2" value="group:o=defaultWIMFileBasedRealm/cn=ldapResDeployers,ou=memberlist,dc=example,dc=org"/>
+
+  <!-- Grant access to the role resMonitors for the groups basicResMonitors in basic registry and ldapResMonitors in LDAP -->
+  <variable name="odm.resMonitors.group1" value="group:o=defaultWIMFileBasedRealm/basicResMonitors"/>
+  <variable name="odm.resMonitors.group2" value="group:o=defaultWIMFileBasedRealm/cn=ldapResMonitors,ou=memberlist,dc=example,dc=org"/>
+
+  <!-- Grant access to the role resExecutors for the groups basicResExecutors in basic registry and ldapResExecutors in LDAP -->
+  <variable name="odm.resExecutors.group1" value="group:o=defaultWIMFileBasedRealm/basicResExecutors"/>
+  <variable name="odm.resExecutors.group2" value="group:o=defaultWIMFileBasedRealm/cn=ldapResExecutors,ou=memberlist,dc=example,dc=org"/>
+</server>

@@ -1,0 +1,30 @@
+apiVersion: data-protection.isf.ibm.com/v1alpha1
+kind: Restore
+metadata:
+  name: zen-runtime-sync
+  namespace: ibm-spectrum-fusion-ns
+  finalizers:
+    - restore
+  labels:
+    dp.isf.ibm.com/application-name: <application name>
+    dp.isf.ibm.com/backuppolicy-name: <backup policy name>
+    dp.isf.ibm.com/backupstoragelocation-name: <backup storage location>
+    dp.isf.ibm.com/provider-name: isf-backup-restore
+spec:
+  backup: <backup name>
+  recipe:
+    name: zen-sync-recipe
+    namespace: ibm-spectrum-fusion-ns
+    apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+    kind: Recipe
+  objectsToRestore:
+    RESOURCES:
+      - deployments
+      - serviceaccount
+      - role
+      - rolebinding
+      - configmaps
+    v1/persistentvolumeclaim:
+      - <services namespace>/zen5-backup-pvc
+  targetCluster: <target cluster>
+  skipExistingPVC: false

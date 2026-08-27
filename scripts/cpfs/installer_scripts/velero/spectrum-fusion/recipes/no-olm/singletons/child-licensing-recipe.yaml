@@ -1,0 +1,64 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  name: child-licensing-recipe
+  namespace: <licensing namespace>
+  labels:
+    dp.isf.ibm.com/parent-recipe: cpfs-singleton-parent-recipe
+    dp.isf.ibm.com/parent-recipe-namespace: <fusion ns> 
+spec:
+  appType: singleton
+  groups:
+    - includeClusterResources: true
+      includedResourceTypes:
+        - customresourcedefinitions.apiextensions.k8s.io
+        - clusterrole
+        - clusterrolebinding
+      labelSelector: foundationservices.cloudpak.ibm.com=ls-cluster
+      name: licensing-cluster-resources
+      type: resource
+    - includedResourceTypes:
+        - role
+        - rolebinding
+        - serviceaccount
+        - deployments
+        - secrets
+      labelSelector: foundationservices.cloudpak.ibm.com=ls-chart
+      name: licensing-ns-resources
+      type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        - ibmlicensings.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=ls-chart
+      name: licensing-instance
+      type: resource
+    - backupRef: licensing-ns-resources
+      includedResourceTypes:
+        - serviceaccount
+        - role
+        - rolebinding
+        - secrets
+      name: licensing-rbac-resources
+      type: resource
+    - backupRef: licensing-ns-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - deployments
+      name: licensing-deployment
+      type: resource
+  workflows:
+    - failOn: essential-error
+      name: singleton-resources-backup
+      priority: 0
+      sequence:
+        - group: licensing-cluster-resources
+        - group: licensing-ns-resources
+        - group: licensing-instance
+    - failOn: essential-error
+      name: singleton-resources-restore
+      priority: 0
+      sequence:
+        - group: licensing-rbac-resources
+        - group: licensing-cluster-resources
+        - group: licensing-instance
+        - group: licensing-deployment

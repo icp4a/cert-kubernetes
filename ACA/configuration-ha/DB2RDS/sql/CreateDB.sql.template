@@ -1,0 +1,23 @@
+CALL rdsadmin.create_database('${tenant_db_name}',32768,'UTF-8','US' );
+
+--- Creation of the Database can take some time, Please wait for a few minutes before executing the statements below.
+
+-- Create bufferpool
+
+CALL rdsadmin.drop_tablespace('${tenant_db_name}','USERSPACE1');
+CALL rdsadmin.create_bufferpool('${tenant_db_name}','${tenant_db_name}BP',-1,'Y','Y',32768,0,32);
+CALL rdsadmin.create_bufferpool('${tenant_db_name}', '${tenant_db_name}TEMPBP',-1,'Y','Y',32768,0,32);
+CALL rdsadmin.create_bufferpool('${tenant_db_name}', '${tenant_db_name}SYSBP',-1,'Y','Y',32768,0,32);
+
+-- Create table spaces
+CALL rdsadmin.create_tablespace( '${tenant_db_name}', '${tenant_db_name}DATA', '${tenant_db_name}BP', 32768, NULL, NULL, 'U', 'AUTOMATIC');
+CALL rdsadmin.create_tablespace( '${tenant_db_name}', 'USERTEMP1', '${tenant_db_name}TEMPBP', 32768, NULL, NULL, 'T', 'AUTOMATIC');
+CALL rdsadmin.create_tablespace( '${tenant_db_name}', 'TEMPSYS1', '${tenant_db_name}1SYSBP', 32768, NULL, NULL, 'S', 'AUTOMATIC');
+
+CALL rdsadmin.create_role('${tenant_db_name}','ADP');
+CALL rdsadmin.add_user('${dbuser}','${dbpassword}',null);
+CALL rdsadmin.grant_role(?,'${tenant_db_name}','ADP','USER ${dbuser}', 'N');
+CALL rdsadmin.dbadm_grant(?,'${tenant_db_name}','DATAACCESS','USER ${dbuser}');
+
+
+CALL rdsadmin.dbadm_grant(?,'${tenant_db_name}','DATAACCESS','USER ${dbuser}');

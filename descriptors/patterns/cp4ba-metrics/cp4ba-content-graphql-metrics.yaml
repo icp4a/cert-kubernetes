@@ -1,0 +1,32 @@
+apiVersion: operator.ibm.com/v1
+kind: IBMServiceMeterDefinition
+metadata:
+  name: cp4ba-graphql-metrics
+  namespace: REPLACE_NAMESPACE
+  labels:
+    cp4ba.ibm.com/backup-type: mandatory
+spec:
+  mappingId: graphqldeployment000000000001
+  processing: LAST
+  repeat: true
+  breakdownDefs:
+    - breakdownBy:
+        name: INSTANCE_COUNT
+      groupBy:
+        - componentId
+        - componentName
+        - version
+        - environment
+        - architecture
+        - platform
+        - graphql_calls
+      source: metricQuantity
+      processing: LAST
+  data:
+    componentId: ee43abe0ed114b9a9b3412705eb77edc
+    componentName: IBM Content Cortex GraphQL API
+    productId: e270b00ce6d7486db1e31fc5fd09fffc
+    productName: IBM Content Cortex Essentials Containers
+    metricName: INSTANCE_COUNT
+    metricDescription: count of GraphQL instances
+    metricType: ADOPTION

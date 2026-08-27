@@ -1,0 +1,32 @@
+
+# OCP Parameters
+ocp_url: <required>
+ocp_username: <required>  # a cluster admin user
+ocp_password: <required>
+ocp_token: <required if user/password not available>
+
+run_storage_readiness: true
+
+############################ STORAGE VALIDATION PARAMETERS START ########################
+
+# REQUIRED PARAMETERS
+storageClass_ReadWriteOnce: <required> # eg "ocs-storagecluster-ceph-rbd"
+storageClass_ReadWriteMany: <required>  # eg "ocs-storagecluster-cephfs"
+storage_validation_namespace: <required>
+
+# OPTIONAL PARAMETERS
+prefix: "readiness"
+storageSize: "1Gi"
+options: ""
+backoffLimit: 5
+
+arch: amd64  # amd64, ppc64le
+
+docker_registry: "icr.io"
+
+# Image URL for validation tests
+# Version tracks the https://github.com/IBM/cpd-cli/releases CPD (current is 5.3.1)
+imageurl: "icr.io/cpopen/cpd/k8s-storage-test:5.3.1"
+
+############################ STORAGE VALIDATION PARAMETERS END ##########################
+
