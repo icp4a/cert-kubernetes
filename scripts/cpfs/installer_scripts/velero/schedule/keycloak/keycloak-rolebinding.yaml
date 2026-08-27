@@ -1,0 +1,16 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: keycloak-backup-rolebinding
+  namespace: <keycloak namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: keycloak-data
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: keycloak-backup-role
+  namespace: <keycloak namespace>
+subjects:
+- kind: ServiceAccount
+  name: keycloak-backup-sa
+  namespace: <keycloak namespace>

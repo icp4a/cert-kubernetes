@@ -1,0 +1,15 @@
+
+DROP INDEX IF EXISTS ix_alias_doc_id;
+DROP INDEX IF EXISTS ix_alias_doc_id_key_id;
+alter table key_alias alter column key_alias_name set data type VARCHAR (2048);
+create UNIQUE index ix_alias_doc_id ON KEY_ALIAS(LOWER(key_alias_name),doc_class_id);
+create UNIQUE index ix_alias_doc_id_key_id ON KEY_ALIAS(LOWER(key_alias_name),doc_class_id,key_class_id);
+DROP TABLE IF EXISTS key_spacing;
+DROP TABLE IF EXISTS fonts_transid;
+DROP TABLE IF EXISTS fonts;
+update processed_file set model_id = NULL, CONFIDENCE = NULL;
+ALTER TABLE processed_file DROP CONSTRAINT MODEL_ID_FKEY;
+ALTER TABLE processed_file ADD COLUMN API SMALLINT;
+
+INSERT INTO IMPLEMENTATION (IMPL_ID, NAME, SYMBOLIC_NAME, OBJECT_TYPE_ID, IMPL_TYPE, VALUE_FORMAT, EXTRACTION_TOOL, FLAGS, DESCRIPTION, CONFIG) VALUES ('86f4ee48-ccfa-4c87-86f1-747161c0d62c','ADPSpecific_ContextualExtractor_AddressBlockInHeaderFooter','ADPSpecific_ContextualExtractor_AddressBlockInHeaderFooter','27','2','1','1','0','Address that is generally present at the top of the page, Example: VendorAddress','{"pattern": "ADPSpecific_ContextualExtractor_AddressBlockInHeaderFooter"}');
+INSERT INTO IMPLEMENTATION (IMPL_ID, NAME, SYMBOLIC_NAME, OBJECT_TYPE_ID, IMPL_TYPE, VALUE_FORMAT, EXTRACTION_TOOL, FLAGS, DESCRIPTION, CONFIG) VALUES ('15302ded-c583-4b86-a945-0f46bed8c31c','ADPSpecific_ContextualExtractor_AnyAddressBlock','ADPSpecific_ContextualExtractor_AnyAddressBlock','27','2','1','1','0','Address that is generally present in the page - at any place.','{"pattern": "ADPSpecific_ContextualExtractor_AnyAddressBlock"}');

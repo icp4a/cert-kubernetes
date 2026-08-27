@@ -1,0 +1,55 @@
+\c "$tenant_db_name" ;
+
+set search_path to "$tenant_ontology" ;
+
+--
+-- Licensed Materials - Property of IBM
+-- 5737-I23
+-- Copyright IBM Corp. 2018 - 2022. All Rights Reserved.
+-- U.S. Government Users Restricted Rights:
+-- Use, duplication or disclosure restricted by GSA ADP Schedule
+-- Contract with IBM Corp.
+--
+DROP VIEW IF EXISTS audit_sys_report;
+DROP TABLE IF EXISTS audit_integration_activity;
+DROP TABLE IF EXISTS audit_system_activity;
+DROP TABLE IF EXISTS audit_api_activity;
+DROP TABLE IF EXISTS audit_user_activity;
+DROP TABLE IF EXISTS audit_processed_files;
+DROP TABLE IF EXISTS audit_login_activity;
+DROP TABLE IF EXISTS audit_ontology;
+DROP TABLE IF EXISTS error_log;
+DROP TABLE IF EXISTS processed_file;
+DROP TABLE IF EXISTS smartpages_options;
+DROP TABLE IF EXISTS api_integrations_objectsstore;
+DROP TABLE IF EXISTS import_ontology;
+DROP TABLE IF EXISTS integration;
+DROP TABLE IF EXISTS login_detail;
+DROP TABLE IF EXISTS user_detail;
+DROP TABLE IF EXISTS heading_alias;
+DROP TABLE IF EXISTS heading;
+DROP TABLE IF EXISTS attribute_alias;
+DROP TABLE IF EXISTS implementation_kc;
+DROP TABLE IF EXISTS key_alias;
+DROP TABLE IF EXISTS cword;
+DROP TABLE IF EXISTS key_class;
+DROP TABLE IF EXISTS implementation;
+DROP TABLE IF EXISTS object_type;
+DROP TABLE IF EXISTS doc_alias;
+DROP TABLE IF EXISTS feature;
+DROP TABLE IF EXISTS doc_class;
+DROP TABLE IF EXISTS published_models;
+DROP TABLE IF EXISTS models cascade;
+DROP TABLE IF EXISTS templates;
+DROP TABLE IF EXISTS training_log cascade;
+DROP TABLE IF EXISTS kvp_model_detail;
+DROP TABLE IF EXISTS runtime_page;
+DROP TABLE IF EXISTS runtime_doc cascade;
+DROP TABLE IF EXISTS systemt_model_metadata;
+DROP TABLE IF EXISTS systemt_models;
+DROP TABLE IF EXISTS feedback;
+DROP TABLE IF EXISTS models_testing_doc;
+DROP TABLE IF EXISTS value_metrics;
+DROP TABLE IF EXISTS system_options;
+DROP TABLE IF EXISTS webhook;
+DROP SEQUENCE IF EXISTS MINOR_VER_SEQ;

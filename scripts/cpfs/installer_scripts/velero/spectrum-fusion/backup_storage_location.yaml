@@ -1,0 +1,17 @@
+apiVersion: data-protection.isf.ibm.com/v1alpha1
+kind: BackupStorageLocation
+metadata:
+  name: <location name>
+  namespace: <spectrum fusion ns>
+  finalizers:
+    - backupstoragelocation
+  labels:
+    dp.isf.ibm.com/backupstoragelocation-type: ibm
+    dp.isf.ibm.com/provider-name: isf-backup-restore
+spec:
+  credentialName: <location name>-secret-0
+  params:
+    bucket: <bucket name>
+    endpoint: <s3 url>
+  provider: isf-backup-restore
+  type: ibm

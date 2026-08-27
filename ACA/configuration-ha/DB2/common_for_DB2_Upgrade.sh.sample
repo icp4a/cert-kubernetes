@@ -1,0 +1,9 @@
+# Sample env var script for running the DB2 scripts non-interactively by providing the needed env vars
+# To use:  Make a copy and name it "common_for_DB2_Upgrade.sh", update the needed variables.
+
+# --- For upgrading Base CA/DPE DB:
+# update these variables for the CA/DPE Base database
+base_db_name=
+base_db_user=
+
+confirmation=y

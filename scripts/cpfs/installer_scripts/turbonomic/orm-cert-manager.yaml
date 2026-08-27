@@ -1,0 +1,36 @@
+apiVersion: turbonomic.com/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: certmanagers.operator.ibm.com
+  labels:
+    component: cpfs
+spec:
+  resourceMappings:
+    - srcResourceSpec:
+        kind: Deployment
+        componentNames:
+          - cert-manager-cainjector
+      resourceMappingTemplates:
+        - srcPath: .spec.template.spec.containers[?(@.name=="cert-manager-cainjector")].resources
+          destPath: .spec.certManagerCAInjector.resources
+    - srcResourceSpec:
+        kind: Deployment
+        componentNames:
+          - cert-manager-controller
+      resourceMappingTemplates:
+        - srcPath: .spec.template.spec.containers[?(@.name=="cert-manager-controller")].resources
+          destPath: .spec.certManagerController.resources
+    - srcResourceSpec:
+        kind: Deployment
+        componentNames:
+          - cert-manager-webhook
+      resourceMappingTemplates:
+        - srcPath: .spec.template.spec.containers[?(@.name=="cert-manager-webhook")].resources
+          destPath: .spec.certManagerWebhook.resources
+    - srcResourceSpec:
+        kind: Deployment
+        componentNames:
+          - configmap-watcher
+      resourceMappingTemplates:
+        - srcPath: .spec.template.spec.containers[?(@.name=="configmap-watcher")].resources
+          destPath: .spec.configMapWatcher.resources

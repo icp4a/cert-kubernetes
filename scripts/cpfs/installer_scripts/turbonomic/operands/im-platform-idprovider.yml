@@ -1,0 +1,22 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: provider-orm
+  namespace: $namespace
+spec:
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          path: .spec.template.spec.containers[?(@.name=="platform-identity-provider")].resources
+          selector: im_provider_deploy
+        ownerPath: .spec.identityProvider.resources
+    selectors:
+      im_provider_deploy:
+        matchLabels:
+          app: platform-identity-provider
+  owner:
+    apiVersion: operator.ibm.com/v1alpha1
+    kind: Authentication
+    name: example-authentication

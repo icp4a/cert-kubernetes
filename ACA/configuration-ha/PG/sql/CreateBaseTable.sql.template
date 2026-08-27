@@ -1,0 +1,62 @@
+\c "$base_db_name";
+
+CREATE SCHEMA IF NOT EXISTS "$base_db_user" ;
+
+set search_path to "$base_db_user" ;
+
+CREATE TABLE TENANTINFO
+      (tenantid varchar(128) NOT NULL,
+      ontology varchar(128) not null,
+      tenanttype smallint not null default 0,
+      dailylimit smallint not null default 0,
+      rdbmsengine varchar(128)  not null,
+      dbname varchar(255) not null,
+      dbuser varchar(255) not null,
+      bacaversion varchar(1024) not null,
+      featureflags bigint not null default 0,
+      tenantdbversion varchar(255),
+      last_job_run_time BIGINT not null default 0,
+      dbstatus smallint not null default 0,
+      project_guid VARCHAR(256),
+      bas_id VARCHAR(256),
+      last_updated_ts timestamp not null default current_timestamp,
+      connstring varchar(1024),
+      project_type smallint NULL,
+      CONSTRAINT tenantinfo_pkey PRIMARY KEY (tenantid, ontology)
+      );
+
+-- Table for aggregated project usage data
+-- The table has a primary key on (project_guid, year, month, day_of_month) to support the "upsert" style query for PG
+-- "status" column is reserved for future use
+-- "created_ts" is re-purposed for the timestamp of the last aggregated document
+CREATE TABLE project_usage
+      (project_guid VARCHAR(256) NOT NULL,
+      num_docs  integer NOT NULL,
+      num_pages integer NOT NULL,
+      year SMALLINT NOT NULL,
+      month SMALLINT NOT NULL,
+      day_of_month SMALLINT NOT NULL,
+      day_of_week SMALLINT NOT NULL,
+      status smallint,
+      created_ts timestamp NOT NULL,
+      CONSTRAINT project_usage_pkey PRIMARY KEY (project_guid, year, month, day_of_month)
+      );
+
+CREATE TABLE base_options
+(
+      schema_version  varchar(255),
+      flags bigint not null default 0
+);
+
+-- Put a placeholder for the schema_version. The version will be updated by a common function
+INSERT INTO base_options(schema_version) values('24.0.1');
+
+CREATE OR REPLACE FUNCTION last_updated_ts_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.last_updated_ts = now();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_tenantinfo_last_updated_ts BEFORE UPDATE ON tenantinfo FOR EACH ROW EXECUTE PROCEDURE  last_updated_ts_column();

@@ -1,0 +1,82 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  name: cpfs-parent-recipe
+  namespace: <parent recipe namespace>
+spec:
+  appType: common-service
+  groups:
+    - includeClusterResources: true
+      includedResourceTypes:
+        - secrets
+        - certificates.cert-manager.io
+        - issuers.cert-manager.io
+      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
+      name: cert-manager-resources
+      type: resource
+    - includeClusterResources: false
+      includedResourceTypes:
+        - secrets
+      labelSelector: foundationservices.cloudpak.ibm.com=entitlementkey
+      name: entitlementkey
+      type: resource
+    - includedResourceTypes:
+        - configmaps
+      labelSelector: foundationservices.cloudpak.ibm.com=configmap
+      name: common-services-configmaps
+      type: resource
+    - includeClusterResources: true
+      labelSelector: foundationservices.cloudpak.ibm.com=namespace
+      name: common-services-namespace
+      type: resource
+    - includedResourceTypes:
+        - operandrequests.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=operand
+      name: operandrequest-backup
+      type: resource
+    - backupRef: operandrequest-backup
+      includedResourceTypes:
+        - operandrequests.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=operand
+      name: operandrequest-restore
+      restoreOverwriteResources: true
+      type: resource
+  workflows:
+    - name: chart-backup #where helm chart resources are backed up (see child recipes)
+      priority: 0
+      sequence: []
+    - name: chart-restore #where helm chart resources are restored (see child recipes)
+      priority: 0
+      sequence: []
+    - name: pre-backup #where zen and cs db backup hooks are executed (see child recipes)
+      priority: 0
+      sequence: []
+    - name: post-backup #where zen and cs db volumes are backed up (see child recipes)
+      priority: 0
+      sequence: []
+    - name: data-restore #where zen and csdb restores take place (see child recipes)
+      priority: 0
+      sequence: []
+    - name: backup
+      sequence:
+        #pre CPFS
+        - workflow: pre-backup
+        - group: common-services-namespace
+        - group: entitlementkey
+        - group: cert-manager-resources
+        - group: common-services-configmaps
+        - workflow: chart-backup
+        - group: operandrequest-backup
+        - workflow: post-backup 
+    - name: restore
+      sequence:
+        #CPFS setup resources
+        - group: common-services-namespace
+        - group: entitlementkey
+        #cert manager resources
+        - group: cert-manager-resources
+        # general common services
+        - group: common-services-configmaps
+        - workflow: chart-restore
+        - group: operandrequest-restore
+        - workflow: data-restore

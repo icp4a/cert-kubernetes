@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    component: cpfs3
+    service: mongo
+  name: access-to-icp-mongodb
+  namespace: "csNamespace"
+spec:
+  ingress:
+  - {}
+  podSelector:
+    matchLabels:
+      app: icp-mongodb
+  policyTypes:
+  - Ingress

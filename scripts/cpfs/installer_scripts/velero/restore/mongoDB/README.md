@@ -1,0 +1,1 @@
+This directory will be deprecated after multi-instance is moved out of Tech Preview. These files will be located and maintained in the backup_restore_mongo directory instead.

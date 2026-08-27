@@ -1,0 +1,15 @@
+apiVersion: turbonomic.com/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: policycontrollers.operator.ibm.com
+  labels:
+    component: cpfs
+spec:
+  resourceMappings:
+    - srcResourceSpec:
+        kind: Deployment
+        componentNames:
+          - iam-policy-controller
+      resourceMappingTemplates:
+        - srcPath: .spec.template.spec.containers[?(@.name=="iam-policy-controller")].resources
+          destPath: .spec.resources

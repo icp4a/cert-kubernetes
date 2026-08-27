@@ -1,0 +1,23 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp.2026. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+
+
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ibm-pg-operator
+  namespace: NAMESPACE_PLACEHOLDER
+spec:
+  channel: CHANNEL_PLACEHOLDER
+  name: ibm-pg-operator
+  installPlanApproval: Automatic
+  source: ibm-pg-operator-catalog
+  sourceNamespace: NAMESPACE_PLACEHOLDER

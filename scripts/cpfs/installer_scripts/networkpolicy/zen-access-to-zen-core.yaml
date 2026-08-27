@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: access-to-zen-core
+  namespace: "zenNamespace"
+  labels:
+    component: cpfs
+spec:
+  podSelector:
+    matchLabels:
+      component: "zen-core"
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}

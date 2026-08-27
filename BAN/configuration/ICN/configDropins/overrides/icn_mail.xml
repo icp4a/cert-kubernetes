@@ -1,0 +1,16 @@
+<server>
+  <mailSession mailSessionID="CNMailSession"
+ 	    jndiName="mail/CNMailSession"
+	    description="ICN Mail Session"
+	    storeProtocol="imap"
+	    transportProtocol="smtp"
+	    host="<smtp_host>"
+	    user="<username>"
+	    password="<password>"
+	    from="abc@bpm.ibmcloud.com">
+      <property name="mail.smtp.host" value="<smtp_host>" />
+      <property name="mail.smtp.port" value="465" />
+      <property name="mail.smtp.auth" value="true" />
+      <property name="mail.smtp.ssl.enable" value="true" />
+    </mailSession>
+</server>

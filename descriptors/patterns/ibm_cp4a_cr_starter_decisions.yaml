@@ -1,0 +1,57 @@
+###############################################################################
+#
+# Licensed Materials - Property of IBM
+#
+# (C) Copyright IBM Corp. 2021, 2023. All Rights Reserved.
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+###############################################################################
+apiVersion: icp4a.ibm.com/v1
+kind: ICP4ACluster
+metadata:
+  name: icp4adeploy
+  labels:
+    app.kubernetes.io/instance: ibm-dba
+    app.kubernetes.io/managed-by: ibm-dba
+    app.kubernetes.io/name: ibm-dba
+    release: 24.0.1
+    cp4ba.ibm.com/backup-type: mandatory
+spec:
+  appVersion: 24.0.1
+
+  ## MUST exist, used to accept ibm license, valid value only can be "accept" 
+  ibm_license: ""
+
+  ## TIPS: The names of all variables in the spec field are converted to snake_case by the operator before running ansible
+  ## For example, serviceAccount in the spec becomes service_account in ansible.
+  ## It is recommended that you perform some type validation in Ansible on the variables to ensure that
+  ## your application is receiving expected input.
+  ## shared configuration among all tribe
+  shared_configuration:
+    sc_deployment_patterns: decisions
+    sc_optional_components:
+    sc_deployment_type: Starter
+    # Possible values OCP,ROKS
+    sc_deployment_platform: OCP
+    
+    ## Optional. This parameter is used to create legacy OCP routes for components such as CPE, BAN, etc. The default hostname suffix will be <router-canonical-hostname> when not defined.
+    ## For more information refer to https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/24.0.1?topic=scp-shared-configuration
+    ## All CP4BA application URLs are accessed through the Platform UI route (this route starts with https://cpd-<namespace>.<cluster>.<domain> and this parameter is not applicable to the Platform UI route).
+    #sc_deployment_hostname_suffix: "{{ meta.namespace }}.<router-canonical-hostname> or your own custom domain, e.g., `.acme.com`"
+
+    
+    storage_configuration:
+      # For ROKS you have to use ibmc-file-gold or cp4a-file-retain-gold-gid value
+      sc_dynamic_storage_classname: ""
+      sc_block_storage_classname: ""
+  ########################################################################
+  ########      IBM Operational Decision Manager configuration         ########
+  ########################################################################
+  odm_configuration:
+    image:
+      pullSecrets: "ibm-entitlement-key"
+    # Specify the name of the secret that contains the configuration files required to use the IBM Business Automation Insights emitter.
+    #customization:
+    # baiEmitterSecretRef: baiodmsecrets

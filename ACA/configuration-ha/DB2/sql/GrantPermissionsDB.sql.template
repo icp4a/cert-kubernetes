@@ -1,0 +1,5 @@
+CONNECT TO ${tenant_db_name};
+GRANT CONNECT,DATAACCESS,CREATETAB ON DATABASE TO USER $tenant_db_user ;
+GRANT USE OF TABLESPACE ${tenant_db_name}DATA TO user $tenant_db_user ;
+GRANT USE OF TABLESPACE USERTEMP1 TO user $tenant_db_user ;
+CONNECT RESET;

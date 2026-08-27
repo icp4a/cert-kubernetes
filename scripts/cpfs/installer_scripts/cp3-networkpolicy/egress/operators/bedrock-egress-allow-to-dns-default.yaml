@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-allow-to-dns-default
+  namespace: "opNamespace"
+  labels:
+    component: cpfs3
+spec:
+  egress:
+  - ports:
+    - port: 53
+      protocol: UDP
+    - port: 53
+      protocol: TCP
+    - port: 5353
+      protocol: UDP
+    - port: 5353
+      protocol: TCP
+    to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          dns.operator.openshift.io/daemonset-dns: default
+  podSelector: {}
+  policyTypes:
+  - Egress

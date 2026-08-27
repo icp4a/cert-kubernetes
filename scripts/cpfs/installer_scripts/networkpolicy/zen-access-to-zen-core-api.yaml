@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: access-to-zen-core-api
+  namespace: "zenNamespace"
+  labels:
+    component: cpfs
+spec:
+  podSelector:
+    matchLabels:
+      component: "zen-core-api"
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector: 
+        matchLabels:
+          kubernetes.io/metadata.name: "csNamespace"
+    - podSelector: {}

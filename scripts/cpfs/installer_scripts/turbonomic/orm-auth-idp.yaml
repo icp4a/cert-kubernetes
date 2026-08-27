@@ -1,0 +1,21 @@
+apiVersion: turbonomic.com/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: authentications.operator.ibm.com
+  labels:
+    component: cpfs
+spec:
+  resourceMappings:
+    - srcResourceSpec:
+        kind: Deployment
+        componentNames:
+          - auth-idp
+      resourceMappingTemplates:
+        - srcPath: .spec.template.spec.containers[?(@.name=="icp-audit-service")].resources
+          destPath: .spec.auditService.resources
+        - srcPath: .spec.template.spec.containers[?(@.name=="platform-auth-service")].resources
+          destPath: .spec.authService.resources
+        - srcPath: .spec.template.spec.containers[?(@.name=="platform-identity-provider")].resources
+          destPath: .spec.datasourceConfig.identityProvider.resources
+        - srcPath: .spec.template.spec.containers[?(@.name=="platform-identity-manager")].resources
+          destPath: .spec.identityManager.resources

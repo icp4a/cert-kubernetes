@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-dsx-influxdb-set-auth
+  namespace: "zenNamespace"
+  labels:
+    component: cpfs
+spec:
+  podSelector:
+    matchLabels:
+      component: "dsx-influxdb-auth-job"
+  policyTypes:
+  - Egress
+  egress:
+  - {}

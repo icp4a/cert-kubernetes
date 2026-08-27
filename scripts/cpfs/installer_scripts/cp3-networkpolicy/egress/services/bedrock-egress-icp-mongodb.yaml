@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    component: cpfs3
+    service: mongodb
+  name: egress-icp-mongodb
+  namespace: "csNamespace"
+spec:
+  podSelector:
+    matchLabels:
+      app: icp-mongodb
+  policyTypes:
+  - Egress
+  egress:
+  - {}

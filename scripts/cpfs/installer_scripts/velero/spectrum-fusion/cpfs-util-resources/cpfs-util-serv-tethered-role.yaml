@@ -1,0 +1,36 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cpfs-util-role
+  namespace: <services or tethered namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: cpfs-util-backup
+rules:
+  - verbs:
+      - create
+      - get
+      - delete
+      - watch
+      - update
+      - list
+      - patch
+      - deletecollection
+    apiGroups:
+      - ''
+      - batch
+      - extensions
+      - apps
+      - policy
+      - packages.operators.coreos.com
+      - operator.ibm.com
+      - operators.coreos.com
+      - catalogsources.operators.coreos.com
+      - namespacescopes.operators.coreos.com
+      - cert-manager.io
+      - operatorgroups.operators.coreos.com
+      - rbac.authorization.k8s.io
+      - "*"
+    resources:
+      - roles
+      - rolebindings
+      - "*"

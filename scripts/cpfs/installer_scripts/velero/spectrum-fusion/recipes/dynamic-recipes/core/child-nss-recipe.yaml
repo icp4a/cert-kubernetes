@@ -1,0 +1,45 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  labels:
+    dp.isf.ibm.com/parent-recipe: cpfs-parent-recipe
+    dp.isf.ibm.com/parent-recipe-namespace: <parent recipe namespace>
+  name: nss-child
+  namespace: <child recipe namespace>
+spec:
+  appType: common-service
+  groups:
+    - includedResourceTypes:
+        - roles
+        - rolebindings
+        - serviceaccounts
+        - namespacescopes.operator.ibm.com
+        - subscriptions.operators.coreos.com #TODO change labeling script to label nss sub as nss, verify matches manual labeling instructions
+      labelSelector: foundationservices.cloudpak.ibm.com=nss
+      name: nss-resources
+      type: resource
+  hooks:
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: nss-check
+      nameSelector: ibm-namespace-scope-operator
+      namespace: <child recipe namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+  workflows:
+    - name: post-backup
+      priority: 0
+      sequence:
+        #nss
+        - group: nss-resources
+    - name: restore-nss
+      sequence:
+        # nss
+        - group: nss-resources
+        - hook: nss-check/podReady
+    

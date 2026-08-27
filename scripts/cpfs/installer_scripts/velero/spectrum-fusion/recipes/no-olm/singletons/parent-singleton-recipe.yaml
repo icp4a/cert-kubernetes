@@ -1,0 +1,35 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  name: cpfs-singleton-parent-recipe
+  namespace: <fusion ns>
+spec:
+  appType: singleton
+  groups:
+    - includeClusterResources: true
+      labelSelector: foundationservices.cloudpak.ibm.com=namespace
+      name: namespace
+      type: resource
+    - includeClusterResources: false
+      includedResourceTypes:
+        - secrets
+      labelSelector: foundationservices.cloudpak.ibm.com=entitlementkey
+      name: entitlementkey
+      type: resource
+  workflows:
+    - name: singleton-resources-backup
+      priority: 0
+      sequence: []
+    - name: singleton-resources-restore
+      priority: 0
+      sequence: []
+    - name: backup
+      sequence:
+        - group: namespace
+        - group: entitlementkey
+        - workflow: singleton-resources-backup
+    - name: restore
+      sequence: 
+        - group: namespace
+        - group: entitlementkey
+        - workflow: singleton-resources-restore

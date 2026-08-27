@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-setup-multi-tenancy-tables-job
+  namespace: "zenNamespace"
+  labels:
+    component: cpfs3
+    service: zen
+spec:
+  podSelector:
+    matchLabels:
+      component: "setup-multi-tenancy-tables-job"
+  policyTypes:
+  - Egress
+  egress:
+  - {}
