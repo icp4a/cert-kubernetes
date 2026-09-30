@@ -214,20 +214,32 @@ function mirror_images(){
     if [ -z "$response" ]; then
         response="yes"
     fi
+    # Build the oc mirror command as an array so arguments with spaces are handled
+    # safely without eval. OC_MIRROR_VERSION_FLAG is "" for oc mirror < 4.18 and
+    # "--v1" for >= 4.18; the array entry is only added when the flag is non-empty.
+    local -a oc_mirror_cmd=(oc mirror)
+    [[ -n "$OC_MIRROR_VERSION_FLAG" ]] && oc_mirror_cmd+=("$OC_MIRROR_VERSION_FLAG")
+    oc_mirror_cmd+=(
+        --config "$ibm_pak_home/.ibm-pak/data/mirror/$CASE_NAME/$CASE_VERSION/image-set-config.yaml"
+        "docker://$PRIVATE_REGISTRY_MIRRORING_PATH"
+        --dest-skip-tls
+        --max-per-registry=6
+    )
+
     # Check the response
     # if no we mirror without nohup
     if [[ "$response" == "no" || "$response" == "n" ]]; then
         info "Starting with the image mirroring process ... "
         printf "\n"
-        echo "Command executing -> oc mirror --config $ibm_pak_home/.ibm-pak/data/mirror/$CASE_NAME/$CASE_VERSION/image-set-config.yaml docker://$PRIVATE_REGISTRY_MIRRORING_PATH --dest-skip-tls --max-per-registry=6"
+        echo "Command executing -> ${oc_mirror_cmd[*]}"
         printf "\n"
-        oc mirror --config $ibm_pak_home/.ibm-pak/data/mirror/$CASE_NAME/$CASE_VERSION/image-set-config.yaml docker://$PRIVATE_REGISTRY_MIRRORING_PATH --dest-skip-tls --max-per-registry=6
+        "${oc_mirror_cmd[@]}"
     else
         info "Starting with the image mirroring process ... "
         printf "\n"
-        echo "Command executing -> nohup oc mirror --config $ibm_pak_home/.ibm-pak/data/mirror/$CASE_NAME/$CASE_VERSION/image-set-config.yaml docker://$PRIVATE_REGISTRY_MIRRORING_PATH --dest-skip-tls --max-per-registry=6 > $AIRGAP_FOLDER_MIRRORING_LOGS/$case_name-$case_version.txt 2>&1 &"
+        echo "Command executing -> nohup ${oc_mirror_cmd[*]} > $AIRGAP_FOLDER_MIRRORING_LOGS/$case_name-$case_version.txt 2>&1 &"
         printf "\n"
-        nohup oc mirror --config $ibm_pak_home/.ibm-pak/data/mirror/$CASE_NAME/$CASE_VERSION/image-set-config.yaml docker://$PRIVATE_REGISTRY_MIRRORING_PATH --dest-skip-tls --max-per-registry=6 > $AIRGAP_FOLDER_MIRRORING_LOGS/$case_name-$case_version.txt 2>&1 &
+        nohup "${oc_mirror_cmd[@]}" > "$AIRGAP_FOLDER_MIRRORING_LOGS/$case_name-$case_version.txt" 2>&1 &
         monitor_mirroring
     fi
     

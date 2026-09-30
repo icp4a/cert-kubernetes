@@ -1,26 +1,26 @@
 name: ibm-cp-automation
-version: 25.0.6
-description: Generated from CASE ibm-cp-automation version 25.0.6 on 2026-15-04 06:24:59
+version: 25.0.7
+description: Generated from CASE ibm-cp-automation version 25.0.7 on 2026-15-04 06:24:59
   PDT
 cases:
 - name: ibm-cp-automation
-  version: 25.0.6
+  version: 25.0.7
   launch: true
   catalogGeneration:
     ocMirror:
       disableMerge: true
 - name: ibm-bts-bundle
-  version: 1.0.39
+  version: 1.0.40
   catalogGeneration:
     ocMirror:
       disableMerge: true
 - name: ibm-cs-install
-  version: 4.19.2
+  version: 4.19.3
   catalogGeneration:
     ocMirror:
       disableMerge: true
 - name: ibm-cs-iam
-  version: 4.18.1
+  version: 4.18.2
   catalogGeneration:
     ocMirror:
       disableMerge: true
@@ -30,7 +30,7 @@ cases:
     ocMirror:
       disableMerge: true
 - name: ibm-opensearch-operator
-  version: 1.4.3
+  version: 1.4.5
   catalogGeneration:
     ocMirror:
       disableMerge: true
@@ -40,27 +40,27 @@ cases:
     ocMirror:
       disableMerge: true
 - name: ibm-cert-manager
-  version: 4.2.23
-  catalogGeneration:
-    ocMirror:
-      disableMerge: true
-- name: ibm-zen
-  version: 6.10.3+20260713.120632.33
-  catalogGeneration:
-    ocMirror:
-      disableMerge: true
-- name: ibm-licensing
   version: 4.2.24
   catalogGeneration:
     ocMirror:
       disableMerge: true
+- name: ibm-zen
+  version: 6.10.7+20260901.133040.21
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true
+- name: ibm-licensing
+  version: 4.2.25
+  catalogGeneration:
+    ocMirror:
+      disableMerge: true
 - name: ibm-cp-fncm-case
-  version: 5.7.5
+  version: 5.7.6
   catalogGeneration:
     ocMirror:
       disableMerge: true
 - name: ibm-pg-operator
-  version: 28.4.0
+  version: 28.4.3
   catalogGeneration:
     ocMirror:
       disableMerge: true

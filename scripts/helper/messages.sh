@@ -173,9 +173,9 @@ function next_steps_for_major_upgrade_after_upgrade_operator_mode() {
     echo "      4. Click Save to apply your changes."
     step_num=$((step_num + 1))
   fi
-  echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You need to run ${GREEN_TEXT}\"${cur_dir}/cp4a-deployment.sh -m upgradeDeployment -n $namespace\"${RESET_TEXT} to upgrade CP4BA deployment."
+  echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You need to run ${GREEN_TEXT}\"${cur_dir}/cp4a-deployment.sh -m upgradeDeployment -n $operator_namespace\"${RESET_TEXT} to upgrade CP4BA deployment."
   echo "    ${RED_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}When you run the [upgradeDeployment] mode of the cp4a-deployment.sh script, the updated custom resource (CR) must be manually applied that all required additional actions can be completed before the upgrade process begins. Refer to the Knowledge Center: \"Updating the custom resource for each capability in your deployment\" topic to complete the REQUIRED steps for the installed pattern(s).${RESET_TEXT}"
   step_num=$((step_num + 1))
-  echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${cur_dir}/cp4a-deployment.sh -m upgradeDeploymentStatus -n $namespace\"${RESET_TEXT} to check whether the upgrade of the CP4BA deployment was successful."
+  echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${cur_dir}/cp4a-deployment.sh -m upgradeDeploymentStatus -n $operator_namespace\"${RESET_TEXT} to check whether the upgrade of the CP4BA deployment was successful."
   printf "\n"
 }

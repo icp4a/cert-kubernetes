@@ -175,13 +175,13 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 CP4BA_RELEASE_BASE="25.0.0"
 # CP4BA_RELEASE_BASE_MAJOR_VERSION is used in certain checks where we used to hardcode to see if a upgrade is not ifix to ifix,change this only for major release
 CP4BA_RELEASE_BASE_MAJOR_VERSION="25.0"
-CP4BA_PATCH_VERSION="IF006"
+CP4BA_PATCH_VERSION="IF007"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v25.0.6"
+CP4BA_CSV_VERSION="v25.0.7"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
 CP4BA_CHANNEL_VERSION="v25.0"
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.19.2"
+CS_OPERATOR_VERSION="v4.19.3"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
 CS_CHANNEL_VERSION="v4.19"
 # CS CHANNEL VERSION that is used in the KC
@@ -191,13 +191,13 @@ CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
 CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-19-0"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v6.10.3"
+ZEN_OPERATOR_VERSION="v6.10.7"
 # BTS_CHANNEL_VERSION is for for BTS, need to update for each IFIX
 BTS_CHANNEL_VERSION="v3.35"
-# BTS_CATALOG_VERSION is for BTS 3.35.13.
+# BTS_CATALOG_VERSION is for BTS 3.35.14.
 BTS_CATALOG_VERSION="ibm-bts-operator-catalog-v3-35"
 # REQUIREDVER_BTS is for checking bts operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_BTS="3.35.13"
+REQUIREDVER_BTS="3.35.14"
 # REQUIREDVER_POSTGRESQL is for checking postgresql operator upgrade status before run removal_iaf.sh, need to update for each IFIX
 REQUIREDVER_POSTGRESQL="1.28.4"
 # EVENTS_OPERATOR_VERSION is for checking IBM Events operator upgrade status, need to update for each IFIX
@@ -210,6 +210,8 @@ MINIMUM_SUPPORTED_UPGRADE_VERSIONS=("24.1.2" "25.0.0")
 # Zen metastore EDB configmap name
 ZEN_EDB_CFG="ibm-zen-metastore-cm"
 CERT_MANAGER_PROJECT="ibm-cert-manager"
+CERT_MANAGER_V1_OWNER="operator.ibm.com/v1"
+CERT_MANAGER_V1ALPHA1_OWNER="operator.ibm.com/v1alpha1"
 LICENSE_MANAGER_PROJECT="ibm-licensing"
 DEDICATED_CS_PROJECT="cs-control"
 # Directory for upgrade operator and prerequisites
@@ -997,7 +999,7 @@ function generate_truststore_password() {
 # For https://jsw.ibm.com/browse/DBACLD-201592
 function prompt_to_continue() {
     while true; do
-        printf "\x1B[1mPlease confirm that you are ready to continue.  Enter Yes to continue or No to exit (Yes/No, default: No): \x1B[0m"
+        printf "\x1B[1mPlease confirm that you are ready to continue.  Enter Yes to continue or No to exit (Yes/No, default: No): \x1B[0m\n"
         read -erp "" ans
         ans=$(echo "$ans" | tr '[:upper:]' '[:lower:]')
         if [ -z "$ans" ]; then
@@ -1982,6 +1984,8 @@ function patch_strimzi_podset(){
     if [[ -z "$events_operator_subscription_name" ]]; then
         echo "Subscription matching 'ibm-events-operator' not found, skipping"
         strimzi_patched=true
+        #DBACLD-259982: Set DISPLAY_MANUAL_PATCH_STEPS so that the displayManualStrimziPodsetPatchingMessage function won't be trigger
+        DISPLAY_MANUAL_PATCH_STEPS=false
         return
     fi
 
@@ -2216,6 +2220,44 @@ function validate_zen_upgrade_status(){
         exit 1
     fi
 
+}
+
+
+# Function to get the total reconcile count for a CP4BA operator pod.
+# Sets the global variable OPERATOR_RECONCILE_COUNT to a numeric value.
+# Returns:
+#   0 when reconcile artifact count was found and parsed
+#   1 when the artifact count could not be found
+function get_cp4ba_operator_reconcile_count() {
+    local operator_namespace="$1"
+    local operator_pod_name="$2"
+    local top_level_cr_kind="$3"
+    local top_level_cr_name="$4"
+    local cr_kind_path=""
+    local reconcile_count=""
+
+    OPERATOR_RECONCILE_COUNT=0
+
+    if [[ -z "$operator_namespace" || -z "$operator_pod_name" || -z "$top_level_cr_kind" || -z "$top_level_cr_name" || -z "$CP4BA_SERVICES_NS" ]]; then
+        return 1
+    fi
+
+    if [[ "$top_level_cr_kind" == "content" ]]; then
+        cr_kind_path="Content"
+    else
+        cr_kind_path="ICP4ACluster"
+    fi
+
+    reconcile_count=$(${CLI_CMD} -n "$operator_namespace" exec "$operator_pod_name" -- sh -c "
+        ls /tmp/ansible-operator/runner/icp4a.ibm.com/v1/${cr_kind_path}/${CP4BA_SERVICES_NS}/${top_level_cr_name}/artifacts/ 2>/dev/null | grep -c '^[0-9]'
+    " 2>/dev/null)
+
+    if [[ $? -eq 0 && "$reconcile_count" =~ ^[0-9]+$ ]]; then
+        OPERATOR_RECONCILE_COUNT="$reconcile_count"
+        return 0
+    fi
+
+    return 1
 }
 
 
@@ -2468,4 +2510,91 @@ function update_bts_datastore_resources() {
 
     success "BTS Datasource resources are compatible with the latest BTS version."
     return 0
+}
+
+function is_cert_manager_installed(){
+
+    info "Checking to see if any cert-manager is installed\n"
+    $CLI_CMD get subscriptions -A |grep  "cert-manager"  >  /dev/null 2>&1 # this will catch the packagenames of all cert-manager-operators
+    if [ $? -eq 0 ]; then
+        warning "There is a cert-manager Subscription already existed\n"
+    fi
+
+    local webhook_ns=$($CLI_CMD get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1)
+    if [ ! -z "$webhook_ns" ]; then
+        warning "There is a cert-manager-webhook pod Running, so most likely another cert-manager is already installed\n"
+        info "Continue to check further\n"
+
+        # Check if the cert-manager-webhook is owned by ibm-cert-manager-operator
+        local api_version=$($CLI_CMD get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
+        if [ ! -z "$api_version" ]; then
+            if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
+                error "Cluster has not deactivated LTSR ibm-cert-manager-operator yet.  Please do so before proceeding."
+                return 0
+                exit 1
+            fi
+
+            if [ "$api_version" != "$CERT_MANAGER_V1_OWNER" ]; then
+                warning "Cluster has a non ibm-cert-manager-operator already installed, skipping"
+                return 0
+            fi
+
+            # IBM cert-manager is installed (regardless of namespace)
+            if [[ "$webhook_ns" != "$CERT_MANAGER_PROJECT" ]]; then
+                warning "IBM cert-manager is installed but in namespace: $webhook_ns (expected: $CERT_MANAGER_PROJECT)"
+            else
+                info "IBM cert-manager is already installed in the correct namespace: $webhook_ns"
+            fi
+            return 0
+        else
+            warning "Cluster has a RedHat cert-manager or Helm cert-manager, skipping"
+            return 0
+        fi
+    else
+        info "There is no cert-manager-webhook pod running\n"
+        return 1
+    fi
+}
+
+# DBACLD-237319: Skip the creation of `ibm-cert-manager` project if cert-manager is already installed
+# This function will remove the any catalog entry out of the catalog source list if it exists
+# There are three parameters:
+# 1. input_file: The input YAML file containing the catalog sources
+# 2. output_file: The output YAML file to write the modified catalog sources
+# 3. name_to_be_removed: The name of the catalog source to be removed. (eg: ibm-cert-manager-catalog)
+function remove_item_from_cs() {
+    local input_file="$1"
+    local output_file="$2"
+    local name_to_be_removed="$3"
+
+    # Create an empty output file
+    > "$output_file"
+
+    # Process documents one by one (yq v3.3.0 approach)
+    doc_index=0
+    first_doc=true
+
+    while true; do
+        # Try to read the document at current index
+        doc_content=$($YQ_CMD 'select(documentIndex == '"$doc_index"')' "$input_file" 2>/dev/null)
+        if [ $? -ne 0 ] || [ -z "$doc_content" ]; then
+            break
+        fi
+
+        # Get the catalog name
+        catalog_name=$($YQ_CMD 'select(documentIndex == '"$doc_index"').metadata.name' "$input_file" 2>/dev/null)
+
+        # If this is not the cert-manager catalog, include it
+        if [ "$catalog_name" != "$name_to_be_removed" ]; then
+            if [ "$first_doc" = true ]; then
+                echo "$doc_content" >> "$output_file"
+                first_doc=false
+            else
+                echo "---" >> "$output_file"
+                echo "$doc_content" >> "$output_file"
+            fi
+        fi
+
+        ((doc_index++))
+    done
 }

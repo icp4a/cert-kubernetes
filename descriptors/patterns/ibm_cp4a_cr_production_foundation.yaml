@@ -154,6 +154,12 @@ spec:
       sc_fast_file_storage_classname: "<Required>"
       sc_block_storage_classname: "<Required>"
 
+    ## Zen Settings
+    sc_zen:
+      ## Default value for zen_instance_iss is false. When false , the issuer claim will use legacy KNOXSSO.
+      ## Change zen_instance_iss to true to use all ZEN tokens to use this format ZEN:{CLOUD_PAK_INSTANCE_ID} (Example: ZEN:6aadd07e-865c-41b7-9296-0e831547273e)
+      zen_instance_iss: false 
+
     ## IAM Settings
     sc_iam:
       ## Provide non default admin user for IAM in case you do not want to use cpadmin

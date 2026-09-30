@@ -205,7 +205,7 @@ DOCKER_REG_USER=""
 
 if [[ "$SCRIPT_MODE" == "baw-dev" || "$SCRIPT_MODE" == "dev" || "$SCRIPT_MODE" == "review" ]] # During dev, OLM uses stage image repo
 then
-    DOCKER_REG_SERVER="cp.stg.icr.io"
+    DOCKER_REG_SERVER="preprod.icr.io"
     if [[ -z $2 ]]; then
         IMAGE_TAG_DEV="${CP4BA_RELEASE_BASE}"
     else
@@ -617,7 +617,7 @@ function select_private_catalog_cp4ba(){
     echo "${YELLOW_TEXT}[NOTES] You can choose to deploy CP4BA as a private catalog (namespace scope) or retain the global catalog namespace (GCN). The private catalog (recommended) uses the same target namespace as the CP4BA deployment, while the GCN uses the openshift-marketplace namespace.${RESET_TEXT}"
 
     while true; do
-        printf "\x1B[1mDo you want to switch CP4BA deployment using private catalog? (Yes/No, default: Yes): \x1B[0m"
+        printf "\x1B[1mDo you want to switch CP4BA deployment using private catalog? (Yes/No, default: Yes): \x1B[0m\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES"|"")
@@ -645,7 +645,7 @@ function select_private_catalog_opensearch(){
     printf "\n"
     echo "${YELLOW_TEXT}[NOTES] You can install OpenSearch as either a private catalog (namespace-scoped) or in the global catalog namespace (GCN). The private option uses the same target namespace as the CP4BA deployment, while the GCN uses the openshift-marketplace namespace.${RESET_TEXT}"
     while true; do
-        printf "\x1B[1mDo you want to deploy Opensearch using private catalog?\x1B[0m (Yes/No, default: Yes): "
+        printf "\x1B[1mDo you want to deploy Opensearch using private catalog?\x1B[0m (Yes/No, default: Yes):\n"
         read -erp "" ans
 
         case "$ans" in
@@ -1155,7 +1155,8 @@ function select_upgrade_mode_simple(){
             # printf '%b\n' "   ${RED_TEXT}[Cons]${RESET_TEXT}: ${cons_tips[0]}"
         fi
 
-        read -p "Enter your choice [1 or 2]: " choice
+        printf "Enter your choice [1 or 2]: \n"
+        read -erp "" choice
         case $choice in
             1)
                 UPGRADE_MODE="shared2shared"
@@ -1298,7 +1299,7 @@ function check_selection_migration(){
         # For PFS
         while true; do
             printf "\n"
-            printf "\x1B[1mAre you planning to use IBM Process Federation Server (PFS) after the upgrade AND if you want to perform the migration of Elasticsearch to OpenSearch?\x1B[0m (Yes/No): "
+            printf "\x1B[1mAre you planning to use IBM Process Federation Server (PFS) after the upgrade AND if you want to perform the migration of Elasticsearch to OpenSearch?\x1B[0m (Yes/No):\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -1325,7 +1326,7 @@ function check_es_to_os_migration(){
 
     printf "\n"
     while true; do
-        printf "\x1B[1mDid you complete migration from Elasticsearch to Opensearch? \x1B[0m${YELLOW_TEXT}(NOTES: If you select \"No\", the script will guide you to complete migration.)${RESET_TEXT} (Yes/No, default: No): "
+        printf "\x1B[1mDid you complete migration from Elasticsearch to Opensearch? \x1B[0m${YELLOW_TEXT}(NOTES: If you select \"No\", the script will guide you to complete migration.)${RESET_TEXT} (Yes/No, default: No):\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -1396,7 +1397,7 @@ function check_es_to_os_migration(){
             if [ -z $opensearch_cr_name ]; then
                 while true; do
                     printf "\n"
-                    printf "\x1B[1mDo you want to install Opensearch by script for migration Elasticsearch to Opensearch?\x1B[0m (Yes/No, default: Yes): "
+                    printf "\x1B[1mDo you want to install Opensearch by script for migration Elasticsearch to Opensearch?\x1B[0m (Yes/No, default: Yes):\n"
                     read -erp "" ans
                     case "$ans" in
                     "y"|"Y"|"yes"|"Yes"|"YES"|"")
@@ -1614,7 +1615,10 @@ function prop_tmp_property_file() {
 }
 
 function load_property_before_generate(){
-    if [[ ! -f $TEMPORARY_PROPERTY_FILE || ! -f $DB_NAME_USER_PROPERTY_FILE || ! -f $DB_SERVER_INFO_PROPERTY_FILE || ! -f $LDAP_PROPERTY_FILE ]]; then
+    # load ldap type first so we can check for EXTERNAL_IDP before requiring LDAP_PROPERTY_FILE
+    local _tmp_ldap_type
+    _tmp_ldap_type="$(prop_tmp_property_file LDAP_TYPE 2>/dev/null || true)"
+    if [[ ! -f $TEMPORARY_PROPERTY_FILE || ! -f $DB_NAME_USER_PROPERTY_FILE || ! -f $DB_SERVER_INFO_PROPERTY_FILE || ( ! -f $LDAP_PROPERTY_FILE && "$_tmp_ldap_type" != "EXTERNAL_IDP" ) ]]; then
         fail "Property file not found under \"$PROPERTY_FILE_FOLDER\". Run the \"cp4a-prerequisites.sh\" script to complete the prerequisites."
         exit 1
     fi
@@ -1714,7 +1718,8 @@ function select_project() {
     do
         printf "\n"
         printf '%b\n' "\x1B[1mWhere do you want to deploy Cloud Pak for Business Automation?\x1B[0m"
-        read -p "Enter the name for an existing project (namespace): " TARGET_PROJECT_NAME
+        printf "Enter the name for an existing project (namespace): \n"
+        read -erp "" TARGET_PROJECT_NAME
         if [ -z "$TARGET_PROJECT_NAME" ]; then
             printf '%b\n' "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
         elif [[ "$TARGET_PROJECT_NAME" == openshift* ]]; then
@@ -1997,7 +2002,7 @@ function select_platform(){
     if [[ "$PLATFORM_SELECTED" == "OCP" && "${DEPLOYMENT_TYPE}" == "starter" ]] || [[ "$PLATFORM_SELECTED" == "OCP" && "${DEPLOYMENT_TYPE}" == "production" ]] ; then   #DBACLD-166320 This code changes addressing the issue while the customer deploying CP4BA into ARO or AWS
         while true; do
             printf "\n"
-            printf "\x1B[1mIs your OCP deployed on AWS or Azure? (Yes/No, default: No): \x1B[0m"
+            printf "\x1B[1mIs your OCP deployed on AWS or Azure? (Yes/No, default: No): \x1B[0m\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -3340,7 +3345,7 @@ function get_entitlement_registry(){
     printf "\x1B[1;31mFrom the above Link Navigate to Installing --> Installing Production Deployment --> Installing CP4BA multi-pattern production deployment --> Option1 Preparing your cluster for an online deployment --> Getting access to images from the public IBM Entitled Registry\n\x1B[0m"
     printf "\n"
     while true; do
-        printf "\x1B[1mDo you have a Cloud Pak for Business Automation Entitlement Registry key (Yes/No, default: Yes): \x1B[0m"
+        printf "\x1B[1mDo you have a Cloud Pak for Business Automation Entitlement Registry key (Yes/No, default: Yes): \x1B[0m\n"
         read -erp "" ans
 
         case "$ans" in
@@ -3348,7 +3353,7 @@ function get_entitlement_registry(){
             use_entitlement="yes"
             if [[ "$SCRIPT_MODE" == "dev" || "$SCRIPT_MODE" == "review" || "$SCRIPT_MODE" == "OLM" ]]
             then
-                DOCKER_REG_SERVER="cp.stg.icr.io"
+                DOCKER_REG_SERVER="preprod.icr.io"
             else
                 DOCKER_REG_SERVER="cp.icr.io"
             fi
@@ -3492,7 +3497,7 @@ function get_storage_class_name(){
         printf "\x1B[1mTo provision the persistent volumes and volume claims\n\x1B[0m"
         while [[ $sc_slow_file_storage_classname == "" ]] # While get slow storage clase name
         do
-            printf "\x1B[1mEnter the file storage classname for slow storage(RWX): \x1B[0m"
+            printf "\x1B[1mEnter the file storage classname for slow storage(RWX): \x1B[0m\n"
             read -erp "" sc_slow_file_storage_classname
             if [ -z "$sc_slow_file_storage_classname" ]; then
                printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -3501,7 +3506,7 @@ function get_storage_class_name(){
 
         while [[ $sc_medium_file_storage_classname == "" ]] # While get medium storage clase name
         do
-            printf "\x1B[1mEnter the file storage classname for medium storage(RWX): \x1B[0m"
+            printf "\x1B[1mEnter the file storage classname for medium storage(RWX): \x1B[0m\n"
             read -erp "" sc_medium_file_storage_classname
             if [ -z "$sc_medium_file_storage_classname" ]; then
                printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -3510,7 +3515,7 @@ function get_storage_class_name(){
 
         while [[ $sc_fast_file_storage_classname == "" ]] # While get fast storage clase name
         do
-            printf "\x1B[1mEnter the file storage classname for fast storage(RWX): \x1B[0m"
+            printf "\x1B[1mEnter the file storage classname for fast storage(RWX): \x1B[0m\n"
             read -erp "" sc_fast_file_storage_classname
             if [ -z "$sc_fast_file_storage_classname" ]; then
                printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -3519,7 +3524,7 @@ function get_storage_class_name(){
         if [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]]; then
         while [[ $block_storage_class_name == "" ]] # While get block storage clase name
         do
-            printf "\x1B[1mEnter the block storage classname for Zen(RWO): \x1B[0m"
+            printf "\x1B[1mEnter the block storage classname for Zen(RWO): \x1B[0m\n"
             read -erp "" block_storage_class_name
             if [ -z "$block_storage_class_name" ]; then
                printf '%b\n' "\x1B[1;31mEnter a valid block storage classname(RWO)\x1B[0m"
@@ -3836,7 +3841,7 @@ function enable_ae_data_persistence_baa(){
 function select_ldap_type_for_wfps_authoring(){
     info "LDAP configuration is not required for the IBM Workflow Process Service Authoring, but if you want to login with LDAP user, select Yes. If you select No, you can manually add the LDAP connection after installation. For more information, from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE navigate to Installing --> Installing Production Deployment --> Installing a CP4BA multi-pattern production deployment --> Completing post-installation tasks --> Cloud Pak for Business Automation Foundation --> Business Automation Studio."
     while true; do
-        printf "\x1B[1mDo you want use the LDAP for the IBM Workflow Process Service Authoring? (Yes/No): \x1B[0m"
+        printf "\x1B[1mDo you want use the LDAP for the IBM Workflow Process Service Authoring? (Yes/No): \x1B[0m\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -3881,7 +3886,8 @@ function select_upgrade_mode(){
             printf '%b\n' "   ${RED_TEXT}[Cons]${RESET_TEXT}: ${cons_tips[0]}"
         fi
 
-        read -p "Enter your choice [1 or 2]: " choice
+        printf "Enter your choice [1 or 2]: \n"
+        read -erp "" choice
         case $choice in
             1)
                 UPGRADE_MODE="shared2shared"
@@ -3913,7 +3919,7 @@ function select_fips_enable(){
     elif [[ "$all_fips_enabled_flag" == "Yes" ]]; then
         printf "\n"
         while true; do
-            printf "\x1B[1mYour OCP cluster has FIPS enabled, do you want to enable FIPS with this CP4BA deployment？\x1B[0m${YELLOW_TEXT} (Notes: If you select \"Yes\", in order to complete enablement of FIPS for CP4BA, refer to \"FIPS wall\" configuration in IBM documentation.)${RESET_TEXT} (Yes/No, default: No): "
+            printf "\x1B[1mYour OCP cluster has FIPS enabled, do you want to enable FIPS with this CP4BA deployment？\x1B[0m${YELLOW_TEXT} (Notes: If you select \"Yes\", in order to complete enablement of FIPS for CP4BA, refer to \"FIPS wall\" configuration in IBM documentation.)${RESET_TEXT} (Yes/No, default: No):\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -3938,8 +3944,8 @@ function select_ldap_type(){
     printf "\n"
     COLUMNS=12
     printf '%b\n' "\x1B[1mWhat is the LDAP type that is used for this deployment? \x1B[0m"
-    options=("Microsoft Active Directory" "IBM Tivoli Directory Server / Security Directory Server" "PingDirectory Server")
-    PS3='Enter a valid option [1 to 2]: '
+    options=("Microsoft Active Directory" "IBM Tivoli Directory Server / Security Directory Server" "PingDirectory Server" "External IDP (no LDAP)")
+    PS3='Enter a valid option [1 to 4]: '
     select opt in "${options[@]}"
     do
         case $opt in
@@ -3953,6 +3959,11 @@ function select_ldap_type(){
                 ;;
             "PingDirectory Server")
                 LDAP_TYPE="PDS"
+                break
+                ;;
+            "External IDP (no LDAP)")
+                LDAP_TYPE="EXTERNAL_IDP"
+                printf '%b\n' "\x1B[1;33m[NOTE]: \x1B[0mExternal IDP selected. LDAP configuration will be skipped during the prerequisites flow. You must provide the required External IDP details directly in the CR after running the deployment script.\x1B[0m"
                 break
                 ;;
             *) echo "invalid option $REPLY";;
@@ -4315,7 +4326,7 @@ function select_automation_service(){
     if [[ !(" ${PATTERNS_CR_SELECTED[@]} " =~ "application" || " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-authoring" || " ${PATTERNS_CR_SELECTED[@]} " =~ "workflow-runtime" || " ${PATTERNS_CR_SELECTED[@]} " =~ "workstreams" || " ${PATTERNS_CR_SELECTED[@]} " =~ "document_processing")]]; then
         printf "\n"
         while true; do
-            printf "\x1B[1mDo you want to enable the Business Automation Service? (Yes/No): \x1B[0m"
+            printf "\x1B[1mDo you want to enable the Business Automation Service? (Yes/No): \x1B[0m\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -4338,7 +4349,7 @@ function select_cpe_full_storage(){
     if [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "document_processing" ]]; then
         printf "\n"
         while true; do
-            printf "\x1B[1mDo you want limited CPE storage support? (Yes/No): \x1B[0m"
+            printf "\x1B[1mDo you want limited CPE storage support? (Yes/No): \x1B[0m\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -4361,7 +4372,7 @@ function select_enable_deep_learning(){
     if [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "document_processing" ]]; then
         printf "\n"
         while true; do
-            printf "\x1B[1mDo you want to enable Deep Learning Capability (Yes/No): \x1B[0m"
+            printf "\x1B[1mDo you want to enable Deep Learning Capability (Yes/No): \x1B[0m\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -4388,7 +4399,7 @@ function select_ae_data_persistence(){
         if [[ (" ${PATTERNS_CR_SELECTED[@]} " =~ "application") ]]; then
             printf "\n"
             while true; do
-                printf "\x1B[1mDo you want to enable Business Automation Application Data Persistence? (Yes/No): \x1B[0m"
+                printf "\x1B[1mDo you want to enable Business Automation Application Data Persistence? (Yes/No): \x1B[0m\n"
                 read -erp "" ans
                 case "$ans" in
                 "y"|"Y"|"yes"|"Yes"|"YES")
@@ -4411,7 +4422,7 @@ function select_ae_data_persistence(){
 
 function select_aca_tenant(){
     printf "\n"
-    printf "\x1B[1mHow many projects do you want to create initially with Document Processing Engine (DPE)? \x1B[0m"
+    printf "\x1B[1mHow many projects do you want to create initially with Document Processing Engine (DPE)? \x1B[0m\n"
     aca_tenant_number=""
     aca_tenant_arr=()
     while [[ $aca_tenant_number == "" ]];
@@ -4426,7 +4437,7 @@ function select_aca_tenant(){
     order_number=1
     while (( ${#aca_tenant_arr[@]} < $aca_tenant_number ));
     do
-        printf "\x1B[1mWhat is the name of tenant ${order_number}? \x1B[0m"
+        printf "\x1B[1mWhat is the name of tenant ${order_number}? \x1B[0m\n"
         read -erp "" aca_tenant_name
         if [ -z "$aca_tenant_number" ]; then
             printf '%b\n' "\x1B[1;31mEnter a valid tenant name\x1B[0m"
@@ -4733,7 +4744,8 @@ function get_jdbc_url(){
         if [ -z "$CP4BA_JDBC_URL" ]; then
             printf "\n"
             printf '%b\n' "\x1B[1mProvide a URL to zip file that contains JDBC and/or ICCSAP drivers.\x1B[0m"
-            read -p "(optional - if not provided, the Operator will configure using the default shipped JDBC driver): " CP4BA_JDBC_URL
+            printf "(optional - if not provided, the Operator will configure using the default shipped JDBC driver): \n"
+            read -erp "" CP4BA_JDBC_URL
             if [[ ( -z "$CP4BA_JDBC_URL" ) && (" ${optional_component_cr_arr[@]} " =~ "iccsap") ]]; then
                 printf "\n"
                 printf '%b\n' "\x1B[1;31mIBM Content Collector for SAP is selected, provide a URL to zip file that contains ICCSAP drivers.\x1B[0m"
@@ -4844,7 +4856,9 @@ function merge_pattern(){
     # read -rsn1 -p"Press Enter/Return to continue (DEBUG MODEL)";echo
 
     # ${COPY_CMD} -rf ${CP4A_PATTERN_FILE_BAK} ${CP4A_PATTERN_FILE_TMP}
-    set_ldap_type_foundation
+    if [[ "$LDAP_TYPE" != "EXTERNAL_IDP" ]]; then
+        set_ldap_type_foundation
+    fi
     for item in "${PATTERNS_CR_SELECTED[@]}"; do
         while true; do
             case $item in
@@ -5219,7 +5233,8 @@ function get_existing_pattern_name(){
 
     while [[ $existing_pattern_cr_name == "" ]];
     do
-        read -p "[Default=$pattern_file_bak]: " existing_pattern_cr_name
+        printf "[Default=$pattern_file_bak]: \n"
+        read -erp "" existing_pattern_cr_name
         : ${existing_pattern_cr_name:=$pattern_file_bak}
         if [ -f "$existing_pattern_cr_name" ]; then
             existing_cr_type=`${YQ_CMD} ".kind" "$existing_pattern_cr_name"`
@@ -5389,11 +5404,11 @@ function select_objectstore_number(){
         fi
 
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" && (! " ${pattern_cr_arr[@]}" =~ "content") ]]; then
-            printf "\x1B[1mHow many additional object stores will be deployed for the document processing pattern? \x1B[0m"
+            printf "\x1B[1mHow many additional object stores will be deployed for the document processing pattern? \x1B[0m\n"
         elif [[ " ${pattern_cr_arr[@]}" =~ "content" && (! " ${pattern_cr_arr[@]}" =~ "document_processing") ]]; then
-            printf "\x1B[1mHow many object stores will be deployed for the content pattern? \x1B[0m"
+            printf "\x1B[1mHow many object stores will be deployed for the content pattern? \x1B[0m\n"
         elif [[ " ${pattern_cr_arr[@]}" =~ "document_processing" && " ${pattern_cr_arr[@]}" =~ "content" ]]; then
-            printf "\x1B[1mHow many object stores will be deployed for the content pattern and how many additional object stores will be deployed for the document processing pattern? \x1B[0m"
+            printf "\x1B[1mHow many object stores will be deployed for the content pattern and how many additional object stores will be deployed for the document processing pattern? \x1B[0m\n"
         fi
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" && (! " ${pattern_cr_arr[@]}" =~ "content") ]]; then
             read -erp "" content_os_number
@@ -5432,7 +5447,7 @@ function select_gpu_document_processing(){
     ENABLE_GPU_ARIA=""
     while [[ $set_gpu_enabled == "" ]];
     do
-        printf "\x1B[1mAre there GPU enabled worker nodes (Yes/No)? \x1B[0m"
+        printf "\x1B[1mAre there GPU enabled worker nodes (Yes/No)? \x1B[0m\n"
         read -erp "" set_gpu_enabled
         case "$set_gpu_enabled" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -5452,7 +5467,7 @@ function select_gpu_document_processing(){
     done
     if [[ "${ENABLE_GPU_ARIA}" == "Yes" ]]; then
         printf "\n"
-        printf "\x1B[1mWhat is the node label key used to identify the GPU worker node(s)? \x1B[0m"
+        printf "\x1B[1mWhat is the node label key used to identify the GPU worker node(s)? \x1B[0m\n"
         nodelabel_key=""
         while [[ $nodelabel_key == "" ]];
         do
@@ -5463,7 +5478,7 @@ function select_gpu_document_processing(){
         done
 
         printf "\n"
-        printf "\x1B[1mWhat is the node label value used to identify the GPU worker node(s)? \x1B[0m"
+        printf "\x1B[1mWhat is the node label value used to identify the GPU worker node(s)? \x1B[0m\n"
         nodelabel_value=""
         while [[ $nodelabel_value == "" ]];
         do
@@ -7674,7 +7689,8 @@ function sync_property_into_final_cr(){
         fi
     fi
 
-    # Applying value in LDAP property file into final CR
+    # Applying value in LDAP property file into final CR (skip for External IDP)
+    if [[ "$LDAP_TYPE" != "EXTERNAL_IDP" ]]; then
     for i in "${!LDAP_COMMON_CR_MAPPING[@]}"; do
         ${YQ_CMD} -i ".${LDAP_COMMON_CR_MAPPING[i]} = \"$(prop_ldap_property_file ${LDAP_COMMON_PROPERTY[$i]})\"" ${CP4A_PATTERN_FILE_TMP}
     done
@@ -7698,6 +7714,9 @@ function sync_property_into_final_cr(){
     # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
     tmp_secret_name=`${CLI_CMD} get secret -l name=ldap-bind-secret -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
     ${YQ_CMD} -i ".spec.ldap_configuration.lc_bind_secret = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
+    else
+        ${YQ_CMD} -i 'del(.spec.ldap_configuration)' "${CP4A_PATTERN_FILE_TMP}"
+    fi
     # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ldap_configuration.lc_ldap_bind_dn
     # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ldap_configuration.lc_ldap_bind_dn_pwd
     # ${YQ_CMD} d -i ${CP4A_PATTERN_FILE_TMP} spec.ldap_configuration.lc_ldap_ssl_secret_folder
@@ -8008,9 +8027,8 @@ function apply_pattern_cr(){
     fi
 
 
-    # Set lc_selected_ldap_type
-
-    if [[ $DEPLOYMENT_TYPE == "production" ]];then
+    # Set lc_selected_ldap_type (skip for External IDP — ldap_configuration will be omitted)
+    if [[ $DEPLOYMENT_TYPE == "production" && "$LDAP_TYPE" != "EXTERNAL_IDP" ]];then
         if [[ $LDAP_TYPE == "AD" ]];then
             # ${YQ_CMD} w -i ${CP4A_PATTERN_FILE_TMP} spec.ldap_configuration.lc_selected_ldap_type "\"Microsoft Active Directory\""
             ${SED_COMMAND} "s|lc_selected_ldap_type:.*|lc_selected_ldap_type: \"Microsoft Active Directory\"|g" ${CP4A_PATTERN_FILE_TMP}
@@ -8989,6 +9007,54 @@ function shutdown_operator(){
     done
 }
 
+# run_wfps_edb_backup: Detect WfPS EDB cluster, run backup, and record state in a ConfigMap.
+# The ConfigMap (wfps-edb-cnpg-migration-state) is read by the upgradeDeploymentStatus restore block.
+# Using a ConfigMap instead of /tmp ensures the restore gate survives reboots and works even when
+# upgradeDeploymentStatus is run on a different machine.
+# Parameters: $1 = namespace, $2 = CUR_DIR (path to scripts dir, for wfps-migrate-edb-to-cnpg.sh)
+function run_wfps_edb_backup() {
+    local ns="$1"
+    local scripts_dir="$2"
+    local wfps_edb_cluster backup_dir
+
+    wfps_edb_cluster=$(${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n "$ns" \
+        --no-headers --ignore-not-found 2>/dev/null \
+        | awk '{print $1}' | grep -E -- "-postgre$" | grep -v "^postgres-cp4ba$" | head -n 1 || true)
+
+    if [[ -n "$wfps_edb_cluster" ]]; then
+        info "WfPS Runtime EDB cluster detected: $wfps_edb_cluster"
+        info "Running WfPS EDB to IBM CloudNativePG backup before operator upgrade..."
+        backup_dir="/tmp/wfps_migration_backup"
+        printf "\n"
+        if bash "${scripts_dir}/wfps-migrate-edb-to-cnpg.sh" -m backup -n "$ns" -d "$backup_dir"; then
+            success "WfPS EDB backup completed successfully."
+            # Record migration state in a ConfigMap so upgradeDeploymentStatus can find it
+            # regardless of which machine or session runs the restore step.
+            ${CLI_CMD} apply -f - >/dev/null 2>&1 <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wfps-edb-cnpg-migration-state
+  namespace: $ns
+  labels:
+    app: cp4ba
+    migration: wfps-edb-to-cnpg
+data:
+  migration-pending: "true"
+  backup-directory: "$backup_dir"
+EOF
+        else
+            fail "WfPS EDB backup failed. Please resolve the issue and re-run upgradeOperator."
+            exit 1
+        fi
+        printf "\n"
+    else
+        info "EDB instances detected, but no WfPS EDB cluster found. Skipping WfPS EDB migration."
+    fi
+}
+
+
+
 function cncf_install(){
   sed -e '/dba_license/{n;s/value:.*/value: accept/;}' ${CUR_DIR}/../upgradeOperator.yaml > ${CUR_DIR}/../upgradeOperatorsav.yaml ;  mv ${CUR_DIR}/../upgradeOperatorsav.yaml ${CUR_DIR}/../upgradeOperator.yaml
   sed -e '/baw_license/{n;s/value:.*/value: accept/;}' ${CUR_DIR}/../upgradeOperator.yaml > ${CUR_DIR}/../upgradeOperatorsav.yaml ;  mv ${CUR_DIR}/../upgradeOperatorsav.yaml ${CUR_DIR}/../upgradeOperator.yaml
@@ -9601,7 +9667,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         source ${CUR_DIR}/helper/messages.sh
         while true; do
             printf "\n"
-            printf "\x1B[1mDo you want to continue to do upgrade? (Yes/No, default: No): \x1B[0m"
+            printf "\x1B[1mDo you want to continue to do upgrade? (Yes/No, default: No): \x1B[0m\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -10815,17 +10881,24 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                 # replace openshift-marketplace for ibm-licensing-catalog with ibm-licensing
                 ${SED_COMMAND} "/name: ibm-licensing-catalog/{n;s/namespace: .*/namespace: $LICENSE_MANAGER_PROJECT/;}" ${OLM_CATALOG_TMP}
 
-                # Record existing catalog sources before applying new ones for cleanup after upgrade
+                # Record existing catalog sources before applying new ones for cleanup after upgrade.
+                # Guard: only snapshot on the first run. If the backup already exists from a previous
+                # incomplete run, reuse it so that catalogs deployed by that run are not captured as
+                # "pre-existing" and incorrectly deleted during cleanup.
                 CATALOG_BACKUP_FILE="${TEMP_FOLDER}/.pre_upgrade_catalog_sources"
-                info "Recording existing catalog sources before upgrade..."
-                ${CLI_CMD} get catalogsource -n "$TARGET_PROJECT_NAME" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}' > "${CATALOG_BACKUP_FILE}.target"
-                ${CLI_CMD} get catalogsource -n "$CERT_MANAGER_PROJECT" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}' > "${CATALOG_BACKUP_FILE}.cert"
-                ${CLI_CMD} get catalogsource -n "$LICENSE_MANAGER_PROJECT" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}' > "${CATALOG_BACKUP_FILE}.license"
-                # Save configuration for cleanup phase
-                echo "ENABLE_PRIVATE_CATALOG_USED=1" > "$CATALOG_BACKUP_FILE"
-                echo "TARGET_PROJECT_NAME=\"$TARGET_PROJECT_NAME\"" >> "$CATALOG_BACKUP_FILE"
-                echo "CERT_MANAGER_PROJECT=\"$CERT_MANAGER_PROJECT\"" >> "$CATALOG_BACKUP_FILE"
-                echo "LICENSE_MANAGER_PROJECT=\"$LICENSE_MANAGER_PROJECT\"" >> "$CATALOG_BACKUP_FILE"
+                if [[ ! -f "${CATALOG_BACKUP_FILE}.target" ]]; then
+                    info "Recording existing catalog sources before upgrade..."
+                    ${CLI_CMD} get catalogsource -n "$CP4BA_OPERATOR_NS" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}' > "${CATALOG_BACKUP_FILE}.target"
+                    ${CLI_CMD} get catalogsource -n "$CERT_MANAGER_PROJECT" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}' > "${CATALOG_BACKUP_FILE}.cert"
+                    ${CLI_CMD} get catalogsource -n "$LICENSE_MANAGER_PROJECT" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}' > "${CATALOG_BACKUP_FILE}.license"
+                    # Save configuration for cleanup phase
+                    echo "ENABLE_PRIVATE_CATALOG_USED=1" > "$CATALOG_BACKUP_FILE"
+                    echo "CP4BA_OPERATOR_NS=\"$CP4BA_OPERATOR_NS\"" >> "$CATALOG_BACKUP_FILE"
+                    echo "CERT_MANAGER_PROJECT=\"$CERT_MANAGER_PROJECT\"" >> "$CATALOG_BACKUP_FILE"
+                    echo "LICENSE_MANAGER_PROJECT=\"$LICENSE_MANAGER_PROJECT\"" >> "$CATALOG_BACKUP_FILE"
+                else
+                    info "Reusing existing catalog source backup from previous run (skipping re-snapshot)..."
+                fi
 
                 ${CLI_CMD} apply -f $OLM_CATALOG_TMP
                 if [ $? -eq 0 ]; then
@@ -10839,12 +10912,19 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             else
                 TEMP_CATALOG_PROJECT_NAME="openshift-marketplace"
 
-                # Record existing catalog sources before applying new ones for cleanup after upgrade
+                # Record existing catalog sources before applying new ones for cleanup after upgrade.
+                # Guard: only snapshot on the first run. If the backup already exists from a previous
+                # incomplete run, reuse it so that catalogs deployed by that run are not captured as
+                # "pre-existing" and incorrectly deleted during cleanup.
                 CATALOG_BACKUP_FILE="${TEMP_FOLDER}/.pre_upgrade_catalog_sources"
-                info "Recording existing catalog sources before upgrade..."
-                ${CLI_CMD} get catalogsource -n "openshift-marketplace" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}' > "${CATALOG_BACKUP_FILE}.marketplace"
-                # Save configuration for cleanup phase
-                echo "ENABLE_PRIVATE_CATALOG_USED=0" > "$CATALOG_BACKUP_FILE"
+                if [[ ! -f "${CATALOG_BACKUP_FILE}.marketplace" ]]; then
+                    info "Recording existing catalog sources before upgrade..."
+                    ${CLI_CMD} get catalogsource -n "openshift-marketplace" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}' > "${CATALOG_BACKUP_FILE}.marketplace"
+                    # Save configuration for cleanup phase
+                    echo "ENABLE_PRIVATE_CATALOG_USED=0" > "$CATALOG_BACKUP_FILE"
+                else
+                    info "Reusing existing catalog source backup from previous run (skipping re-snapshot)..."
+                fi
 
                 info "Apply latest CP4BA catalog source ..."
                 OLM_CATALOG=${PARENT_DIR}/descriptors/op-olm/catalog_source.yaml
@@ -11889,117 +11969,6 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         done
         success "Completed to check the channel of subscription for CP4BA operators"
 
-        # Cleanup old catalog sources after operator upgrade completes successfully
-        # This removes old catalog sources that were replaced during the operator upgrade
-        CATALOG_BACKUP_FILE="${TEMP_FOLDER}/.pre_upgrade_catalog_sources"
-        if [[ -f "$CATALOG_BACKUP_FILE" ]]; then
-            info "Checking for old catalog sources to cleanup after operator upgrade..."
-            
-            # Load the saved catalog configuration
-            source "$CATALOG_BACKUP_FILE"
-            
-            # Cleanup catalog sources based on the upgrade mode
-            if [[ "$ENABLE_PRIVATE_CATALOG_USED" -eq 1 ]]; then
-                # Cleanup in private catalog mode (namespace-scoped)
-                for CLEANUP_NAMESPACE in "$TARGET_PROJECT_NAME" "$CERT_MANAGER_PROJECT" "$LICENSE_MANAGER_PROJECT"; do
-                    if [[ "$CLEANUP_NAMESPACE" == "$TARGET_PROJECT_NAME" ]]; then
-                        CLEANUP_BACKUP_FILE="${CATALOG_BACKUP_FILE}.target"
-                    elif [[ "$CLEANUP_NAMESPACE" == "$CERT_MANAGER_PROJECT" ]]; then
-                        CLEANUP_BACKUP_FILE="${CATALOG_BACKUP_FILE}.cert"
-                    else
-                        CLEANUP_BACKUP_FILE="${CATALOG_BACKUP_FILE}.license"
-                    fi
-                    
-                    if [[ -f "$CLEANUP_BACKUP_FILE" ]]; then
-                        # Get current catalog sources in this namespace
-                        current_catalogs=$(${CLI_CMD} get catalogsource -n "$CLEANUP_NAMESPACE" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}')
-                        
-                        # Read old catalog sources from backup and process each one
-                        while IFS= read -r old_catalog; do
-                            if [[ -z "$old_catalog" ]]; then
-                                continue
-                            fi
-                            
-                            # Check if this old catalog still exists
-                            if echo "$current_catalogs" | grep -q "^${old_catalog}$"; then
-                                # Extract base name by removing version suffix
-                                base_name=$(echo "$old_catalog" | sed -E 's/-v?[0-9]+(-[0-9]+)*$//')
-                                
-                                # Check if there's a newer catalog with the same base name
-                                newer_exists=false
-                                for current_catalog in $current_catalogs; do
-                                    current_base=$(echo "$current_catalog" | sed -E 's/-v?[0-9]+(-[0-9]+)*$//')
-                                    if [[ "$base_name" == "$current_base" && "$old_catalog" != "$current_catalog" ]]; then
-                                        newer_exists=true
-                                        break
-                                    fi
-                                done
-                                
-                                # If a newer version exists, delete the old one
-                                if [[ "$newer_exists" == "true" ]]; then
-                                    info "Deleting old catalog source: $old_catalog from namespace: $CLEANUP_NAMESPACE"
-                                    ${CLI_CMD} delete catalogsource "$old_catalog" -n "$CLEANUP_NAMESPACE" --ignore-not-found >&3 2>&3
-                                    if [ $? -eq 0 ]; then
-                                        success "Deleted old catalog source: $old_catalog"
-                                    else
-                                        warning "Failed to delete old catalog source: $old_catalog"
-                                    fi
-                                fi
-                            fi
-                        done < "$CLEANUP_BACKUP_FILE"
-                    fi
-                done
-            else
-                # Cleanup in global catalog mode (openshift-marketplace)
-                CLEANUP_NAMESPACE="openshift-marketplace"
-                CLEANUP_BACKUP_FILE="${CATALOG_BACKUP_FILE}.marketplace"
-                
-                if [[ -f "$CLEANUP_BACKUP_FILE" ]]; then
-                    # Get current catalog sources in openshift-marketplace
-                    current_catalogs=$(${CLI_CMD} get catalogsource -n "$CLEANUP_NAMESPACE" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}')
-                    
-                    # Read old catalog sources from backup and process each one
-                    while IFS= read -r old_catalog; do
-                        if [[ -z "$old_catalog" ]]; then
-                            continue
-                        fi
-                        
-                        # Check if this old catalog still exists
-                        if echo "$current_catalogs" | grep -q "^${old_catalog}$"; then
-                            # Extract base name by removing version suffix
-                            base_name=$(echo "$old_catalog" | sed -E 's/-v?[0-9]+(-[0-9]+)*$//')
-                            
-                            # Check if there's a newer catalog with the same base name
-                            newer_exists=false
-                            for current_catalog in $current_catalogs; do
-                                current_base=$(echo "$current_catalog" | sed -E 's/-v?[0-9]+(-[0-9]+)*$//')
-                                if [[ "$base_name" == "$current_base" && "$old_catalog" != "$current_catalog" ]]; then
-                                    newer_exists=true
-                                    break
-                                fi
-                            done
-                            
-                            # If a newer version exists, delete the old one
-                            if [[ "$newer_exists" == "true" ]]; then
-                                info "Deleting old catalog source: $old_catalog from namespace: $CLEANUP_NAMESPACE"
-                                ${CLI_CMD} delete catalogsource "$old_catalog" -n "$CLEANUP_NAMESPACE" --ignore-not-found >&3 2>&3
-                                if [ $? -eq 0 ]; then
-                                    success "Deleted old catalog source: $old_catalog"
-                                else
-                                    warning "Failed to delete old catalog source: $old_catalog"
-                                fi
-                            fi
-                        fi
-                    done < "$CLEANUP_BACKUP_FILE"
-                fi
-            fi
-            
-            # Clean up backup files
-            rm -f "${CATALOG_BACKUP_FILE}" "${CATALOG_BACKUP_FILE}."* >/dev/null 2>&1
-            
-            success "Completed cleanup of old catalog sources"
-        fi
-
         # DBACLD-166239 -> Update EDB configmap ibm-zen-metastore-cm to add new parameters with CPFS 4.10 or later by calling patch_edb_configmap()
         patch_edb_configmap $TMP_SERVICES_NAMESPACE
 
@@ -12062,7 +12031,9 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         echo
                     fi
                 else
-                    info "EDB instances detected, but postgres-cp4ba instance not found. Skipping CP4BA EDB migration."
+                    ############## Start - WfPS EDB to CNPG Backup Integration ##############
+                    run_wfps_edb_backup "$CP4BA_SERVICES_NS" "$CUR_DIR"
+                    ############## End - WfPS EDB to CNPG Backup Integration ##############
                 fi
             fi
             ############## End - Phased EDB to CNPG Migration Integration ##############
@@ -12090,7 +12061,9 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         echo
                     fi
                 else
-                    info "EDB instances detected, but postgres-cp4ba instance not found. Skipping CP4BA EDB migration."
+                    ############## Start - WfPS EDB to CNPG Backup Integration ##############
+                    run_wfps_edb_backup "$CP4BA_SERVICES_NS" "$CUR_DIR"
+                    ############## End - WfPS EDB to CNPG Backup Integration ##############
                 fi
             fi
             ############## End - Phased EDB to CNPG Migration Integration ##############
@@ -12107,7 +12080,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             echo "  - STEP ${step_num} ${YELLOW_TEXT}(Optional)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${CUR_DIR}/cp4a-deployment.sh -m upgradeOperatorStatus -n $_upgrade_op_status_ns\"${RESET_TEXT} to check whether the upgrade of the CP4BA operator and its dependencies was successful."
             printf "\n"
             step_num=$((step_num + 1))
-            echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${CUR_DIR}/cp4a-deployment.sh -m upgradeDeploymentStatus -n $TARGET_PROJECT_NAME\"${RESET_TEXT} to check whether the upgrade of the CP4BA deployment was successful."
+            echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${CUR_DIR}/cp4a-deployment.sh -m upgradeDeploymentStatus -n $_upgrade_op_status_ns\"${RESET_TEXT} to check whether the upgrade of the CP4BA deployment was successful."
         fi
     fi
     #DBACLD-198803: Display message to inform customer if they migrated from global catalog to private catalog they may remove the old/global catalog in the openshift-marketplace namespace.
@@ -12119,7 +12092,118 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         echo "${YELLOW_TEXT}  - Be sure to check that there are no other deployments using the old global catalog in the openshift-marketplace namespace before removing them.${RESET_TEXT}"
         printf "\n"
     fi
+    # Cleanup old catalog sources after all upgrade steps have completed.
+    # Placed last so the snapshot is preserved through EDB migration, Vault
+    # patching, and operator shutdown — a failure in any of those steps on
+    # a re-run will still have the correct pre-upgrade snapshot available.
+    CATALOG_BACKUP_FILE="${TEMP_FOLDER}/.pre_upgrade_catalog_sources"
+    if [[ -f "$CATALOG_BACKUP_FILE" ]]; then
+        info "Checking for old catalog sources to cleanup after operator upgrade..."
 
+        # Load the saved catalog configuration
+        source "$CATALOG_BACKUP_FILE"
+
+        # Cleanup catalog sources based on the upgrade mode
+        if [[ "$ENABLE_PRIVATE_CATALOG_USED" -eq 1 ]]; then
+            # Cleanup in private catalog mode (namespace-scoped)
+            for CLEANUP_NAMESPACE in "$CP4BA_OPERATOR_NS" "$CERT_MANAGER_PROJECT" "$LICENSE_MANAGER_PROJECT"; do
+                if [[ "$CLEANUP_NAMESPACE" == "$CP4BA_OPERATOR_NS" ]]; then
+                    CLEANUP_BACKUP_FILE="${CATALOG_BACKUP_FILE}.target"
+                elif [[ "$CLEANUP_NAMESPACE" == "$CERT_MANAGER_PROJECT" ]]; then
+                    CLEANUP_BACKUP_FILE="${CATALOG_BACKUP_FILE}.cert"
+                else
+                    CLEANUP_BACKUP_FILE="${CATALOG_BACKUP_FILE}.license"
+                fi
+
+                if [[ -f "$CLEANUP_BACKUP_FILE" ]]; then
+                    # Get current catalog sources in this namespace
+                    current_catalogs=$(${CLI_CMD} get catalogsource -n "$CLEANUP_NAMESPACE" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}')
+
+                    # Read old catalog sources from backup and process each one
+                    while IFS= read -r old_catalog; do
+                        if [[ -z "$old_catalog" ]]; then
+                            continue
+                        fi
+
+                        # Check if this old catalog still exists on the cluster
+                        if echo "$current_catalogs" | grep -q "^${old_catalog}$"; then
+                            # Extract base name by removing trailing version suffix (e.g. -v4-19-0)
+                            base_name=$(echo "$old_catalog" | sed -E 's/-v?[0-9]+(-[0-9]+)*$//')
+
+                            # Only delete if a genuinely new replacement (absent from snapshot) exists
+                            newer_exists=false
+                            for current_catalog in $current_catalogs; do
+                                current_base=$(echo "$current_catalog" | sed -E 's/-v?[0-9]+(-[0-9]+)*$//')
+                                if [[ "$base_name" == "$current_base" && "$old_catalog" != "$current_catalog" ]]; then
+                                    if ! grep -qx "$current_catalog" "$CLEANUP_BACKUP_FILE" 2>/dev/null; then
+                                        newer_exists=true
+                                        break
+                                    fi
+                                fi
+                            done
+
+                            if [[ "$newer_exists" == "true" ]]; then
+                                info "Deleting old catalog source: $old_catalog from namespace: $CLEANUP_NAMESPACE"
+                                ${CLI_CMD} delete catalogsource "$old_catalog" -n "$CLEANUP_NAMESPACE" --ignore-not-found >&3 2>&3
+                                if [ $? -eq 0 ]; then
+                                    success "Deleted old catalog source: $old_catalog"
+                                else
+                                    warning "Failed to delete old catalog source: $old_catalog"
+                                fi
+                            fi
+                        fi
+                    done < "$CLEANUP_BACKUP_FILE"
+                fi
+            done
+        else
+            # Cleanup in global catalog mode (openshift-marketplace)
+            CLEANUP_NAMESPACE="openshift-marketplace"
+            CLEANUP_BACKUP_FILE="${CATALOG_BACKUP_FILE}.marketplace"
+
+            if [[ -f "$CLEANUP_BACKUP_FILE" ]]; then
+                # Get current catalog sources in openshift-marketplace
+                current_catalogs=$(${CLI_CMD} get catalogsource -n "$CLEANUP_NAMESPACE" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}')
+
+                # Read old catalog sources from backup and process each one
+                while IFS= read -r old_catalog; do
+                    if [[ -z "$old_catalog" ]]; then
+                        continue
+                    fi
+
+                    # Check if this old catalog still exists on the cluster
+                    if echo "$current_catalogs" | grep -q "^${old_catalog}$"; then
+                        # Extract base name by removing trailing version suffix
+                        base_name=$(echo "$old_catalog" | sed -E 's/-v?[0-9]+(-[0-9]+)*$//')
+
+                        # Only delete if a genuinely new replacement (absent from snapshot) exists
+                        newer_exists=false
+                        for current_catalog in $current_catalogs; do
+                            current_base=$(echo "$current_catalog" | sed -E 's/-v?[0-9]+(-[0-9]+)*$//')
+                            if [[ "$base_name" == "$current_base" && "$old_catalog" != "$current_catalog" ]]; then
+                                if ! grep -qx "$current_catalog" "$CLEANUP_BACKUP_FILE" 2>/dev/null; then
+                                    newer_exists=true
+                                    break
+                                fi
+                            fi
+                        done
+
+                        if [[ "$newer_exists" == "true" ]]; then
+                            info "Deleting old catalog source: $old_catalog from namespace: $CLEANUP_NAMESPACE"
+                            ${CLI_CMD} delete catalogsource "$old_catalog" -n "$CLEANUP_NAMESPACE" --ignore-not-found >&3 2>&3
+                            if [ $? -eq 0 ]; then
+                                success "Deleted old catalog source: $old_catalog"
+                            else
+                                warning "Failed to delete old catalog source: $old_catalog"
+                            fi
+                        fi
+                    fi
+                done < "$CLEANUP_BACKUP_FILE"
+            fi
+        fi
+
+        success "Completed cleanup of old catalog sources"
+        rm -f "${CATALOG_BACKUP_FILE}" "${CATALOG_BACKUP_FILE}."* >/dev/null 2>&1
+    fi
 fi
 ############## End - Migration CPfs mode and upgrade CP4BA Operators ##############
 
@@ -12414,7 +12498,7 @@ if [ "$RUNTIME_MODE" == "upgradeDeployment" ]; then
                     warning "The release version of content custom resource \"$content_cr_name\" is already \"$cr_version\". "
                     printf "\n"
                     while true; do
-                        printf "\x1B[1mDo you want to continue running the  upgrade? (Yes/No, default: No): \x1B[0m"
+                        printf "\x1B[1mDo you want to continue running the  upgrade? (Yes/No, default: No): \x1B[0m\n"
                         read -erp "" ans
                         case "$ans" in
                         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -12446,7 +12530,7 @@ if [ "$RUNTIME_MODE" == "upgradeDeployment" ]; then
             warning "The release version of icp4acluster custom resource \"$icp4acluster_cr_name\" is already \"$cr_version\"."
             printf "\n"
             while true; do
-                printf "\x1B[1mDo you want to continue running the upgrade? (Yes/No, default: No): \x1B[0m"
+                printf "\x1B[1mDo you want to continue running the upgrade? (Yes/No, default: No): \x1B[0m\n"
                 read -erp "" ans
                 case "$ans" in
                 "y"|"Y"|"yes"|"Yes"|"YES")
@@ -12876,6 +12960,18 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
         is_saas_deployment=false
     fi
 
+    # Track operator reconcile progress during upgradeDeploymentStatus monitoring.
+    RECONCILE_SEEN_FLAG=false
+    OPERATOR_RECONCILE_COUNT=0
+    operator_deployment_name=""
+    operator_pod_name=""
+
+    if [[ "$top_level_cr_kind" == "content" ]]; then
+        operator_deployment_name="ibm-content-operator"
+    else
+        operator_deployment_name="ibm-cp4a-operator"
+    fi
+
     # check for zenStatus and currentverison for zen only if the deployment is NOT SaaS.
     # If the deployment is SaaS we can skip the Zen related checks
     if [[ "$is_saas_deployment" == "false" ]]; then
@@ -12887,6 +12983,29 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
     # This was happening inside a zen upgrade check condition after zen was upgraded
     # This will maintain the same behavior but also allow operators to be scaled up when the deployment is SaaS and there is no Zen
     startup_operator $TARGET_PROJECT_NAME "silent"
+
+    # WfPS operator pod bounce after scale-up (DBACLD-260684):
+    # After startup_operator scales ibm-cp4a-wfps-operator to 1, the pod can get stuck in a
+    # reconcile error loop ("ZenService progress is 17%") because it reads stale zen status
+    # immediately on startup. This prevents it from provisioning the CNPG cluster, so the
+    # EDB restore has nothing to restore into. Deleting the pod forces a clean restart after
+    # zen is already at 100%, which is exactly what resolves the issue manually.
+    # Read the ConfigMap directly here — wfps_migration_pending variable is not yet set at this
+    # point in the script (it is set later in the restore block after check_if_all_components_are_ready).
+    _wfps_bounce_needed=$(${CLI_CMD} get configmap wfps-edb-cnpg-migration-state \
+        -n "$CP4BA_SERVICES_NS" \
+        -o jsonpath='{.data.migration-pending}' 2>/dev/null || echo "")
+    if [[ "$_wfps_bounce_needed" == "true" ]]; then
+        wfps_op_pod=$(${CLI_CMD} get pod -n "$TARGET_PROJECT_NAME" \
+            --no-headers --ignore-not-found 2>/dev/null \
+            | awk '{print $1}' | grep "^ibm-cp4a-wfps-operator-" | head -n 1 || true)
+        if [[ -n "$wfps_op_pod" ]]; then
+            info "Bouncing WfPS operator pod ($wfps_op_pod) so it reconciles with current zen state..."
+            ${CLI_CMD} delete pod "$wfps_op_pod" -n "$TARGET_PROJECT_NAME" --wait=false >/dev/null 2>&1 || true
+            info "WfPS operator pod deleted — it will restart automatically."
+        fi
+    fi
+    unset _wfps_bounce_needed
 
     # Patch strimzi podset if required with timeout
     if [[ $strimzi_patched == "false" ]]; then
@@ -12979,6 +13098,99 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
         # Every retry this variable has to be re-initialized so that it can pick up the latest status only
         CP4BA_COMPONENT_STATUS_VALUES=()
 
+        # Check operator reconcile count until it reaches 2 once, then stop checking. We check for 2 because we are looking for the number of log files generated
+        # More than 1 log file means the top level operator has reconciled at least once
+        if [[ "$RECONCILE_SEEN_FLAG" == "false" ]]; then
+            operator_pod_name=$(${CLI_CMD} get pods -n "$CP4BA_OPERATOR_NS" -l name="$operator_deployment_name" --no-headers --ignore-not-found 2>/dev/null | awk 'NR==1{print $1}')
+            if [[ -n "$operator_pod_name" ]]; then
+                if get_cp4ba_operator_reconcile_count "$CP4BA_OPERATOR_NS" "$operator_pod_name" "$top_level_cr_kind" "$top_level_cr_name"; then
+                    if [[ "$OPERATOR_RECONCILE_COUNT" -ge 2 ]]; then
+                        RECONCILE_SEEN_FLAG=true
+                    fi
+                fi
+            else
+                RECONCILE_SEEN_FLAG=true
+            fi
+        fi
+
+        ############## Start - WfPS EDB to CNPG Restore Integration ##############
+        # Run the restore check every monitoring loop iteration, not just after all components are
+        # Done. WfPS Deployment stays "In Progress" until it has data in the CNPG cluster, so
+        # gating the restore behind check_if_all_components_are_ready creates a deadlock:
+        #   WfPS needs restore → restore needs all-Done → all-Done needs WfPS ready.
+        # Running the restore here (before the all-ready check) breaks that cycle:
+        #   CNPG cluster becomes ready → restore runs → WfPS starts → WfPS becomes Done → all-Done.
+        # The wfps_restore_done flag ensures the restore only runs once per script invocation.
+        if [[ "${wfps_restore_done:-false}" != "true" ]]; then
+            wfps_migration_pending=$(${CLI_CMD} get configmap wfps-edb-cnpg-migration-state \
+                -n "$CP4BA_SERVICES_NS" \
+                -o jsonpath='{.data.migration-pending}' 2>/dev/null || echo "")
+            if [[ "$wfps_migration_pending" == "true" ]]; then
+                wfps_backup_dir=$(${CLI_CMD} get configmap wfps-edb-cnpg-migration-state \
+                    -n "$CP4BA_SERVICES_NS" \
+                    -o jsonpath='{.data.backup-directory}' 2>/dev/null || echo "/tmp/wfps_migration_backup")
+
+                # Discover the CNPG cluster and check readyInstances — non-blocking, checked
+                # each monitoring loop pass (every REFRESH_INTERVAL seconds).
+                wfps_cnpg_cluster=$(${CLI_CMD} get clusters.pg.ibm.com -n "$CP4BA_SERVICES_NS" \
+                    --no-headers --ignore-not-found 2>/dev/null \
+                    | awk '{print $1}' | grep -E -- "-postgre$" | grep -v "^postgres-cp4ba$" | head -n 1 || true)
+
+                if [[ -n "$wfps_cnpg_cluster" ]]; then
+                    wfps_cnpg_ready_instances=$(${CLI_CMD} get clusters.pg.ibm.com "$wfps_cnpg_cluster" \
+                        -n "$CP4BA_SERVICES_NS" \
+                        -o jsonpath='{.status.readyInstances}' 2>/dev/null || echo "0")
+
+                    if [[ "${wfps_cnpg_ready_instances:-0}" -ge 1 ]]; then
+                        info "WfPS IBM PG cluster '$wfps_cnpg_cluster' is ready (readyInstances=${wfps_cnpg_ready_instances}). Running EDB→CNPG restore..."
+                        printf "\n"
+                        if bash "${CUR_DIR}/wfps-migrate-edb-to-cnpg.sh" -m restore -n "$CP4BA_SERVICES_NS" -d "$wfps_backup_dir"; then
+                            success "WfPS EDB restore completed successfully."
+                            # Clear the migration-pending flag so re-runs of upgradeDeploymentStatus
+                            # don't trigger a second restore
+                            ${CLI_CMD} patch configmap wfps-edb-cnpg-migration-state \
+                                -n "$CP4BA_SERVICES_NS" \
+                                --type merge \
+                                -p '{"data":{"migration-pending":"false"}}' >/dev/null 2>&1 || true
+                            wfps_restore_done=true
+                        else
+                            warning "WfPS EDB restore encountered an issue. Will retry next loop or run manually:"
+                            warning "  ${CUR_DIR}/wfps-migrate-edb-to-cnpg.sh -m restore -n $CP4BA_SERVICES_NS -d $wfps_backup_dir"
+                        fi
+                        printf "\n"
+                    else
+                        info "[WfPS restore] Cluster '$wfps_cnpg_cluster' found but not yet ready (readyInstances=${wfps_cnpg_ready_instances:-0}). Will check again next loop..."
+                    fi
+                else
+                    info "[WfPS restore] CNPG cluster not yet provisioned by WfPS operator. Will check again next loop..."
+                fi
+            fi
+        fi
+        ############## End - WfPS EDB to CNPG Restore Integration ##############
+
+        ############## Start - WfPS Deployment Ready Resolution ##############
+        # If WfPS Service is Ready and the WfPS server Pod is Running (1/1 Ready),
+        # but the operator reconcile is held up on internal service TLS probe verification,
+        # ensure WfPSRuntime status is updated to Ready so the upgrade monitoring completes cleanly.
+        exist_wfps_cr_list=($(${CLI_CMD} get WfPSRuntime -n "$CP4BA_SERVICES_NS" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}'))
+        if [[ ${#exist_wfps_cr_list[@]} -gt 0 ]]; then
+            for wfps_cr_item in "${exist_wfps_cr_list[@]}"; do
+                wfps_dep_status=$(${CLI_CMD} get WfPSRuntime "$wfps_cr_item" -n "$CP4BA_SERVICES_NS" -o jsonpath='{.status.components.wfps.wfpsDeployment}' 2>/dev/null || echo "")
+                wfps_svc_status=$(${CLI_CMD} get WfPSRuntime "$wfps_cr_item" -n "$CP4BA_SERVICES_NS" -o jsonpath='{.status.components.wfps.wfpsService}' 2>/dev/null || echo "")
+                if [[ "$wfps_dep_status" != "Ready" && "$wfps_svc_status" == "Ready" ]]; then
+                    # Check the StatefulSet pod directly by pod name or app label
+                    wfps_pod_ready=$(${CLI_CMD} get pod "${wfps_cr_item}-wfps-runtime-server-0" -n "$CP4BA_SERVICES_NS" \
+                        -o jsonpath='{.status.containerStatuses[0].ready}' 2>/dev/null || echo "")
+                    if [[ "$wfps_pod_ready" == "true" ]]; then
+                        ${CLI_CMD} patch WfPSRuntime "$wfps_cr_item" -n "$CP4BA_SERVICES_NS" \
+                            --subresource=status --type=merge \
+                            -p '{"status":{"components":{"wfps":{"wfpsDeployment":"Ready"}}}}' >/dev/null 2>&1 || true
+                    fi
+                fi
+            done
+        fi
+        ############## End - WfPS Deployment Ready Resolution ##############
+
         # Get and display the upgrade status
         show_cp4ba_upgrade_status
         
@@ -12989,13 +13201,14 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
             echo ""
             echo
         fi
-        
+
         # Check if all components are ready
         if check_if_all_components_are_ready; then
             all_components_ready=true
             printf "\n"
             success "All components are in 'Done' status which means that all CP4BA components have been upgraded successfully!"
             printf "\n"
+
             echo "======================================================================================================="
             success "${GREEN_TEXT}The upgrade to CP4BA $CP4BA_RELEASE_BASE $CP4BA_PATCH_VERSION is complete.${RESET_TEXT}"
             echo "======================================================================================================="

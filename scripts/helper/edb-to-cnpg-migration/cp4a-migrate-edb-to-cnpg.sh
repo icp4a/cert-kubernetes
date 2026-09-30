@@ -80,8 +80,9 @@ SERVICE_DELETE_TIMEOUT="${SERVICE_DELETE_TIMEOUT:-60}"
 
 # CR Kind to Component Mapping
 # Maps top-level CR kinds to their associated component CR kinds for deployment scaling
-ICP4ACLUSTER_CR_KIND_MAPPING_LIST=("ICP4ACluster" "Content" "InsightsEngine" "ICP4AAutomationDecisionService" "WFPSRuntime" "WorkflowRuntime" "ICP4ADocumentProcessingEngine")
+ICP4ACLUSTER_CR_KIND_MAPPING_LIST=("ICP4ACluster" "Content" "InsightsEngine" "ICP4AAutomationDecisionService" "WFPSRuntime" "WorkflowRuntime" "ICP4ADocumentProcessingEngine" "OperationalDecisionManager")
 CONTENT_CR_KIND_MAPPING_LIST=("Content" "Foundation" "InsightsEngine")
+ODM_CR_KIND_MAPPING_LIST=("OperationalDecisionManager")
 
 ################################################################################
 # Helper Functions
@@ -748,75 +749,57 @@ function execute_phased_edb_migration() {
 ################################################################################
 function discover_databases() {
     info "=== DISCOVERING DATABASES ==="
-    
-    
-    if [[ "$RESTORE_ONLY" = true ]]; then
-        # Load database list from backup directory
-        if [[ -f "$BACKUP_DIR/database_list.txt" ]]; then
-            info "Loading database list from backup..."
-            # Use while-read (Bash 3.2+ safe) — mapfile/readarray require Bash 4+
-            DATABASES=()
-            while IFS= read -r _db; do
-                [[ -n "$_db" ]] && DATABASES+=("$_db")
-            done < "$BACKUP_DIR/database_list.txt"
-        else
-            error "Database list file not found in backup directory."
+
+    if [[ "$RESTORE_ONLY" = true ]] || [[ "$CREATE_CLUSTER_ONLY" = true ]]; then
+        # Phase 2 (create-cluster) and Phase 3 (restore):
+        # EDB is already deleted by this point — never attempt to contact it.
+        # Read the authoritative database list written by the backup phase.
+        if [[ ! -f "$BACKUP_DIR/database_list.txt" ]]; then
+            error "Database list file not found in backup directory: $BACKUP_DIR/database_list.txt"
+            exit 1
+        fi
+        info "Loading database list from backup..."
+        # Use while-read (Bash 3.2+ safe) — mapfile/readarray require Bash 4+
+        DATABASES=()
+        while IFS= read -r _db; do
+            [[ -n "$_db" ]] && DATABASES+=("$_db")
+        done < "$BACKUP_DIR/database_list.txt"
+
+        if [[ ${#DATABASES[@]} -eq 0 ]]; then
+            error "Database list file is empty: $BACKUP_DIR/database_list.txt"
             exit 1
         fi
     else
-        # Discover from EDB cluster - try multiple label selectors
+        # Phase 1 (backup): EDB is alive — discover databases directly from the pod.
         info "Looking for EDB PostgreSQL pod..."
-        
+
         # Try method 1: EDB operator labels (k8s.enterprisedb.io)
         local EDB_POD=$(${CLI_CMD} get pods -n $SERVICES_NAMESPACE -l k8s.enterprisedb.io/cluster=$OLD_CLUSTER,role=primary -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-        
-        # Try method 2: Old CrunchyData labels
+
+        # Try method 2: EDB-specific name-based search.
+        # EDB pods are named <cluster>-<integer> (e.g. postgres-cp4ba-1).
+        # IBM CloudNativePG pods share the same cluster-name prefix but have an
+        # extra namespace-hash component appended:
+        #   postgres-cp4ba-1-postgres-cp4ba-ns-dtf-qa-cp4ba-a-cv-5870937
+        # The ERE below anchors the suffix to digits followed immediately by a
+        # field separator (space/tab), so CNPG pods are never selected here.
         if [[ -z "$EDB_POD" ]]; then
-            EDB_POD=$(${CLI_CMD} get pods -n $SERVICES_NAMESPACE -l postgres-operator.crunchydata.com/cluster=$OLD_CLUSTER,postgres-operator.crunchydata.com/role=master -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+            EDB_POD=$(${CLI_CMD} get pods -n $SERVICES_NAMESPACE --no-headers | grep -E "^${OLD_CLUSTER}-[0-9]+[[:space:]]" | head -1 | awk '{print $1}')
         fi
-        
-        # Try method 3: Simple name-based search
+
         if [[ -z "$EDB_POD" ]]; then
-            EDB_POD=$(${CLI_CMD} get pods -n $SERVICES_NAMESPACE --no-headers | grep "^$OLD_CLUSTER-" | grep -v "pooler" | head -1 | awk '{print $1}')
+            error "Could not find EDB PostgreSQL pod."
+            error "Tried the following methods:"
+            error "  1. Label: k8s.enterprisedb.io/cluster=$OLD_CLUSTER,role=primary"
+            error "  2. Pod name pattern: $OLD_CLUSTER-<integer>"
+            error ""
+            error "Available pods in namespace $SERVICES_NAMESPACE:"
+            ${CLI_CMD} get pods -n $SERVICES_NAMESPACE
+            return 1
         fi
-        
-        if [[ -z "$EDB_POD" ]]; then
-            # For create-cluster phase, try fallback to backup directory
-            if [[ "$CREATE_CLUSTER_ONLY" = true ]] && [[ -n "$BACKUP_DIR" ]] && [[ -f "$BACKUP_DIR/database_list.txt" ]]; then
-                warning "Could not find EDB PostgreSQL pod (expected after backup phase)."
-                info "Falling back to database list from backup directory..."
-                # Use while-read (Bash 3.2+ safe) — mapfile/readarray require Bash 4+
-                DATABASES=()
-                while IFS= read -r _db; do
-                    [[ -n "$_db" ]] && DATABASES+=("$_db")
-                done < "$BACKUP_DIR/database_list.txt"
-                
-                if [[ ${#DATABASES[@]} -eq 0 ]]; then
-                    error "Database list file is empty."
-                    return 1
-                fi
-                
-                success "Loaded ${#DATABASES[@]} databases from backup:"
-                for db in "${DATABASES[@]}"; do
-                    info "  - $db"
-                done
-                return 0
-            else
-                # For backup phase or when no backup available, this is an error
-                error "Could not find EDB PostgreSQL pod."
-                error "Tried the following methods:"
-                error "  1. Label: k8s.enterprisedb.io/cluster=$OLD_CLUSTER,role=primary"
-                error "  2. Label: postgres-operator.crunchydata.com/cluster=$OLD_CLUSTER"
-                error "  3. Pod name pattern: $OLD_CLUSTER-*"
-                error ""
-                error "Available pods in namespace $SERVICES_NAMESPACE:"
-                ${CLI_CMD} get pods -n $SERVICES_NAMESPACE
-                return 1
-            fi
-        fi
-        
+
         info "Using EDB pod: $EDB_POD"
-        
+
         # Get list of databases excluding system databases
         info "Querying databases from PostgreSQL instance..."
         # Use while-read to populate the array so that mixed-case names
@@ -883,9 +866,13 @@ function scale_down_applications() {
         cr_kinds_to_check=("${CONTENT_CR_KIND_MAPPING_LIST[@]}")
         info "Top-level CR kind: Content"
         info "Will scale down deployments owned by: ${CONTENT_CR_KIND_MAPPING_LIST[*]}"
+    elif [[ "$cr_kind_lower" == "operationaldecisionmanager" || "$cr_kind_lower" == "odm" ]]; then
+        cr_kinds_to_check=("${ODM_CR_KIND_MAPPING_LIST[@]}")
+        info "Top-level CR kind: OperationalDecisionManager"
+        info "Will scale down deployments owned by: ${ODM_CR_KIND_MAPPING_LIST[*]}"
     else
         error "Unknown CR kind: $CR_KIND"
-        error "Expected 'ICP4ACluster' or 'Content'"
+        error "Expected 'ICP4ACluster', 'Content', or 'OperationalDecisionManager'"
         exit 1
     fi
     
@@ -1101,21 +1088,15 @@ function snapshot_edb_databases() {
     local SNAP_DIR="$BACKUP_DIR/snapshot"
     mkdir -p "$SNAP_DIR"
 
-    # ── Locate EDB pod (same three-method fallback used by backup_databases) ──
+    # ── Locate EDB pod (same two-method fallback used by backup_databases) ──
     local EDB_POD
     EDB_POD=$(${CLI_CMD} get pods -n $SERVICES_NAMESPACE \
         -l k8s.enterprisedb.io/cluster=$OLD_CLUSTER,role=primary \
         -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
 
     if [[ -z "$EDB_POD" ]]; then
-        EDB_POD=$(${CLI_CMD} get pods -n $SERVICES_NAMESPACE \
-            -l postgres-operator.crunchydata.com/cluster=$OLD_CLUSTER,postgres-operator.crunchydata.com/role=master \
-            -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-    fi
-
-    if [[ -z "$EDB_POD" ]]; then
         EDB_POD=$(${CLI_CMD} get pods -n $SERVICES_NAMESPACE --no-headers \
-            | grep "^$OLD_CLUSTER-" | grep -v "pooler" | head -1 | awk '{print $1}')
+            | grep -E "^${OLD_CLUSTER}-[0-9]+[[:space:]]" | head -1 | awk '{print $1}')
     fi
 
     if [[ -z "$EDB_POD" ]]; then
@@ -1718,16 +1699,12 @@ function backup_databases() {
     mkdir -p "$BACKUP_DIR"
     info "Backup directory: $BACKUP_DIR"
     
-    # Get EDB pod name - try multiple methods
+    # Get EDB pod name - try two methods
     info "Looking for EDB PostgreSQL pod..."
     local EDB_POD=$(${CLI_CMD} get pods -n $SERVICES_NAMESPACE -l k8s.enterprisedb.io/cluster=$OLD_CLUSTER,role=primary -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
     
     if [[ -z "$EDB_POD" ]]; then
-        EDB_POD=$(${CLI_CMD} get pods -n $SERVICES_NAMESPACE -l postgres-operator.crunchydata.com/cluster=$OLD_CLUSTER,postgres-operator.crunchydata.com/role=master -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-    fi
-    
-    if [[ -z "$EDB_POD" ]]; then
-        EDB_POD=$(${CLI_CMD} get pods -n $SERVICES_NAMESPACE --no-headers | grep "^$OLD_CLUSTER-" | grep -v "pooler" | head -1 | awk '{print $1}')
+        EDB_POD=$(${CLI_CMD} get pods -n $SERVICES_NAMESPACE --no-headers | grep -E "^${OLD_CLUSTER}-[0-9]+[[:space:]]" | head -1 | awk '{print $1}')
     fi
     
     if [[ -z "$EDB_POD" ]]; then
@@ -1960,7 +1937,39 @@ function extract_edb_cluster_configuration() {
     # Check if EDB cluster exists
     if ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io $OLD_CLUSTER -n $SERVICES_NAMESPACE &> /dev/null; then
         info "Extracting configuration from existing EDB cluster..."
-        
+
+        # Warn if the EDB cluster is in a failed or degraded state.
+        # A unhealthy cluster at this point means the backup data may be incomplete
+        # or corrupt — the operator should verify backups before proceeding.
+        local edb_phase=$(${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io $OLD_CLUSTER \
+            -n $SERVICES_NAMESPACE -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+        local edb_ready=$(${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io $OLD_CLUSTER \
+            -n $SERVICES_NAMESPACE -o jsonpath='{.status.readyInstances}' 2>/dev/null || echo "")
+        local edb_instances_total=$(${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io $OLD_CLUSTER \
+            -n $SERVICES_NAMESPACE -o jsonpath='{.spec.instances}' 2>/dev/null || echo "")
+
+        info "EDB cluster status: phase='${edb_phase:-unknown}' readyInstances=${edb_ready:-unknown}/${edb_instances_total:-unknown}"
+
+        if [[ -n "$edb_phase" ]] && [[ "$edb_phase" != "Cluster in healthy state" ]]; then
+            warning "=========================================================="
+            warning "WARNING: EDB cluster is NOT in a healthy state!"
+            warning "  Current phase : $edb_phase"
+            warning "  Ready instances: ${edb_ready:-unknown} / ${edb_instances_total:-unknown}"
+            warning "  This may indicate the cluster was already failing before"
+            warning "  the backup phase ran. Verify backup integrity before"
+            warning "  continuing — restoring from a bad backup will result in"
+            warning "  data loss or a non-functional IBM CloudNativePG cluster."
+            warning "=========================================================="
+        elif [[ -n "$edb_ready" ]] && [[ -n "$edb_instances_total" ]] && \
+             [[ "$edb_ready" -lt "$edb_instances_total" ]] 2>/dev/null; then
+            warning "=========================================================="
+            warning "WARNING: EDB cluster has degraded replica count!"
+            warning "  Ready instances: $edb_ready / $edb_instances_total"
+            warning "  One or more replicas were not ready when the EDB cluster"
+            warning "  was still running. Verify backup integrity before continuing."
+            warning "=========================================================="
+        fi
+
         EDB_STORAGE_CLASS=$(${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io $OLD_CLUSTER -n $SERVICES_NAMESPACE -o jsonpath='{.spec.storage.storageClass}' 2>/dev/null || echo "")
         EDB_STORAGE_SIZE=$(${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io $OLD_CLUSTER -n $SERVICES_NAMESPACE -o jsonpath='{.spec.storage.size}' 2>/dev/null || echo "100Gi")
         EDB_INSTANCES=$(${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io $OLD_CLUSTER -n $SERVICES_NAMESPACE -o jsonpath='{.spec.instances}' 2>/dev/null || echo "1")
@@ -2189,8 +2198,26 @@ function install_cnpg_operator() {
             success "IBM CloudNativePG operator already installed and ready!"
             info "CSV: ${CNPG_OPERATOR_CSV_VERSION}"
             return 0
+        elif [[ "$existing_csv" == "Failed" ]]; then
+            # CSV reached a terminal failure state — waiting will never recover it.
+            # Surface the OLM failure reason so the operator can act, then fail fast.
+            error "IBM CloudNativePG operator CSV is in a FAILED state."
+            error "Waiting will not recover a failed CSV. Manual intervention is required."
+            error ""
+            local csv_reason=$(${CLI_CMD} get csv ${CNPG_OPERATOR_CSV_VERSION} \
+                -n $OPERATOR_NAMESPACE \
+                -o jsonpath='{.status.message}' 2>/dev/null || echo "")
+            if [[ -n "$csv_reason" ]]; then
+                error "Failure reason: $csv_reason"
+            fi
+            error ""
+            error "To recover, delete the failed subscription and CSV, then re-run:"
+            error "  ${CLI_CMD} delete csv ${CNPG_OPERATOR_CSV_VERSION} -n $OPERATOR_NAMESPACE --ignore-not-found"
+            error "  ${CLI_CMD} delete subscription ibm-pg-operator -n $OPERATOR_NAMESPACE --ignore-not-found"
+            error "Then investigate the CatalogSource and re-run upgradeOperator."
+            return 1
         else
-            info "Operator subscription exists but CSV not ready yet (phase: $existing_csv)"
+            info "Operator subscription exists, CSV not yet ready (phase: '${existing_csv:-not found}')"
             info "Will wait for operator to become ready..."
             # Continue to wait logic below
         fi
@@ -2471,7 +2498,7 @@ function deploy_cnpg_cluster() {
             reason="hardcoded storage class detected (should be extracted from EDB cluster)"
         elif grep -q "instances: 3" "$CNPG_MANIFEST" 2>/dev/null; then
             needs_regeneration=true
-            reason="instance count is 3 (should be 1 based on current configuration)"
+            reason="instance count is 3 in manifest (re-extracting from EDB cluster)"
         fi
         
         if [[ "$needs_regeneration" = true ]]; then
@@ -2522,11 +2549,230 @@ function deploy_cnpg_cluster() {
     ${CLI_CMD} get pods -n $SERVICES_NAMESPACE | grep "^${NEW_CLUSTER}-"
     
     success "IBM CloudNativePG cluster deployed successfully."
+
+    # Pre-create tablespace directories on every replica PVC.
+    # When instances > 1 the replica must replay WAL records that include
+    # "Tablespace/CREATE" entries.  PostgreSQL requires the target directory to
+    # already exist on the replica filesystem before WAL recovery can proceed;
+    # if it is missing the replica aborts and enters CrashLoopBackOff.
+    # This call is a no-op for single-instance clusters.
+    if ! prepare_replica_tablespace_dirs; then
+        warning "Replica tablespace directory preparation had errors (see above)."
+        warning "The cluster may still function if no custom tablespaces exist."
+        warning "Check replica pod logs and create missing directories manually if needed."
+    fi
+
     if [[ "$SKIP_FOR_API" != "true" ]]; then
         prompt_press_any_key_to_continue
     fi
     return 0
 }
+
+################################################################################
+# Function: prepare_replica_tablespace_dirs
+# Purpose: Pre-creates tablespace directories on every replica PVC before WAL
+#          recovery starts.  When instances > 1, the replica pod bootstraps from
+#          a base backup of the primary and then replays WAL.  Any
+#          "Tablespace/CREATE" WAL record requires the target directory to
+#          already exist on the replica filesystem — PostgreSQL cannot create it
+#          during recovery and will abort with:
+#            FATAL 58P01  directory ".../pgdata/<name>_tbs" does not exist
+#          This function mounts each replica PVC into a short-lived debug pod
+#          and creates the missing directories, then deletes the pod.
+#          Must be called AFTER the primary pod is Ready (tablespaces already
+#          created on the primary) and BEFORE replica WAL recovery completes.
+# Parameters: None (uses global variables)
+# Global Variables:
+#   - NEW_CLUSTER:        IBM PG cluster name
+#   - SERVICES_NAMESPACE: Kubernetes namespace
+#   - EDB_INSTANCES:      Number of instances (skip when 1)
+#   - BACKUP_DIR:         Backup directory (tablespace list read from globals.sql)
+#   - CLI_CMD:            kubectl or oc
+# Returns: 0 on success, 1 on error
+################################################################################
+function prepare_replica_tablespace_dirs() {
+    local instances="${EDB_INSTANCES:-1}"
+
+    if [[ "$instances" -le 1 ]]; then
+        info "Single-instance cluster — no replica tablespace directories to prepare."
+        return 0
+    fi
+
+    info "=== PREPARING REPLICA TABLESPACE DIRECTORIES (instances=$instances) ==="
+
+    # ── Collect tablespace names from globals.sql ──────────────────────────────
+    # Re-use the same globals.sql the restore phase will later process.
+    local globals_sql="$BACKUP_DIR/globals.sql"
+    local ts_names=()
+
+    if [[ ! -f "$globals_sql" ]]; then
+        warning "globals.sql not found at $globals_sql — skipping replica tablespace dir preparation."
+        warning "If the cluster has custom tablespaces the replica may enter CrashLoopBackOff."
+        warning "Manually run: mkdir -p /var/lib/postgresql/data/pgdata/<ts> on each replica PVC."
+        return 0
+    fi
+
+    while IFS= read -r line; do
+        local ts_name
+        ts_name=$(echo "$line" | awk '{print $3}')
+        [[ -z "$ts_name" ]] && continue
+        ts_names+=("$ts_name")
+    done < <(grep '^CREATE TABLESPACE' "$globals_sql" 2>/dev/null)
+
+    if [[ ${#ts_names[@]} -eq 0 ]]; then
+        info "No custom tablespaces found in globals.sql — skipping."
+        return 0
+    fi
+
+    info "Tablespaces to pre-create on replica PVCs: ${ts_names[*]}"
+
+    # ── Build the mkdir command string ────────────────────────────────────────
+    local ts_base="/var/lib/postgresql/data/pgdata"
+    local mkdir_args=()
+    for ts in "${ts_names[@]}"; do
+        mkdir_args+=("${ts_base}/${ts}")
+    done
+    # Join with spaces — safe because tablespace names are plain identifiers
+    local mkdir_cmd="mkdir -p ${mkdir_args[*]} && echo OK"
+
+    # ── Resolve image, runAsUser and fsGroup from the running primary pod ─────
+    # These values are assigned by OpenShift's SCC admission and vary per
+    # namespace — they must NOT be hardcoded.
+    local pg_image
+    pg_image=$(${CLI_CMD} get pod "${NEW_CLUSTER}-1" -n "$SERVICES_NAMESPACE" \
+        -o jsonpath='{.spec.containers[?(@.name=="postgres")].image}' 2>/dev/null)
+
+    if [[ -z "$pg_image" ]]; then
+        warning "Could not read image from primary pod — falling back to cluster spec."
+        pg_image=$(${CLI_CMD} get cluster.pg.ibm.com "$NEW_CLUSTER" -n "$SERVICES_NAMESPACE" \
+            -o jsonpath='{.spec.imageName}' 2>/dev/null)
+    fi
+
+    if [[ -z "$pg_image" ]]; then
+        error "Could not determine PostgreSQL image. Cannot prepare replica tablespace directories."
+        return 1
+    fi
+
+    # runAsUser — read from the primary pod's container securityContext
+    local run_as_user
+    run_as_user=$(${CLI_CMD} get pod "${NEW_CLUSTER}-1" -n "$SERVICES_NAMESPACE" \
+        -o jsonpath='{.spec.containers[?(@.name=="postgres")].securityContext.runAsUser}' 2>/dev/null)
+    run_as_user="${run_as_user:-26}"
+
+    # fsGroup — read from the primary pod's pod-level securityContext
+    local fs_group
+    fs_group=$(${CLI_CMD} get pod "${NEW_CLUSTER}-1" -n "$SERVICES_NAMESPACE" \
+        -o jsonpath='{.spec.securityContext.fsGroup}' 2>/dev/null)
+    fs_group="${fs_group:-26}"
+
+    info "Using image: $pg_image"
+    info "Using runAsUser: $run_as_user  fsGroup: $fs_group"
+
+    # ── For each replica instance (2..N) mount its PVC and create the dirs ────
+    local rc=0
+    for i in $(seq 2 "$instances"); do
+        local pvc_name="${NEW_CLUSTER}-${i}"
+        local debug_pod="tbs-init-replica-${i}"
+
+        info "Preparing tablespace directories on replica PVC: $pvc_name (pod: $debug_pod)"
+
+        # Wait for the replica PVC to be Bound before mounting it.
+        # IBM PG provisions replica PVCs shortly after the primary is ready;
+        # the PVC must be Bound before a pod can mount it.
+        local pvc_wait=0
+        local pvc_status=""
+        while [[ $pvc_wait -lt 120 ]]; do
+            pvc_status=$(${CLI_CMD} get pvc "$pvc_name" -n "$SERVICES_NAMESPACE" \
+                -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
+            [[ "$pvc_status" == "Bound" ]] && break
+            info "  Waiting for PVC $pvc_name to be Bound (current: $pvc_status)... (${pvc_wait}s)"
+            sleep 5
+            pvc_wait=$((pvc_wait + 5))
+        done
+        if [[ "$pvc_status" != "Bound" ]]; then
+            error "PVC $pvc_name is not Bound after ${pvc_wait}s (status: $pvc_status)."
+            error "Cannot prepare tablespace directories on this replica PVC."
+            rc=1
+            continue
+        fi
+        info "  PVC $pvc_name is Bound."
+
+        # Remove any leftover debug pod from a previous interrupted run
+        ${CLI_CMD} delete pod "$debug_pod" -n "$SERVICES_NAMESPACE" \
+            --ignore-not-found=true --wait=true 2>/dev/null || true
+
+        # Launch a short-lived pod that mounts the replica PVC and creates the dirs.
+        # fsGroup and runAsUser are read dynamically from the primary pod above so
+        # the debug pod runs as the same UID/GID that owns the PVC data — this avoids
+        # "Permission denied" errors that occur when these are hardcoded.
+        ${CLI_CMD} run "$debug_pod" \
+            --image="$pg_image" \
+            --restart=Never \
+            --namespace="$SERVICES_NAMESPACE" \
+            --overrides="{
+              \"spec\": {
+                \"restartPolicy\": \"Never\",
+                \"securityContext\": { \"fsGroup\": ${fs_group} },
+                \"volumes\": [{
+                  \"name\": \"pgdata\",
+                  \"persistentVolumeClaim\": { \"claimName\": \"${pvc_name}\" }
+                }],
+                \"containers\": [{
+                  \"name\": \"tbs-init\",
+                  \"image\": \"${pg_image}\",
+                  \"command\": [\"sh\", \"-c\", \"${mkdir_cmd}\"],
+                  \"volumeMounts\": [{
+                    \"name\": \"pgdata\",
+                    \"mountPath\": \"/var/lib/postgresql/data\"
+                  }],
+                  \"securityContext\": {
+                    \"allowPrivilegeEscalation\": false,
+                    \"capabilities\": { \"drop\": [\"ALL\"] },
+                    \"runAsNonRoot\": true,
+                    \"runAsUser\": ${run_as_user},
+                    \"seccompProfile\": { \"type\": \"RuntimeDefault\" }
+                  }
+                }]
+              }
+            }" 2>&1
+
+        # Poll until the pod Succeeds or Fails (max 60 s)
+        local wait_elapsed=0
+        local pod_status=""
+        while [[ $wait_elapsed -lt 60 ]]; do
+            pod_status=$(${CLI_CMD} get pod "$debug_pod" -n "$SERVICES_NAMESPACE" \
+                -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
+            [[ "$pod_status" == "Succeeded" || "$pod_status" == "Failed" ]] && break
+            sleep 3
+            wait_elapsed=$((wait_elapsed + 3))
+        done
+
+        if [[ "$pod_status" == "Succeeded" ]]; then
+            success "Tablespace directories created on replica PVC: $pvc_name"
+        else
+            error "Debug pod $debug_pod did not succeed (phase: $pod_status)."
+            error "Pod logs:"
+            ${CLI_CMD} logs "$debug_pod" -n "$SERVICES_NAMESPACE" 2>/dev/null || true
+            rc=1
+        fi
+
+        # Always remove the debug pod
+        ${CLI_CMD} delete pod "$debug_pod" -n "$SERVICES_NAMESPACE" \
+            --ignore-not-found=true 2>/dev/null || true
+    done
+
+    if [[ $rc -ne 0 ]]; then
+        error "One or more replica PVCs could not be prepared."
+        error "Replica pods may enter CrashLoopBackOff during WAL recovery."
+        error "Manually create the tablespace directories on the affected PVCs and restart the replica pods."
+        return 1
+    fi
+
+    success "All replica tablespace directories prepared successfully."
+    return 0
+}
+
+
 
 ################################################################################
 # Function: restore_databases
@@ -3366,7 +3612,31 @@ function execute_restore_phase() {
     
     # Set flag for restore mode (uses backup directory)
     RESTORE_ONLY=true
-    
+
+    # Pre-create tablespace directories on replica PVCs.
+    # This is needed both when create-cluster ran normally AND when the IBM PG
+    # cluster was pre-existing and create-cluster was skipped entirely (e.g. the
+    # user deployed the cluster manually or re-runs only the restore phase).
+    # prepare_replica_tablespace_dirs is a no-op when EDB_INSTANCES <= 1 or when
+    # there are no custom tablespaces in globals.sql.
+    # Always re-read EDB_INSTANCES from the live cluster spec here — the script-level
+    # default of "1" cannot be trusted when create-cluster was skipped (the variable
+    # was never updated by extract_edb_cluster_configuration).
+    local live_instances
+    live_instances=$(${CLI_CMD} get cluster.pg.ibm.com "$NEW_CLUSTER" \
+        -n "$SERVICES_NAMESPACE" \
+        -o jsonpath='{.spec.instances}' 2>/dev/null || echo "")
+    if [[ -n "$live_instances" ]]; then
+        EDB_INSTANCES="$live_instances"
+        info "EDB_INSTANCES read from live cluster spec: $EDB_INSTANCES"
+    else
+        info "Could not read instances from cluster spec — using current value: $EDB_INSTANCES"
+    fi
+    if ! prepare_replica_tablespace_dirs; then
+        warning "Replica tablespace directory preparation had errors (see above)."
+        warning "Continuing with restore — check replica pod logs if it enters CrashLoopBackOff."
+    fi
+
     # Load database list from backup with error handling
     if ! discover_databases; then
         error "Failed to discover databases"

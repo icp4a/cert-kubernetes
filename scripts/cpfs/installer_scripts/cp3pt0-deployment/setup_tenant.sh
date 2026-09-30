@@ -232,6 +232,8 @@ function pre_req() {
 
     # Check original configurations in main CommonService CR
     default_arguments
+    # Block unsupported direct upgrade to v4.19+
+    check_upgrade_channel
     # Determine deployment topology
     determine_topology
 
@@ -287,6 +289,47 @@ function pre_req() {
     # Check public CatalogSource and CatalogSource Namespace
     validate_cs_catalogsource
     echo ""
+}
+
+# Block upgrade to v4.19+ if the existing ibm-common-service-operator channel is v3.x or lower than v4.6
+function check_upgrade_channel() {
+    if [[ "$CHANNEL" == "null" ]]; then
+        return
+    fi
+
+    local cs_sub=$(fetch_sub_from_package ibm-common-service-operator ${OPERATOR_NS})
+    if [[ -z "$cs_sub" ]]; then
+        return
+    fi
+
+    local existing_cs_channel=$(${OC} get subscription.operators.coreos.com "$cs_sub" -n "${OPERATOR_NS}" -o jsonpath='{.spec.channel}' --ignore-not-found)
+    if [[ -z "$existing_cs_channel" ]]; then
+        return
+    fi
+
+    IFS='.' read -r _ex_major _ex_minor <<< "${existing_cs_channel#v}"
+    IFS='.' read -r _tgt_major _tgt_minor <<< "${CHANNEL#v}"
+
+    local _is_old_channel=0
+    # existing channel is v3.x or any major < 4
+    if (( _ex_major < 4 )); then
+        _is_old_channel=1
+    # existing channel is v4.0 through v4.5
+    elif (( _ex_major == 4 )) && (( _ex_minor < 6 )); then
+        _is_old_channel=1
+    fi
+
+    # target channel is v4.19 or higher
+    local _is_target_419plus=0
+    if (( _tgt_major > 4 )); then
+        _is_target_419plus=1
+    elif (( _tgt_major == 4 )) && (( _tgt_minor >= 19 )); then
+        _is_target_419plus=1
+    fi
+
+    if [[ $_is_old_channel -eq 1 && $_is_target_419plus -eq 1 ]]; then
+        error "Upgrade blocked: existing ibm-common-service-operator channel '${existing_cs_channel}' is v3.x or lower than v4.6. Direct upgrade to ${CHANNEL} is not supported. Please upgrade incrementally to at least v4.6 before upgrading to ${CHANNEL}."
+    fi
 }
 
 function default_arguments() {

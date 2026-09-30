@@ -108,7 +108,8 @@ function update_license() {
             echo "2) authorized-user"
             echo "3) user"
 
-            read -p "Enter the number of your choice: " choice
+            printf "Enter the number of your choice: \n"
+            read -erp "" choice
 
             # Update the YAML with the selected value
             case $choice in
@@ -289,26 +290,60 @@ function dryrun(){
             error "ERROR: Unknown field \"$unknownfield\" found in ${FILE}. Check the field names and values."
         elif echo "$output" | grep -q "error parsing"; then
             error "Error: Error parsing ${FILE}. Fix the YAML syntax for this custom resource file."
+        elif echo "$output" | grep -qE "no endpoints available|failed calling webhook|failed to call webhook"; then
+            # The webhook service (e.g. ibm-cp4a-wfps-operator-service) has no running pod endpoints yet.
+            # This is a transient infrastructure condition — the CR itself is valid.
+            webhook_name=$(echo "$output" | grep -oP '(?<=webhook ")[^"]+' | head -1)
+            error "Webhook validation failed for \"${webhook_name:-unknown}\" — the operator pod backing the webhook service has no endpoints yet."
+            echo "${YELLOW_TEXT}[NEXT ACTIONS]:${RESET_TEXT}"
+            printf "\n"
+            echo "${YELLOW_TEXT}- Wait for the operator pod to be in Running/Ready state, then re-run the upgrade.${RESET_TEXT}"
+            CUR_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
+            SCRIPTS_DIR="$(realpath "$CUR_DIR/../..")"
+            echo "${YELLOW_TEXT}- Check operator pod status:${RESET_TEXT}"
+            echo "  ${GREEN_TEXT}# ${CLI_CMD} get pods -n $projectname | grep ibm-cp4a${RESET_TEXT}"
+            printf "\n"
+            echo "${YELLOW_TEXT}[NOTE]:${RESET_TEXT} Rerun the script in upgradeDeployment mode once the operator pod is ready."
+            echo "  - STEP 1 ${RED_TEXT}(Required)${RESET_TEXT}: ${GREEN_TEXT}# ${SCRIPTS_DIR}/cp4a-deployment.sh -m upgradeDeployment -n $projectname${RESET_TEXT}"
+            printf "\n"
+            exit
         else
             # Handle other errors
             error "Unknown Error found while applying the Custom Resource file."
         fi
-        # Display next steps when an error is encountered
-        echo "${YELLOW_TEXT}[NEXT ACTIONS]:${RESET_TEXT}"
-        step_num=1
-        printf "\n"
-        echo "${YELLOW_TEXT}- Resolve the errors that were discovered earlier by modifying the Custom Resource file \"${FILE}\" .${RESET_TEXT}"
-        echo "${YELLOW_TEXT}- If the error is related to an unknown field, remove the unknown field from the Custom Resource file \"${FILE}\" .${RESET_TEXT}"
-        echo "${YELLOW_TEXT}- If the error is due to YAML parsing, fix the YAML syntax or indentation of the Custom Resource file \"${FILE}\" .${RESET_TEXT}"
-        echo "${YELLOW_TEXT}[NOTE]:${RESET_TEXT} This step will fix the custom resource file errors that were found in the previous executed of the upgradeDeployment mode."
-        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${FILE} -n $projectname${RESET_TEXT}" && step_num=$((step_num + 1))
-        printf "\n"
-        echo "${YELLOW_TEXT}[NOTE]:${RESET_TEXT} Rerun the script cp4ba-deployent.sh in upgradeDeployment mode to continue with the upgrade of IBM Cloud Pak for Business Automation deployment."
-        CUR_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
-        SCRIPTS_DIR="$(realpath "$CUR_DIR/../..")"
-        echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: ${GREEN_TEXT}# ${SCRIPTS_DIR}/cp4a-deployment.sh -m upgradeDeployment -n $projectname${RESET_TEXT}"
-
-        printf "\n"
+        # Display next steps when an error is encountered (for unknown-field and parse errors)
+        if echo "$output" | grep -qE "unknown field|error parsing"; then
+            echo "${YELLOW_TEXT}[NEXT ACTIONS]:${RESET_TEXT}"
+            step_num=1
+            printf "\n"
+            echo "${YELLOW_TEXT}- Resolve the errors that were discovered earlier by modifying the Custom Resource file \"${FILE}\" .${RESET_TEXT}"
+            echo "${YELLOW_TEXT}- If the error is related to an unknown field, remove the unknown field from the Custom Resource file \"${FILE}\" .${RESET_TEXT}"
+            echo "${YELLOW_TEXT}- If the error is due to YAML parsing, fix the YAML syntax or indentation of the Custom Resource file \"${FILE}\" .${RESET_TEXT}"
+            echo "${YELLOW_TEXT}[NOTE]:${RESET_TEXT} This step will fix the custom resource file errors that were found in the previous executed of the upgradeDeployment mode."
+            echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${FILE} -n $projectname${RESET_TEXT}" && step_num=$((step_num + 1))
+            printf "\n"
+            echo "${YELLOW_TEXT}[NOTE]:${RESET_TEXT} Rerun the script cp4ba-deployent.sh in upgradeDeployment mode to continue with the upgrade of IBM Cloud Pak for Business Automation deployment."
+            CUR_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
+            SCRIPTS_DIR="$(realpath "$CUR_DIR/../..")"
+            echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: ${GREEN_TEXT}# ${SCRIPTS_DIR}/cp4a-deployment.sh -m upgradeDeployment -n $projectname${RESET_TEXT}"
+            printf "\n"
+        else
+            # Generic fallback for truly unknown errors — show the raw output and generic steps
+            echo "${YELLOW_TEXT}[NEXT ACTIONS]:${RESET_TEXT}"
+            step_num=1
+            printf "\n"
+            echo "${YELLOW_TEXT}- Resolve the errors that were discovered earlier by modifying the Custom Resource file \"${FILE}\" .${RESET_TEXT}"
+            echo "${YELLOW_TEXT}- If the error is related to an unknown field, remove the unknown field from the Custom Resource file \"${FILE}\" .${RESET_TEXT}"
+            echo "${YELLOW_TEXT}- If the error is due to YAML parsing, fix the YAML syntax or indentation of the Custom Resource file \"${FILE}\" .${RESET_TEXT}"
+            echo "${YELLOW_TEXT}[NOTE]:${RESET_TEXT} This step will fix the custom resource file errors that were found in the previous executed of the upgradeDeployment mode."
+            echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}:${GREEN_TEXT} # ${CLI_CMD} apply -f ${FILE} -n $projectname${RESET_TEXT}" && step_num=$((step_num + 1))
+            printf "\n"
+            echo "${YELLOW_TEXT}[NOTE]:${RESET_TEXT} Rerun the script cp4ba-deployent.sh in upgradeDeployment mode to continue with the upgrade of IBM Cloud Pak for Business Automation deployment."
+            CUR_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
+            SCRIPTS_DIR="$(realpath "$CUR_DIR/../..")"
+            echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: ${GREEN_TEXT}# ${SCRIPTS_DIR}/cp4a-deployment.sh -m upgradeDeployment -n $projectname${RESET_TEXT}"
+            printf "\n"
+        fi
         exit
     fi
 }
@@ -987,17 +1022,20 @@ function upgrade_deployment(){
             ${YQ_CMD} -i 'del(.metadata.resourceVersion)' "${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}"
             ${YQ_CMD} -i 'del(.metadata.uid)' "${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}"
 
-            # Scale up wfps operator deployment to enable webhook for CR validation
+            # Scale up wfps operator deployment to enable webhook for CR validation.
+            # The WfPS operator is scaled to 0 by shutdown_operator() in upgradeOperator mode
+            # and remains at 0 throughout upgradeDeployment. startup_operator() is only called
+            # in upgradeDeploymentStatus, so we must temporarily scale up here to allow the
+            # validating webhook to accept the dry-run request. (DBACLD-190320, DBACLD-260684)
             ${CLI_CMD} scale --replicas=1 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
             wait_for_pod $operator_project_name ibm-cp4a-wfps-operator
-            #Validate the CR by performing a dry run
-            #additional sleep time added so that we can make sure that the wfps operator is completely ready prior to applying new CR
-            # DBACLD-190320
+            # Additional sleep to ensure the webhook is fully initialised before the dry-run.
             sleep 25
             dryrun $UPGRADE_DEPLOYMENT_WFPS_CR_TMP $deployment_project_name
             #applying the latest tmp CR so that we can update the kubectl.kubernetes.io/last-applied-configuration section to include any potential user edits
             ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
-            # Scale down wfps operator deployment again
+            # Scale down wfps operator deployment again — startup_operator in upgradeDeploymentStatus
+            # will bring it back up at the correct point in the upgrade flow.
             ${CLI_CMD} scale --replicas=0 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
 
             # replace release/appVersion
@@ -1013,7 +1051,7 @@ function upgrade_deployment(){
             # ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} spec.node.probe.startupProbe.failureThreshold 800
             # ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} spec.node.probe.startupProbe.periodSeconds 10
             
-            # Function that will retrieve the network policies created in 24.0.1 by the operators and remove the references and re-apply them 
+            # Function that will retrieve the network policies created in 24.0.1 by the operators and remove the references and re-apply them
             # For https://jsw.ibm.com/browse/DBACLD-167387
             # not needed as we include WfPSRuntime as part of the CP4BA related CRs in the network policy script
             #update_network_policies $deployment_project_name "WfPSRuntime" ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}
@@ -1039,48 +1077,6 @@ function upgrade_deployment(){
 
             ${COPY_CMD} -rf ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} ${UPGRADE_DEPLOYMENT_WFPS_CR}
             success "Completed to merge existing IBM CP4BA Workflow Process Service custom resource with new version ($CP4BA_RELEASE_BASE)"
-
-            # Check IBM CP4BA Workflow Process Service operator upgrade status
-            echo "****************************************************************************"
-            info "Checking for IBM CP4BA Workflow Process Service operator pod initialization"
-            maxRetry=10
-            for ((retry=0;retry<=${maxRetry};retry++)); do
-                isReady=$(${CLI_CMD} get csv ibm-cp4a-wfps-operator.$CP4BA_CSV_VERSION -n $operator_project_name -o jsonpath='{.status.phase}')
-                # isReady=$(kubectl exec $cpe_pod_name -c ${meta_name}-cpe-deploy -n $deployment_project_name -- cat /opt/ibm/version.txt |grep -F "P8 Content Platform Engine $CP4BA_RELEASE_BASE")
-                if [[ $isReady != "Succeeded" ]]; then
-                    if [[ $retry -eq ${maxRetry} ]]; then
-                    printf "\n"
-                    warning "Timeout waiting for IBM CP4BA Workflow Process Service operator to start"
-                    printf '%b\n' "\x1B[1mCheck the status of Pod by issuing the following command:\x1B[0m"
-                    echo "${CLI_CMD} describe pod $(${CLI_CMD} get pod -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
-                    printf "\n"
-                    printf '%b\n' "\x1B[1mCheck the status of ReplicaSet by issuing the following command:\x1B[0m"
-                    echo "${CLI_CMD} describe rs $(${CLI_CMD} get rs -n $operator_project_name|grep ibm-cp4a-wfps-operator|awk '{print $1}') -n $operator_project_name"
-                    printf "\n"
-                    exit 1
-                    else
-                    sleep 30
-                    printf '%s' "..."
-                    continue
-                    fi
-                elif [[ $isReady == "Succeeded" ]]; then
-                    pod_name=$(${CLI_CMD} get pod -l=name=ibm-cp4a-wfps-operator -n $operator_project_name -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,READY:.status.containerStatuses[0].ready,DELETED:.metadata.deletionTimestamp' --no-headers | grep 'Running' | grep 'true' | grep '<none>' | head -1 | awk '{print $1}')
-                    if [ -z $pod_name ]; then
-                        warning "IBM CP4BA Workflow Process Service operator pod is NOT running"
-                        info "Starting IBM CP4BA Workflow Process Service operator"
-                        ${CLI_CMD} scale --replicas=1 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
-                        if [ $? -eq 0 ]; then
-                            sleep 1
-                        else
-                            fail "Failed to scale up \"IBM CP4BA Workflow Process Service\" operator"
-                        fi
-                    else
-                        success "IBM CP4BA Workflow Process Service operator is running"
-                        break
-                    fi
-                fi
-            done
-            echo "****************************************************************************"
 
 
             info "Apply the new version ($CP4BA_RELEASE_BASE) of IBM CP4BA Workflow Process Service custom resource"

@@ -552,11 +552,11 @@ function find_file(){
 function modify_metadata_files(){
     matched_file=$(find_file "ibm-cp-automation" "-airgap-metadata.yaml" "${WORKING_DIRECTORY}/data/cases/$case_name/$case_version")
     echo "Updating the metadata file $matched_file"
-    ${SED_COMMAND} 's|icr.io/cpopen|cp.stg.icr.io/cp|g' "$matched_file"
+    ${SED_COMMAND} 's|icr.io/cpopen|preprod.icr.io/cpopen|g' "$matched_file"
 
     matched_file=$(find_file "ibm-cp-fncm-case" "-airgap-metadata.yaml" "${WORKING_DIRECTORY}/data/cases/$case_name/$case_version")
     echo "Updating the metadata file $matched_file"
-    ${SED_COMMAND} 's|icr.io/cpopen|cp.stg.icr.io/cp|g' "$matched_file"
+    ${SED_COMMAND} 's|icr.io/cpopen|preprod.icr.io/cpopen|g' "$matched_file"
 }
 
 
@@ -574,7 +574,7 @@ function dev_mode_edit_image_set_config_file() {
         catalog=$(${YQ_CMD} eval ".mirror.operators[$i].catalog" "$YAML_FILE")
         # For ibm-fncm-catalog or ibm-cp-automation-catalog we need to skopeo copy it and then update the image-set-config yaml
         if echo "$catalog" | grep -qE "ibm-fncm-catalog|ibm-cp-automation-catalog"; then
-            new_catalog=$(echo "$catalog" | sed 's|icr.io/cpopen|cp.stg.icr.io/cp|')
+            new_catalog=$(echo "$catalog" | sed 's|icr.io/cpopen|preprod.icr.io/cpopen|')
             now=$(date +"%Y%m%d%H%M") # this is for a unique image name
             if echo "$new_catalog" | grep -qE "ibm-fncm-catalog"; then
                 copied_image="oci:///root/ibm-fncm-catalog$now"
@@ -595,7 +595,7 @@ function dev_mode_edit_image_set_config_file() {
     while [[ $j -lt $img_count ]]; do
         image=$(${YQ_CMD} eval ".mirror.additionalImages[$j].name" "$YAML_FILE")
         if echo "$image" | grep -qE "ibm-fncm-catalog|ibm-cp-automation-catalog"; then
-            new_image=$(echo "$image" | sed 's|icr.io/cpopen|cp.stg.icr.io/cp|')
+            new_image=$(echo "$image" | sed 's|icr.io/cpopen|preprod.icr.io/cpopen|')
             ${YQ_CMD} eval -i ".mirror.additionalImages[$j].name = \"$new_image\"" "$YAML_FILE"
         fi
         ((j++))

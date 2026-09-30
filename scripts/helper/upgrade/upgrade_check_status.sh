@@ -1195,7 +1195,8 @@ function check_cp4ba_separate_operand(){
             else
                 printf '%b\n' "\x1B[1mWhere (namespace) did you deploy CP4BA operands (i.e., runtime pods)? \x1B[0m"
             fi
-            read -p "Enter the name for an existing project (namespace): " CP4BA_SERVICES_NS
+            printf "Enter the name for an existing project (namespace): \n"
+            read -erp "" CP4BA_SERVICES_NS
             if [ -z "$CP4BA_SERVICES_NS" ]; then
                 printf '%b\n' "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
             elif [[ "$CP4BA_SERVICES_NS" == openshift* ]]; then

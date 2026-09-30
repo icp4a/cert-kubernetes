@@ -320,7 +320,16 @@ label_baw_resources() {
     label_resource "$cp4ba_ns" "secret" "ibm-iaws-shared-key-secret" "cp4ba.ibm.com/backup-type=mandatory"
     label_resource "$cp4ba_ns" "secret" "icp4adeploy-cpe-oidc-secret" "cp4ba.ibm.com/backup-type=mandatory"
     label_resource "$cp4ba_ns" "secret" "ibm-bts-cnpg-${cp4ba_ns}-cp4ba-bts-app" "cp4ba.ibm.com/backup-type=mandatory"
-    
+    label_resource "$cp4ba_ns" "secret" "ibm-bts-cnpg-${cp4ba_ns}-cp4ba-bts-app" "cp4ba.ibm.com/backup-type=mandatory"
+    set +e
+    baw_server_pvcs="$($KC -n $cp4ba_ns get persistentvolumeclaims -o name | grep '[[:alnum:]-]*-baw-jms-data-vc-[[:alnum:]-]*-baw-jms-0')"
+    set -e
+    for pvc in $baw_server_pvcs
+    do
+      split_pvc="$(echo $pvc | tr / ' ')"
+      label_resource "$cp4ba_ns" ${split_pvc:-"persistentvolumeclaims" "-"} "cp4ba.ibm.com/backup-type=customer-defined"
+    done
+
     log_success "BAW resources labeled"
 }
 

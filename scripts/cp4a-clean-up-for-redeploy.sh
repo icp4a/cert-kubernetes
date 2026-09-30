@@ -54,7 +54,7 @@ check_cluster_login
 
 # CP4BA Namespace check
 while [ -z "$CP4BA_NAMESPACE" ]; do
-	printf "\x1B[1mEnter namespace of your CP4BA deployment: \x1B[0m"
+	printf "\x1B[1mEnter namespace of your CP4BA deployment: \x1B[0m\n"
 	read -erp "" ans 
 	CP4BA_NAMESPACE=$ans
 	if [ -z "$(${CLI_CMD} get project "${CP4BA_NAMESPACE}" 2>/dev/null)" ]; then
@@ -71,7 +71,7 @@ if [ -z "$CP4BA_SERVICE_NAMESPACE" ]; then
 	#fixes a potential scenario of no input passed to the next step
 	max_retries=0
 	while [ $max_retries -lt 4 ]; do
-		printf "\x1B[1m\nDid you install CP4BA with Separation of Duties? (Yes/No, default: No) \x1B[0m"
+		printf "\x1B[1m\nDid you install CP4BA with Separation of Duties? (Yes/No, default: No) \x1B[0m\n"
 		read -erp "" ans 
 		# If the user provides no input, set the default to 'No'
 		if [ -z "$ans" ]; then
@@ -82,7 +82,7 @@ if [ -z "$CP4BA_SERVICE_NAMESPACE" ]; then
 			"y"|"yes"|"")
 				max_counter=0
 				while [ $max_counter -lt 4 ]; do
-					printf "\x1B[1mEnter Operand namespace of your CP4BA deployment: \x1B[0m"
+					printf "\x1B[1mEnter Operand namespace of your CP4BA deployment: \x1B[0m\n"
 					read -erp "" ans 
 					CP4BA_SERVICE_NAMESPACE=$ans
 						if [ -z "$(${CLI_CMD} get project "${CP4BA_SERVICE_NAMESPACE}" 2>/dev/null)" ]; then

@@ -146,7 +146,8 @@ displayProductionNote() {
     printf '%b\n' "To get ${BOLD_TEXT}admin${RESET_TEXT} password run:"
     printf '%b\n' "${BLUE_TEXT}oc -n ${NAMESPACE} get secret ibm-iam-bindinfo-platform-auth-idp-credentials -o jsonpath='{.data.admin_password}' | base64 -d && echo${RESET_TEXT}"
     echo
-    read -p "Continue? (Y/N): " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
+    printf "Continue? (Y/N): \n"
+    read -erp "" confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
   fi
 }
 

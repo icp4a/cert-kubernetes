@@ -93,20 +93,38 @@ function validate_tools() {
     # Validate oc mirror
     info "Validating oc mirror..."
     if command -v oc-mirror &> /dev/null; then
-        oc_mirror_version=$(oc mirror version --output=yaml | grep 'gitVersion' | awk '{print $2}' | cut -d '-' -f 1)
+        oc_mirror_version=$(oc mirror version --output=yaml 2>/dev/null | grep 'gitVersion' | awk '{print $2}' | cut -d '-' -f 1)
         #oc_mirror_version="4.14.0"
-        if version_ge "$oc_mirror_version" "4.14.0"; then
+        if [[ -z "$oc_mirror_version" ]]; then
+            error "oc mirror is installed but its version could not be determined (binary may be incompatible with this platform)."
+            current_versions+=("oc mirror:Unknown (check binary)")
+            validation_status=1
+            export OC_MIRROR_VERSION_FLAG=""
+        elif version_ge "$oc_mirror_version" "4.14.0"; then
             success "oc mirror version $oc_mirror_version is acceptable."
             current_versions+=("oc mirror:$oc_mirror_version")
+
+            # Determine the oc mirror version flag:
+            #   < 4.18  -> no flag (--v1/--v2 flags do not exist yet)
+            #   >= 4.18 -> --v1  (flag is optional from 4.18, mandatory from 4.21; v1 preserves existing workflow behaviour)
+            if version_ge "$oc_mirror_version" "4.18.0"; then
+                OC_MIRROR_VERSION_FLAG="--v1"
+                info "oc mirror >= 4.18 detected: will use '--v1' flag during image mirroring."
+            else
+                OC_MIRROR_VERSION_FLAG=""
+            fi
+            export OC_MIRROR_VERSION_FLAG
         else
             error "oc mirror version $oc_mirror_version is installed, but version 4.14.x is required."
             current_versions+=("oc mirror:$oc_mirror_version (update needed)")
             validation_status=1
+            export OC_MIRROR_VERSION_FLAG=""
         fi
     else
         error "oc mirror is not installed."
         current_versions+=("oc mirror:Not installed (install needed)")
         validation_status=1
+        export OC_MIRROR_VERSION_FLAG=""
     fi
 
     echo

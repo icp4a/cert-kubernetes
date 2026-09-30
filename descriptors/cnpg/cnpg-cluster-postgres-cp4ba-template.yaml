@@ -20,7 +20,7 @@ spec:
   instances: <INSTANCES>
   
   # IBM PostgreSQL 16 image v1.28.4
-  imageName: icr.io/cpopen/ibm-pg/ibm-pg-16:16.14-v28.4.0@sha256:cd1fd631b3e20141cbd462cdd713bee9e2b062472b674fd20ee4c64f923c5cbf
+  imageName: icr.io/cpopen/ibm-pg/ibm-pg-16:16.15-v28.4.3@sha256:4b542c57be3e3809fedebb940510191578e0935cc1e268c79f556d8183da860e
   
   postgresql:
     parameters:

@@ -2280,7 +2280,7 @@ function select_db_type(){
 function select_enable_event_emitter() {
     printf "\n"
     while true; do
-        printf "\x1B[1mDo you want to enable Case Event Emitter with this deployment? (Yes/No, default: No): "
+        printf "\x1B[1mDo you want to enable Case Event Emitter with this deployment? (Yes/No, default: No):\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -2333,7 +2333,7 @@ function get_storage_class_name() {
     printf "\x1B[1mTo provision the persistent volumes and volume claims\n\x1B[0m"
     while [[ $slow_file_storage_classname == "" ]] 
     do
-        printf "\x1B[1mEnter the file storage classname for slow storage(RWX): \x1B[0m"
+        printf "\x1B[1mEnter the file storage classname for slow storage(RWX): \x1B[0m\n"
         read -erp "" slow_file_storage_classname
         if [ -z "$slow_file_storage_classname" ]; then
             printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -2343,7 +2343,7 @@ function get_storage_class_name() {
     # To get medium storage clase name
     while [[ $medium_file_storage_classname == "" ]] 
     do
-        printf "\x1B[1mEnter the file storage classname for medium storage(RWX): \x1B[0m"
+        printf "\x1B[1mEnter the file storage classname for medium storage(RWX): \x1B[0m\n"
         read -erp "" medium_file_storage_classname
         if [ -z "$medium_file_storage_classname" ]; then
             printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -2353,7 +2353,7 @@ function get_storage_class_name() {
     # To get fast storage clase name
     while [[ $fast_file_storage_classname == "" ]] 
     do
-        printf "\x1B[1mEnter the file storage classname for fast storage(RWX): \x1B[0m"
+        printf "\x1B[1mEnter the file storage classname for fast storage(RWX): \x1B[0m\n"
         read -erp "" fast_file_storage_classname
         if [ -z "$fast_file_storage_classname" ]; then
             printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -2377,7 +2377,7 @@ function get_deployment_hostname_suffix() {
 
     while [[ $deploy_hostname_suffix == "" ]] 
     do
-        printf "\x1B[1mEnter the deployment hostname suffix: \x1B[0m"
+        printf "\x1B[1mEnter the deployment hostname suffix: \x1B[0m\n"
         read -erp "" deploy_hostname_suffix
         if [ -z "$deploy_hostname_suffix" ]; then
             printf '%b\n' "\x1B[1;31mEnter a valid deploy_hostname_suffix\x1B[0m"
@@ -2444,7 +2444,7 @@ function generate_sample_network_policies(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to generate the network policy templates for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Starting from $CP4BA_RELEASE_BASE, the CP4BA operators no longer install network policies automatically. If you want the operators to generate network policies from a set of templates that restrict access to the internet, select Yes. You can install the network policies by running a script after the successful deployment of CP4BA. If you select No, access to external systems is unrestricted.)${RESET_TEXT} (Yes/No, default: No):"
+        printf "\x1B[1mDo you want to generate the network policy templates for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Starting from $CP4BA_RELEASE_BASE, the CP4BA operators no longer install network policies automatically. If you want the operators to generate network policies from a set of templates that restrict access to the internet, select Yes. You can install the network policies by running a script after the successful deployment of CP4BA. If you select No, access to external systems is unrestricted.)${RESET_TEXT} (Yes/No, default: No):\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES"|"")
