@@ -2,8 +2,10 @@
 
 # This script migrates cloudctl configured saml present in old namespace to new CS instance in new namespace
 # Prompt for user input
-read -rp "Enter the Old Common services namespace: " OLD_CS_NAMESPACE
-read -rp "Enter the New Common services namespace: " NEW_CS_NAMESPACE
+printf "Enter the Old Common services namespace: \n"
+read -erp "" OLD_CS_NAMESPACE
+printf "Enter the New Common services namespace: \n"
+read -erp "" NEW_CS_NAMESPACE
 
 # Validate if provided namespace exist or not
 if ! oc get namespace "$OLD_CS_NAMESPACE" &>/dev/null; then

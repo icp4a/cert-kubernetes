@@ -41,7 +41,8 @@ function check_cp4ba_baw_authoring_minimum_version(){
 
 if [[ ! " ${MINIMUM_SUPPORTED_BAW_AUTHORING_UPGRADE_VERSIONS[*]} " =~ ${cp4a_operator_csv_version} ]]; then
     warning "There is a known issue with the following capabilities: ADS, ADP Development, BAA, Automation Workstream Services, BAW Authoring, BAW Runtime in CP4BA ${cp4a_operator_csv_version} when upgrading to CP4BA ${CP4BA_CSV_VERSION}.  Please refer to the technote https://www.ibm.com/mysupport/aCIKe000000CkmPOAS to check and perform the necessary steps before you can upgrade to CP4BA ${CP4BA_CSV_VERSION}"
-    read -r -p "Select 'Yes' to continue with the upgrade if you have checked and confirmed that the database schema is in the correct state.  (Yes/No) (Default: No): " confirmation
+    printf "Select 'Yes' to continue with the upgrade if you have checked and confirmed that the database schema is in the correct state.  (Yes/No) (Default: No): \n"
+    read -erp "" confirmation
     if [[ ! $confirmation =~ ^[Yy]([Ee][Ss])?$ ]]; then
         fail "Upgrade is stopped. Check and perform the necessary steps from the above technote before upgrading to CP4BA ${CP4BA_CSV_VERSION}"
         exit 1
@@ -69,7 +70,8 @@ function check_edb_license(){
         if [[ -n "$edb_license_expired" ]]; then
             warning "The license(s) for the following EDB instance(s) have expired. Follow this technote to renew the license: https://www.ibm.com/support/pages/embedded-postgresql-database-license-key-expires-october-1st-2024-cloud-pak-business-automation-and-can-cause-outages before continuing with the upgrade to CP4BA ${CP4BA_CSV_VERSION}"
             printf "%s\n" "$edb_license_expired"
-            read -r -p "Select 'Yes' to continue with the upgrade if you have checked and confirmed that the license(s) have been updated.  (Yes/No) (Default: No): " confirmation
+            printf "Select 'Yes' to continue with the upgrade if you have checked and confirmed that the license(s) have been updated.  (Yes/No) (Default: No): \n"
+            read -erp "" confirmation
             if [[ ! $confirmation =~ ^[Yy]([Ee][Ss])?$ ]]; then
                 fail "Upgrade is stopped. Check and perform the necessary steps from the above technote before upgrading to CP4BA ${CP4BA_CSV_VERSION}"
                 exit 1
@@ -1172,7 +1174,8 @@ function check_cp4ba_separate_operand(){
             else
                 printf '%b\n' "\x1B[1mWhere (namespace) did you deploy CP4BA operands (i.e., runtime pods)? \x1B[0m"
             fi
-            read -p "Enter the name for an existing project (namespace): " CP4BA_SERVICES_NS
+            printf "Enter the name for an existing project (namespace): \n"
+            read -erp "" CP4BA_SERVICES_NS
             if [ -z "$CP4BA_SERVICES_NS" ]; then
                 printf '%b\n' "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
             elif [[ "$CP4BA_SERVICES_NS" == openshift* ]]; then

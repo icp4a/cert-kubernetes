@@ -59,7 +59,7 @@ else
             ;;
         l)  local_registry=true
             ;;
-        t)  DOCKER_REG_SERVER="cp.stg.icr.io"
+        t)  DOCKER_REG_SERVER="preprod.icr.io"
             ;;
         :)  echo "Invalid option: -$OPTARG requires an argument"
             showHelp

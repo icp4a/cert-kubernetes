@@ -15,6 +15,8 @@ if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ADP_VIEWONE_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
     CP4BA_ADP_VIEWONE_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
+elif [[ "$isInstalled" == "Ready" && "$RECONCILE_SEEN_FLAG" == "false" ]]; then
+    CP4BA_ADP_VIEWONE_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
 elif [[ "$isInstalled" == "Ready" ]]; then
     CP4BA_ADP_VIEWONE_DEPLOYMENT_STATUS="${GREEN_TEXT}Done${RESET_TEXT}"
 elif [[ "$isInstalled" == "NotReady" ]]; then
@@ -29,6 +31,8 @@ isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.contentD
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ADP_CDRA_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
+    CP4BA_ADP_CDRA_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
+elif [[ "$isInstalled" == "Ready" && "$RECONCILE_SEEN_FLAG" == "false" ]]; then
     CP4BA_ADP_CDRA_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
 elif [[ "$isInstalled" == "Ready" ]]; then
     CP4BA_ADP_CDRA_DEPLOYMENT_STATUS="${GREEN_TEXT}Done${RESET_TEXT}"
@@ -46,6 +50,8 @@ if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ADP_CDS_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
     CP4BA_ADP_CDS_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
+elif [[ "$isInstalled" == "Ready" && "$RECONCILE_SEEN_FLAG" == "false" ]]; then
+    CP4BA_ADP_CDS_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
 elif [[ "$isInstalled" == "Ready" ]]; then
     CP4BA_ADP_CDS_DEPLOYMENT_STATUS="${GREEN_TEXT}Done${RESET_TEXT}"
 elif [[ "$isInstalled" == "NotReady" ]]; then
@@ -61,6 +67,8 @@ isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.contentP
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ADP_CPDS_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
+    CP4BA_ADP_CPDS_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
+elif [[ "$isInstalled" == "Ready" && "$RECONCILE_SEEN_FLAG" == "false" ]]; then
     CP4BA_ADP_CPDS_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
 elif [[ "$isInstalled" == "Ready" ]]; then
     CP4BA_ADP_CPDS_DEPLOYMENT_STATUS="${GREEN_TEXT}Done${RESET_TEXT}"
@@ -78,6 +86,8 @@ if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ADP_GITSVC_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
     CP4BA_ADP_GITSVC_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
+elif [[ "$isInstalled" == "Ready" && "$RECONCILE_SEEN_FLAG" == "false" ]]; then
+    CP4BA_ADP_GITSVC_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
 elif [[ "$isInstalled" == "Ready" ]]; then
     CP4BA_ADP_GITSVC_DEPLOYMENT_STATUS="${GREEN_TEXT}Done${RESET_TEXT}"
 elif [[ "$isInstalled" == "NotReady" ]]; then
@@ -93,6 +103,8 @@ isInstalled=`cat ${UPGRADE_STATUS_FILE} | ${YQ_CMD} '.status.components.ca.caDep
 if [ "$isInstalled" == "NotInstalled" ]; then
     CP4BA_ADP_ACA_DEPLOYMENT_STATUS="${YELLOW_TEXT}Not Installed${RESET_TEXT}"
 elif [[ "$isInstalled" == "Upgrading" || "$isInstalled" == "Restoring" ]]; then
+    CP4BA_ADP_ACA_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
+elif [[ ("$isInstalled" == "Ready" || "$isInstalled" == "Successful") && "$RECONCILE_SEEN_FLAG" == "false" ]]; then
     CP4BA_ADP_ACA_DEPLOYMENT_STATUS="${BLUE_TEXT}In Progress${RESET_TEXT}"
 elif [[ "$isInstalled" == "Ready" || "$isInstalled" == "Successful" ]]; then
     CP4BA_ADP_ACA_DEPLOYMENT_STATUS="${GREEN_TEXT}Done${RESET_TEXT}"

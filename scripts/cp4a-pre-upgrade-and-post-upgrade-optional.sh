@@ -103,7 +103,8 @@ function select_upgrade_mode(){
           printf '%b\n' "\x1B[1m1) cluster-scoped to cluster-scoped\x1B[0m"
           printf '%b\n' "\x1B[1m2) cluster-scoped to namespace-scoped\x1B[0m"
 
-          read -p "Enter your choice [1 or 2]: " choice
+          printf "Enter your choice [1 or 2]: \n"
+          read -erp "" choice
         fi
         case $choice in
             1)
@@ -305,7 +306,8 @@ function select_project(){
     if [[ $ALL_NAMESPACE == "Yes"  ]]; then
       while [[ $OPERATOR_PROJECT_NAME == "" ]];
       do
-          read -p "Enter the project name where $CP4BA_FULL_NAME Operator is in for 'All Namespace' scope (default: openshift-operators): " OPERATOR_PROJECT_NAME
+          printf "Enter the project name where $CP4BA_FULL_NAME Operator is in for 'All Namespace' scope (default: openshift-operators): \n"
+          read -erp "" OPERATOR_PROJECT_NAME
           if [ -z "$OPERATOR_PROJECT_NAME" ]; then
               # printf '%b\n' "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
               OPERATOR_PROJECT_NAME="openshift-operators"
@@ -340,7 +342,8 @@ function select_project(){
         if [ -z "$CP4BA_AUTO_NAMESPACE" ]; then
             echo
             printf '%b\n' "\x1B[1mWhere do you deploy Cloud Pak for Business Automation?\x1B[0m"
-            read -p "Enter the name for an existing project (namespace): " TARGET_PROJECT_NAME
+            printf "Enter the name for an existing project (namespace): \n"
+            read -erp "" TARGET_PROJECT_NAME
         else
             if [[ "$CP4BA_AUTO_NAMESPACE" == openshift* ]]; then
                 printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"
@@ -419,7 +422,8 @@ function check_cs_mode(){
   while [[ $TARGET_PROJECT_NAME_CS == "" ]];
   do
     printf "\n"
-    read -p "Enter the IBM Cloud Pak foundational services namespace: " TARGET_PROJECT_NAME_CS
+    printf "Enter the IBM Cloud Pak foundational services namespace: \n"
+    read -erp "" TARGET_PROJECT_NAME_CS
     # read -p "Enter the IBM Cloud Pak foundational services namespace ${YELLOW_TEXT}(Notes: If you want to migrate a single shared instance of IBM Cloud Pak foundational services to dedicated, you need to provide the name of the namespace that CP4BA currently deploys on. If you want to keep your IBM Cloud Pak foundational services as-is [i.e: you want to keep IBM Cloud Pak foundational services in a shared configuration], you need to provide the name of the namespace that IBM Cloud Pak foundational services currently deploys on.)${RESET_TEXT}: " TARGET_PROJECT_NAME_CS
 
     if [ -z "$TARGET_PROJECT_NAME_CS" ]; then
@@ -448,7 +452,8 @@ function set_fncm_secret() {
     while [[ $IBM_FNCM_SECRET_NAME  == "" ]];
     do
       # printf '%b\n' "\x1B[1mEnter the ibm fncm secret \x1B[0m"
-      read -p "Enter the name of ibm fncm secret (ibm-fncm-secret): " IBM_FNCM_SECRET_NAME
+      printf "Enter the name of ibm fncm secret (ibm-fncm-secret): \n"
+      read -erp "" IBM_FNCM_SECRET_NAME
       if [[ $IBM_FNCM_SECRET_NAME == "" ]]; then
         IBM_FNCM_SECRET_NAME='ibm-fncm-secret'
       fi

@@ -2269,7 +2269,7 @@ function select_db_type(){
 function select_enable_event_emitter() {
     printf "\n"
     while true; do
-        printf "\x1B[1mDo you want to enable Case Event Emitter with this deployment? (Yes/No, default: No): "
+        printf "\x1B[1mDo you want to enable Case Event Emitter with this deployment? (Yes/No, default: No):\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -2291,7 +2291,7 @@ function set_external_ldap(){
     printf "\n"
 
     while true; do
-        printf "\x1B[1mWill an external LDAP be used as part of the configuration?: \x1B[0m"
+        printf "\x1B[1mWill an external LDAP be used as part of the configuration?: \x1B[0m\n"
 
         read -erp "" ans
         case "$ans" in
@@ -2322,7 +2322,7 @@ function get_storage_class_name() {
     printf "\x1B[1mTo provision the persistent volumes and volume claims\n\x1B[0m"
     while [[ $slow_file_storage_classname == "" ]] 
     do
-        printf "\x1B[1mEnter the file storage classname for slow storage(RWX): \x1B[0m"
+        printf "\x1B[1mEnter the file storage classname for slow storage(RWX): \x1B[0m\n"
         read -erp "" slow_file_storage_classname
         if [ -z "$slow_file_storage_classname" ]; then
             printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -2332,7 +2332,7 @@ function get_storage_class_name() {
     # To get medium storage clase name
     while [[ $medium_file_storage_classname == "" ]] 
     do
-        printf "\x1B[1mEnter the file storage classname for medium storage(RWX): \x1B[0m"
+        printf "\x1B[1mEnter the file storage classname for medium storage(RWX): \x1B[0m\n"
         read -erp "" medium_file_storage_classname
         if [ -z "$medium_file_storage_classname" ]; then
             printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -2342,7 +2342,7 @@ function get_storage_class_name() {
     # To get fast storage clase name
     while [[ $fast_file_storage_classname == "" ]] 
     do
-        printf "\x1B[1mEnter the file storage classname for fast storage(RWX): \x1B[0m"
+        printf "\x1B[1mEnter the file storage classname for fast storage(RWX): \x1B[0m\n"
         read -erp "" fast_file_storage_classname
         if [ -z "$fast_file_storage_classname" ]; then
             printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -2366,7 +2366,7 @@ function get_deployment_hostname_suffix() {
 
     while [[ $deploy_hostname_suffix == "" ]] 
     do
-        printf "\x1B[1mEnter the deployment hostname suffix: \x1B[0m"
+        printf "\x1B[1mEnter the deployment hostname suffix: \x1B[0m\n"
         read -erp "" deploy_hostname_suffix
         if [ -z "$deploy_hostname_suffix" ]; then
             printf '%b\n' "\x1B[1;31mEnter a valid deploy_hostname_suffix\x1B[0m"
@@ -2406,7 +2406,8 @@ function get_db_server_list(){
         printf '%b\n' "\x1B[1;31m(NOTE: NOT the host name of database server, and CANNOT include a dot[.] character)\x1B[0m"
         printf '%b\n' "\x1B[1;31m(NOTE: This key supports comma-separated lists (for example: dbserver1,dbserver2,dbserver3)\x1B[0m"
         
-        read -erp "The alias name(s): " db_server_list_input
+        printf "The alias name(s): \n"
+        read -erp "" db_server_list_input
         value_empty=`echo "${db_server_list_input}" | grep '\.' | wc -l`  >/dev/null 2>&1
         if [ $value_empty -ne 0 ] ; then
             error "Found dot character(.) in your input value. Do not include dot character(.)!"
@@ -2433,7 +2434,7 @@ function select_restricted_internet_access(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to restrict network egress to unknown external destinations for this deployment?\x1B[0m ${YELLOW_TEXT}\x1B[1;31m(NOTE: Business Automation Workflow $CP4BA_RELEASE_BASE prevents all network egress to unknown destinations by default. You can either (1) enable all egress or (2) accept the new default and create network policies to allow your specific communication targets as documented in the Workflow documentation.)\x1B[0m${RESET_TEXT} (Yes/No, default: Yes): "
+        printf "\x1B[1mDo you want to restrict network egress to unknown external destinations for this deployment?\x1B[0m ${YELLOW_TEXT}\x1B[1;31m(NOTE: Business Automation Workflow $CP4BA_RELEASE_BASE prevents all network egress to unknown destinations by default. You can either (1) enable all egress or (2) accept the new default and create network policies to allow your specific communication targets as documented in the Workflow documentation.)\x1B[0m${RESET_TEXT} (Yes/No, default: Yes):\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES"|"")

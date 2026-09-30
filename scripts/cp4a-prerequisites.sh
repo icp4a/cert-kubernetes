@@ -253,7 +253,7 @@ function validate_utility_tool_for_validation(){
     if [[ $? -ne 0 ]]; then
         printf '%b\n'  "\x1B[1;31mUnable to locate Kubernetes CLI. Kubernetes CLI must be installed to run this script.\x1B[0m" && \
         while true; do
-            printf "\x1B[1mDo you want install the Kubernetes CLI by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
+            printf "\x1B[1mDo you want install the Kubernetes CLI by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -279,7 +279,7 @@ function validate_utility_tool_for_validation(){
     if [[ $? -ne 0 ]]; then
         printf '%b\n'  "\x1B[1;31mUnable to locate openssl. OpenSSL must be installed to run this script.\x1B[0m" && \
         while true; do
-            printf "\x1B[1mDo you want install the OpenSSL by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
+            printf "\x1B[1mDo you want install the OpenSSL by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -1771,12 +1771,14 @@ function check_property_file(){
         empty_value_tag=1
     fi
 
-    # Check <Required> values for cp4ba_LDAP.property 
+    # Check <Required> values for cp4ba_LDAP.property (skip for External IDP)
+    if [[ "$LDAP_TYPE" != "EXTERNAL_IDP" ]]; then
     check_required_values "<Required>" "${LDAP_PROPERTY_FILE}"
     ## -- https://jsw.ibm.com/browse/DBACLD-172803 - We are now asking user to use {xor} for special characters in password for some parameters, so we need to check if the "{xor}<Required>" is not filled out.
     check_required_values "{xor}<Required>" "${LDAP_PROPERTY_FILE}"
     # Check for empty values in the ldap property file
     validate_property_file_required_fields "${LDAP_PROPERTY_FILE}"
+    fi
 
     if [[ $SET_EXT_LDAP == "Yes" ]]; then
         check_required_values "<Required>" "${EXTERNAL_LDAP_PROPERTY_FILE}"
@@ -1792,7 +1794,7 @@ function check_property_file(){
     IFS=$OIFS
 
     # check DB_NAME_USER_PROPERTY_FILE
-    prefix_array=($(grep '=\"' ${DB_NAME_USER_PROPERTY_FILE} | cut -d'=' -f1 | cut -d'.' -f1 | grep -Ev 'ADP_PROJECT_DB_NAME|ADP_PROJECT_DB_SERVER|ADP_PROJECT_DB_USER_NAME|ADP_PROJECT_DB_USER_PASSWORD|ADP_PROJECT_ONTOLOGY'))
+    prefix_array=($(grep '=\"' ${DB_NAME_USER_PROPERTY_FILE} | grep -v '^[[:space:]]*#' | cut -d'=' -f1 | cut -d'.' -f1 | grep -Ev 'ADP_PROJECT_DB_NAME|ADP_PROJECT_DB_SERVER|ADP_PROJECT_DB_USER_NAME|ADP_PROJECT_DB_USER_PASSWORD|ADP_PROJECT_ONTOLOGY'))
     for item in ${prefix_array[*]}
     do
         if [[ ! ( "${item}" == \#* ) ]]; then
@@ -1812,7 +1814,7 @@ function check_property_file(){
     done
 
     # check DB_SERVER_INFO_PROPERTY_FILE
-    prefix_array=($(grep '=\"' ${DB_SERVER_INFO_PROPERTY_FILE} | cut -d'=' -f1 | cut -d'.' -f1 | tail -n +2))
+    prefix_array=($(grep '=\"' ${DB_SERVER_INFO_PROPERTY_FILE} | grep -v '^[[:space:]]*#' | cut -d'=' -f1 | cut -d'.' -f1 | tail -n +2))
     for item in ${prefix_array[*]}
     do
         if [[ ! (" ${db_server_array[@]}" =~ "${item}") ]]; then
@@ -2066,7 +2068,7 @@ function create_prerequisites() {
     printf "\n"
     wait_msg "Creating YAML templates for secrets"
 
-    if [[ ! ("${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "No") ]]; then
+    if [[ ! ("${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "No") && "$LDAP_TYPE" != "EXTERNAL_IDP" ]]; then
         # Create LDAP bind secret
         create_ldap_secret_template
         #  replace ldap user
@@ -3105,7 +3107,7 @@ function create_prerequisites() {
         done
     fi
 
-    if [[ ! ("${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "No") ]]; then
+    if [[ ! ("${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "No") && "$LDAP_TYPE" != "EXTERNAL_IDP" ]]; then
         # LDAP SSL Enabled
         tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_ldap_property_file LDAP_SSL_ENABLED)")
         tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
@@ -3756,8 +3758,10 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
     success "DB Server property file for CP4BA has been created.\n"
     fi
 
+    if [[ "$LDAP_TYPE" != "EXTERNAL_IDP" ]]; then
     > ${LDAP_PROPERTY_FILE}
-    if [[ ! ("${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "No") ]]; then
+    fi
+    if [[ ! ("${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "No") && "$LDAP_TYPE" != "EXTERNAL_IDP" ]]; then
         wait_msg "Creating LDAP Server property file for CP4BA"
 
         tip="## Property file for ${LDAP_TYPE} ##"
@@ -5468,8 +5472,9 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
     fi
 
     # Create USER_PROFILE_PROPERTY for IM SCIM attribute mappings for SDS/MSAD
+    # Skip entirely for External IDP — SCIM attributes are LDAP-specific
     set_scim_attr="true"
-    if [[ "${set_scim_attr}" == "true" ]]; then
+    if [[ "${set_scim_attr}" == "true" && "$LDAP_TYPE" != "EXTERNAL_IDP" ]]; then
         ## <https://jsw.ibm.com/browse/DBACLD-158645> -  Added checks when workflow-process-service, wfps_authoring selected and LDAP_WFPS_AUTHORING == "Yes".
         if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring" || " ${pattern_cr_arr[@]}" =~ "content" || " ${pattern_cr_arr[@]}" =~ "document_processing" || "${optional_component_cr_arr[@]}" =~ "ae_data_persistence" || (" ${pattern_cr_arr[@]}" =~ "workflow-process-service" && "${optional_component_cr_arr[@]}" =~ "wfps_authoring" && $LDAP_WFPS_AUTHORING == "Yes") ]]; then
             if [[ $LDAP_TYPE == "AD" ]]; then
@@ -5792,7 +5797,7 @@ function select_storage_class(){
 
     while [[ $sc_slow_file_storage_classname == "" ]] # While get slow storage clase name
     do
-        printf "\x1B[1mplease enter the file storage classname for slow storage(RWX): \x1B[0m"
+        printf "\x1B[1mplease enter the file storage classname for slow storage(RWX): \x1B[0m\n"
         read -erp "" sc_slow_file_storage_classname
         if [ -z "$sc_slow_file_storage_classname" ]; then
         printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -5801,7 +5806,7 @@ function select_storage_class(){
 
     while [[ $sc_medium_file_storage_classname == "" ]] # While get medium storage clase name
     do
-        printf "\x1B[1mplease enter the file storage classname for medium storage(RWX): \x1B[0m"
+        printf "\x1B[1mplease enter the file storage classname for medium storage(RWX): \x1B[0m\n"
         read -erp "" sc_medium_file_storage_classname
         if [ -z "$sc_medium_file_storage_classname" ]; then
         printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -5810,7 +5815,7 @@ function select_storage_class(){
 
     while [[ $sc_fast_file_storage_classname == "" ]] # While get fast storage clase name
     do
-        printf "\x1B[1mplease enter the file storage classname for fast storage(RWX): \x1B[0m"
+        printf "\x1B[1mplease enter the file storage classname for fast storage(RWX): \x1B[0m\n"
         read -erp "" sc_fast_file_storage_classname
         if [ -z "$sc_fast_file_storage_classname" ]; then
         printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -5819,7 +5824,7 @@ function select_storage_class(){
 
     while [[ $block_storage_class_name == "" ]] # While get block storage clase name
     do
-        printf "\x1B[1mplease enter the block storage classname for Zen(RWO): \x1B[0m"
+        printf "\x1B[1mplease enter the block storage classname for Zen(RWO): \x1B[0m\n"
         read -erp "" block_storage_class_name
         if [ -z "$block_storage_class_name" ]; then
         printf '%b\n' "\x1B[1;31mEnter a valid block storage classname(RWO)\x1B[0m"
@@ -5835,7 +5840,9 @@ function select_storage_class(){
 }
 
 function load_property_before_generate(){
-    if [[ ! -f $TEMPORARY_PROPERTY_FILE || ! -f $DB_NAME_USER_PROPERTY_FILE || ! -f $DB_SERVER_INFO_PROPERTY_FILE || ! -f $LDAP_PROPERTY_FILE ]]; then
+    # load ldap type first so EXTERNAL_IDP can bypass LDAP_PROPERTY_FILE requirement
+    LDAP_TYPE="$(prop_tmp_property_file LDAP_TYPE)"
+    if [[ ! -f $TEMPORARY_PROPERTY_FILE || ! -f $DB_NAME_USER_PROPERTY_FILE || ! -f $DB_SERVER_INFO_PROPERTY_FILE || ( ! -f $LDAP_PROPERTY_FILE && "$LDAP_TYPE" != "EXTERNAL_IDP" ) ]]; then
         fail "Existing property file not found under \"$PROPERTY_FILE_FOLDER\""
         exit 1
     fi
@@ -5861,8 +5868,7 @@ function load_property_before_generate(){
     IFS=',' read -ra db_user_pwd_full_array <<< "$db_user_pwd_list"
     IFS=$OIFS
 
-    # load db ldap type
-    LDAP_TYPE="$(prop_tmp_property_file LDAP_TYPE)"
+    # load db ldap type (already loaded above, keep DB_TYPE load here)
     DB_TYPE="$(prop_tmp_property_file DB_TYPE)"
 
     # load CONTENT_OS_NUMBER
@@ -5888,8 +5894,8 @@ function load_property_before_generate(){
     # Conditionally mark LDAP SSL params optional AFTER loading all variables
     OPTIONAL_PARAMETERS_LIST=($(printf '%s\n' "${OPTIONAL_PARAMETERS_LIST[@]}" | grep -v "^LDAP_SSL_SECRET_NAME$" | grep -v "^LDAP_SSL_CERT_FILE_FOLDER$" | grep -v "^EXT_LDAP_SSL_SECRET_NAME$" | grep -v "^EXT_LDAP_SSL_CERT_FILE_FOLDER$"))
 
-    # Handle LDAP SSL parameters
-    if [[ $SELECTED_LDAP == "Yes" ]]; then
+    # Handle LDAP SSL parameters (skip for External IDP — no LDAP property file exists)
+    if [[ $SELECTED_LDAP == "Yes" && "$LDAP_TYPE" != "EXTERNAL_IDP" ]]; then
         tmp_flag=$(sed -e 's/^"//' -e 's/"$//' <<<"$(prop_ldap_property_file LDAP_SSL_ENABLED)")
         tmp_flag=$(echo "$tmp_flag" | tr '[:upper:]' '[:lower:]')
         if [[ ${tmp_flag} =~ ^(no|n|false)$ ]]; then
@@ -7250,7 +7256,7 @@ function create_db_script(){
 function select_ldap_type_for_wfps_authoring(){
     info "LDAP configuration is not required for the IBM Workflow Process Service Authoring, but if you want to login with LDAP user, please select Yes. If you select No, you can do post actions to add the LDAP connection manually after install. For more information, from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE, navigate to Installing --> Installing Production Deployment --> Installing a CP4BA multi-pattern production deployment --> Completing post-installation tasks --> Cloud Pak for Business Automation Foundation --> Business Automation Studio."
     while true; do
-        printf "\x1B[1mDo you want use the LDAP for the IBM Workflow Process Service Authoring? (Yes/No): \x1B[0m"
+        printf "\x1B[1mDo you want use the LDAP for the IBM Workflow Process Service Authoring? (Yes/No): \x1B[0m\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -7272,7 +7278,7 @@ function select_external_postgresdb_for_im(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE${RESET_TEXT}. ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.6?topic=im-setting-up-external-edb-postgresql-database-server#dbcreate${RESET_TEXT}] \x1B[1mas IM metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: IM service can use an external Postgres DB to store IM data. If select \"Yes\", IM service uses an external Postgres DB as IM metastore DB. If select \"No\", IM service uses an embedded cloud native postgresql DB as IM metastore DB.)${RESET_TEXT} (Yes/No, default: No): "
+        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE${RESET_TEXT}. ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.6?topic=im-setting-up-external-edb-postgresql-database-server#dbcreate${RESET_TEXT}] \x1B[1mas IM metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: IM service can use an external Postgres DB to store IM data. If select \"Yes\", IM service uses an external Postgres DB as IM metastore DB. If select \"No\", IM service uses an embedded cloud native postgresql DB as IM metastore DB.)${RESET_TEXT} (Yes/No, default: No):\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -7294,7 +7300,7 @@ function select_external_postgresdb_for_zen(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE${RESET_TEXT}. ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.6?topic=im-setting-up-external-edb-postgresql-database-server#dbcreate${RESET_TEXT}]\x1B[1m as Zen metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Zen stores all metadata such as users, groups, service instances, vault integration and secret references in metastore DB. If select \"Yes\", Zen service uses an external Postgres DB as Zen metastore DB. If select \"No\", Zen service uses an embedded cloud native postgresql DB as Zen metastore DB )${RESET_TEXT} (Yes/No, default: No): "
+        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE${RESET_TEXT}. ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.6?topic=im-setting-up-external-edb-postgresql-database-server#dbcreate${RESET_TEXT}]\x1B[1m as Zen metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Zen stores all metadata such as users, groups, service instances, vault integration and secret references in metastore DB. If select \"Yes\", Zen service uses an external Postgres DB as Zen metastore DB. If select \"No\", Zen service uses an embedded cloud native postgresql DB as Zen metastore DB )${RESET_TEXT} (Yes/No, default: No):\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -7316,7 +7322,7 @@ function select_external_postgresdb_for_bts(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE${RESET_TEXT}, ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.6?topic=service-external-database#configuring-an-external-database-with-the-bts-custom-resource${RESET_TEXT}]\x1B[1m as BTS metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: BTS service can use an external Postgres DB to store meta data. If select \"Yes\", BTS service uses an external Postgres DB as BTS metastore DB. If select \"No\", BTS service uses an embedded cloud native postgresql DB as BTS metastore DB )${RESET_TEXT} (Yes/No, default: No): "
+        printf "\x1B[1mDo you want to use an external Postgres DB \x1B[0m[${RED_TEXT}YOU NEED TO CREATE THIS POSTGRESQL DB BY YOURSELF FIRST BEFORE APPLYING THE CP4BA CUSTOM RESOURCE${RESET_TEXT}, ${GREEN_TEXT}PLEASE REFER THE KNOWLEDGE CENTER: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.6?topic=service-external-database#configuring-an-external-database-with-the-bts-custom-resource${RESET_TEXT}]\x1B[1m as BTS metastore DB for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: BTS service can use an external Postgres DB to store meta data. If select \"Yes\", BTS service uses an external Postgres DB as BTS metastore DB. If select \"No\", BTS service uses an embedded cloud native postgresql DB as BTS metastore DB )${RESET_TEXT} (Yes/No, default: No):\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -7338,7 +7344,7 @@ function select_external_cert_opensearch_kafka(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to use an external certificate (root CA) for this Opensearch/Kafka deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Opensearch/Kafka operator can consume external tls certificate. If select \"No\", CP4BA operator will create leaf certificates based on CP4BA's root CA )${RESET_TEXT} (Yes/No, default: No): "
+        printf "\x1B[1mDo you want to use an external certificate (root CA) for this Opensearch/Kafka deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Opensearch/Kafka operator can consume external tls certificate. If select \"No\", CP4BA operator will create leaf certificates based on CP4BA's root CA )${RESET_TEXT} (Yes/No, default: No):\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -7361,7 +7367,7 @@ function select_restricted_internet_access(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to restrict network egress to unknown external destination for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: CP4BA $CP4BA_RELEASE_BASE prevents all network egress to unknown destinations by default. You can either (1) enable all egress or (2) accept the new default and create network policies to allow your specific communication targets as documented in the knowledge center.)${RESET_TEXT} (Yes/No, default: Yes): "
+        printf "\x1B[1mDo you want to restrict network egress to unknown external destination for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: CP4BA $CP4BA_RELEASE_BASE prevents all network egress to unknown destinations by default. You can either (1) enable all egress or (2) accept the new default and create network policies to allow your specific communication targets as documented in the knowledge center.)${RESET_TEXT} (Yes/No, default: Yes):\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES"|"")
@@ -7384,7 +7390,8 @@ function select_project() {
     do
         printf "\n"
         printf '%b\n' "\x1B[1mWhere do you want to deploy Cloud Pak for Business Automation?\x1B[0m"
-        read -p "Enter the name for an existing project (namespace): " TARGET_PROJECT_NAME
+        printf "Enter the name for an existing project (namespace): \n"
+        read -erp "" TARGET_PROJECT_NAME
         if [ -z "$TARGET_PROJECT_NAME" ]; then
             printf '%b\n' "\x1B[1;31mEnter a valid project name, project name can not be blank\x1B[0m"
         elif [[ "$TARGET_PROJECT_NAME" == openshift* ]]; then
@@ -7421,7 +7428,7 @@ function select_fips_enable(){
     elif [[ "$all_fips_enabled_flag" == "Yes" ]]; then
         printf "\n"
         while true; do
-            printf "\x1B[1mYour OCP cluster has FIPS enabled, do you want to enable FIPS with this CP4BA deployment？\x1B[0m${YELLOW_TEXT} (Notes: If you select \"Yes\", in order to complete enablement of FIPS for CP4BA, please refer to \"FIPS wall\" configuration in IBM documentation.)${RESET_TEXT} (Yes/No, default: No): "
+            printf "\x1B[1mYour OCP cluster has FIPS enabled, do you want to enable FIPS with this CP4BA deployment？\x1B[0m${YELLOW_TEXT} (Notes: If you select \"Yes\", in order to complete enablement of FIPS for CP4BA, please refer to \"FIPS wall\" configuration in IBM documentation.)${RESET_TEXT} (Yes/No, default: No):\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -7447,8 +7454,8 @@ function select_ldap_type(){
     COLUMNS=12
 
     printf '%b\n' "\x1B[1mWhat is the LDAP type that is used for this deployment? \x1B[0m"
-    options=("Microsoft Active Directory" "IBM Tivoli Directory Server / Security Directory Server")
-    PS3='Enter a valid option [1 to 2]: '
+    options=("Microsoft Active Directory" "IBM Tivoli Directory Server / Security Directory Server" "External IDP (no LDAP)")
+    PS3='Enter a valid option [1 to 3]: '
     select opt in "${options[@]}"
     do
         case $opt in
@@ -7458,6 +7465,11 @@ function select_ldap_type(){
                 ;;
             "IBM Tivoli"*)
                 LDAP_TYPE="TDS"
+                break
+                ;;
+            "External IDP (no LDAP)")
+                LDAP_TYPE="EXTERNAL_IDP"
+                printf '%b\n' "\x1B[1;33m[NOTE]: \x1B[0mExternal IDP selected. LDAP configuration will be skipped during the prerequisites flow and will not be included in the generated CR. You must provide the required External IDP details directly in the CR after running the deployment script.\x1B[0m"
                 break
                 ;;
             *) echo "invalid option $REPLY";;
@@ -7612,7 +7624,7 @@ function set_external_ldap(){
     printf "\n"
 
     while true; do
-        printf "\x1B[1mWill an external LDAP be used as part of the configuration?: \x1B[0m"
+        printf "\x1B[1mWill an external LDAP be used as part of the configuration?: \x1B[0m\n"
 
         read -erp "" ans
         case "$ans" in
@@ -7636,7 +7648,7 @@ function select_cpe_full_storage(){
     if [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "document_processing" ]]; then
         printf "\n"
         while true; do
-            printf "\x1B[1mDo you want limited CPE storage support? (Yes/No): \x1B[0m"
+            printf "\x1B[1mDo you want limited CPE storage support? (Yes/No): \x1B[0m\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -7662,7 +7674,7 @@ function select_gpu_document_processing(){
     ENABLE_GPU_ARIA=""
     while [[ $set_gpu_enabled == "" ]];
     do
-        printf "\x1B[1mAre there GPU enabled worker nodes (Yes/No)? \x1B[0m"
+        printf "\x1B[1mAre there GPU enabled worker nodes (Yes/No)? \x1B[0m\n"
         read -erp "" set_gpu_enabled
         case "$set_gpu_enabled" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -7682,7 +7694,7 @@ function select_gpu_document_processing(){
     done
     if [[ "${ENABLE_GPU_ARIA}" == "Yes" ]]; then
         printf "\n"
-        printf "\x1B[1mWhat is the node label key used to identify the GPU worker node(s)? \x1B[0m"
+        printf "\x1B[1mWhat is the node label key used to identify the GPU worker node(s)? \x1B[0m\n"
         nodelabel_key=""
         while [[ $nodelabel_key == "" ]];
         do
@@ -7693,7 +7705,7 @@ function select_gpu_document_processing(){
         done
 
         printf "\n"
-        printf "\x1B[1mWhat is the node label value used to identify the GPU worker node(s)? \x1B[0m"
+        printf "\x1B[1mWhat is the node label value used to identify the GPU worker node(s)? \x1B[0m\n"
         nodelabel_value=""
         while [[ $nodelabel_value == "" ]];
         do
@@ -7713,7 +7725,7 @@ function select_ae_data_persistence(){
         if [[ (" ${PATTERNS_CR_SELECTED[@]} " =~ "application") ]]; then
             printf "\n"
             while true; do
-                printf "\x1B[1mDo you want to enable Business Automation Application Data Persistence? (Yes/No, default: No): \x1B[0m"
+                printf "\x1B[1mDo you want to enable Business Automation Application Data Persistence? (Yes/No, default: No): \x1B[0m\n"
                 read -erp "" ans
                 case "$ans" in
                 "y"|"Y"|"yes"|"Yes"|"YES")
@@ -7876,11 +7888,11 @@ function select_objectstore_number(){
         fi
 
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" && (! " ${pattern_cr_arr[@]}" =~ "content") ]]; then
-            printf "\x1B[1mHow many additional object stores will be deployed for the document processing pattern? \x1B[0m"
+            printf "\x1B[1mHow many additional object stores will be deployed for the document processing pattern? \x1B[0m\n"
         elif [[ " ${pattern_cr_arr[@]}" =~ "content" && (! " ${pattern_cr_arr[@]}" =~ "document_processing") ]]; then
-            printf "\x1B[1mHow many object stores will be deployed for the content pattern? \x1B[0m"
+            printf "\x1B[1mHow many object stores will be deployed for the content pattern? \x1B[0m\n"
         elif [[ " ${pattern_cr_arr[@]}" =~ "document_processing" && " ${pattern_cr_arr[@]}" =~ "content" ]]; then
-            printf "\x1B[1mHow many object stores will be deployed for the content pattern and how many additional object stores will be deployed for the document processing pattern? \x1B[0m"
+            printf "\x1B[1mHow many object stores will be deployed for the content pattern and how many additional object stores will be deployed for the document processing pattern? \x1B[0m\n"
         fi
 
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" && (! " ${pattern_cr_arr[@]}" =~ "content") ]]; then
@@ -7918,7 +7930,7 @@ function select_db_server_number(){
     db_server_number=""
     while true; do
         printf "\n"
-        printf "\x1B[1mHow many database servers or instances will be used for the CP4BA deployment? \x1B[0m"
+        printf "\x1B[1mHow many database servers or instances will be used for the CP4BA deployment? \x1B[0m\n"
         read -erp "" db_server_number
         [[ $db_server_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 999]\x1B[0m"; continue; }
         if [ "$db_server_number" -ge 1 ] && [ "$db_server_number" -le 999 ]; then
@@ -7940,7 +7952,8 @@ function get_db_server_list(){
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" ]]; then
             printf '%b\n' "\x1B[1;31m(NOTE: IBM Automation Document Processing only supports 1 database server. For Automation Document processing, only the first database server in the list is used.)\x1B[0m"
         fi
-        read -erp "The alias name(s): " db_server_list_input
+        printf "The alias name(s): \n"
+        read -erp "" db_server_list_input
         value_empty=`echo "${db_server_list_input}" | grep '\.' | wc -l`  >/dev/null 2>&1
         if [ $value_empty -ne 0 ] ; then
             error "Found dot character(.) in your input value. Please do not contain dot character(.)!"
@@ -8144,8 +8157,8 @@ function validate_prerequisites(){
     # Validate Secret for CP4BA
     validate_secret_in_cluster
 
-    # Validate LDAP connection for CP4BA
-    if [[ ! ("${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "No") ]]; then
+    # Validate LDAP connection for CP4BA (skip for External IDP — no LDAP is configured)
+    if [[ ! ("${#pattern_cr_arr[@]}" -eq "1" && "${pattern_cr_arr[@]}" =~ "workflow-process-service" && $LDAP_WFPS_AUTHORING == "No") && "$LDAP_TYPE" != "EXTERNAL_IDP" ]]; then
         INFO "Checking LDAP connection required by CP4BA"
         tmp_servername="$(prop_ldap_property_file LDAP_SERVER)"
         tmp_serverport="$(prop_ldap_property_file LDAP_PORT)"

@@ -71,7 +71,7 @@ spec:
       containers:
         - name: operator
           # Replace this with the built image name
-          image: icr.io/cpopen/icp4a-pfs-operator@sha256:33b540e5d06860c110131a782663459f6d2b9a4aaaa4990998ad2a1a713320e1
+          image: icr.io/cpopen/icp4a-pfs-operator@sha256:c38c6fc77889f676c3df5dd45f31594f1986ad2dc4541ec3bb806f41e25d16bb
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
