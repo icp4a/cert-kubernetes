@@ -266,7 +266,7 @@ function prompt_license(){
     printf "\n"
     while true; do
         
-        printf "\x1B[1mDo you accept the IBM Cloud Pak for Business Automation license (Yes/No, default: No): \x1B[0m"
+        printf "\x1B[1mDo you accept the IBM Cloud Pak for Business Automation license (Yes/No, default: No): \x1B[0m\n"
         
         read -erp "" ans
         case "$ans" in
@@ -298,7 +298,7 @@ function validate_utility_tool_for_validation(){
     if [[ $? -ne 0 ]]; then
         printf '%b\n'  "\x1B[1;31mUnable to locate Kubernetes CLI. Kubernetes CLI must be installed to run this script.\x1B[0m" && \
         while true; do
-            printf "\x1B[1mDo you want install the Kubernetes CLI by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
+            printf "\x1B[1mDo you want install the Kubernetes CLI by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -324,7 +324,7 @@ function validate_utility_tool_for_validation(){
     if [[ $? -ne 0 ]]; then
         printf '%b\n'  "\x1B[1;31mUnable to locate openssl. OpenSSL must be installed to run this script.\x1B[0m" && \
         while true; do
-            printf "\x1B[1mDo you want install the OpenSSL by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m"
+            printf "\x1B[1mDo you want install the OpenSSL by the cp4a-prerequisites.sh script? (Yes/No): \x1B[0m\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -2168,7 +2168,7 @@ function check_property_file(){
     done
 
     # check DB_SERVER_INFO_PROPERTY_FILE
-    prefix_array=($(grep '=\"' ${DB_SERVER_INFO_PROPERTY_FILE} | cut -d'=' -f1 | cut -d'.' -f1 | tail -n +2))
+    prefix_array=($(grep '=\"' ${DB_SERVER_INFO_PROPERTY_FILE} | grep -v '^[[:space:]]*#' | cut -d'=' -f1 | cut -d'.' -f1 | tail -n +2))
     for item in ${prefix_array[*]}
     do
         if [[ ! (" ${db_server_array[@]}" =~ "${item}") ]]; then
@@ -2401,6 +2401,41 @@ function check_property_file(){
         fi
         warning "You need to use different directory for above certificate folder's property."
 
+    fi
+
+    # DBACLD-258765: For LWE deployments, exactly one of WATSONX_API_KEY or WATSONX_PASSWORD must be provided.
+    # Prevent the customer from proceeding if both are empty/unfilled when LWE is selected.
+    if [[ "${optional_component_cr_arr[@]}" =~ "workflow_assistant" || "${optional_component_cr_arr[@]}" =~ "workplace_assistant" ]]; then
+        local wfa_deployment_type
+        wfa_deployment_type="$(prop_tmp_property_file WFA_WATSONX_DEPLOYMENT_TYPE)"
+        wfa_deployment_type=$(sed -e 's/^"//' -e 's/"$//' <<<"$wfa_deployment_type")
+        wfa_deployment_type=$(echo "$wfa_deployment_type" | tr '[:lower:]' '[:upper:]')
+
+        if [[ "$wfa_deployment_type" == "LWE" ]]; then
+            local wfa_api_key wfa_password
+            wfa_api_key="$(prop_user_profile_property_file WFA.WATSONX_API_KEY)"
+            wfa_api_key=$(sed -e 's/^"//' -e 's/"$//' <<<"$wfa_api_key")
+            wfa_password="$(prop_user_profile_property_file WFA.WATSONX_PASSWORD)"
+            wfa_password=$(sed -e 's/^"//' -e 's/"$//' <<<"$wfa_password")
+
+            # Treat <Optional> and empty string as "not provided"
+            [[ "$wfa_api_key"  == "<Optional>" || "$wfa_api_key"  == "<Required>" ]] && wfa_api_key=""
+            [[ "$wfa_password" == "<Optional>" || "$wfa_password" == "<Required>" ]] && wfa_password=""
+
+            if [[ -z "$wfa_api_key" && -z "$wfa_password" ]]; then
+                fail "WFA LWE validation failed: Neither WFA.WATSONX_API_KEY nor WFA.WATSONX_PASSWORD is provided."
+                msg "For LWE deployments, exactly one credential must be set in \"${USER_PROFILE_PROPERTY_FILE}\":"
+                msg "  - To authenticate with an API key:  set WFA.WATSONX_API_KEY and leave WFA.WATSONX_PASSWORD as \"<Optional>\""
+                msg "  - To authenticate with a password:  set WFA.WATSONX_PASSWORD and leave WFA.WATSONX_API_KEY as \"<Optional>\""
+                error_value_tag=1
+            elif [[ -n "$wfa_api_key" && -n "$wfa_password" ]]; then
+                fail "WFA LWE validation failed: Both WFA.WATSONX_API_KEY and WFA.WATSONX_PASSWORD are set."
+                msg "For LWE deployments, provide only one credential in \"${USER_PROFILE_PROPERTY_FILE}\":"
+                msg "  - To authenticate with an API key:  set WFA.WATSONX_API_KEY and leave WFA.WATSONX_PASSWORD as \"<Optional>\""
+                msg "  - To authenticate with a password:  set WFA.WATSONX_PASSWORD and leave WFA.WATSONX_API_KEY as \"<Optional>\""
+                error_value_tag=1
+            fi
+        fi
     fi
 
     if [[ "$error_value_tag" == "1" || "$SSL_CERT_ERROR_TAG" == "true" || "$MISSING_REQUIRED_PARAMETERS" == "true" ]]; then
@@ -6413,8 +6448,14 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
             echo "WFA.WATSONX_USERNAME=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
-            echo "## WatsonX.ai LWE password" >> ${USER_PROFILE_PROPERTY_FILE}
-            echo "WFA.WATSONX_PASSWORD=\"<Required>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## WatsonX.ai LWE API key. Provide either WATSONX_API_KEY or WATSONX_PASSWORD, but not both." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## If you authenticate with an API key, set WATSONX_API_KEY and leave WATSONX_PASSWORD as \"<Optional>\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "WFA.WATSONX_API_KEY=\"<Optional>\"" >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "" >> ${USER_PROFILE_PROPERTY_FILE}
+
+            echo "## WatsonX.ai LWE password. Provide either WATSONX_PASSWORD or WATSONX_API_KEY, but not both." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "## If you authenticate with a password, set WATSONX_PASSWORD and leave WATSONX_API_KEY as \"<Optional>\"." >> ${USER_PROFILE_PROPERTY_FILE}
+            echo "WFA.WATSONX_PASSWORD=\"<Optional>\"" >> ${USER_PROFILE_PROPERTY_FILE}
             echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
             echo "## WatsonX.ai LWE version" >> ${USER_PROFILE_PROPERTY_FILE}
@@ -6439,7 +6480,7 @@ element_val.ORACLE_URL_WITHOUT_WALLET_DIRECTORY=\"(DESCRIPTION=(ADDRESS=(PROTOCO
         fi
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
-        echo "## Optional - The ID of the LLM model to use. Default set to meta-llama/llama-3-3-70b-instruct." >> ${USER_PROFILE_PROPERTY_FILE}
+        echo "## Optional - The ID of the LLM model to use. Default set to openai/gpt-oss-120b." >> ${USER_PROFILE_PROPERTY_FILE}
         echo "WFA.WATSONX_MODEL_ID=\"<Optional>\"" >> ${USER_PROFILE_PROPERTY_FILE}
         echo "" >> ${USER_PROFILE_PROPERTY_FILE}
 
@@ -7392,7 +7433,7 @@ function select_storage_class(){
 
     while [[ $sc_slow_file_storage_classname == "" ]] # While get slow storage clase name
     do
-        printf "\x1B[1mplease enter the file storage classname for slow storage(RWX): \x1B[0m"
+        printf "\x1B[1mplease enter the file storage classname for slow storage(RWX): \x1B[0m\n"
         read -erp "" sc_slow_file_storage_classname
         if [ -z "$sc_slow_file_storage_classname" ]; then
         printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -7401,7 +7442,7 @@ function select_storage_class(){
 
     while [[ $sc_medium_file_storage_classname == "" ]] # While get medium storage clase name
     do
-        printf "\x1B[1mplease enter the file storage classname for medium storage(RWX): \x1B[0m"
+        printf "\x1B[1mplease enter the file storage classname for medium storage(RWX): \x1B[0m\n"
         read -erp "" sc_medium_file_storage_classname
         if [ -z "$sc_medium_file_storage_classname" ]; then
         printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -7410,7 +7451,7 @@ function select_storage_class(){
 
     while [[ $sc_fast_file_storage_classname == "" ]] # While get fast storage clase name
     do
-        printf "\x1B[1mplease enter the file storage classname for fast storage(RWX): \x1B[0m"
+        printf "\x1B[1mplease enter the file storage classname for fast storage(RWX): \x1B[0m\n"
         read -erp "" sc_fast_file_storage_classname
         if [ -z "$sc_fast_file_storage_classname" ]; then
         printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -7419,7 +7460,7 @@ function select_storage_class(){
 
     while [[ $block_storage_class_name == "" ]] # While get block storage clase name
     do
-        printf "\x1B[1mplease enter the block storage classname for Zen(RWO): \x1B[0m"
+        printf "\x1B[1mplease enter the block storage classname for Zen(RWO): \x1B[0m\n"
         read -erp "" block_storage_class_name
         if [ -z "$block_storage_class_name" ]; then
         printf '%b\n' "\x1B[1;31mEnter a valid block storage classname(RWO)\x1B[0m"
@@ -9259,7 +9300,7 @@ function create_db_script(){
 function select_ldap_type_for_wfps_authoring(){
     info "LDAP configuration is not required for the IBM Workflow Process Service Authoring, but if you want to login with LDAP user, please select Yes. If you select No, you can do post actions to add the LDAP connection manually after install. For more information, from https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE, navigate to Installing --> Installing Production Deployment --> Installing a CP4BA multi-pattern production deployment --> Completing post-installation tasks --> Cloud Pak for Business Automation Foundation --> Business Automation Studio."
     while true; do
-        printf "\x1B[1mDo you want use the LDAP for the IBM Workflow Process Service Authoring? (Yes/No, default: Yes): \x1B[0m"
+        printf "\x1B[1mDo you want use the LDAP for the IBM Workflow Process Service Authoring? (Yes/No, default: Yes): \x1B[0m\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES"|"")
@@ -9389,7 +9430,7 @@ function select_external_cert_opensearch_kafka(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to use an external certificate (root CA) for this Opensearch/Kafka deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Opensearch/Kafka operator can consume external tls certificate. If select \"No\", CP4BA operator will create leaf certificates based on CP4BA's root CA )${RESET_TEXT} (Yes/No, default: No): "
+        printf "\x1B[1mDo you want to use an external certificate (root CA) for this Opensearch/Kafka deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Opensearch/Kafka operator can consume external tls certificate. If select \"No\", CP4BA operator will create leaf certificates based on CP4BA's root CA )${RESET_TEXT} (Yes/No, default: No):\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -9412,7 +9453,7 @@ function generate_sample_network_policies(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to generate the network policy templates for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Starting from 25.0.0, the CP4BA operators no longer install network policies automatically. If you want the operators to generate network policies from a set of templates, select Yes. You can install the network policies by running a script after the CP4BA Deployment is installed. If you select No, then no network policies will be generated.)${RESET_TEXT} (Yes/No, default: No):" 
+        printf "\x1B[1mDo you want to generate the network policy templates for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: Starting from 25.0.0, the CP4BA operators no longer install network policies automatically. If you want the operators to generate network policies from a set of templates, select Yes. You can install the network policies by running a script after the CP4BA Deployment is installed. If you select No, then no network policies will be generated.)${RESET_TEXT} (Yes/No, default: No):\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -9441,7 +9482,7 @@ function ask_to_setup_content_cortex_ai_services(){
     
     printf "\n"
     while true; do
-        printf "\x1B[1mDo you want to deploy Content Cortex AI Services as a part of the Content Cortex Essentials?\x1B[0m (Yes/No, default: No): "
+        printf "\x1B[1mDo you want to deploy Content Cortex AI Services as a part of the Content Cortex Essentials?\x1B[0m (Yes/No, default: No):\n"
         read -erp "" ans
         ans="$(printf '%s' "$ans" | tr '[:upper:]' '[:lower:]')"
         case "$ans" in
@@ -9464,7 +9505,7 @@ function enable_instana_monitoring(){
     printf "\n"
     echo ""
     while true; do
-        printf "\x1B[1mDo you want to enable the Instana Monitoring for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: If you want the operators to enable the Instana monitoring for this cp4ba deployment, select Yes.)${RESET_TEXT} (Yes/No, default: No):" 
+        printf "\x1B[1mDo you want to enable the Instana Monitoring for this CP4BA deployment?\x1B[0m ${YELLOW_TEXT}(Notes: If you want the operators to enable the Instana monitoring for this cp4ba deployment, select Yes.)${RESET_TEXT} (Yes/No, default: No):\n"
         read -erp "" ans
         case "$ans" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -9524,7 +9565,7 @@ function select_fips_enable(){
     elif [[ "$all_fips_enabled_flag" == "Yes" ]]; then
         printf "\n"
         while true; do
-            printf "\x1B[1mYour OCP cluster has FIPS enabled, do you want to enable FIPS with this CP4BA deployment？\x1B[0m${YELLOW_TEXT} (Notes: If you select \"Yes\", in order to complete enablement of FIPS for CP4BA, please refer to \"FIPS wall\" configuration in IBM documentation.)${RESET_TEXT} (Yes/No, default: No): "
+            printf "\x1B[1mYour OCP cluster has FIPS enabled, do you want to enable FIPS with this CP4BA deployment？\x1B[0m${YELLOW_TEXT} (Notes: If you select \"Yes\", in order to complete enablement of FIPS for CP4BA, please refer to \"FIPS wall\" configuration in IBM documentation.)${RESET_TEXT} (Yes/No, default: No):\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -9589,7 +9630,7 @@ function select_wfa_deployment_type(){
     printf "  2) Lightweight Engine (LWE)\n"
     printf "\n"
     while true; do
-        printf "Enter a valid option [1 to 2, default: 1]: "
+        printf "Enter a valid option [1 to 2, default: 1]:\n"
         read -erp "" ans
         case "$ans" in
             "1"|"")
@@ -9790,7 +9831,7 @@ function set_external_ldap(){
     printf "\n"
 
     while true; do
-        printf "\x1B[1mWill an external LDAP be used as part of the configuration?: \x1B[0m"
+        printf "\x1B[1mWill an external LDAP be used as part of the configuration?: \x1B[0m\n"
 
         read -erp "" ans
         case "$ans" in
@@ -9814,7 +9855,7 @@ function select_cpe_full_storage(){
     if [[ " ${PATTERNS_CR_SELECTED[@]} " =~ "document_processing" ]]; then
         printf "\n"
         while true; do
-            printf "\x1B[1mDo you want limited CPE storage support? (Yes/No): \x1B[0m"
+            printf "\x1B[1mDo you want limited CPE storage support? (Yes/No): \x1B[0m\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -9840,7 +9881,7 @@ function select_gpu_document_processing(){
     ENABLE_GPU_ARIA=""
     while [[ $set_gpu_enabled == "" ]];
     do
-        printf "\x1B[1mAre there GPU enabled worker nodes (Yes/No)? \x1B[0m"
+        printf "\x1B[1mAre there GPU enabled worker nodes (Yes/No)? \x1B[0m\n"
         read -erp "" set_gpu_enabled
         case "$set_gpu_enabled" in
         "y"|"Y"|"yes"|"Yes"|"YES")
@@ -9860,22 +9901,22 @@ function select_gpu_document_processing(){
     done
     if [[ "${ENABLE_GPU_ARIA}" == "Yes" ]]; then
         printf "\n"
-        printf "\x1B[1mWhat is the node label key used to identify the GPU worker node(s)? \x1B[0m"
+        printf "\x1B[1mWhat is the node label key used to identify the GPU worker node(s)? \x1B[0m\n"
         nodelabel_key=""
         while [[ $nodelabel_key == "" ]];
         do
-            read -rp "" nodelabel_key
+            read -erp "" nodelabel_key
             if [ -z "$nodelabel_key" ]; then
             printf '%b\n' "\x1B[1;31mEnter the node label key.\x1B[0m"
             fi
         done
 
         printf "\n"
-        printf "\x1B[1mWhat is the node label value used to identify the GPU worker node(s)? \x1B[0m"
+        printf "\x1B[1mWhat is the node label value used to identify the GPU worker node(s)? \x1B[0m\n"
         nodelabel_value=""
         while [[ $nodelabel_value == "" ]];
         do
-            read -rp "" nodelabel_value
+            read -erp "" nodelabel_value
             if [ -z "$nodelabel_value" ]; then
             printf '%b\n' "\x1B[1;31mEnter the node label value.\x1B[0m"
             fi
@@ -9895,7 +9936,7 @@ function select_ae_data_persistence(){
         if [[ (" ${PATTERNS_CR_SELECTED[@]} " =~ "application") ]]; then
             printf "\n"
             while true; do
-                printf "\x1B[1mDo you want to enable Business Automation Application Data Persistence? (Yes/No, default: No): \x1B[0m"
+                printf "\x1B[1mDo you want to enable Business Automation Application Data Persistence? (Yes/No, default: No): \x1B[0m\n"
                 read -erp "" ans
                 case "$ans" in
                 "y"|"Y"|"yes"|"Yes"|"YES")
@@ -10112,15 +10153,15 @@ function select_objectstore_number(){
         fi
 
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" && (! " ${pattern_cr_arr[@]}" =~ "content") ]]; then
-            printf "\x1B[1mHow many additional object stores will be deployed for the document processing pattern? \x1B[0m"
+            printf "\x1B[1mHow many additional object stores will be deployed for the document processing pattern? \x1B[0m\n"
         elif [[ " ${pattern_cr_arr[@]}" =~ "content" && (! " ${pattern_cr_arr[@]}" =~ "document_processing") ]]; then
-            printf "\x1B[1mHow many object stores will be deployed for the Content Cortex deployment pattern? \x1B[0m"
+            printf "\x1B[1mHow many object stores will be deployed for the Content Cortex deployment pattern? \x1B[0m\n"
         elif [[ " ${pattern_cr_arr[@]}" =~ "document_processing" && " ${pattern_cr_arr[@]}" =~ "content" ]]; then
-            printf "\x1B[1mHow many object stores will be deployed for the Content Cortex deployment pattern and how many additional object stores will be deployed for the document processing pattern? \x1B[0m"
+            printf "\x1B[1mHow many object stores will be deployed for the Content Cortex deployment pattern and how many additional object stores will be deployed for the document processing pattern? \x1B[0m\n"
         fi
 
         if [[ " ${pattern_cr_arr[@]}" =~ "document_processing" && (! " ${pattern_cr_arr[@]}" =~ "content") ]]; then
-            read -rp "" content_os_number
+            read -erp "" content_os_number
             [[ $content_os_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [0 to 10]\x1B[0m"; continue; }
             if [ "$content_os_number" -ge 0 ] && [ "$content_os_number" -le 10 ]; then
                 break
@@ -10129,7 +10170,7 @@ function select_objectstore_number(){
                 content_os_number=""
             fi
         elif [[ " ${pattern_cr_arr[@]}" =~ "document_processing" && " ${pattern_cr_arr[@]}" =~ "content" ]]; then
-            read -rp "" content_os_number
+            read -erp "" content_os_number
             [[ $content_os_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"; continue; }
             if [ "$content_os_number" -ge 1 ] && [ "$content_os_number" -le 10 ]; then
                 break
@@ -10138,7 +10179,7 @@ function select_objectstore_number(){
                 content_os_number=""
             fi
         elif [[ " ${pattern_cr_arr[@]}" =~ "content" && (! " ${pattern_cr_arr[@]}" =~ "document_processing") ]]; then
-            read -rp "" content_os_number
+            read -erp "" content_os_number
             [[ $content_os_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 10]\x1B[0m"; continue; }
             if [ "$content_os_number" -ge 1 ] && [ "$content_os_number" -le 10 ]; then
                 break
@@ -10154,8 +10195,8 @@ function select_db_server_number(){
     db_server_number=""
     while true; do
         printf "\n"
-        printf "\x1B[1mHow many database servers or instances will be used for the CP4BA deployment? \x1B[0m"
-        read -rp "" db_server_number
+        printf "\x1B[1mHow many database servers or instances will be used for the CP4BA deployment? \x1B[0m\n"
+        read -erp "" db_server_number
         [[ $db_server_number =~ ^[0-9]+$ ]] || { printf '%b\n' "\x1B[1;31mEnter a valid number [1 to 999]\x1B[0m"; continue; }
         if [ "$db_server_number" -ge 1 ] && [ "$db_server_number" -le 999 ]; then
             break
@@ -10329,18 +10370,18 @@ function validate_prerequisites(){
         # check db connection for GCDDB
         if [[ " ${pattern_cr_arr[@]}" =~ "workflow-runtime" || " ${pattern_cr_arr[@]}" =~ "workflow-authoring" || " ${pattern_cr_arr[@]}" =~ "workstreams" || " ${pattern_cr_arr[@]}" =~ "content" || " ${pattern_cr_arr[@]}" =~ "document_processing" || "${optional_component_cr_arr[@]}" =~ "ae_data_persistence" ]]; then
         
+            # DBACLD-254044: read db-server alias from property file (matches AEOS pattern) instead of SPC/secret label
+            tmp_dbserver="$(prop_db_name_user_property_file_for_server_name GCD_DB_USER_NAME)"
+            tmp_dbserver=$(sed -e 's/^\"//' -e 's/\"$//' <<<"$tmp_dbserver")
+
             #DBACLD-185209: Vault implementation
             if [[ "$vault_enabled" == 'true' ]]; then
-                # check DBNAME/DBUSER for GCDDB
-                tmp_dbserver=$($CLI_CMD get SecretProviderClass -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].metadata.labels."gcd-db-server"' - 2>/dev/null)
                 tmp_dbusername=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/ibm-fncm-secret/gcdDBUsername 2>/dev/null )
                 check_vault_secret_value "$tmp_dbusername" "ibm-fncm-secret" "gcdDBUsername" "$cp4a_operator"
                 tmp_dbuserpassword=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/ibm-fncm-secret/gcdDBPassword 2>/dev/null )
                 # skip check for tmp_dbuserpassword since the pwd may be empty (if using client auth)
 
             else # Non-Vault
-                # check DBNAME/DBUSER for GCDDB
-                tmp_dbserver=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].metadata.labels."gcd-db-server"' -`
                 tmp_dbusername=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.gcdDBUsername' - | base64 --decode`
                 tmp_dbuserpassword=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-fncm-secret -o yaml | ${YQ_CMD} '.items[0].data.gcdDBPassword' - | base64 --decode`
             fi
@@ -10581,14 +10622,15 @@ function validate_prerequisites(){
                 tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
                 # DBACLD-185209: Vault's implementation
+                # DBACLD-254044: read db-server alias from property file (matches AEOS pattern) instead of SPC label
+                tmp_dbserver="$(prop_db_name_user_property_file_for_server_name ICN_DB_USER_NAME)"
+                tmp_dbserver=$(sed -e 's/^\"//' -e 's/\"$//' <<<"$tmp_dbserver")
                 if [[ "$vault_enabled" == 'true' ]]; then
-                    tmp_dbserver=$($CLI_CMD get SecretProviderClass -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].metadata.labels."db-server"' - 2>/dev/null)
                     tmp_dbusername=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/ibm-ban-secret/navigatorDBUsername 2>/dev/null )
                     check_vault_secret_value "$tmp_dbusername" "ibm-ban-secret" "navigatorDBUsername" "$cp4a_operator"
                     tmp_dbuserpassword=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/ibm-ban-secret/navigatorDBPassword 2>/dev/null )
                     # skip check for tmp_dbuserpassword since the pwd may be empty (if using client auth)
                 else # Non-vault
-                    tmp_dbserver=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].metadata.labels.db-server' -`
                     tmp_dbusername=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.navigatorDBUsername' - | base64 --decode`
                     tmp_dbuserpassword=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.navigatorDBPassword' - | base64 --decode`
                 fi
@@ -10614,11 +10656,14 @@ function validate_prerequisites(){
                 tmp_dbname="$(prop_db_name_user_property_file ODM_DB_USER_NAME)"
             fi
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
+            # DBACLD-254044: read db-server alias from property file instead of SPC/secret label
+            tmp_dbserver="$(prop_db_name_user_property_file_for_server_name ODM_DB_USER_NAME)"
+            tmp_dbserver=$(sed -e 's/^\"//' -e 's/\"$//' <<<"$tmp_dbserver")
+
             #DBACLD-233362: Vault's implementation
             if [[ "$vault_enabled" == 'true' ]]; then
                 local spc_yaml
                 spc_yaml=$($CLI_CMD get SecretProviderClass -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml 2>/dev/null)
-                tmp_dbserver=$(${YQ_CMD} '.items[0].metadata.labels.db-server' - <<< "$spc_yaml")
                 tmp_op_name=$(${YQ_CMD} '.items[0].metadata.annotations["cp4ba.ibm.com/owned-by"]' - <<< "$spc_yaml")
 
                 tmp_odm_op_name=$($CLI_CMD get pod -l name=$tmp_op_name -n $cp4ba_operators_namespace --no-headers --ignore-not-found | awk '{print $1}' 2>/dev/null)
@@ -10629,7 +10674,6 @@ function validate_prerequisites(){
 
                 # skip check for tmp_dbuserpassword since the pwd may be empty (if using client auth)
             else # Non-Vault
-                tmp_dbserver=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
                 tmp_dbusername=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.db-user' - | base64 --decode`
                 tmp_dbuserpassword=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.db-password' - | base64 --decode`
             fi
@@ -10650,16 +10694,17 @@ function validate_prerequisites(){
                 tmp_dbname="$(prop_db_name_user_property_file ADP_GG_DB_NAME)"
                 tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
+                # DBACLD-254044: read db-server alias from property file instead of SPC/secret label
+                tmp_dbserver="$(prop_db_name_user_property_file_for_server_name ADP_GG_DB_USER_NAME)"
+                tmp_dbserver=$(sed -e 's/^\"//' -e 's/\"$//' <<<"$tmp_dbserver")
+
                 #DBACLD-185209: Vault's implementation
                 if [[ "$vault_enabled" == 'true' ]]; then
-                    # echo "[DEBUG]: adpggdb - get SecretProviderClass -n "$CP4BA_SERVICES_NS" -l db-name=ibm-adp-secret -o yaml | ${YQ_CMD} '.items[0].metadata.labels.db-server'"
-                    tmp_dbserver=$($CLI_CMD get SecretProviderClass -n "$CP4BA_SERVICES_NS" -l db-name=ibm-adp-secret -o yaml | ${YQ_CMD} '.items[0].metadata.labels.db-server' - 2>/dev/null)
                     tmp_dbusername=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/ibm-adp-secret/adpggDBUsername 2>/dev/null )
                     check_vault_secret_value "$tmp_dbusername" "ibm-adp-secret" "adpggDBUsername" "$cp4a_operator"
                     tmp_dbuserpassword=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/ibm-adp-secret/adpggDBPassword 2>/dev/null )
                     # skip check for tmp_dbuserpassword since the pwd may be empty (if using client auth)
                 else # Non-Vault
-                    tmp_dbserver=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-adp-secret -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
                     tmp_dbusername=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-adp-secret -o yaml | ${YQ_CMD} '.items[0].data.adpggDBUsername' - | base64 --decode`
                     tmp_dbuserpassword=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=ibm-adp-secret -o yaml | ${YQ_CMD} '.items[0].data.adpggDBPassword' - | base64 --decode`
                 fi
@@ -10677,15 +10722,17 @@ function validate_prerequisites(){
             fi
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
+            # DBACLD-254044: read db-server alias from property file instead of SPC/secret label
+            tmp_dbserver="$(prop_db_name_user_property_file_for_server_name ADP_BASE_DB_USER_NAME)"
+            tmp_dbserver=$(sed -e 's/^\"//' -e 's/\"$//' <<<"$tmp_dbserver")
+
             #DBACLD-185209: Vault's implementation
             if [[ "$vault_enabled" == 'true' ]]; then
-                tmp_dbserver=$($CLI_CMD get SecretProviderClass -n "$CP4BA_SERVICES_NS" -l base-db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].metadata.labels.base-db-server' - 2>/dev/null)
                 tmp_dbusername=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/aca-basedb/BASE_DB_USER 2>/dev/null )
                 check_vault_secret_value "$tmp_dbusername" "aca-basedb" "BASE_DB_USER" "$cp4a_operator"
                 tmp_dbuserpassword=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/aca-basedb/BASE_DB_CONFIG 2>/dev/null )
                 # skip check for tmp_dbuserpassword since the pwd may be empty (if using client auth)
             else # Non-Vault
-                tmp_dbserver=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l base-db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.base-db-server' -`
                 tmp_dbusername=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l base-db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.BASE_DB_USER' - | base64 --decode`
                 tmp_dbuserpassword=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l base-db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.BASE_DB_CONFIG' - | base64 --decode`
             fi
@@ -10778,14 +10825,15 @@ function validate_prerequisites(){
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
             #DBACLD-185209: Vault's implementation
+            # DBACLD-254044: read db-server alias from property file (matches AEOS pattern) instead of SPC label
+            tmp_dbserver="$(prop_db_name_user_property_file_for_server_name APP_ENGINE_DB_USER_NAME)"
+            tmp_dbserver=$(sed -e 's/^\"//' -e 's/\"$//' <<<"$tmp_dbserver")
             if [[ "$vault_enabled" == 'true' ]]; then
-                tmp_dbserver=$($CLI_CMD get SecretProviderClass -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].metadata.labels.db-server' - 2>/dev/null)
                 tmp_dbusername=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/icp4adeploy-workspace-aae-app-engine-admin-secret/AE_DATABASE_USER 2>/dev/null )
                 check_vault_secret_value "$tmp_dbusername" "icp4adeploy-workspace-aae-app-engine-admin-secret" "AE_DATABASE_USER" "$cp4a_operator"
                 tmp_dbuserpassword=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/icp4adeploy-workspace-aae-app-engine-admin-secret/AE_DATABASE_PWD 2>/dev/null )
                 # skip check for tmp_dbuserpassword since the pwd may be empty (if using client auth)
             else # Non-Vault
-                tmp_dbserver=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
                 tmp_dbusername=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.AE_DATABASE_USER' - | base64 --decode`
                 tmp_dbuserpassword=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.AE_DATABASE_PWD' - | base64 --decode`
             fi
@@ -10834,14 +10882,15 @@ function validate_prerequisites(){
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
             #DBACLD-185209: Vault's implementation
+            # DBACLD-254044: read db-server alias from property file (matches AEOS pattern) instead of SPC label
+            tmp_dbserver="$(prop_db_name_user_property_file_for_server_name BAW_RUNTIME_DB_USER_NAME)"
+            tmp_dbserver=$(sed -e 's/^\"//' -e 's/\"$//' <<<"$tmp_dbserver")
             if [[ "$vault_enabled" == 'true' ]]; then
-                tmp_dbserver=$($CLI_CMD get SecretProviderClass -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].metadata.labels.db-server' - 2>/dev/null)
                 tmp_dbusername=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/ibm-baw-wfs-server-db-secret/dbUser 2>/dev/null )
                 check_vault_secret_value "$tmp_dbusername" "ibm-baw-wfs-server-db-secret" "dbUser" "$cp4a_operator"
                 tmp_dbuserpassword=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/ibm-baw-wfs-server-db-secret/password 2>/dev/null )
                 # skip check for tmp_dbuserpassword since the pwd may be empty (if using client auth)
             else # Non-Vault
-                tmp_dbserver=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
                 tmp_dbusername=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUser' - | base64 --decode`
                 tmp_dbuserpassword=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
             fi
@@ -10864,14 +10913,15 @@ function validate_prerequisites(){
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
             #DBACLD-185209: Vault's implementation
+            # DBACLD-254044: read db-server alias from property file (matches AEOS pattern) instead of SPC label
+            tmp_dbserver="$(prop_db_name_user_property_file_for_server_name AWS_DB_USER_NAME)"
+            tmp_dbserver=$(sed -e 's/^\"//' -e 's/\"$//' <<<"$tmp_dbserver")
             if [[ "$vault_enabled" == 'true' ]]; then
-                tmp_dbserver=$($CLI_CMD get SecretProviderClass -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].metadata.labels.db-server' - 2>/dev/null)
                 tmp_dbusername=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/ibm-aws-wfs-server-db-secret/dbUser 2>/dev/null )
                 check_vault_secret_value "$tmp_dbusername" "ibm-aws-wfs-server-db-secret" "dbUser" "$cp4a_operator"
                 tmp_dbuserpassword=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/ibm-aws-wfs-server-db-secret/password 2>/dev/null )
                 # skip check for tmp_dbuserpassword since the pwd may be empty (if using client auth)
             else # Non-Vault
-                tmp_dbserver=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
                 tmp_dbusername=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUser' - | base64 --decode`
                 tmp_dbuserpassword=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
             fi
@@ -10893,9 +10943,20 @@ function validate_prerequisites(){
             fi
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
-            tmp_dbserver=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
-            tmp_dbusername=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUser' - | base64 --decode`
-            tmp_dbuserpassword=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
+            # DBACLD-254044: read db-server alias from property file instead of SPC/secret label
+            tmp_dbserver="$(prop_db_name_user_property_file_for_server_name AWS_DB_USER_NAME)"
+            tmp_dbserver=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbserver")
+
+            #DBACLD-185209: Vault's implementation
+            if [[ "$vault_enabled" == 'true' ]]; then
+                tmp_dbusername=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/ibm-aws-wfs-server-db-secret/dbUser 2>/dev/null )
+                check_vault_secret_value "$tmp_dbusername" "ibm-aws-wfs-server-db-secret" "dbUser" "$cp4a_operator"
+                tmp_dbuserpassword=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/ibm-aws-wfs-server-db-secret/password 2>/dev/null )
+                # skip check for tmp_dbuserpassword since the pwd may be empty (if using client auth)
+            else # Non-Vault
+                tmp_dbusername=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUser' - | base64 --decode`
+                tmp_dbuserpassword=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
+            fi
 
             # Check DB non-SSL and SSL
             if [[ $DB_TYPE == "oracle" ]]; then
@@ -10914,15 +10975,17 @@ function validate_prerequisites(){
             fi
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
+            # DBACLD-254044: read db-server alias from property file instead of SPC/secret label
+            tmp_dbserver="$(prop_db_name_user_property_file_for_server_name BAW_RUNTIME_DB_USER_NAME)"
+            tmp_dbserver=$(sed -e 's/^\"//' -e 's/\"$//' <<<"$tmp_dbserver")
+
             #DBACLD-185209: Vault's implementation
             if [[ "$vault_enabled" == 'true' ]]; then
-                tmp_dbserver=$($CLI_CMD get SecretProviderClass -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].metadata.labels.db-server' - 2>/dev/null)
                 tmp_dbusername=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/ibm-baw-wfs-server-db-secret/dbUser 2>/dev/null )
                 check_vault_secret_value "$tmp_dbusername" "ibm-baw-wfs-server-db-secret" "dbUser" "$cp4a_operator"
                 tmp_dbuserpassword=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/ibm-baw-wfs-server-db-secret/password 2>/dev/null )
                 # skip check for tmp_dbuserpassword since the pwd may be empty (if using client auth)
             else # Non-Vault
-                tmp_dbserver=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
                 tmp_dbusername=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUser' - | base64 --decode`
                 tmp_dbuserpassword=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
             fi
@@ -10946,15 +11009,17 @@ function validate_prerequisites(){
             fi
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
+            # DBACLD-254044: read db-server alias from property file instead of SPC/secret label
+            tmp_dbserver="$(prop_db_name_user_property_file_for_server_name APP_PLAYBACK_DB_USER_NAME)"
+            tmp_dbserver=$(sed -e 's/^\"//' -e 's/\"$//' <<<"$tmp_dbserver")
+
             #DBACLD-185209: Vault's implementation
             if [[ "$vault_enabled" == 'true' ]]; then
-                tmp_dbserver=$($CLI_CMD get SecretProviderClass -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].metadata.labels.db-server' - 2>/dev/null)
                 tmp_dbusername=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/playback-server-admin-secret/AE_DATABASE_USER 2>/dev/null )
                 check_vault_secret_value "$tmp_dbusername" "playback-server-admin-secret" "AE_DATABASE_USER" "$cp4a_operator"
                 tmp_dbuserpassword=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/playback-server-admin-secret/AE_DATABASE_PWD 2>/dev/null )
                 # skip check for tmp_dbuserpassword since the pwd may be empty (if using client auth)
             else # Non-Vault
-                tmp_dbserver=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
                 tmp_dbusername=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.AE_DATABASE_USER' - | base64 --decode`
                 tmp_dbuserpassword=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.AE_DATABASE_PWD' - | base64 --decode`
             fi
@@ -10978,15 +11043,17 @@ function validate_prerequisites(){
             fi
             tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
+            # DBACLD-254044: read db-server alias from property file instead of SPC/secret label
+            tmp_dbserver="$(prop_db_name_user_property_file_for_server_name STUDIO_DB_USER_NAME)"
+            tmp_dbserver=$(sed -e 's/^\"//' -e 's/\"$//' <<<"$tmp_dbserver")
+
             #DBACLD-185209: Vault's implementation
             if [[ "$vault_enabled" == 'true' ]]; then
-                tmp_dbserver=$($CLI_CMD get SecretProviderClass -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].metadata.labels.db-server' - 2>/dev/null)
                 tmp_dbusername=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/icp4adeploy-bas-admin-secret/dbUsername 2>/dev/null )
                 check_vault_secret_value "$tmp_dbusername" "icp4adeploy-bas-admin-secret" "dbUsername" "$cp4a_operator"
                 tmp_dbuserpassword=$( $CLI_CMD exec $cp4a_operator -n $cp4ba_operators_namespace -- cat /tmp/secrets/icp4adeploy-bas-admin-secret/dbPassword 2>/dev/null )
                 # skip check for tmp_dbuserpassword since the pwd may be empty (if using client auth)
             else # Non-Vault
-                tmp_dbserver=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
                 tmp_dbusername=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbUsername' - | base64 --decode`
                 tmp_dbuserpassword=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.dbPassword' - | base64 --decode`
             fi
@@ -11005,11 +11072,14 @@ function validate_prerequisites(){
                 tmp_dbname="$(prop_db_name_user_property_file DICMS_DESIGNER_DB_NAME)"
                 tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
+                # DBACLD-254044: read db-server alias from property file instead of SPC/secret label
+                tmp_dbserver="$(prop_db_name_user_property_file_for_server_name DICMS_DESIGNER_DB_USER_NAME)"
+                tmp_dbserver=$(sed -e 's/^\"//' -e 's/\"$//' <<<"$tmp_dbserver")
+
                 #DBACLD-185209: Vault's implementation
                 if [[ "$vault_enabled" == 'true' ]]; then
                     local spc_yaml
                     spc_yaml=$($CLI_CMD get SecretProviderClass -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml 2>/dev/null)
-                    tmp_dbserver=$(echo "$spc_yaml" | ${YQ_CMD} '.items[0].metadata.labels.db-server' - 2>/dev/null)
                     tmp_op_name=$(${YQ_CMD} '.items[0].metadata.annotations["cp4ba.ibm.com/owned-by"]' - <<< "$spc_yaml")
 
                     tmp_ads_op_name=$($CLI_CMD get pod -l name=$tmp_op_name -n $cp4ba_operators_namespace --no-headers --ignore-not-found | awk '{print $1}' 2>/dev/null)
@@ -11018,7 +11088,6 @@ function validate_prerequisites(){
                     tmp_dbuserpassword=$( $CLI_CMD exec $tmp_ads_op_name -n $cp4ba_operators_namespace -- cat /tmp/secrets/icp4adeploy-ibm-ads-designer-secret/dbPassword 2>/dev/null )
                     # skip check for tmp_dbuserpassword since the pwd may be empty (if using client auth)
                 else # Non-Vault
-                    tmp_dbserver=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
                     tmp_dbusername=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.username' - | base64 --decode`
                     tmp_dbuserpassword=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
                 fi
@@ -11033,11 +11102,14 @@ function validate_prerequisites(){
                 tmp_dbname="$(prop_db_name_user_property_file DICMS_RUNTIME_DB_NAME)"
                 tmp_dbname=$(sed -e 's/^"//' -e 's/"$//' <<<"$tmp_dbname")
 
+                # DBACLD-254044: read db-server alias from property file instead of SPC/secret label
+                tmp_dbserver="$(prop_db_name_user_property_file_for_server_name DICMS_RUNTIME_DB_USER_NAME)"
+                tmp_dbserver=$(sed -e 's/^\"//' -e 's/\"$//' <<<"$tmp_dbserver")
+
                 #DBACLD-185209: Vault's implementation
                 if [[ "$vault_enabled" == 'true' ]]; then
                     local spc_yaml
                     spc_yaml=$($CLI_CMD get SecretProviderClass -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml 2>/dev/null)
-                    tmp_dbserver=$(echo "$spc_yaml" | ${YQ_CMD} '.items[0].metadata.labels.db-server' - 2>/dev/null)
                     tmp_op_name=$(${YQ_CMD} '.items[0].metadata.annotations["cp4ba.ibm.com/owned-by"]' - <<< "$spc_yaml")
 
                     tmp_ads_op_name=$($CLI_CMD get pod -l name=$tmp_op_name -n $cp4ba_operators_namespace --no-headers --ignore-not-found | awk '{print $1}' 2>/dev/null)
@@ -11046,7 +11118,6 @@ function validate_prerequisites(){
                     tmp_dbuserpassword=$( $CLI_CMD exec $tmp_ads_op_name -n $cp4ba_operators_namespace -- cat /tmp/secrets/icp4adeploy-ibm-ads-runtime-secret/dbPassword 2>/dev/null )
                     # skip check for tmp_dbuserpassword since the pwd may be empty (if using client auth)
                 else # Non-Vault
-                    tmp_dbserver=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items.[0].metadata.labels.db-server' -`
                     tmp_dbusername=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.username' - | base64 --decode`
                     tmp_dbuserpassword=`${CLI_CMD} get secret -n "$CP4BA_SERVICES_NS" -l db-name=${tmp_dbname} -o yaml | ${YQ_CMD} '.items[0].data.password' - | base64 --decode`
                 fi

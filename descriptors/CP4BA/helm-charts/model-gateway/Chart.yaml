@@ -1,6 +1,6 @@
 apiVersion: v2
-appVersion: 13.0.5
+appVersion: 13.0.6
 description: CPD Model Gateway helm chart for operator
 name: model-gateway
 type: application
-version: 13.0.5+20260804.210752.5
+version: 13.0.6+20260818.185945.10

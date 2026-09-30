@@ -90,7 +90,7 @@ function prompt_license(){
     while true; do
         
         if [[ -z "$CP4BA_AUTO_ACCEPT_LICENSE" ]]; then
-            printf "\x1B[1mDo you accept the IBM Cloud Pak for Business Automation license (Yes/No, default: No): \x1B[0m"
+            printf "\x1B[1mDo you accept the IBM Cloud Pak for Business Automation license (Yes/No, default: No): \x1B[0m\n"
 
             read -erp "" ans
         else
@@ -135,7 +135,7 @@ function prompt_wfps_license(){
     printf "\n"
     while true; do
         if [ -z "$AUTO_LICENSE_ACCEPT" ]; then
-            printf "${BOLD_TEXT}Do you accept the IBM Process Flow license? (Yes/No, default: No): ${RESET_TEXT}"
+            printf "${BOLD_TEXT}Do you accept the IBM Process Flow license? (Yes/No, default: No): ${RESET_TEXT}\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -292,7 +292,7 @@ function check_fips_enable(){
         echo "${YELLOW_TEXT}[NOTES] If you plan to enable FIPS for the CP4BA deployment, this script can verify whether FIPS is enabled on the compute nodes of the OCP cluster.${RESET_TEXT}"
         while true; do       
             if [ -z "$CP4BA_AUTO_FIPS_CHECK" ]; then
-                printf "${BOLD_TEXT}Would you like to proceed with this check? (Yes/No, default: No): ${RESET_TEXT}"
+                printf "${BOLD_TEXT}Would you like to proceed with this check? (Yes/No, default: No): ${RESET_TEXT}\n"
                 read -erp "" ans
             else
                 printf "${BOLD_TEXT}Would you like to proceed with this check? (Yes/No, default: No): $CP4BA_AUTO_FIPS_CHECK${RESET_TEXT}"
@@ -560,7 +560,7 @@ function select_private_catalog(){
     echo "${YELLOW_TEXT}[NOTES] You can install the CP4BA deployment as either a private catalog (namespace scope) or the global catalog namespace (GCN). The private option uses the same target namespace of the CP4BA deployment, while the GCN uses the openshift-marketplace namespace.${RESET_TEXT}"
     while true; do
         if [[ -z "$CP4BA_AUTO_PRIVATE_CATALOG" ]]; then
-            printf "${BOLD_TEXT}Would you like to deploy CP4BA using the private catalog (recommended)? (Yes/No, default: Yes): ${RESET_TEXT}"
+            printf "${BOLD_TEXT}Would you like to deploy CP4BA using the private catalog (recommended)? (Yes/No, default: Yes): ${RESET_TEXT}\n"
             read -erp "" ans
         else
             printf "${BOLD_TEXT}Would you like to deploy CP4BA using the private catalog (recommended)? (Yes/No, default: Yes): $CP4BA_AUTO_PRIVATE_CATALOG${RESET_TEXT}\n"
@@ -588,7 +588,7 @@ function select_separate_operator(){
     echo "${YELLOW_TEXT}[NOTES] The CP4BA deployment supports the separation of operators and operands. This script can deploy the CP4BA operators and their capabilities in different projects.${RESET_TEXT}"
     while true; do
         if [[ -z "$CP4BA_AUTO_SEPARATE_OPERATOR" ]]; then
-            printf "${BOLD_TEXT}Would you like to deploy CP4BA with the separation of operators and operands? (Yes/No, default: No): ${RESET_TEXT}"
+            printf "${BOLD_TEXT}Would you like to deploy CP4BA with the separation of operators and operands? (Yes/No, default: No): ${RESET_TEXT}\n"
             read -erp "" ans
         else
             printf "${BOLD_TEXT}Would you like to deploy CP4BA with the separation of operators and operands? (Yes/No, default: No): $CP4BA_AUTO_SEPARATE_OPERATOR${RESET_TEXT}\n"
@@ -954,7 +954,7 @@ function select_all_namespace(){
     printf "\n"
     while true; do
         if [ -z "$CP4BA_AUTO_ALL_NAMESPACES" ]; then
-            printf "${BOLD_TEXT}Do you want the $CP4BA_NAME Operator support 'All Namespaces'? (Yes/No, default: No) ${RESET_TEXT}"
+            printf "${BOLD_TEXT}Do you want the $CP4BA_NAME Operator support 'All Namespaces'? (Yes/No, default: No) ${RESET_TEXT}\n"
 
             read -erp "" ans
             case "$ans" in
@@ -1061,7 +1061,7 @@ function validate_cncf_olm(){
     printf "\n"
 
     while true; do
-        printf "${BOLD_TEXT}Do you want to deploy Operator Lifecycle Manager (OLM) in namespace \"${CNCF_OLM_NAMESPACE}\"? (Yes/No, default: No) ${RESET_TEXT}"
+        printf "${BOLD_TEXT}Do you want to deploy Operator Lifecycle Manager (OLM) in namespace \"${CNCF_OLM_NAMESPACE}\"? (Yes/No, default: No) ${RESET_TEXT}\n"
         if [ -z "$AUTO_INSTALL_OLM" ]; then
             read -erp "" ans
             case "$ans" in
@@ -1122,7 +1122,7 @@ function create_project() {
     project_name=$(sed -e 's/^"//' -e 's/"$//' <<<"$project_name")
 
     if [[ "$PLATFORM_SELECTED" == "OCP" || "$PLATFORM_SELECTED" == "ROKS" ]]; then
-        isProjExists=`${CLI_CMD} get project $project_name --ignore-not-found | wc -l`  >/dev/null 2>&1
+        isProjExists=`${CLI_CMD} get projects.project.openshift.io $project_name --ignore-not-found | wc -l`  >/dev/null 2>&1
 
         if [ $isProjExists -ne 2 ] ; then
             ${CLI_CMD} new-project ${project_name} >> ${LOG_FILE}
@@ -1206,7 +1206,7 @@ function verify_existing_csv(){
 
             if [ -z "$CP4BA_AUTO_NAMESPACE" ]; then
                 while true; do
-                    printf "${BOLD_TEXT}Do you want to deploy another $CP4BA_NAME Operator in new project \"${project_name}\"? (Yes/No, default: No) ${RESET_TEXT}"
+                    printf "${BOLD_TEXT}Do you want to deploy another $CP4BA_NAME Operator in new project \"${project_name}\"? (Yes/No, default: No) ${RESET_TEXT}\n"
                     read -erp "" ans
                     case "$ans" in
                     "y"|"Y"|"yes"|"Yes"|"YES")
@@ -1530,7 +1530,7 @@ function prepare_olm_install() {
         setup_ibm_usage_metering_subscription "$temp_project_name" "fresh_install" "$CATALOG_NAMESPACE" "$project_name_cs_service"
     fi
 
-    # patch csv to use cp.stg.icr.io/cp instead of icr.io/cpopen with development mode
+    # patch csv to use preprod.icr.io/cpopen instead of icr.io/cpopen with development mode
     # and patch the service account to use image pull secret ibm-entitlement-key
     if [[ ($RUNTIME_MODE == "process-flow-dev") &&  ("$PLATFORM_SELECTED" == "other") ]]; then
       # check csv has been created
@@ -1548,10 +1548,10 @@ function prepare_olm_install() {
         operator_init_image_location=$(${CLI_CMD} get csv $csv -n $temp_project_name -o 'jsonpath={.spec.install.spec.deployments[0].spec.template.spec.initContainers[0].image}')
         deployment=$(${CLI_CMD} get csv $csv -n $temp_project_name -o 'jsonpath={.spec.install.spec.deployments[0].name}')
 
-        # patch CSV container and initcontainer image from icr.io to cp.stg.icr.io if necessary because development image only exists at cp.stg.icr.io
+        # patch CSV container and initcontainer image from icr.io to preprod.icr.io if necessary because development image only exists at preprod.icr.io
         echo "operator image patch from: $operator_image_location"
         if echo $operator_image_location |grep 'icr.io/cpopen' > /dev/null 2>&1; then
-          export operator_image_location=$(echo "$operator_image_location"|sed 's|.*cpopen|cp.stg.icr.io/cp|')
+          export operator_image_location=$(echo "$operator_image_location"|sed 's|.*cpopen|preprod.icr.io/cpopen|')
           echo "patch to: $operator_image_location"
           if [ -z $operator_image_location ]; then
             echo "should not update to an empty image location, skip update."
@@ -1568,7 +1568,7 @@ function prepare_olm_install() {
 
         echo "operator init image patch from: $operator_init_image_location"
         if echo $operator_init_image_location |grep 'icr.io/cpopen' > /dev/null 2>&1; then
-          export operator_init_image_location=$(echo "$operator_init_image_location"|sed 's|.*cpopen|cp.stg.icr.io/cp|')
+          export operator_init_image_location=$(echo "$operator_init_image_location"|sed 's|.*cpopen|preprod.icr.io/cpopen|')
           echo "patch to: $operator_init_image_location"
           if [ -z $operator_init_image_location ]; then
             echo "should not update to an empty image location, skip update"
@@ -1931,8 +1931,8 @@ function display_airgap_prerequisites(){
     printf "\n"
     printf "%s%s%s\n" "${BOLD_TEXT}${RED_TEXT}" "From https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE navigate to Installing --> Installing Production Deployment --> Installing a CP4BA multi-pattern production deployment --> Option 2: Preparing your cluster for an air-gapped (offline) deployment" "${RESET_TEXT}"
     printf "\n"
-    printf "${BOLD_TEXT}Do you want to proceed with the offline/airgap cluster setup (Yes/No, default: No): ${RESET_TEXT}"
-    read -rp "" ans
+    printf "${BOLD_TEXT}Do you want to proceed with the offline/airgap cluster setup (Yes/No, default: No): ${RESET_TEXT}\n"
+    read -erp "" ans
     printf "\n"
     case "$ans" in
     "y"|"Y"|"yes"|"Yes"|"YES")
@@ -2000,7 +2000,7 @@ function get_entitlement_registry(){
         fi
 
         if [[ -z "$CP4BA_AUTO_ENTITLEMENT_KEY" && -z "$CP4BA_AUTO_LOCAL_REGISTRY" ]]; then
-            printf "${BOLD_TEXT}Do you have a $CP4BA_FULL_NAME Entitlement Registry key? (Yes/No, default: Yes): ${RESET_TEXT}"
+            printf "${BOLD_TEXT}Do you have a $CP4BA_FULL_NAME Entitlement Registry key? (Yes/No, default: Yes): ${RESET_TEXT}\n"
             read -erp "" ans
         fi
 
@@ -2012,7 +2012,7 @@ function get_entitlement_registry(){
             # During dev, OLM uses stage image repo
             if [[ "$RUNTIME_MODE" == "dev" || $RUNTIME_MODE == "baw-dev" || $RUNTIME_MODE == "process-flow-dev" ]]
             then
-                DOCKER_REG_SERVER="cp.stg.icr.io"
+                DOCKER_REG_SERVER="preprod.icr.io"
             else
                 DOCKER_REG_SERVER="cp.icr.io"
             fi
@@ -2887,7 +2887,7 @@ fi
 function select_ocp_olm(){
     printf "\n"
     while true; do
-        printf "${BOLD_TEXT}Are you using the OCP Catalog (OLM) to perform this install? (Yes/No, default: No) ${RESET_TEXT}"
+        printf "${BOLD_TEXT}Are you using the OCP Catalog (OLM) to perform this install? (Yes/No, default: No) ${RESET_TEXT}\n"
 
         read -erp "" ans
         case "$ans" in
@@ -2941,14 +2941,14 @@ function get_local_registry_server(){
     elif [[ "${REGISTRY_TYPE}" == "external" || $PLATFORM_SELECTED == "other" ]]
     then
         if [ -z $CP4BA_AUTO_LOCAL_REGISTRY ]; then
-            printf "${BOLD_TEXT}Enter the URL to the docker registry, for example: abc.xyz.com: ${RESET_TEXT}"
+            printf "${BOLD_TEXT}Enter the URL to the docker registry, for example: abc.xyz.com: ${RESET_TEXT}\n"
         fi
     fi
     if [ -z $CP4BA_AUTO_LOCAL_REGISTRY ]; then
         local_registry_server=""
         while [[ $local_registry_server == "" ]]
         do
-            read -rp "" local_registry_server
+            read -erp "" local_registry_server
             if [ -z "$local_registry_server" ]; then
                 printf '%b\n' "${BOLD_TEXT}${RED_TEXT}Enter a valid service name or the URL for the docker registry.${RESET_TEXT}"
             fi
@@ -3017,7 +3017,7 @@ function verify_local_registry_password(){
     printf "\n"
     while true; do
         if [ -z "$CP4BA_AUTO_PUSH_IMAGE_LOCAL_REGISTRY" ]; then
-            printf "${BOLD_TEXT}Have you pushed the images to the local registry using 'loadimages.sh' ($CP4BA_NAME images) (Yes/No)? ${RESET_TEXT}"
+            printf "${BOLD_TEXT}Have you pushed the images to the local registry using 'loadimages.sh' ($CP4BA_NAME images) (Yes/No)? ${RESET_TEXT}\n"
             read -erp "" ans
         else
             case "$CP4BA_AUTO_PUSH_IMAGE_LOCAL_REGISTRY" in

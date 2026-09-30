@@ -102,8 +102,8 @@ function print_current_summary_table() {
     done
     echo
     while true; do
-        printf "\x1B[1mDo you want to continue to update the current list of Deployment Patterns and Optional Components deployed? (Yes/No)(default No): \x1B[0m"
-        read -rp "" ans
+        printf "\x1B[1mDo you want to continue to update the current list of Deployment Patterns and Optional Components deployed? (Yes/No)(default No): \x1B[0m\n"
+        read -erp "" ans
         if [[ -z "$ans" ]];then
             ans="no"
         fi
@@ -885,7 +885,7 @@ function retrieve_existing_property_files() {
     if check_required_files "$default_path"; then
         echo
         while true; do
-            read -rp $'\033[1mAll required property files are found in the default path. Do you want to use this path? (Yes/No)[Default: Yes]: \033[0m' use_default
+            read -erp $'\033[1mAll required property files are found in the default path. Do you want to use this path? (Yes/No)[Default: Yes]: \033[0m' use_default
             use_default=$(echo "$use_default" | tr '[:upper:]' '[:lower:]')
 
             if [[ -z "$use_default" ]]; then
@@ -925,7 +925,7 @@ function retrieve_existing_property_files() {
                 info "To enable external secret management integration on an existing deployment, the property files for 'cp4a-prerequisites.sh' for your deployment are needed [Example: <CERT_KUBE_PATH>/scripts/cp4ba-prerequisites/project/<NAMESPACE>/propertyfile]"
                 warning "If you do not have the property files for your existing deployment, then answer no to the next question.  You will then be prompted with questions for your deployment choices. You must answer all the deployment questions and select the options that matches your existing deployment. If you do not select the same options as your existing deployment, enabling external secret management may cause your deployment to fail."
                 echo
-                read -rp $'\033[1mCan you provide the path to the property files for your existing deployment ? If you answer Yes, you will be prompted for the path next. (Yes/No)[Default: Yes]: \033[0m' provide_prop_path
+                read -erp $'\033[1mCan you provide the path to the property files for your existing deployment ? If you answer Yes, you will be prompted for the path next. (Yes/No)[Default: Yes]: \033[0m' provide_prop_path
                 provide_prop_path=$(echo "$provide_prop_path" | tr '[:upper:]' '[:lower:]')
 
                 if [[ -z "$provide_prop_path" ]]; then

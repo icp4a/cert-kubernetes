@@ -590,6 +590,20 @@ function check_cp4ba_deployment_status(){
 
     fi
 
+    exist_ccxaiservices_cr_array=($(${CLI_CMD} get CCXAIServices -n $project_name --no-headers --ignore-not-found | awk '{print $1}'))
+    if [ ! -z $exist_ccxaiservices_cr_array ]; then
+        for item in "${exist_ccxaiservices_cr_array[@]}"
+        do
+            cr_type="CCXAIServices"
+            ccxaiservices_cr_metaname=$(${CLI_CMD} get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml | ${YQ_CMD} '.metadata.name' -)
+            ${CLI_CMD} get $cr_type ${item} -n $project_name --no-headers --ignore-not-found -o yaml > ${UPGRADE_DEPLOYMENT_CCXAISERVICES_CR_TMP}
+            #################### CCX AI Services #######################
+            source ${CUR_DIR}/helper/upgrade/deployment_check/ccx_ai_services_status.sh
+            CP4BA_COMPONENT_STATUS_VALUES+=("$CP4BA_CCXAISERVICES_DEPLOYMENT_STATUS")
+        done
+
+    fi
+
 }
 
 # This function picks up the table built from the check_cp4ba_deployment_status and in addition shows some more messages based on the components displayed

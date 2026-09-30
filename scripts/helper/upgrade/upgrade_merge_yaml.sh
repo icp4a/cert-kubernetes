@@ -1300,17 +1300,20 @@ function upgrade_deployment(){
             # common_cr_cleanup(). WfPS CR does not go through common_cr_cleanup() so we call it here.
             remove_image_tags ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}
 
-            # Scale up wfps operator deployment to enable webhook for CR validation
+            # Scale up wfps operator deployment to enable webhook for CR validation.
+            # The WfPS operator is scaled to 0 by shutdown_operator() in upgradeOperator mode
+            # and remains at 0 throughout upgradeDeployment. startup_operator() is only called
+            # in upgradeDeploymentStatus, so we must temporarily scale up here to allow the
+            # validating webhook to accept the dry-run request. (DBACLD-190320, DBACLD-260684)
             ${CLI_CMD} scale --replicas=1 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
             wait_for_pod $operator_project_name ibm-cp4a-wfps-operator
-            #Validate the CR by performing a dry run
-            #additional sleep time added so that we can make sure that the wfps operator is completely ready prior to applying new CR
-            # DBACLD-190320
+            # Additional sleep to ensure the webhook is fully initialised before the dry-run.
             sleep 25
             dryrun $UPGRADE_DEPLOYMENT_WFPS_CR_TMP $deployment_project_name
             #applying the latest tmp CR so that we can update the kubectl.kubernetes.io/last-applied-configuration section to include any potential user edits
             ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} -n $deployment_project_name >/dev/null 2>&1
-            # Scale down wfps operator deployment again
+            # Scale down wfps operator deployment again — startup_operator in upgradeDeploymentStatus
+            # will bring it back up at the correct point in the upgrade flow.
             ${CLI_CMD} scale --replicas=0 deployment ibm-cp4a-wfps-operator -n $operator_project_name >/dev/null 2>&1
 
 
@@ -1318,7 +1321,7 @@ function upgrade_deployment(){
             # ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} spec.node.probe.startupProbe.failureThreshold 800
             # ${YQ_CMD} w -i ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP} spec.node.probe.startupProbe.periodSeconds 10
             
-            # Function that will retrieve the network policies created in 24.0.1 by the operators and remove the references and re-apply them 
+            # Function that will retrieve the network policies created in 24.0.1 by the operators and remove the references and re-apply them
             # For https://jsw.ibm.com/browse/DBACLD-167387
             # not needed as we include WfPSRuntime as part of the CP4BA related CRs in the network policy script
             #update_network_policies $deployment_project_name "WfPSRuntime" ${UPGRADE_DEPLOYMENT_WFPS_CR_TMP}
@@ -1386,7 +1389,6 @@ function upgrade_deployment(){
                 fi
             done
             echo "****************************************************************************"
-
 
             info "Apply the new version ($CP4BA_RELEASE_BASE) of IBM CP4BA Workflow Process Service custom resource"
             ${CLI_CMD} apply -f ${UPGRADE_DEPLOYMENT_WFPS_CR} -n $deployment_project_name >/dev/null 2>&1

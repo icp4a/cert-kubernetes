@@ -826,7 +826,7 @@ function create_workflow_assistant_secret_template(){
 
   watsonx_api_key="$(prop_user_profile_property_file WFA.WATSONX_API_KEY)"
   watsonx_api_key=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_api_key")
-  if [[ "<Required>" == "$watsonx_api_key" ]]; then watsonx_api_key=""; fi
+  if [[ "<Required>" == "$watsonx_api_key" || "<Optional>" == "$watsonx_api_key" ]]; then watsonx_api_key=""; fi
 
   watsonx_project_id="$(prop_user_profile_property_file WFA.WATSONX_PROJECT_ID)"
   watsonx_project_id=$(sed -e 's/^"//' -e 's/"$//' <<<"$watsonx_project_id")

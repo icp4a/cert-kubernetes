@@ -218,7 +218,7 @@ DOCKER_REG_USER=""
 
 if [[ "$SCRIPT_MODE" == "baw-dev" || "$SCRIPT_MODE" == "dev" || "$SCRIPT_MODE" == "review" ]] # During dev, OLM uses stage image repo
 then
-    DOCKER_REG_SERVER="cp.stg.icr.io"
+    DOCKER_REG_SERVER="preprod.icr.io"
     if [[ -z $2 ]]; then
         IMAGE_TAG_DEV="${CP4BA_RELEASE_BASE}"
     else
@@ -331,7 +331,7 @@ function prompt_license(){
     printf "\n"
     while true; do
 
-        printf "\x1B[1mDo you accept the IBM Cloud Pak for Business Automation license (Yes/No, default: No): \x1B[0m"
+        printf "\x1B[1mDo you accept the IBM Cloud Pak for Business Automation license (Yes/No, default: No): \x1B[0m\n"
         if  [[ $CP4BA_LICENSE_ACCEPT == "Accept" || $CP4BA_LICENSE_ACCEPT == "accept" || $CP4BA_LICENSE_ACCEPT == "ACCEPT"   ]]; then
             ans='Yes'
             IBM_LICENSE='Accept'
@@ -408,7 +408,7 @@ function select_private_catalog_cp4ba(){
     echo "${YELLOW_TEXT}[NOTES] You can choose to deploy CP4BA as a private catalog (namespace scope) or retain the global catalog namespace (GCN). The private catalog (recommended) uses the same target namespace as the CP4BA deployment, while the GCN uses the openshift-marketplace namespace.${RESET_TEXT}"
 
     while true; do
-        printf "\x1B[1mDo you want to switch your CP4BA deployment to use private catalog? (Yes/No, default: Yes): \x1B[0m"
+        printf "\x1B[1mDo you want to switch your CP4BA deployment to use private catalog? (Yes/No, default: Yes): \x1B[0m\n"
         read -erp "" ans
 
         # Set default response to the default value if empty
@@ -444,7 +444,7 @@ function select_private_catalog_opensearch(){
     printf "\n"
     echo "${YELLOW_TEXT}[NOTES] You can install OpenSearch as either a private catalog (namespace-scoped) or in the global catalog namespace (GCN). The private option uses the same target namespace as the CP4BA deployment, while the GCN uses the openshift-marketplace namespace.${RESET_TEXT}"
     while true; do
-        printf "\x1B[1mDo you want to deploy Opensearch using private catalog?\x1B[0m (Yes/No, default: Yes): "
+        printf "\x1B[1mDo you want to deploy Opensearch using private catalog?\x1B[0m (Yes/No, default: Yes):\n"
         read -erp "" ans
 
         case "$ans" in
@@ -1043,7 +1043,7 @@ function select_platform(){
     if [[ "$PLATFORM_SELECTED" == "OCP" && "$(echo "$DEPLOYMENT_TYPE" | tr '[:upper:]' '[:lower:]')" == "starter" ]] || [[ "$PLATFORM_SELECTED" == "OCP" && "$DEPLOYMENT_TYPE" == "production" ]] ; then   #DBACLD-166320 This code changes addressing the issue while the customer deploying CP4BA into ARO or AWS
         while true; do
             printf "\n"
-            printf "\x1B[1mIs your OCP deployed on AWS or Azure? (Yes/No, default: No): \x1B[0m"
+            printf "\x1B[1mIs your OCP deployed on AWS or Azure? (Yes/No, default: No): \x1B[0m\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -2431,7 +2431,7 @@ function get_entitlement_registry(){
     printf "\x1B[1;31mFrom the above Link Navigate to Installing --> Installing Production Deployment --> Installing CP4BA multi-pattern production deployment --> Option1 Preparing your cluster for an online deployment --> Getting access to images from the public IBM Entitled Registry\n\x1B[0m"
     printf "\n"
     while true; do
-        printf "\x1B[1mDo you have a Cloud Pak for Business Automation Entitlement Registry key (Yes/No, default: Yes): \x1B[0m"
+        printf "\x1B[1mDo you have a Cloud Pak for Business Automation Entitlement Registry key (Yes/No, default: Yes): \x1B[0m\n"
         read -erp "" ans
 
         case "$ans" in
@@ -2439,7 +2439,7 @@ function get_entitlement_registry(){
             use_entitlement="yes"
             if [[ "$SCRIPT_MODE" == "dev" || "$SCRIPT_MODE" == "review" || "$SCRIPT_MODE" == "OLM" ]]
             then
-                DOCKER_REG_SERVER="cp.stg.icr.io"
+                DOCKER_REG_SERVER="preprod.icr.io"
             else
                 DOCKER_REG_SERVER="cp.icr.io"
             fi
@@ -2481,7 +2481,7 @@ function get_local_registry_server(){
     if [[ "${REGISTRY_TYPE}" == "internal" && ("${OCP_VERSION}" == "4.4OrLater") ]];then
         #This is required for docker/podman login validation.
         printf "\x1B[1mEnter the public image registry or route (e.g., default-route-openshift-image-registry.apps.<hostname>). \n\x1B[0m"
-        printf "\x1B[1mThis is required for docker/podman login validation: \x1B[0m"
+        printf "\x1B[1mThis is required for docker/podman login validation: \x1B[0m\n"
         local_public_registry_server=""
         while [[ $local_public_registry_server == "" ]]
         do
@@ -2568,7 +2568,7 @@ function get_storage_class_name(){
                printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
             fi
         done
-        printf "\x1B[1mTo provision the persistent volumes and volume claims, enter the block storage classname(RWO): \x1B[0m"
+        printf "\x1B[1mTo provision the persistent volumes and volume claims, enter the block storage classname(RWO): \x1B[0m\n"
         if [[ $PLATFORM_SELECTED == "OCP" ]]; then
         while [[ $block_storage_class_name == "" ]]
         do
@@ -2583,7 +2583,7 @@ function get_storage_class_name(){
         printf "\x1B[1mTo provision the persistent volumes and volume claims\n\x1B[0m"
         while [[ $sc_slow_file_storage_classname == "" ]] # While get slow storage clase name
         do
-            printf "\x1B[1mEnter the file storage classname for slow storage(RWX): \x1B[0m"
+            printf "\x1B[1mEnter the file storage classname for slow storage(RWX): \x1B[0m\n"
             read -erp "" sc_slow_file_storage_classname
             if [ -z "$sc_slow_file_storage_classname" ]; then
                printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -2592,7 +2592,7 @@ function get_storage_class_name(){
 
         while [[ $sc_medium_file_storage_classname == "" ]] # While get medium storage clase name
         do
-            printf "\x1B[1mEnter the file storage classname for medium storage(RWX): \x1B[0m"
+            printf "\x1B[1mEnter the file storage classname for medium storage(RWX): \x1B[0m\n"
             read -erp "" sc_medium_file_storage_classname
             if [ -z "$sc_medium_file_storage_classname" ]; then
                printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -2601,7 +2601,7 @@ function get_storage_class_name(){
 
         while [[ $sc_fast_file_storage_classname == "" ]] # While get fast storage clase name
         do
-            printf "\x1B[1mEnter the file storage classname for fast storage(RWX): \x1B[0m"
+            printf "\x1B[1mEnter the file storage classname for fast storage(RWX): \x1B[0m\n"
             read -erp "" sc_fast_file_storage_classname
             if [ -z "$sc_fast_file_storage_classname" ]; then
                printf '%b\n' "\x1B[1;31mEnter a valid file storage classname(RWX)\x1B[0m"
@@ -2610,7 +2610,7 @@ function get_storage_class_name(){
         if [[ $PLATFORM_SELECTED == "OCP" || $PLATFORM_SELECTED == "ROKS" ]]; then
         while [[ $block_storage_class_name == "" ]] # While get block storage clase name
         do
-            printf "\x1B[1mEnter the block storage classname for Zen(RWO): \x1B[0m"
+            printf "\x1B[1mEnter the block storage classname for Zen(RWO): \x1B[0m\n"
             read -erp "" block_storage_class_name
             if [ -z "$block_storage_class_name" ]; then
                printf '%b\n' "\x1B[1;31mEnter a valid block storage classname(RWO)\x1B[0m"
@@ -2649,7 +2649,7 @@ function verify_local_registry_password(){
     # require to preload image for CP4A image and ldap/db2 image for demo
     printf "\n"
     while true; do
-        printf "\x1B[1mHave you pushed the images to the local registry using 'loadimages.sh' (CP4A images) (Yes/No)? \x1B[0m"
+        printf "\x1B[1mHave you pushed the images to the local registry using 'loadimages.sh' (CP4A images) (Yes/No)? \x1B[0m\n"
         # printf "\x1B[1mand 'loadPrereqImages.sh' (Db2 and OpenLDAP for demo) scripts (Yes/No)? \x1B[0m"
         read -erp "" ans
         case "$ans" in
@@ -3033,7 +3033,7 @@ function select_fips_enable(){
     elif [[ "$all_fips_enabled_flag" == "Yes" ]]; then
         printf "\n"
         while true; do
-            printf "\x1B[1mYour OCP cluster has FIPS enabled, do you want to enable FIPS with this CP4BA deployment?\x1B[0m${YELLOW_TEXT} (Notes: If you select \"Yes\", in order to complete enablement of FIPS for CP4BA, refer to \"FIPS wall\" configuration in IBM documentation.)${RESET_TEXT} (Yes/No, default: No): "
+            printf "\x1B[1mYour OCP cluster has FIPS enabled, do you want to enable FIPS with this CP4BA deployment?\x1B[0m${YELLOW_TEXT} (Notes: If you select \"Yes\", in order to complete enablement of FIPS for CP4BA, refer to \"FIPS wall\" configuration in IBM documentation.)${RESET_TEXT} (Yes/No, default: No):\n"
             read -erp "" ans
             case "$ans" in
             "y"|"Y"|"yes"|"Yes"|"YES")
@@ -5737,6 +5737,10 @@ function sync_property_into_final_cr(){
 
         # set dc_odm_datasource.dc_common_database_instance_secret
         tmp_secret_name=`${CLI_CMD} get $_secret_type -l db-name=${tmp_odm_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        # DBACLD-254044: fallback to known fixed name if SPC label lookup returns null
+        if [[ -z "$tmp_secret_name" || "$tmp_secret_name" == "null" ]]; then
+            tmp_secret_name="ibm-odm-db-secret"
+        fi
         ${YQ_CMD} -i ".spec.datasource_configuration.dc_odm_datasource.dc_common_database_instance_secret = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
 
         if [[ $DB_TYPE == "postgresql" ]]; then
@@ -5834,6 +5838,10 @@ function sync_property_into_final_cr(){
         
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
         tmp_secret_name=`${CLI_CMD} get $_secret_type -l db-name=${tmp_baw_runtime_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        # DBACLD-254044: fallback to known fixed name if SPC label lookup returns null
+        if [[ -z "$tmp_secret_name" || "$tmp_secret_name" == "null" ]]; then
+            tmp_secret_name="ibm-baw-wfs-server-db-secret"
+        fi
         # set baw_configuration
         ${YQ_CMD} -i ".spec.baw_configuration.[0].database.secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         if [[ $DB_TYPE == "postgresql" ]]; then
@@ -5920,6 +5928,10 @@ function sync_property_into_final_cr(){
 
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
         tmp_secret_name=`${CLI_CMD} get $_secret_type -l db-name=${tmp_baw_runtime_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        # DBACLD-254044: fallback to known fixed name if SPC label lookup returns null
+        if [[ -z "$tmp_secret_name" || "$tmp_secret_name" == "null" ]]; then
+            tmp_secret_name="ibm-baw-wfs-server-db-secret"
+        fi
         # set baw_configuration
         ${YQ_CMD} -i ".spec.baw_configuration.[0].database.secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
         if [[ $DB_TYPE == "postgresql" ]]; then
@@ -5997,6 +6009,10 @@ function sync_property_into_final_cr(){
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
         tmp_secret_name=`${CLI_CMD} get $_secret_type -l db-name=${tmp_aws_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        # DBACLD-254044: fallback to known fixed name if SPC label lookup returns null
+        if [[ -z "$tmp_secret_name" || "$tmp_secret_name" == "null" ]]; then
+            tmp_secret_name="ibm-aws-wfs-server-db-secret"
+        fi
 
         # set baw_configuration
         ${YQ_CMD} -i ".spec.baw_configuration.[1].database.secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
@@ -6210,6 +6226,10 @@ function sync_property_into_final_cr(){
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
         tmp_secret_name=`${CLI_CMD} get $_secret_type -l db-name=${tmp_aws_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        # DBACLD-254044: fallback to known fixed name if SPC label lookup returns null
+        if [[ -z "$tmp_secret_name" || "$tmp_secret_name" == "null" ]]; then
+            tmp_secret_name="ibm-aws-wfs-server-db-secret"
+        fi
 
         # set baw_configuration
         ${YQ_CMD} -i ".spec.baw_configuration.[0].database.secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
@@ -6754,6 +6774,10 @@ function sync_property_into_final_cr(){
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
         tmp_secret_name=`${CLI_CMD} get $_secret_type -l db-name=${tmp_bas_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        # DBACLD-254044: fallback to known fixed name if SPC label lookup returns null
+        if [[ -z "$tmp_secret_name" || "$tmp_secret_name" == "null" ]]; then
+            tmp_secret_name="icp4adeploy-bas-admin-secret"
+        fi
 
         # set bastudio_configuration
         ${YQ_CMD} -i ".spec.bastudio_configuration.admin_secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
@@ -6823,6 +6847,10 @@ function sync_property_into_final_cr(){
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
         tmp_secret_name=`${CLI_CMD} get $_secret_type -l db-name=${tmp_app_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        # DBACLD-254044: fallback to known fixed name if SPC label lookup returns null
+        if [[ -z "$tmp_secret_name" || "$tmp_secret_name" == "null" ]]; then
+            tmp_secret_name="playback-server-admin-secret"
+        fi
 
         # set bastudio_configuration.playback_server
         ${YQ_CMD} -i ".spec.bastudio_configuration.playback_server.admin_secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
@@ -6917,6 +6945,10 @@ function sync_property_into_final_cr(){
         done
         # For DBACLD-155445 where we need to use the namespace value passed to find the secret name and populate the CR accordingly
         tmp_secret_name=`${CLI_CMD} get $_secret_type -l db-name=${tmp_ae_db_name} -o yaml -n $CP4BA_SERVICES_NS | ${YQ_CMD} '.items.[0].metadata.name' -`
+        # DBACLD-254044: fallback to known fixed name if SPC label lookup returns null
+        if [[ -z "$tmp_secret_name" || "$tmp_secret_name" == "null" ]]; then
+            tmp_secret_name="icp4adeploy-workspace-aae-app-engine-admin-secret"
+        fi
 
         # set application_engine_configuration
         ${YQ_CMD} -i ".spec.application_engine_configuration.[0].admin_secret_name = \"$tmp_secret_name\"" ${CP4A_PATTERN_FILE_TMP}
@@ -7139,6 +7171,14 @@ function sync_property_into_final_cr(){
         ${SED_COMMAND} "s/dc_hadr_standby_port:/# dc_hadr_standby_port:/g" ${CP4A_PATTERN_FILE_TMP}
         ${SED_COMMAND} "s/dc_hadr_retry_interval_for_client_reroute:/# dc_hadr_retry_interval_for_client_reroute:/g" ${CP4A_PATTERN_FILE_TMP}
         ${SED_COMMAND} "s/dc_hadr_max_retries_for_client_reroute:/# dc_hadr_max_retries_for_client_reroute:/g" ${CP4A_PATTERN_FILE_TMP}
+
+  		# DBACLD-255846: Restore database_servername/database_port for ADS CNPG datasources.
+        # The global sed above comments out all database_servername/database_port lines when Oracle
+        # is the external CP4BA DB, but ADS Designer/Runtime use an internal CNPG PostgreSQL DB where these fields are always required.
+        if [[ "${pattern_cr_arr[@]}" =~ "decisions_ads" && $DB_TYPE != "postgresql" && "$EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS" != "true" ]]; then
+            ${SED_COMMAND} "s/# database_servername: postgres-cp4ba-rw/database_servername: postgres-cp4ba-rw/g" ${CP4A_PATTERN_FILE_TMP}
+            ${SED_COMMAND} "s/# database_port: \"5432\"/database_port: \"5432\"/g" ${CP4A_PATTERN_FILE_TMP}
+        fi
     fi
 
     # ensure nodelabel_value is string
@@ -8532,6 +8572,54 @@ function shutdown_operator(){
     done
 }
 
+# run_wfps_edb_backup: Detect WfPS EDB cluster, run backup, and record state in a ConfigMap.
+# The ConfigMap (wfps-edb-cnpg-migration-state) is read by the upgradeDeploymentStatus restore block.
+# Using a ConfigMap instead of /tmp ensures the restore gate survives reboots and works even when
+# upgradeDeploymentStatus is run on a different machine.
+# Parameters: $1 = namespace, $2 = CUR_DIR (path to scripts dir, for wfps-migrate-edb-to-cnpg.sh)
+function run_wfps_edb_backup() {
+    local ns="$1"
+    local scripts_dir="$2"
+    local wfps_edb_cluster backup_dir
+
+    wfps_edb_cluster=$(${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n "$ns" \
+        --no-headers --ignore-not-found 2>/dev/null \
+        | awk '{print $1}' | grep -E -- "-postgre$" | grep -v "^postgres-cp4ba$" | head -n 1 || true)
+
+    if [[ -n "$wfps_edb_cluster" ]]; then
+        info "WfPS Runtime EDB cluster detected: $wfps_edb_cluster"
+        info "Running WfPS EDB to IBM CloudNativePG backup before operator upgrade..."
+        backup_dir="/tmp/wfps_migration_backup"
+        printf "\n"
+        if bash "${scripts_dir}/wfps-migrate-edb-to-cnpg.sh" -m backup -n "$ns" -d "$backup_dir"; then
+            success "WfPS EDB backup completed successfully."
+            # Record migration state in a ConfigMap so upgradeDeploymentStatus can find it
+            # regardless of which machine or session runs the restore step.
+            ${CLI_CMD} apply -f - >/dev/null 2>&1 <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wfps-edb-cnpg-migration-state
+  namespace: $ns
+  labels:
+    app: cp4ba
+    migration: wfps-edb-to-cnpg
+data:
+  migration-pending: "true"
+  backup-directory: "$backup_dir"
+EOF
+        else
+            fail "WfPS EDB backup failed. Please resolve the issue and re-run upgradeOperator."
+            exit 1
+        fi
+        printf "\n"
+    else
+        info "EDB instances detected, but no WfPS EDB cluster found. Skipping WfPS EDB migration."
+    fi
+}
+
+
+
 function cncf_install(){
   sed -e '/dba_license/{n;s/value:.*/value: accept/;}' ${CUR_DIR}/../upgradeOperator.yaml > ${CUR_DIR}/../upgradeOperatorsav.yaml ;  mv ${CUR_DIR}/../upgradeOperatorsav.yaml ${CUR_DIR}/../upgradeOperator.yaml
   sed -e '/baw_license/{n;s/value:.*/value: accept/;}' ${CUR_DIR}/../upgradeOperator.yaml > ${CUR_DIR}/../upgradeOperatorsav.yaml ;  mv ${CUR_DIR}/../upgradeOperatorsav.yaml ${CUR_DIR}/../upgradeOperator.yaml
@@ -9132,8 +9220,8 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         if [[ "$SKIP_FOR_API" != "true" ]]; then
             while true; do
                 printf "\n"
-                printf "\x1B[1mDo you want to continue to do upgrade? (Yes/No, default: No): \x1B[0m"
-                read -rp "" ans
+                printf "\x1B[1mDo you want to continue to do upgrade? (Yes/No, default: No): \x1B[0m\n"
+                read -erp "" ans
                 case "$ans" in
                 "y"|"Y"|"yes"|"Yes"|"YES")
                     # if the user is running the upgradeOperator command with --cpfs-upgrade-mode dedicated2dedicated --original-cp4ba-csv-ver 25.0.1 flags that means the user is explicitly trying to re-run upgrade
@@ -9440,7 +9528,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
     target_csv_version=${CP4BA_CSV_VERSION//v/}
     for i in ${!sub_array[@]}; do
         if [[ ! -z "${sub_array[i]}" ]]; then
-            if [[ ${sub_array[i]} = ibm-cp4a-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = ibm-insights-engine-operator* || ${sub_array[i]} = ibm-workflow-operator* ]]; then
+            if [[ ${sub_array[i]} = ibm-cp4a-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = ibm-insights-engine-operator* || ${sub_array[i]} = ibm-workflow-operator* || ${sub_array[i]} = ibm-ccx-ai-services-operator* ]]; then
                 current_version=$(${CLI_CMD} get subscription.operators.coreos.com ${sub_array[i]} --no-headers --ignore-not-found -n $CP4BA_OPERATOR_NS -o 'jsonpath={.status.currentCSV}') >&3 2>&3
                 installed_version=$(${CLI_CMD} get subscription.operators.coreos.com ${sub_array[i]} --no-headers --ignore-not-found -n $CP4BA_OPERATOR_NS -o 'jsonpath={.status.installedCSV}') >&3 2>&3
                 if [[ -z $current_version || -z $installed_version ]]; then
@@ -9547,7 +9635,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             sub_array=($sub_inst_list)
             for i in ${!sub_array[@]}; do
                 if [[ ! -z "${sub_array[i]}" ]]; then
-                    if [[ ${sub_array[i]} = ibm-cp4a-operator* || ${sub_array[i]} = ibm-cp4a-wfps-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = icp4a-foundation-operator* || ${sub_array[i]} = ibm-pfs-operator* || ${sub_array[i]} = ibm-ads-operator* || ${sub_array[i]} = ibm-dpe-operator* || ${sub_array[i]} = ibm-odm-operator* || ${sub_array[i]} = ibm-insights-engine-operator* || ${sub_array[i]} = ibm-workflow-operator* ]]; then
+                    if [[ ${sub_array[i]} = ibm-cp4a-operator* || ${sub_array[i]} = ibm-cp4a-wfps-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = icp4a-foundation-operator* || ${sub_array[i]} = ibm-pfs-operator* || ${sub_array[i]} = ibm-ads-operator* || ${sub_array[i]} = ibm-dpe-operator* || ${sub_array[i]} = ibm-odm-operator* || ${sub_array[i]} = ibm-insights-engine-operator* || ${sub_array[i]} = ibm-workflow-operator* || ${sub_array[i]} = ibm-ccx-ai-services-operator* ]]; then
                         ${CLI_CMD} patch subscription.operators.coreos.com ${sub_array[i]} -n $CP4BA_OPERATOR_NS -p '{"spec":{"sourceNamespace":"'"$CP4BA_OPERATOR_NS"'"}}' --type=merge >&3 2>&3
                         if [ $? -eq 0 ]
                         then
@@ -9576,7 +9664,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         sub_array=($sub_inst_list)
         for i in ${!sub_array[@]}; do
             if [[ ! -z "${sub_array[i]}" ]]; then
-                if [[ ${sub_array[i]} = ibm-cp4a-operator* || ${sub_array[i]} = ibm-cp4a-wfps-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = icp4a-foundation-operator* || ${sub_array[i]} = ibm-pfs-operator* || ${sub_array[i]} = ibm-ads-operator* || ${sub_array[i]} = ibm-dpe-operator* || ${sub_array[i]} = ibm-odm-operator* || ${sub_array[i]} = ibm-insights-engine-operator* || ${sub_array[i]} = ibm-workflow-operator* ]]; then
+                if [[ ${sub_array[i]} = ibm-cp4a-operator* || ${sub_array[i]} = ibm-cp4a-wfps-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = icp4a-foundation-operator* || ${sub_array[i]} = ibm-pfs-operator* || ${sub_array[i]} = ibm-ads-operator* || ${sub_array[i]} = ibm-dpe-operator* || ${sub_array[i]} = ibm-odm-operator* || ${sub_array[i]} = ibm-insights-engine-operator* || ${sub_array[i]} = ibm-workflow-operator* || ${sub_array[i]} = ibm-ccx-ai-services-operator* ]]; then
 
                     #DBACLD-189643: Retrieve existing CSV and save to UPGRADE_DEPLOYMENT_CSV_BAK before patching subscription to switch channel, which will trigger OLM to upgrade operators and delete existing CSVs. We need the backup CSVs to restore if anything goes wrong during the upgrade.
                     get_existing_csvs $CP4BA_OPERATOR_NS $UPGRADE_DEPLOYMENT_CSV_BAK ${sub_array[i]}
@@ -10093,7 +10181,7 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
         target_csv_version=${CP4BA_CSV_VERSION//v/}
         for i in ${!sub_array[@]}; do
             if [[ ! -z "${sub_array[i]}" ]]; then
-                if [[ ${sub_array[i]} = ibm-cp4a-operator* || ${sub_array[i]} = ibm-cp4a-wfps-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = icp4a-foundation-operator* || ${sub_array[i]} = ibm-pfs-operator* || ${sub_array[i]} = ibm-ads-operator* || ${sub_array[i]} = ibm-dpe-operator* || ${sub_array[i]} = ibm-odm-operator* || ${sub_array[i]} = ibm-insights-engine-operator* || ${sub_array[i]} = ibm-workflow-operator* ]]; then
+                if [[ ${sub_array[i]} = ibm-cp4a-operator* || ${sub_array[i]} = ibm-cp4a-wfps-operator* || ${sub_array[i]} = ibm-content-operator* || ${sub_array[i]} = icp4a-foundation-operator* || ${sub_array[i]} = ibm-pfs-operator* || ${sub_array[i]} = ibm-ads-operator* || ${sub_array[i]} = ibm-dpe-operator* || ${sub_array[i]} = ibm-odm-operator* || ${sub_array[i]} = ibm-insights-engine-operator* || ${sub_array[i]} = ibm-workflow-operator* || ${sub_array[i]} = ibm-ccx-ai-services-operator* ]]; then
                     info "Checking the channel of subscription '${sub_array[i]}'!"
                     currentChannel=$(${CLI_CMD} get subscription.operators.coreos.com ${sub_array[i]} -n $CP4BA_OPERATOR_NS -o 'jsonpath={.spec.channel}') >&3 2>&3
                     if [[ "$currentChannel" == "$CP4BA_CHANNEL_VERSION" ]]
@@ -10139,6 +10227,9 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                                 ;;
                             "ibm-workflow-operator"*)
                                 prefix_sub="ibm-workflow-operator.v"
+                                ;;
+                            "ibm-ccx-ai-services-operator"*)
+                                prefix_sub="ibm-ccx-ai-services-operator.v"
                                 ;;
                             esac
 
@@ -10330,13 +10421,9 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
                         echo
                     fi
                 else
-                    # Check if a WfPS Runtime postgres pod exists (name contains "wfps-instance1-postgre").
-                    # If so, its EDB migration is handled by the WfPS Runtime operator, not this script.
-                    if ${CLI_CMD} get pod -n "$CP4BA_SERVICES_NS" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}' | grep -q "wfps-instance1-postgre"; then
-                        info "WfPS Runtime postgres instance detected. EDB migration for WfPS Runtime will be handled by the WfPS Runtime operator. Skipping CP4BA EDB migration."
-                    else
-                        info "EDB instances detected, but postgres-cp4ba instance not found. Skipping CP4BA EDB migration."
-                    fi
+                    ############## Start - WfPS EDB to CNPG Backup Integration ##############
+                    run_wfps_edb_backup "$CP4BA_SERVICES_NS" "$CUR_DIR"
+                    ############## End - WfPS EDB to CNPG Backup Integration ##############
                 fi
             fi
             ############## End - Phased EDB to CNPG Migration Integration ##############
@@ -10344,6 +10431,30 @@ if [ "$RUNTIME_MODE" == "upgradeOperator" ]; then
             # Display next steps for major upgrade after upgradeOperator mode
             next_steps_for_major_upgrade_after_upgrade_operator_mode "$CP4BA_SERVICES_NS" "$css_flag" "$CUR_DIR"
         else
+            ############## Start - Phased EDB to CNPG Migration Integration ##############
+            # Check if EDB PostgreSQL is detected and execute phased migration
+            # This section integrates the migration directly into upgradeOperator mode
+            # using ConfigMap-based state tracking for resumability
+            if is_edb_detected "$CP4BA_SERVICES_NS"; then
+                # Only proceed with migration if postgres-cp4ba instance is detected
+                if [[ "$CP4BA_EDB_INSTANCE_DETECTED" == "true" ]]; then
+
+                    info " CP4BA Operators with be shut down before executing the EDB to CNPG migration."
+                    shutdown_operator $TEMP_OPERATOR_PROJECT_NAME
+                    printf "\n"
+                    # Call the EDB migration handler function
+                    if ! handle_edb_migration_process "$CP4BA_SERVICES_NS" "$CP4BA_OPERATOR_NS" "$top_level_cr_kind"; then
+                        # Migration not complete, exit to allow retry
+                        echo
+                    fi
+                else
+                    ############## Start - WfPS EDB to CNPG Backup Integration ##############
+                    run_wfps_edb_backup "$CP4BA_SERVICES_NS" "$CUR_DIR"
+                    ############## End - WfPS EDB to CNPG Backup Integration ##############
+                fi
+            fi
+            ############## End - Phased EDB to CNPG Migration Integration ##############
+
             # for upgrading IFIX by IFIX
 	    ## -- https://jsw.ibm.com/browse/DBACLD-186607 - <To fix the incorrect script path while running the deployment script in the upgrade mode>
             CUR_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
@@ -10703,8 +10814,8 @@ if [ "$RUNTIME_MODE" == "upgradeDeployment" ]; then
 
         if [[ "$SKIP_FOR_API" != "true" ]]; then
             while true; do
-                printf "\x1B[1mDo you want to continue running the upgrade? (Yes/No, default: No): \x1B[0m"
-                read -rp "" ans
+                printf "\x1B[1mDo you want to continue running the upgrade? (Yes/No, default: No): \x1B[0m\n"
+                read -erp "" ans
                 case "$ans" in
                 "y"|"Y"|"yes"|"Yes"|"YES")
                     RERUN_UPGRADE_DEPLOYMENT="Yes"
@@ -10773,6 +10884,7 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
     UPGRADE_STATUS_CP4BA_FILE=${UPGRADE_STATUS_CP4BA_FOLDER}/.icp4acluster_status.yaml
     UPGRADE_DEPLOYMENT_WFPSRUNTIME_CR_TMP=${UPGRADE_STATUS_CP4BA_FOLDER}/.wfpsruntime_tmp.yaml
     UPGRADE_DEPLOYMENT_PFS_CR_TMP=${UPGRADE_STATUS_CP4BA_FOLDER}/.pfs_tmp.yaml
+    UPGRADE_DEPLOYMENT_CCXAISERVICES_CR_TMP=${UPGRADE_STATUS_CP4BA_FOLDER}/.ccxaiservices_tmp.yaml
 
     # Retrieve CR details
     # This function is defined in the common.sh script and the function find the top level CR kind and name
@@ -10965,6 +11077,29 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
     # This will maintain the same behavior but also allow operators to be scaled up when the deployment is SaaS and there is no Zen
     startup_operator $CP4BA_OPERATOR_NS "silent"
 
+    # WfPS operator pod bounce after scale-up (DBACLD-260684):
+    # After startup_operator scales ibm-cp4a-wfps-operator to 1, the pod can get stuck in a
+    # reconcile error loop ("ZenService progress is 17%") because it reads stale zen status
+    # immediately on startup. This prevents it from provisioning the CNPG cluster, so the
+    # EDB restore has nothing to restore into. Deleting the pod forces a clean restart after
+    # zen is already at 100%, which is exactly what resolves the issue manually.
+    # Read the ConfigMap directly here — wfps_migration_pending variable is not yet set at this
+    # point in the script (it is set later in the restore block after check_if_all_components_are_ready).
+    _wfps_bounce_needed=$(${CLI_CMD} get configmap wfps-edb-cnpg-migration-state \
+        -n "$CP4BA_SERVICES_NS" \
+        -o jsonpath='{.data.migration-pending}' 2>/dev/null || echo "")
+    if [[ "$_wfps_bounce_needed" == "true" ]]; then
+        wfps_op_pod=$(${CLI_CMD} get pod -n "$TARGET_PROJECT_NAME" \
+            --no-headers --ignore-not-found 2>/dev/null \
+            | awk '{print $1}' | grep "^ibm-cp4a-wfps-operator-" | head -n 1 || true)
+        if [[ -n "$wfps_op_pod" ]]; then
+            info "Bouncing WfPS operator pod ($wfps_op_pod) so it reconciles with current zen state..."
+            ${CLI_CMD} delete pod "$wfps_op_pod" -n "$TARGET_PROJECT_NAME" --wait=false >/dev/null 2>&1 || true
+            info "WfPS operator pod deleted — it will restart automatically."
+        fi
+    fi
+    unset _wfps_bounce_needed
+
     # Patch strimzi podset if required with timeout
     if [[ $strimzi_patched == "false" ]]; then
         info "Checking if Strimzi PodSet patch is required..."
@@ -11090,6 +11225,90 @@ if [[ "$RUNTIME_MODE" == "upgradeDeploymentStatus" ]]; then
             printf "\n"
             success "All components are in 'Done' status which means that all CP4BA components have been upgraded successfully!"
             printf "\n"
+
+            ############## Start - WfPS EDB to CNPG Restore Integration ##############
+            # Gate: check the wfps-edb-cnpg-migration-state ConfigMap (created by run_wfps_edb_backup
+            # during upgradeOperator). Using a ConfigMap instead of /tmp ensures the restore gate
+            # survives reboots and works even if upgradeDeploymentStatus runs on a different machine.
+            wfps_migration_pending=$(${CLI_CMD} get configmap wfps-edb-cnpg-migration-state \
+                -n "$CP4BA_SERVICES_NS" \
+                -o jsonpath='{.data.migration-pending}' 2>/dev/null || echo "")
+            if [[ "$wfps_migration_pending" == "true" ]]; then
+                wfps_backup_dir=$(${CLI_CMD} get configmap wfps-edb-cnpg-migration-state \
+                    -n "$CP4BA_SERVICES_NS" \
+                    -o jsonpath='{.data.backup-directory}' 2>/dev/null || echo "/tmp/wfps_migration_backup")
+
+                # Single wait loop: wait for the CNPG cluster object to appear AND for it to have
+                # readyInstances >= 1. The cluster object may not exist yet right after the operator
+                # bounce — the operator needs time to reconcile and provision it.
+                # Max wait: 20 minutes (same budget as before, now covering both appearance + readiness).
+                wfps_restore_max_wait=1200   # 20 minutes
+                wfps_restore_interval=30
+                wfps_restore_elapsed=0
+                wfps_pg_ready=false
+                wfps_cnpg_cluster=""
+                wfps_cnpg_ready_instances=0
+                info "Waiting for WfPS IBM CloudNativePG cluster to be provisioned and ready in namespace '$CP4BA_SERVICES_NS'..."
+                while [[ $wfps_restore_elapsed -lt $wfps_restore_max_wait ]]; do
+                    # Step 1: discover the cluster object (may not exist right after operator bounce)
+                    wfps_cnpg_cluster=$(${CLI_CMD} get clusters.pg.ibm.com -n "$CP4BA_SERVICES_NS" \
+                        --no-headers --ignore-not-found 2>/dev/null \
+                        | awk '{print $1}' | grep -E -- "-postgre$" | grep -v "^postgres-cp4ba$" | head -n 1 || true)
+
+                    if [[ -n "$wfps_cnpg_cluster" ]]; then
+                        # Step 2: cluster object exists — check readyInstances.
+                        # Use .status.readyInstances — the authoritative readiness field used by
+                        # the WfPS operator itself (clusters.go) to decide when the PG cluster
+                        # is accepting connections.
+                        wfps_cnpg_ready_instances=$(${CLI_CMD} get clusters.pg.ibm.com "$wfps_cnpg_cluster" \
+                            -n "$CP4BA_SERVICES_NS" \
+                            -o jsonpath='{.status.readyInstances}' 2>/dev/null || echo "0")
+
+                        if [[ "${wfps_cnpg_ready_instances:-0}" -ge 1 ]]; then
+                            wfps_pg_ready=true
+                            break
+                        fi
+                        wfps_restore_remaining=$((wfps_restore_max_wait - wfps_restore_elapsed))
+                        info "[WfPS restore] Cluster '$wfps_cnpg_cluster' found, waiting for readyInstances >= 1 (currently ${wfps_cnpg_ready_instances:-0}). (${wfps_restore_elapsed}s elapsed, ${wfps_restore_remaining}s remaining)"
+                    else
+                        wfps_restore_remaining=$((wfps_restore_max_wait - wfps_restore_elapsed))
+                        info "[WfPS restore] CNPG cluster not yet provisioned by WfPS operator. Waiting... (${wfps_restore_elapsed}s elapsed, ${wfps_restore_remaining}s remaining)"
+                    fi
+
+                    sleep $wfps_restore_interval
+                    wfps_restore_elapsed=$((wfps_restore_elapsed + wfps_restore_interval))
+                done
+
+                if [[ "$wfps_pg_ready" == "true" ]]; then
+                    info "WfPS IBM PG cluster '$wfps_cnpg_cluster' is ready (readyInstances=${wfps_cnpg_ready_instances}). Running restore..."
+                    printf "\n"
+                    if bash "${CUR_DIR}/wfps-migrate-edb-to-cnpg.sh" -m restore -n "$CP4BA_SERVICES_NS" -d "$wfps_backup_dir"; then
+                        success "WfPS EDB restore completed successfully."
+                        # Clear the migration-pending flag so re-runs of upgradeDeploymentStatus
+                        # don't trigger a second restore
+                        ${CLI_CMD} patch configmap wfps-edb-cnpg-migration-state \
+                            -n "$CP4BA_SERVICES_NS" \
+                            --type merge \
+                            -p '{"data":{"migration-pending":"false"}}' >/dev/null 2>&1 || true
+                    else
+                        warning "WfPS EDB restore encountered an issue. Please re-run manually if needed:"
+                        warning "  ${CUR_DIR}/wfps-migrate-edb-to-cnpg.sh -m restore -n $CP4BA_SERVICES_NS -d $wfps_backup_dir"
+                    fi
+                    printf "\n"
+                else
+                    # Timed out — either cluster never appeared or never became ready.
+                    if [[ -z "$wfps_cnpg_cluster" ]]; then
+                        warning "WfPS IBM PG cluster was not provisioned within 20 minutes."
+                        warning "The WfPS operator may still be starting up. Once the cluster exists, run restore manually:"
+                    else
+                        warning "WfPS IBM PG cluster '$wfps_cnpg_cluster' did not reach readyInstances >= 1 within 20 minutes."
+                        warning "Once the cluster is healthy, run restore manually:"
+                    fi
+                    warning "  ${CUR_DIR}/wfps-migrate-edb-to-cnpg.sh -m restore -n $CP4BA_SERVICES_NS -d $wfps_backup_dir"
+                fi
+            fi
+            ############## End - WfPS EDB to CNPG Restore Integration ##############
+
             echo "======================================================================================================="
             success "${GREEN_TEXT}The upgrade to CP4BA $CP4BA_RELEASE_BASE $CP4BA_PATCH_VERSION is complete.${RESET_TEXT}"
             echo "======================================================================================================="

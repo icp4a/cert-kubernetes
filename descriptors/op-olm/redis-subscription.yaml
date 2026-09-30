@@ -4,7 +4,7 @@ metadata:
   name: ibm-redis-cp-operator-catalog-subscription
   namespace: REPLACE_NAMESPACE
 spec:
-  channel: v1.3
+  channel: v1.4
   installPlanApproval: Automatic
   name: ibm-redis-cp
   source: ibm-redis-cp-operator-catalog

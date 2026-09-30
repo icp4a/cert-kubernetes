@@ -39,6 +39,13 @@ spec:
 {{- if not .Values.modelGateway.deploy_redis }}
   deploy_redis: false
 {{- end }}
+{{- if .Values.modelGateway.external_redis }}
+  external_redis: true
+  externalRedisSecret: {{ .Values.modelGateway.externalRedisSecret }}
+{{- if .Values.modelGateway.externalRedisCertificateSecret }}
+  externalRedisCertificateSecret: {{ .Values.modelGateway.externalRedisCertificateSecret }}
+{{- end }}
+{{- end }}
 {{- $existingCr := lookup "modelgateway.cpd.ibm.com/v1beta1" "modelgateway" .Values.global.instanceNamespace "modelgateway-cr" }}
 {{- $existing := dict "tls" (list) }}
 {{- if and $existingCr $existingCr.spec $existingCr.spec.tls_ca_secrets }}

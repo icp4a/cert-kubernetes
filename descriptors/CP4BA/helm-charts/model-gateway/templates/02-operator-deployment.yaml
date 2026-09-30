@@ -19,7 +19,7 @@ spec:
         productID: 3a6d4448ec8342279494bc22e36bc318
         productMetric: FREE
         productName: IBM Model Gateway
-        productVersion: 13.0.5
+        productVersion: 13.0.6
       labels:
         app.kubernetes.io/instance: ibm-cpd-model-gateway-operator
         app.kubernetes.io/managed-by: ibm-cpd-model-gateway-operator

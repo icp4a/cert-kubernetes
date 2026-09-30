@@ -275,8 +275,9 @@ function check_vault_secret_value() {
 # For 26.0.0, we only support Hashicorp Vault
 # Default is No
 function ask_enable_vault() {
+    printf "\n"
     while true; do
-        printf "\x1B[1mDo you want to enable external secret management (Hashicorp Vault) integration for your custom secrets (Yes/No, default: No)? \x1B[0m"
+        printf "\x1B[1mDo you want to enable external secret management (Hashicorp Vault) integration for your custom secrets (Yes/No, default: No)? \x1B[0m\n"
         read -erp "" enable_vault
 
         case $(tr '[:upper:]' '[:lower:]' <<< "$enable_vault") in
@@ -494,7 +495,7 @@ metadata:
   labels:
     cp4ba.ibm.com/backup-type: mandatory
   annotations:
-    cp4ba.ibm.com/owned-by: "ibm-cp4a-operator,ibm-content-operator,icp4a-foundation-operator,ibm-insights-engine-operator,ibm-dpe-operator,ibm-odm-operator,ibm-cp4a-wfps-operator,ibm-pfs-operator,ibm-workflow-operator"
+    cp4ba.ibm.com/owned-by: "ibm-cp4a-operator,ibm-content-operator,icp4a-foundation-operator,ibm-insights-engine-operator,ibm-dpe-operator,ibm-odm-operator,ibm-cp4a-wfps-operator,ibm-pfs-operator,ibm-workflow-operator,ibm-ccx-ai-services-operator"
     cp4ba.ibm.com/secret-store-type: "tls"
 spec:
   provider: vault
@@ -4339,7 +4340,7 @@ function generate_multi_provider_vault_template() {
             
             # Generate unique key by concatenating provider_id with sanitized model_id
             # Remove special characters (/, -, ., etc.) from model_id for the key
-            local sanitized_model_id=$(echo "$model_id" | tr -d '/-.')
+            local sanitized_model_id=$(echo "$model_id" | tr -d '/.-')
             local llm_key="${provider_id}_${sanitized_model_id}"
             
             # Track default model

@@ -251,9 +251,9 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 CP4BA_RELEASE_BASE="26.0.0"
 # CP4BA_RELEASE_BASE_MAJOR_VERSION is used in certain checks where we used to hardcode to see if a upgrade is not ifix to ifix,change this only for major release
 CP4BA_RELEASE_BASE_MAJOR_VERSION="26.0"
-CP4BA_PATCH_VERSION="IF002"
+CP4BA_PATCH_VERSION="IF003"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v26.0.2"
+CP4BA_CSV_VERSION="v26.0.3"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
 CP4BA_CHANNEL_VERSION="v26.0"
 # Storage Validation prerequisites versions
@@ -261,7 +261,7 @@ STORAGE_MINIMUM_ANSIBLE_VERSION="2.15"
 STORAGE_K8S_CORE_VERSION="6.2.0"
 
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.19.2"
+CS_OPERATOR_VERSION="v4.19.3"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
 CS_CHANNEL_VERSION="v4.19"
 # CS CHANNEL VERSION that is used in the KC
@@ -271,13 +271,13 @@ CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
 CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-19-0"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v6.10.5"
+ZEN_OPERATOR_VERSION="v6.10.7"
 # BTS_CHANNEL_VERSION is for for BTS, need to update for each IFIX
 BTS_CHANNEL_VERSION="v3.35"
-# BTS_CATALOG_VERSION is for BTS 3.35.13.
+# BTS_CATALOG_VERSION is for BTS 3.35.14.
 BTS_CATALOG_VERSION="ibm-bts-operator-catalog-v3-35"
 # REQUIREDVER_BTS is for checking bts operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_BTS="3.35.13"
+REQUIREDVER_BTS="3.35.14"
 # REQUIREDVER_POSTGRESQL is for checking postgresql operator upgrade status before run removal_iaf.sh, need to update for each IFIX
 REQUIREDVER_POSTGRESQL="1.28.4"
 # EVENTS_OPERATOR_VERSION is for checking IBM Events operator upgrade status, need to update for each IFIX
@@ -1101,7 +1101,7 @@ function generate_truststore_password() {
 # For https://jsw.ibm.com/browse/DBACLD-201592
 function prompt_to_continue() {
     while true; do
-        printf "\x1B[1mPlease confirm that you are ready to continue.  Enter Yes to continue or No to exit (Yes/No, default: No): \x1B[0m"
+        printf "\x1B[1mPlease confirm that you are ready to continue.  Enter Yes to continue or No to exit (Yes/No, default: No): \x1B[0m\n"
         read -erp "" ans
         ans=$(echo "$ans" | tr '[:upper:]' '[:lower:]')
         if [ -z "$ans" ]; then
@@ -2622,6 +2622,8 @@ function patch_strimzi_podset(){
     if [[ -z "$events_operator_subscription_name" ]]; then
         echo "Subscription matching 'ibm-events-operator' not found, skipping"
         strimzi_patched=true
+        #DBACLD-259982: Set DISPLAY_MANUAL_PATCH_STEPS so that the displayManualStrimziPodsetPatchingMessage function won't be trigger
+        DISPLAY_MANUAL_PATCH_STEPS=false
         return
     fi
 
@@ -3179,7 +3181,7 @@ function patch_ums_subscription() {
 #
 # Registry lookup order inside the dockerconfigjson:
 #   1. cp.icr.io
-#   2. cp.stg.icr.io
+#   2. preprod.icr.io
 #
 # The function reads the registry "auth" field, decodes it from base64,
 # and extracts the password/token portion from the "username:password" value.
@@ -3238,14 +3240,14 @@ function get_entitlement_key_from_secret() {
     # Step 4: Try cp.icr.io first by reading the auth field.
     auth_value=$(printf '%s' "$dockerconfigjson" | ${YQ_CMD} eval '.auths."cp.icr.io".auth' -)
 
-    # Step 5: If cp.icr.io is not present, try cp.stg.icr.io.
+    # Step 5: If cp.icr.io is not present, try preprod.icr.io.
     if [[ -z "$auth_value" ]] || [[ "$auth_value" == "null" ]]; then
-        auth_value=$(printf '%s' "$dockerconfigjson" | ${YQ_CMD} eval '.auths."cp.stg.icr.io".auth' -)
+        auth_value=$(printf '%s' "$dockerconfigjson" | ${YQ_CMD} eval '.auths."preprod.icr.io".auth' -)
     fi
 
     # Step 6: If both registry auth entries are missing, handle it the same as empty password.
     if [[ -z "$auth_value" ]] || [[ "$auth_value" == "null" ]]; then
-        error "Failed to extract password from dockerconfigjson (tried cp.icr.io and cp.stg.icr.io)"
+        error "Failed to extract password from dockerconfigjson (tried cp.icr.io and preprod.icr.io)"
         return 1
     fi
 

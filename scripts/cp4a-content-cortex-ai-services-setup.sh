@@ -257,6 +257,38 @@ function update_content_cortex_ai_services_cr_tmp_file() {
         ${YQ_CMD} -i ".spec.shared_configuration.storage_configuration.sc_block_storage_classname = \"$CP4BA_BLOCK_STORAGE_CLASS_NAME\" | .spec.shared_configuration.storage_configuration.sc_block_storage_classname style=\"double\"" "$CONTENT_CORTEX_AI_SERVICES_PATTERN_FILE_TMP"
     fi
 
+    # DBACLD-255840: Propagate the custom root CA secret name from the user profile property file.
+    # The CR template hardcodes "icp4a-root-ca"; when the user has configured a different name
+    # (CP4BA.ROOT_CA_SECRET), overwrite it so the CCXAIServices operator mounts the correct secret.
+    # The USER_PROFILE_PROPERTY_FILE guard ensures a graceful no-op when the file is absent
+    # (e.g. standalone generate mode before cp4a-prerequisites.sh has been run).
+    if [[ -f "${USER_PROFILE_PROPERTY_FILE}" ]]; then
+        local ai_root_ca_secret
+        ai_root_ca_secret="$(prop_user_profile_property_file CP4BA.ROOT_CA_SECRET 2>/dev/null || echo '')"
+        ai_root_ca_secret=$(sed -e 's/^"//' -e 's/"$//' <<<"$ai_root_ca_secret")
+        if [[ -n "$ai_root_ca_secret" && "$ai_root_ca_secret" != "<Optional>" ]]; then
+            ${YQ_CMD} -i ".spec.shared_configuration.root_ca_secret = \"${ai_root_ca_secret}\"" \
+                "$CONTENT_CORTEX_AI_SERVICES_PATTERN_FILE_TMP"
+        fi
+    fi
+
+    # DBACLD-255840: Propagate the Vault external-secret-store flag from the user profile property file.
+    # The CR template hardcodes enable_external_secret_store: false; match the setting used by
+    # cp4a-deployment.sh for the main CP4BA CR so both CRs reflect the same Vault posture.
+    # The USER_PROFILE_PROPERTY_FILE guard ensures a graceful no-op when the file is absent.
+    if [[ -f "${USER_PROFILE_PROPERTY_FILE}" ]]; then
+        local ai_vault_enabled
+        ai_vault_enabled="$(prop_user_profile_property_file CP4BA.ENABLE_EXTERNAL_VAULT_INTEGRATION 2>/dev/null || echo 'false')"
+        ai_vault_enabled=$(echo "$ai_vault_enabled" | tr '[:upper:]' '[:lower:]' | sed -e 's/^"//' -e 's/"$//')
+        if [[ "$ai_vault_enabled" == "true" ]]; then
+            ${YQ_CMD} -i ".spec.shared_configuration.sc_vault_configuration.enable_external_secret_store = true" \
+                "$CONTENT_CORTEX_AI_SERVICES_PATTERN_FILE_TMP"
+        else
+            ${YQ_CMD} -i ".spec.shared_configuration.sc_vault_configuration.enable_external_secret_store = false" \
+                "$CONTENT_CORTEX_AI_SERVICES_PATTERN_FILE_TMP"
+        fi
+    fi
+
     return 0
 }
 
@@ -329,6 +361,8 @@ function save_content_cortex_ai_services_cr_final_file() {
 #      - Redis enablement
 #      - Network policies
 #      - Instana monitoring
+#      - root_ca_secret (from CP4BA.ROOT_CA_SECRET in user profile, if present)
+#      - sc_vault_configuration.enable_external_secret_store (from CP4BA.ENABLE_EXTERNAL_VAULT_INTEGRATION)
 #   5. Save completed CR to final output location
 #
 # Global Variables Used/Modified:
@@ -338,6 +372,11 @@ function save_content_cortex_ai_services_cr_final_file() {
 #   - CP4BA_BLOCK_STORAGE_CLASS_NAME: Block storage class (input/output)
 #   - CP4BA_ENABLE_GENERATE_SAMPLE_NETWORK_POLICIES: Network policies flag (input/output)
 #   - CP4BA_ENABLE_INSTANA_MONITORING: Instana monitoring flag (input/output)
+#   - USER_PROFILE_PROPERTY_FILE: Path to cp4ba_user_profile.property (read-only, optional)
+#     When present, the following properties are read to keep the AI services CR consistent
+#     with the main CP4BA CR (DBACLD-255840):
+#       * CP4BA.ROOT_CA_SECRET → spec.shared_configuration.root_ca_secret
+#       * CP4BA.ENABLE_EXTERNAL_VAULT_INTEGRATION → spec.shared_configuration.sc_vault_configuration.enable_external_secret_store
 #
 # Generated CR Structure:
 #   apiVersion: icp4a.ibm.com/v1

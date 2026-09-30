@@ -26,7 +26,7 @@ source ${SCRIPTS_DIR}/helper/common.sh
 CUR_DIR="$ORIGINAL_CUR_DIR"
 
 # Default values
-MODEL_GATEWAY_VERSION="13.0.5"
+MODEL_GATEWAY_VERSION="13.0.6"
 HELM_CHART_PATH="${PARENT_DIR}/descriptors/CP4BA/helm-charts"
 OPERATOR_NAMESPACE=""
 INSTANCE_NAMESPACE=""
@@ -1014,7 +1014,11 @@ function create_postgres_secret_from_property() {
     [ -z "$pg_host" ] && missing_fields+=("MODEL_GATEWAY_POSTGRES_HOST")
     [ -z "$pg_port" ] && missing_fields+=("MODEL_GATEWAY_POSTGRES_PORT")
     [ -z "$pg_username" ] && missing_fields+=("MODEL_GATEWAY_POSTGRES_USERNAME")
-    [ -z "$pg_password" ] && missing_fields+=("MODEL_GATEWAY_POSTGRES_PASSWORD")
+    # Password is optional when client certificate authentication is used
+    # (server may authenticate via the certificate alone, pg_hba.conf: cert)
+    if [[ "$pg_use_client_cert" != "true" && -z "$pg_password" ]]; then
+        missing_fields+=("MODEL_GATEWAY_POSTGRES_PASSWORD")
+    fi
     [ -z "$pg_dbname" ] && missing_fields+=("MODEL_GATEWAY_POSTGRES_DBNAME")
     
     if [ ${#missing_fields[@]} -gt 0 ]; then
@@ -1124,27 +1128,28 @@ data:
   host: ${host_b64}
   port: ${port_b64}
   username: ${username_b64}
-  password: ${password_b64}
+  password: "${password_b64}"
   dbname: ${dbname_b64}
   parameters: ${parameters_b64}
 EOF
-    
+    local yaml_rc=$?
+
     # Add certificate data if present
     if [ -n "$ca_cert_data" ]; then
-        echo "  ca.crt: ${ca_cert_data}" >> "$secret_file"
+        echo "  ca.crt: ${ca_cert_data}" >> "$secret_file" || yaml_rc=1
     fi
     
     # Add client certificate data if present
     if [ -n "$client_cert_data" ]; then
-        echo "  client.crt: ${client_cert_data}" >> "$secret_file"
+        echo "  client.crt: ${client_cert_data}" >> "$secret_file" || yaml_rc=1
     fi
     
     # Add client key data if present
     if [ -n "$client_key_data" ]; then
-        echo "  client.key: ${client_key_data}" >> "$secret_file"
+        echo "  client.key: ${client_key_data}" >> "$secret_file" || yaml_rc=1
     fi
     
-    if [ $? -eq 0 ]; then
+    if [ $yaml_rc -eq 0 ]; then
         success "External PostgreSQL secret YAML generated: $secret_file"
         info "  Host: $pg_host"
         info "  Port: $pg_port"
@@ -1216,10 +1221,18 @@ function check_external_postgres_secret() {
         fi
     fi
     
-    # Validate required keys
-    local required_keys=("host" "port" "username" "password" "dbname" "parameters")
+    # Validate required keys; decode the parameters value from the secret to determine
+    # whether client certificate auth is active (sslcert= is only present when it is).
+    # Password is optional when client cert auth is used.
+    local params
+    params=$(${CLI_CMD} get secret model-gateway-postgres-external-secret \
+        -n "$namespace" -o jsonpath="{.data.parameters}" 2>/dev/null | base64 --decode 2>/dev/null)
+    local required_keys=("host" "port" "username" "dbname" "parameters")
+    if [[ "$params" != *"sslcert="* ]]; then
+        required_keys+=("password")
+    fi
     local missing_keys=()
-    
+
     for key in "${required_keys[@]}"; do
         if ! ${CLI_CMD} get secret model-gateway-postgres-external-secret -n "$namespace" -o jsonpath="{.data.$key}" &> /dev/null; then
             missing_keys+=("$key")

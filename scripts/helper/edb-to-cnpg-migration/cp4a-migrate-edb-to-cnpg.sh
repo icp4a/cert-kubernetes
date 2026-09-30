@@ -80,8 +80,9 @@ SERVICE_DELETE_TIMEOUT="${SERVICE_DELETE_TIMEOUT:-60}"
 
 # CR Kind to Component Mapping
 # Maps top-level CR kinds to their associated component CR kinds for deployment scaling
-ICP4ACLUSTER_CR_KIND_MAPPING_LIST=("ICP4ACluster" "Content" "InsightsEngine" "ICP4AAutomationDecisionService" "WFPSRuntime" "WorkflowRuntime" "ICP4ADocumentProcessingEngine")
+ICP4ACLUSTER_CR_KIND_MAPPING_LIST=("ICP4ACluster" "Content" "InsightsEngine" "ICP4AAutomationDecisionService" "WFPSRuntime" "WorkflowRuntime" "ICP4ADocumentProcessingEngine" "OperationalDecisionManager")
 CONTENT_CR_KIND_MAPPING_LIST=("Content" "Foundation" "InsightsEngine")
+ODM_CR_KIND_MAPPING_LIST=("OperationalDecisionManager")
 
 ################################################################################
 # Helper Functions
@@ -865,9 +866,13 @@ function scale_down_applications() {
         cr_kinds_to_check=("${CONTENT_CR_KIND_MAPPING_LIST[@]}")
         info "Top-level CR kind: Content"
         info "Will scale down deployments owned by: ${CONTENT_CR_KIND_MAPPING_LIST[*]}"
+    elif [[ "$cr_kind_lower" == "operationaldecisionmanager" || "$cr_kind_lower" == "odm" ]]; then
+        cr_kinds_to_check=("${ODM_CR_KIND_MAPPING_LIST[@]}")
+        info "Top-level CR kind: OperationalDecisionManager"
+        info "Will scale down deployments owned by: ${ODM_CR_KIND_MAPPING_LIST[*]}"
     else
         error "Unknown CR kind: $CR_KIND"
-        error "Expected 'ICP4ACluster' or 'Content'"
+        error "Expected 'ICP4ACluster', 'Content', or 'OperationalDecisionManager'"
         exit 1
     fi
     
