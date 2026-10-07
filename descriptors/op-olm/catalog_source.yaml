@@ -33,7 +33,7 @@ spec:
   publisher: IBM
   sourceType: grpc
   image: >-
-    icr.io/cpopen/ibm-opencontent-flink-operator-catalog@sha256:9f673bd4ab11a5734cdf79bf18c7c5bcb52ded1c7faf9e24e3355f3f6e4edb97
+    icr.io/cpopen/ibm-opencontent-flink-operator-catalog@sha256:d3970f055e5bfbe77cd4fbfa9da86bb39597b9474c19fd0a3190cb568c7534af
   priority: 100
   grpcPodConfig:
     securityContextConfig: restricted
@@ -93,7 +93,7 @@ spec:
   displayName: IBM CS Install Operators
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-cs-install-catalog@sha256:cdc2139db36d5f75ff51b7f5408f0d228ed8bf779f0091d10aca9c711ae6b815
+  image: icr.io/cpopen/ibm-cs-install-catalog@sha256:56405e6eceab8851a1ef4e123283102c60ec4a0cf7e3760eb4737bd9f1552d2c
   priority: 100
   grpcPodConfig:
     securityContextConfig: restricted
@@ -126,7 +126,7 @@ spec:
   displayName: IBM IAM Operator Catalog
   publisher: IBM
   sourceType: grpc
-  image: icr.io/cpopen/ibm-iam-operator-catalog@sha256:7faea5949f352c8f48e33fb992664645f2bcfa53882732fa2535f2c75a1e2111
+  image: icr.io/cpopen/ibm-iam-operator-catalog@sha256:cc6014641c67668e77d7a512ae02a0f2521f78ba406f86c17f340f13ea8c836a
   priority: 100
   grpcPodConfig:
     securityContextConfig: restricted
