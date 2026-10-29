@@ -165,7 +165,7 @@ getConfirmation ()
 
 
 	while true; do
-    		read -p "Type YES to proceed with deletion or return to exit ? " yn
+    		read -erp "Type YES to proceed with deletion or return to exit ? " yn
     		case $yn in
         		YES ) break;;
         		* ) exit;;

@@ -24,7 +24,7 @@ prompt_for_storage_class() {
     local storage_class=""
     # WHY: Loop until user provides a valid non-empty storage class name
     while [[ -z "$storage_class" ]]; do
-        read -p "Please provide block storage class to be used for ephemeral volumes for the operators: " storage_class
+        read -erp "Please provide block storage class to be used for ephemeral volumes for the operators: " storage_class
         if [[ -z "$storage_class" ]]; then
             error "Storage class name cannot be empty. Please try again." >&2
         fi

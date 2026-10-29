@@ -170,7 +170,7 @@ function prompt_license(){
             prompt_message="Do you accept the IBM Cloud Pak for Business Automation license (Yes/No, default: No): "
         fi
 
-        printf "\x1B[1m${prompt_message}\x1B[0m"
+        printf "\x1B[1m${prompt_message}\x1B[0m\n"
 
         read -erp "" ans
         case "$ans" in

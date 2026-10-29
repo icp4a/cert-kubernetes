@@ -259,7 +259,7 @@ function cleanup_storage_resources() {
 
     printf '%b\n' "\n${YELLOW}${BOLD}Next step: Cleaning up resources created for storage validation${RESET}"
     printf '%b\n' "${YELLOW}Note: This will remove specific resources created for Storage Validation in the namespace '$ns'.${RESET}"
-    read -p "Type 'yes' or 'y' to proceed, anything else to cancel: " confirm
+    read -erp "Type 'yes' or 'y' to proceed, anything else to cancel: " confirm
 
     if [[ "$confirm" =~ ^([yY]|[yY][eE][sS])$ ]]; then
         printf '%b\n' "\n${WHITE}${BOLD}Cleaning up Storage Validation resources in namespace: $ns${RESET}"
@@ -503,7 +503,7 @@ function run_storage_performance() {
     cleanup_storage_performance_resources() {
         printf '%b\n' "\n\033[1mNext step: Cleaning up resources created for storage performance validation\033[0m"
         printf '%b\n' "Note: This will remove all resources created for storage performance validation in the namespace '$STORAGE_NS'.\033[0m"
-        read -p "Type 'yes' or 'y' to proceed, anything else to cancel: " confirm
+        read -erp "Type 'yes' or 'y' to proceed, anything else to cancel: " confirm
 
         if [[ "$confirm" =~ ^([yY]|[yY][eE][sS])$ ]]; then
             printf '%b\n' "\n\033[1;37mCleaning up storage performance validation resources in namespace: $STORAGE_NS\033[0m"

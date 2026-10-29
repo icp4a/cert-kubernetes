@@ -416,7 +416,8 @@ function update_license() {
             echo
 
 
-            read -r -p "Enter the number corresponding to the license of your choice: " choice
+            printf "Enter the number corresponding to the license of your choice: \n"
+            read -erp "" choice
 
             # Map the numeric user choice to the actual FNCM license value.
             case "$choice" in

@@ -95,8 +95,8 @@ confirm_action() {
     return 0
   fi
   
-  printf "${WARNING}Are you sure you want to %s all %s in namespace %s? [y/N] (Default: N): ${RESET}" "$action" "$resource_type" "$namespace"
-  read -r response
+  printf "${WARNING}Are you sure you want to %s all %s in namespace %s? [y/N] (Default: N): ${RESET}\n" "$action" "$resource_type" "$namespace"
+  read -erp "" response
   
   case "$response" in
     [yY][eE][sS]|[yY])
@@ -472,7 +472,7 @@ handle_running_jobs() {
     print_message "info" "1) Delete all active jobs" "    "
     print_message "info" "2) Scale down jobs to 0 parallelism (may not work for all jobs)" "    "
     print_message "info" "3) Skip jobs" "    "
-    read -p "  Enter choice [1-3]: " JOB_CHOICE
+    read -erp "  Enter choice [1-3]: " JOB_CHOICE
   fi
   
   case $JOB_CHOICE in
@@ -621,8 +621,8 @@ main() {
   
   # Skip main confirmation in silent mode
   if [ "$SILENT_MODE" != true ]; then
-    printf "\n${WARNING}Do you want to continue with the scale ${operation_type} process? [y/N] (Default: N): ${RESET}"
-    read -r response
+    printf "\n${WARNING}Do you want to continue with the scale ${operation_type} process? [y/N] (Default: N): ${RESET}\n"
+    read -erp "" response
     if [[ ! "$response" =~ ^[yY][eE][sS]|[yY]$ ]]; then
       print_message "info" "Scale ${operation_type} operation cancelled by user."
       exit 0

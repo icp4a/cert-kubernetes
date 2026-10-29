@@ -17,7 +17,7 @@ function download_case_files() {
     local script_mode=$1
     # Prompt for confirmation
     info "The script will start the execution of downloading case files for CP4BA $CASE_VERSION case package"
-    read -p "Do you want to proceed? (yes/no) [default: yes]: " response
+    read -erp "Do you want to proceed? (yes/no) [default: yes]: " response
 
     # Set default response if empty
     response=$(echo "$response" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
@@ -64,7 +64,7 @@ function create_image_filter(){
     filter_capabalities="no"
     loop_attempts=0
     while true;do
-        read -p " Do you want to mirror images from only certain CP4BA capabalities (yes/no) (Default: no) " filter_capabalities
+        read -erp " Do you want to mirror images from only certain CP4BA capabalities (yes/no) (Default: no) " filter_capabalities
         if [ -z "$filter_capabalities" ]; then
             filter_capabalities="no"
         fi
@@ -103,7 +103,7 @@ function create_image_filter(){
 function generate_mirror_manifests(){
     # Prompt for confirmation
     info "The script will start generating mirror manifests for CP4BA $CASE_VERSION case package"
-    read -p "Do you want to proceed? (yes/no) [default: yes]: " response
+    read -erp "Do you want to proceed? (yes/no) [default: yes]: " response
     printf "\n"
     oc ibm-pak config mirror-tools --enabled oc-mirror
     printf "\n"
@@ -120,18 +120,44 @@ function generate_mirror_manifests(){
 
     info "Generating mirror manifests for CP4BA $CASE_VERSION case package ....."
     printf "\n"
-    
+
+    local manifest_exit_code
+    local manifest_tmp_log
+    manifest_tmp_log=$(mktemp)
     if [[ -z "$IMAGE_MIRROR_FILTER" ]]; then
         echo "Command executing -> oc ibm-pak generate mirror-manifests $CASE_NAME $TARGET_REGISTRY --version $CASE_VERSION"
         printf "\n"
         echo "[NOTE]: The mirror manifest generation step can take up to 5 minutes. The script is currently generating mirror manifests and will not display any logs during this time.."
         printf "\n"
-        oc ibm-pak generate mirror-manifests $CASE_NAME $TARGET_REGISTRY --version $CASE_VERSION > /dev/null 2>&1
+        oc ibm-pak generate mirror-manifests $CASE_NAME $TARGET_REGISTRY --version $CASE_VERSION > "$manifest_tmp_log" 2>&1
+        manifest_exit_code=$?
+        if [[ $manifest_exit_code -ne 0 ]]; then
+            error "Failed to generate mirror manifests for $CASE_NAME $CASE_VERSION (exit code: $manifest_exit_code). Error output:"
+            cat "$manifest_tmp_log"
+            rm -f "$manifest_tmp_log"
+            exit 1
+        fi
     else
         echo "Command executing -> oc ibm-pak generate mirror-manifests $CASE_NAME $TARGET_REGISTRY --version $CASE_VERSION --filter $IMAGE_MIRROR_FILTER"
         printf "\n"
-        oc ibm-pak generate mirror-manifests $CASE_NAME $TARGET_REGISTRY --version $CASE_VERSION --filter $IMAGE_MIRROR_FILTER > /dev/null 2>&1
+        oc ibm-pak generate mirror-manifests $CASE_NAME $TARGET_REGISTRY --version $CASE_VERSION --filter $IMAGE_MIRROR_FILTER > "$manifest_tmp_log" 2>&1
+        manifest_exit_code=$?
+        if [[ $manifest_exit_code -ne 0 ]]; then
+            error "Failed to generate mirror manifests for $CASE_NAME $CASE_VERSION (exit code: $manifest_exit_code). Error output:"
+            cat "$manifest_tmp_log"
+            rm -f "$manifest_tmp_log"
+            exit 1
+        fi
     fi
+    rm -f "$manifest_tmp_log"
+
+    # Verify the expected output file was actually produced before declaring success
+    local expected_config="$ibm_pak_home/.ibm-pak/data/mirror/$CASE_NAME/$CASE_VERSION/image-set-config.yaml"
+    if [[ ! -f "$expected_config" ]]; then
+        error "Mirror manifest generation reported success but the expected output file was not found: $expected_config. The script will now exit."
+        exit 1
+    fi
+
     success "The mirror manifest files have been generated successfully\n"
 }
 
@@ -148,7 +174,7 @@ function process_image_set_config_file(){
         printf "\n"
         echo_bold "${YELLOW_TEXT}[WARNING]${RESET_TEXT} Mirroring images from all channels requires large storage space in the private registry.Mirroring from the latest channel is the recommended approach."
         printf "\n"
-        read -p " Do you want to mirror images from only the latest channel (yes/no) (Default: yes) " latest_version
+        read -erp " Do you want to mirror images from only the latest channel (yes/no) (Default: yes) " latest_version
         latest_version=$(echo "$latest_version" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
         if [ -z "$latest_version" ]; then
             latest_version="yes"
@@ -192,7 +218,7 @@ function process_image_set_config_file(){
 function mirror_images(){
     # Prompt for confirmation
     info "The script will start mirroring the images for CP4BA $CASE_VERSION case package"
-    read -p "Do you want to proceed? (yes/no) [default: yes]: " response
+    read -erp "Do you want to proceed? (yes/no) [default: yes]: " response
 
     # Set default response if empty
     response=$(echo "$response" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
@@ -208,7 +234,7 @@ function mirror_images(){
     info "If you are running the command on a remote system, you can run the command in the background with the nohup POSIX command so that it does not stop if the user logs out. The following command starts the mirroring process in the background and writes the log to a $case_name-$case_version.txt file."
     #echo " - nohup oc mirror --config $ibm_pak_home/.ibm-pak/data/mirror/$CASE_NAME/$CASE_VERSION/image-set-config.yaml docker://$PRIVATE_REGISTRY_MIRRORING_PATH --dest-skip-tls --max-per-registry=6 > $AIRGAP_FOLDER_MIRRORING_LOGS/$case_name-$case_version.txt 2>&1 &"
     printf "\n"
-    read -p "Do you want the script to use nohup to execute the mirroring of images? (yes/no) [default: yes]: " response
+    read -erp "Do you want the script to use nohup to execute the mirroring of images? (yes/no) [default: yes]: " response
     # Set default response if empty
     response=$(echo "$response" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
     if [ -z "$response" ]; then
@@ -234,6 +260,11 @@ function mirror_images(){
         echo "Command executing -> ${oc_mirror_cmd[*]}"
         printf "\n"
         "${oc_mirror_cmd[@]}"
+        local mirror_exit_code=$?
+        if [[ $mirror_exit_code -ne 0 ]]; then
+            error "Mirroring of images for version $case_version of $case_name case failed (exit code: $mirror_exit_code). The script will now exit."
+            exit 1
+        fi
     else
         info "Starting with the image mirroring process ... "
         printf "\n"

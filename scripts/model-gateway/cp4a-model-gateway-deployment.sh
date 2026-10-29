@@ -45,6 +45,7 @@ REDIS_OPERATOR_INSTALL_PLAN="Automatic"
 REDIS_OPERATOR_PACKAGE="ibm-redis-cp"
 REDIS_OPERATOR_SOURCE="ibm-redis-cp-operator-catalog"
 HELM_LIST_ALL_FLAG=""
+AIRGAP_INSTALL="no"
 
 # TLS Certificate Configuration
 USE_CUSTOM_TLS="false"
@@ -90,6 +91,11 @@ function show_help() {
     printf "  -l, --license                 License type: Enterprise|Standard (default: Enterprise)\n"
     printf "\n"
     printf "  --accept-license              Accept license agreement (required for deployment)\n"
+    printf "\n"
+    printf "  --airgap-deployment           Set offline/airgap deployment mode\n"
+    printf "                                Skips ibm-entitlement-key check (not required in airgap envs)\n"
+    printf "                                If not provided, airgap status is read from or written to\n"
+    printf "                                the ibm-cp4ba-common-config configmap\n"
     printf "\n"
     printf "  --lite-install                Use SQLite instead of PostgreSQL (dev/test only)\n"
     printf "\n"
@@ -184,12 +190,11 @@ function prompt_yes_no() {
     
     while true; do
         if [ "$default" = "y" ]; then
-            printf "%s [Y/n]: " "$prompt"
+            printf "%s [Y/n]: \n" "$prompt"
         else
-            printf "%s [y/N]: " "$prompt"
+            printf "%s [y/N]: \n" "$prompt"
         fi
-        
-        read -r response
+        read -erp "" response
         response=${response:-$default}
         
         case "$response" in
@@ -212,12 +217,11 @@ function prompt_input() {
     local value
     
     if [ -n "$default" ]; then
-        printf "%s [%s]: " "$prompt" "$default" >&2
+        printf "%s [%s]: \n" "$prompt" "$default" >&2
     else
-        printf "%s: " "$prompt" >&2
+        printf "%s: \n" "$prompt" >&2
     fi
-    
-    read -r value
+    read -erp "" value
     value=${value:-$default}
     echo "$value"
 }
@@ -298,7 +302,75 @@ function interactive_mode() {
         info "Assuming single namespace deployment"
         OPERATOR_NAMESPACE="$INSTANCE_NAMESPACE"
     fi
-    
+
+    # Determine airgap mode: --airgap-deployment flag > configmap value > interactive prompt
+    if [[ "$AIRGAP_INSTALL" == "yes" ]]; then
+        # Flag was passed on the command line; persist to configmap if available
+        info "Airgap mode set via --airgap-deployment flag"
+        if [ -n "$config_search_ns" ]; then
+            ${CLI_CMD} patch configmap "$config_map_name" -n "$config_search_ns" \
+                --type merge -p '{"data":{"airgap_install":"yes"}}' >&3 2>&3 \
+                && info "  Airgap mode saved to CP4BA configuration" \
+                || warning "  Failed to save airgap mode to CP4BA configuration"
+        fi
+    else
+        if [ -n "$config_search_ns" ]; then
+            local cm_airgap_val
+            cm_airgap_val=$(${CLI_CMD} get configmap "$config_map_name" -n "$config_search_ns" \
+                -o jsonpath='{.data.airgap_install}' 2>/dev/null)
+            if [[ -n "$cm_airgap_val" ]]; then
+                # Key already present in configmap — use stored value
+                AIRGAP_INSTALL="$cm_airgap_val"
+                info "Detected airgap mode from CP4BA configuration: $AIRGAP_INSTALL"
+            else
+                # Key missing — ask user and persist the answer
+                printf "\n"
+                COLUMNS=12
+                printf '%b\n' "${BOLD_TEXT}Is this an online or airgap/offline CP4BA deployment? ${RESET_TEXT}"
+                local _airgap_options=("Online" "Offline/Airgap")
+                PS3='Enter a valid option [1 to 2]: '
+                select _opt in "${_airgap_options[@]}"; do
+                    case $_opt in
+                        "Online")
+                            AIRGAP_INSTALL="no"
+                            break
+                            ;;
+                        "Offline/Airgap")
+                            AIRGAP_INSTALL="yes"
+                            break
+                            ;;
+                        *) echo "Invalid option $REPLY";;
+                    esac
+                done
+                ${CLI_CMD} patch configmap "$config_map_name" -n "$config_search_ns" \
+                    --type merge -p "{\"data\":{\"airgap_install\":\"${AIRGAP_INSTALL}\"}}" >&3 2>&3 \
+                    && info "Airgap mode saved to CP4BA configuration: $AIRGAP_INSTALL" \
+                    || warning "Failed to save airgap mode to CP4BA configuration"
+            fi
+        else
+            # No configmap available — prompt user, but cannot persist
+            printf "\n"
+            COLUMNS=12
+            printf '%b\n' "${BOLD_TEXT}Is this an online or airgap/offline CP4BA deployment? ${RESET_TEXT}"
+            local _airgap_options=("Online" "Offline/Airgap")
+            PS3='Enter a valid option [1 to 2]: '
+            select _opt in "${_airgap_options[@]}"; do
+                case $_opt in
+                    "Online")
+                        AIRGAP_INSTALL="no"
+                        break
+                        ;;
+                    "Offline/Airgap")
+                        AIRGAP_INSTALL="yes"
+                        break
+                        ;;
+                    *) echo "Invalid option $REPLY";;
+                esac
+            done
+            warning "CP4BA configmap not found - airgap mode will not be persisted"
+        fi
+    fi
+
     success "Using operator namespace: $OPERATOR_NAMESPACE"
     success "Using instance namespace: $INSTANCE_NAMESPACE"
     printf "\n"
@@ -461,7 +533,8 @@ function interactive_mode() {
         
         local pg_choice=""
         while [[ ! "$pg_choice" =~ ^[12]$ ]]; do
-            read -p "$(echo -e "${COLOR_CYAN}Select PostgreSQL option (1 or 2): ${COLOR_RESET}")" pg_choice
+            printf "${COLOR_CYAN}Select PostgreSQL option (1 or 2): ${COLOR_RESET}\n"
+            read -erp "" pg_choice
         done
         
         if [ "$pg_choice" = "2" ]; then
@@ -742,10 +815,12 @@ function prompt_postgres_configuration() {
     local input_host=""
     while [ -z "$input_host" ]; do
         if [ -n "$pg_host" ]; then
-            read -p "$(echo -e "${COLOR_CYAN}Enter PostgreSQL hostname or IP address [$pg_host]: ${COLOR_RESET}")" input_host
+            printf "${COLOR_CYAN}Enter PostgreSQL hostname or IP address [$pg_host]: ${COLOR_RESET}\n"
+            read -erp "" input_host
             input_host=${input_host:-$pg_host}
         else
-            read -p "$(echo -e "${COLOR_CYAN}Enter PostgreSQL hostname or IP address: ${COLOR_RESET}")" input_host
+            printf "${COLOR_CYAN}Enter PostgreSQL hostname or IP address: ${COLOR_RESET}\n"
+            read -erp "" input_host
         fi
         if [ -z "$input_host" ]; then
             warning "PostgreSQL hostname is required"
@@ -754,17 +829,20 @@ function prompt_postgres_configuration() {
     pg_host="$input_host"
     
     # PostgreSQL Port
-    read -p "$(echo -e "${COLOR_CYAN}Enter PostgreSQL port [$pg_port]: ${COLOR_RESET}")" input_port
+    printf "${COLOR_CYAN}Enter PostgreSQL port [$pg_port]: ${COLOR_RESET}\n"
+    read -erp "" input_port
     pg_port=${input_port:-$pg_port}
     
     # PostgreSQL Username
     local input_username=""
     while [ -z "$input_username" ]; do
         if [ -n "$pg_username" ]; then
-            read -p "$(echo -e "${COLOR_CYAN}Enter PostgreSQL username [$pg_username]: ${COLOR_RESET}")" input_username
+            printf "${COLOR_CYAN}Enter PostgreSQL username [$pg_username]: ${COLOR_RESET}\n"
+            read -erp "" input_username
             input_username=${input_username:-$pg_username}
         else
-            read -p "$(echo -e "${COLOR_CYAN}Enter PostgreSQL username: ${COLOR_RESET}")" input_username
+            printf "${COLOR_CYAN}Enter PostgreSQL username: ${COLOR_RESET}\n"
+            read -erp "" input_username
         fi
         if [ -z "$input_username" ]; then
             warning "PostgreSQL username is required"
@@ -773,7 +851,8 @@ function prompt_postgres_configuration() {
     pg_username="$input_username"
     
     # PostgreSQL Database Name
-    read -p "$(echo -e "${COLOR_CYAN}Enter PostgreSQL database name [$pg_dbname]: ${COLOR_RESET}")" input_dbname
+    printf "${COLOR_CYAN}Enter PostgreSQL database name [$pg_dbname]: ${COLOR_RESET}\n"
+    read -erp "" input_dbname
     pg_dbname=${input_dbname:-$pg_dbname}
     
     # PostgreSQL SSL Mode
@@ -792,7 +871,8 @@ function prompt_postgres_configuration() {
         verify-full) ssl_default="4" ;;
     esac
     
-    read -p "$(echo -e "${COLOR_CYAN}Select SSL mode [$ssl_default]: ${COLOR_RESET}")" ssl_choice
+    printf "${COLOR_CYAN}Select SSL mode [$ssl_default]: ${COLOR_RESET}\n"
+    read -erp "" ssl_choice
     ssl_choice=${ssl_choice:-$ssl_default}
     
     case "$ssl_choice" in
@@ -807,7 +887,8 @@ function prompt_postgres_configuration() {
     if [[ "$pg_ssl_mode" == "verify-ca" || "$pg_ssl_mode" == "verify-full" ]]; then
         echo
         info "SSL mode '$pg_ssl_mode' requires a CA certificate."
-        read -p "$(echo -e "${COLOR_CYAN}Enter path to CA certificate [${cert_dir}/ca.crt]: ${COLOR_RESET}")" pg_ca_cert_path
+        printf "${COLOR_CYAN}Enter path to CA certificate [${cert_dir}/ca.crt]: ${COLOR_RESET}\n"
+        read -erp "" pg_ca_cert_path
         
         if [ -z "$pg_ca_cert_path" ]; then
             pg_ca_cert_path="${cert_dir}/ca.crt"
@@ -821,17 +902,20 @@ function prompt_postgres_configuration() {
     
     # Client Certificate Authentication
     echo
-    read -p "$(echo -e "${COLOR_CYAN}Does your PostgreSQL require client certificate authentication? (y/N): ${COLOR_RESET}")" use_client_cert
+    printf "${COLOR_CYAN}Does your PostgreSQL require client certificate authentication? (y/N): ${COLOR_RESET}\n"
+    read -erp "" use_client_cert
     if [[ "$use_client_cert" =~ ^[Yy]$ ]]; then
         pg_use_client_cert="true"
         
-        read -p "$(echo -e "${COLOR_CYAN}Enter path to client certificate [${cert_dir}/client.crt]: ${COLOR_RESET}")" pg_client_cert_path
+        printf "${COLOR_CYAN}Enter path to client certificate [${cert_dir}/client.crt]: ${COLOR_RESET}\n"
+        read -erp "" pg_client_cert_path
         if [ -z "$pg_client_cert_path" ]; then
             pg_client_cert_path="${cert_dir}/client.crt"
             info "Using default client certificate location: $pg_client_cert_path"
         fi
         
-        read -p "$(echo -e "${COLOR_CYAN}Enter path to client private key [${cert_dir}/client.key]: ${COLOR_RESET}")" pg_client_key_path
+        printf "${COLOR_CYAN}Enter path to client private key [${cert_dir}/client.key]: ${COLOR_RESET}\n"
+        read -erp "" pg_client_key_path
         if [ -z "$pg_client_key_path" ]; then
             pg_client_key_path="${cert_dir}/client.key"
             info "Using default client key location: $pg_client_key_path"
@@ -1398,7 +1482,8 @@ function prompt_tls_configuration() {
     
     local tls_option=""
     while [[ ! "$tls_option" =~ ^[12]$ ]]; do
-        read -p "$(echo -e "${COLOR_CYAN}Select option (1 or 2): ${COLOR_RESET}")" tls_option
+        printf "${COLOR_CYAN}Select option (1 or 2): ${COLOR_RESET}\n"
+        read -erp "" tls_option
     done
     
     if [ "$tls_option" = "1" ]; then
@@ -1420,7 +1505,8 @@ function prompt_existing_tls_secret() {
     
     local secret_name=""
     while [ -z "$secret_name" ]; do
-        read -p "$(echo -e "${COLOR_CYAN}Enter secret name: ${COLOR_RESET}")" secret_name
+        printf "${COLOR_CYAN}Enter secret name: ${COLOR_RESET}\n"
+        read -erp "" secret_name
         
         if [ -z "$secret_name" ]; then
             warning "Secret name cannot be empty"
@@ -1430,7 +1516,8 @@ function prompt_existing_tls_secret() {
         # Validate secret exists and has required keys
         if ! ${CLI_CMD} get secret "$secret_name" -n "$INSTANCE_NAMESPACE" &> /dev/null; then
             warning "Secret '$secret_name' not found in namespace: $INSTANCE_NAMESPACE"
-            read -p "$(echo -e "${COLOR_CYAN}Do you want to enter a different name? (y/n) [y]: ${COLOR_RESET}")" retry
+            printf "${COLOR_CYAN}Do you want to enter a different name? (y/n) [y]: ${COLOR_RESET}\n"
+            read -erp "" retry
             retry=${retry:-y}
             if [ "$retry" = "n" ]; then
                 error "Secret validation failed"
@@ -1446,7 +1533,8 @@ function prompt_existing_tls_secret() {
         
         if [ -z "$has_cert" ] || [ -z "$has_key" ]; then
             warning "Secret '$secret_name' does not contain required keys: tls.crt and tls.key"
-            read -p "$(echo -e "${COLOR_CYAN}Do you want to enter a different name? (y/n) [y]: ${COLOR_RESET}")" retry
+            printf "${COLOR_CYAN}Do you want to enter a different name? (y/n) [y]: ${COLOR_RESET}\n"
+            read -erp "" retry
             retry=${retry:-y}
             if [ "$retry" = "n" ]; then
                 error "Secret validation failed"
@@ -1484,7 +1572,8 @@ function prompt_generate_from_ca() {
     
     # Get CA secret name
     local ca_secret_name=""
-    read -p "$(echo -e "${COLOR_CYAN}Enter CP4BA root CA secret name [icp4a-root-ca]: ${COLOR_RESET}")" ca_secret_name
+    printf "${COLOR_CYAN}Enter CP4BA root CA secret name [icp4a-root-ca]: ${COLOR_RESET}\n"
+    read -erp "" ca_secret_name
     ca_secret_name=${ca_secret_name:-"icp4a-root-ca"}
     
     local cert_dir="${PARENT_DIR}/scripts/cp4ba-prerequisites/project/${INSTANCE_NAMESPACE}/propertyfile/cert/model-gateway"
@@ -1543,7 +1632,8 @@ function prompt_generate_from_ca() {
                 warning "Private key not found in directory"
                 # Prompt for key location
                 local key_path=""
-                read -p "$(echo -e "${COLOR_CYAN}Enter path to root CA private key file: ${COLOR_RESET}")" key_path
+                printf "${COLOR_CYAN}Enter path to root CA private key file: ${COLOR_RESET}\n"
+                read -erp "" key_path
                 
                 if [ ! -f "$key_path" ]; then
                     error "Private key file not found: $key_path"
@@ -1562,7 +1652,8 @@ function prompt_generate_from_ca() {
             
             # Prompt for certificate location
             local cert_path=""
-            read -p "$(echo -e "${COLOR_CYAN}Enter path to root CA certificate file: ${COLOR_RESET}")" cert_path
+            printf "${COLOR_CYAN}Enter path to root CA certificate file: ${COLOR_RESET}\n"
+            read -erp "" cert_path
             
             if [ ! -f "$cert_path" ]; then
                 error "Certificate file not found: $cert_path"
@@ -1578,7 +1669,8 @@ function prompt_generate_from_ca() {
             
             # Prompt for key location
             local key_path=""
-            read -p "$(echo -e "${COLOR_CYAN}Enter path to root CA private key file: ${COLOR_RESET}")" key_path
+            printf "${COLOR_CYAN}Enter path to root CA private key file: ${COLOR_RESET}\n"
+            read -erp "" key_path
             
             if [ ! -f "$key_path" ]; then
                 error "Private key file not found: $key_path"
@@ -1631,7 +1723,8 @@ function prompt_generate_from_ca() {
     
     # Get server certificate details
     local server_cn=""
-    read -p "$(echo -e "${COLOR_CYAN}Enter server Common Name (CN) [model-gateway-service.$INSTANCE_NAMESPACE.svc]: ${COLOR_RESET}")" server_cn
+    printf "${COLOR_CYAN}Enter server Common Name (CN) [model-gateway-service.$INSTANCE_NAMESPACE.svc]: ${COLOR_RESET}\n"
+    read -erp "" server_cn
     server_cn=${server_cn:-"model-gateway-service.$INSTANCE_NAMESPACE.svc"}
     
     TLS_CA_CERT_PATH="$ca_cert"
@@ -1699,7 +1792,8 @@ function prompt_additional_ca_secrets() {
     info "Each secret should contain a 'tls.crt' key with the CA certificate."
     echo
     
-    read -p "$(echo -e "${COLOR_YELLOW}Do you want to add additional CA secrets? (y/n) [n]: ${COLOR_RESET}")" add_ca_secrets
+    printf "${COLOR_YELLOW}Do you want to add additional CA secrets? (y/n) [n]: ${COLOR_RESET}\n"
+    read -erp "" add_ca_secrets
     add_ca_secrets=${add_ca_secrets:-n}
     
     if [[ ! "$add_ca_secrets" =~ ^[Yy]$ ]]; then
@@ -1714,7 +1808,8 @@ function prompt_additional_ca_secrets() {
     while [ "$continue_adding" = true ]; do
         echo
         local secret_name=""
-        read -p "$(echo -e "${COLOR_CYAN}Enter CA secret name: ${COLOR_RESET}")" secret_name
+        printf "${COLOR_CYAN}Enter CA secret name: ${COLOR_RESET}\n"
+        read -erp "" secret_name
         
         if [ -z "$secret_name" ]; then
             warning "Secret name cannot be empty"
@@ -1724,7 +1819,8 @@ function prompt_additional_ca_secrets() {
         # Validate secret exists
         if ! ${CLI_CMD} get secret "$secret_name" -n "$INSTANCE_NAMESPACE" &> /dev/null; then
             warning "Secret '$secret_name' not found in namespace: $INSTANCE_NAMESPACE"
-            read -p "$(echo -e "${COLOR_CYAN}Do you want to enter a different name? (y/n) [y]: ${COLOR_RESET}")" retry
+            printf "${COLOR_CYAN}Do you want to enter a different name? (y/n) [y]: ${COLOR_RESET}\n"
+            read -erp "" retry
             retry=${retry:-y}
             if [[ "$retry" =~ ^[Nn]$ ]]; then
                 continue
@@ -1737,7 +1833,8 @@ function prompt_additional_ca_secrets() {
         
         if [ -z "$has_cert" ]; then
             warning "Secret '$secret_name' does not contain 'tls.crt' key"
-            read -p "$(echo -e "${COLOR_CYAN}Do you want to enter a different name? (y/n) [y]: ${COLOR_RESET}")" retry
+            printf "${COLOR_CYAN}Do you want to enter a different name? (y/n) [y]: ${COLOR_RESET}\n"
+            read -erp "" retry
             retry=${retry:-y}
             if [[ "$retry" =~ ^[Nn]$ ]]; then
                 continue
@@ -1749,7 +1846,8 @@ function prompt_additional_ca_secrets() {
         ADDITIONAL_CA_SECRETS+=("$secret_name")
         
         echo
-        read -p "$(echo -e "${COLOR_YELLOW}Add another CA secret? (y/n) [n]: ${COLOR_RESET}")" add_another
+        printf "${COLOR_YELLOW}Add another CA secret? (y/n) [n]: ${COLOR_RESET}\n"
+        read -erp "" add_another
         add_another=${add_another:-n}
         if [[ ! "$add_another" =~ ^[Yy]$ ]]; then
             continue_adding=false
@@ -1849,7 +1947,8 @@ function create_tls_secret() {
     # Check if secret already exists
     if ${CLI_CMD} get secret "$TLS_SECRET_NAME" -n "$INSTANCE_NAMESPACE" &> /dev/null; then
         warning "Secret '$TLS_SECRET_NAME' already exists in namespace: $INSTANCE_NAMESPACE"
-        read -p "$(echo -e "${COLOR_CYAN}Do you want to replace it? (y/n) [n]: ${COLOR_RESET}")" replace
+        printf "${COLOR_CYAN}Do you want to replace it? (y/n) [n]: ${COLOR_RESET}\n"
+        read -erp "" replace
         replace=${replace:-n}
         
         if [ "$replace" = "y" ]; then
@@ -1997,7 +2096,8 @@ function configure_provider_credentials() {
         info "AWS Bedrock, Azure OpenAI, and more."
         echo
         
-        read -p "$(echo -e "${COLOR_YELLOW}Do you want to configure AI provider credentials? (y/n): ${COLOR_RESET}")" configure_providers
+        printf "${COLOR_YELLOW}Do you want to configure AI provider credentials? (y/n): ${COLOR_RESET}\n"
+        read -erp "" configure_providers
         
         if [[ ! "$configure_providers" =~ ^[Yy]$ ]]; then
             info "Skipping AI provider credentials configuration"
@@ -2048,7 +2148,8 @@ function configure_provider_credentials() {
         done
         echo
         
-        read -p "$(echo -e "${COLOR_YELLOW}Select provider number (1-${#provider_list[@]}): ${COLOR_RESET}")" provider_choice
+        printf "${COLOR_YELLOW}Select provider number (1-${#provider_list[@]}): ${COLOR_RESET}\n"
+        read -erp "" provider_choice
         
         if [[ ! "$provider_choice" =~ ^[0-9]+$ ]] || [ "$provider_choice" -lt 1 ] || [ "$provider_choice" -gt "${#provider_list[@]}" ]; then
             error "Invalid selection"
@@ -2061,7 +2162,8 @@ function configure_provider_credentials() {
         
         # Get credential name with default
         local default_cred_name="${selected_provider}-prod"
-        read -p "$(echo -e "${COLOR_YELLOW}Enter a name for this credential (default: ${default_cred_name}): ${COLOR_RESET}")" cred_name
+        printf "${COLOR_YELLOW}Enter a name for this credential (default: ${default_cred_name}): ${COLOR_RESET}\n"
+        read -erp "" cred_name
         cred_name=${cred_name:-$default_cred_name}
         
         # Collect fields for this provider
@@ -2120,7 +2222,8 @@ function configure_provider_credentials() {
                 read -s -p "$(echo -e "${COLOR_YELLOW}${prompt_text}${COLOR_RESET}")" field_value
                 echo
             else
-                read -p "$(echo -e "${COLOR_YELLOW}${prompt_text}${COLOR_RESET}")" field_value
+                printf "${COLOR_YELLOW}${prompt_text}${COLOR_RESET}\n"
+                read -erp "" field_value
             fi
             
             # Use default if no value provided
@@ -2164,12 +2267,14 @@ function configure_provider_credentials() {
         local -a models=()
         
         while [ "$add_models" = true ]; do
-            read -p "$(echo -e "${COLOR_YELLOW}  Model ID (e.g., gpt-4, claude-3-opus): ${COLOR_RESET}")" model_id
+            printf "${COLOR_YELLOW}  Model ID (e.g., gpt-4, claude-3-opus): ${COLOR_RESET}\n"
+            read -erp "" model_id
             if [ -z "$model_id" ]; then
                 break
             fi
             
-            read -p "$(echo -e "${COLOR_YELLOW}  Model alias (optional, press Enter to skip): ${COLOR_RESET}")" model_alias
+            printf "${COLOR_YELLOW}  Model alias (optional, press Enter to skip): ${COLOR_RESET}\n"
+            read -erp "" model_alias
             
             if [ -n "$model_alias" ]; then
                 models+=("$model_id:$model_alias:$cred_name")
@@ -2177,7 +2282,8 @@ function configure_provider_credentials() {
                 models+=("$model_id::$cred_name")
             fi
             
-            read -p "$(echo -e "${COLOR_YELLOW}  Add another model for this credential? (y/n): ${COLOR_RESET}")" add_another_model
+            printf "${COLOR_YELLOW}  Add another model for this credential? (y/n): ${COLOR_RESET}\n"
+            read -erp "" add_another_model
             if [[ ! "$add_another_model" =~ ^[Yy]$ ]]; then
                 add_models=false
             fi
@@ -2188,7 +2294,8 @@ function configure_provider_credentials() {
         
         credential_index=$((credential_index + 1))
         echo
-        read -p "$(echo -e "${COLOR_YELLOW}Add another provider credential? (y/n): ${COLOR_RESET}")" add_another
+        printf "${COLOR_YELLOW}Add another provider credential? (y/n): ${COLOR_RESET}\n"
+        read -erp "" add_another
         if [[ ! "$add_another" =~ ^[Yy]$ ]]; then
             continue_adding=false
         fi
@@ -2320,7 +2427,8 @@ EOF
     echo
     
     # Apply the secret
-    read -p "$(echo -e "${COLOR_YELLOW}Apply the provider secret now? (y/n): ${COLOR_RESET}")" apply_secret
+    printf "${COLOR_YELLOW}Apply the provider secret now? (y/n): ${COLOR_RESET}\n"
+    read -erp "" apply_secret
     if [[ "$apply_secret" =~ ^[Yy]$ ]]; then
         if ${CLI_CMD} apply -f "$provider_secret_file"; then
             success "Provider secret created successfully"
@@ -2339,7 +2447,8 @@ EOF
     if ${CLI_CMD} get modelgateway modelgateway-cr -n "$INSTANCE_NAMESPACE" &> /dev/null; then
         info "Found existing ModelGateway CR: modelgateway-cr"
         echo
-        read -p "$(echo -e "${COLOR_YELLOW}Do you want to patch the ModelGateway CR with provider configuration? (y/n): ${COLOR_RESET}")" patch_cr
+        printf "${COLOR_YELLOW}Do you want to patch the ModelGateway CR with provider configuration? (y/n): ${COLOR_RESET}\n"
+        read -erp "" patch_cr
         
         if [[ "$patch_cr" =~ ^[Yy]$ ]]; then
             info "Patching ModelGateway CR..."
@@ -2695,28 +2804,32 @@ function verify_prerequisites() {
         echo
     fi
     
-    # Check image pull secret
-    info "Checking image pull secret..."
-    
-    # Check in instance namespace (primary location)
-    if check_image_pull_secret "$INSTANCE_NAMESPACE" "$IMAGE_PULL_SECRET"; then
-        success "Image pull secret found in instance namespace: $IMAGE_PULL_SECRET"
+    # Check image pull secret (skip for airgap/offline deployments)
+    if [[ "$AIRGAP_INSTALL" == "yes" ]]; then
+        info "Skipping image pull secret check (airgap/offline deployment)"
     else
-        warning "Image pull secret not found in instance namespace: $IMAGE_PULL_SECRET"
-        
-        # If operator namespace is different, check there too
-        if [ "$OPERATOR_NAMESPACE" != "$INSTANCE_NAMESPACE" ]; then
-            if check_image_pull_secret "$OPERATOR_NAMESPACE" "$IMAGE_PULL_SECRET"; then
-                success "Image pull secret found in operator namespace: $IMAGE_PULL_SECRET"
-                info "    It will be copied to instance namespace during deployment"
+        info "Checking image pull secret..."
+
+        # Check in instance namespace (primary location)
+        if check_image_pull_secret "$INSTANCE_NAMESPACE" "$IMAGE_PULL_SECRET"; then
+            success "Image pull secret found in instance namespace: $IMAGE_PULL_SECRET"
+        else
+            warning "Image pull secret not found in instance namespace: $IMAGE_PULL_SECRET"
+
+            # If operator namespace is different, check there too
+            if [ "$OPERATOR_NAMESPACE" != "$INSTANCE_NAMESPACE" ]; then
+                if check_image_pull_secret "$OPERATOR_NAMESPACE" "$IMAGE_PULL_SECRET"; then
+                    success "Image pull secret found in operator namespace: $IMAGE_PULL_SECRET"
+                    info "    It will be copied to instance namespace during deployment"
+                else
+                    warning "Image pull secret not found in operator namespace: $IMAGE_PULL_SECRET"
+                    info "    Please create the secret before deployment"
+                    errors=$((errors + 1))
+                fi
             else
-                warning "Image pull secret not found in operator namespace: $IMAGE_PULL_SECRET"
                 info "    Please create the secret before deployment"
                 errors=$((errors + 1))
             fi
-        else
-            info "    Please create the secret before deployment"
-            errors=$((errors + 1))
         fi
     fi
     echo
@@ -2859,18 +2972,24 @@ function install_operator() {
     create_namespace "$OPERATOR_NAMESPACE" || return 1
     create_namespace "$INSTANCE_NAMESPACE" || return 1
     
-    # Copy image pull secret to instance namespace if needed
-    if ! check_image_pull_secret "$INSTANCE_NAMESPACE" "$IMAGE_PULL_SECRET"; then
-        info "Copying image pull secret to instance namespace..."
-        local secret_file=$(mktemp)
-        ${CLI_CMD} get secret "$IMAGE_PULL_SECRET" -n "$OPERATOR_NAMESPACE" -o yaml > "$secret_file"
-        ${YQ_CMD} eval ".metadata.namespace = \"$INSTANCE_NAMESPACE\"" -i "$secret_file"
-        ${YQ_CMD} eval 'del(.metadata.resourceVersion)' -i "$secret_file"
-        ${YQ_CMD} eval 'del(.metadata.uid)' -i "$secret_file"
-        ${CLI_CMD} apply -f "$secret_file" || warning "Failed to copy image pull secret"
-        rm -f "$secret_file"
+    # Copy image pull secret to instance namespace if needed (skip for airgap/offline deployments)
+    if [[ "$AIRGAP_INSTALL" != "yes" ]]; then
+        if ! check_image_pull_secret "$INSTANCE_NAMESPACE" "$IMAGE_PULL_SECRET"; then
+            info "Copying image pull secret to instance namespace..."
+            local secret_file=$(mktemp)
+            if ${CLI_CMD} get secret "$IMAGE_PULL_SECRET" -n "$OPERATOR_NAMESPACE" -o yaml > "$secret_file" 2>/dev/null; then
+                ${YQ_CMD} eval ".metadata.namespace = \"$INSTANCE_NAMESPACE\"" -i "$secret_file"
+                ${YQ_CMD} eval 'del(.metadata.resourceVersion)' -i "$secret_file"
+                ${YQ_CMD} eval 'del(.metadata.uid)' -i "$secret_file"
+                ${CLI_CMD} apply -f "$secret_file" || warning "Failed to copy image pull secret"
+            else
+                warning "Image pull secret '$IMAGE_PULL_SECRET' not found in operator namespace: $OPERATOR_NAMESPACE"
+                warning "Secret will not be copied to instance namespace"
+            fi
+            rm -f "$secret_file"
+        fi
     fi
-    
+
     # Install operator via Helm
     local helm_args=(
         "model-gateway-operator"
@@ -2878,7 +2997,6 @@ function install_operator() {
         "--namespace" "$OPERATOR_NAMESPACE"
         "--set" "global.operatorNamespace=$OPERATOR_NAMESPACE"
         "--set" "global.instanceNamespace=$INSTANCE_NAMESPACE"
-        "--set" "global.imagePullSecret=$IMAGE_PULL_SECRET"
         "--set" "global.imagePullPrefix=$IMAGE_REGISTRY"
         "--set" "global.licenseType=$LICENSE_TYPE"
         "--set" "global.licenseAccept=$LICENSE_ACCEPT"
@@ -2886,6 +3004,11 @@ function install_operator() {
         "--set" "modelGateway.scaleConfig=$SCALE_CONFIG"
         "--set" "modelGateway.cp4ba_license=true"
     )
+
+    # Only pass imagePullSecret to Helm for online (non-airgap) deployments
+    if [[ "$AIRGAP_INSTALL" != "yes" ]]; then
+        helm_args+=("--set" "global.imagePullSecret=$IMAGE_PULL_SECRET")
+    fi
     
     if [ -n "$STORAGE_CLASS_BLOCK" ]; then
         helm_args+=("--set" "global.blockStorageClass=$STORAGE_CLASS_BLOCK")
@@ -3312,6 +3435,9 @@ function parse_arguments() {
                 ;;
             --accept-license)
                 LICENSE_ACCEPT="true"
+                ;;
+            --airgap-deployment)
+                AIRGAP_INSTALL="yes"
                 ;;
             --lite-install)
                 LITE_INSTALL="true"

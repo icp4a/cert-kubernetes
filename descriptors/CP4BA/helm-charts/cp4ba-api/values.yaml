@@ -16,7 +16,7 @@
 image:
   repository: icr.io/cpopen/cp4ba-install-upgrade
   pullPolicy: IfNotPresent
-  digest: "sha256:28162ab3c103b4850ff2d8b87052623e26f29363d6b82325acb382ecdfedf440"
+  digest: "sha256:2af9cb7d9733d6b69ecfefc599164b9850052b9b0749ecd21204b959f6c71677"
 
 
 #RBAC

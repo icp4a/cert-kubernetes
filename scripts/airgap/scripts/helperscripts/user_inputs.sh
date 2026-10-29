@@ -78,7 +78,7 @@ process_config_file() {
 collect_entitlement_key(){
     ATTEMPTS=0
     while true; do
-        printf "\x1B[1mEnter your Entitlement Registry key: \x1B[0m"
+        printf "\x1B[1mEnter your Entitlement Registry key: \x1B[0m\n"
         read -rsp ""  ENTITLEMENT_KEY
         if [[ "$ENTITLEMENT_KEY" == "" ]]; then
             error "Entitlement Registry key can't be empty. Please try again."
@@ -141,7 +141,7 @@ process_entitlement_key() {
         while true; do
             printf "\x1B[1;31mFollow the instructions on how to get your Entitlement Key: \n\x1B[0m"
             printf "\x1B[1;31mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-getting-access-images-from-public-entitled-registry\n\x1B[0m"
-            read -p "Do you have an entitlement key? (yes/no): " has_key
+            read -erp "Do you have an entitlement key? (yes/no): " has_key
             has_key=$(echo "$has_key" | tr '[:upper:]' '[:lower:]')
             case "$has_key" in
                 yes|y)
@@ -181,8 +181,8 @@ process_entitlement_key() {
 collect_private_registry_hostname(){
     ATTEMPTS=0
     while true; do
-        printf "\x1B[1mEnter the private registry hostname: \x1B[0m"
-        read -r  PRIVATE_REGISTRY_HOST
+        printf "\x1B[1mEnter the private registry hostname: \x1B[0m\n"
+        read -erp "" PRIVATE_REGISTRY_HOST
         if [[ "$PRIVATE_REGISTRY_HOST" == "" ]]; then
             error "Private registry hostname can't be empty. Please try again."
             ATTEMPTS=$((ATTEMPTS + 1))
@@ -201,8 +201,8 @@ collect_private_registry_hostname(){
 collect_private_registry_port(){
     ATTEMPTS=0
     while true; do
-        printf "\x1B[1mEnter the private registry port number: \x1B[0m"
-        read -r PRIVATE_REGISTRY_PORT
+        printf "\x1B[1mEnter the private registry port number: \x1B[0m\n"
+        read -erp "" PRIVATE_REGISTRY_PORT
         if [[ "$PRIVATE_REGISTRY_PORT" == "" ]]; then
             error "Private registry port can't be empty. Please try again."
             ATTEMPTS=$((ATTEMPTS + 1))
@@ -227,8 +227,8 @@ collect_private_registry_port(){
 collect_private_registry_username(){
     ATTEMPTS=0
     while true; do
-        printf "\x1B[1mEnter the private registry username: \x1B[0m"
-        read -r PRIVATE_REGISTRY_USERNAME
+        printf "\x1B[1mEnter the private registry username: \x1B[0m\n"
+        read -erp "" PRIVATE_REGISTRY_USERNAME
         if [[ "$PRIVATE_REGISTRY_USERNAME" == "" ]]; then
             error "Private registry username can't be empty. Please try again."
             ATTEMPTS=$((ATTEMPTS + 1))
@@ -247,7 +247,7 @@ collect_private_registry_username(){
 collect_private_registry_password(){
     ATTEMPTS=0
     while true; do
-        printf "\x1B[1mEnter the private registry password: \x1B[0m"
+        printf "\x1B[1mEnter the private registry password: \x1B[0m\n"
         read -rsp "" PRIVATE_REGISTRY_PASSWORD
         if [[ "$PRIVATE_REGISTRY_PASSWORD" == "" ]]; then
             error "Private registry password can't be empty. Please try again."
@@ -289,7 +289,7 @@ process_private_registry(){
         while true; do
             printf "\x1B[1;31mA private image registry must be used to store all images used in an offline (Airgap) deployment. \n\x1B[0m"
             printf "\x1B[1;31mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-setting-up-private-registry\n\x1B[0m"
-            read -p "Do you have access to a private registry where you can store images? (yes/no): " has_key
+            read -erp "Do you have access to a private registry where you can store images? (yes/no): " has_key
             has_key=$(echo "$has_key" | tr '[:upper:]' '[:lower:]')
             case "$has_key" in
                 yes|y)
@@ -333,8 +333,8 @@ process_private_registry(){
 collect_private_image_storage_location(){
     ATTEMPTS=0
     while true; do
-        printf "\x1B[1mPlease enter the registry location (it will be appended after the hostname followed by '/'): \x1B[0m"
-        read -r  PRIVATE_REGISTRY_IMAGE_STORAGE_PATH
+        printf "\x1B[1mPlease enter the registry location (it will be appended after the hostname followed by '/'): \x1B[0m\n"
+        read -erp "" PRIVATE_REGISTRY_IMAGE_STORAGE_PATH
         if [[ "$PRIVATE_REGISTRY_IMAGE_STORAGE_PATH" == "" ]]; then
             info "Images will be mirrored to: \"$PRIVATE_REGISTRY_HOST\" "
             PRIVATE_REGISTRY_IMAGE_STORAGE_VALIDATION="true"
@@ -381,7 +381,7 @@ process_image_storage_location(){
         while true; do
             printf "\x1B[1;31m The images can be mirrored to a specific location in the private registry. \n\x1B[0m"
             printf "\x1B[1;31mhttps://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/$CP4BA_RELEASE_BASE?topic=deployment-mirroring-catalogs-private-registry-using-oc-mirror\n\x1B[0m"
-            read -p "Do you wish to mirror images access to a specific location in the private registry.? (yes/no) (default no): " has_key
+            read -erp "Do you wish to mirror images access to a specific location in the private registry.? (yes/no) (default no): " has_key
             has_key=$(echo "$has_key" | tr '[:upper:]' '[:lower:]')
             if [ -z "$has_key" ]; then
                 has_key="no"

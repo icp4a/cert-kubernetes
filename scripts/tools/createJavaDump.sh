@@ -39,7 +39,7 @@ function parse_arguments (){
     if [[ $# -eq 0 ]]; then
         echo "No arguments supplied. The script will run with default values which may not suitable in all situations. For more information, use "${0}" --help"
         echo "Do you want to proceed? [y/n]"
-        read -r input
+        read -erp "" input
         if [[ "$input" == "n" || "$input" == "N" ]]; then
             usage
             exit 1

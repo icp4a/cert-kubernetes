@@ -518,9 +518,8 @@ function prompt_provider_types_multiselect() {
         if [[ ${#selected_providers[@]} -gt 0 ]]; then
             printf 'Currently selected: %d provider(s)\n' "${#selected_providers[@]}"
         fi
-        printf 'Enter a number to toggle selection, or press Enter to continue: '
-        
-        read -r input
+        printf 'Enter a number to toggle selection, or press Enter to continue: \n'
+        read -erp "" input
         input="$(printf '%s' "$input" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
         
         # Check if user pressed Enter

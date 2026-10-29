@@ -72,6 +72,11 @@ function prop_original_db_server_property_file() {
     grep "^${1}=" ${ORIGINAL_DB_SERVER_PROPERTY_FILE}|cut -d'"' -f2
 }
 
+# Function to retrieve a property value from the original DB name/user property file based on a property passed as the first argument
+function prop_original_db_name_user_property_file() {
+    grep "^${1}=" ${ORIGINAL_DB_USER_PROPERTY_FILE}|cut -d'"' -f2
+}
+
 
 # Function that adds new key value pairs to a set of lists used to display a summary table
 function add_entry_for_summary() {
@@ -737,11 +742,13 @@ function retrieve_current_external_zen_configurations(){
         EXTERNAL_POSTGRESDB_FOR_BTS="true"
     fi
     
-    # Check if external PostgreSQL is configured for ADPGG/DICMS by reading flag from temporary property file
-    # DBACLD-243764:
-    check_external_adpgg_dicms_property="$(prop_tmp_property_file EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS_FLAG)"
-    check_external_adpgg_dicms_property=$(echo "$check_external_adpgg_dicms_property" | tr '[:upper:]' '[:lower:]')
-    if [[ "$check_external_adpgg_dicms_property" == "true" ]]; then
+    # Check if external PostgreSQL is configured for ADPGG/DICMS by detecting whether the sentinel key
+    # "${EXTERNAL_POSTGRES_SERVER_PREFIX}.ADP_GG_DB_NAME" is present in the original DB name/user property file.
+    # This is analogous to how CP4BA.IM/ZEN/BTS_EXTERNAL_POSTGRES_DATABASE_USER sentinel keys are used for those components.
+    # Using the property file avoids a dependency on the temporary property file, which may not exist in all scenarios,
+    # such as when this function is called from the --enable-external-secret-management flow. (DBACLD-267627)
+    check_external_adpgg_dicms_property="$(prop_original_db_name_user_property_file "${EXTERNAL_POSTGRES_SERVER_PREFIX}.ADP_GG_DB_NAME")"
+    if [[ -n "$check_external_adpgg_dicms_property" ]]; then
         EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS="true"
     else
         EXTERNAL_POSTGRESDB_FOR_ADPGG_DICMS="false"
@@ -954,8 +961,8 @@ function retrieve_existing_property_files() {
         fi
 
         echo
-        printf "\033[1mEnter the directory path that contains all required property files for 'cp4a-prerequisites.sh' [Example: <CERT_KUBE_PATH>/scripts/cp4ba-prerequisites/project/<NAMESPACE>/propertyfile]: \033[0m"
-        read -r folder_path
+        printf "\033[1mEnter the directory path that contains all required property files for 'cp4a-prerequisites.sh' [Example: <CERT_KUBE_PATH>/scripts/cp4ba-prerequisites/project/<NAMESPACE>/propertyfile]: \033[0m\n"
+        read -erp "" folder_path
 
         # Validate directory
         if [[ ! -d "$folder_path" ]]; then

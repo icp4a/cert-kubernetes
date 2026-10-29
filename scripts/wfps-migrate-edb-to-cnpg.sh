@@ -31,10 +31,10 @@ function warning() { echo -e "${YELLOW}[WARNING]${NC} $(date '+%Y-%m-%d %H:%M:%S
 function error()   { echo -e "${RED}[ERROR]${NC} $(date '+%Y-%m-%d %H:%M:%S') $1" >&2; }
 
 function usage() {
-    echo "Usage: $0 -m <backup|restore> -n <namespace> [-c <cluster_name>] [-d <backup_dir>]"
+    echo "Usage: $0 -m <backup|restore|patch-schema> -n <namespace> [-c <cluster_name>] [-d <backup_dir>]"
     echo ""
     echo "Options:"
-    echo "  -m  Mode: 'backup' (before upgrade) or 'restore' (after CNPG cluster is ready)"
+    echo "  -m  Mode: 'backup', 'restore', or 'patch-schema' (for in-place DB schema updates)"
     echo "  -n  Kubernetes/OpenShift namespace where WfPS is deployed"
     echo "  -c  (Optional) EDB/CNPG cluster name (default: auto-discovered, ends with -postgre)"
     echo "  -d  (Optional) Local backup directory (default: /tmp/wfps_migration_backup)"
@@ -70,13 +70,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -z "$MODE" || -z "$NAMESPACE" ]] && { error "Both --mode and --namespace are required."; usage; }
-[[ "$MODE" != "backup" && "$MODE" != "restore" ]] && { error "Invalid mode '$MODE'. Use 'backup' or 'restore'."; usage; }
+[[ "$MODE" != "backup" && "$MODE" != "restore" && "$MODE" != "patch-schema" ]] && { error "Invalid mode '$MODE'. Use 'backup', 'restore', or 'patch-schema'."; usage; }
 
 # ------------------------------------------------------------------------------
-# resolve_wfps_edb_cluster / resolve_wfps_cnpg_cluster
-# Populate the global CLUSTER_NAME in the CURRENT shell.
+# resolve_wfps_edb_cluster / resolve_wfps_cnpg_cluster / resolve_wfps_cluster_for_backup
+# Populate the global CLUSTER_NAME and CLUSTER_TYPE in the CURRENT shell.
 # MUST be called directly (never inside $()) so the assignment sticks.
 # ------------------------------------------------------------------------------
+CLUSTER_TYPE=""
+
 function resolve_wfps_edb_cluster() {
     [[ -n "$CLUSTER_NAME" ]] && return 0
     CLUSTER_NAME=$(${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n "$NAMESPACE" \
@@ -86,6 +88,7 @@ function resolve_wfps_edb_cluster() {
         | grep -v "^postgres-cp4ba$" \
         | head -n 1 || true)
     [[ -z "$CLUSTER_NAME" ]] && { error "No WfPS EDB cluster found in namespace '$NAMESPACE'."; exit 1; }
+    CLUSTER_TYPE="EDB"
     info "Auto-discovered WfPS EDB cluster: $CLUSTER_NAME"
 }
 
@@ -98,7 +101,49 @@ function resolve_wfps_cnpg_cluster() {
         | grep -v "^postgres-cp4ba$" \
         | head -n 1 || true)
     [[ -z "$CLUSTER_NAME" ]] && { error "No WfPS IBM CNPG cluster found in namespace '$NAMESPACE'."; exit 1; }
+    CLUSTER_TYPE="CNPG"
     info "Auto-discovered WfPS CNPG cluster: $CLUSTER_NAME"
+}
+
+function resolve_wfps_cluster_for_backup() {
+    if [[ -n "$CLUSTER_NAME" ]]; then
+        # Check if provided cluster is EDB or CNPG
+        if ${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io "$CLUSTER_NAME" -n "$NAMESPACE" &>/dev/null; then
+            CLUSTER_TYPE="EDB"
+        else
+            CLUSTER_TYPE="CNPG"
+        fi
+        return 0
+    fi
+
+    # Check for EDB cluster first
+    CLUSTER_NAME=$(${CLI_CMD} get cluster.postgresql.k8s.enterprisedb.io -n "$NAMESPACE" \
+        --no-headers --ignore-not-found 2>/dev/null \
+        | awk '{print $1}' \
+        | grep -E -- "-postgre$" \
+        | grep -v "^postgres-cp4ba$" \
+        | head -n 1 || true)
+    if [[ -n "$CLUSTER_NAME" ]]; then
+        CLUSTER_TYPE="EDB"
+        info "Auto-discovered WfPS EDB cluster: $CLUSTER_NAME"
+        return 0
+    fi
+
+    # Check for IBM CNPG cluster
+    CLUSTER_NAME=$(${CLI_CMD} get clusters.pg.ibm.com -n "$NAMESPACE" \
+        --no-headers --ignore-not-found 2>/dev/null \
+        | awk '{print $1}' \
+        | grep -E -- "-postgre$" \
+        | grep -v "^postgres-cp4ba$" \
+        | head -n 1 || true)
+    if [[ -n "$CLUSTER_NAME" ]]; then
+        CLUSTER_TYPE="CNPG"
+        info "Auto-discovered WfPS IBM CNPG cluster: $CLUSTER_NAME"
+        return 0
+    fi
+
+    error "No WfPS PostgreSQL (EDB or IBM CNPG) cluster found in namespace '$NAMESPACE'."
+    exit 1
 }
 
 # ------------------------------------------------------------------------------
@@ -229,20 +274,26 @@ function snapshot_was_tables() {
 # ------------------------------------------------------------------------------
 function do_backup() {
     info "================================================================="
-    info "WfPS EDB → CNPG Backup  |  namespace: $NAMESPACE"
+    info "WfPS Database Backup  |  namespace: $NAMESPACE"
     info "================================================================="
 
-    resolve_wfps_edb_cluster     # sets CLUSTER_NAME in this shell (not a subshell)
-    local edb_pod
-    edb_pod=$(find_wfps_edb_pod)
-    info "Using EDB pod: $edb_pod"
+    resolve_wfps_cluster_for_backup     # sets CLUSTER_NAME and CLUSTER_TYPE
+    local backup_pod
+    if [[ "$CLUSTER_TYPE" == "EDB" ]]; then
+        backup_pod=$(find_wfps_edb_pod)
+        info "Using EDB pod: $backup_pod"
+    else
+        backup_pod=$(find_wfps_cnpg_pod)
+        info "Using IBM CNPG pod: $backup_pod"
+    fi
 
     mkdir -p "$BACKUP_DIR"
     info "Backup directory: $BACKUP_DIR"
     echo "$CLUSTER_NAME" > "${BACKUP_DIR}/cluster_name.txt"
+    echo "$CLUSTER_TYPE" > "${BACKUP_DIR}/cluster_type.txt"
 
     # --- Kubernetes state: WfPSRuntime CR + secrets + pod identity ---
-    info "Step 1/5: Backing up Kubernetes resources..."
+    info "Step 1/6: Backing up Kubernetes resources..."
     backup_wfps_cr
     backup_wfps_secrets
 
@@ -259,12 +310,12 @@ function do_backup() {
     fi
 
     # --- Pre-migration snapshot of was_* table ownership ---
-    info "Step 2/5: Snapshotting Liberty recovery log table ownership..."
-    snapshot_was_tables "$edb_pod"
+    info "Step 2/6: Snapshotting Liberty recovery log table ownership..."
+    snapshot_was_tables "$backup_pod"
 
     # --- Global roles and password hashes ---
-    info "Step 3/5: Exporting global roles and credentials..."
-    ${CLI_CMD} exec -i "$edb_pod" -n "$NAMESPACE" -c postgres -- \
+    info "Step 3/6: Exporting global roles and credentials..."
+    ${CLI_CMD} exec -i "$backup_pod" -n "$NAMESPACE" -c postgres -- \
         pg_dumpall -U postgres --globals-only > "${BACKUP_DIR}/globals.sql" \
         || { error "Failed to export globals."; exit 1; }
     info "  Globals exported -> ${BACKUP_DIR}/globals.sql"
@@ -272,8 +323,8 @@ function do_backup() {
     # --- wfpsdb ownership grant (ALTER DATABASE wfpsdb OWNER TO wfpsuser) ---
     # Backed up separately so it can be re-applied after restore even if
     # pg_dumpall globals restore skips it on a pre-existing role.
-    info "Step 4/5: Exporting wfpsdb ownership grant..."
-    ${CLI_CMD} exec -i "$edb_pod" -n "$NAMESPACE" -c postgres -- psql -U postgres -t -A -c \
+    info "Step 4/6: Exporting wfpsdb ownership grant..."
+    ${CLI_CMD} exec -i "$backup_pod" -n "$NAMESPACE" -c postgres -- psql -U postgres -t -A -c \
         "SELECT 'ALTER DATABASE ' || quote_ident(d.datname)
               || ' OWNER TO ' || quote_ident(r.rolname) || ';'
          FROM pg_database d
@@ -283,18 +334,82 @@ function do_backup() {
     info "  Ownership grant exported -> ${BACKUP_DIR}/db_ownership_grants.sql"
 
     # --- Full database dump ---
-    info "Step 5/5: Dumping wfpsdb..."
-    ${CLI_CMD} exec -i "$edb_pod" -n "$NAMESPACE" -c postgres -- \
+    info "Step 5/6: Dumping wfpsdb..."
+    ${CLI_CMD} exec -i "$backup_pod" -n "$NAMESPACE" -c postgres -- \
         pg_dump -U postgres -Fc -d wfpsdb > "${BACKUP_DIR}/wfpsdb.dump" \
         || { error "Failed to dump wfpsdb."; exit 1; }
     info "  wfpsdb dumped -> ${BACKUP_DIR}/wfpsdb.dump"
 
+    # --- Post-backup cleanup for EDB migration ---
+    # Deletes old EDB cluster and PVCs only AFTER backup is verified.
+    # Skipped for IBM PG -> IBM PG in-place upgrades.
+    cleanup_old_edb_cluster
+
     info "================================================================="
-    info "SUCCESS: WfPS EDB backup complete."
+    info "SUCCESS: WfPS database ($CLUSTER_TYPE) backup complete."
     info "Backup location: $BACKUP_DIR"
     ls -lh "$BACKUP_DIR"
     info "The upgradeOperator process will continue with the operator upgrade."
     info "================================================================="
+}
+
+# ------------------------------------------------------------------------------
+# cleanup_old_edb_cluster
+# Deletes the old EDB PostgreSQL cluster and its PVCs AFTER a verified backup.
+# Only runs when CLUSTER_TYPE == "EDB". This ensures the IBM PG (CNPG) operator
+# has a clean namespace to create the new PVC and initdb pod without collisions.
+# For IBM PG in-place upgrades (CLUSTER_TYPE == "CNPG"), this step is skipped.
+# ------------------------------------------------------------------------------
+function cleanup_old_edb_cluster() {
+    if [[ "$CLUSTER_TYPE" != "EDB" ]]; then
+        info "Step 6/6: Cluster is not EDB ($CLUSTER_TYPE). Skipping EDB cleanup."
+        return 0
+    fi
+
+    info "Step 6/6: Cleaning up old EDB PostgreSQL cluster and PVCs after verified backup..."
+    local edb_cluster="$CLUSTER_NAME"
+    info "  Deleting old EDB cluster CR: $edb_cluster"
+    ${CLI_CMD} delete cluster.postgresql.k8s.enterprisedb.io "$edb_cluster" -n "$NAMESPACE" --wait=false 2>/dev/null || true
+
+    # Delete old EDB PVCs matching ${edb_cluster}-*
+    local pvcs
+    pvcs=$(${CLI_CMD} get pvc -n "$NAMESPACE" --no-headers 2>/dev/null | grep "^${edb_cluster}-" | awk '{print $1}' || true)
+    if [[ -n "$pvcs" ]]; then
+        info "  Deleting old EDB PVC(s):"
+        echo "$pvcs" | while read -r p; do
+            [[ -n "$p" ]] && info "    - $p"
+        done
+        echo "$pvcs" | xargs ${CLI_CMD} delete pvc -n "$NAMESPACE" --wait=false 2>/dev/null || true
+    fi
+
+    # Wait for old EDB pods and PVCs to be completely gone
+    info "  Waiting for old EDB resources to terminate..."
+    local wait_time=0
+    while true; do
+        local remaining_pods remaining_pvcs
+        remaining_pods=$(${CLI_CMD} get pods -n "$NAMESPACE" --no-headers 2>/dev/null | grep "^${edb_cluster}-" | wc -l | tr -d ' ')
+        remaining_pvcs=$(${CLI_CMD} get pvc -n "$NAMESPACE" --no-headers 2>/dev/null | grep "^${edb_cluster}-" | wc -l | tr -d ' ')
+
+        if [[ "$remaining_pods" -eq 0 && "$remaining_pvcs" -eq 0 ]]; then
+            info "  ✓ Old EDB cluster and PVCs successfully removed."
+            break
+        fi
+
+        if [[ $wait_time -ge 120 ]]; then
+            warning "  Timed out waiting for old EDB resources to terminate. Clearing any stuck finalizers..."
+            if [[ "$remaining_pvcs" -gt 0 ]]; then
+                local stuck_pvcs
+                stuck_pvcs=$(${CLI_CMD} get pvc -n "$NAMESPACE" --no-headers 2>/dev/null | grep "^${edb_cluster}-" | awk '{print $1}' || true)
+                for p in $stuck_pvcs; do
+                    ${CLI_CMD} patch pvc "$p" -n "$NAMESPACE" -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
+                done
+            fi
+            break
+        fi
+
+        sleep 5
+        wait_time=$((wait_time + 5))
+    done
 }
 
 # ------------------------------------------------------------------------------

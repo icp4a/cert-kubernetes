@@ -75,6 +75,11 @@ function get_pattern_foundation_components() {
 
 TEMP_FOLDER=${CUR_DIR}/.tmp
 
+# Alias name for the external PostgreSQL server/instance used for ADPGG/DICMS databases when the
+# primary CP4BA database type is non-PostgreSQL. Referenced across cp4a-prerequisites.sh,
+# cp4a-deployment.sh, and update-selected-components.sh.
+EXTERNAL_POSTGRES_SERVER_PREFIX="postgresql-external"
+
 # Define the required Java version based on CP4BA release
 REQUIRED_JAVA_MAJOR_VERSION=17  # Semeru 17 is required for CP4BA 25.x
 
@@ -251,9 +256,9 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 CP4BA_RELEASE_BASE="26.0.0"
 # CP4BA_RELEASE_BASE_MAJOR_VERSION is used in certain checks where we used to hardcode to see if a upgrade is not ifix to ifix,change this only for major release
 CP4BA_RELEASE_BASE_MAJOR_VERSION="26.0"
-CP4BA_PATCH_VERSION="IF003"
+CP4BA_PATCH_VERSION="IF004"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v26.0.3"
+CP4BA_CSV_VERSION="v26.0.4"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
 CP4BA_CHANNEL_VERSION="v26.0"
 # Storage Validation prerequisites versions
@@ -261,7 +266,7 @@ STORAGE_MINIMUM_ANSIBLE_VERSION="2.15"
 STORAGE_K8S_CORE_VERSION="6.2.0"
 
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.19.3"
+CS_OPERATOR_VERSION="v4.19.4"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
 CS_CHANNEL_VERSION="v4.19"
 # CS CHANNEL VERSION that is used in the KC
@@ -271,15 +276,15 @@ CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
 CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-19-0"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v6.10.7"
+ZEN_OPERATOR_VERSION="v6.10.8"
 # BTS_CHANNEL_VERSION is for for BTS, need to update for each IFIX
 BTS_CHANNEL_VERSION="v3.35"
-# BTS_CATALOG_VERSION is for BTS 3.35.14.
+# BTS_CATALOG_VERSION is for BTS 3.35.15.
 BTS_CATALOG_VERSION="ibm-bts-operator-catalog-v3-35"
 # REQUIREDVER_BTS is for checking bts operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_BTS="3.35.14"
+REQUIREDVER_BTS="3.35.15"
 # REQUIREDVER_POSTGRESQL is for checking postgresql operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_POSTGRESQL="1.28.4"
+REQUIREDVER_POSTGRESQL="1.28.8"
 # EVENTS_OPERATOR_VERSION is for checking IBM Events operator upgrade status, need to update for each IFIX
 EVENTS_OPERATOR_VERSION="v5.2.1"
 #This is the list where we further restricted the versions that are supported for upgrade to $CP4BA_CSV_VERSION.  
@@ -294,7 +299,7 @@ MINIMUM_SUPPORTED_UPGRADE_VERSIONS=(24.0.9 25.0.4 25.1.1 26.0.0)
 # UMS_CHANNEL_VERSION is for UMS, need to update for each IFIX
 UMS_CHANNEL_VERSION="v1.0"
 # UMS_CSV_VERSION is for UMS, need to update for each IFIX
-UMS_CSV_VERSION="v1.0.7"
+UMS_CSV_VERSION="v1.0.9"
 # UMS_CATALOG_VERSION is the current UMS catalog name.
 UMS_CATALOG_VERSION="ibm-usage-metering-catalog"
 # UMS connection point secret name

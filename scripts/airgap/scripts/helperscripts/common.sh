@@ -407,7 +407,7 @@ function select_filter_options() {
         echo "10) Business Automation Insights standalone  $(if [[ ${SELECTED_FILTER_OPTIONS[9]} -eq 1 ]]; then echo '✔'; fi)"
 
         # Read user input
-        read -p "Enter your choice (1-10) or Enter to finalize: " choice
+        read -erp "Enter your choice (1-10) or Enter to finalize: " choice
 
         # Check if the user presses Enter (no input)
         if [[ -z "$choice" ]]; then
@@ -514,13 +514,22 @@ function display_next_steps(){
 
 # function to monitor mirroring
 function monitor_mirroring() {
-    local log_file="$AIRGAP_FOLDER_MIRRORING_LOGS/$case_name-$case_version.txt" 
+    local log_file="$AIRGAP_FOLDER_MIRRORING_LOGS/$case_name-$case_version.txt"
     local max_attempts=100
     local attempt=0
 
     while (( attempt < max_attempts )); do
         # Check if the log message "info: Mirroring completed" exists in the log file
         if grep -q "info: Mirroring completed" "$log_file"; then
+            # Even when oc mirror prints "Mirroring completed", it may also have
+            # printed one or more errors (e.g. "error: one or more errors occurred
+            # while uploading images").  Treat any "error:" line in the log as a
+            # failed mirror so the script does not proceed to next-steps with an
+            # incomplete mirror.
+            if grep -q "^error:" "$log_file"; then
+                error "Mirroring of images for version $case_version of $case_name case completed with errors. Review $log_file for details. The script will now exit."
+                exit 1
+            fi
             success "Mirroring of images for version $case_version of $case_name case is completed!"
             return 0  # End the function successfully
         else

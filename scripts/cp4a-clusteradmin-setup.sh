@@ -2008,7 +2008,7 @@ function get_entitlement_registry(){
         "y"|"Y"|"yes"|"Yes"|"YES"|"")
             use_entitlement="yes"
             printf "\n"
-            printf "${BOLD_TEXT}Enter your Entitlement Registry key: ${RESET_TEXT}"
+            printf "${BOLD_TEXT}Enter your Entitlement Registry key: ${RESET_TEXT}\n"
             # During dev, OLM uses stage image repo
             if [[ "$RUNTIME_MODE" == "dev" || $RUNTIME_MODE == "baw-dev" || $RUNTIME_MODE == "process-flow-dev" ]]
             then
@@ -2109,7 +2109,7 @@ function get_domain_name(){
     while [[ $domain_name == '' ]]
     do
         if [ -z "$AUTO_DOMAIN_NAME" ]; then
-            read -p "Enter your domain name(for none 443 port, Also append port number, such as domain_name:port): " domain_name
+            read -erp "Enter your domain name(for none 443 port, Also append port number, such as domain_name:port): " domain_name
         else
             domain_name=$AUTO_DOMAIN_NAME
         fi
@@ -2461,6 +2461,7 @@ function check_airgap_mode(){
                 *) echo "invalid option $REPLY";;
             esac
         done
+        printf "%s\n" "$REPLY"
     else
         AIRGAP_INSTALL=$(echo "$CP4BA_AUTO_AIRGAP_MODE" | tr '[:upper:]' '[:lower:]')
         printf '%b\n' "${BOLD_TEXT}Do you wish to setup the cluster for an airgap/offline based CP4BA deployment :${RESET_TEXT} $CP4BA_AUTO_AIRGAP_MODE"
@@ -2510,6 +2511,7 @@ function select_platform(){
                 *) echo "invalid option $REPLY";;
             esac
         done
+        printf "%s\n" "$REPLY"
     else
         PLATFORM_SELECTED=$CP4BA_AUTO_PLATFORM
         printf '%b\n' "${BOLD_TEXT}What type of cloud platform is selected?${RESET_TEXT} $CP4BA_AUTO_PLATFORM"
@@ -2566,6 +2568,7 @@ function select_deployment_type(){
                         *) echo "invalid option $REPLY";;
                     esac
                 done
+        printf "%s\n" "$REPLY"
             fi
         fi
     else
@@ -2618,6 +2621,7 @@ function select_user(){
                     echo "invalid option $REPLY"
                 fi
             done
+        printf "%s\n" "$REPLY"
             if [ "$user_name" == "Cluster Admin" ]; then
                 printf '%b\n' "${YELLOW_TEXT}ATTENTION: ${RESET_TEXT}${BOLD_TEXT}When you run cp4a-deployment.sh script, Use cluster admin user.${RESET_TEXT}"
                 sleep 5
@@ -2925,12 +2929,12 @@ function get_local_registry_server(){
     fi
 
     if [[ "${OCP_VERSION}" == "3.11" && "${REGISTRY_TYPE}" == "internal" ]];then
-        printf "${BOLD_TEXT}Enter the OCP docker registry service name, for example: docker-registry.default.svc:5000/<project-name>: ${RESET_TEXT}"
+        printf "${BOLD_TEXT}Enter the OCP docker registry service name, for example: docker-registry.default.svc:5000/<project-name>: ${RESET_TEXT}\n"
     elif [[ "${REGISTRY_TYPE}" == "internal" && "${OCP_VERSION}" == "4.4OrLater" ]]
     then
         printf "\n"
         printf "${BOLD_TEXT}Enter the local image registry (e.g., image-registry.openshift-image-registry.svc:5000/<project>)\n${RESET_TEXT}"
-        printf "${BOLD_TEXT}This is required to pull container images and Kubernetes secret creation: ${RESET_TEXT}"
+        printf "${BOLD_TEXT}This is required to pull container images and Kubernetes secret creation: ${RESET_TEXT}\n"
         builtin_dockercfg_secrect_name=($(${CLI_CMD} get secret -n $project_name --no-headers --ignore-not-found | grep default-dockercfg | awk '{print $1}'))
 
         if [ -z "$builtin_dockercfg_secrect_name" ]; then
@@ -2976,7 +2980,7 @@ function get_local_registry_user(){
     # For Local Registry User
     printf "\n"
     if [ -z "$CP4BA_AUTO_LOCAL_REGISTRY_USER" ]; then
-        printf "${BOLD_TEXT}Enter the user name for your docker registry: ${RESET_TEXT}"
+        printf "${BOLD_TEXT}Enter the user name for your docker registry: ${RESET_TEXT}\n"
         local_registry_user=""
         while [[ $local_registry_user == "" ]]
         do
@@ -3073,6 +3077,7 @@ function verify_local_registry_password(){
                 *) echo "invalid option $REPLY";;
             esac
         done
+        printf "%s\n" "$REPLY"
     else
         REGISTRY_TYPE="external"
     fi
@@ -3274,7 +3279,8 @@ function recreate_cp4ba_common_configmap() {
             info "ConfigMap 'ibm-cp4ba-common-config' is not found in namespace $ns."
             
             # Prompt user if they want to create the ConfigMap
-            read -r -p "Do you want to create the ibm-cp4ba-common-config ConfigMap in namespace $ns ? (Yes/No, default: No) " answer
+            printf "Do you want to create the ibm-cp4ba-common-config ConfigMap in namespace $ns ? (Yes/No, default: No) \n"
+            read -erp "" answer
             # Check if the answer is empty and set it to "No" as default
             if [[ -z "$answer" ]]; then
                 answer="No"
