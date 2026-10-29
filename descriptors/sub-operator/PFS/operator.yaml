@@ -70,7 +70,7 @@ spec:
                 - ppc64le
       containers:
         - name: operator
-          image: icr.io/cpopen/icp4a-pfs-operator@sha256:2744240386ea9005e57f734a0f7072193e97ac94e0c303077bab89db200e8a3b
+          image: icr.io/cpopen/icp4a-pfs-operator@sha256:aebe8f3cfaf2797b341c44d8696da5c9974ff5216ffc2d5eb6b70146477ca0ef
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

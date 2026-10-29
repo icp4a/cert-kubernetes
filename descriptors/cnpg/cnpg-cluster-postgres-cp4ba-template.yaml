@@ -19,8 +19,8 @@ metadata:
 spec:
   instances: <INSTANCES>
   
-  # IBM PostgreSQL 16 image v1.28.4
-  imageName: icr.io/cpopen/ibm-pg/ibm-pg-16:16.14-v28.4.0@sha256:cd1fd631b3e20141cbd462cdd713bee9e2b062472b674fd20ee4c64f923c5cbf
+  # IBM PostgreSQL 16 image v1.28.8
+  imageName: icr.io/cpopen/ibm-pg/ibm-pg-16:16.15-v28.4.8@sha256:38837d767e8f2fb90d87d192f603ff4d078803107b21a01bd8f503cb3c68ba94
   
   postgresql:
     parameters:

@@ -193,7 +193,7 @@ function readLicense() {
 # Get user's input on whether accept the license
 function userInput() {
     printf '%b\n' "\033[32mDo you accept the International Program License?(y/n)\033[0m"
-    read -e choice
+    read -erp "" choice
     if [[ "$choice" == "y" || "$choice" == "Y" ]]; then
         LICENSE_ACCEPTED=accept
     elif [[ "$choice" == "n" || "$choice" == "N" ]]; then

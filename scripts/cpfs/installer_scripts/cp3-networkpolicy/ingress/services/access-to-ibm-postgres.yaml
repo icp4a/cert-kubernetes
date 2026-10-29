@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    component: cpfs3
+    service: ibm-pg
+  name: access-to-ibm-postgres
+  namespace: "zenNamespace"
+spec:
+  ingress:
+  - {}
+  podSelector:
+    matchExpressions:
+    - key: pg.ibm.com/cluster
+      operator: Exists
+  policyTypes:
+  - Ingress

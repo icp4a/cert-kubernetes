@@ -154,6 +154,39 @@ spec:
       sc_fast_file_storage_classname: "<Required>"
       sc_block_storage_classname: "<Required>"
 
+    ## Zen Settings
+    sc_zen:
+      ## Default value for zen_instance_iss is false. When false , the issuer claim will use legacy KNOXSSO.
+      ## Change zen_instance_iss to true to use all ZEN tokens to use this format ZEN:{CLOUD_PAK_INSTANCE_ID} (Example: ZEN:6aadd07e-865c-41b7-9296-0e831547273e)
+      zen_instance_iss: false 
+      ## DBACLD-182756: Zen multi-domain support (requires Zen >= 6.10.7, OCP/ROKS only)
+      ## Set to true to enable unified routing across all Zen domains (prerequisite for zenSecondaryRoutes).
+      zen_unified_route: false
+      ## Set to true to enable Zen front door routing. Sticky gate: once true it is preserved on reconcile.
+      zen_front_door: false
+      ## realm for the PRIMARY Zen route (maps to zenCustomRoute.route_realm).
+      ## Must match an IAM Identity Provider connection name (e.g. LDAP, SAML, OIDC connection name).
+      ## When set, IAM will auto-select this provider on the login page for users of the primary route.
+      zen_custom_route_realm: ""
+      ## Secondary Zen routes — each entry is an object. Supported fields per entry:
+      ##   name (required)        : unique Route name
+      ##   route_host (required)  : hostname for this secondary route
+      ##   route_realm (optional) : IAM Identity Provider connection name for this secondary route.
+      ##                            Can be the same as or different from zen_custom_route_realm.
+      ##                            When set, users hitting this route are auto-redirected to that provider.
+      ##   route_secret (optional): secret containing tls.crt / tls.key / ca.crt for this route.
+      ##                            Note: zen-operator does NOT create secondary routes; they must be
+      ##                            created manually by the cluster admin.
+      ## Example:
+      ## zen_secondary_routes:
+      ##   - name: "internal"
+      ##     route_host: "internal.apps.example.com"
+      ##     route_realm: "SAML-Internal"
+      ##   - name: "external"
+      ##     route_host: "external.apps.example.com"
+      ##     route_realm: "Okta"
+      zen_secondary_routes: []
+
     ## IAM Settings
     sc_iam:
       ## Provide non default admin user for IAM in case you do not want to use cpadmin

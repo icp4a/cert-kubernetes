@@ -80,8 +80,9 @@ SERVICE_DELETE_TIMEOUT="${SERVICE_DELETE_TIMEOUT:-60}"
 
 # CR Kind to Component Mapping
 # Maps top-level CR kinds to their associated component CR kinds for deployment scaling
-ICP4ACLUSTER_CR_KIND_MAPPING_LIST=("ICP4ACluster" "Content" "InsightsEngine" "ICP4AAutomationDecisionService" "WFPSRuntime" "WorkflowRuntime" "ICP4ADocumentProcessingEngine")
+ICP4ACLUSTER_CR_KIND_MAPPING_LIST=("ICP4ACluster" "Content" "InsightsEngine" "ICP4AAutomationDecisionService" "WFPSRuntime" "WorkflowRuntime" "ICP4ADocumentProcessingEngine" "OperationalDecisionManager")
 CONTENT_CR_KIND_MAPPING_LIST=("Content" "Foundation" "InsightsEngine")
+ODM_CR_KIND_MAPPING_LIST=("OperationalDecisionManager")
 
 ################################################################################
 # Helper Functions
@@ -865,9 +866,13 @@ function scale_down_applications() {
         cr_kinds_to_check=("${CONTENT_CR_KIND_MAPPING_LIST[@]}")
         info "Top-level CR kind: Content"
         info "Will scale down deployments owned by: ${CONTENT_CR_KIND_MAPPING_LIST[*]}"
+    elif [[ "$cr_kind_lower" == "operationaldecisionmanager" || "$cr_kind_lower" == "odm" ]]; then
+        cr_kinds_to_check=("${ODM_CR_KIND_MAPPING_LIST[@]}")
+        info "Top-level CR kind: OperationalDecisionManager"
+        info "Will scale down deployments owned by: ${ODM_CR_KIND_MAPPING_LIST[*]}"
     else
         error "Unknown CR kind: $CR_KIND"
-        error "Expected 'ICP4ACluster' or 'Content'"
+        error "Expected 'ICP4ACluster', 'Content', or 'OperationalDecisionManager'"
         exit 1
     fi
     
@@ -2146,7 +2151,7 @@ function delete_edb_cluster() {
         warning "  ${CLI_CMD} delete cluster.pg.ibm.com $NEW_CLUSTER -n $SERVICES_NAMESPACE"
         echo ""
         if [[ "$SKIP_FOR_API" != "true" ]]; then
-            read -p "Do you want to continue and skip the IBM CloudNativePG cluster creation? (yes/no): " confirm
+            read -erp "Do you want to continue and skip the IBM CloudNativePG cluster creation? (yes/no): " confirm
         else
             confirm="yes"
         fi
@@ -2392,7 +2397,7 @@ function generate_cnpg_manifest() {
         info "Available storage classes in the cluster:"
         ${CLI_CMD} get storageclass --no-headers | awk '{print "  - " $1}' || warning "Could not list storage classes"
         echo ""
-        read -p "Enter storage class name (or press Enter for default 'ocs-storagecluster-ceph-rbd'): " user_storage_class
+        read -erp "Enter storage class name (or press Enter for default 'ocs-storagecluster-ceph-rbd'): " user_storage_class
         
         if [[ -n "$user_storage_class" ]]; then
             storage_class="$user_storage_class"
@@ -2943,7 +2948,7 @@ function restore_databases() {
         warning "This suggests the restore has already been completed."
         echo ""
         if [[ "$SKIP_FOR_API" != "true" ]]; then
-            read -p "Do you want to skip restore and proceed to validation? (yes/no): " skip_restore
+            read -erp "Do you want to skip restore and proceed to validation? (yes/no): " skip_restore
         else
             skip_restore="yes"
         fi
@@ -2965,7 +2970,7 @@ function restore_databases() {
             warning "Continuing with restore - this will DROP and recreate databases!"
             echo ""
             if [[ "$SKIP_FOR_API" != "true" ]]; then
-                read -p "Are you absolutely sure? (yes/no): " confirm_restore
+                read -erp "Are you absolutely sure? (yes/no): " confirm_restore
                 if [[ "$confirm_restore" != "yes" ]]; then
                     info "Restore aborted by user."
                     echo ""

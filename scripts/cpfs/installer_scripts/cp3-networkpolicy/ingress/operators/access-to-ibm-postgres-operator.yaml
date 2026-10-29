@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    component: cpfs3
+    service: postgres
+  name: access-to-ibm-postgres-operator
+  namespace: "opNamespace"
+spec:
+  ingress:
+  - {}
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ibm-pg-operator
+  policyTypes:
+  - Ingress

@@ -152,7 +152,7 @@ function next_steps_for_major_upgrade_after_upgrade_operator_mode() {
   local namespace=$1
   local css_flag=$2
   local cur_dir=$3
-  # In SOD deployments the upgradeOperatorStatus step must point to the operator namespace,
+  # In SOD deployments the upgradeOperatorStatus and upgradeDeploymentStatus steps must point to the operator namespace,
   # not the operand namespace.  The caller passes CP4BA_OPERATOR_NS as $4; fall back to
   # $namespace when not provided (non-SOD / same-namespace deployments).
   local operator_namespace=${4:-$namespace}
@@ -172,9 +172,9 @@ function next_steps_for_major_upgrade_after_upgrade_operator_mode() {
     echo "      4. Click Save to apply your changes."
     step_num=$((step_num + 1))
   fi
-  echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You need to run ${GREEN_TEXT}\"${cur_dir}/cp4a-deployment.sh -m upgradeDeployment -n $namespace\"${RESET_TEXT} to upgrade CP4BA deployment."
+  echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You need to run ${GREEN_TEXT}\"${cur_dir}/cp4a-deployment.sh -m upgradeDeployment -n $operator_namespace\"${RESET_TEXT} to upgrade CP4BA deployment."
   echo "    ${RED_TEXT}[ATTENTION]: ${RESET_TEXT}${YELLOW_TEXT}When you run the [upgradeDeployment] mode of the cp4a-deployment.sh script, the updated custom resource (CR) must be manually applied that all required additional actions can be completed before the upgrade process begins. Refer to the Knowledge Center: \"Updating the custom resource for each capability in your deployment\" topic to complete the REQUIRED steps for the installed pattern(s).${RESET_TEXT}"
   step_num=$((step_num + 1))
-  echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${cur_dir}/cp4a-deployment.sh -m upgradeDeploymentStatus -n $namespace\"${RESET_TEXT} to check whether the upgrade of the CP4BA deployment was successful."
+  echo "  - STEP ${step_num} ${RED_TEXT}(Required)${RESET_TEXT}: You can run ${GREEN_TEXT}\"${cur_dir}/cp4a-deployment.sh -m upgradeDeploymentStatus -n $operator_namespace\"${RESET_TEXT} to check whether the upgrade of the CP4BA deployment was successful."
   printf "\n"
 }

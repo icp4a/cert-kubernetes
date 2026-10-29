@@ -72,7 +72,7 @@ function select_project(){
         if [ -z "$CP4BA_AUTO_NAMESPACE" ]; then
             echo
             # printf '%b\n' "\x1B[1mWhere do you want to deploy Cloud Pak for Business Automation?\x1B[0m"
-            read -p "Enter the name for an existing project (namespace): " TARGET_PROJECT_NAME
+            read -erp "Enter the name for an existing project (namespace): " TARGET_PROJECT_NAME
         else
             if [[ "$CP4BA_AUTO_NAMESPACE" == openshift* ]]; then
                 printf '%b\n' "\x1B[1;31mEnter a valid project name, project name should not be 'openshift' or start with 'openshift' \x1B[0m"

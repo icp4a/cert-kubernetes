@@ -17,6 +17,12 @@ spec:
   - to:
     - namespaceSelector: {}
       podSelector:
+        matchExpressions:
+          - key: pg.ibm.com/cluster
+            operator: Exists
+  - to:
+    - namespaceSelector: {}
+      podSelector:
         matchLabels:
           k8s-app: "platform-identity-provider"
   - to:

@@ -61,7 +61,7 @@ function extract_image_list_from_CR(){
 
   # For debug purpose, dev would pull from staging image registry
   if [[ "${SCRIPT_MODE}" =~ "dev" ]]; then
-    sed -i 's/cp.icr.io/cp.stg.icr.io/g' ${IMAGE_REPOSITORY_LIST_FILE}
+    sed -i 's/cp.icr.io/preprod.icr.io/g' ${IMAGE_REPOSITORY_LIST_FILE}
   fi
 }
 
@@ -85,7 +85,7 @@ function extract_odm_image_list(){
 
   # For debug purpose, dev would pull from staging image registry
   if [[ "${SCRIPT_MODE}" =~ "dev" ]]; then
-    sed -i 's/cp.icr.io/cp.stg.icr.io/g' ${IMAGE_REPOSITORY_LIST_FILE}
+    sed -i 's/cp.icr.io/preprod.icr.io/g' ${IMAGE_REPOSITORY_LIST_FILE}
   fi
 
 }

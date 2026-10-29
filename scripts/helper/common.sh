@@ -161,13 +161,13 @@ CP4BA_TLS_ISSUER_FILE=${CP4BA_TLS_ISSUER_FOLDER}/ibm-cp4ba-tls-issuer.yaml
 # Release/Patch version for CP4BA
 # CP4BA_RELEASE_BASE is for fetch content/foundation operator pod, only need to change for major release.
 CP4BA_RELEASE_BASE="24.0.1"
-CP4BA_PATCH_VERSION="IF009"
+CP4BA_PATCH_VERSION="IF010"
 # CP4BA_CSV_VERSION is for checking CP4BA operator upgrade status, need to update for each IFIX
-CP4BA_CSV_VERSION="v24.1.9"
+CP4BA_CSV_VERSION="v24.1.10"
 # CP4BA_CHANNEL_VERSION is for switch CP4BA operator upgrade status, need to update for major release
 CP4BA_CHANNEL_VERSION="v24.1"
 # CS_OPERATOR_VERSION is for checking CPFS operator upgrade status, need to update for each IFIX
-CS_OPERATOR_VERSION="v4.19.2"
+CS_OPERATOR_VERSION="v4.19.4"
 # CS_CHANNEL_VERSION is for for CPFS script -c option, need to update for each IFIX
 CS_CHANNEL_VERSION="v4.19"
 # CS CHANNEL VERSION that is used in the KC
@@ -177,15 +177,15 @@ CERT_LICENSE_CHANNEL_VERSION="v4.2"
 # CS_CATALOG_VERSION is for CPFS script -s option, need to update for each IFIX
 CS_CATALOG_VERSION="ibm-cs-install-catalog-v4-19-0"
 # ZEN_OPERATOR_VERSION is for checking ZenService operator upgrade status, need to update for each IFIX
-ZEN_OPERATOR_VERSION="v6.10.5"
+ZEN_OPERATOR_VERSION="v6.10.8"
 # BTS_CHANNEL_VERSION is for for BTS, need to update for each IFIX
 BTS_CHANNEL_VERSION="v3.35"
-# BTS_CATALOG_VERSION is for BTS 3.35.13.
+# BTS_CATALOG_VERSION is for BTS 3.35.15.
 BTS_CATALOG_VERSION="ibm-bts-operator-catalog-v3-35"
 # REQUIREDVER_BTS is for checking bts operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_BTS="3.35.13"
+REQUIREDVER_BTS="3.35.15"
 # REQUIREDVER_POSTGRESQL is for checking postgresql operator upgrade status before run removal_iaf.sh, need to update for each IFIX
-REQUIREDVER_POSTGRESQL="1.28.4"
+REQUIREDVER_POSTGRESQL="1.28.8"
 # EVENTS_OPERATOR_VERSION is for checking IBM Events operator upgrade status, need to update for each IFIX
 EVENTS_OPERATOR_VERSION="v5.2.1"
 # List of CP4BA versions that are supported for upgrade to $CP4BA_CSV_VERSION
@@ -1752,6 +1752,8 @@ function patch_strimzi_podset(){
     if [[ -z "$events_operator_subscription_name" ]]; then
         echo "Subscription matching 'ibm-events-operator' not found, skipping"
         strimzi_patched=true
+        #DBACLD-259982: Set DISPLAY_MANUAL_PATCH_STEPS so that the displayManualStrimziPodsetPatchingMessage function won't be trigger
+        DISPLAY_MANUAL_PATCH_STEPS=false
         return
     fi
 
@@ -1975,6 +1977,45 @@ function validate_zen_upgrade_status(){
         exit 1
     fi
 }
+
+
+# Function to get the total reconcile count for a CP4BA operator pod.
+# Sets the global variable OPERATOR_RECONCILE_COUNT to a numeric value.
+# Returns:
+#   0 when reconcile artifact count was found and parsed
+#   1 when the artifact count could not be found
+function get_cp4ba_operator_reconcile_count() {
+    local operator_namespace="$1"
+    local operator_pod_name="$2"
+    local top_level_cr_kind="$3"
+    local top_level_cr_name="$4"
+    local cr_kind_path=""
+    local reconcile_count=""
+
+    OPERATOR_RECONCILE_COUNT=0
+
+    if [[ -z "$operator_namespace" || -z "$operator_pod_name" || -z "$top_level_cr_kind" || -z "$top_level_cr_name" || -z "$CP4BA_SERVICES_NS" ]]; then
+        return 1
+    fi
+
+    if [[ "$top_level_cr_kind" == "content" ]]; then
+        cr_kind_path="Content"
+    else
+        cr_kind_path="ICP4ACluster"
+    fi
+
+    reconcile_count=$(${CLI_CMD} -n "$operator_namespace" exec "$operator_pod_name" -- sh -c "
+        ls /tmp/ansible-operator/runner/icp4a.ibm.com/v1/${cr_kind_path}/${CP4BA_SERVICES_NS}/${top_level_cr_name}/artifacts/ 2>/dev/null | grep -c '^[0-9]'
+    " 2>/dev/null)
+
+    if [[ $? -eq 0 && "$reconcile_count" =~ ^[0-9]+$ ]]; then
+        OPERATOR_RECONCILE_COUNT="$reconcile_count"
+        return 0
+    fi
+
+    return 1
+}
+
 
 # Function to check if all components are ready
 # This function parses the components status variable array defined in upgradeDeploymentStatus and checks for "Done" status

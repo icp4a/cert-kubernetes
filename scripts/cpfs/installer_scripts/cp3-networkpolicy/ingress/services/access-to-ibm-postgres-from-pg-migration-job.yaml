@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: access-to-ibm-postgres-from-pg-migration-job
+  namespace: "csNamespace"
+  labels:
+    component: cpfs3
+    service: ibm-pg
+spec:
+  ingress:
+    - {}
+  podSelector:
+    matchLabels:
+      app: cpfs-pg-migrator
+  policyTypes:
+    - Ingress
