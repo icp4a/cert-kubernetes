@@ -132,13 +132,13 @@ patch_clusterrole() {
     fi
     
     # Check if the rule already exists
-    local rule_count
-    rule_count=$($KC get clusterrole transaction-manager-ibm-backup-restore -o json | \
-        jq '.rules | map(select(.apiGroups | map(. == "icp4a.ibm.com") | any)) | length')
+    local rule_number
+    rule_number=$($KC get clusterroles/transaction-manager-ibm-backup-restore -o json | \
+        jq '.rules | map(.apiGroups | map(. == "icp4a.ibm.com") | any) | index(true)')
     
-    if [[ "$rule_count" -gt 0 ]]; then
-        log_success "ClusterRole already has icp4a.ibm.com permissions. Skipping patch."
-        return 0
+    if [[ "$rule_number" != null ]]; then
+        log_success "ClusterRole already has icp4a.ibm.com permissions. Removing latest rule."
+        $KC patch clusterrole/transaction-manager-ibm-backup-restore --type json --patch '[{"op":"remove","path":"/rules/'$rule_number'"}]'
     fi
     
     log_info "Patching ClusterRole to add icp4a.ibm.com permissions..."
@@ -277,7 +277,31 @@ label_core_resources() {
     set +e
     initialization_cm="$($KC -n $cp4ba_ns get configmaps -o name | grep initialization-config | tr '/' ' ')"
     verification_cm="$($KC -n $cp4ba_ns get configmaps -o name | grep verification-config | tr '/' ' ')"
+    cpe_oidc_secret="$($KC -n $cp4ba_ns get secrets -o name | grep '[[:alnum:]-]*-cpe-zen-oidc-secret' | tr '/' ' ')"
+    icp4acluster="$($KC -n $cp4ba_ns get icp4aclusters.icp4a.ibm.com -o name | tr '/' ' ')"
+    for pattern in '[[:alnum:]-]*ibm-fncm-secret' '[[:alnum:]-]*ibm-ban-secret' \
+      '[[:alnum:]-]*ibm-iccsap-secret' '[[:alnum:]-]*ldap-bind-secret' \
+      '[[:alnum:]-]*ldap-ssl-cert' '[[:alnum:]-]*postgresql-g1-tlscert' \
+      '[[:alnum:]-]*ecm-postgresql-g1-tlscert' '[[:alnum:]-]*ban-postgresql-g1-tlscert'
+    do
+      secret="$($KC -n $cp4ba_ns get secrets -o name | grep "$pattern" | tr '/' ' ')"
+      label_resource "$cp4ba_ns" ${secret:-"secrets" "-"} "cp4ba.ibm.com/backup-type=mandatory"
+    done
+    baw_server_db_secrets="$($KC -n $cp4ba_ns get secrets -o name | grep '[[:alnum:]-]*ibm-baw-[[:alnum:]-]*-server-db-secret')"
+    baw_server_admin_secrets="$($KC -n $cp4ba_ns get secrets -o name | grep '[[:alnum:]-]*ibm-baw-[[:alnum:]-]*-admin-secret')"
     set -e
+    for secret in $baw_server_db_secrets
+    do
+      split_secret="$(echo $secret | tr / ' ')"
+      label_resource "$cp4ba_ns" ${split_secret:-"secrets" "-"} "cp4ba.ibm.com/backup-type=mandatory"
+    done
+    for secret in $baw_server_admin_secrets
+    do
+      split_secret="$(echo $secret | tr / ' ')"
+      label_resource "$cp4ba_ns" ${split_secret:-"secrets" "-"} "cp4ba.ibm.com/backup-type=mandatory"
+    done
+
+    label_resource "$cp4ba_ns" ${cpe_oidc_secret:-"secrets" "-"} "cp4ba.ibm.com/backup-type=mandatory"
     label_resource "$cp4ba_ns" ${initialization_cm:-"configmaps" "-"} "cp4ba.ibm.com/backup-type=mandatory"
     label_resource "$cp4ba_ns" ${verification_cm:-"configmaps" "-"} "cp4ba.ibm.com/backup-type=mandatory"
     
