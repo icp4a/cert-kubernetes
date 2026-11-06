@@ -4,7 +4,7 @@
 
 A few considerations have to be made before installing the necessary software to use IBM Fusion for backing up and restoring Cloud Pak for Business Automation.
 
-1. The current version of the recipe package `cp4ba-fusion-v0.4.1` supports the following deployment paths and optional components.
+1. The current version of the recipe package `cp4ba-fusion-v0.4.2` supports the following deployment paths and optional components.
 
     Deployment paths:
 
@@ -21,13 +21,29 @@ A few considerations have to be made before installing the necessary software to
 
 1. IBM Fusion **v2.12.2** or later Backup & Restore is the currently the only supported version of IBM Fusion.
 
-1. The version of Cloud Pak for Business Automation supported by `cp4ba-fusion-v0.4.1` is `26.0.0-IF003`.
+1. The version of Cloud Pak for Business Automation supported by `cp4ba-fusion-v0.4.2` is `26.0.0-IF004`.
 
 ### Prerequisites
 
 - IBM Fusion **v2.12.2** or later should be installed.
 - Either Fusion Backup & Restore service (for hubs) or Fusion Backup & Restore Agent (for spokes) service should be installed.
-- A version of Cloud Pak for Business Automation `26.0.0-IF001` should be installed.
+
+
+### Ajusting resources for services in IBM Fusion **v2.14.x**
+
+*This is a temporary requirement, an upcoming hotfix will make these changes permanent.*
+
+- Velero:
+
+    ```
+    $ oc -n ibm-backup-restore patch deployments/velero --type json --patch '[{"op":"replace","path":"/spec/template/spec/containers/'$(oc -n ibm-backup-restore get deployments/velero -o json | jq '.spec.template.spec.containers | map(.name == "velero") | index(true)')'/resources","value":{"limits":{"cpu":"2","ephemeral-storage":"3Gi","memory":"2Gi"},"requests":{"cpu":"1","ephemeral-storage":"2Gi","memory":"1Gi"}}}]'
+    ```
+
+- Transaction Manager:
+
+    ```
+    $ oc -n ibm-backup-restore patch deployments/transaction-manager --type json --patch '[{"op":"replace","path":"/spec/template/spec/containers/'$(oc -n ibm-backup-restore get deployments/transaction-manager -o json | jq '.spec.template.spec.containers | map(.name == "transaction-manager") | index(true)')'/resources","value":{"limits":{"cpu":"2","ephemeral-storage":"2Gi","memory":"2Gi"},"requests":{"cpu":"1","ephemeral-storage":"1Gi","memory":"1Gi"}}}]'
+    ```
 
 
 ### Applying the IBM Fusion hotfix for Fusion **v2.12.x**
@@ -78,10 +94,13 @@ deployment.apps/transaction-manager patched
     ```
 
 
+1. If there's either custom Secrets, ConfigMaps or FederatedSystems, label them with the `cp4ba.ibm.com/backup-type=customer-defined` label, in order for them to be restored during restore.
+
+
 1. Install the Cloud Pak for Business Automation Fusion (`cp4ba-fusion`) package on the namespace where Cloud Pak for Business Automation is installed.
 
     ```
-    $ helm install --namespace $CP4BA_NAMESPACE cp4ba-fusion cp4ba-fusion-0.4.1.tgz \
+    $ helm install --namespace $CP4BA_NAMESPACE cp4ba-fusion cp4ba-fusion-0.4.2.tgz \
       --set zenStorageClass=STORAGE-CLASS-NAME
 
     NAME: cp4ba-fusion
@@ -125,7 +144,7 @@ deployment.apps/transaction-manager patched
 Cloud Pak for Business Automation instance has been upgraded:
 
     ```
-    $ helm upgrade --namespace $CP4BA_NAMESPACE --reuse-values cp4ba-fusion cp4ba-fusion-0.4.1.tgz
+    $ helm upgrade --namespace $CP4BA_NAMESPACE --reuse-values cp4ba-fusion cp4ba-fusion-0.4.2.tgz
 
     Release "cp4ba-fusion" has been upgraded. Happy Helming!
     NAME: cp4ba-fusion
@@ -141,14 +160,14 @@ Cloud Pak for Business Automation instance has been upgraded:
 
 1. If you haven't already, follow the procedures to achieve the following: 
 
-    - Create a [backup storage location](https://www.ibm.com/docs/en/fusion-software/2.13.x?topic=machines-backup-storage-locations).
-    - Create a [backup policy](https://www.ibm.com/docs/en/fusion-software/2.13.x?topic=policies-creating-backup-policy).
-    - Create a policy assignment by [assigning the policy to the application](https://www.ibm.com/docs/en/fusion-software/2.13.x?topic=policies-managing-backup-policy).
+    - Create a [backup storage location](https://www.ibm.com/docs/en/fusion-software/2.14.0?topic=machines-backup-storage-locations).
+    - Create a [backup policy](https://www.ibm.com/docs/en/fusion-software/2.14.0?topic=policies-creating-backup-policy).
+    - Create a policy assignment by [assigning the policy to the application](https://www.ibm.com/docs/en/fusion-software/2.14.0?topic=policies-managing-backup-policy).
 
-    *Refer to https://www.ibm.com/docs/en/fusion-software/2.13.x?topic=workloads-backup-restore-your-applications-virtual-machines for a more comprehensive procedure.*
+    *Refer to https://www.ibm.com/docs/en/fusion-software/2.14.0?topic=workloads-backup-restore-your-applications-virtual-machines for a more comprehensive procedure.*
 
 
-1. On Fusion, after [assigning a backup policy to the application](https://www.ibm.com/docs/en/fusion-software/2.13.x?topic=policies-managing-backup-policy),
+1. On Fusion, after [assigning a backup policy to the application](https://www.ibm.com/docs/en/fusion-software/2.14.0?topic=policies-managing-backup-policy),
 patch the policy assignment to point to the parent recipe:
   
     - Identify the policy assignment's name:
@@ -190,7 +209,7 @@ patch the policy assignment to point to the parent recipe:
 
 
 
-1. On the Fusion console, follow the procedure to [kick off an on-demand backup](https://www.ibm.com/docs/en/fusion-software/2.13.x?topic=machines-running-demand-backups) or
+1. On the Fusion console, follow the procedure to [kick off an on-demand backup](https://www.ibm.com/docs/en/fusion-software/2.14.0?topic=machines-running-demand-backups) or
 let the backup policy schedule it for you.
 
 
