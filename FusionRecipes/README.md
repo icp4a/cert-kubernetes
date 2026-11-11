@@ -4,7 +4,7 @@
 
 A few considerations have to be made before installing the necessary software to use IBM Fusion for backing up and restoring Cloud Pak for Business Automation.
 
-1. The current version of the recipe package `cp4ba-fusion-v0.4.2` supports the following deployment paths and optional components.
+1. The current version of the recipe package `cp4ba-fusion-v0.4.3` supports the following deployment paths and optional components.
 
     Deployment paths:
 
@@ -21,7 +21,7 @@ A few considerations have to be made before installing the necessary software to
 
 1. IBM Fusion **v2.12.2** or later Backup & Restore is the currently the only supported version of IBM Fusion.
 
-1. The version of Cloud Pak for Business Automation supported by `cp4ba-fusion-v0.4.2` is `26.0.0-IF004`.
+1. The version of Cloud Pak for Business Automation supported by `cp4ba-fusion-v0.4.3` is `26.0.0-IF004`.
 
 ### Prerequisites
 
@@ -100,7 +100,7 @@ deployment.apps/transaction-manager patched
 1. Install the Cloud Pak for Business Automation Fusion (`cp4ba-fusion`) package on the namespace where Cloud Pak for Business Automation is installed.
 
     ```
-    $ helm install --namespace $CP4BA_NAMESPACE cp4ba-fusion cp4ba-fusion-0.4.2.tgz \
+    $ helm install --namespace $CP4BA_NAMESPACE cp4ba-fusion cp4ba-fusion-0.4.3.tgz \
       --set zenStorageClass=STORAGE-CLASS-NAME
 
     NAME: cp4ba-fusion
@@ -144,7 +144,7 @@ deployment.apps/transaction-manager patched
 Cloud Pak for Business Automation instance has been upgraded:
 
     ```
-    $ helm upgrade --namespace $CP4BA_NAMESPACE --reuse-values cp4ba-fusion cp4ba-fusion-0.4.2.tgz
+    $ helm upgrade --namespace $CP4BA_NAMESPACE --reuse-values cp4ba-fusion cp4ba-fusion-0.4.3.tgz
 
     Release "cp4ba-fusion" has been upgraded. Happy Helming!
     NAME: cp4ba-fusion
